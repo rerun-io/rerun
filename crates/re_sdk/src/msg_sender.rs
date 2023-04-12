@@ -1,10 +1,10 @@
 use std::borrow::Borrow;
 
-use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId};
+use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId, RowId};
 
 use crate::{
     components::Transform,
-    log::{DataCell, LogMsg, MsgId},
+    log::{DataCell, LogMsg},
     sink::LogSink,
     time::{Time, TimeInt, TimePoint, Timeline},
     Component, EntityPath, SerializableComponent, Session,
@@ -251,13 +251,13 @@ impl MsgSender {
         if let Some(row_transforms) = row_transforms {
             sink.send(LogMsg::ArrowMsg(
                 recording_id,
-                (&row_transforms.into_table()).try_into()?,
+                row_transforms.into_table().to_arrow_msg()?,
             ));
         }
         if let Some(row_splats) = row_splats {
             sink.send(LogMsg::ArrowMsg(
                 recording_id,
-                (&row_splats.into_table()).try_into()?,
+                row_splats.into_table().to_arrow_msg()?,
             ));
         }
         // Always the primary component last so range-based queries will include the other data.
@@ -265,7 +265,7 @@ impl MsgSender {
         if let Some(row_standard) = row_standard {
             sink.send(LogMsg::ArrowMsg(
                 recording_id,
-                (&row_standard.into_table()).try_into()?,
+                row_standard.into_table().to_arrow_msg()?,
             ));
         }
 
@@ -320,7 +320,7 @@ impl MsgSender {
         // Standard
         rows[0] = (!standard_cells.is_empty()).then(|| {
             DataRow::from_cells(
-                MsgId::random(),
+                RowId::random(),
                 timepoint.clone(),
                 entity_path.clone(),
                 num_instances.unwrap_or(0),
@@ -331,7 +331,7 @@ impl MsgSender {
         // Transforms
         rows[1] = (!transform_cells.is_empty()).then(|| {
             DataRow::from_cells(
-                MsgId::random(),
+                RowId::random(),
                 timepoint.clone(),
                 entity_path.clone(),
                 num_transform_instances,
@@ -340,10 +340,10 @@ impl MsgSender {
         });
 
         // Splats
-        // TODO(cmc): unsplit splats once new data cells are in
+        // TODO(#1629): unsplit splats once new data cells are in
         rows[2] = (!splatted.is_empty()).then(|| {
             splatted.push(DataCell::from_native(&[InstanceKey::SPLAT]));
-            DataRow::from_cells(MsgId::random(), timepoint, entity_path, 1, splatted)
+            DataRow::from_cells(RowId::random(), timepoint, entity_path, 1, splatted)
         });
 
         rows

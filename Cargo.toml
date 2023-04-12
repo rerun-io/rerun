@@ -80,8 +80,10 @@ polars-core = "0.27.1"
 polars-lazy = "0.27.1"
 polars-ops = "0.27.1"
 puffin = "0.14"
+smallvec = { version = "1.0", features = ["const_generics", "union"] }
 thiserror = "1.0"
 time = { version = "0.3", features = ["wasm-bindgen"] }
+tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = "1.24"
 wgpu = { version = "0.15.1", default-features = false }
 wgpu-core = { version = "0.15.1", default-features = false }
@@ -89,7 +91,8 @@ wgpu-hal = { version = "0.15.4", default-features = false }
 
 
 [profile.dev]
-opt-level = 1 # Make debug builds run faster
+opt-level = 1   # Make debug builds run faster
+panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 # Optimize all dependencies even in debug builds (does not affect workspace packages):
 [profile.dev.package."*"]
@@ -97,6 +100,7 @@ opt-level = 2
 
 [profile.release]
 # debug = true # good for profilers
+panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 [profile.bench]
 debug = true

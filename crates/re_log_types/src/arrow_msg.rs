@@ -3,7 +3,7 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
-use crate::{MsgId, TimePoint};
+use crate::{TableId, TimePoint};
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 /// Message containing an Arrow payload
@@ -14,7 +14,7 @@ pub struct ArrowMsg {
     ///
     /// NOTE(#1619): While we're in the process of transitioning towards end-to-end batching, the
     /// `table_id` is always the same as the `row_id` as the first and only row.
-    pub table_id: MsgId,
+    pub table_id: TableId,
 
     /// The maximum values for all timelines across the entire batch of data.
     ///
@@ -79,7 +79,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                let table_id: Option<MsgId> = seq.next_element()?;
+                let table_id: Option<TableId> = seq.next_element()?;
                 let timepoint_min: Option<TimePoint> = seq.next_element()?;
                 let buf: Option<serde_bytes::ByteBuf> = seq.next_element()?;
 
@@ -133,24 +133,32 @@ mod tests {
 
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        DataRow, DataTable, MsgId,
+        DataRow, DataTable, RowId,
     };
 
     #[test]
     fn arrow_msg_roundtrip() {
         let row = DataRow::from_cells2(
-            MsgId::random(),
+            RowId::random(),
             "world/rects",
             [build_frame_nr(0.into())],
             1,
             (build_some_point2d(1), build_some_rects(1)),
         );
 
-        let table_in = row.into_table();
-        let msg_in: ArrowMsg = (&table_in).try_into().unwrap();
+        let table_in = {
+            let mut table = row.into_table();
+            table.compute_all_size_bytes();
+            table
+        };
+        let msg_in = table_in.to_arrow_msg().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
-        let table_out: DataTable = (&msg_out).try_into().unwrap();
+        let table_out = {
+            let mut table = DataTable::from_arrow_msg(&msg_out).unwrap();
+            table.compute_all_size_bytes();
+            table
+        };
 
         assert_eq!(msg_in, msg_out);
         assert_eq!(table_in, table_out);

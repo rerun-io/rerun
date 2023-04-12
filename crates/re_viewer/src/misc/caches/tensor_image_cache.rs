@@ -4,8 +4,8 @@ use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
-    component_types::{self, ClassId, Tensor, TensorData, TensorDataMeaning, TensorTrait},
-    MsgId,
+    component_types::{self, ClassId, Tensor, TensorData, TensorDataMeaning},
+    RowId,
 };
 use re_renderer::{
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
@@ -90,13 +90,13 @@ impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
     tensor_id: component_types::TensorId,
-    annotation_msg_id: MsgId,
+    annotation_row_id: RowId,
 }
 
 impl ImageCacheKey {
     fn hash64(&self) -> u64 {
         let msg_hash = self.tensor_id.0.as_u128() as u64;
-        let annotation_hash = (self.annotation_msg_id.as_u128() >> 1) as u64;
+        let annotation_hash = (self.annotation_row_id.as_u128() >> 1) as u64;
         msg_hash ^ annotation_hash
     }
 }
@@ -127,7 +127,7 @@ impl ImageCache {
     ) -> ColoredTensorView<'store, 'cache> {
         let key = ImageCacheKey {
             tensor_id: tensor.id(),
-            annotation_msg_id: annotations.msg_id,
+            annotation_row_id: annotations.row_id,
         };
         let ci = self.images.entry(key).or_insert_with(|| {
             let debug_name = format!("tensor {:?}", tensor.shape());

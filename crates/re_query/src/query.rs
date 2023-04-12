@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{component_types::InstanceKey, Component, ComponentName, DataRow, EntityPath};
+use re_log_types::{
+    component_types::InstanceKey, Component, ComponentName, DataRow, EntityPath, RowId,
+};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
@@ -14,7 +16,7 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 /// let ent_path = "point";
 /// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
-/// let component = re_query::get_component_with_instances(
+/// let (_, component) = re_query::get_component_with_instances(
 ///   &store,
 ///   &query,
 ///   &ent_path.into(),
@@ -46,20 +48,24 @@ pub fn get_component_with_instances(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     component: ComponentName,
-) -> crate::Result<ComponentWithInstances> {
+) -> crate::Result<(RowId, ComponentWithInstances)> {
     let components = [InstanceKey::name(), component];
 
-    let row_indices = store
+    let (row_id, mut cells) = store
         .latest_at(query, ent_path, component, &components)
         .ok_or(QueryError::PrimaryNotFound)?;
 
-    let mut results = store.get(&components, &row_indices);
-
-    Ok(ComponentWithInstances {
-        name: component,
-        instance_keys: results[0].take(),
-        values: results[1].take().ok_or(QueryError::PrimaryNotFound)?,
-    })
+    Ok((
+        row_id,
+        ComponentWithInstances {
+            name: component,
+            instance_keys: cells[0].take().map(|cell| cell.to_arrow()),
+            values: cells[1]
+                .take()
+                .map(|cell| cell.to_arrow())
+                .ok_or(QueryError::PrimaryNotFound)?,
+        },
+    ))
 }
 
 /// Retrieve an `EntityView` from the `DataStore`
@@ -115,7 +121,7 @@ pub fn query_entity_with_primary<Primary: Component>(
 ) -> crate::Result<EntityView<Primary>> {
     crate::profile_function!();
 
-    let primary = get_component_with_instances(store, query, ent_path, Primary::name())?;
+    let (row_id, primary) = get_component_with_instances(store, query, ent_path, Primary::name())?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
@@ -124,11 +130,13 @@ pub fn query_entity_with_primary<Primary: Component>(
 
     let components: crate::Result<BTreeMap<ComponentName, ComponentWithInstances>> = components
         .iter()
-        // Filter out `Primary` and `InstanceKey` from the component list since are
+        // Filter out `Primary` and `InstanceKey` from the component list since they are
         // always queried above when creating the primary.
         .filter(|component| *component != &Primary::name() && *component != &InstanceKey::name())
         .filter_map(|component| {
-            match get_component_with_instances(store, query, ent_path, *component) {
+            match get_component_with_instances(store, query, ent_path, *component)
+                .map(|(_, cwi)| cwi)
+            {
                 Ok(component_result) => Some(Ok((*component, component_result))),
                 Err(QueryError::PrimaryNotFound) => None,
                 Err(err) => Some(Err(err)),
@@ -137,6 +145,7 @@ pub fn query_entity_with_primary<Primary: Component>(
         .collect();
 
     Ok(EntityView {
+        row_id,
         primary,
         components: components?,
         phantom: std::marker::PhantomData,
@@ -148,7 +157,6 @@ pub fn __populate_example_store() -> DataStore {
     use re_log_types::{
         component_types::{ColorRGBA, Point2D},
         datagen::build_frame_nr,
-        MsgId,
     };
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
@@ -160,7 +168,7 @@ pub fn __populate_example_store() -> DataStore {
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
 
     let row = DataRow::from_cells2(
-        MsgId::ZERO,
+        RowId::random(),
         ent_path,
         timepoint,
         instances.len() as _,
@@ -172,7 +180,7 @@ pub fn __populate_example_store() -> DataStore {
     let colors = vec![ColorRGBA(0xff000000)];
 
     let row = DataRow::from_cells2(
-        MsgId::ZERO,
+        RowId::random(),
         ent_path,
         timepoint,
         instances.len() as _,
@@ -194,7 +202,7 @@ fn simple_get_component() {
     let ent_path = "point";
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
-    let component =
+    let (_, component) =
         get_component_with_instances(&store, &query, &ent_path.into(), Point2D::name()).unwrap();
 
     #[cfg(feature = "polars")]

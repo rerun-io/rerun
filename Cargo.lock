@@ -996,9 +996,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.6"
+version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2dd04ddaf88237dc3b8d8f9a3c1004b506b54b3313403944054d23c0870c521"
+checksum = "a33c2bf77f2df06183c3aa30d1e96c0695a313d4f9c453cc3762a6db39f99200"
 dependencies = [
  "cfg-if",
  "crossbeam-utils",
@@ -2720,6 +2720,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
+name = "minimal_options"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "clap 4.1.4",
+ "glam",
+ "rerun",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3786,6 +3796,7 @@ dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arrow2",
+ "arrow2_convert",
  "criterion",
  "document-features",
  "indent",
@@ -3838,6 +3849,7 @@ dependencies = [
  "puffin",
  "rand",
  "re_arrow_store",
+ "re_format",
  "re_int_histogram",
  "re_log",
  "re_log_encoding",
@@ -4304,6 +4316,7 @@ dependencies = [
  "re_analytics",
  "re_build_build_info",
  "re_build_info",
+ "re_data_store",
  "re_format",
  "re_log",
  "re_log_encoding",

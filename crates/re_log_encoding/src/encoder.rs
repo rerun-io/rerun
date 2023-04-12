@@ -98,3 +98,14 @@ pub fn encode<'a>(
     }
     encoder.finish()
 }
+
+pub fn encode_owned(
+    messages: impl Iterator<Item = LogMsg>,
+    write: impl std::io::Write,
+) -> Result<(), EncodeError> {
+    let mut encoder = Encoder::new(write)?;
+    for message in messages {
+        encoder.append(&message)?;
+    }
+    encoder.finish()
+}

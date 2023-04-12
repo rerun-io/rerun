@@ -9,7 +9,7 @@ use pyo3::{
     types::{IntoPyDict, PyString},
     PyAny, PyResult,
 };
-use re_log_types::{component_types, DataCell, DataRow, DataTable, EntityPath, MsgId, TimePoint};
+use re_log_types::{component_types, DataCell, DataRow, DataTable, EntityPath, RowId, TimePoint};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -102,7 +102,7 @@ pub fn build_data_table_from_components(
 
     let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
     let row = DataRow::from_cells(
-        MsgId::random(),
+        RowId::random(),
         time_point.clone(),
         entity_path.clone(),
         num_instances,

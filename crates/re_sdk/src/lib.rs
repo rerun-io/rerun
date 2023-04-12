@@ -57,7 +57,7 @@ pub mod sink {
 
 /// Things directly related to logging.
 pub mod log {
-    pub use re_log_types::{DataCell, DataRow, DataTable, LogMsg, MsgId, PathOp};
+    pub use re_log_types::{DataCell, DataRow, DataTable, LogMsg, PathOp, RowId, TableId};
 }
 
 /// Time-related types.
@@ -75,8 +75,7 @@ pub mod components {
         EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
         MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
         Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDataMeaning,
-        TensorDimension, TensorId, TensorTrait, TextEntry, Transform, Vec2D, Vec3D, Vec4D,
-        ViewCoordinates,
+        TensorDimension, TensorId, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
     };
 }
 

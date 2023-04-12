@@ -222,7 +222,7 @@ impl Session {
 
             sink.send(
                 re_log_types::BeginRecordingMsg {
-                    msg_id: re_log_types::MsgId::random(),
+                    row_id: re_log_types::RowId::random(),
                     info: recording_info.clone(),
                 }
                 .into(),
@@ -289,7 +289,7 @@ impl Session {
         self.send(LogMsg::EntityPathOpMsg(
             self.recording_id(),
             re_log_types::EntityPathOpMsg {
-                msg_id: re_log_types::MsgId::random(),
+                row_id: re_log_types::RowId::random(),
                 time_point: time_point.clone(),
                 path_op,
             },

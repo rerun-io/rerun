@@ -38,14 +38,15 @@ py-run-all: py-build
     fd main.py | xargs -I _ sh -c "echo _ && python3 _"
 
 # Build and install the package into the venv
-py-build:
+py-build *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     unset CONDA_PREFIX && \
         source venv/bin/activate && \
         maturin develop \
             -m rerun_py/Cargo.toml \
-            --extras="tests"
+            --extras="tests" \
+            {{ARGS}}
 
 # Run autoformatting
 py-format:

@@ -9,23 +9,19 @@ use crate::{
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
-pub struct PointCloudBuilder<PerPointUserData> {
-    // Size of `point`/color`/`per_point_user_data` must be equal.
+pub struct PointCloudBuilder {
+    // Size of `point`/color` must be equal.
     pub vertices: Vec<PointCloudVertex>,
 
     pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
     pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
-    pub user_data: Vec<PerPointUserData>,
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
 
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
-impl<PerPointUserData> PointCloudBuilder<PerPointUserData>
-where
-    PerPointUserData: Default + Copy,
-{
+impl PointCloudBuilder {
     pub fn new(ctx: &RenderContext) -> Self {
         const RESERVE_SIZE: usize = 512;
 
@@ -48,7 +44,6 @@ where
             vertices: Vec::with_capacity(RESERVE_SIZE),
             color_buffer,
             picking_instance_ids_buffer,
-            user_data: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
         }
@@ -65,10 +60,7 @@ where
 
     /// Start of a new batch.
     #[inline]
-    pub fn batch(
-        &mut self,
-        label: impl Into<DebugLabel>,
-    ) -> PointCloudBatchBuilder<'_, PerPointUserData> {
+    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
             world_from_obj: glam::Mat4::IDENTITY,
@@ -105,30 +97,6 @@ where
         })
     }
 
-    // Iterate over all batches, yielding the batch info and a point vertex iterator zipped with its user data.
-    pub fn iter_vertices_and_userdata_by_batch(
-        &self,
-    ) -> impl Iterator<
-        Item = (
-            &PointCloudBatchInfo,
-            impl Iterator<Item = (&PointCloudVertex, &PerPointUserData)>,
-        ),
-    > {
-        let mut vertex_offset = 0;
-        self.batches.iter().map(move |batch| {
-            let out = (
-                batch,
-                self.vertices
-                    .iter()
-                    .zip(self.user_data.iter())
-                    .skip(vertex_offset)
-                    .take(batch.point_count as usize),
-            );
-            vertex_offset += batch.point_count as usize;
-            out
-        })
-    }
-
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
     pub fn to_draw_data(
         self,
@@ -138,16 +106,9 @@ where
     }
 }
 
-pub struct PointCloudBatchBuilder<'a, PerPointUserData>(
-    &'a mut PointCloudBuilder<PerPointUserData>,
-)
-where
-    PerPointUserData: Default + Copy;
+pub struct PointCloudBatchBuilder<'a>(&'a mut PointCloudBuilder);
 
-impl<'a, PerPointUserData> Drop for PointCloudBatchBuilder<'a, PerPointUserData>
-where
-    PerPointUserData: Default + Copy,
-{
+impl<'a> Drop for PointCloudBatchBuilder<'a> {
     fn drop(&mut self) {
         // Remove batch again if it wasn't actually used.
         if self.0.batches.last().unwrap().point_count == 0 {
@@ -157,10 +118,7 @@ where
     }
 }
 
-impl<'a, PerPointUserData> PointCloudBatchBuilder<'a, PerPointUserData>
-where
-    PerPointUserData: Default + Copy,
-{
+impl<'a> PointCloudBatchBuilder<'a> {
     #[inline]
     fn batch_mut(&mut self) -> &mut PointCloudBatchInfo {
         self.0
@@ -200,13 +158,6 @@ where
                     self.0.vertices.len() - self.0.picking_instance_ids_buffer.num_written(),
                 ));
         }
-
-        if self.0.user_data.len() < self.0.vertices.len() {
-            self.0.user_data.extend(
-                std::iter::repeat(PerPointUserData::default())
-                    .take(self.0.vertices.len() - self.0.user_data.len()),
-            );
-        }
     }
 
     #[inline]
@@ -222,7 +173,7 @@ where
         &mut self,
         size_hint: usize,
         positions: impl Iterator<Item = glam::Vec3>,
-    ) -> PointsBuilder<'_, PerPointUserData> {
+    ) -> PointsBuilder<'_> {
         // TODO(jleibs): Figure out if we can plumb-through proper support for `Iterator::size_hints()`
         // or potentially make `FixedSizedIterator` work correctly. This should be possible size the
         // underlying arrow structures are of known-size, but carries some complexity with the amount of
@@ -232,7 +183,6 @@ where
         self.extend_defaults();
 
         debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
-        debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
         let old_size = self.0.vertices.len();
 
@@ -245,8 +195,6 @@ where
         let num_points = self.0.vertices.len() - old_size;
         self.batch_mut().point_count += num_points as u32;
 
-        self.0.user_data.reserve(num_points);
-
         let new_range = old_size..self.0.vertices.len();
 
         let max_points = self.0.vertices.len();
@@ -256,7 +204,6 @@ where
             max_points,
             colors: &mut self.0.color_buffer,
             picking_instance_ids: &mut self.0.picking_instance_ids_buffer,
-            user_data: &mut self.0.user_data,
             additional_outline_mask_ids: &mut self
                 .0
                 .batches
@@ -264,36 +211,6 @@ where
                 .unwrap()
                 .additional_outline_mask_ids_vertex_ranges,
             start_vertex_index: old_size as _,
-        }
-    }
-
-    #[inline]
-    pub fn add_point(&mut self, position: glam::Vec3) -> PointBuilder<'_, PerPointUserData> {
-        self.extend_defaults();
-
-        debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
-        debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
-
-        let vertex_index = self.0.vertices.len() as u32;
-        self.0.vertices.push(PointCloudVertex {
-            position,
-            radius: Size::AUTO,
-        });
-        self.0.user_data.push(Default::default());
-        self.batch_mut().point_count += 1;
-
-        PointBuilder {
-            vertex: self.0.vertices.last_mut().unwrap(),
-            color: &mut self.0.color_buffer,
-            user_data: self.0.user_data.last_mut().unwrap(),
-            vertex_index,
-            additional_outline_mask_ids: &mut self
-                .0
-                .batches
-                .last_mut()
-                .unwrap()
-                .additional_outline_mask_ids_vertex_ranges,
-            outline_mask_id: OutlineMaskPreference::NONE,
         }
     }
 
@@ -308,14 +225,8 @@ where
         &mut self,
         size_hint: usize,
         positions: impl Iterator<Item = glam::Vec2>,
-    ) -> PointsBuilder<'_, PerPointUserData> {
+    ) -> PointsBuilder<'_> {
         self.add_points(size_hint, positions.map(|p| p.extend(0.0)))
-    }
-
-    /// Adds a single 2D point. Uses an autogenerated depth value.
-    #[inline]
-    pub fn add_point_2d(&mut self, position: glam::Vec2) -> PointBuilder<'_, PerPointUserData> {
-        self.add_point(position.extend(0.0))
     }
 
     /// Set flags for this batch.
@@ -330,73 +241,17 @@ where
     }
 }
 
-// TODO(andreas): Should remove single-point builder, practically this never makes sense as we're almost always dealing with arrays of points.
-pub struct PointBuilder<'a, PerPointUserData> {
-    vertex: &'a mut PointCloudVertex,
-    color: &'a mut CpuWriteGpuReadBuffer<Color32>,
-    user_data: &'a mut PerPointUserData,
-    vertex_index: u32,
-    additional_outline_mask_ids: &'a mut Vec<(std::ops::Range<u32>, OutlineMaskPreference)>,
-    outline_mask_id: OutlineMaskPreference,
-}
-
-impl<'a, PerPointUserData> PointBuilder<'a, PerPointUserData>
-where
-    PerPointUserData: Clone,
-{
-    #[inline]
-    pub fn radius(self, radius: Size) -> Self {
-        self.vertex.radius = radius;
-        self
-    }
-
-    /// This mustn't call this more than once.
-    #[inline]
-    pub fn color(self, color: Color32) -> Self {
-        self.color.push(color);
-        self
-    }
-
-    pub fn user_data(self, data: PerPointUserData) -> Self {
-        *self.user_data = data;
-        self
-    }
-
-    /// Pushes additional outline mask ids for this point
-    ///
-    /// Prefer the `overall_outline_mask_ids` setting to set the outline mask ids for the entire batch whenever possible!
-    pub fn outline_mask_id(mut self, outline_mask_id: OutlineMaskPreference) -> Self {
-        self.outline_mask_id = outline_mask_id;
-        self
-    }
-}
-
-impl<'a, PerPointUserData> Drop for PointBuilder<'a, PerPointUserData> {
-    fn drop(&mut self) {
-        if self.outline_mask_id.is_some() {
-            self.additional_outline_mask_ids.push((
-                self.vertex_index..self.vertex_index + 1,
-                self.outline_mask_id,
-            ));
-        }
-    }
-}
-
-pub struct PointsBuilder<'a, PerPointUserData> {
+pub struct PointsBuilder<'a> {
     // Vertices is a slice, which radii will update
     vertices: &'a mut [PointCloudVertex],
     max_points: usize,
     colors: &'a mut CpuWriteGpuReadBuffer<Color32>,
     picking_instance_ids: &'a mut CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
-    user_data: &'a mut Vec<PerPointUserData>,
     additional_outline_mask_ids: &'a mut Vec<(std::ops::Range<u32>, OutlineMaskPreference)>,
     start_vertex_index: u32,
 }
 
-impl<'a, PerPointUserData> PointsBuilder<'a, PerPointUserData>
-where
-    PerPointUserData: Clone,
-{
+impl<'a> PointsBuilder<'a> {
     /// Assigns radii to all points.
     ///
     /// This mustn't call this more than once.
@@ -437,19 +292,6 @@ where
         self.picking_instance_ids.extend(
             picking_instance_ids.take(self.max_points - self.picking_instance_ids.num_written()),
         );
-        self
-    }
-
-    /// Assigns user data for all points in this builder.
-    ///
-    /// This mustn't call this more than once.
-    ///
-    /// User data is currently not available on the GPU.
-    #[inline]
-    pub fn user_data(self, data: impl Iterator<Item = PerPointUserData>) -> Self {
-        crate::profile_function!();
-        self.user_data
-            .extend(data.take(self.max_points - self.user_data.len()));
         self
     }
 

@@ -34,11 +34,13 @@ pub async fn start(
         Box::new(move |cc| {
             let build_info = re_build_info::build_info!();
             let app_env = crate::AppEnvironment::Web;
+            let persist_state = get_persist_state(&cc.integration_info);
             let startup_options = crate::StartupOptions {
                 memory_limit: re_memory::MemoryLimit {
                     // On wasm32 we only have 4GB of memory to play around with.
                     limit: Some(3_500_000_000),
                 },
+                persist_state,
             };
             let re_ui = crate::customize_eframe(cc);
             let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
@@ -149,5 +151,25 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
         re_ws_comms::default_server_url(&info.web_info.location.hostname)
     } else {
         url
+    }
+}
+
+fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
+    match info
+        .web_info
+        .location
+        .query_map
+        .get("persist")
+        .map(String::as_str)
+    {
+        Some("0") => false,
+        Some("1") => true,
+        Some(other) => {
+            re_log::warn!(
+                "Unexpected value for 'persist' query: {other:?}. Expected either '0' or '1'. Defaulting to '1'."
+            );
+            true
+        }
+        _ => true,
     }
 }

@@ -64,6 +64,14 @@ impl From<Point2D> for glam::Vec2 {
     }
 }
 
+#[cfg(feature = "glam")]
+impl From<Point2D> for glam::Vec3 {
+    #[inline]
+    fn from(pt: Point2D) -> Self {
+        Self::new(pt.x, pt.y, 0.0)
+    }
+}
+
 /// A point in 3D space.
 ///
 /// ```

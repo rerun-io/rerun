@@ -81,7 +81,7 @@ impl DataUi for ViewCoordinates {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small => {
                 ui.label(format!("ViewCoordinates: {}", self.describe()));
             }
             UiVerbosity::All | UiVerbosity::Reduced => {
@@ -101,7 +101,7 @@ impl DataUi for Rigid3 {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small => {
                 ui.label("Rigid 3D transform").on_hover_ui(|ui| {
                     self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
@@ -140,7 +140,7 @@ impl DataUi for Pinhole {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small => {
                 ui.label("Pinhole transform").on_hover_ui(|ui| {
                     self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
@@ -269,7 +269,7 @@ impl DataUi for LineStrip2D {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small | UiVerbosity::Reduced => {
                 ui.label(format!("{} positions", self.0.len()));
             }
             UiVerbosity::All => {
@@ -318,7 +318,7 @@ impl DataUi for LineStrip3D {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small | UiVerbosity::Reduced => {
                 ui.label(format!("{} positions", self.0.len()));
             }
             UiVerbosity::All => {

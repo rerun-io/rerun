@@ -16,7 +16,6 @@ mod view_time_series;
 mod viewport;
 
 pub(crate) mod data_ui;
-pub(crate) mod event_log_view;
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;
 pub(crate) mod time_panel;

@@ -172,12 +172,12 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[test]
 fn test_encode_decode() {
     use re_log_types::{
-        ApplicationId, BeginRecordingMsg, LogMsg, MsgId, RecordingId, RecordingInfo,
-        RecordingSource, Time,
+        ApplicationId, BeginRecordingMsg, LogMsg, RecordingId, RecordingInfo, RecordingSource,
+        RowId, Time,
     };
 
     let messages = vec![LogMsg::BeginRecordingMsg(BeginRecordingMsg {
-        msg_id: MsgId::random(),
+        row_id: RowId::random(),
         info: RecordingInfo {
             application_id: ApplicationId("test".to_owned()),
             recording_id: RecordingId::random(),
