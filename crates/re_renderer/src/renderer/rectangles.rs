@@ -24,7 +24,7 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc,
     },
-    ColorMap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
+    Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
 };
 
 use super::{
@@ -127,7 +127,7 @@ pub struct ColormappedTexture {
     pub range: [f32; 2],
 
     /// The colormap to apply to single-component textures.
-    pub colormap: ColorMap,
+    pub colormap: Colormap,
 }
 
 impl Default for ColormappedTexture {
@@ -135,7 +135,7 @@ impl Default for ColormappedTexture {
         Self {
             texture: GpuTexture2DHandle::invalid(),
             range: [0.0, 1.0],
-            colormap: ColorMap::default(), // Whatever
+            colormap: Colormap::default(), // Whatever
         }
     }
 }
@@ -145,7 +145,7 @@ impl ColormappedTexture {
         Self {
             texture,
             range: [0.0, 1.0],
-            colormap: ColorMap::default(), // Unused
+            colormap: Colormap::default(), // Unused
         }
     }
 }

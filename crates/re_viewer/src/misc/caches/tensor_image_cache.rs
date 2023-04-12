@@ -205,7 +205,7 @@ impl CachedImage {
     fn from_tensor(debug_name: &str, tensor: &Tensor, annotations: &Arc<Annotations>) -> Self {
         crate::profile_function!();
 
-        match apply_color_map(tensor, annotations) {
+        match apply_colormap(tensor, annotations) {
             Ok(colored_image) => {
                 let memory_used = colored_image.pixels.len() * std::mem::size_of::<egui::Color32>();
 
@@ -241,7 +241,7 @@ impl CachedImage {
     }
 }
 
-fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::Result<ColorImage> {
+fn apply_colormap(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::Result<ColorImage> {
     match tensor.meaning {
         TensorDataMeaning::Unknown => color_tensor_as_color_image(tensor),
         TensorDataMeaning::ClassId => class_id_tensor_as_color_image(tensor, annotations),

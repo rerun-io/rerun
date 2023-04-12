@@ -102,7 +102,7 @@ fn textured_rect_from_color_tensor(
     Ok(ColormappedTexture {
         texture: texture_handle,
         range,
-        colormap: re_renderer::ColorMap::Grayscale, // Single-channel images = luminance = grayscale
+        colormap: re_renderer::Colormap::Grayscale, // Single-channel images = luminance = grayscale
     })
 }
 
@@ -142,7 +142,7 @@ fn textured_rect_from_depth_tensor(
     Ok(ColormappedTexture {
         texture,
         range: [min as f32, max as f32],
-        colormap: re_renderer::ColorMap::ColorMapTurbo, // TODO(emilk): make this configurable in the UI
+        colormap: re_renderer::Colormap::Turbo, // TODO(emilk): make this configurable in the UI
     })
 }
 

@@ -7,26 +7,26 @@ use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
 // NOTE: Keep in sync with `colormap.wgsl`!
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum ColorMap {
+pub enum Colormap {
     // Reserve 0 for "disabled"
     /// Perceptually even
     #[default]
     Grayscale = 1,
-    ColorMapTurbo = 2,
-    ColorMapViridis = 3,
-    ColorMapPlasma = 4,
-    ColorMapMagma = 5,
-    ColorMapInferno = 6,
+    Turbo = 2,
+    Viridis = 3,
+    Plasma = 4,
+    Magma = 5,
+    Inferno = 6,
 }
 
-pub fn colormap_srgb(which: ColorMap, t: f32) -> [u8; 4] {
+pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
     match which {
-        ColorMap::Grayscale => grayscale_srgb(t),
-        ColorMap::ColorMapTurbo => colormap_turbo_srgb(t),
-        ColorMap::ColorMapViridis => colormap_viridis_srgb(t),
-        ColorMap::ColorMapPlasma => colormap_plasma_srgb(t),
-        ColorMap::ColorMapMagma => colormap_magma_srgb(t),
-        ColorMap::ColorMapInferno => colormap_inferno_srgb(t),
+        Colormap::Grayscale => grayscale_srgb(t),
+        Colormap::Turbo => colormap_turbo_srgb(t),
+        Colormap::Viridis => colormap_viridis_srgb(t),
+        Colormap::Plasma => colormap_plasma_srgb(t),
+        Colormap::Magma => colormap_magma_srgb(t),
+        Colormap::Inferno => colormap_inferno_srgb(t),
     }
 }
 

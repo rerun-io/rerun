@@ -12,7 +12,7 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
     renderer::{ColormappedTexture, DepthCloud, DepthCloudDepthData},
-    ColorMap, OutlineMaskPreference,
+    Colormap, OutlineMaskPreference,
 };
 
 use crate::{
@@ -352,13 +352,13 @@ impl ImagesPart {
         let dimensions = glam::UVec2::new(w as _, h as _);
 
         let colormap = match *properties.color_mapper.get() {
-            re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
-                re_data_store::ColorMap::Grayscale => ColorMap::Grayscale,
-                re_data_store::ColorMap::Turbo => ColorMap::ColorMapTurbo,
-                re_data_store::ColorMap::Viridis => ColorMap::ColorMapViridis,
-                re_data_store::ColorMap::Plasma => ColorMap::ColorMapPlasma,
-                re_data_store::ColorMap::Magma => ColorMap::ColorMapMagma,
-                re_data_store::ColorMap::Inferno => ColorMap::ColorMapInferno,
+            re_data_store::ColorMapper::Colormap(colormap) => match colormap {
+                re_data_store::Colormap::Grayscale => Colormap::Grayscale,
+                re_data_store::Colormap::Turbo => Colormap::Turbo,
+                re_data_store::Colormap::Viridis => Colormap::Viridis,
+                re_data_store::Colormap::Plasma => Colormap::Plasma,
+                re_data_store::Colormap::Magma => Colormap::Magma,
+                re_data_store::Colormap::Inferno => Colormap::Inferno,
             },
         };
 

@@ -348,18 +348,18 @@ fn tensor_ui(
 // ----------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-enum ColorMap {
+enum Colormap {
     Greyscale,
     Turbo,
     Virdis,
 }
 
-impl std::fmt::Display for ColorMap {
+impl std::fmt::Display for Colormap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            ColorMap::Greyscale => "Greyscale",
-            ColorMap::Turbo => "Turbo",
-            ColorMap::Virdis => "Viridis",
+            Colormap::Greyscale => "Greyscale",
+            Colormap::Turbo => "Turbo",
+            Colormap::Virdis => "Viridis",
         })
     }
 }
@@ -367,14 +367,14 @@ impl std::fmt::Display for ColorMap {
 /// How we map values to colors.
 #[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
 struct ColorMapping {
-    map: ColorMap,
+    map: Colormap,
     gamma: f32,
 }
 
 impl Default for ColorMapping {
     fn default() -> Self {
         Self {
-            map: ColorMap::Virdis,
+            map: Colormap::Virdis,
             gamma: 1.0,
         }
     }
@@ -385,15 +385,15 @@ impl ColorMapping {
         let f = f.powf(self.gamma);
 
         match self.map {
-            ColorMap::Greyscale => {
+            Colormap::Greyscale => {
                 let lum = (f * 255.0 + 0.5) as u8;
                 Color32::from_gray(lum)
             }
-            ColorMap::Turbo => {
+            Colormap::Turbo => {
                 let [r, g, b, _] = re_renderer::colormap_turbo_srgb(f);
                 Color32::from_rgb(r, g, b)
             }
-            ColorMap::Virdis => {
+            Colormap::Virdis => {
                 let [r, g, b, _] = re_renderer::colormap_viridis_srgb(f);
                 Color32::from_rgb(r, g, b)
             }
@@ -408,9 +408,9 @@ impl ColorMapping {
             .selected_text(map.to_string())
             .show_ui(ui, |ui| {
                 ui.style_mut().wrap = Some(false);
-                ui.selectable_value(map, ColorMap::Greyscale, ColorMap::Greyscale.to_string());
-                ui.selectable_value(map, ColorMap::Virdis, ColorMap::Virdis.to_string());
-                ui.selectable_value(map, ColorMap::Turbo, ColorMap::Turbo.to_string());
+                ui.selectable_value(map, Colormap::Greyscale, Colormap::Greyscale.to_string());
+                ui.selectable_value(map, Colormap::Virdis, Colormap::Virdis.to_string());
+                ui.selectable_value(map, Colormap::Turbo, Colormap::Turbo.to_string());
             });
         ui.end_row();
 
