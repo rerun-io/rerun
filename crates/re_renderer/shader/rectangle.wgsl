@@ -70,15 +70,12 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
 
-
     // Sample the main texture:
 
     var sampled_value: Vec4;
     if rect_info.sample_type == 1u {
         // float
         sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
-    } else if rect_info.sample_type == 2u {
-        return ERROR_RGBA; // depth - not supported
     } else if rect_info.sample_type == 3u {
         sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
     } else if rect_info.sample_type == 4u {
@@ -92,6 +89,8 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let range = rect_info.range_min_max;
     let normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
 
+    // TODO(emilk): apply a user-specified gamma-curve here
+
     // Apply colormap, if any:
     var texture_color: Vec4;
     if rect_info.colormap == 0u {
@@ -100,7 +99,9 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     } else if rect_info.colormap == 666u {
         // colormap texture
         let colormap_size = textureDimensions(colormap_texture).xy;
-        let color_index_i32 = i32(normalized_value.r * f32(colormap_size.x * colormap_size.y));
+        let color_index = normalized_value.r * f32(colormap_size.x * colormap_size.y);
+        // TODO(emilk): interpolate between neighboring colors for non-integral color indices
+        let color_index_i32 = i32(color_index);
         let x = color_index_i32 % colormap_size.x;
         let y = color_index_i32 / colormap_size.x;
         texture_color = textureLoad(colormap_texture, IVec2(x, y), 0);

@@ -14,6 +14,7 @@ use super::caches::TensorStats;
 
 // ----------------------------------------------------------------------------
 
+/// Set up tensor for rendering on the GPU.
 pub fn textured_rect_from_tensor(
     render_ctx: &mut RenderContext,
     debug_name: &str,
@@ -92,9 +93,9 @@ fn textured_rect_from_color_tensor(
     let gpu_texture = render_ctx.texture_manager_2d.get(&texture_handle)?;
     let texture_format = gpu_texture.creation_desc.format;
 
-    let range = if is_unorm(texture_format) {
+    let range = if texture_format == TextureFormat::R8Unorm {
         [0.0, 1.0]
-    } else if is_snorm(texture_format) {
+    } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
     } else {
         let (min, max) = tensor_stats
@@ -275,6 +276,8 @@ fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
     bytes.into()
 }
 
+/// Uploads the tensor to a texture in a format that closely resembled the input.
+/// Uses no `Unorm/Snorm` formats.
 fn general_texture_creation_desc_from_tensor<'a>(
     debug_name: &str,
     tensor: &'a Tensor,
@@ -339,6 +342,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
         (4, TensorData::F32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
         (4, TensorData::F64(buf)) => (cast_f64_to_f32s(buf), TextureFormat::Rgba32Float),
 
+        // TODO(emilk): U64/I64
         (_depth, dtype) => {
             anyhow::bail!("Don't know how to turn a tensor of shape={:?} and dtype={dtype:?} into a color image", tensor.shape)
         }
@@ -381,164 +385,4 @@ fn height_width_depth(tensor: &Tensor) -> anyhow::Result<[u32; 3]> {
     );
 
     Ok([height, width, depth as u32])
-}
-
-// ----------------------------------------------------------------------------
-
-fn is_unorm(texture_format: TextureFormat) -> bool {
-    match texture_format {
-        TextureFormat::R8Unorm
-        | TextureFormat::R16Unorm
-        | TextureFormat::Rg8Unorm
-        | TextureFormat::Rg16Unorm
-        | TextureFormat::Rgba8Unorm
-        | TextureFormat::Bgra8Unorm
-        | TextureFormat::Rgb10a2Unorm
-        | TextureFormat::Rgba16Unorm
-        | TextureFormat::Depth16Unorm
-        | TextureFormat::Bc1RgbaUnorm
-        | TextureFormat::Bc2RgbaUnorm
-        | TextureFormat::Bc3RgbaUnorm
-        | TextureFormat::Bc4RUnorm
-        | TextureFormat::Bc5RgUnorm
-        | TextureFormat::Bc7RgbaUnorm
-        | TextureFormat::Etc2Rgb8Unorm
-        | TextureFormat::Etc2Rgb8A1Unorm
-        | TextureFormat::Etc2Rgba8Unorm
-        | TextureFormat::EacR11Unorm
-        | TextureFormat::Rgba8UnormSrgb
-        | TextureFormat::Bgra8UnormSrgb
-        | TextureFormat::Bc1RgbaUnormSrgb
-        | TextureFormat::Bc2RgbaUnormSrgb
-        | TextureFormat::Bc3RgbaUnormSrgb
-        | TextureFormat::Bc7RgbaUnormSrgb
-        | TextureFormat::Etc2Rgb8UnormSrgb
-        | TextureFormat::Etc2Rgb8A1UnormSrgb
-        | TextureFormat::Etc2Rgba8UnormSrgb
-        | TextureFormat::EacRg11Unorm => true,
-
-        TextureFormat::R8Snorm
-        | TextureFormat::R8Uint
-        | TextureFormat::R8Sint
-        | TextureFormat::R16Uint
-        | TextureFormat::R16Sint
-        | TextureFormat::R16Snorm
-        | TextureFormat::R16Float
-        | TextureFormat::Rg8Snorm
-        | TextureFormat::Rg8Uint
-        | TextureFormat::Rg8Sint
-        | TextureFormat::R32Uint
-        | TextureFormat::R32Sint
-        | TextureFormat::R32Float
-        | TextureFormat::Rg16Uint
-        | TextureFormat::Rg16Sint
-        | TextureFormat::Rg16Snorm
-        | TextureFormat::Rg16Float
-        | TextureFormat::Rgba8Snorm
-        | TextureFormat::Rgba8Uint
-        | TextureFormat::Rgba8Sint
-        | TextureFormat::Rgb9e5Ufloat
-        | TextureFormat::Rg11b10Float
-        | TextureFormat::Rg32Uint
-        | TextureFormat::Rg32Sint
-        | TextureFormat::Rg32Float
-        | TextureFormat::Rgba16Uint
-        | TextureFormat::Rgba16Sint
-        | TextureFormat::Rgba16Snorm
-        | TextureFormat::Rgba16Float
-        | TextureFormat::Rgba32Uint
-        | TextureFormat::Rgba32Sint
-        | TextureFormat::Rgba32Float
-        | TextureFormat::Stencil8
-        | TextureFormat::Depth24Plus
-        | TextureFormat::Depth24PlusStencil8
-        | TextureFormat::Depth32Float
-        | TextureFormat::Depth32FloatStencil8
-        | TextureFormat::Bc4RSnorm
-        | TextureFormat::Bc5RgSnorm
-        | TextureFormat::Bc6hRgbUfloat
-        | TextureFormat::Bc6hRgbSfloat
-        | TextureFormat::EacR11Snorm
-        | TextureFormat::EacRg11Snorm
-        | TextureFormat::Astc { .. } => false,
-    }
-}
-
-fn is_snorm(texture_format: TextureFormat) -> bool {
-    match texture_format {
-        TextureFormat::R8Snorm
-        | TextureFormat::R16Snorm
-        | TextureFormat::Rg8Snorm
-        | TextureFormat::Rg16Snorm
-        | TextureFormat::Rgba8Snorm
-        | TextureFormat::Rgba16Snorm
-        | TextureFormat::Bc4RSnorm
-        | TextureFormat::Bc5RgSnorm
-        | TextureFormat::EacR11Snorm
-        | TextureFormat::EacRg11Snorm => true,
-
-        TextureFormat::R8Unorm
-        | TextureFormat::R8Uint
-        | TextureFormat::R8Sint
-        | TextureFormat::R16Uint
-        | TextureFormat::R16Sint
-        | TextureFormat::R16Unorm
-        | TextureFormat::R16Float
-        | TextureFormat::Rg8Unorm
-        | TextureFormat::Rg8Uint
-        | TextureFormat::Rg8Sint
-        | TextureFormat::R32Uint
-        | TextureFormat::R32Sint
-        | TextureFormat::R32Float
-        | TextureFormat::Rg16Uint
-        | TextureFormat::Rg16Sint
-        | TextureFormat::Rg16Unorm
-        | TextureFormat::Rg16Float
-        | TextureFormat::Rgba8Unorm
-        | TextureFormat::Rgba8UnormSrgb
-        | TextureFormat::Rgba8Uint
-        | TextureFormat::Rgba8Sint
-        | TextureFormat::Bgra8Unorm
-        | TextureFormat::Bgra8UnormSrgb
-        | TextureFormat::Rgb9e5Ufloat
-        | TextureFormat::Rgb10a2Unorm
-        | TextureFormat::Rg11b10Float
-        | TextureFormat::Rg32Uint
-        | TextureFormat::Rg32Sint
-        | TextureFormat::Rg32Float
-        | TextureFormat::Rgba16Uint
-        | TextureFormat::Rgba16Sint
-        | TextureFormat::Rgba16Unorm
-        | TextureFormat::Rgba16Float
-        | TextureFormat::Rgba32Uint
-        | TextureFormat::Rgba32Sint
-        | TextureFormat::Rgba32Float
-        | TextureFormat::Stencil8
-        | TextureFormat::Depth16Unorm
-        | TextureFormat::Depth24Plus
-        | TextureFormat::Depth24PlusStencil8
-        | TextureFormat::Depth32Float
-        | TextureFormat::Depth32FloatStencil8
-        | TextureFormat::Bc1RgbaUnorm
-        | TextureFormat::Bc1RgbaUnormSrgb
-        | TextureFormat::Bc2RgbaUnorm
-        | TextureFormat::Bc2RgbaUnormSrgb
-        | TextureFormat::Bc3RgbaUnorm
-        | TextureFormat::Bc3RgbaUnormSrgb
-        | TextureFormat::Bc4RUnorm
-        | TextureFormat::Bc5RgUnorm
-        | TextureFormat::Bc6hRgbUfloat
-        | TextureFormat::Bc6hRgbSfloat
-        | TextureFormat::Bc7RgbaUnorm
-        | TextureFormat::Bc7RgbaUnormSrgb
-        | TextureFormat::Etc2Rgb8Unorm
-        | TextureFormat::Etc2Rgb8UnormSrgb
-        | TextureFormat::Etc2Rgb8A1Unorm
-        | TextureFormat::Etc2Rgb8A1UnormSrgb
-        | TextureFormat::Etc2Rgba8Unorm
-        | TextureFormat::Etc2Rgba8UnormSrgb
-        | TextureFormat::EacR11Unorm
-        | TextureFormat::EacRg11Unorm
-        | TextureFormat::Astc { .. } => false,
-    }
 }
