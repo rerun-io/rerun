@@ -27,7 +27,6 @@ pub const RERUN_MENU: Icon =
     Icon::new("rerun_menu", include_bytes!("../data/icons/rerun_menu.png"));
 
 pub const PLAY: Icon = Icon::new("play", include_bytes!("../data/icons/play.png"));
-pub const RESTART: Icon = Icon::new("restart", include_bytes!("../data/icons/restart.png"));
 pub const FOLLOW: Icon = Icon::new("follow", include_bytes!("../data/icons/follow.png"));
 pub const PAUSE: Icon = Icon::new("pause", include_bytes!("../data/icons/pause.png"));
 pub const ARROW_LEFT: Icon =

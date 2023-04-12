@@ -54,7 +54,6 @@ impl TimeControl {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 5.0; // from figma
             self.play_button_ui(re_ui, ui, times_per_timeline);
-            self.restart_button_ui(re_ui, ui);
             self.follow_button_ui(re_ui, ui, times_per_timeline);
             self.pause_button_ui(re_ui, ui);
             self.step_time_button_ui(re_ui, ui, times_per_timeline);
@@ -75,16 +74,6 @@ impl TimeControl {
             .clicked()
         {
             self.set_play_state(times_per_timeline, PlayState::Playing);
-        }
-    }
-
-    fn restart_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
-        if re_ui
-            .large_button(ui, &re_ui::icons::RESTART)
-            .on_hover_text("Reset timeline to start. Ctrl-Shift-Space")
-            .clicked()
-        {
-            self.set_time(0);
         }
     }
 
