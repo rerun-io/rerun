@@ -313,6 +313,7 @@ impl RectangleDrawData {
                 .get(&ctx.texture_manager_2d.white_texture_unorm_handle().clone())?
                 .handle;
             let mut texture_float = default_float_texture;
+            let mut texture_sint = ctx.texture_manager_2d.zeroed_texture_sint().handle;
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
             match texture_description.sample_type {
@@ -323,7 +324,7 @@ impl RectangleDrawData {
                     return Err(RectangleError::DepthTexturesNotSupported);
                 }
                 wgpu::TextureSampleType::Sint => {
-                    re_log::error_once!("Sint textures not yet implemented.");
+                    texture_sint = texture.handle;
                 }
                 wgpu::TextureSampleType::Uint => {
                     texture_uint = texture.handle;
@@ -345,6 +346,7 @@ impl RectangleDrawData {
                             uniform_buffer,
                             BindGroupEntry::Sampler(sampler),
                             BindGroupEntry::DefaultTextureView(texture_float),
+                            BindGroupEntry::DefaultTextureView(texture_sint),
                             BindGroupEntry::DefaultTextureView(texture_uint),
                             BindGroupEntry::DefaultTextureView(colormap_texture),
                         ],
@@ -415,9 +417,20 @@ impl Renderer for RectangleRenderer {
                         },
                         count: None,
                     },
-                    // uint texture:
+                    // sint texture:
                     wgpu::BindGroupLayoutEntry {
                         binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Sint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // uint texture:
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Uint,
@@ -428,7 +441,7 @@ impl Renderer for RectangleRenderer {
                     },
                     // colormap texture:
                     wgpu::BindGroupLayoutEntry {
-                        binding: 4,
+                        binding: 5,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },

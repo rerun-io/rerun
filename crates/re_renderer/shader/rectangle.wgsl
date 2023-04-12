@@ -39,9 +39,12 @@ var texture_sampler: sampler;
 var texture_float: texture_2d<f32>;
 
 @group(1) @binding(3)
-var texture_uint: texture_2d<u32>;
+var texture_sint: texture_2d<i32>;
 
 @group(1) @binding(4)
+var texture_uint: texture_2d<u32>;
+
+@group(1) @binding(5)
 var colormap_texture: texture_2d<f32>;
 
 
@@ -67,37 +70,42 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
 
-    var sampled_value = ERROR_RGBA;
 
+    // Sample the main texture:
+
+    var sampled_value: Vec4;
     if rect_info.sample_type == 1u {
         // float
         sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
     } else if rect_info.sample_type == 2u {
-        // depth - not supported
+        return ERROR_RGBA; // depth - not supported
     } else if rect_info.sample_type == 3u {
-        // sint - not yet implemented  - TODO
+        sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
     } else if rect_info.sample_type == 4u {
         // uint
         sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
     } else {
-        // unknown sample type
+        return ERROR_RGBA; // unknown sample type
     }
 
+    // Normalize the sample:
     let range = rect_info.range_min_max;
     let normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
 
+    // Apply colormap, if any:
     var texture_color: Vec4;
     if rect_info.colormap == 0u {
+        // no colormap
         texture_color = normalized_value;
     } else if rect_info.colormap == 666u {
+        // colormap texture
         let colormap_size = textureDimensions(colormap_texture).xy;
-        let color_index_f32 = normalized_value.r * f32(colormap_size.x * colormap_size.y);
-        let color_index_i32 = i32(color_index_f32);
+        let color_index_i32 = i32(normalized_value.r * f32(colormap_size.x * colormap_size.y));
         let x = color_index_i32 % colormap_size.x;
         let y = color_index_i32 / colormap_size.x;
-        let color_int = textureLoad(colormap_texture, IVec2(x,y), 0);
-        texture_color = linear_from_srgba(vec4(color_int));
+        texture_color = textureLoad(colormap_texture, IVec2(x, y), 0);
     } else {
+        // colormap function
         let rgb = colormap_linear(rect_info.colormap, normalized_value.r);
         texture_color = Vec4(rgb, 1.0);
     }

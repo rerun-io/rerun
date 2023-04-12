@@ -61,6 +61,7 @@ pub struct TextureManager2D {
     //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
     white_texture_unorm: GpuTexture2DHandle,
     zeroed_texture_depth: GpuTexture2DHandle,
+    zeroed_texture_sint: GpuTexture2DHandle,
     zeroed_texture_uint: GpuTexture2DHandle,
 
     // For convenience to reduce amount of times we need to pass them around
@@ -116,6 +117,22 @@ impl TextureManager2D {
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
             },
         )));
+        let zeroed_texture_sint = GpuTexture2DHandle(Some(texture_pool.alloc(
+            &device,
+            &TextureDesc {
+                label: "zeroed pixel - sint".into(),
+                format: wgpu::TextureFormat::Rgba8Sint,
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            },
+        )));
         let zeroed_texture_uint = GpuTexture2DHandle(Some(texture_pool.alloc(
             &device,
             &TextureDesc {
@@ -136,6 +153,7 @@ impl TextureManager2D {
         Self {
             white_texture_unorm,
             zeroed_texture_depth,
+            zeroed_texture_sint,
             zeroed_texture_uint,
             device,
             queue,
@@ -230,6 +248,11 @@ impl TextureManager2D {
     /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Depth16Unorm`].
     pub fn zeroed_texture_depth(&self) -> &GpuTexture {
         self.zeroed_texture_depth.0.as_ref().unwrap()
+    }
+
+    /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Rgba8Sint`].
+    pub fn zeroed_texture_sint(&self) -> &GpuTexture {
+        self.zeroed_texture_sint.0.as_ref().unwrap()
     }
 
     /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Rgba8Uint`].
