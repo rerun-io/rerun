@@ -115,6 +115,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // TODO(jleibs): Refactor import logic so all we need is main
     m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
+    m.add_class::<PyMemorySinkStorage>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
