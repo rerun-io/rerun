@@ -330,7 +330,7 @@ fn serve(open_browser: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn shutdown(py: Python<'_>) {
-    re_log::info!("Shutting down the Rerun SDK");
+    re_log::debug!("Shutting down the Rerun SDK");
     // Disconnect the current sink which ensures that
     // it flushes and cleans up.
     disconnect(py);
