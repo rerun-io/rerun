@@ -47,7 +47,7 @@ pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult
 pub use self::data_row::{DataRow, DataRowError, DataRowResult};
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
-    ErasedTimeVec, NumInstancesVec, RowIdVec, TimePointVec, COLUMN_ENTITY_PATH,
+    ErasedTimeVec, NumInstancesVec, RowIdVec, TimePointVec, COLUMN_ENTITY_PATH, COLUMN_INSERT_ID,
     COLUMN_NUM_INSTANCES, COLUMN_ROW_ID, COLUMN_TIMEPOINT, METADATA_KIND, METADATA_KIND_CONTROL,
     METADATA_KIND_DATA,
 };

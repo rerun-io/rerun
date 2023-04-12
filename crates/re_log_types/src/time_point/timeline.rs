@@ -78,6 +78,7 @@ impl Timeline {
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
+    #[inline]
     pub fn format_time_range(&self, time_range: &TimeRange) -> String {
         format!(
             "    - {}: from {} to {} (all inclusive)",

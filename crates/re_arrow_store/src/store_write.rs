@@ -445,11 +445,13 @@ impl IndexedBucket {
     /// This function makes sure to uphold that restriction, which sometimes means splitting the
     /// bucket into two uneven parts, or even not splitting it at all.
     ///
-    /// Here's an example of an indexed tables configured to have a maximum of 2 rows per bucket: one
-    /// can see that the 1st and 2nd buckets exceed this maximum in order to uphold the restriction
-    /// described above:
-    ///
-    /// TODO(#1619): show internal structure once formatting is back
+    /// Run the following command to display a visualization of the store's internal
+    /// datastructures and better understand how everything fits together:
+    /// ```text
+    /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
+    /// ```
+    //
+    // TODO(#1524): inline visualization once it's back to a manageable state
     fn split(&self) -> Option<(TimeInt, Self)> {
         let Self {
             timeline,

@@ -38,10 +38,7 @@ re_log.workspace = true
 
 # External dependencies:
 ahash.workspace = true
-arrow2 = { workspace = true, features = [
-  "compute_concatenate",
-  "compute_aggregate",
-] }
+arrow2 = { workspace = true, features = ["compute_concatenate"] }
 arrow2_convert.workspace = true
 document-features = "0.2"
 indent = "0.1"
