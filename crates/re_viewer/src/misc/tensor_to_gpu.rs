@@ -16,6 +16,9 @@ use super::caches::TensorStats;
 // ----------------------------------------------------------------------------
 
 /// Set up tensor for rendering on the GPU.
+///
+/// `tensor_stats` is used for determining the range of the texture.
+// TODO(emilk): allow user to specify the range in ui.
 pub fn textured_rect_from_tensor(
     render_ctx: &mut RenderContext,
     debug_name: &str,
@@ -94,6 +97,7 @@ fn textured_rect_from_color_tensor(
     let gpu_texture = render_ctx.texture_manager_2d.get(&texture_handle)?;
     let texture_format = gpu_texture.creation_desc.format;
 
+    // Special casing for normalized textures used above:
     let range = if matches!(
         texture_format,
         TextureFormat::R8Unorm | TextureFormat::Rgba8UnormSrgb
@@ -102,6 +106,8 @@ fn textured_rect_from_color_tensor(
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
     } else {
+        // For instance: 16-bit images.
+        // TODO(emilk): consider assuming [0-1] range for all float tensors.
         let (min, max) = tensor_stats
             .range
             .ok_or_else(|| anyhow::anyhow!("missing tensor range. compressed?"))?;
