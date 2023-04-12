@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use crate::{
+    allocator::CpuWriteGpuReadBuffer,
     renderer::{
         LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags, LineStripInfo, LineVertex,
     },
@@ -17,22 +18,36 @@ use crate::{
 pub struct LineStripSeriesBuilder {
     pub vertices: Vec<LineVertex>,
 
+    pub batches: Vec<LineBatchInfo>,
+
     pub strips: Vec<LineStripInfo>,
 
-    pub batches: Vec<LineBatchInfo>,
+    /// Buffer for picking instance id - every strip gets its own instance id.
+    /// Therefore, there need to be always as many picking instance ids as there are strips.
+    pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
 
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
 impl LineStripSeriesBuilder {
-    // TODO(andreas): ctx not yet needed since we don't write to GPU yet, but soon needed.
-    pub fn new(_ctx: &RenderContext) -> Self {
+    pub fn new(ctx: &RenderContext) -> Self {
         const RESERVE_SIZE: usize = 512;
+
+        // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
+        let picking_instance_ids_buffer = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .allocate::<PickingLayerInstanceId>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                LineDrawData::MAX_NUM_STRIPS,
+            );
 
         Self {
             vertices: Vec::with_capacity(RESERVE_SIZE * 2),
             strips: Vec::with_capacity(RESERVE_SIZE),
             batches: Vec::with_capacity(16),
+            picking_instance_ids_buffer,
             radius_boost_in_ui_points_for_outlines: 0.0,
         }
     }
@@ -54,6 +69,7 @@ impl LineStripSeriesBuilder {
             line_vertex_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
+            picking_object_id: PickingLayerObjectId::default(),
         });
 
         LineBatchBuilder(self)
@@ -159,8 +175,7 @@ impl<'a> LineBatchBuilder<'a> {
 
     /// Sets the picking object id for every element in the batch.
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
-        //self.batch_mut().picking_object_id = picking_object_id;
-        //todo!("");
+        self.batch_mut().picking_object_id = picking_object_id;
         self
     }
 
@@ -179,6 +194,7 @@ impl<'a> LineBatchBuilder<'a> {
         LineStripBuilder {
             builder: self.0,
             outline_mask_ids: OutlineMaskPreference::NONE,
+            picking_instance_id: PickingLayerInstanceId::default(),
             vertex_range: old_vertex_count..new_vertex_count,
             strip_range: old_strip_count..new_strip_count,
         }
@@ -195,6 +211,11 @@ impl<'a> LineBatchBuilder<'a> {
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_> {
+        debug_assert_eq!(
+            self.0.strips.len(),
+            self.0.picking_instance_ids_buffer.num_written()
+        );
+
         let old_strip_count = self.0.strips.len();
         let old_vertex_count = self.0.vertices.len();
         let mut strip_index = old_strip_count as u32;
@@ -217,6 +238,7 @@ impl<'a> LineBatchBuilder<'a> {
         LineStripBuilder {
             builder: self.0,
             outline_mask_ids: OutlineMaskPreference::NONE,
+            picking_instance_id: PickingLayerInstanceId::default(),
             vertex_range: old_vertex_count..new_vertex_count,
             strip_range: old_strip_count..new_strip_count,
         }
@@ -369,6 +391,7 @@ impl<'a> LineBatchBuilder<'a> {
 pub struct LineStripBuilder<'a> {
     builder: &'a mut LineStripSeriesBuilder,
     outline_mask_ids: OutlineMaskPreference,
+    picking_instance_id: PickingLayerInstanceId,
     vertex_range: Range<usize>,
     strip_range: Range<usize>,
 }
@@ -398,8 +421,8 @@ impl<'a> LineStripBuilder<'a> {
         self
     }
 
-    pub fn picking_instance_id(self, instance_id: PickingLayerInstanceId) -> Self {
-        //todo!()
+    pub fn picking_instance_id(mut self, instance_id: PickingLayerInstanceId) -> Self {
+        self.picking_instance_id = instance_id;
         self
     }
 
@@ -425,5 +448,8 @@ impl<'a> Drop for LineStripBuilder<'a> {
                     self.outline_mask_ids,
                 ));
         }
+        self.builder
+            .picking_instance_ids_buffer
+            .extend(std::iter::repeat(self.picking_instance_id).take(self.strip_range.len()));
     }
 }

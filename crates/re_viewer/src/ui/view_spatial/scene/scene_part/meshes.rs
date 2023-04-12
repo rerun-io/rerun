@@ -25,7 +25,7 @@ impl MeshPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        props: &EntityProperties,
+        _props: &EntityProperties,
         entity_view: &EntityView<Mesh3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,

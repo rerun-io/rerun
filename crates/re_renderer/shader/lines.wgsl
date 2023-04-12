@@ -21,7 +21,7 @@ struct DrawDataUniformBuffer {
     // if we wouldn't add padding here, which isn't available on WebGL.
     _padding: Vec4,
 };
-@group(1) @binding(2)
+@group(1) @binding(3)
 var<uniform> draw_data: DrawDataUniformBuffer;
 
 struct BatchUniformBuffer {
@@ -95,7 +95,8 @@ struct LineStripData {
 fn read_strip_data(idx: u32) -> LineStripData {
     // can be u32 once https://github.com/gfx-rs/naga/issues/1997 is solved
     let idx = i32(idx);
-    var raw_data = textureLoad(position_data_texture, IVec2(idx % POSITION_DATA_TEXTURE_SIZE, idx / POSITION_DATA_TEXTURE_SIZE), 0).xy;
+    let coord = IVec2(idx % POSITION_DATA_TEXTURE_SIZE, idx / POSITION_DATA_TEXTURE_SIZE);
+    var raw_data = textureLoad(position_data_texture, coord, 0).xy;
 
     var data: LineStripData;
     data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));

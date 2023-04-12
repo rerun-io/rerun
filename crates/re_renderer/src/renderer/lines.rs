@@ -124,7 +124,8 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc, TextureDesc,
     },
-    Color32, DebugLabel, LineStripSeriesBuilder, OutlineMaskPreference, PickingLayerProcessor,
+    Color32, DebugLabel, LineStripSeriesBuilder, OutlineMaskPreference, PickingLayerObjectId,
+    PickingLayerProcessor,
 };
 
 use super::{
@@ -135,7 +136,7 @@ use super::{
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use crate::{size::SizeHalf, wgpu_buffer_types, Color32};
+    use crate::{size::SizeHalf, wgpu_buffer_types, Color32, PickingLayerObjectId};
 
     use super::LineStripFlags;
 
@@ -173,7 +174,8 @@ pub mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
-        pub outline_mask_ids: wgpu_buffer_types::UVec2RowPadded,
+        pub outline_mask_ids: wgpu_buffer_types::UVec2,
+        pub picking_object_id: PickingLayerObjectId,
 
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
     }
@@ -259,6 +261,9 @@ pub struct LineBatchInfo {
     /// This feature is meant for a limited number of "extra selections"
     /// If an overall mask is defined as well, the per-vertex-range masks is overwriting the overall mask.
     pub additional_outline_mask_ids_vertex_ranges: Vec<(Range<u32>, OutlineMaskPreference)>,
+
+    /// Picking object id that applies for the entire batch.
+    pub picking_object_id: PickingLayerObjectId,
 }
 
 /// Style information for a line strip.
@@ -341,8 +346,9 @@ impl LineDrawData {
 
         let LineStripSeriesBuilder {
             vertices,
-            strips,
             batches,
+            strips,
+            mut picking_instance_ids_buffer,
             radius_boost_in_ui_points_for_outlines,
         } = line_builder;
 
@@ -352,6 +358,7 @@ impl LineDrawData {
                 label: "LineDrawData::fallback_batch".into(),
                 line_vertex_count: vertices.len() as _,
                 overall_outline_mask_ids: OutlineMaskPreference::NONE,
+                picking_object_id: PickingLayerObjectId::default(),
                 additional_outline_mask_ids_vertex_ranges: Vec::new(),
             }]
         } else {
@@ -398,116 +405,152 @@ impl LineDrawData {
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
-        let position_data_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &TextureDesc {
-                label: "LineDrawData::position_data_texture".into(),
-                size: wgpu::Extent3d {
-                    width: POSITION_TEXTURE_SIZE,
-                    height: POSITION_TEXTURE_SIZE,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba32Float,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            },
-        );
-        let line_strip_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &TextureDesc {
-                label: "LineDrawData::line_strip_texture".into(),
-                size: wgpu::Extent3d {
-                    width: LINE_STRIP_TEXTURE_SIZE,
-                    height: LINE_STRIP_TEXTURE_SIZE,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rg32Uint,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            },
-        );
-
-        // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
-        //                  These staging buffers would be provided by the belt.
-        // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-        let mut position_data_staging =
-            Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
-        // sentinel at the beginning to facilitate caps.
-        position_data_staging.push(LineVertex {
-            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
-            strip_index: u32::MAX,
-        });
-        position_data_staging.extend(vertices.iter());
-        // placeholder at the end to facilitate caps.
-        position_data_staging.push(LineVertex {
-            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
-            strip_index: u32::MAX,
-        });
-        position_data_staging.extend(std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
-            (wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) - num_segments) as usize,
-        ));
-
-        let mut line_strip_info_staging =
-            Vec::with_capacity(wgpu::util::align_to(num_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
-        line_strip_info_staging.extend(strips.iter().map(|line_strip| {
-            gpu_data::LineStripInfo {
-                color: line_strip.color,
-                radius: line_strip.radius.into(),
-                stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
-                flags: line_strip.flags,
-            }
-        }));
-        line_strip_info_staging.extend(std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(
-            (wgpu::util::align_to(num_strips, LINE_STRIP_TEXTURE_SIZE) - num_strips) as usize,
-        ));
-
-        // Upload data from staging buffers to gpu.
-        ctx.queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &position_data_texture.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytemuck::cast_slice(&position_data_staging),
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: NonZeroU32::new(
-                    POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32,
-                ),
-                rows_per_image: None,
-            },
-            wgpu::Extent3d {
+        let position_data_texture_desc = TextureDesc {
+            label: "LineDrawData::position_data_texture".into(),
+            size: wgpu::Extent3d {
                 width: POSITION_TEXTURE_SIZE,
-                height: (num_segments + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                height: POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba32Float,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        };
+        let position_data_texture = ctx
+            .gpu_resources
+            .textures
+            .alloc(&ctx.device, &position_data_texture_desc);
+
+        let line_strip_texture_desc = TextureDesc {
+            label: "LineDrawData::line_strip_texture".into(),
+            size: wgpu::Extent3d {
+                width: LINE_STRIP_TEXTURE_SIZE,
+                height: LINE_STRIP_TEXTURE_SIZE,
+                depth_or_array_layers: 1,
+            },
+            format: wgpu::TextureFormat::Rg32Uint,
+            ..position_data_texture_desc
+        };
+        let line_strip_texture = ctx
+            .gpu_resources
+            .textures
+            .alloc(&ctx.device, &line_strip_texture_desc);
+        let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &TextureDesc {
+                label: "LineDrawData::picking_instance_id_texture".into(),
+                format: wgpu::TextureFormat::Rg32Uint,
+                ..line_strip_texture_desc
+            },
         );
-        ctx.queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &line_strip_texture.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            bytemuck::cast_slice(&line_strip_info_staging),
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: NonZeroU32::new(
-                    LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineStripInfo>() as u32,
-                ),
-                rows_per_image: None,
-            },
-            wgpu::Extent3d {
+
+        // Upload position data.
+        {
+            // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
+            let mut position_data_staging = Vec::with_capacity(wgpu::util::align_to(
+                num_segments,
+                POSITION_TEXTURE_SIZE,
+            ) as usize);
+            // sentinel at the beginning to facilitate caps.
+            position_data_staging.push(LineVertex {
+                position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
+                strip_index: u32::MAX,
+            });
+            position_data_staging.extend(vertices.iter());
+            // placeholder at the end to facilitate caps.
+            position_data_staging.push(LineVertex {
+                position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
+                strip_index: u32::MAX,
+            });
+            position_data_staging.extend(std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
+                (wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) - num_segments) as usize,
+            ));
+
+            // TODO(andreas): Use staging belt here.
+            ctx.queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &position_data_texture.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(&position_data_staging),
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: NonZeroU32::new(
+                        POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32,
+                    ),
+                    rows_per_image: None,
+                },
+                wgpu::Extent3d {
+                    width: POSITION_TEXTURE_SIZE,
+                    height: (num_segments + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+
+        // Upload strip data.
+        {
+            let mut line_strip_info_staging = Vec::with_capacity(wgpu::util::align_to(
+                num_strips,
+                LINE_STRIP_TEXTURE_SIZE,
+            ) as usize);
+            line_strip_info_staging.extend(strips.iter().map(|line_strip| {
+                gpu_data::LineStripInfo {
+                    color: line_strip.color,
+                    radius: line_strip.radius.into(),
+                    stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
+                    flags: line_strip.flags,
+                }
+            }));
+            let num_strips_padding =
+                (wgpu::util::align_to(num_strips, LINE_STRIP_TEXTURE_SIZE) - num_strips) as usize;
+            line_strip_info_staging.extend(
+                std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(num_strips_padding),
+            );
+
+            let strip_texture_extent = wgpu::Extent3d {
                 width: LINE_STRIP_TEXTURE_SIZE,
                 height: (num_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
-            },
-        );
+            };
+
+            // TODO(andreas): Use staging belt here.
+            ctx.queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &line_strip_texture.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(&line_strip_info_staging),
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: NonZeroU32::new(
+                        LINE_STRIP_TEXTURE_SIZE
+                            * std::mem::size_of::<gpu_data::LineStripInfo>() as u32,
+                    ),
+                    rows_per_image: None,
+                },
+                strip_texture_extent,
+            );
+
+            picking_instance_ids_buffer
+                .extend(std::iter::repeat(Default::default()).take(num_strips_padding));
+            picking_instance_ids_buffer.copy_to_texture2d(
+                ctx.active_frame.before_view_builder_encoder.lock().get(),
+                wgpu::ImageCopyTexture {
+                    texture: &picking_instance_id_texture.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                glam::uvec2(strip_texture_extent.width, strip_texture_extent.height),
+            );
+        }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -532,6 +575,7 @@ impl LineDrawData {
                 entries: smallvec![
                     BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
                     draw_data_uniform_buffer_bindings[0].clone(),
                 ],
                 layout: line_renderer.bind_group_layout_all_lines,
@@ -545,6 +589,7 @@ impl LineDrawData {
                 entries: smallvec![
                     BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
                     draw_data_uniform_buffer_bindings[1].clone(),
                 ],
                 layout: line_renderer.bind_group_layout_all_lines,
@@ -566,6 +611,7 @@ impl LineDrawData {
                             .0
                             .unwrap_or_default()
                             .into(),
+                        picking_object_id: batch_info.picking_object_id,
                         end_padding: Default::default(),
                     }),
             );
@@ -585,6 +631,7 @@ impl LineDrawData {
                                 .map(|(_, mask)| gpu_data::BatchUniformBuffer {
                                     world_from_obj: batch_info.world_from_obj.into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
+                                    picking_object_id: batch_info.picking_object_id,
                                     end_padding: Default::default(),
                                 })
                         })
@@ -600,7 +647,7 @@ impl LineDrawData {
                 let line_vertex_range_end = (start_vertex_for_next_batch
                     + batch_info.line_vertex_count)
                     .min(Self::MAX_NUM_VERTICES as u32);
-                let mut active_phases = enum_set![DrawPhase::Opaque];
+                let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];
                 // Does the entire batch participate in the outline mask phase?
                 if batch_info.overall_outline_mask_ids.is_some() {
                     active_phases.insert(DrawPhase::OutlineMask);
@@ -725,6 +772,16 @@ impl Renderer for LineRenderer {
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,

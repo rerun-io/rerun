@@ -58,7 +58,7 @@ impl Boxes2DPart {
                 let instance_hash = instance_path_hash_for_picking(
                     ent_path,
                     instance_key,
-                    &entity_view,
+                    entity_view,
                     entity_highlight.any_selection_highlight,
                 );
 

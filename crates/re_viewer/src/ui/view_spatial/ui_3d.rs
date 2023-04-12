@@ -257,6 +257,7 @@ pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     Double-click on empty space to reset the view.";
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
+#[allow(clippy::too_many_arguments)]
 pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
