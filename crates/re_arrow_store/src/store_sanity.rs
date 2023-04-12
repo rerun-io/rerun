@@ -1,5 +1,6 @@
 use re_log_types::{
-    ComponentName, DataCellColumn, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID, COLUMN_TIMEPOINT,
+    ComponentName, DataCellColumn, SizeBytes as _, TimeRange, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
+    COLUMN_TIMEPOINT,
 };
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
@@ -11,6 +12,11 @@ use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, Persiste
 /// These violations can only stem from a bug in the store's implementation itself.
 #[derive(thiserror::Error, Debug)]
 pub enum SanityError {
+    #[error(
+        "Reported time range for indexed bucket is out of sync: got {got:?}, expected {expected:?}"
+    )]
+    TimeRangeOutOfSync { expected: TimeRange, got: TimeRange },
+
     #[error("Reported size for {origin} is out of sync: got {got}, expected {expected}")]
     SizeOutOfSync {
         origin: &'static str,
@@ -101,26 +107,13 @@ impl IndexedTable {
 
         // Make sure row numbers aren't out of sync
         {
-            let total_rows = self.total_rows();
-            let total_rows_uncached = self.total_rows_uncached();
-            if total_rows != total_rows_uncached {
+            let num_rows = self.num_rows();
+            let num_rows_uncached = self.num_rows_uncached();
+            if num_rows != num_rows_uncached {
                 return Err(SanityError::RowsOutOfSync {
                     origin: std::any::type_name::<Self>(),
-                    expected: re_format::format_number(total_rows_uncached as _),
-                    got: re_format::format_number(total_rows as _),
-                });
-            }
-        }
-
-        // Make sure size values aren't out of sync
-        {
-            let total_size_bytes = self.total_size_bytes();
-            let total_size_bytes_uncached = self.total_size_bytes_uncached();
-            if total_size_bytes != total_size_bytes_uncached {
-                return Err(SanityError::SizeOutOfSync {
-                    origin: std::any::type_name::<Self>(),
-                    expected: re_format::format_bytes(total_size_bytes_uncached as _),
-                    got: re_format::format_bytes(total_size_bytes as _),
+                    expected: re_format::format_number(num_rows_uncached as _),
+                    got: re_format::format_number(num_rows as _),
                 });
             }
         }
@@ -128,6 +121,19 @@ impl IndexedTable {
         // Run individual bucket sanity check suites too.
         for bucket in self.buckets.values() {
             bucket.sanity_check()?;
+        }
+
+        // Make sure size values aren't out of sync
+        {
+            let total_size_bytes = self.total_size_bytes();
+            let total_size_bytes_uncached = self.size_bytes_uncached();
+            if total_size_bytes != total_size_bytes_uncached {
+                return Err(SanityError::SizeOutOfSync {
+                    origin: std::any::type_name::<Self>(),
+                    expected: re_format::format_bytes(total_size_bytes_uncached as _),
+                    got: re_format::format_bytes(total_size_bytes as _),
+                });
+            }
         }
 
         Ok(())
@@ -150,7 +156,7 @@ impl IndexedBucket {
         {
             let IndexedBucketInner {
                 is_sorted: _,
-                time_range: _,
+                time_range,
                 col_time,
                 col_insert_id,
                 col_row_id,
@@ -158,6 +164,23 @@ impl IndexedBucket {
                 columns,
                 size_bytes: _,
             } = &*inner.read();
+
+            // Time ranges are eagerly maintained.
+            {
+                let mut times = col_time.clone();
+                times.sort();
+
+                let expected_min = times.first().copied().unwrap_or(i64::MAX).into();
+                let expected_max = times.last().copied().unwrap_or(i64::MIN).into();
+                let expected_time_range = TimeRange::new(expected_min, expected_max);
+
+                if expected_time_range != *time_range {
+                    return Err(SanityError::TimeRangeOutOfSync {
+                        expected: expected_time_range,
+                        got: *time_range,
+                    });
+                }
+            }
 
             // All columns should be `Self::num_rows` long.
             {
@@ -191,7 +214,7 @@ impl IndexedBucket {
             }
 
             // The cluster column must be fully dense.
-            {
+            if self.num_rows() > 0 {
                 let cluster_column =
                     columns
                         .get(cluster_key)
@@ -243,7 +266,7 @@ impl PersistentIndexedTable {
 
         // All columns should be `Self::num_rows` long.
         {
-            let num_rows = self.total_rows();
+            let num_rows = self.num_rows();
 
             let column_lengths = [
                 (!col_insert_id.is_empty())
@@ -272,7 +295,7 @@ impl PersistentIndexedTable {
         }
 
         // The cluster column must be fully dense.
-        {
+        if self.num_rows() > 0 {
             let cluster_column =
                 columns
                     .get(cluster_key)

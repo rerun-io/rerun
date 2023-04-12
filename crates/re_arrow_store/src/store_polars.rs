@@ -178,7 +178,7 @@ impl PersistentIndexedTable {
             columns,
         } = self;
 
-        let num_rows = self.total_rows() as usize;
+        let num_rows = self.num_rows() as usize;
 
         let insert_ids = config
             .store_insert_ids

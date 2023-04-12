@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
 
-use crate::{Component, ComponentName, DeserializableComponent, SerializableComponent};
+use crate::{Component, ComponentName, DeserializableComponent, SerializableComponent, SizeBytes};
 
 // ---
 
@@ -114,7 +115,8 @@ pub struct DataCellInner {
     // TODO(#1696): Store this within the datatype itself.
     pub(crate) name: ComponentName,
 
-    /// The size in bytes of both the underlying arrow data _and_ the inner cell itself.
+    /// The pre-computed size of the cell (stack + heap) as well as its underlying arrow data,
+    /// in bytes.
     ///
     /// This is always zero unless [`Self::compute_size_bytes`] has been called, which is a very
     /// costly operation.
@@ -412,7 +414,6 @@ impl DataCell {
     pub fn is_sorted_and_unique(&self) -> DataCellResult<bool> {
         use arrow2::{
             array::{Array, PrimitiveArray},
-            datatypes::DataType,
             types::NativeType,
         };
 
@@ -440,24 +441,6 @@ impl DataCell {
             DataType::Float64 => Ok(is_sorted_and_unique_primitive::<f64>(arr)),
             _ => Err(DataCellError::UnsupportedDatatype(arr.data_type().clone())),
         }
-    }
-
-    /// Returns the total (heap) allocated size of the cell in bytes, provided that
-    /// [`Self::compute_size_bytes`] has been called first (zero otherwise).
-    ///
-    /// This is an approximation, accurate enough for most purposes (stats, GC trigger, ...).
-    ///
-    /// This is `O(1)`, the value is computed and cached by calling [`Self::compute_size_bytes`].
-    #[inline]
-    pub fn size_bytes(&self) -> u64 {
-        let Self { inner } = self;
-
-        (inner.size_bytes > 0)
-            .then_some(std::mem::size_of_val(inner) as u64 + inner.size_bytes)
-            .unwrap_or_else(|| {
-                re_log::warn_once!("called `DataCell::size_bytes() without computing it first");
-                0
-            })
     }
 }
 
@@ -492,7 +475,7 @@ impl std::fmt::Display for DataCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "DataCell({})",
-            re_format::format_bytes(self.size_bytes() as _)
+            re_format::format_bytes(self.total_size_bytes() as _)
         ))?;
         re_format::arrow::format_table(
             // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
@@ -506,7 +489,8 @@ impl std::fmt::Display for DataCell {
 // ---
 
 impl DataCell {
-    /// Compute and cache the total (heap) allocated size of the underlying arrow array in bytes.
+    /// Compute and cache the total size (stack + heap) of the inner cell and its underlying arrow
+    /// array, in bytes.
     /// This does nothing if the size has already been computed and cached before.
     ///
     /// The caller must the sole owner of this cell, as this requires mutating an `Arc` under the
@@ -523,8 +507,23 @@ impl DataCell {
     }
 }
 
+impl SizeBytes for DataCell {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        (self.inner.size_bytes > 0)
+            .then_some(self.inner.size_bytes)
+            .unwrap_or_else(|| {
+                re_log::warn_once!(
+                    "called `DataCell::heap_size_bytes() without computing it first"
+                );
+                0
+            })
+    }
+}
+
 impl DataCellInner {
-    /// Compute and cache the total (heap) allocated size of the underlying arrow array in bytes.
+    /// Compute and cache the total size (stack + heap) of the cell and its underlying arrow array,
+    /// in bytes.
     /// This does nothing if the size has already been computed and cached before.
     ///
     /// Beware: this is _very_ costly!
@@ -541,10 +540,11 @@ impl DataCellInner {
             return;
         }
 
-        *size_bytes = (std::mem::size_of_val(name)
-            + std::mem::size_of_val(size_bytes)
-            + std::mem::size_of_val(values)) as u64
-            + arrow2::compute::aggregate::estimated_bytes_size(&*self.values) as u64;
+        *size_bytes = name.total_size_bytes()
+            + size_bytes.total_size_bytes()
+            + values.data_type().total_size_bytes()
+            + std::mem::size_of_val(values) as u64
+            + arrow2::compute::aggregate::estimated_bytes_size(&**values) as u64;
     }
 }
 
@@ -556,8 +556,8 @@ fn data_cell_sizes() {
     // not computed
     {
         let cell = DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
-        assert_eq!(0, cell.size_bytes());
-        assert_eq!(0, cell.size_bytes());
+        assert_eq!(0, cell.heap_size_bytes());
+        assert_eq!(0, cell.heap_size_bytes());
     }
 
     // zero-sized
@@ -566,9 +566,8 @@ fn data_cell_sizes() {
             DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         cell.compute_size_bytes();
 
-        // only the size of the outer & inner cells themselves
-        assert_eq!(56, cell.size_bytes());
-        assert_eq!(56, cell.size_bytes());
+        assert_eq!(112, cell.heap_size_bytes());
+        assert_eq!(112, cell.heap_size_bytes());
     }
 
     // anything else
@@ -579,9 +578,9 @@ fn data_cell_sizes() {
         );
         cell.compute_size_bytes();
 
-        // 56 bytes for the inner & outer cells + 3x u64s
-        assert_eq!(80, cell.size_bytes());
-        assert_eq!(80, cell.size_bytes());
+        // zero-sized + 3x u64s
+        assert_eq!(136, cell.heap_size_bytes());
+        assert_eq!(136, cell.heap_size_bytes());
     }
 }
 

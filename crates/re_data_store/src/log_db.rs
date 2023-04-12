@@ -204,8 +204,8 @@ impl LogDb {
     }
 
     pub fn num_rows(&self) -> usize {
-        self.entity_db.data_store.total_timeless_rows() as usize
-            + self.entity_db.data_store.total_temporal_rows() as usize
+        self.entity_db.data_store.num_timeless_rows() as usize
+            + self.entity_db.data_store.num_temporal_rows() as usize
     }
 
     pub fn is_empty(&self) -> bool {
@@ -251,9 +251,16 @@ impl LogDb {
         crate::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        // TODO(#1619): bring back garbage collection
-        let drop_row_ids: ahash::HashSet<_> = Default::default();
+        let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(
+            re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
+        );
+        re_log::debug!(
+            num_row_ids_dropped = drop_row_ids.len(),
+            size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
+            "purged datastore"
+        );
 
+        let drop_row_ids: ahash::HashSet<_> = drop_row_ids.into_iter().collect();
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {

@@ -4,7 +4,10 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use arrow2::array::UnionArray;
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use re_arrow_store::{DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
+use re_arrow_store::{
+    DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt,
+    TimeRange,
+};
 use re_log_types::{
     component_types::{InstanceKey, Rect2D},
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
@@ -12,7 +15,7 @@ use re_log_types::{
     TimeType, Timeline,
 };
 
-criterion_group!(benches, insert, latest_at, latest_at_missing, range);
+criterion_group!(benches, insert, latest_at, latest_at_missing, range, gc);
 criterion_main!(benches);
 
 // ---
@@ -255,6 +258,48 @@ fn range(c: &mut Criterion) {
                 });
             });
         }
+    }
+}
+
+fn gc(c: &mut Criterion) {
+    let mut group = c.benchmark_group(format!(
+        "datastore/num_rows={NUM_ROWS}/num_instances={NUM_INSTANCES}/gc"
+    ));
+    group.throughput(criterion::Throughput::Elements(
+        (NUM_INSTANCES * NUM_ROWS) as _,
+    ));
+
+    let mut table = build_table(NUM_INSTANCES as usize, false);
+    table.compute_all_size_bytes();
+
+    // Default config
+    group.bench_function("default", |b| {
+        let store = insert_table(Default::default(), InstanceKey::name(), &table);
+        b.iter(|| {
+            let mut store = store.clone();
+            let (_, stats_diff) = store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0));
+            stats_diff
+        });
+    });
+
+    // Emulate more or less bucket
+    for &num_rows_per_bucket in num_rows_per_bucket() {
+        group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
+            let store = insert_table(
+                DataStoreConfig {
+                    indexed_bucket_num_rows: num_rows_per_bucket,
+                    ..Default::default()
+                },
+                InstanceKey::name(),
+                &table,
+            );
+            b.iter(|| {
+                let mut store = store.clone();
+                let (_, stats_diff) =
+                    store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0));
+                stats_diff
+            });
+        });
     }
 }
 

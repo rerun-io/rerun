@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::{TimeInt, TimeReal};
+use crate::{SizeBytes, TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
@@ -59,6 +59,13 @@ impl TimeRange {
             min: self.min.min(other.min),
             max: self.max.max(other.max),
         }
+    }
+}
+
+impl SizeBytes for TimeRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 

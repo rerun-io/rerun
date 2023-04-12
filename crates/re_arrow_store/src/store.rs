@@ -9,7 +9,7 @@ use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use re_log_types::{
     ComponentName, DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec,
-    NumInstancesVec, RowId, RowIdVec, TimeInt, TimePoint, TimeRange, Timeline,
+    NumInstancesVec, RowId, RowIdVec, SizeBytes, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 // --- Data store ---
@@ -23,8 +23,13 @@ pub struct DataStoreConfig {
     /// to a specific timeline _and_ a specific entity.
     ///
     /// This effectively puts an upper bound on the number of rows that need to be sorted when an
-    /// indexed bucket gets out of order.
+    /// indexed bucket gets out of order (e.g. because of new insertions or a GC pass).
     /// This is a tradeoff: less rows means faster sorts at the cost of more metadata overhead.
+    /// In particular:
+    /// - Query performance scales inversely logarithmically to this number (i.e. it gets better
+    ///   the higher this number gets).
+    /// - GC performance scales quadratically with this number (i.e. it gets better the lower this
+    ///   number gets).
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub indexed_bucket_num_rows: u64,
@@ -53,7 +58,12 @@ impl Default for DataStoreConfig {
 
 impl DataStoreConfig {
     pub const DEFAULT: Self = Self {
-        indexed_bucket_num_rows: 1024,
+        // NOTE: Empirical testing has shown that 512 is a good balance between sorting
+        // and binary search costs with the current GC implementation.
+        //
+        // Garbage collection costs are entirely driven by the number of buckets around, the size
+        // of the data itself has no impact.
+        indexed_bucket_num_rows: 512,
         store_insert_ids: cfg!(debug_assertions),
         enable_typecheck: cfg!(debug_assertions),
     };
@@ -67,8 +77,8 @@ pub type InsertIdVec = SmallVec<[u64; 4]>;
 /// so far.
 ///
 /// See also [`DataStore::lookup_datatype`].
-#[derive(Default)]
-pub struct DataTypeRegistry(IntMap<ComponentName, DataType>);
+#[derive(Debug, Default, Clone)]
+pub struct DataTypeRegistry(pub IntMap<ComponentName, DataType>);
 
 impl std::ops::Deref for DataTypeRegistry {
     type Target = IntMap<ComponentName, DataType>;
@@ -87,11 +97,11 @@ impl std::ops::DerefMut for DataTypeRegistry {
 }
 
 /// Keeps track of arbitrary per-row metadata.
-#[derive(Default)]
-pub struct MetadataRegistry<T: Clone>(HashMap<RowId, T>);
+#[derive(Debug, Default, Clone)]
+pub struct MetadataRegistry<T: Clone>(pub BTreeMap<RowId, T>);
 
 impl<T: Clone> std::ops::Deref for MetadataRegistry<T> {
-    type Target = HashMap<RowId, T>;
+    type Target = BTreeMap<RowId, T>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -105,6 +115,29 @@ impl<T: Clone> std::ops::DerefMut for MetadataRegistry<T> {
         &mut self.0
     }
 }
+
+/// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, ...) so that they
+/// can be properly deduplicated on insertion.
+#[derive(Debug, Default, Clone)]
+pub struct ClusterCellCache(pub IntMap<u32, DataCell>);
+
+impl std::ops::Deref for ClusterCellCache {
+    type Target = IntMap<u32, DataCell>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ClusterCellCache {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+// ---
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
@@ -148,7 +181,7 @@ pub struct DataStore {
 
     /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, ...)
     /// so that they can be properly deduplicated on insertion.
-    pub(crate) cluster_cell_cache: IntMap<u32, DataCell>,
+    pub(crate) cluster_cell_cache: ClusterCellCache,
 
     /// All temporal [`IndexedTable`]s for all entities on all timelines.
     ///
@@ -167,8 +200,27 @@ pub struct DataStore {
     pub(crate) query_id: AtomicU64,
 
     /// Monotonically increasing ID for GCs.
-    #[allow(dead_code)]
     pub(crate) gc_id: u64,
+}
+
+impl Clone for DataStore {
+    fn clone(&self) -> Self {
+        Self {
+            cluster_key: self.cluster_key,
+            config: self.config.clone(),
+            type_registry: self.type_registry.clone(),
+            metadata_registry: self.metadata_registry.clone(),
+            cluster_cell_cache: self.cluster_cell_cache.clone(),
+            tables: self.tables.clone(),
+            timeless_tables: self.timeless_tables.clone(),
+            insert_id: self.insert_id,
+            query_id: self
+                .query_id
+                .load(std::sync::atomic::Ordering::Relaxed)
+                .into(),
+            gc_id: self.gc_id,
+        }
+    }
 }
 
 impl DataStore {
@@ -293,7 +345,7 @@ fn datastore_internal_repr() {
 /// ```
 //
 // TODO(#1524): inline visualization once it's back to a manageable state
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IndexedTable {
     /// The timeline this table operates in, for debugging purposes.
     pub timeline: Timeline,
@@ -336,7 +388,7 @@ pub struct IndexedTable {
 impl IndexedTable {
     pub fn new(cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
         let bucket = IndexedBucket::new(cluster_key, timeline);
-        let buckets_size_bytes = bucket.size_bytes();
+        let buckets_size_bytes = bucket.total_size_bytes();
         Self {
             timeline,
             ent_path,
@@ -364,6 +416,16 @@ pub struct IndexedBucket {
     pub inner: RwLock<IndexedBucketInner>,
 }
 
+impl Clone for IndexedBucket {
+    fn clone(&self) -> Self {
+        Self {
+            timeline: self.timeline,
+            cluster_key: self.cluster_key,
+            inner: RwLock::new(self.inner.read().clone()),
+        }
+    }
+}
+
 impl IndexedBucket {
     fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
         Self {
@@ -375,7 +437,7 @@ impl IndexedBucket {
 }
 
 /// See [`IndexedBucket`]; this is a helper struct to simplify interior mutability.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IndexedBucketInner {
     /// Are the rows in this table chunk sorted?
     ///
@@ -412,7 +474,8 @@ pub struct IndexedBucketInner {
     /// (i.e. the table is sparse).
     pub columns: IntMap<ComponentName, DataCellColumn>,
 
-    /// The size of both the control & component data stored in this bucket, in bytes.
+    /// The size of both the control & component data stored in this bucket, heap and stack
+    /// included, in bytes.
     ///
     /// This is a best-effort approximation, adequate for most purposes (stats,
     /// triggering GCs, ...).
@@ -449,7 +512,8 @@ impl Default for IndexedBucketInner {
 /// ```
 //
 // TODO(#1524): inline visualization once it's back to a manageable state
-#[derive(Debug)]
+// TODO(#1807): timeless should be row-id ordered too then
+#[derive(Debug, Clone)]
 pub struct PersistentIndexedTable {
     /// The entity this table is related to, for debugging purposes.
     pub ent_path: EntityPath,

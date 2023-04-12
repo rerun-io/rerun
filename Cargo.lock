@@ -3849,6 +3849,7 @@ dependencies = [
  "puffin",
  "rand",
  "re_arrow_store",
+ "re_format",
  "re_int_histogram",
  "re_log",
  "re_log_encoding",

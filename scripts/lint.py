@@ -18,7 +18,7 @@ todo_pattern = re.compile(r"TODO([^(]|$)")
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 wasm_caps = re.compile(r"\bWASM\b")
-nb_prefix = re.compile(r"\bnb_")
+nb_prefix = re.compile(r"nb_")
 
 
 def lint_line(line: str) -> Optional[str]:
@@ -102,6 +102,7 @@ def test_lint_line() -> None:
         "if let Err(error) = foo",
         "We use WASM in Rerun",
         "nb_instances",
+        "inner_nb_instances",
     ]
 
     for line in should_pass:

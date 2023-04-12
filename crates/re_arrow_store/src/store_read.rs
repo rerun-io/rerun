@@ -1001,7 +1001,7 @@ impl PersistentIndexedTable {
         );
 
         // find the primary row number's row.
-        let primary_row_nr = self.total_rows() - 1;
+        let primary_row_nr = self.num_rows() - 1;
 
         trace!(
             kind = "latest_at",
@@ -1085,7 +1085,7 @@ impl PersistentIndexedTable {
         // for building the returned iterator.
         crate::profile_function!();
 
-        let cells = (0..self.total_rows()).filter_map(move |row_nr| {
+        let cells = (0..self.num_rows()).filter_map(move |row_nr| {
             let mut cells = [(); N].map(|_| None);
             for (i, component) in components.iter().enumerate() {
                 if let Some(column) = self.columns.get(component) {

@@ -6,7 +6,10 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use rand::Rng;
 
-use re_arrow_store::{test_row, DataStore, DataStoreConfig, LatestAtQuery, WriteError};
+use re_arrow_store::{
+    test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
+    GarbageCollectionTarget, LatestAtQuery, WriteError,
+};
 use re_log_types::{
     component_types::InstanceKey,
     datagen::{
@@ -99,11 +102,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
             ] => num_instances; [build_some_instances(num_instances as _)]))
         .unwrap();
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
+    sanity_unwrap(store);
 
     let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
     let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
@@ -282,6 +281,8 @@ fn gc_correct() {
         },
     );
 
+    let stats_empty = DataStoreStats::from_store(&store);
+
     let mut rng = rand::thread_rng();
 
     let num_frames = rng.gen_range(0..=100);
@@ -300,71 +301,37 @@ fn gc_correct() {
         }
     }
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
+    sanity_unwrap(&mut store);
     check_still_readable(&store);
 
-    // TODO(#1619): bring back garbage collection
+    let stats = DataStoreStats::from_store(&store);
 
-    // let row_id_chunks = store.gc(
-    //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
-    //     Timeline::new("frame_nr", TimeType::Sequence),
-    //     MsgId::name(),
-    // );
+    let (row_ids, stats_diff) = store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+    let stats_diff = stats_diff + stats_empty; // account for fixed overhead
 
-    // let row_ids = row_id_chunks
-    //     .iter()
-    //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
-    //     .map(Option::unwrap) // MsgId is always present
-    //     .collect::<ahash::HashSet<_>>();
-    // assert!(!row_ids.is_empty());
+    assert_eq!(row_ids.len() as u64, stats.total.num_rows);
+    assert_eq!(
+        stats.metadata_registry.num_rows,
+        stats_diff.metadata_registry.num_rows
+    );
+    assert_eq!(
+        stats.metadata_registry.num_bytes,
+        stats_diff.metadata_registry.num_bytes
+    );
+    assert_eq!(stats.temporal.num_rows, stats_diff.temporal.num_rows);
 
-    // if let err @ Err(_) = store.sanity_check() {
-    //     store.sort_indices_if_needed();
-    //     eprintln!("{store}");
-    //     err.unwrap();
-    // }
-    // check_still_readable(&store);
-    // for row_id in &row_ids {
-    //     assert!(store.get_msg_metadata(row_id).is_some());
-    // }
+    sanity_unwrap(&mut store);
+    check_still_readable(&store);
+    for row_id in &row_ids {
+        assert!(store.get_msg_metadata(row_id).is_none());
+    }
 
-    // store.clear_msg_metadata(&row_ids);
+    let (row_ids, stats_diff) = store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+    assert!(row_ids.is_empty());
+    assert_eq!(DataStoreStats::default(), stats_diff);
 
-    // if let err @ Err(_) = store.sanity_check() {
-    //     store.sort_indices_if_needed();
-    //     eprintln!("{store}");
-    //     err.unwrap();
-    // }
-    // check_still_readable(&store);
-    // for row_id in &row_ids {
-    //     assert!(store.get_msg_metadata(row_id).is_none());
-    // }
-
-    // let row_id_chunks = store.gc(
-    //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
-    //     Timeline::new("frame_nr", TimeType::Sequence),
-    //     MsgId::name(),
-    // );
-
-    // let row_ids = row_id_chunks
-    //     .iter()
-    //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
-    //     .map(Option::unwrap) // MsgId is always present
-    //     .collect::<ahash::HashSet<_>>();
-    // assert!(row_ids.is_empty());
-
-    // if let err @ Err(_) = store.sanity_check() {
-    //     store.sort_indices_if_needed();
-    //     eprintln!("{store}");
-    //     err.unwrap();
-    // }
-    // check_still_readable(&store);
-
-    // assert_eq!(2, store.total_temporal_component_rows());
+    sanity_unwrap(&mut store);
+    check_still_readable(&store);
 }
 
 fn check_still_readable(_store: &DataStore) {
