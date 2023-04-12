@@ -100,6 +100,11 @@ fn serialize(
     let mut schema = Schema::default();
     let mut columns = Vec::new();
 
+    // NOTE: Empty table / bucket.
+    if col_row_id.is_empty() {
+        return Ok((schema, Chunk::new(columns)));
+    }
+
     {
         let (control_schema, control_columns) =
             serialize_control_columns(col_time, col_insert_id, col_row_id, col_num_instances)?;
@@ -135,10 +140,13 @@ fn serialize_control_columns(
     // - time
     // - num_instances
 
-    let (insert_id_field, insert_id_column) =
-        DataTable::serialize_primitive_column(COLUMN_INSERT_ID, col_insert_id, None)?;
-    schema.fields.push(insert_id_field);
-    columns.push(insert_id_column);
+    // NOTE: Optional column, so make sure it's actually there:
+    if !col_insert_id.is_empty() {
+        let (insert_id_field, insert_id_column) =
+            DataTable::serialize_primitive_column(COLUMN_INSERT_ID, col_insert_id, None)?;
+        schema.fields.push(insert_id_field);
+        columns.push(insert_id_column);
+    }
 
     let (row_id_field, row_id_column) =
         DataTable::serialize_control_column(COLUMN_ROW_ID, col_row_id)?;
@@ -187,9 +195,12 @@ fn serialize_data_columns(
     }
 
     for (component, column) in table {
-        let (field, column) = DataTable::serialize_data_column(component.as_str(), column)?;
-        schema.fields.push(field);
-        columns.push(column);
+        // NOTE: Don't serialize columns with only null values.
+        if column.iter().any(Option::is_some) {
+            let (field, column) = DataTable::serialize_data_column(component.as_str(), column)?;
+            schema.fields.push(field);
+            columns.push(column);
+        }
     }
 
     Ok((schema, columns))

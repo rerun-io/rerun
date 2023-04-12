@@ -38,11 +38,12 @@ pub use self::arrow_util::ArrayExt;
 pub use self::store::{DataStore, DataStoreConfig};
 pub use self::store_gc::GarbageCollectionTarget;
 pub use self::store_read::{LatestAtQuery, RangeQuery};
-pub use self::store_stats::DataStoreStats;
+pub use self::store_stats::{DataStoreRowStats, DataStoreStats};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
-    IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable,
+    ClusterCellCache, DataTypeRegistry, IndexedBucket, IndexedBucketInner, IndexedTable,
+    MetadataRegistry, PersistentIndexedTable,
 };
 
 // Re-exports

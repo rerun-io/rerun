@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 
 use crate::{
     ArrowMsg, ComponentName, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId,
-    TimePoint, Timeline,
+    SizeBytes, TimePoint, Timeline,
 };
 
 // ---
@@ -40,9 +40,6 @@ pub enum DataTableError {
 }
 
 pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
-
-// TODO(#1757): The timepoint should be serialized as one column per timeline... that would be both
-// more efficient and yield much better debugging views of our tables.
 
 // ---
 
@@ -107,8 +104,7 @@ impl DataCellColumn {
         Self(smallvec::smallvec![None; num_rows])
     }
 
-    /// Compute and cache the total (heap) allocated size of each individual underlying
-    /// [`DataCell`].
+    /// Compute and cache the size of each individual underlying [`DataCell`].
     /// This does nothing for cells whose size has already been computed and cached before.
     ///
     /// Beware: this is _very_ costly!
@@ -117,6 +113,13 @@ impl DataCellColumn {
         for cell in &mut self.0 {
             cell.as_mut().map(|cell| cell.compute_size_bytes());
         }
+    }
+}
+
+impl SizeBytes for DataCellColumn {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
     }
 }
 
@@ -158,6 +161,13 @@ impl TableId {
     #[doc(hidden)]
     pub fn into_row_id(self) -> RowId {
         RowId(self.0)
+    }
+}
+
+impl SizeBytes for TableId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 
@@ -515,6 +525,27 @@ impl DataTable {
     }
 }
 
+impl SizeBytes for DataTable {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            table_id,
+            col_row_id,
+            col_timelines,
+            col_entity_path,
+            col_num_instances,
+            columns,
+        } = self;
+
+        table_id.heap_size_bytes()
+            + col_row_id.heap_size_bytes()
+            + col_timelines.heap_size_bytes()
+            + col_entity_path.heap_size_bytes()
+            + col_num_instances.heap_size_bytes()
+            + columns.heap_size_bytes()
+    }
+}
+
 // --- Serialization ---
 
 use arrow2::{
@@ -697,8 +728,6 @@ impl DataTable {
         let mut field = Field::new(name, data.data_type().clone(), false)
             .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into());
 
-        // TODO(cmc): why do we have to do this manually on the way out, but it's done
-        // automatically on our behalf on the way in...?
         if let DataType::Extension(name, _, _) = data.data_type() {
             field
                 .metadata
@@ -724,8 +753,6 @@ impl DataTable {
         let mut field = Field::new(name, datatype.clone(), false)
             .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into());
 
-        // TODO(cmc): why do we have to do this manually on the way out, but it's done
-        // automatically on our behalf on the way in...?
         if let DataType::Extension(name, _, _) = datatype {
             field
                 .metadata
@@ -979,6 +1006,8 @@ impl DataTable {
                 .downcast_ref::<ListArray<i32>>()
                 .ok_or(DataTableError::NotAColumn(component.to_string()))?
                 .iter()
+                // TODO(#1805): Schema metadata gets cloned in every single array.
+                // This'll become a problem as soon as we enable batching.
                 .map(|array| array.map(|values| DataCell::from_arrow(component, values)))
                 .collect(),
         ))

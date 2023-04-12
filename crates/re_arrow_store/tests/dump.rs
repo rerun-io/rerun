@@ -3,7 +3,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use itertools::Itertools;
-use re_arrow_store::{test_row, DataStore, DataStoreStats, TimeInt, TimeRange, Timeline};
+use re_arrow_store::{
+    test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionTarget,
+    TimeInt, TimeRange, Timeline,
+};
 use re_log_types::{
     component_types::InstanceKey,
     datagen::{
@@ -25,6 +28,16 @@ fn data_store_dump() {
         let mut store1 = DataStore::new(InstanceKey::name(), config.clone());
         let mut store2 = DataStore::new(InstanceKey::name(), config.clone());
         let mut store3 = DataStore::new(InstanceKey::name(), config.clone());
+
+        data_store_dump_impl(&mut store1, &mut store2, &mut store3);
+
+        // stress-test GC impl
+        store1.wipe_timeless_data();
+        store1.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+        store2.wipe_timeless_data();
+        store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+        store3.wipe_timeless_data();
+        store3.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
 
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
     }
@@ -52,31 +65,19 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     for table in &tables {
         insert_table(store1, table);
     }
-    if let err @ Err(_) = store1.sanity_check() {
-        store1.sort_indices_if_needed();
-        eprintln!("{store1}");
-        err.unwrap();
-    }
+    sanity_unwrap(store1);
 
     // Dump the first store into the second one.
     for table in store1.to_data_tables(None) {
         store2.insert_table(&table).unwrap();
     }
-    if let err @ Err(_) = store2.sanity_check() {
-        store2.sort_indices_if_needed();
-        eprintln!("{store2}");
-        err.unwrap();
-    }
+    sanity_unwrap(store2);
 
     // Dump the second store into the third one.
     for table in store2.to_data_tables(None) {
         store3.insert_table(&table).unwrap();
     }
-    if let err @ Err(_) = store3.sanity_check() {
-        store3.sort_indices_if_needed();
-        eprintln!("{store3}");
-        err.unwrap();
-    }
+    sanity_unwrap(store3);
 
     let store1_df = store1.to_dataframe();
     let store2_df = store2.to_dataframe();
@@ -94,12 +95,14 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     let store2_stats = DataStoreStats::from_store(store2);
     let store3_stats = DataStoreStats::from_store(store3);
     assert!(
-        store1_stats <= store2_stats,
+        store1_stats.temporal.num_bytes <= store2_stats.temporal.num_bytes
+            && store1_stats.timeless.num_bytes <= store2_stats.timeless.num_bytes,
         "First store should have <= amount of data of second store:\n\
             {store1_stats:#?}\n{store2_stats:#?}"
     );
     assert!(
-        store2_stats <= store3_stats,
+        store2_stats.temporal.num_bytes <= store3_stats.temporal.num_bytes
+            && store2_stats.timeless.num_bytes <= store3_stats.timeless.num_bytes,
         "Second store should have <= amount of data of third store:\n\
             {store2_stats:#?}\n{store3_stats:#?}"
     );
@@ -117,6 +120,12 @@ fn data_store_dump_filtered() {
 
         let mut store1 = DataStore::new(InstanceKey::name(), config.clone());
         let mut store2 = DataStore::new(InstanceKey::name(), config.clone());
+
+        data_store_dump_filtered_impl(&mut store1, &mut store2);
+
+        // stress-test GC impl
+        store1.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+        store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
 
         data_store_dump_filtered_impl(&mut store1, &mut store2);
     }
@@ -140,11 +149,7 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     for table in &tables {
         store1.insert_table(table).unwrap();
     }
-    if let err @ Err(_) = store1.sanity_check() {
-        store1.sort_indices_if_needed();
-        eprintln!("{store1}");
-        err.unwrap();
-    }
+    sanity_unwrap(store1);
 
     // Dump frame1 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame1, frame1)).into()) {
@@ -166,11 +171,7 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame4, frame4)).into()) {
         store2.insert_table(&table).unwrap();
     }
-    if let err @ Err(_) = store2.sanity_check() {
-        store2.sort_indices_if_needed();
-        eprintln!("{store2}");
-        err.unwrap();
-    }
+    sanity_unwrap(store2);
 
     let store1_df = store1.to_dataframe();
     let store2_df = store2.to_dataframe();
@@ -182,7 +183,8 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     let store1_stats = DataStoreStats::from_store(store1);
     let store2_stats = DataStoreStats::from_store(store2);
     assert!(
-        store1_stats <= store2_stats,
+        store1_stats.temporal.num_bytes <= store2_stats.temporal.num_bytes
+            && store1_stats.timeless.num_bytes <= store2_stats.timeless.num_bytes,
         "First store should have <= amount of data of second store:\n\
             {store1_stats:#?}\n{store2_stats:#?}"
     );

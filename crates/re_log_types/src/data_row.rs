@@ -2,7 +2,9 @@ use ahash::HashSetExt;
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
-use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, TableId, TimePoint};
+use crate::{
+    ComponentName, DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint,
+};
 
 // ---
 
@@ -123,6 +125,13 @@ impl RowId {
     #[doc(hidden)]
     pub fn into_table_id(self) -> TableId {
         TableId(self.0)
+    }
+}
+
+impl SizeBytes for RowId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 

@@ -7,12 +7,12 @@ use smallvec::SmallVec;
 use re_log::{debug, trace};
 use re_log_types::{
     component_types::InstanceKey, ComponentName, DataCell, DataCellColumn, DataCellError, DataRow,
-    DataTable, TimeInt, TimeRange,
+    DataTable, RowId, SizeBytes as _, TimeInt, TimePoint, TimeRange,
 };
 
 use crate::{
-    DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable,
-    PersistentIndexedTable,
+    store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
+    IndexedTable, PersistentIndexedTable,
 };
 
 // TODO(#1619):
@@ -184,10 +184,16 @@ impl DataStore {
             }
         }
 
-        // This is valuable information even for a timeless timepoint!
-        self.metadata_registry.insert(*row_id, timepoint.clone());
+        self.metadata_registry.upsert(*row_id, timepoint.clone());
 
         Ok(())
+    }
+
+    /// Wipes all timeless data.
+    ///
+    /// Mostly useful for testing/debugging purposes.
+    pub fn wipe_timeless_data(&mut self) {
+        self.timeless_tables = Default::default();
     }
 
     /// Auto-generates an appropriate cluster cell for the specified number of instances and
@@ -225,6 +231,29 @@ impl DataStore {
     }
 }
 
+impl MetadataRegistry<TimePoint> {
+    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) {
+        // This is valuable information even for a timeless timepoint!
+        match self.entry(row_id) {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(timepoint);
+            }
+            // NOTE: When saving and loading data from disk, it's very possible that we try to
+            // insert data for a single `RowId` in multiple calls (buckets are per-timeline, so a
+            // single `RowId` can get spread across multiple buckets)!
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                let entry = entry.get_mut();
+                for (timeline, time) in timepoint {
+                    if let Some(old_time) = entry.insert(timeline, time) {
+                        re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
+                        debug_assert!(false, "detected re-used `RowId/Timeline`");
+                    }
+                }
+            }
+        }
+    }
+}
+
 // --- Temporal ---
 
 impl IndexedTable {
@@ -250,7 +279,7 @@ impl IndexedTable {
         let len_overflow = len > config.indexed_bucket_num_rows;
 
         if len_overflow {
-            let bucket_size_before = bucket.size_bytes();
+            let bucket_size_before = bucket.total_size_bytes();
             if let Some((min, second_half)) = bucket.split() {
                 trace!(
                     kind = "insert",
@@ -263,7 +292,8 @@ impl IndexedTable {
                     "splitting off indexed bucket following overflow"
                 );
 
-                self.buckets_size_bytes += bucket.size_bytes() + second_half.size_bytes();
+                self.buckets_size_bytes +=
+                    bucket.total_size_bytes() + second_half.total_size_bytes();
                 self.buckets_size_bytes -= bucket_size_before;
                 self.buckets.insert(min, second_half);
 
@@ -393,26 +423,28 @@ impl IndexedBucket {
         // append time to primary column and update time range appropriately
         col_time.push(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
-        size_bytes_added += std::mem::size_of_val(&time.as_i64()) as u64;
+        size_bytes_added += time.as_i64().total_size_bytes();
 
         // update all control columns
         if let Some(insert_id) = insert_id {
             col_insert_id.push(insert_id);
-            size_bytes_added += std::mem::size_of_val(&insert_id) as u64;
+            size_bytes_added += insert_id.total_size_bytes();
         }
         col_row_id.push(row.row_id());
-        size_bytes_added += std::mem::size_of_val(&row.row_id()) as u64;
+        size_bytes_added += row.row_id().total_size_bytes();
         col_num_instances.push(row.num_instances());
-        size_bytes_added += std::mem::size_of_val(&row.num_instances()) as u64;
+        size_bytes_added += row.num_instances().total_size_bytes();
 
         // insert auto-generated cluster cell if present
         if let Some(cluster_cell) = generated_cluster_cell {
             let component = cluster_cell.component_name();
             let column = columns.entry(component).or_insert_with(|| {
-                size_bytes_added += std::mem::size_of_val(&component) as u64;
-                DataCellColumn::empty(num_rows)
+                let column = DataCellColumn::empty(num_rows);
+                size_bytes_added += component.total_size_bytes();
+                size_bytes_added += column.total_size_bytes();
+                column
             });
-            size_bytes_added += cluster_cell.size_bytes();
+            size_bytes_added += cluster_cell.total_size_bytes();
             column.0.push(Some(cluster_cell));
         }
 
@@ -422,10 +454,12 @@ impl IndexedBucket {
         for cell in row.cells().iter() {
             let component = cell.component_name();
             let column = columns.entry(component).or_insert_with(|| {
-                size_bytes_added += std::mem::size_of_val(&component) as u64;
-                DataCellColumn::empty(col_time.len().saturating_sub(1))
+                let column = DataCellColumn::empty(col_time.len().saturating_sub(1));
+                size_bytes_added += component.total_size_bytes();
+                size_bytes_added += column.total_size_bytes();
+                column
             });
-            size_bytes_added += cell.size_bytes();
+            size_bytes_added += cell.total_size_bytes();
             column.0.push(Some(cell.clone() /* shallow */));
         }
 
@@ -439,7 +473,9 @@ impl IndexedBucket {
             }
 
             if !components.contains(component) {
-                column.0.push(None);
+                let none_cell: Option<DataCell> = None;
+                size_bytes_added += none_cell.total_size_bytes();
+                column.0.push(none_cell);
             }
         }
 
@@ -605,11 +641,11 @@ impl IndexedBucket {
             self.sanity_check().unwrap();
             bucket2.sanity_check().unwrap();
 
-            let total_rows1 = self.num_rows() as i64;
-            let total_rows2 = bucket2.num_rows() as i64;
+            let num_rows1 = self.num_rows() as i64;
+            let num_rows2 = bucket2.num_rows() as i64;
             debug_assert_eq!(
                 _num_rows as i64,
-                total_rows1 + total_rows2,
+                num_rows1 + num_rows2,
                 "expected both buckets to sum up to the length of the original bucket"
             );
         }
@@ -747,7 +783,7 @@ impl PersistentIndexedTable {
     ) {
         crate::profile_function!();
 
-        let num_rows = self.total_rows() as usize;
+        let num_rows = self.num_rows() as usize;
 
         let Self {
             ent_path: _,

@@ -11,8 +11,8 @@ use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_row, DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
-    TimeRange,
+    polars_util, test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
+    GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Point2D, Rect2D},
@@ -44,6 +44,12 @@ fn all_components() {
         |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
             // Stress test save-to-disk & load-from-disk
             let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+            for table in store.to_data_tables(None) {
+                store2.insert_table(&table).unwrap();
+            }
+
+            // Stress test GC
+            store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
             for table in store.to_data_tables(None) {
                 store2.insert_table(&table).unwrap();
             }
@@ -110,11 +116,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        if let err @ Err(_) = store.sanity_check() {
-            store.sort_indices_if_needed();
-            eprintln!("{store}");
-            err.unwrap();
-        }
+        sanity_unwrap(&mut store);
     }
 
     // Tiny buckets, demonstrating the harder-to-reason-about cases.
@@ -172,11 +174,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        if let err @ Err(_) = store.sanity_check() {
-            store.sort_indices_if_needed();
-            eprintln!("{store}");
-            err.unwrap();
-        }
+        sanity_unwrap(&mut store);
     }
 
     // Tiny buckets and tricky splits, demonstrating a case that is not only extremely hard to
@@ -242,11 +240,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        if let err @ Err(_) = store.sanity_check() {
-            store.sort_indices_if_needed();
-            eprintln!("{store}");
-            err.unwrap();
-        }
+        sanity_unwrap(&mut store);
     }
 }
 
@@ -259,14 +253,6 @@ fn latest_at() {
     for config in re_arrow_store::test_util::all_configs() {
         let mut store = DataStore::new(InstanceKey::name(), config.clone());
         latest_at_impl(&mut store);
-
-        // TODO(#1619): bring back garbage collection
-        // store.gc(
-        //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
-        //     Timeline::new("frame_nr", TimeType::Sequence),
-        //     MsgId::name(),
-        // );
-        // latest_at_impl(&mut store);
     }
 }
 
@@ -317,13 +303,14 @@ fn latest_at_impl(store: &mut DataStore) {
     for table in store.to_data_tables(None) {
         store2.insert_table(&table).unwrap();
     }
+    // Stress test GC
+    store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
+    for table in store.to_data_tables(None) {
+        store2.insert_table(&table).unwrap();
+    }
     let mut store = store2;
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
+    sanity_unwrap(&mut store);
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -442,11 +429,7 @@ fn range_impl(store: &mut DataStore) {
     let row4_4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_3, points4_4]);
     insert(store, &row4_4);
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
+    sanity_unwrap(store);
 
     // Each entry in `rows_at_times` corresponds to a dataframe that's expected to be returned
     // by the range query.
@@ -459,6 +442,11 @@ fn range_impl(store: &mut DataStore) {
          rows_at_times: &[(Option<TimeInt>, &[(ComponentName, &DataRow)])]| {
             // Stress test save-to-disk & load-from-disk
             let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+            for table in store.to_data_tables(None) {
+                store2.insert_table(&table).unwrap();
+            }
+            store2.wipe_timeless_data();
+            store2.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0));
             for table in store.to_data_tables(None) {
                 store2.insert_table(&table).unwrap();
             }
@@ -882,36 +870,32 @@ fn gc_impl(store: &mut DataStore) {
             }
         }
 
-        if let err @ Err(_) = store.sanity_check() {
-            store.sort_indices_if_needed();
-            eprintln!("{store}");
-            err.unwrap();
-        }
+        sanity_unwrap(store);
         _ = store.to_dataframe(); // simple way of checking that everything is still readable
 
-        // TODO(#1619): bring back garbage collection
+        let stats = DataStoreStats::from_store(store);
 
-        // let row_id_chunks = store.gc(
-        //     GarbageCollectionTarget::DropAtLeastPercentage(1.0 / 3.0),
-        //     Timeline::new("frame_nr", TimeType::Sequence),
-        //     MsgId::name(),
-        // );
+        let (row_ids, stats_diff) =
+            store.gc(GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0));
+        for row_id in &row_ids {
+            assert!(store.get_msg_metadata(row_id).is_none());
+        }
 
-        // let row_ids = row_id_chunks
-        //     .iter()
-        //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
-        //     .map(Option::unwrap) // MsgId is always present
-        //     .collect::<ahash::HashSet<_>>();
-
-        // for row_id in &row_ids {
-        //     assert!(store.get_msg_metadata(row_id).is_some());
-        // }
-
-        // store.clear_msg_metadata(&row_ids);
-
-        // for row_id in &row_ids {
-        //     assert!(store.get_msg_metadata(row_id).is_none());
-        // }
+        // NOTE: only temporal data and row metadata get purged!
+        let num_bytes_dropped =
+            (stats_diff.temporal.num_bytes + stats_diff.metadata_registry.num_bytes) as f64;
+        let num_bytes_dropped_expected_min =
+            (stats.temporal.num_bytes + stats.metadata_registry.num_bytes) as f64 * 0.95 / 3.0;
+        let num_bytes_dropped_expected_max =
+            (stats.temporal.num_bytes + stats.metadata_registry.num_bytes) as f64 * 1.05 / 3.0;
+        assert!(
+            num_bytes_dropped_expected_min <= num_bytes_dropped
+                && num_bytes_dropped <= num_bytes_dropped_expected_max,
+            "{} <= {} <= {}",
+            re_format::format_bytes(num_bytes_dropped_expected_min),
+            re_format::format_bytes(num_bytes_dropped),
+            re_format::format_bytes(num_bytes_dropped_expected_max),
+        );
     }
 }
 
