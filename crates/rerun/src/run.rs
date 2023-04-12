@@ -441,7 +441,7 @@ fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::L
             Ok(msg) => {
                 re_log::info_once!("Received first message.");
                 let is_goodbye = matches!(msg, re_log_types::LogMsg::Goodbye(_));
-                db.add(msg)?;
+                db.add(&msg)?;
                 num_messages += 1;
                 if is_goodbye {
                     db.entity_db.data_store.sanity_check()?;

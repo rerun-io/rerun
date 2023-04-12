@@ -3,7 +3,7 @@ use egui::NumExt;
 use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
 
-use re_data_store::{EntityPath, InstancePath, InstancePathHash, LogDb};
+use re_data_store::{EntityPath, InstancePath, InstancePathHash};
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::OutlineMaskPreference;
 
@@ -194,10 +194,10 @@ pub struct SelectionState {
 
 impl SelectionState {
     /// Called at the start of each frame
-    pub fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
+    pub fn on_frame_start(&mut self, blueprint: &Blueprint) {
         crate::profile_function!();
 
-        self.history.on_frame_start(log_db, blueprint);
+        self.history.on_frame_start(blueprint);
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
@@ -298,10 +298,9 @@ impl SelectionState {
             .hovered_previous_frame
             .iter()
             .any(|current| match current {
-                Item::RowId(_)
-                | Item::ComponentPath(_)
-                | Item::SpaceView(_)
-                | Item::DataBlueprintGroup(_, _) => current == test,
+                Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+                    current == test
+                }
 
                 Item::InstancePath(current_space_view_id, current_instance_path) => {
                     if let Item::InstancePath(test_space_view_id, test_instance_path) = test {
@@ -356,7 +355,7 @@ impl SelectionState {
 
         for current_selection in self.selection.iter() {
             match current_selection {
-                Item::RowId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
+                Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
                 Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     if *group_space_view_id == space_view_id {
@@ -432,7 +431,7 @@ impl SelectionState {
 
         for current_hover in self.hovered_previous_frame.iter() {
             match current_hover {
-                Item::RowId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
+                Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
                 Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights

@@ -46,13 +46,12 @@ impl DataUi for Tensor {
         let tensor_stats = ctx.cache.tensor_stats.get(&self.id());
 
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small => {
                 ui.horizontal_centered(|ui| {
                     if let Some(retained_img) = tensor_view.retained_image {
                         let max_height = match verbosity {
                             UiVerbosity::Small => 24.0,
                             UiVerbosity::All | UiVerbosity::Reduced => 128.0,
-                            UiVerbosity::MaxHeight(height) => height,
                         };
                         retained_img
                             .show_max_size(ui, Vec2::new(4.0 * max_height, max_height))

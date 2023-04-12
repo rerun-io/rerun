@@ -17,7 +17,7 @@ impl DataUi for AnnotationContext {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small => {
                 ui.label(format!(
                     "AnnotationContext with {} classes",
                     self.class_map.len()

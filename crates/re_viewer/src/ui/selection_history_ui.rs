@@ -201,7 +201,6 @@ fn item_to_string(blueprint: &Blueprint, item: &Item) -> String {
                 "<group in removed space view>".to_owned()
             }
         }
-        Item::RowId(row_id) => row_id.short_string(),
         Item::ComponentPath(path) => {
             format!("{} {}", path.entity_path, path.component_name.short_name(),)
         }

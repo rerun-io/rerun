@@ -45,7 +45,7 @@ impl DataUi for InstancePath {
                         continue;
                     }
                     match verbosity {
-                        UiVerbosity::Small | UiVerbosity::MaxHeight(_) | UiVerbosity::Reduced => {
+                        UiVerbosity::Small | UiVerbosity::Reduced => {
                             if HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY
                                 .contains(&component_name.as_str())
                             {
