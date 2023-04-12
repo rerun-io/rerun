@@ -94,19 +94,19 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
             store
                 .range(query, ent_path, components)
                 .map(move |(time, row_id, mut cells)| {
-                    let instance_keys = cells[cluster_col].take().map(|cell| cell.to_arrow());
+                    // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
+                    // by the store.
+                    let instance_keys = cells[cluster_col].take().unwrap();
                     let is_primary = cells[primary_col].is_some();
                     let cwis = cells
                         .into_iter()
-                        .enumerate()
-                        .map(|(i, cell)| {
+                        .map(|cell| {
                             cell.map(|cell| {
                                 (
                                     row_id,
                                     ComponentWithInstances {
-                                        name: components[i],
                                         instance_keys: instance_keys.clone(), /* shallow */
-                                        values: cell.to_arrow(),
+                                        values: cell,
                                     },
                                 )
                             })
