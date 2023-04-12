@@ -134,6 +134,13 @@ fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
         .map(String::as_str)
     {
         Some("0") => false,
+        Some("1") => true,
+        Some(other) => {
+            re_log::warn!(
+                "Unexpected value for 'persist' query: {other:?}. Expected either '0' or '1'. Defaulting to '1'."
+            );
+            true
+        }
         _ => true,
     }
 }

@@ -58,7 +58,12 @@ struct Args {
     #[clap(long)]
     memory_limit: Option<String>,
 
-    /// Whether the Rerun Viewer should persist the state of the viewer to local storage
+    /// Whether the Rerun Viewer should persist the state of the viewer to disk.
+    ///
+    /// When persisted, the state will be stored at the following locations:
+    /// - Linux: /home/UserName/.local/share/rerunviewer
+    /// - macOS: /Users/UserName/Library/Application Support/rerunviewer
+    /// - Windows: C:\Users\UserName\AppData\Roaming\rerunviewer
     #[clap(long, default_value_t = true)]
     persist_state: bool,
 
