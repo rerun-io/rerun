@@ -183,7 +183,7 @@ impl Command {
             Command::ToggleCommandPalette => Some(cmd(Key::P)),
 
             Command::PlaybackTogglePlayPause => Some(key(Key::Space)),
-            Command::PlaybackRestart => Some(ctrl_shift(Key::Space)),
+            Command::PlaybackRestart => Some(cmd(Key::ArrowLeft)),
             Command::PlaybackStepBack => Some(key(Key::ArrowLeft)),
             Command::PlaybackStepForward => Some(key(Key::ArrowRight)),
         }
