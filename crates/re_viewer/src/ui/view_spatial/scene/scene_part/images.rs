@@ -11,15 +11,12 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, DepthCloudDepthData},
+    renderer::{ColormappedTexture, DepthCloud, DepthCloudDepthData},
     ColorMap, OutlineMaskPreference,
 };
 
 use crate::{
-    misc::{
-        tensor_to_gpu::ColormappedTextured, SpaceViewHighlights, SpaceViewOutlineMasks,
-        TransformCache, ViewerContext,
-    },
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
@@ -55,12 +52,11 @@ fn push_tensor_texture(
             annotations,
         ) {
             Ok(colormapped_texture) => {
-                let ColormappedTextured { texture } = colormapped_texture;
                 let textured_rect = re_renderer::renderer::TexturedRect {
                     top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
                     extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
                     extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
-                    texture,
+                    colormapped_texture,
                     texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
                     texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
                     multiplicative_tint,
@@ -83,6 +79,7 @@ fn push_tensor_texture(
     } else {
         let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
         if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
+            let colormapped_texture = ColormappedTexture::from_srgba(texture_handle);
             scene
                 .primitives
                 .textured_rectangles
@@ -90,7 +87,7 @@ fn push_tensor_texture(
                     top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
                     extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
                     extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
-                    texture: texture_handle,
+                    colormapped_texture,
                     texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
                     texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
                     multiplicative_tint,

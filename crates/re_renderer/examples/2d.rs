@@ -1,7 +1,8 @@
 use ecolor::Hsva;
 use re_renderer::{
     renderer::{
-        LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect,
+        ColormappedTexture, LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin,
+        TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
@@ -196,7 +197,9 @@ impl framework::Example for Render2D {
                     top_left_corner_position: glam::vec3(500.0, 120.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture.clone(),
+                    colormapped_texture: ColormappedTexture::from_srgba(
+                        self.rerun_logo_texture.clone(),
+                    ),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
                     ..Default::default()
@@ -210,7 +213,9 @@ impl framework::Example for Render2D {
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture.clone(),
+                    colormapped_texture: ColormappedTexture::from_srgba(
+                        self.rerun_logo_texture.clone(),
+                    ),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
                     depth_offset: 1,

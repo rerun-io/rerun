@@ -5,22 +5,19 @@ use wgpu::TextureFormat;
 
 use re_log_types::component_types::{Tensor, TensorData, TensorTrait as _};
 use re_renderer::{
+    renderer::ColormappedTexture,
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     RenderContext,
 };
 
 // ----------------------------------------------------------------------------
 
-pub struct ColormappedTextured {
-    pub texture: GpuTexture2DHandle,
-}
-
 pub fn textured_rect_from_tensor(
     render_ctx: &mut RenderContext,
     debug_name: &str,
     tensor: &Tensor,
     annotations: &crate::ui::Annotations,
-) -> anyhow::Result<ColormappedTextured> {
+) -> anyhow::Result<ColormappedTexture> {
     crate::profile_function!();
 
     use re_log_types::component_types::TensorDataMeaning;
@@ -40,11 +37,11 @@ fn textured_rect_from_color_tensor(
     render_ctx: &mut RenderContext,
     debug_name: &str,
     tensor: &Tensor,
-) -> anyhow::Result<ColormappedTextured> {
+) -> anyhow::Result<ColormappedTexture> {
     let texture = get_or_create_texture(render_ctx, tensor, || {
         texture_creation_desc_from_color_tensor(debug_name, tensor)
     })?;
-    Ok(ColormappedTextured { texture })
+    Ok(ColormappedTexture { texture })
 }
 
 fn texture_creation_desc_from_color_tensor<'a>(
@@ -90,7 +87,7 @@ fn textured_rect_from_class_id_tensor(
     _debug_name: &str,
     _tensor: &Tensor,
     _annotations: &crate::ui::Annotations,
-) -> anyhow::Result<ColormappedTextured> {
+) -> anyhow::Result<ColormappedTexture> {
     anyhow::bail!("annotations mapping not implemented")
 }
 
@@ -98,7 +95,7 @@ fn textured_rect_from_depth_tensor(
     _render_ctx: &mut RenderContext,
     _debug_name: &str,
     _tensor: &Tensor,
-) -> anyhow::Result<ColormappedTextured> {
+) -> anyhow::Result<ColormappedTexture> {
     anyhow::bail!("depth tensors not implemented")
 }
 

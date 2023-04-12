@@ -79,6 +79,25 @@ pub enum TextureFilterMin {
     // TODO(andreas): Offer mipmapping here?
 }
 
+/// Describes a texture and how to map it to a color.
+pub struct ColormappedTexture {
+    pub texture: GpuTexture2DHandle,
+}
+
+impl Default for ColormappedTexture {
+    fn default() -> Self {
+        Self {
+            texture: GpuTexture2DHandle::invalid(),
+        }
+    }
+}
+
+impl ColormappedTexture {
+    pub fn from_srgba(texture: GpuTexture2DHandle) -> Self {
+        Self { texture }
+    }
+}
+
 pub struct TexturedRect {
     /// Top left corner position in world space.
     pub top_left_corner_position: glam::Vec3,
@@ -90,7 +109,7 @@ pub struct TexturedRect {
     pub extent_v: glam::Vec3,
 
     /// Texture that fills the rectangle
-    pub texture: GpuTexture2DHandle,
+    pub colormapped_texture: ColormappedTexture,
 
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
@@ -110,7 +129,7 @@ impl Default for TexturedRect {
             top_left_corner_position: glam::Vec3::ZERO,
             extent_u: glam::Vec3::ZERO,
             extent_v: glam::Vec3::ZERO,
-            texture: GpuTexture2DHandle::invalid(),
+            colormapped_texture: Default::default(),
             texture_filter_magnification: TextureFilterMag::Nearest,
             texture_filter_minification: TextureFilterMin::Linear,
             multiplicative_tint: Rgba::WHITE,
@@ -168,8 +187,6 @@ impl RectangleDrawData {
         for (rectangle, uniform_buffer) in
             rectangles.iter().zip(uniform_buffer_bindings.into_iter())
         {
-            let texture = ctx.texture_manager_2d.get(&rectangle.texture)?;
-
             let sampler = ctx.gpu_resources.samplers.get_or_create(
                 &ctx.device,
                 &SamplerDesc {
@@ -191,6 +208,10 @@ impl RectangleDrawData {
                     ..Default::default()
                 },
             );
+
+            let texture = ctx
+                .texture_manager_2d
+                .get(&rectangle.colormapped_texture.texture)?;
 
             instances.push(RectangleInstance {
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
