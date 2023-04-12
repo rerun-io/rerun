@@ -94,7 +94,10 @@ fn textured_rect_from_color_tensor(
     let gpu_texture = render_ctx.texture_manager_2d.get(&texture_handle)?;
     let texture_format = gpu_texture.creation_desc.format;
 
-    let range = if texture_format == TextureFormat::R8Unorm {
+    let range = if matches!(
+        texture_format,
+        TextureFormat::R8Unorm | TextureFormat::Rgba8UnormSrgb
+    ) {
         [0.0, 1.0]
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
