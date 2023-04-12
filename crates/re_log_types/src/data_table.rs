@@ -7,7 +7,7 @@ use smallvec::SmallVec;
 
 use crate::{
     ArrowMsg, ComponentName, DataCell, DataCellError, DataRow, DataRowError, EntityPath, RowId,
-    TableId, TimePoint, Timeline,
+    TimePoint, Timeline,
 };
 
 // ---
@@ -122,6 +122,62 @@ impl DataCellColumn {
 
 // ---
 
+/// A unique ID for a [`DataTable`].
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    arrow2_convert::ArrowField,
+    arrow2_convert::ArrowSerialize,
+    arrow2_convert::ArrowDeserialize,
+)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(transparent)]
+pub struct TableId(pub(crate) re_tuid::Tuid);
+
+impl std::fmt::Display for TableId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl TableId {
+    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
+
+    #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn random() -> Self {
+        Self(re_tuid::Tuid::random())
+    }
+
+    /// Temporary utility while we transition to batching. See #1619.
+    #[doc(hidden)]
+    pub fn into_row_id(self) -> RowId {
+        RowId(self.0)
+    }
+}
+
+impl std::ops::Deref for TableId {
+    type Target = re_tuid::Tuid;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for TableId {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// A sparse table's worth of data, i.e. a batch of events: a collection of [`DataRow`]s.
 /// This is the top-level layer in our data model.
 ///
@@ -196,8 +252,8 @@ impl DataCellColumn {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, Point2D, RowId, TableId},
-/// #     DataRow, DataTable, Timeline, TimePoint,
+/// #     component_types::{ColorRGBA, Label, Point2D},
+/// #     DataRow, DataTable, RowId, TableId, Timeline, TimePoint,
 /// # };
 /// #
 /// # let table_id = TableId::random();
@@ -257,7 +313,6 @@ impl DataCellColumn {
 /// #
 /// # assert_eq!(table_in, table_out);
 /// ```
-// TODO(#1619): introduce RowId & TableId
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataTable {
     /// Auto-generated `TUID`, uniquely identifying this batch of data and keeping track of the

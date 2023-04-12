@@ -47,7 +47,6 @@ impl Default for ComponentUiRegistry {
         registry.add::<re_log_types::component_types::LineStrip2D>();
         registry.add::<re_log_types::component_types::LineStrip3D>();
         registry.add::<re_log_types::component_types::Mesh3D>();
-        registry.add::<re_log_types::component_types::MsgId>();
         // registry.add::<re_log_types::component_types::Point2D>();
         // registry.add::<re_log_types::component_types::Point3D>();
         // registry.add::<re_log_types::component_types::Quaternion>();

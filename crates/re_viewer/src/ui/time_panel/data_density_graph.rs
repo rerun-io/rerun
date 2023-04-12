@@ -488,7 +488,7 @@ pub fn data_density_graph_ui(
             ctx.rec_cfg.time_ctrl.set_time(hovered_time_range.min);
             ctx.rec_cfg.time_ctrl.pause();
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
-            show_msg_ids_tooltip(
+            show_row_ids_tooltip(
                 ctx,
                 blueprint,
                 ui.ctx(),
@@ -518,7 +518,7 @@ fn make_brighter(color: Color32) -> Color32 {
     )
 }
 
-fn show_msg_ids_tooltip(
+fn show_row_ids_tooltip(
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
     egui_ctx: &egui::Context,

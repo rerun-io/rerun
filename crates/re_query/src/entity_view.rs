@@ -7,7 +7,7 @@ use re_log_types::{
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    Component, ComponentName, DeserializableComponent, SerializableComponent,
+    Component, ComponentName, DeserializableComponent, RowId, SerializableComponent,
 };
 
 use crate::QueryError;
@@ -254,6 +254,7 @@ where
 /// the primary component using instance keys.
 #[derive(Clone, Debug)]
 pub struct EntityView<Primary: Component> {
+    pub(crate) row_id: RowId,
     pub(crate) primary: ComponentWithInstances,
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
     pub(crate) phantom: PhantomData<Primary>,
@@ -280,6 +281,11 @@ where
     #[inline]
     pub fn num_instances(&self) -> usize {
         self.primary.len()
+    }
+
+    #[inline]
+    pub fn row_id(&self) -> RowId {
+        self.row_id
     }
 }
 
@@ -353,6 +359,7 @@ where
         let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
 
         Ok(Self {
+            row_id: RowId::ZERO,
             primary,
             components: Default::default(),
             phantom: PhantomData,
@@ -374,6 +381,7 @@ where
         let components = [(component_c1.name, component_c1)].into();
 
         Ok(Self {
+            row_id: RowId::ZERO,
             primary,
             components,
             phantom: PhantomData,

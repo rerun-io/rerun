@@ -7,7 +7,7 @@ use crate::DataStoreConfig;
 macro_rules! test_row {
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr $(,)*]) => {
         ::re_log_types::DataRow::from_cells1(
-            ::re_log_types::MsgId::random(),
+            ::re_log_types::RowId::random(),
             $entity.clone(),
             $frames,
             $n,
@@ -16,7 +16,7 @@ macro_rules! test_row {
     };
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr, $c1:expr $(,)*]) => {
         ::re_log_types::DataRow::from_cells2(
-            ::re_log_types::MsgId::random(),
+            ::re_log_types::RowId::random(),
             $entity.clone(),
             $frames,
             $n,

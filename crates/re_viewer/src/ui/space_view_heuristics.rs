@@ -253,7 +253,6 @@ fn is_default_added_to_space_view(
     let ignored_components = [
         re_log_types::Transform::name(),
         re_log_types::ViewCoordinates::name(),
-        re_log_types::MsgId::name(),
         re_log_types::component_types::InstanceKey::name(),
         re_log_types::component_types::KeypointId::name(),
         DataStore::insert_id_key(),

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_log_types::{
-    ComponentName, ComponentPath, EntityPath, EntityPathPart, MsgId, PathOp, TimeInt, TimePoint,
+    ComponentName, ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint,
     Timeline,
 };
 
@@ -103,10 +103,10 @@ pub struct EntityTree {
     num_timeless_messages: usize,
 
     /// Book-keeping around whether we should clear fields when data is added
-    pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
+    pub nonrecursive_clears: BTreeMap<RowId, TimePoint>,
 
     /// Book-keeping around whether we should clear recursively when data is added
-    pub recursive_clears: BTreeMap<MsgId, TimePoint>,
+    pub recursive_clears: BTreeMap<RowId, TimePoint>,
 
     /// Data logged at this entity path.
     pub components: BTreeMap<ComponentName, ComponentStats>,
@@ -117,7 +117,7 @@ impl EntityTree {
         Self::new(EntityPath::root(), Default::default())
     }
 
-    pub fn new(path: EntityPath, recursive_clears: BTreeMap<MsgId, TimePoint>) -> Self {
+    pub fn new(path: EntityPath, recursive_clears: BTreeMap<RowId, TimePoint>) -> Self {
         Self {
             path,
             children: Default::default(),
@@ -147,7 +147,7 @@ impl EntityTree {
         &mut self,
         time_point: &TimePoint,
         component_path: &ComponentPath,
-    ) -> Vec<(MsgId, TimePoint)> {
+    ) -> Vec<(RowId, TimePoint)> {
         crate::profile_function!();
 
         let leaf =
@@ -178,7 +178,7 @@ impl EntityTree {
     /// insertion.
     pub fn add_path_op(
         &mut self,
-        msg_id: MsgId,
+        row_id: RowId,
         time_point: &TimePoint,
         path_op: &PathOp,
     ) -> Vec<ComponentPath> {
@@ -195,7 +195,7 @@ impl EntityTree {
                 // Track that any future fields need a Null at the right
                 // time-point when added.
                 leaf.nonrecursive_clears
-                    .entry(msg_id)
+                    .entry(row_id)
                     .or_insert_with(|| time_point.clone());
 
                 // For every existing field return a clear event
@@ -215,13 +215,13 @@ impl EntityTree {
                     // Track that any future children need a Null at the right
                     // time-point when added.
                     next.recursive_clears
-                        .entry(msg_id)
+                        .entry(row_id)
                         .or_insert_with(|| time_point.clone());
 
                     // Track that any future fields need a Null at the right
                     // time-point when added.
                     next.nonrecursive_clears
-                        .entry(msg_id)
+                        .entry(row_id)
                         .or_insert_with(|| time_point.clone());
 
                     // For every existing field append a clear event into the
@@ -286,7 +286,7 @@ impl EntityTree {
     pub fn purge(
         &mut self,
         cutoff_times: &BTreeMap<Timeline, TimeInt>,
-        drop_msg_ids: &ahash::HashSet<MsgId>,
+        drop_row_ids: &ahash::HashSet<RowId>,
     ) {
         let Self {
             path: _,
@@ -306,11 +306,11 @@ impl EntityTree {
         }
         {
             crate::profile_scope!("nonrecursive_clears");
-            nonrecursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
+            nonrecursive_clears.retain(|row_id, _| !drop_row_ids.contains(row_id));
         }
         {
             crate::profile_scope!("recursive_clears");
-            recursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
+            recursive_clears.retain(|row_id, _| !drop_row_ids.contains(row_id));
         }
 
         {
@@ -321,7 +321,7 @@ impl EntityTree {
         }
 
         for child in children.values_mut() {
-            child.purge(cutoff_times, drop_msg_ids);
+            child.purge(cutoff_times, drop_row_ids);
         }
     }
 

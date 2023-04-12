@@ -29,7 +29,6 @@ mod label;
 mod linestrip;
 mod mat;
 mod mesh3d;
-mod msg_id;
 mod point;
 mod quaternion;
 mod radius;
@@ -53,7 +52,6 @@ pub use label::Label;
 pub use linestrip::{LineStrip2D, LineStrip3D};
 pub use mat::Mat3x3;
 pub use mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
-pub use msg_id::{MsgId, RowId, TableId};
 pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use radius::Radius;
@@ -71,7 +69,7 @@ pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 26] = [
+    static ref FIELDS: [Field; 25] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),
         <Box3D as Component>::field(),
@@ -83,7 +81,6 @@ lazy_static! {
         <LineStrip2D as Component>::field(),
         <LineStrip3D as Component>::field(),
         <Mesh3D as Component>::field(),
-        <MsgId as Component>::field(),
         <Point2D as Component>::field(),
         <Point3D as Component>::field(),
         <Quaternion as Component>::field(),

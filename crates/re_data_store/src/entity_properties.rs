@@ -208,7 +208,7 @@ where
     // single components this is easy enough.
     let data_store = &entity_db.data_store;
 
-    let cells = data_store.latest_at(query, entity_path, C::name(), &[C::name()])?;
+    let (_, cells) = data_store.latest_at(query, entity_path, C::name(), &[C::name()])?;
     let cell = cells.get(0)?.as_ref()?;
 
     let mut iter = cell.try_to_native::<C>().ok()?;

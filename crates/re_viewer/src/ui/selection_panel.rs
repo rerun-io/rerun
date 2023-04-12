@@ -119,7 +119,7 @@ impl SelectionPanel {
 
 fn has_data_section(item: &Item) -> bool {
     match item {
-        Item::MsgId(_) | Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
+        Item::RowId(_) | Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
         Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => false,
     }
@@ -133,10 +133,10 @@ pub fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
-        Item::MsgId(msg_id) => {
+        Item::RowId(row_id) => {
             ui.horizontal(|ui| {
-                ui.label("Message ID:");
-                ctx.msg_id_button(ui, *msg_id);
+                ui.label("Row ID:");
+                ctx.row_id_button(ui, *row_id);
             });
         }
         Item::ComponentPath(re_log_types::ComponentPath {
@@ -230,8 +230,8 @@ impl DataUi for Item {
                 // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
                 debug_assert!(!has_data_section(self));
             }
-            Item::MsgId(msg_id) => {
-                msg_id.data_ui(ctx, ui, verbosity, query);
+            Item::RowId(row_id) => {
+                row_id.data_ui(ctx, ui, verbosity, query);
             }
             Item::ComponentPath(component_path) => {
                 component_path.data_ui(ctx, ui, verbosity, query);
@@ -251,7 +251,7 @@ fn blueprint_ui(
     item: &Item,
 ) {
     match item {
-        Item::MsgId(_) => {
+        Item::RowId(_) => {
             // TODO(andreas): Show space views that contains entities that's part of this message.
             ui.weak("(nothing)");
         }

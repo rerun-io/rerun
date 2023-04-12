@@ -2,8 +2,8 @@ use std::net::SocketAddr;
 
 use pyo3::{exceptions::PyValueError, PyResult};
 use re_log_types::{
-    ApplicationId, ArrowMsg, BeginRecordingMsg, DataRow, DataTableError, LogMsg, MsgId, PathOp,
-    RecordingId, RecordingInfo, RecordingSource, Time, TimePoint,
+    ApplicationId, ArrowMsg, BeginRecordingMsg, DataRow, DataTableError, LogMsg, PathOp,
+    RecordingId, RecordingInfo, RecordingSource, RowId, Time, TimePoint,
 };
 
 use rerun::sink::LogSink;
@@ -236,7 +236,7 @@ impl PythonSession {
 
             self.sink.send(
                 BeginRecordingMsg {
-                    msg_id: MsgId::random(),
+                    row_id: RowId::random(),
                     info,
                 }
                 .into(),
@@ -256,7 +256,7 @@ impl PythonSession {
         self.send(LogMsg::EntityPathOpMsg(
             self.recording_id(),
             re_log_types::EntityPathOpMsg {
-                msg_id: MsgId::random(),
+                row_id: RowId::random(),
                 time_point: time_point.clone(),
                 path_op,
             },

@@ -3,7 +3,7 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
-use crate::{MsgId, TimePoint};
+use crate::{TableId, TimePoint};
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 /// Message containing an Arrow payload
@@ -14,7 +14,7 @@ pub struct ArrowMsg {
     ///
     /// NOTE(#1619): While we're in the process of transitioning towards end-to-end batching, the
     /// `table_id` is always the same as the `row_id` as the first and only row.
-    pub table_id: MsgId,
+    pub table_id: TableId,
 
     /// The maximum values for all timelines across the entire batch of data.
     ///
@@ -79,7 +79,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                let table_id: Option<MsgId> = seq.next_element()?;
+                let table_id: Option<TableId> = seq.next_element()?;
                 let timepoint_min: Option<TimePoint> = seq.next_element()?;
                 let buf: Option<serde_bytes::ByteBuf> = seq.next_element()?;
 
@@ -133,13 +133,13 @@ mod tests {
 
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        DataRow, DataTable, MsgId,
+        DataRow, DataTable, RowId,
     };
 
     #[test]
     fn arrow_msg_roundtrip() {
         let row = DataRow::from_cells2(
-            MsgId::random(),
+            RowId::random(),
             "world/rects",
             [build_frame_nr(0.into())],
             1,
