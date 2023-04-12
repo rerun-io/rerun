@@ -528,3 +528,19 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
         return
 
     bindings.set_time_nanos(timeline, nanos)
+
+
+def reset_time() -> None:
+    """
+    Clear all timeline information on this thread.
+
+    This is the same as calling `set_time_*` with `None` for all of the active timelines.
+
+    Used for all subsequent logging on the same thread,
+    until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
+    """
+
+    if not bindings.is_enabled():
+        return
+
+    bindings.reset_time()
