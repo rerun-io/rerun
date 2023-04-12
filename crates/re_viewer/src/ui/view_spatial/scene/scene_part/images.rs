@@ -216,7 +216,6 @@ impl ImagesPart {
             ent_path,
             instance_key,
             entity_view,
-            properties,
             entity_highlight.any_selection_highlight,
         );
 

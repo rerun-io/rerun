@@ -37,11 +37,8 @@ impl Lines3DPart {
             .line_strips
             .batch("lines 3d")
             .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall);
-        if properties.interactive {
-            line_batch =
-                line_batch.picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-        }
+            .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip3D,
@@ -57,14 +54,13 @@ impl Lines3DPart {
             let mut lines = line_batch
                 .add_strip(strip.0.into_iter().map(|v| v.into()))
                 .radius(radius)
-                .color(color);
-            if properties.interactive {
-                lines = lines.picking_instance_id(instance_key_to_picking_id(
+                .color(color)
+                .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view,
                     entity_highlight.any_selection_highlight,
                 ));
-            }
+
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
                 lines.outline_mask_ids(*outline_mask_ids);
             }

@@ -44,7 +44,6 @@ impl MeshPart {
                     ent_path,
                     instance_key,
                     entity_view,
-                    props,
                     entity_highlight.any_selection_highlight,
                 );
 

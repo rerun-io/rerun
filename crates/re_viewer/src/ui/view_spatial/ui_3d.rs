@@ -3,7 +3,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{InstancePath, InstancePathHash};
+use re_data_store::{EntityPropertyMap, InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
@@ -13,6 +13,7 @@ use re_renderer::{
 use crate::{
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
+        data_blueprint::DataBlueprintTree,
         view_spatial::{
             ui::{create_labels, outline_config, picking, screenshot_context_menu},
             ui_renderer_bridge::{
@@ -265,6 +266,7 @@ pub fn view_3d(
     space_view_id: SpaceViewId,
     mut scene: SceneSpatial,
     highlights: &SpaceViewHighlights,
+    entity_properties: &EntityPropertyMap,
 ) {
     crate::profile_function!();
 
@@ -369,6 +371,7 @@ pub fn view_3d(
             state,
             &scene,
             space,
+            entity_properties,
         );
     }
 

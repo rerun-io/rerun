@@ -24,7 +24,7 @@ impl Arrows3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        properties: &EntityProperties,
+        _properties: &EntityProperties,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -42,11 +42,8 @@ impl Arrows3DPart {
             .line_strips
             .batch("arrows")
             .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall);
-        if properties.interactive {
-            line_batch =
-                line_batch.picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-        }
+            .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
                        arrow: Arrow3D,
@@ -76,15 +73,12 @@ impl Arrows3DPart {
                     re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE
                         | re_renderer::renderer::LineStripFlags::CAP_START_ROUND
                         | re_renderer::renderer::LineStripFlags::CAP_START_EXTEND_OUTWARDS,
-                );
-
-            if properties.interactive {
-                segment = segment.picking_instance_id(instance_key_to_picking_id(
+                )
+                .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view,
                     entity_highlight.any_selection_highlight,
                 ));
-            }
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
                 segment.outline_mask_ids(*outline_mask_ids);

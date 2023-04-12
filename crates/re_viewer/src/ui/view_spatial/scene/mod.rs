@@ -10,10 +10,7 @@ use re_renderer::{Color32, OutlineMaskPreference, Size};
 
 use super::{SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{
-        instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-        mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext,
-    },
+    misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         annotations::{auto_color, AnnotationMap},
         Annotations, SceneQuery,
@@ -26,7 +23,6 @@ mod scene_part;
 
 pub use self::picking::{AdditionalPickingInfo, PickingContext, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
-use self::scene_part::instance_path_hash_for_picking;
 use scene_part::ScenePart;
 
 // ----------------------------------------------------------------------------
@@ -126,17 +122,6 @@ pub struct SceneSpatial {
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-fn instance_path_hash_if_interactive(
-    entity_path: &EntityPath,
-    interactive: bool,
-) -> InstancePathHash {
-    if interactive {
-        InstancePathHash::entity_splat(entity_path)
-    } else {
-        InstancePathHash::NONE
-    }
-}
-
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 impl SceneSpatial {
@@ -196,17 +181,13 @@ impl SceneSpatial {
         entity_path: &re_data_store::EntityPath,
         keypoints: Keypoints,
         annotations: &Arc<Annotations>,
-        interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_path_hash = instance_path_hash_if_interactive(entity_path, interactive);
-        let layer_id = picking_layer_id_from_instance_path_hash(instance_path_hash);
-
         let mut line_batch = self
             .primitives
             .line_strips
             .batch("keypoint connections")
-            .picking_object_id(layer_id.object);
+            .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
         for ((class_id, _time), keypoints_in_class) in keypoints {
             let Some(class_description) = annotations.context.class_map.get(&class_id) else {
@@ -229,8 +210,7 @@ impl SceneSpatial {
                 line_batch
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
-                    .color(color)
-                    .picking_instance_id(layer_id.instance);
+                    .color(color);
             }
         }
     }

@@ -38,11 +38,8 @@ impl Lines2DPart {
             .line_strips
             .batch("lines 2d")
             .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall);
-        if properties.interactive {
-            line_batch =
-                line_batch.picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-        }
+            .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip2D,
@@ -58,14 +55,13 @@ impl Lines2DPart {
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
                 .radius(radius)
-                .flags(LineStripFlags::NO_COLOR_GRADIENT);
-            if properties.interactive {
-                lines = lines.picking_instance_id(instance_key_to_picking_id(
+                .flags(LineStripFlags::NO_COLOR_GRADIENT)
+                .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view,
                     entity_highlight.any_selection_highlight,
                 ));
-            }
+
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
                 lines.outline_mask_ids(*outline_mask_ids);
             }

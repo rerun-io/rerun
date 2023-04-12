@@ -56,17 +56,12 @@ pub fn instance_path_hash_for_picking<C: re_log_types::Component>(
     ent_path: &EntityPath,
     instance_key: re_log_types::component_types::InstanceKey,
     entity_view: &re_query::EntityView<C>,
-    props: &EntityProperties,
     any_part_selected: bool,
 ) -> InstancePathHash {
-    if props.interactive {
-        InstancePathHash::instance(
-            ent_path,
-            instance_key_for_picking(instance_key, entity_view, any_part_selected),
-        )
-    } else {
-        InstancePathHash::NONE
-    }
+    InstancePathHash::instance(
+        ent_path,
+        instance_key_for_picking(instance_key, entity_view, any_part_selected),
+    )
 }
 
 /// Computes the instance key that should be used for picking (in turn for selecting/hover)

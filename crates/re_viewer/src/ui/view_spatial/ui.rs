@@ -1,5 +1,5 @@
 use eframe::epaint::text::TextWrapping;
-use re_data_store::{query_latest_single, EditableAutoValue, EntityPath};
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
 use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
@@ -389,6 +389,7 @@ impl ViewSpatialState {
         scene: SceneSpatial,
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
+        entity_properties: &EntityPropertyMap,
     ) {
         self.scene_bbox = scene.primitives.bounding_box();
         if self.scene_bbox_accum.is_nothing() {
@@ -407,7 +408,16 @@ impl ViewSpatialState {
                 let coordinates =
                     query_view_coordinates(&ctx.log_db.entity_db, space, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                super::view_3d(ctx, ui, self, space, space_view_id, scene, highlights);
+                super::view_3d(
+                    ctx,
+                    ui,
+                    self,
+                    space,
+                    space_view_id,
+                    scene,
+                    highlights,
+                    entity_properties,
+                );
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -423,6 +433,7 @@ impl ViewSpatialState {
                     scene_rect_accum,
                     space_view_id,
                     highlights,
+                    entity_properties,
                 );
             }
         }
@@ -678,15 +689,14 @@ pub fn picking(
     state: &mut ViewSpatialState,
     scene: &SceneSpatial,
     space: &EntityPath,
+    entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     crate::profile_function!();
 
-    let Some(pointer_pos_ui) = response.hover_pos() else  {
+    let Some(pointer_pos_ui) = response.hover_pos() else {
         state.previous_picking_result = None;
         return response;
     };
-
-    ctx.select_hovered_on_click(&response);
 
     let picking_context = super::scene::PickingContext::new(
         pointer_pos_ui,
@@ -725,12 +735,24 @@ pub fn picking(
     );
     state.previous_picking_result = Some(picking_result.clone());
 
+    let mut hovered_items = Vec::new();
+
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in picking_result.iter_hits() {
         let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
+        if !entity_properties
+            .get(&instance_path.entity_path)
+            .interactive
+        {
+            continue;
+        }
+        hovered_items.push(crate::misc::Item::InstancePath(
+            Some(space_view_id),
+            instance_path.clone(),
+        ));
 
         // Special hover ui for images.
         let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
@@ -813,15 +835,9 @@ pub fn picking(
                 );
             })
         };
-
-        ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
-            pick.instance_path_hash
-                .resolve(&ctx.log_db.entity_db)
-                .map(|instance_path| {
-                    crate::misc::Item::InstancePath(Some(space_view_id), instance_path)
-                })
-        }));
     }
+
+    ctx.set_hovered(hovered_items.into_iter());
 
     let hovered_space = match state.nav_mode.get() {
         SpatialNavigationMode::TwoD => HoveredSpace::TwoD {

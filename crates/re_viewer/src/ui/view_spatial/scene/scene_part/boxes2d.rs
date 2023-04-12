@@ -45,11 +45,8 @@ impl Boxes2DPart {
             .line_strips
             .batch("2d boxes")
             .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall);
-        if properties.interactive {
-            line_batch =
-                line_batch.picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-        }
+            .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         entity_view.visit5(
             |instance_key,
@@ -62,7 +59,6 @@ impl Boxes2DPart {
                     ent_path,
                     instance_key,
                     &entity_view,
-                    &properties,
                     entity_highlight.any_selection_highlight,
                 );
 
@@ -72,22 +68,20 @@ impl Boxes2DPart {
                 let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
                 let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
-                let mut rectangle = line_batch
+                let rectangle = line_batch
                     .add_rectangle_outline_2d(
                         rect.top_left_corner().into(),
                         glam::vec2(rect.width(), 0.0),
                         glam::vec2(0.0, rect.height()),
                     )
                     .color(color)
-                    .radius(radius);
-
-                if properties.interactive {
-                    rectangle = rectangle.picking_instance_id(instance_key_to_picking_id(
+                    .radius(radius)
+                    .picking_instance_id(instance_key_to_picking_id(
                         instance_key,
                         entity_view,
                         entity_highlight.any_selection_highlight,
                     ));
-                }
+
                 if let Some(outline_mask_ids) =
                     entity_highlight.instances.get(&instance_hash.instance_key)
                 {
