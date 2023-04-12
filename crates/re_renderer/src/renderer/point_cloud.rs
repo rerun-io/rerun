@@ -142,6 +142,7 @@ pub struct PointCloudBatchInfo {
 }
 
 /// Description of a point cloud.
+#[derive(Clone)]
 pub struct PointCloudVertex {
     /// Connected points. Must be at least 2.
     pub position: glam::Vec3,
@@ -225,7 +226,7 @@ impl PointCloudDrawData {
             0
         );
 
-        let vertices = if vertices.len() >= Self::MAX_NUM_POINTS {
+        let vertices = if vertices.len() > Self::MAX_NUM_POINTS {
             re_log::error_once!(
                 "Reached maximum number of supported points. Clamping down to {}, passed were {}.
  See also https://github.com/rerun-io/rerun/issues/957",

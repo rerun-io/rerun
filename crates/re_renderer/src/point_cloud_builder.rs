@@ -182,27 +182,44 @@ impl<'a> PointCloudBatchBuilder<'a> {
         }
         self.batch_mut().point_count += num_points as u32;
 
-        // Expand iterators with default values.
-        let positions = positions
-            .chain(std::iter::repeat(glam::Vec3::ZERO))
-            .take(num_points);
-        let radii = radii.chain(std::iter::repeat(Size::AUTO)).take(num_points);
-        let colors = colors
-            .chain(std::iter::repeat(Color32::TRANSPARENT))
-            .take(num_points);
-        let picking_instance_ids = picking_instance_ids
-            .chain(std::iter::repeat(Default::default()))
-            .take(num_points);
-
-        self.0.vertices.extend(
-            positions
-                .zip(radii)
-                .map(|(position, radius)| PointCloudVertex { position, radius }),
-        );
-        self.0.color_buffer.extend(colors);
-        self.0
-            .picking_instance_ids_buffer
-            .extend(picking_instance_ids);
+        {
+            crate::profile_scope!("positions");
+            let num_before = self.0.vertices.len();
+            self.0.vertices.extend(
+                positions
+                    .take(num_points)
+                    .zip(radii.take(num_points))
+                    .map(|(position, radius)| PointCloudVertex { position, radius }),
+            );
+            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+            let num_default = (self.0.vertices.len() - num_before) - num_points;
+            self.0.vertices.extend(
+                std::iter::repeat(PointCloudVertex {
+                    position: glam::Vec3::ZERO,
+                    radius: Size::AUTO,
+                })
+                .take(num_default),
+            );
+        }
+        {
+            crate::profile_scope!("colors");
+            let num_written = self.0.color_buffer.extend(colors.take(num_points));
+            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+            self.0
+                .color_buffer
+                .extend(std::iter::repeat(Color32::TRANSPARENT).take(num_written - num_points));
+        }
+        {
+            crate::profile_scope!("picking_instance_ids");
+            let num_written = self
+                .0
+                .picking_instance_ids_buffer
+                .extend(picking_instance_ids.take(num_points));
+            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
+            self.0.picking_instance_ids_buffer.extend(
+                std::iter::repeat(PickingLayerInstanceId::default()).take(num_written - num_points),
+            );
+        }
 
         self
     }

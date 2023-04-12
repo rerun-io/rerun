@@ -129,16 +129,13 @@ impl Points2DPart {
             };
 
             let mut point_range_builder = if properties.interactive {
-                let picking_instance_ids = {
-                    crate::profile_scope!("instance_ids");
-                    entity_view.iter_instance_keys()?.map(|instance_key| {
-                        instance_key_to_picking_id(
-                            instance_key,
-                            entity_view,
-                            entity_highlight.any_selection_highlight,
-                        )
-                    })
-                };
+                let picking_instance_ids = entity_view.iter_instance_keys()?.map(|instance_key| {
+                    instance_key_to_picking_id(
+                        instance_key,
+                        entity_view,
+                        entity_highlight.any_selection_highlight,
+                    )
+                });
                 point_batch.add_points_2d(
                     entity_view.num_instances(),
                     point_positions,

@@ -91,21 +91,18 @@ impl Points3DPart {
             let colors =
                 process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
-            let instance_path_hashes_for_picking = {
-                crate::profile_scope!("instance_hashes");
-                entity_view
-                    .iter_instance_keys()?
-                    .map(|instance_key| {
-                        instance_path_hash_for_picking(
-                            ent_path,
-                            instance_key,
-                            entity_view,
-                            properties,
-                            entity_highlight.any_selection_highlight,
-                        )
-                    })
-                    .collect::<Vec<_>>()
-            };
+            let instance_path_hashes_for_picking = entity_view
+                .iter_instance_keys()?
+                .map(|instance_key| {
+                    instance_path_hash_for_picking(
+                        ent_path,
+                        instance_key,
+                        entity_view,
+                        properties,
+                        entity_highlight.any_selection_highlight,
+                    )
+                })
+                .collect::<Vec<_>>();
 
             scene.ui.labels.extend(Self::process_labels(
                 entity_view,
@@ -136,16 +133,13 @@ impl Points3DPart {
             };
 
             let mut point_range_builder = if properties.interactive {
-                let picking_instance_ids = {
-                    crate::profile_scope!("instance_ids");
-                    entity_view.iter_instance_keys()?.map(|instance_key| {
-                        instance_key_to_picking_id(
-                            instance_key,
-                            entity_view,
-                            entity_highlight.any_selection_highlight,
-                        )
-                    })
-                };
+                let picking_instance_ids = entity_view.iter_instance_keys()?.map(|instance_key| {
+                    instance_key_to_picking_id(
+                        instance_key,
+                        entity_view,
+                        entity_highlight.any_selection_highlight,
+                    )
+                });
                 point_batch.add_points(
                     entity_view.num_instances(),
                     point_positions,
