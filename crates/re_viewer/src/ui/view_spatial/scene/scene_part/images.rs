@@ -16,7 +16,10 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
+    misc::{
+        tensor_to_gpu::ColormappedTextured, SpaceViewHighlights, SpaceViewOutlineMasks,
+        TransformCache, ViewerContext,
+    },
     ui::{
         scene::SceneQuery,
         view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
@@ -39,9 +42,46 @@ fn push_tensor_texture(
 ) {
     crate::profile_function!();
 
-    let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
+    let Some([height, width, _depth]) = tensor.image_height_width_depth() else { return; };
 
-    if let Some([height, width, _depth]) = tensor.image_height_width_depth() {
+    let experimental_gpu_colormapping = true;
+    if experimental_gpu_colormapping {
+        let debug_name = "tensor"; // TODO: entity path
+
+        match crate::misc::tensor_to_gpu::textured_rect_from_tensor(
+            ctx.render_ctx,
+            debug_name,
+            tensor,
+            annotations,
+        ) {
+            Ok(colormapped_texture) => {
+                let ColormappedTextured { texture } = colormapped_texture;
+                let textured_rect = re_renderer::renderer::TexturedRect {
+                    top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
+                    extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
+                    extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
+                    texture,
+                    texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
+                    texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+                    multiplicative_tint,
+                    // Push to background. Mostly important for mouse picking order!
+                    depth_offset: -1,
+                    outline_mask,
+                };
+                scene.primitives.textured_rectangles.push(textured_rect);
+                scene
+                    .primitives
+                    .textured_rectangles_ids
+                    .push(instance_path_hash);
+            }
+            Err(err) => {
+                re_log::warn_once!(
+                    "Failed to create texture from tensor for {debug_name:?}: {err}"
+                );
+            }
+        }
+    } else {
+        let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
         if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
             scene
                 .primitives
