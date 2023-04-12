@@ -10,12 +10,12 @@ from rerun import bindings
 
 
 class MemoryRecording:
-    def __init__(self, storage: bindings.PyMemoryRecording) -> None:
+    def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
 
-    def inline_show(
+    def as_html(
         self, width: int = 950, height: int = 712, app_location: Optional[str] = None, timeout_ms: int = 2000
-    ) -> Any:
+    ) -> str:
         """
         Show the Rerun viewer in a Jupyter notebook.
 
@@ -73,11 +73,18 @@ class MemoryRecording:
         <iframe id="{random_string}" width="{width}" height="{height}" src="{app_location}?url=web_event://&persist=0"
             frameborder="0" style="display: none;" allowfullscreen=""></iframe>
         """
+
+        return html_template
+
+    def show(self, **kwargs: Any) -> Any:
+        html = self.as_html(**kwargs)
         try:
             from IPython.core.display import HTML
 
-            return HTML(html_template)  # type: ignore[no-untyped-call]
+            return HTML(html)  # type: ignore[no-untyped-call]
         except ImportError:
-            logging.warning("Could not import IPython.core.display. Returning HTML string instead.")
+            logging.warning("Could not import IPython.core.display. Returning raw HTML string instead.")
+        return html
 
-        return html_template
+    def _repr_html_(self) -> Any:
+        return self.as_html()
