@@ -10,7 +10,7 @@ from rerun import bindings
 
 
 class MemoryRecording:
-    def __init__(self, storage):
+    def __init__(self, storage: bindings.PyMemoryRecording) -> None:
         self.storage = storage
 
     def inline_show(

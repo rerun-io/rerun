@@ -410,7 +410,12 @@ def save(path: str) -> None:
 
 def memory_recording() -> MemoryRecording:
     """
-    Streams all log-data to a memory buffer
+    Streams all log-data to a memory buffer.
+
+    Returns
+    -------
+    MemoryRecording
+        A memory recording object that can be used to read the data.
     """
 
     return MemoryRecording(bindings.memory_recording())
