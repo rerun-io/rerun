@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use ahash::{HashMap, HashMapExt};
 use glam::Mat4;
 
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
@@ -9,7 +6,6 @@ use re_log_types::{
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
@@ -17,13 +13,12 @@ use crate::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
         view_spatial::{
-            scene::{
-                scene_part::{instance_key_to_picking_id, instance_path_hash_for_picking},
-                Keypoints,
+            scene::scene_part::{
+                instance_key_to_picking_id, instance_path_hash_for_picking,
+                process_annotations_and_keypoints, process_colors, process_radii,
             },
             SceneSpatial, UiLabel, UiLabelTarget,
         },
-        Annotations, DefaultColor,
     },
 };
 
@@ -35,90 +30,6 @@ pub struct Points3DPart {
 }
 
 impl Points3DPart {
-    fn process_annotations(
-        query: &SceneQuery<'_>,
-        entity_view: &EntityView<Point3D>,
-        annotations: &Arc<Annotations>,
-    ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), QueryError> {
-        crate::profile_function!();
-
-        let mut keypoints: Keypoints = HashMap::new();
-
-        // No need to process annotations if we don't have keypoints or class-ids
-        if !entity_view.has_component::<KeypointId>() && !entity_view.has_component::<ClassId>() {
-            let resolved_annotation = annotations.class_description(None).annotation_info();
-            return Ok((
-                vec![resolved_annotation; entity_view.num_instances()],
-                keypoints,
-            ));
-        }
-
-        let annotation_info = itertools::izip!(
-            entity_view.iter_primary()?,
-            entity_view.iter_component::<KeypointId>()?,
-            entity_view.iter_component::<ClassId>()?,
-        )
-        .map(|(position, keypoint_id, class_id)| {
-            let class_description = annotations.class_description(class_id);
-
-            if let (Some(keypoint_id), Some(class_id), Some(position)) =
-                (keypoint_id, class_id, position)
-            {
-                keypoints
-                    .entry((class_id, query.latest_at.as_i64()))
-                    .or_insert_with(Default::default)
-                    .insert(keypoint_id, position.into());
-                class_description.annotation_info_with_keypoint(keypoint_id)
-            } else {
-                class_description.annotation_info()
-            }
-        })
-        .collect();
-
-        Ok((annotation_info, keypoints))
-    }
-
-    fn process_colors<'a>(
-        entity_view: &'a EntityView<Point3D>,
-        ent_path: &'a EntityPath,
-        annotation_infos: &'a [ResolvedAnnotationInfo],
-    ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
-        crate::profile_function!();
-        let default_color = DefaultColor::EntityPath(ent_path);
-
-        let colors = itertools::izip!(
-            annotation_infos.iter(),
-            entity_view.iter_component::<ColorRGBA>()?,
-        )
-        .map(move |(annotation_info, color)| {
-            annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
-        });
-        Ok(colors)
-    }
-
-    fn process_radii<'view>(
-        ent_path: &EntityPath,
-        entity_view: &'view EntityView<Point3D>,
-    ) -> Result<impl Iterator<Item = Size> + 'view, QueryError> {
-        let ent_path = ent_path.clone();
-        Ok(entity_view.iter_component::<Radius>()?.map(move |radius| {
-            radius.map_or(Size::AUTO, |r| {
-                if 0.0 <= r.0 && r.0.is_finite() {
-                    Size::new_scene(r.0)
-                } else {
-                    if r.0 < 0.0 {
-                        re_log::warn_once!("Found point with negative radius in entity {ent_path}");
-                    } else if r.0.is_infinite() {
-                        re_log::warn_once!("Found point with infinite radius in entity {ent_path}");
-                    } else {
-                        re_log::warn_once!("Found point with NaN radius in entity {ent_path}");
-                    }
-                    Size::AUTO
-                }
-            })
-        }))
-    }
-
     fn process_labels<'a>(
         entity_view: &'a EntityView<Point3D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -168,25 +79,17 @@ impl Points3DPart {
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
-        let show_labels = true;
-
-        let point_positions = {
-            crate::profile_scope!("collect_points");
-            entity_view
-                .iter_primary()?
-                .filter_map(|pt| pt.map(glam::Vec3::from))
-        };
 
         let (annotation_infos, keypoints) =
-            Self::process_annotations(query, entity_view, &annotations)?;
+            process_annotations_and_keypoints(query, entity_view, &annotations)?;
 
-        let colors = Self::process_colors(entity_view, ent_path, &annotation_infos)?;
-        let radii = Self::process_radii(ent_path, entity_view)?;
+        let colors = process_colors(entity_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(ent_path, entity_view)?;
 
-        if show_labels && entity_view.num_instances() <= self.max_labels {
+        if entity_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
-                Self::process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+                process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 crate::profile_scope!("instance_hashes");
@@ -224,6 +127,14 @@ impl Points3DPart {
                 point_batch = point_batch
                     .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
             }
+
+            let point_positions = {
+                crate::profile_scope!("collect_points");
+                entity_view
+                    .iter_primary()?
+                    .filter_map(|pt| pt.map(glam::Vec3::from))
+            };
+
             let mut point_range_builder = point_batch
                 .add_points(entity_view.num_instances(), point_positions)
                 .colors(colors)
