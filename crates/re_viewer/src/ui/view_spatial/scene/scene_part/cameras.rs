@@ -8,6 +8,7 @@ use re_renderer::renderer::LineStripFlags;
 
 use crate::{
     misc::{
+        instance_hash_conversions::picking_layer_id_from_instance_path_hash,
         space_info::query_view_coordinates, SpaceViewHighlights, SpaceViewOutlineMasks,
         TransformCache, ViewerContext,
     },
@@ -142,6 +143,7 @@ impl CamerasPart {
 
         let radius = re_renderer::Size::new_points(1.0);
         let color = SceneSpatial::CAMERA_COLOR;
+        let picking_layer_id = picking_layer_id_from_instance_path_hash(instance_path_hash);
 
         scene
             .primitives
@@ -149,6 +151,7 @@ impl CamerasPart {
             .batch("camera frustum")
             .world_from_obj(world_from_parent)
             .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(picking_layer_id.object)
             .add_segments(segments.into_iter())
             .radius(radius)
             .color(color)
@@ -157,7 +160,7 @@ impl CamerasPart {
                     | LineStripFlags::CAP_END_ROUND
                     | LineStripFlags::CAP_START_ROUND,
             )
-            .user_data(instance_path_hash);
+            .picking_instance_id(picking_layer_id.instance);
     }
 }
 

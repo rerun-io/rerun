@@ -310,7 +310,7 @@ impl framework::Example for RenderDepthClouds {
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {
-            let mut builder = LineStripSeriesBuilder::<()>::new(re_ctx);
+            let mut builder = LineStripSeriesBuilder::new(re_ctx);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
                 line_batch.add_box_outline(glam::Affine3A::from_scale_rotation_translation(

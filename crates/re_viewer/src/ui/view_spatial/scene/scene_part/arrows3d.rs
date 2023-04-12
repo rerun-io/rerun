@@ -8,11 +8,14 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{
+        instance_hash_conversions::picking_layer_id_from_instance_path_hash, SpaceViewHighlights,
+        TransformCache, ViewerContext,
+    },
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::{instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
 
 pub struct Arrows3DPart;
 
@@ -21,7 +24,7 @@ impl Arrows3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        props: &EntityProperties,
+        properties: &EntityProperties,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -40,20 +43,16 @@ impl Arrows3DPart {
             .batch("arrows")
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall);
+        if properties.interactive {
+            line_batch =
+                line_batch.picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+        }
 
         let visitor = |instance_key: InstanceKey,
                        arrow: Arrow3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
                        _label: Option<Label>| {
-            let picking_instance_hash = instance_path_hash_for_picking(
-                ent_path,
-                instance_key,
-                entity_view,
-                props,
-                entity_highlight.any_selection_highlight,
-            );
-
             // TODO(andreas): support labels
             // TODO(andreas): support class ids for arrows
             let annotation_info = annotations.class_description(None).annotation_info();
@@ -69,7 +68,7 @@ impl Arrows3DPart {
             let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
             let end = origin + vector;
 
-            let segment = line_batch
+            let mut segment = line_batch
                 .add_segment(origin, end)
                 .radius(radius)
                 .color(color)
@@ -77,8 +76,15 @@ impl Arrows3DPart {
                     re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE
                         | re_renderer::renderer::LineStripFlags::CAP_START_ROUND
                         | re_renderer::renderer::LineStripFlags::CAP_START_EXTEND_OUTWARDS,
-                )
-                .user_data(picking_instance_hash);
+                );
+
+            if properties.interactive {
+                segment = segment.picking_instance_id(instance_key_to_picking_id(
+                    instance_key,
+                    entity_view,
+                    entity_highlight.any_selection_highlight,
+                ));
+            }
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
                 segment.outline_mask_ids(*outline_mask_ids);

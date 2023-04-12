@@ -10,7 +10,10 @@ use re_renderer::{Color32, OutlineMaskPreference, Size};
 
 use super::{SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{
+        instance_hash_conversions::picking_layer_id_from_instance_path_hash,
+        mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext,
+    },
     ui::{
         annotations::{auto_color, AnnotationMap},
         Annotations, SceneQuery,
@@ -23,6 +26,7 @@ mod scene_part;
 
 pub use self::picking::{AdditionalPickingInfo, PickingContext, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
+use self::scene_part::instance_path_hash_for_picking;
 use scene_part::ScenePart;
 
 // ----------------------------------------------------------------------------
@@ -196,8 +200,13 @@ impl SceneSpatial {
     ) {
         // Generate keypoint connections if any.
         let instance_path_hash = instance_path_hash_if_interactive(entity_path, interactive);
+        let layer_id = picking_layer_id_from_instance_path_hash(instance_path_hash);
 
-        let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
+        let mut line_batch = self
+            .primitives
+            .line_strips
+            .batch("keypoint connections")
+            .picking_object_id(layer_id.object);
 
         for ((class_id, _time), keypoints_in_class) in keypoints {
             let Some(class_description) = annotations.context.class_map.get(&class_id) else {
@@ -221,7 +230,7 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(color)
-                    .user_data(instance_path_hash);
+                    .picking_instance_id(layer_id.instance);
             }
         }
     }

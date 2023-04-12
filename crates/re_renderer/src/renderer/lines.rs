@@ -124,7 +124,7 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc, TextureDesc,
     },
-    Color32, DebugLabel, OutlineMaskPreference, PickingLayerProcessor,
+    Color32, DebugLabel, LineStripBuilder, OutlineMaskPreference, PickingLayerProcessor,
 };
 
 use super::{

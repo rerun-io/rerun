@@ -84,7 +84,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
 
-    let mut builder = LineStripSeriesBuilder::<()>::new(re_ctx);
+    let mut builder = LineStripSeriesBuilder::new(re_ctx);
     {
         let mut batch = builder.batch("lines without transform");
 

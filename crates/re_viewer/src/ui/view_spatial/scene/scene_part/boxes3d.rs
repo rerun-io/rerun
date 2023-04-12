@@ -17,14 +17,14 @@ use crate::{
     },
 };
 
-use super::{instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
 
 pub struct Boxes3DPart;
 
 impl Boxes3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        props: &EntityProperties,
+        properties: &EntityProperties,
         entity_view: &EntityView<Box3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -40,6 +40,10 @@ impl Boxes3DPart {
             .batch("box 3d")
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall);
+        if properties.interactive {
+            line_batch =
+                line_batch.picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+        }
 
         let visitor = |instance_key: InstanceKey,
                        half_size: Box3D,
@@ -49,14 +53,6 @@ impl Boxes3DPart {
                        radius: Option<Radius>,
                        label: Option<Label>,
                        class_id: Option<ClassId>| {
-            let instance_hash = instance_path_hash_for_picking(
-                ent_path,
-                instance_key,
-                entity_view,
-                props,
-                entity_highlight.any_selection_highlight,
-            );
-
             let class_description = annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();
 
@@ -69,11 +65,17 @@ impl Boxes3DPart {
             let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
             let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
 
-            let box_lines = line_batch
+            let mut box_lines = line_batch
                 .add_box_outline(transform)
                 .radius(radius)
-                .color(color)
-                .user_data(instance_hash);
+                .color(color);
+            if properties.interactive {
+                box_lines = box_lines.picking_instance_id(instance_key_to_picking_id(
+                    instance_key,
+                    entity_view,
+                    entity_highlight.any_selection_highlight,
+                ));
+            }
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
                 box_lines.outline_mask_ids(*outline_mask_ids);
             }
@@ -83,7 +85,13 @@ impl Boxes3DPart {
                     text: label,
                     target: UiLabelTarget::Position3D(world_from_obj.transform_point3(tran)),
                     color,
-                    labeled_instance: instance_hash,
+                    labeled_instance: instance_path_hash_for_picking(
+                        ent_path,
+                        instance_key,
+                        entity_view,
+                        properties,
+                        entity_highlight.any_selection_highlight,
+                    ),
                 });
             }
         };

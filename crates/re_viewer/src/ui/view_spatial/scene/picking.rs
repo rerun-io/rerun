@@ -231,7 +231,6 @@ impl PickingContext {
             previous_picking_result,
         );
 
-        picking_lines(self, &mut state, line_strips);
         picking_textured_rects(
             self,
             &mut state,
@@ -337,52 +336,6 @@ fn picking_gpu(
                 AdditionalPickingInfo::GpuPickingResult
             ) {
                 state.closest_opaque_pick = previous_opaque_hit.clone();
-            }
-        }
-    }
-}
-
-fn picking_lines(
-    context: &PickingContext,
-    state: &mut PickingState,
-    line_strips: &re_renderer::LineStripSeriesBuilder<InstancePathHash>,
-) {
-    crate::profile_function!();
-
-    for (batch, vertices) in line_strips.iter_vertices_by_batch() {
-        // For getting the closest point we could transform the mouse ray into the "batch space".
-        // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
-        let ui_from_batch = context.ui_from_world * batch.world_from_obj;
-
-        for (start, end) in vertices.tuple_windows() {
-            // Skip unconnected tuples.
-            if start.strip_index != end.strip_index {
-                continue;
-            }
-
-            let instance_hash = line_strips.strip_user_data[start.strip_index as usize];
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            // TODO(emilk): take line segment radius into account
-            let a = ui_from_batch.project_point3(start.position);
-            let b = ui_from_batch.project_point3(end.position);
-            let side_ui_dist_sq = line_segment_distance_sq_to_point_2d(
-                [a.truncate(), b.truncate()],
-                context.pointer_in_space2d,
-            );
-
-            if side_ui_dist_sq < state.closest_opaque_side_ui_dist_sq {
-                let start_world = batch.world_from_obj.transform_point3(start.position);
-                let end_world = batch.world_from_obj.transform_point3(end.position);
-                let t = ray_closest_t_line_segment(&context.ray_in_world, [start_world, end_world]);
-
-                state.check_hit(
-                    side_ui_dist_sq,
-                    PickingRayHit::from_instance_and_t(instance_hash, t),
-                    false,
-                );
             }
         }
     }

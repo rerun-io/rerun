@@ -5,14 +5,17 @@ use re_renderer::{
     LineStripSeriesBuilder, PointCloudBuilder,
 };
 
-use crate::misc::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
+use crate::{
+    misc::instance_hash_conversions::picking_layer_id_from_instance_path_hash,
+    ui::view_spatial::scene::scene_part::instance_path_hash_for_picking,
+};
 
 use super::MeshSource;
 
 /// Primitives sent off to `re_renderer`.
 /// (Some meta information still relevant to ui setup as well)
 ///
-/// TODO(andreas): Right now we're using `re_renderer` data structures for reading (bounding box & picking).
+/// TODO(andreas): Right now we're using `re_renderer` data structures for reading (bounding box).
 ///                 In the future, this will be more limited as we're going to gpu staging data as soon as possible
 ///                 which is very slow to read. See [#594](https://github.com/rerun-io/rerun/pull/594)
 pub struct SceneSpatialPrimitives {
@@ -24,7 +27,7 @@ pub struct SceneSpatialPrimitives {
     pub textured_rectangles_ids: Vec<InstancePathHash>,
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
 
-    pub line_strips: LineStripSeriesBuilder<InstancePathHash>,
+    pub line_strips: LineStripSeriesBuilder,
     pub points: PointCloudBuilder,
     pub meshes: Vec<MeshSource>,
     pub depth_clouds: DepthClouds,
@@ -177,7 +180,13 @@ impl SceneSpatialPrimitives {
         let line_radius = re_renderer::Size::new_scene(axis_length * 0.05);
         let origin = transform.translation();
 
-        let mut line_batch = self.line_strips.batch("origin axis");
+        let picking_layer_id = picking_layer_id_from_instance_path_hash(instance_path_hash);
+
+        let mut line_batch = self
+            .line_strips
+            .batch("origin axis")
+            .picking_object_id(picking_layer_id.object);
+
         line_batch
             .add_segment(
                 origin,
@@ -186,7 +195,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_X)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance_path_hash);
+            .picking_instance_id(picking_layer_id.instance);
         line_batch
             .add_segment(
                 origin,
@@ -195,7 +204,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Y)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance_path_hash);
+            .picking_instance_id(picking_layer_id.instance);
         line_batch
             .add_segment(
                 origin,
@@ -204,6 +213,6 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Z)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .user_data(instance_path_hash);
+            .picking_instance_id(picking_layer_id.instance);
     }
 }
