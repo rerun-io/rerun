@@ -1,7 +1,4 @@
-use crate::{
-    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
-    IndexTable, PersistentComponentTable, PersistentIndexTable,
-};
+use crate::{DataStore, DataStoreConfig, IndexedBucket, IndexedTable, PersistentIndexedTable};
 
 // ---
 
@@ -10,20 +7,13 @@ use crate::{
 pub struct DataStoreStats {
     pub total_timeless_index_rows: u64,
     pub total_timeless_index_size_bytes: u64,
-    pub total_timeless_component_rows: u64,
-    pub total_timeless_component_size_bytes: u64,
 
     pub total_temporal_index_rows: u64,
     pub total_temporal_index_size_bytes: u64,
     pub total_temporal_index_buckets: u64,
-    pub total_temporal_component_rows: u64,
-    pub total_temporal_component_size_bytes: u64,
-    pub total_temporal_component_buckets: u64,
 
     pub total_index_rows: u64,
     pub total_index_size_bytes: u64,
-    pub total_component_rows: u64,
-    pub total_component_size_bytes: u64,
 
     pub config: DataStoreConfig,
 }
@@ -34,40 +24,25 @@ impl DataStoreStats {
 
         let total_timeless_index_rows = store.total_timeless_index_rows();
         let total_timeless_index_size_bytes = store.total_timeless_index_size_bytes();
-        let total_timeless_component_rows = store.total_timeless_component_rows();
-        let total_timeless_component_size_bytes = store.total_timeless_component_size_bytes();
 
         let total_temporal_index_rows = store.total_temporal_index_rows();
         let total_temporal_index_size_bytes = store.total_temporal_index_size_bytes();
         let total_temporal_index_buckets = store.total_temporal_index_buckets();
-        let total_temporal_component_rows = store.total_temporal_component_rows();
-        let total_temporal_component_size_bytes = store.total_temporal_component_size_bytes();
-        let total_temporal_component_buckets = store.total_temporal_component_buckets();
 
         let total_index_rows = total_timeless_index_rows + total_temporal_index_rows;
         let total_index_size_bytes =
             total_timeless_index_size_bytes + total_temporal_index_size_bytes;
-        let total_component_rows = total_timeless_component_rows + total_temporal_component_rows;
-        let total_component_size_bytes =
-            total_timeless_component_size_bytes + total_temporal_component_size_bytes;
 
         Self {
             total_timeless_index_rows,
             total_timeless_index_size_bytes,
-            total_timeless_component_rows,
-            total_timeless_component_size_bytes,
 
             total_temporal_index_rows,
             total_temporal_index_size_bytes,
             total_temporal_index_buckets,
-            total_temporal_component_rows,
-            total_temporal_component_size_bytes,
-            total_temporal_component_buckets,
 
             total_index_rows,
             total_index_size_bytes,
-            total_component_rows,
-            total_component_size_bytes,
 
             config: store.config.clone(),
         }
@@ -78,95 +53,51 @@ impl DataStoreStats {
 
 impl DataStore {
     /// Returns the number of timeless index rows stored across this entire store, i.e. the sum of
-    /// the number of rows across all of its timeless index tables.
+    /// the number of rows across all of its timeless indexed tables.
+    #[inline]
     pub fn total_timeless_index_rows(&self) -> u64 {
         crate::profile_function!();
-        self.timeless_indices
+        self.timeless_tables
             .values()
             .map(|table| table.total_rows())
             .sum()
     }
 
     /// Returns the size of the timeless index data stored across this entire store, i.e. the sum
-    /// of the size of the data stored across all of its timeless index tables, in bytes.
+    /// of the size of the data stored across all of its timeless indexed tables, in bytes.
+    #[inline]
     pub fn total_timeless_index_size_bytes(&self) -> u64 {
         crate::profile_function!();
-        self.timeless_indices
-            .values()
-            .map(|table| table.total_size_bytes())
-            .sum()
-    }
-
-    /// Returns the number of timeless component rows stored across this entire store, i.e. the
-    /// sum of the number of rows across all of its timeless component tables.
-    pub fn total_timeless_component_rows(&self) -> u64 {
-        crate::profile_function!();
-        self.timeless_components
-            .values()
-            .map(|table| table.total_rows())
-            .sum()
-    }
-
-    /// Returns the size of the timeless component data stored across this entire store, i.e. the
-    /// sum of the size of the data stored across all of its timeless component tables, in bytes.
-    pub fn total_timeless_component_size_bytes(&self) -> u64 {
-        crate::profile_function!();
-        self.timeless_components
+        self.timeless_tables
             .values()
             .map(|table| table.total_size_bytes())
             .sum()
     }
 
     /// Returns the number of temporal index rows stored across this entire store, i.e. the sum of
-    /// the number of rows across all of its temporal index tables.
+    /// the number of rows across all of its temporal indexed tables.
+    #[inline]
     pub fn total_temporal_index_rows(&self) -> u64 {
         crate::profile_function!();
-        self.indices.values().map(|table| table.total_rows()).sum()
+        self.tables.values().map(|table| table.total_rows()).sum()
     }
 
     /// Returns the size of the temporal index data stored across this entire store, i.e. the sum
-    /// of the size of the data stored across all of its temporal index tables, in bytes.
+    /// of the size of the data stored across all of its temporal indexed tables, in bytes.
+    #[inline]
     pub fn total_temporal_index_size_bytes(&self) -> u64 {
         crate::profile_function!();
-        self.indices
+        self.tables
             .values()
             .map(|table| table.total_size_bytes())
             .sum()
     }
 
-    /// Returns the number of temporal index buckets stored across this entire store.
+    /// Returns the number of temporal indexed buckets stored across this entire store.
+    #[inline]
     pub fn total_temporal_index_buckets(&self) -> u64 {
         crate::profile_function!();
-        self.indices
-            .values()
-            .map(|table| table.total_buckets())
-            .sum()
-    }
-
-    /// Returns the number of temporal component rows stored across this entire store, i.e. the
-    /// sum of the number of rows across all of its temporal component tables.
-    pub fn total_temporal_component_rows(&self) -> u64 {
-        crate::profile_function!();
-        self.components
-            .values()
-            .map(|table| table.total_rows())
-            .sum()
-    }
-
-    /// Returns the size of the temporal component data stored across this entire store, i.e. the
-    /// sum of the size of the data stored across all of its temporal component tables, in bytes.
-    pub fn total_temporal_component_size_bytes(&self) -> u64 {
-        crate::profile_function!();
-        self.components
-            .values()
-            .map(|table| table.total_size_bytes())
-            .sum()
-    }
-
-    /// Returns the number of temporal component buckets stored across this entire store.
-    pub fn total_temporal_component_buckets(&self) -> u64 {
-        crate::profile_function!();
-        self.components
+        self.tables
             .values()
             .map(|table| table.total_buckets())
             .sum()
@@ -175,278 +106,54 @@ impl DataStore {
 
 // --- Persistent Indices ---
 
-impl PersistentIndexTable {
+impl PersistentIndexedTable {
     /// Returns the number of rows stored across this table.
+    #[inline]
     pub fn total_rows(&self) -> u64 {
-        self.num_rows
+        self.col_num_instances.len() as _
     }
 
     /// Returns the size of the data stored across this table, in bytes.
+    #[inline]
     pub fn total_size_bytes(&self) -> u64 {
-        self.indices
-            .values()
-            .map(|index| std::mem::size_of_val(index.as_slice()) as u64)
-            .sum::<u64>()
+        self.total_size_bytes
     }
 }
 
 // --- Indices ---
 
-impl IndexTable {
+impl IndexedTable {
     /// Returns the number of rows stored across this entire table, i.e. the sum of the number
     /// of rows stored across all of its buckets.
+    #[inline]
     pub fn total_rows(&self) -> u64 {
-        self.buckets
-            .values()
-            .map(|bucket| bucket.total_rows())
-            .sum()
+        self.total_rows
     }
 
     /// Returns the size of data stored across this entire table, i.e. the sum of the size of
     /// the data stored across all of its buckets, in bytes.
+    #[inline]
     pub fn total_size_bytes(&self) -> u64 {
-        self.buckets
-            .values()
-            .map(|bucket| bucket.total_size_bytes())
-            .sum()
+        self.total_size_bytes
     }
 
     /// Returns the number of buckets stored across this entire table.
+    #[inline]
     pub fn total_buckets(&self) -> u64 {
         self.buckets.len() as _
     }
 }
 
-impl IndexBucket {
+impl IndexedBucket {
     /// Returns the number of rows stored across this bucket.
+    #[inline]
     pub fn total_rows(&self) -> u64 {
-        self.indices.read().times.len() as u64
+        self.inner.read().col_time.len() as u64
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
+    #[inline]
     pub fn total_size_bytes(&self) -> u64 {
-        let IndexBucketIndices {
-            is_sorted: _,
-            time_range: _,
-            times,
-            indices,
-        } = &*self.indices.read();
-
-        std::mem::size_of_val(times.as_slice()) as u64
-            + indices
-                .values()
-                .map(|index| std::mem::size_of_val(index.as_slice()) as u64)
-                .sum::<u64>()
-    }
-}
-
-// --- Persistent Components ---
-
-impl PersistentComponentTable {
-    /// Returns the number of rows stored across this table.
-    pub fn total_rows(&self) -> u64 {
-        self.total_rows
-    }
-
-    /// Returns the size of the data stored across this table, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        self.total_size_bytes
-    }
-}
-
-// --- Components ---
-
-impl ComponentTable {
-    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
-    /// of rows stored across all of its buckets.
-    pub fn total_rows(&self) -> u64 {
-        self.buckets.iter().map(|bucket| bucket.total_rows()).sum()
-    }
-
-    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
-    /// the data stored across all of its buckets, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        self.buckets
-            .iter()
-            .map(|bucket| bucket.total_size_bytes())
-            .sum()
-    }
-
-    /// Returns the number of buckets stored across this entire table.
-    pub fn total_buckets(&self) -> u64 {
-        self.buckets.len() as _
-    }
-}
-
-impl ComponentBucket {
-    /// Returns the number of rows stored across this bucket.
-    pub fn total_rows(&self) -> u64 {
-        self.total_rows
-    }
-
-    /// Returns the size of the data stored across this bucket, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        self.total_size_bytes
-    }
-}
-
-// This test exists because the documentation and online discussions revolving around
-// arrow2's `estimated_bytes_size()` function indicate that there's a lot of limitations and
-// edge cases to be aware of.
-//
-// Also, it's just plain hard to be sure that the answer you get is the answer you're looking
-// for with these kinds of tools. When in doubt.. test everything we're going to need from it.
-//
-// In many ways, this is a specification of what we mean when we ask "what's the size of this
-// Arrow array?".
-#[test]
-#[allow(clippy::from_iter_instead_of_collect)]
-fn test_arrow_estimated_size_bytes() {
-    use arrow2::{
-        array::{Array, Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
-        compute::aggregate::estimated_bytes_size,
-        datatypes::{DataType, Field},
-        offset::Offsets,
-    };
-
-    // simple primitive array
-    {
-        let data = vec![42u64; 100];
-        let array = UInt64Array::from_vec(data.clone()).boxed();
-        assert_eq!(
-            std::mem::size_of_val(data.as_slice()),
-            estimated_bytes_size(&*array)
-        );
-    }
-
-    // utf8 strings array
-    {
-        let data = vec![Some("some very, very, very long string indeed"); 100];
-        let array = Utf8Array::<i32>::from(data.clone()).to_boxed();
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.unwrap().as_bytes()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(5600, raw_size_bytes);
-        assert_eq!(4404, arrow_size_bytes); // smaller because validity bitmaps instead of opts
-    }
-
-    // simple primitive list array
-    {
-        let data = std::iter::repeat(vec![42u64; 100])
-            .take(50)
-            .collect::<Vec<_>>();
-        let array = {
-            let array_flattened =
-                UInt64Array::from_vec(data.clone().into_iter().flatten().collect()).boxed();
-
-            ListArray::<i32>::new(
-                ListArray::<i32>::default_datatype(DataType::UInt64),
-                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
-                    .unwrap()
-                    .into(),
-                array_flattened,
-                None,
-            )
-            .boxed()
-        };
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(41200, raw_size_bytes);
-        assert_eq!(40200, arrow_size_bytes); // smaller because smaller inner headers
-    }
-
-    // compound type array
-    {
-        #[derive(Clone, Copy)]
-        struct Point {
-            x: f64,
-            y: f64,
-        }
-
-        impl Default for Point {
-            fn default() -> Self {
-                Self { x: 42.0, y: 666.0 }
-            }
-        }
-
-        let data = vec![Point::default(); 100];
-        let array = {
-            let x = Float64Array::from_vec(data.iter().map(|p| p.x).collect()).boxed();
-            let y = Float64Array::from_vec(data.iter().map(|p| p.y).collect()).boxed();
-            let fields = vec![
-                Field::new("x", DataType::Float64, false),
-                Field::new("y", DataType::Float64, false),
-            ];
-            StructArray::new(DataType::Struct(fields), vec![x, y], None).boxed()
-        };
-
-        let raw_size_bytes = std::mem::size_of_val(data.as_slice());
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(1600, raw_size_bytes);
-        assert_eq!(1600, arrow_size_bytes);
-    }
-
-    // compound type list array
-    {
-        #[derive(Clone, Copy)]
-        struct Point {
-            x: f64,
-            y: f64,
-        }
-
-        impl Default for Point {
-            fn default() -> Self {
-                Self { x: 42.0, y: 666.0 }
-            }
-        }
-
-        let data = std::iter::repeat(vec![Point::default(); 100])
-            .take(50)
-            .collect::<Vec<_>>();
-        let array: Box<dyn Array> = {
-            let array = {
-                let x =
-                    Float64Array::from_vec(data.iter().flatten().map(|p| p.x).collect()).boxed();
-                let y =
-                    Float64Array::from_vec(data.iter().flatten().map(|p| p.y).collect()).boxed();
-                let fields = vec![
-                    Field::new("x", DataType::Float64, false),
-                    Field::new("y", DataType::Float64, false),
-                ];
-                StructArray::new(DataType::Struct(fields), vec![x, y], None)
-            };
-
-            ListArray::<i32>::new(
-                ListArray::<i32>::default_datatype(array.data_type().clone()),
-                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
-                    .unwrap()
-                    .into(),
-                array.boxed(),
-                None,
-            )
-            .boxed()
-        };
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(81200, raw_size_bytes);
-        assert_eq!(80200, arrow_size_bytes); // smaller because smaller inner headers
+        self.inner.read().total_size_bytes
     }
 }

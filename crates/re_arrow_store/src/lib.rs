@@ -33,17 +33,14 @@ pub mod polars_util;
 pub mod test_util;
 
 pub use self::arrow_util::ArrayExt;
-pub use self::store::{
-    DataStore, DataStoreConfig, IndexBucket, IndexRowNr, IndexTable, RowIndex, RowIndexKind,
-};
+pub use self::store::{DataStore, DataStoreConfig};
 pub use self::store_gc::GarbageCollectionTarget;
 pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_stats::DataStoreStats;
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
-    ComponentBucket, ComponentTable, IndexBucketIndices, PersistentComponentTable,
-    PersistentIndexTable, SecondaryIndex, TimeIndex,
+    IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable,
 };
 
 // Re-exports

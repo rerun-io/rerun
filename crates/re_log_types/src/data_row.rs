@@ -2,7 +2,7 @@ use ahash::HashSetExt;
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
-use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, MsgId, TimePoint};
+use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, RowId, TimePoint};
 
 // ---
 
@@ -134,11 +134,11 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, MsgId, Point2D},
+/// #     component_types::{ColorRGBA, Label, RowId, Point2D},
 /// #     DataRow, Timeline,
 /// # };
 /// #
-/// # let row_id = MsgId::ZERO;
+/// # let row_id = RowId::ZERO;
 /// # let timepoint = [
 /// #     (Timeline::new_sequence("frame_nr"), 42.into()), //
 /// #     (Timeline::new_sequence("clock"), 666.into()),   //
@@ -163,7 +163,7 @@ pub struct DataRow {
     /// Auto-generated `TUID`, uniquely identifying this event and keeping track of the client's
     /// wall-clock.
     // TODO(#1619): introduce RowId & TableId
-    pub row_id: MsgId,
+    pub row_id: RowId,
 
     /// User-specified [`TimePoint`] for this event.
     pub timepoint: TimePoint,
@@ -190,7 +190,7 @@ impl DataRow {
     /// - one or more cell isn't 0, 1 or `num_instances` long,
     /// - two or more cells share the same component type.
     pub fn try_from_cells(
-        row_id: MsgId,
+        row_id: RowId,
         timepoint: impl Into<TimePoint>,
         entity_path: impl Into<EntityPath>,
         num_instances: u32,
@@ -238,7 +238,7 @@ impl DataRow {
         // we need to craft an array of `MsgId`s that matches the length of the other components.
         // TODO(#1619): This goes away once the store supports the new control columns
         use crate::Component as _;
-        if !components.contains(&MsgId::name()) {
+        if !components.contains(&RowId::name()) {
             let num_instances = this.num_instances();
             this.cells.0.push(DataCell::from_native(
                 vec![row_id; num_instances as _].iter(),
@@ -256,7 +256,7 @@ impl DataRow {
     ///
     /// See [`Self::try_from_cells`] for the fallible alternative.
     pub fn from_cells(
-        row_id: MsgId,
+        row_id: RowId,
         timepoint: impl Into<TimePoint>,
         entity_path: impl Into<EntityPath>,
         num_instances: u32,
@@ -277,7 +277,7 @@ impl DataRow {
 
 impl DataRow {
     #[inline]
-    pub fn row_id(&self) -> MsgId {
+    pub fn row_id(&self) -> RowId {
         self.row_id
     }
 
@@ -297,7 +297,7 @@ impl DataRow {
     }
 
     #[inline]
-    pub fn components(&self) -> impl ExactSizeIterator<Item = ComponentName> + '_ {
+    pub fn component_names(&self) -> impl ExactSizeIterator<Item = ComponentName> + '_ {
         self.cells.iter().map(|cell| cell.component_name())
     }
 
@@ -332,7 +332,7 @@ impl DataRow {
 
 impl DataRow {
     pub fn from_cells1<C0>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -351,7 +351,7 @@ impl DataRow {
     }
 
     pub fn try_from_cells1<C0>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -371,7 +371,7 @@ impl DataRow {
     }
 
     pub fn from_cells2<C0, C1>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -394,7 +394,7 @@ impl DataRow {
     }
 
     pub fn try_from_cells2<C0, C1>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -419,7 +419,7 @@ impl DataRow {
     }
 
     pub fn from_cells3<C0, C1, C2>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -444,7 +444,7 @@ impl DataRow {
     }
 
     pub fn try_from_cells3<C0, C1, C2>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -502,7 +502,7 @@ mod tests {
 
     #[test]
     fn data_row_error_num_instances() {
-        let row_id = MsgId::ZERO;
+        let row_id = RowId::ZERO;
         let timepoint = TimePoint::timeless();
 
         let num_instances = 2;
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn data_row_error_duped_components() {
-        let row_id = MsgId::ZERO;
+        let row_id = RowId::ZERO;
         let timepoint = TimePoint::timeless();
 
         let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];

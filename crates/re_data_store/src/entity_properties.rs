@@ -1,8 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_log_types::{
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    DeserializableComponent, EntityPath,
-};
+use re_log_types::{DeserializableComponent, EntityPath};
 
 use crate::log_db::EntityDb;
 
@@ -211,14 +208,10 @@ where
     // single components this is easy enough.
     let data_store = &entity_db.data_store;
 
-    let components = [C::name()];
+    let cells = data_store.latest_at(query, entity_path, C::name(), &[C::name()])?;
+    let cell = cells.get(0)?.as_ref()?;
 
-    let row_indices = data_store.latest_at(query, entity_path, C::name(), &components)?;
-
-    let results = data_store.get(&components, &row_indices);
-    let arr = results.get(0)?.as_ref()?.as_ref();
-
-    let mut iter = arrow_array_deserialize_iterator::<C>(arr).ok()?;
+    let mut iter = cell.try_as_native::<C>().ok()?;
 
     let component = iter.next();
 

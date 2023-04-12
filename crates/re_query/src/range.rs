@@ -93,27 +93,21 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         .chain(
             store
                 .range(query, ent_path, components)
-                .map(move |(time, _, row_indices)| {
-                    let results = store.get(&components, &row_indices);
-                    let instance_keys = results[cluster_col].clone(); // shallow
-                    let cwis = results
+                .map(move |(time, _, mut cells)| {
+                    let instance_keys = cells[cluster_col].take().map(|cell| cell.as_arrow());
+                    let is_primary = cells[primary_col].is_some();
+                    let cwis = cells
                         .into_iter()
                         .enumerate()
-                        .map(|(i, res)| {
-                            res.map(|res| {
-                                ComponentWithInstances {
-                                    name: components[i],
-                                    instance_keys: instance_keys.clone(), // shallow
-                                    values: res.clone(),                  // shallow
-                                }
+                        .map(|(i, cell)| {
+                            cell.map(|cell| ComponentWithInstances {
+                                name: components[i],
+                                instance_keys: instance_keys.clone(), /* shallow */
+                                values: cell.as_arrow(),
                             })
                         })
                         .collect::<Vec<_>>();
-                    (
-                        time,
-                        row_indices[primary_col].is_some(), // is_primary
-                        cwis,
-                    )
+                    (time, is_primary, cwis)
                 }),
         )
         .filter_map(move |(time, is_primary, cwis)| {
