@@ -67,10 +67,12 @@ def run_example(example: str) -> None:
     python_process = subprocess.Popen([python_executable, example, "--connect", "--addr", f"127.0.0.1:{port}"])
 
     print("Waiting for python process to finish…")
-    python_process.wait(timeout=30)
+    returncode = python_process.wait(timeout=30)
+    assert returncode == 0, f"python process exited with error code {returncode}"
 
     print("Waiting for rerun process to finish…")
-    rerun_process.wait(timeout=30)
+    returncode = rerun_process.wait(timeout=30)
+    assert returncode == 0, f"rerun process exited with error code {returncode}"
 
 
 if __name__ == "__main__":
