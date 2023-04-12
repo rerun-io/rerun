@@ -1,8 +1,9 @@
 use std::net::SocketAddr;
 
+use pyo3::{exceptions::PyValueError, PyResult};
 use re_log_types::{
-    ApplicationId, ArrowMsg, BeginRecordingMsg, LogMsg, MsgId, PathOp, RecordingId, RecordingInfo,
-    RecordingSource, Time, TimePoint,
+    ApplicationId, ArrowMsg, BeginRecordingMsg, DataRow, DataTableError, LogMsg, MsgId, PathOp,
+    RecordingId, RecordingInfo, RecordingSource, Time, TimePoint,
 };
 
 use rerun::sink::LogSink;
@@ -195,6 +196,18 @@ impl PythonSession {
     /// If the tcp session is disconnected, allow it to quit early and drop unsent messages
     pub fn drop_msgs_if_disconnected(&mut self) {
         self.sink.drop_msgs_if_disconnected();
+    }
+
+    /// Send a single [`DataRow`].
+    pub fn send_row(&mut self, row: DataRow) -> PyResult<()> {
+        let msg = row
+            .into_table()
+            .to_arrow_msg()
+            .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
+
+        self.send(LogMsg::ArrowMsg(self.recording_id(), msg));
+
+        Ok(())
     }
 
     /// Send a [`LogMsg`].

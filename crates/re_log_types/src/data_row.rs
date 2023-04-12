@@ -326,6 +326,18 @@ impl DataRow {
             .map(|cell| cell.component_name())
             .position(|name| name == *component)
     }
+
+    /// Compute and cache the total (heap) allocated size of each individual underlying
+    /// [`DataCell`].
+    /// This does nothing for cells whose size has already been computed and cached before.
+    ///
+    /// Beware: this is _very_ costly!
+    #[inline]
+    pub fn compute_all_size_bytes(&mut self) {
+        for cell in &mut self.cells.0 {
+            cell.compute_size_bytes();
+        }
+    }
 }
 
 // ---
@@ -482,7 +494,7 @@ impl std::fmt::Display for DataRow {
         }
 
         re_format::arrow::format_table(
-            self.cells.iter().map(|cell| cell.as_arrow_monolist()),
+            self.cells.iter().map(|cell| cell.to_arrow_monolist()),
             self.cells.iter().map(|cell| cell.component_name()),
         )
         .fmt(f)

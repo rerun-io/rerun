@@ -88,7 +88,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # assert_eq!(3, cell.num_instances());
 /// # assert_eq!(cell.datatype(), &Point2D::data_type());
 /// #
-/// # assert_eq!(points, cell.as_native().collect_vec().as_slice());
+/// # assert_eq!(points, cell.to_native().collect_vec().as_slice());
 /// ```
 ///
 #[derive(Debug, Clone, PartialEq)]
@@ -113,6 +113,12 @@ pub struct DataCellInner {
     //
     // TODO(#1696): Store this within the datatype itself.
     pub(crate) name: ComponentName,
+
+    /// The size in bytes of both the underlying arrow data _and_ the inner cell itself.
+    ///
+    /// This is always zero unless [`Self::compute_size_bytes`] has been called, which is a very
+    /// costly operation.
+    pub(crate) size_bytes: u64,
 
     /// A uniformly typed list of values for the given component type: `[C, C, C, ...]`
     ///
@@ -223,7 +229,11 @@ impl DataCell {
         values: Box<dyn arrow2::array::Array>,
     ) -> DataCellResult<Self> {
         Ok(Self {
-            inner: Arc::new(DataCellInner { name, values }),
+            inner: Arc::new(DataCellInner {
+                name,
+                size_bytes: 0,
+                values,
+            }),
         })
     }
 
@@ -256,11 +266,16 @@ impl DataCell {
         datatype: arrow2::datatypes::DataType,
     ) -> DataCellResult<Self> {
         // TODO(cmc): check that it is indeed a component datatype
+
+        let mut inner = DataCellInner {
+            name,
+            size_bytes: 0,
+            values: arrow2::array::new_empty_array(datatype),
+        };
+        inner.compute_size_bytes();
+
         Ok(Self {
-            inner: Arc::new(DataCellInner {
-                name,
-                values: arrow2::array::new_empty_array(datatype),
-            }),
+            inner: Arc::new(inner),
         })
     }
 
@@ -282,7 +297,7 @@ impl DataCell {
     /// If you do use them, try to keep the scope as short as possible: holding on to a raw array
     /// might prevent the datastore from releasing memory from garbage collected data.
     #[inline]
-    pub fn as_arrow(&self) -> Box<dyn arrow2::array::Array> {
+    pub fn to_arrow(&self) -> Box<dyn arrow2::array::Array> {
         self.inner.values.clone() /* shallow */
     }
 
@@ -310,10 +325,10 @@ impl DataCell {
     // TODO(cmc): effectively, this returns a `DataColumn`... think about that.
     #[doc(hidden)]
     #[inline]
-    pub fn as_arrow_monolist(&self) -> Box<dyn arrow2::array::Array> {
+    pub fn to_arrow_monolist(&self) -> Box<dyn arrow2::array::Array> {
         use arrow2::{array::ListArray, offset::Offsets};
 
-        let values = self.as_arrow();
+        let values = self.to_arrow();
         let datatype = self.datatype().clone();
 
         let datatype = ListArray::<i32>::default_datatype(datatype);
@@ -331,7 +346,7 @@ impl DataCell {
     //
     // TODO(#1694): There shouldn't need to be HRTBs (Higher-Rank Trait Bounds) here.
     #[inline]
-    pub fn try_as_native<C: DeserializableComponent>(
+    pub fn try_to_native<C: DeserializableComponent>(
         &self,
     ) -> DataCellResult<impl Iterator<Item = C> + '_>
     where
@@ -344,15 +359,15 @@ impl DataCell {
     /// Returns the contents of the cell as an iterator of native components.
     ///
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
-    /// See [`Self::try_as_native`] for a fallible alternative.
+    /// See [`Self::try_to_native`] for a fallible alternative.
     //
     // TODO(#1694): There shouldn't need to be HRTBs here.
     #[inline]
-    pub fn as_native<C: DeserializableComponent>(&self) -> impl Iterator<Item = C> + '_
+    pub fn to_native<C: DeserializableComponent>(&self) -> impl Iterator<Item = C> + '_
     where
         for<'a> &'a C::ArrayType: IntoIterator,
     {
-        self.try_as_native().unwrap()
+        self.try_to_native().unwrap()
     }
 }
 
@@ -426,6 +441,24 @@ impl DataCell {
             _ => Err(DataCellError::UnsupportedDatatype(arr.data_type().clone())),
         }
     }
+
+    /// Returns the total (heap) allocated size of the cell in bytes, provided that
+    /// [`Self::compute_size_bytes`] has been called first (zero otherwise).
+    ///
+    /// This is an approximation, accurate enough for most purposes (stats, GC trigger, ...).
+    ///
+    /// This is `O(1)`, the value is computed and cached by calling [`Self::compute_size_bytes`].
+    #[inline]
+    pub fn size_bytes(&self) -> u64 {
+        let Self { inner } = self;
+
+        (inner.size_bytes > 0)
+            .then_some(std::mem::size_of_val(inner) as u64 + inner.size_bytes)
+            .unwrap_or_else(|| {
+                re_log::warn_once!("called `DataCell::size_bytes() without computing it first");
+                0
+            })
+    }
 }
 
 // ---
@@ -457,9 +490,13 @@ impl<C: SerializableComponent> From<&Vec<C>> for DataCell {
 
 impl std::fmt::Display for DataCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "DataCell({})",
+            re_format::format_bytes(self.size_bytes() as _)
+        ))?;
         re_format::arrow::format_table(
             // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
-            [&*self.as_arrow_monolist()],
+            [&*self.to_arrow_monolist()],
             [self.component_name()],
         )
         .fmt(f)
@@ -469,15 +506,82 @@ impl std::fmt::Display for DataCell {
 // ---
 
 impl DataCell {
-    /// Returns the total (heap) allocated size of the array in bytes.
+    /// Compute and cache the total (heap) allocated size of the underlying arrow array in bytes.
+    /// This does nothing if the size has already been computed and cached before.
     ///
-    /// Beware: this is costly! Cache the returned value as much as possible.
-    pub fn size_bytes(&self) -> u64 {
-        let DataCellInner { name, values } = &*self.inner;
+    /// The caller must the sole owner of this cell, as this requires mutating an `Arc` under the
+    /// hood. Returns false otherwise.
+    ///
+    /// Beware: this is _very_ costly!
+    #[inline]
+    pub fn compute_size_bytes(&mut self) -> bool {
+        if let Some(inner) = Arc::get_mut(&mut self.inner) {
+            inner.compute_size_bytes();
+            return true;
+        }
+        false
+    }
+}
 
-        std::mem::size_of_val(name) as u64 +
-            // Warning: this is surprisingly costly!
-            arrow2::compute::aggregate::estimated_bytes_size(&**values) as u64
+impl DataCellInner {
+    /// Compute and cache the total (heap) allocated size of the underlying arrow array in bytes.
+    /// This does nothing if the size has already been computed and cached before.
+    ///
+    /// Beware: this is _very_ costly!
+    #[inline]
+    pub fn compute_size_bytes(&mut self) {
+        let Self {
+            name,
+            size_bytes,
+            values,
+        } = self;
+
+        // NOTE: The computed size cannot ever be zero.
+        if *size_bytes > 0 {
+            return;
+        }
+
+        *size_bytes = (std::mem::size_of_val(name)
+            + std::mem::size_of_val(size_bytes)
+            + std::mem::size_of_val(values)) as u64
+            + arrow2::compute::aggregate::estimated_bytes_size(&*self.values) as u64;
+    }
+}
+
+#[test]
+fn data_cell_sizes() {
+    use crate::{component_types::InstanceKey, Component as _};
+    use arrow2::array::UInt64Array;
+
+    // not computed
+    {
+        let cell = DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
+        assert_eq!(0, cell.size_bytes());
+        assert_eq!(0, cell.size_bytes());
+    }
+
+    // zero-sized
+    {
+        let mut cell =
+            DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
+        cell.compute_size_bytes();
+
+        // only the size of the outer & inner cells themselves
+        assert_eq!(56, cell.size_bytes());
+        assert_eq!(56, cell.size_bytes());
+    }
+
+    // anything else
+    {
+        let mut cell = DataCell::from_arrow(
+            InstanceKey::name(),
+            UInt64Array::from_vec(vec![1, 2, 3]).boxed(),
+        );
+        cell.compute_size_bytes();
+
+        // 56 bytes for the inner & outer cells + 3x u64s
+        assert_eq!(80, cell.size_bytes());
+        assert_eq!(80, cell.size_bytes());
     }
 }
 
@@ -499,6 +603,15 @@ fn test_arrow_estimated_size_bytes() {
         datatypes::{DataType, Field},
         offset::Offsets,
     };
+
+    // empty primitive array
+    {
+        let data = vec![];
+        let array = UInt64Array::from_vec(data.clone()).boxed();
+        let sz = estimated_bytes_size(&*array);
+        assert_eq!(0, sz);
+        assert_eq!(std::mem::size_of_val(data.as_slice()), sz);
+    }
 
     // simple primitive array
     {

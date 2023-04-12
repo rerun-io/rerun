@@ -101,7 +101,7 @@ impl DataUi for ArrowMsg {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let table: DataTable = match self.try_into() {
+        let table = match DataTable::from_arrow_msg(self) {
             Ok(table) => table,
             Err(err) => {
                 ui.label(
@@ -113,7 +113,7 @@ impl DataUi for ArrowMsg {
         };
 
         // TODO(cmc): Come up with something a bit nicer once data tables become a common sight.
-        for row in table.as_rows() {
+        for row in table.to_rows() {
             egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
                 ui.monospace("entity_path:");
                 ctx.entity_path_button(ui, None, row.entity_path());

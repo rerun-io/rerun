@@ -34,8 +34,8 @@ impl std::fmt::Display for DataStore {
                 format!(
                     "{} timeless indexed tables, for a total of {} across {} total rows\n",
                     timeless_tables.len(),
-                    format_bytes(self.total_timeless_index_size_bytes() as _),
-                    format_number(self.total_timeless_index_rows() as _)
+                    format_bytes(self.total_timeless_size_bytes() as _),
+                    format_number(self.total_timeless_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "timeless_tables: [\n"))?;
@@ -53,8 +53,8 @@ impl std::fmt::Display for DataStore {
                 format!(
                     "{} indexed tables, for a total of {} across {} total rows\n",
                     tables.len(),
-                    format_bytes(self.total_temporal_index_size_bytes() as _),
-                    format_number(self.total_temporal_index_rows() as _)
+                    format_bytes(self.total_temporal_size_bytes() as _),
+                    format_number(self.total_temporal_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "tables: [\n"))?;
@@ -83,8 +83,8 @@ impl std::fmt::Display for IndexedTable {
             buckets,
             cluster_key: _,
             all_components: _,
-            total_rows: _,
-            total_size_bytes: _,
+            buckets_num_rows: _,
+            buckets_size_bytes: _,
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
@@ -116,8 +116,8 @@ impl std::fmt::Display for IndexedBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
-            format_bytes(self.total_size_bytes() as _),
-            format_number(self.total_rows() as _),
+            format_bytes(self.size_bytes() as _),
+            format_number(self.num_rows() as _),
         ))?;
 
         let time_range = {
@@ -156,7 +156,6 @@ impl std::fmt::Display for PersistentIndexedTable {
             col_row_id: _,
             col_num_instances: _,
             columns: _,
-            total_size_bytes: _,
         } = self;
 
         f.write_fmt(format_args!("entity: {ent_path}\n"))?;

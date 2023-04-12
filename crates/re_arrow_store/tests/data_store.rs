@@ -795,14 +795,14 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
         .iter()
         .map(|(component, row)| {
             let cluster_comp = if let Some(idx) = row.find_cell(&cluster_key) {
-                Series::try_from((cluster_key.as_str(), row.cells[idx].as_arrow_monolist()))
+                Series::try_from((cluster_key.as_str(), row.cells[idx].to_arrow_monolist()))
                     .unwrap()
             } else {
                 let num_instances = row.num_instances();
                 Series::try_from((
                     cluster_key.as_str(),
                     DataCell::from_component::<InstanceKey>(0..num_instances as u64)
-                        .as_arrow_monolist(),
+                        .to_arrow_monolist(),
                 ))
                 .unwrap()
             };
@@ -810,7 +810,7 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
             let comp_idx = row.find_cell(component).unwrap();
             let df = DataFrame::new(vec![
                 cluster_comp,
-                Series::try_from((component.as_str(), row.cells[comp_idx].as_arrow_monolist()))
+                Series::try_from((component.as_str(), row.cells[comp_idx].to_arrow_monolist()))
                     .unwrap(),
             ])
             .unwrap();

@@ -94,7 +94,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
             store
                 .range(query, ent_path, components)
                 .map(move |(time, _, mut cells)| {
-                    let instance_keys = cells[cluster_col].take().map(|cell| cell.as_arrow());
+                    let instance_keys = cells[cluster_col].take().map(|cell| cell.to_arrow());
                     let is_primary = cells[primary_col].is_some();
                     let cwis = cells
                         .into_iter()
@@ -103,7 +103,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                             cell.map(|cell| ComponentWithInstances {
                                 name: components[i],
                                 instance_keys: instance_keys.clone(), /* shallow */
-                                values: cell.as_arrow(),
+                                values: cell.to_arrow(),
                             })
                         })
                         .collect::<Vec<_>>();

@@ -251,13 +251,13 @@ impl MsgSender {
         if let Some(row_transforms) = row_transforms {
             sink.send(LogMsg::ArrowMsg(
                 recording_id,
-                (&row_transforms.into_table()).try_into()?,
+                row_transforms.into_table().to_arrow_msg()?,
             ));
         }
         if let Some(row_splats) = row_splats {
             sink.send(LogMsg::ArrowMsg(
                 recording_id,
-                (&row_splats.into_table()).try_into()?,
+                row_splats.into_table().to_arrow_msg()?,
             ));
         }
         // Always the primary component last so range-based queries will include the other data.
@@ -265,7 +265,7 @@ impl MsgSender {
         if let Some(row_standard) = row_standard {
             sink.send(LogMsg::ArrowMsg(
                 recording_id,
-                (&row_standard.into_table()).try_into()?,
+                row_standard.into_table().to_arrow_msg()?,
             ));
         }
 

@@ -112,7 +112,7 @@ fn pathological_bucket_topology() {
     {
         let num_buckets = store_forward
             .iter_indices()
-            .flat_map(|(_, table)| table.iter_buckets())
+            .flat_map(|(_, table)| table.buckets.values())
             .count();
         assert_eq!(
             7usize,
@@ -127,7 +127,7 @@ fn pathological_bucket_topology() {
     {
         let num_buckets = store_backward
             .iter_indices()
-            .flat_map(|(_, table)| table.iter_buckets())
+            .flat_map(|(_, table)| table.buckets.values())
             .count();
         assert_eq!(
             8usize,
