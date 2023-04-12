@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, Label, Radius, Rect2D},
     Component,
@@ -8,7 +8,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{
@@ -27,7 +27,7 @@ impl Boxes2DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        properties: &EntityProperties,
+        _properties: &EntityProperties,
         entity_view: &EntityView<Rect2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,

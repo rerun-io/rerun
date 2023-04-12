@@ -5,10 +5,7 @@ use re_renderer::{
     LineStripSeriesBuilder, PointCloudBuilder,
 };
 
-use crate::{
-    misc::instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    ui::view_spatial::scene::scene_part::instance_path_hash_for_picking,
-};
+use crate::misc::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
 
 use super::MeshSource;
 

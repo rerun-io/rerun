@@ -62,7 +62,7 @@ impl Points2DPart {
         &self,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
-        properties: &EntityProperties,
+        _properties: &EntityProperties,
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,

@@ -68,7 +68,7 @@ impl Points3DPart {
         &self,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
-        properties: &EntityProperties,
+        _properties: &EntityProperties,
         entity_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,

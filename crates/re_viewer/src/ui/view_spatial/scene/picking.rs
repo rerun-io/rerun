@@ -1,13 +1,10 @@
 //! Handles picking in 2D & 3D spaces.
 
-use itertools::Itertools as _;
-
 use re_data_store::InstancePathHash;
 use re_renderer::PickingLayerProcessor;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
-    math::{line_segment_distance_sq_to_point_2d, ray_closest_t_line_segment},
     misc::instance_hash_conversions::instance_path_hash_from_picking_layer_id,
     ui::view_spatial::eye::Eye,
 };
@@ -44,15 +41,6 @@ pub struct PickingRayHit {
 }
 
 impl PickingRayHit {
-    fn from_instance_and_t(instance_path_hash: InstancePathHash, t: f32) -> Self {
-        Self {
-            instance_path_hash,
-            ray_t: t,
-            info: AdditionalPickingInfo::None,
-            depth_offset: 0,
-        }
-    }
-
     pub fn space_position(&self, ray_in_world: &macaw::Ray3) -> glam::Vec3 {
         ray_in_world.origin + ray_in_world.dir * self.ray_t
     }
@@ -151,9 +139,6 @@ pub struct PickingContext {
     /// The picking ray used. Given in the coordinates of the space the picking is performed in.
     pub ray_in_world: macaw::Ray3,
 
-    /// Transformation from ui coordinates to world coordinates.
-    ui_from_world: glam::Mat4,
-
     /// Multiply with this to convert to pixels from points.
     pixels_from_points: f32,
 }
@@ -180,7 +165,6 @@ impl PickingContext {
             pointer_in_space2d,
             pointer_in_pixel: glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
             pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
-            ui_from_world: eye.ui_from_world(*space2d_from_ui.to()),
             ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
             pixels_from_points,
         }
@@ -211,18 +195,6 @@ impl PickingContext {
             transparent_hits: Vec::new(),
         };
 
-        let SceneSpatialPrimitives {
-            bounding_box: _,
-            textured_rectangles,
-            textured_rectangles_ids,
-            line_strips,
-            points: _,
-            meshes: _,
-            depth_clouds: _, // no picking for depth clouds yet
-            any_outlines: _,
-        } = primitives;
-
-        // GPU based picking.
         picking_gpu(
             render_ctx,
             gpu_readback_identifier,
@@ -230,12 +202,11 @@ impl PickingContext {
             self,
             previous_picking_result,
         );
-
         picking_textured_rects(
             self,
             &mut state,
-            textured_rectangles,
-            textured_rectangles_ids,
+            &primitives.textured_rectangles,
+            &primitives.textured_rectangles_ids,
         );
         picking_ui_rects(self, &mut state, ui_data);
 

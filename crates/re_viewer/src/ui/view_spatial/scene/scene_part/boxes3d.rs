@@ -62,7 +62,7 @@ impl Boxes3DPart {
             let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
             let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
 
-            let mut box_lines = line_batch
+            let box_lines = line_batch
                 .add_box_outline(transform)
                 .radius(radius)
                 .color(color)

@@ -34,7 +34,7 @@ use crate::{
         Annotations, DefaultColor,
     },
 };
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
+use re_data_store::{EntityPath, InstancePathHash};
 
 pub trait ScenePart {
     fn load(

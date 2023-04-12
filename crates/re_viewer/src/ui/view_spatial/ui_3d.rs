@@ -13,7 +13,6 @@ use re_renderer::{
 use crate::{
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
-        data_blueprint::DataBlueprintTree,
         view_spatial::{
             ui::{create_labels, outline_config, picking, screenshot_context_menu},
             ui_renderer_bridge::{

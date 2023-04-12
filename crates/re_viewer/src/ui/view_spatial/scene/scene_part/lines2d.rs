@@ -13,7 +13,7 @@ use crate::{
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, ScenePart};
 
 pub struct Lines2DPart;
 
@@ -22,7 +22,7 @@ impl Lines2DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        properties: &EntityProperties,
+        _properties: &EntityProperties,
         entity_view: &EntityView<LineStrip2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -51,7 +51,7 @@ impl Lines2DPart {
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            let mut lines = line_batch
+            let lines = line_batch
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
                 .radius(radius)

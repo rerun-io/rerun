@@ -1,7 +1,7 @@
 use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
-use re_data_store::{entity_properties, EntityPath, EntityPropertyMap};
+use re_data_store::{EntityPath, EntityPropertyMap};
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
 use super::{
@@ -12,7 +12,6 @@ use super::{
 use crate::{
     misc::{HoveredSpace, SpaceViewHighlights},
     ui::{
-        data_blueprint::DataBlueprintTree,
         view_spatial::{
             ui::outline_config,
             ui_renderer_bridge::{

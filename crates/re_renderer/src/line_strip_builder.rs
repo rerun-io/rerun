@@ -162,7 +162,7 @@ impl<'a> LineBatchBuilder<'a> {
     /// Sets the picking object id for every element in the batch.
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
         //self.batch_mut().picking_object_id = picking_object_id;
-        todo!("");
+        //todo!("");
         self
     }
 
@@ -401,7 +401,8 @@ impl<'a> LineStripBuilder<'a> {
     }
 
     pub fn picking_instance_id(self, instance_id: PickingLayerInstanceId) -> Self {
-        todo!()
+        //todo!()
+        self
     }
 
     /// Sets an individual outline mask ids.

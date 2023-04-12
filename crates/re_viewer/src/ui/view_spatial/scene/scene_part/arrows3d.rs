@@ -8,14 +8,11 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{
-        instance_hash_conversions::picking_layer_id_from_instance_path_hash, SpaceViewHighlights,
-        TransformCache, ViewerContext,
-    },
+    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, ScenePart};
 
 pub struct Arrows3DPart;
 
@@ -65,7 +62,7 @@ impl Arrows3DPart {
             let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
             let end = origin + vector;
 
-            let mut segment = line_batch
+            let segment = line_batch
                 .add_segment(origin, end)
                 .radius(radius)
                 .color(color)
