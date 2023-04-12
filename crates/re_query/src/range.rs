@@ -106,7 +106,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                                     ComponentWithInstances {
                                         name: components[i],
                                         instance_keys: instance_keys.clone(), /* shallow */
-                                        values: cell.to_arrow(),
+                                        values: cell,
                                     },
                                 )
                             })

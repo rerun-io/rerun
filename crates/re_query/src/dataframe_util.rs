@@ -145,8 +145,7 @@ impl ComponentWithInstances {
         let instance_keys: Vec<Option<InstanceKey>> =
             self.iter_instance_keys()?.map(Some).collect_vec();
 
-        let values =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.values.as_ref())?.collect_vec();
+        let values = self.values.try_to_native_opt()?.collect_vec();
 
         df_builder2::<InstanceKey, C0>(&instance_keys, &values)
     }
@@ -160,8 +159,7 @@ where
     pub fn as_df1(&self) -> crate::Result<DataFrame> {
         let instance_keys = self.primary.iter_instance_keys()?.map(Some).collect_vec();
 
-        let primary_values =
-            arrow_array_deserialize_iterator(self.primary.values.as_ref())?.collect_vec();
+        let primary_values = self.primary.values.try_to_native_opt()?.collect_vec();
 
         df_builder2::<InstanceKey, Primary>(&instance_keys, &primary_values)
     }
@@ -173,8 +171,7 @@ where
     {
         let instance_keys = self.primary.iter_instance_keys()?.map(Some).collect_vec();
 
-        let primary_values =
-            arrow_array_deserialize_iterator(self.primary.values.as_ref())?.collect_vec();
+        let primary_values = self.primary.values.try_to_native_opt()?.collect_vec();
 
         let c1_values = self.iter_component::<C1>()?.collect_vec();
 

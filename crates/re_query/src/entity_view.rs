@@ -7,7 +7,7 @@ use re_log_types::{
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    Component, ComponentName, DeserializableComponent, RowId, SerializableComponent,
+    Component, ComponentName, DataCell, DeserializableComponent, RowId, SerializableComponent,
 };
 
 use crate::QueryError;
@@ -23,7 +23,7 @@ pub struct ComponentWithInstances {
     pub(crate) name: ComponentName,
     // TODO(jleibs): Remove optional once the store guarantees this will always exist
     pub(crate) instance_keys: Option<Box<dyn Array>>,
-    pub(crate) values: Box<dyn Array>,
+    pub(crate) values: DataCell,
 }
 
 impl ComponentWithInstances {
@@ -33,11 +33,11 @@ impl ComponentWithInstances {
 
     /// Number of values. 1 for splats.
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.values.num_instances() as _
     }
 
     pub fn is_empty(&self) -> bool {
-        self.values.len() == 0
+        self.values.is_empty()
     }
 
     /// Iterate over the instance keys
@@ -68,7 +68,7 @@ impl ComponentWithInstances {
         }
 
         Ok(arrow_array_deserialize_iterator::<Option<C>>(
-            self.values.as_ref(),
+            self.values.as_arrow_ref(),
         )?)
     }
 
@@ -110,16 +110,16 @@ impl ComponentWithInstances {
                 0
             } else {
                 // Otherwise binary search to find the offset of the instance
-                keys.binary_search(&instance_key.0).ok()?
+                keys.binary_search(&instance_key.0).ok()? as u32
             }
         } else {
             // If `instance_keys` is not set, then offset is the instance because the implicit
             // index is a sequential list
-            let offset = instance_key.0 as usize;
-            (offset < self.values.len()).then_some(offset)?
+            let offset = instance_key.0 as u32;
+            (offset < self.values.num_instances()).then_some(offset)?
         };
 
-        Some(self.values.slice(offset, 1))
+        Some(self.values.as_arrow_ref().slice(offset as _, 1))
     }
 
     /// Produce a `ComponentWithInstances` from native component types
@@ -140,7 +140,7 @@ impl ComponentWithInstances {
             None
         };
 
-        let values = arrow_serialize_to_mutable_array::<C, C, &Vec<C>>(values)?.as_box();
+        let values = DataCell::from_native(values);
 
         Ok(ComponentWithInstances {
             name: C::name(),
@@ -265,7 +265,7 @@ impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
         let primary_table = arrow::format_table(
             [
                 self.primary.instance_keys.as_ref().unwrap().as_ref(),
-                self.primary.values.as_ref(),
+                self.primary.values.as_arrow_ref(),
             ],
             ["InstanceId", self.primary.name.as_str()],
         );
@@ -337,7 +337,7 @@ where
             let mut component_instance_key_iter = component.iter_instance_keys()?;
 
             let component_value_iter =
-                arrow_array_deserialize_iterator::<Option<C>>(component.values.as_ref())?;
+                arrow_array_deserialize_iterator::<Option<C>>(component.values.as_arrow_ref())?;
 
             let next_component_instance_key = component_instance_key_iter.next();
 
@@ -349,7 +349,7 @@ where
                 splatted_component_value: None,
             }))
         } else {
-            let nulls = (0..self.primary.values.len()).map(|_| None);
+            let nulls = (0..self.primary.values.num_instances()).map(|_| None);
             Ok(itertools::Either::Right(nulls))
         }
     }
