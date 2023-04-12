@@ -73,12 +73,6 @@ struct VertexOut {
     @location(5) @interpolate(flat)
     fragment_flags: u32,
 
-    // TODO(andreas): picking layer instance are only used in some passes.
-    // Once we have shader variant support we should remove the unused ones
-    // (it's unclear how good shader compilers are at removing unused outputs and associated texture fetches)
-    // TODO(andreas): Is fetching picking layer in the fragment shader maybe more efficient?
-    // Yes, that's more fetches but all of these would be cache hits whereas vertex data pass through can be expensive, (especially on tiler architectures!)
-
     @location(6) @interpolate(flat)
     picking_instance_id: UVec2,
 };
