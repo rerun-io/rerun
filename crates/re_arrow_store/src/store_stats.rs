@@ -2,13 +2,12 @@ use nohash_hasher::IntMap;
 use re_log_types::{ComponentName, DataCellColumn};
 
 use crate::{
-    store::IndexedBucketInner, DataStore, DataStoreConfig, IndexedBucket, IndexedTable,
-    PersistentIndexedTable,
+    store::IndexedBucketInner, DataStore, IndexedBucket, IndexedTable, PersistentIndexedTable,
 };
 
 // ---
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub struct DataStoreStats {
     pub total_timeless_rows: u64,
     pub total_timeless_size_bytes: u64,
@@ -19,8 +18,6 @@ pub struct DataStoreStats {
 
     pub total_rows: u64,
     pub total_size_bytes: u64,
-
-    pub config: DataStoreConfig,
 }
 
 impl DataStoreStats {
@@ -47,8 +44,6 @@ impl DataStoreStats {
 
             total_rows,
             total_size_bytes,
-
-            config: store.config.clone(),
         }
     }
 }

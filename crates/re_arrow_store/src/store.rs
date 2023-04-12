@@ -14,7 +14,7 @@ use re_log_types::{
 
 // --- Data store ---
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataStoreConfig {
     /// The maximum number of rows in an indexed bucket before triggering a split.
     /// Does not apply to timeless data.
@@ -199,6 +199,11 @@ impl DataStore {
     /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn cluster_key(&self) -> ComponentName {
         self.cluster_key
+    }
+
+    /// See [`DataStoreConfig`] for more information about configuration.
+    pub fn config(&self) -> &DataStoreConfig {
+        &self.config
     }
 
     /// Lookup the arrow [`DataType`] of a [`re_log_types::Component`] in the internal

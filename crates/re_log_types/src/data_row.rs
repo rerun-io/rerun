@@ -115,7 +115,6 @@ impl RowId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
 
     #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
     }

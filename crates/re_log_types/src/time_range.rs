@@ -38,6 +38,7 @@ impl TimeRange {
         self.min.as_i64().abs_diff(self.max.as_i64())
     }
 
+    #[inline]
     pub fn center(&self) -> TimeInt {
         self.min + TimeInt::from((self.abs_length() / 2) as i64)
     }
@@ -45,6 +46,11 @@ impl TimeRange {
     #[inline]
     pub fn contains(&self, time: TimeInt) -> bool {
         self.min <= time && time <= self.max
+    }
+
+    #[inline]
+    pub fn intersects(&self, other: Self) -> bool {
+        self.min <= other.max && self.max >= other.min
     }
 
     #[inline]
