@@ -42,12 +42,13 @@ pub trait ScenePart {
 
 /// Computes the instance hash that should be used for picking (in turn for selecting/hover)
 ///
-/// TODO(andreas): Resolve the picking upon picking instead of doing it ahead of time here. This will speed up things.
+/// TODO(andreas): Resolve the hash-for-picking when retrieving the picking result instead of doing it ahead of time here to speed up things.
+///                 (gpu picking would always get the "most fine grained hash" which we could then resolve to groups etc. depending on selection state)
 /// Right now this is a bit hard to do since number of instances depends on the Primary. This is expected to change soon.
-pub fn instance_path_hash_for_picking<T: re_log_types::Component>(
+pub fn instance_path_hash_for_picking<C: re_log_types::Component>(
     ent_path: &EntityPath,
     instance_key: re_log_types::component_types::InstanceKey,
-    entity_view: &re_query::EntityView<T>,
+    entity_view: &re_query::EntityView<C>,
     props: &EntityProperties,
     any_part_selected: bool,
 ) -> InstancePathHash {
@@ -65,13 +66,17 @@ pub fn instance_path_hash_for_picking<T: re_log_types::Component>(
 ///
 /// Assumes the entity is interactive.
 ///
-/// TODO(andreas): Resolve the picking upon picking instead of doing it ahead of time here. This will speed up things.
+/// TODO(andreas): Resolve the hash-for-picking when retrieving the picking result instead of doing it ahead of time here to speed up things.
+///                 (gpu picking would always get the "most fine grained hash" which we could then resolve to groups etc. depending on selection state)
 /// Right now this is a bit hard to do since number of instances depends on the Primary. This is expected to change soon.
-pub fn instance_key_for_picking<T: re_log_types::Component>(
+pub fn instance_key_for_picking<C: re_log_types::Component>(
     instance_key: re_log_types::component_types::InstanceKey,
-    entity_view: &re_query::EntityView<T>,
+    entity_view: &re_query::EntityView<C>,
     any_part_selected: bool,
 ) -> re_log_types::component_types::InstanceKey {
+    // If no part of the entity is selected or if there is only one instance, selecting
+    // should select the entire entity, not the specific instance.
+    // (the splat key means that no particular instance is selected but all at once instead)
     if entity_view.num_instances() == 1 || !any_part_selected {
         re_log_types::component_types::InstanceKey::SPLAT
     } else {
@@ -80,9 +85,9 @@ pub fn instance_key_for_picking<T: re_log_types::Component>(
 }
 
 /// See [`instance_key_for_picking`]
-pub fn instance_key_to_picking_id<T: re_log_types::Component>(
+pub fn instance_key_to_picking_id<C: re_log_types::Component>(
     instance_key: re_log_types::component_types::InstanceKey,
-    entity_view: &re_query::EntityView<T>,
+    entity_view: &re_query::EntityView<C>,
     any_part_selected: bool,
 ) -> re_renderer::PickingLayerInstanceId {
     re_renderer::PickingLayerInstanceId(
