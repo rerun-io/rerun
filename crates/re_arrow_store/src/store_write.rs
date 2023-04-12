@@ -214,7 +214,8 @@ impl DataStore {
             let values =
                 arrow2::array::UInt64Array::from_vec((0..num_instances as u64).collect_vec())
                     .boxed();
-            let cell = DataCell::from_arrow(InstanceKey::name(), values);
+            let mut cell = DataCell::from_arrow(InstanceKey::name(), values);
+            cell.compute_size_bytes();
 
             self.cluster_cell_cache
                 .insert(num_instances, cell.clone() /* shallow */);

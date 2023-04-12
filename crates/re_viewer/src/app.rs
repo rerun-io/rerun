@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
-use re_arrow_store::DataStoreStats;
+use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
@@ -389,6 +389,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
     ) {
         let frame = egui::Frame {
@@ -405,6 +406,7 @@ impl App {
                     ui,
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
+                    store_config,
                     store_stats,
                 );
             });
@@ -471,9 +473,11 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
+        let store_config = self.log_db().entity_db.data_store.config().clone();
         let store_stats = DataStoreStats::from_store(&self.log_db().entity_db.data_store);
 
-        self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
+        // do first, before doing too many allocations
+        self.memory_panel.update(&gpu_resource_stats, &store_stats);
 
         self.check_keyboard_shortcuts(egui_ctx);
 
@@ -502,7 +506,7 @@ impl eframe::App for App {
 
                 top_panel(ui, frame, self, &gpu_resource_stats);
 
-                self.memory_panel_ui(ui, &gpu_resource_stats, &store_stats);
+                self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
                 let selected_app_id = log_db

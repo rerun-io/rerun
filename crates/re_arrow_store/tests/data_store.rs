@@ -20,7 +20,8 @@ use re_log_types::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
-    Component as _, ComponentName, DataCell, DataRow, EntityPath, TimeType, Timeline,
+    Component as _, ComponentName, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType,
+    Timeline,
 };
 
 // TODO(#1619): introduce batching in the testing matrix
@@ -41,6 +42,13 @@ fn all_components() {
 
     let assert_latest_components_at =
         |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
+            // Stress test save-to-disk & load-from-disk
+            let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+            for table in store.to_data_tables(None) {
+                store2.insert_table(&table).unwrap();
+            }
+
+            let mut store = store2;
             let timeline = Timeline::new("frame_nr", TimeType::Sequence);
 
             let components = store.all_components(&timeline, ent_path);
@@ -251,6 +259,7 @@ fn latest_at() {
     for config in re_arrow_store::test_util::all_configs() {
         let mut store = DataStore::new(InstanceKey::name(), config.clone());
         latest_at_impl(&mut store);
+
         // TODO(#1619): bring back garbage collection
         // store.gc(
         //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
@@ -272,32 +281,43 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame3: TimeInt = 3.into();
     let frame4: TimeInt = 4.into();
 
-    // helper to insert a row both as a temporal and timeless payload
-    let insert = |store: &mut DataStore, row| {
+    // helper to insert a table both as a temporal and timeless payload
+    let insert_table = |store: &mut DataStore, table: &DataTable| {
         // insert temporal
-        store.insert_row(row).unwrap();
+        store.insert_table(table).unwrap();
 
         // insert timeless
-        let mut row_timeless = (*row).clone();
-        row_timeless.timepoint = Default::default();
-        store.insert_row(&row_timeless).unwrap();
+        let mut table_timeless = table.clone();
+        table_timeless.col_timelines = Default::default();
+        store.insert_table(&table_timeless).unwrap();
     };
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
-    insert(store, &row1);
 
     let points2 = build_some_point2d(3);
     let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, points2]);
-    insert(store, &row2);
 
     let points3 = build_some_point2d(10);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
-    insert(store, &row3);
 
     let colors4 = build_some_colors(5);
     let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
-    insert(store, &row4);
+
+    insert_table(
+        store,
+        &DataTable::from_rows(
+            TableId::random(),
+            [row1.clone(), row2.clone(), row3.clone(), row4.clone()],
+        ),
+    );
+
+    // Stress test save-to-disk & load-from-disk
+    let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+    for table in store.to_data_tables(None) {
+        store2.insert_table(&table).unwrap();
+    }
+    let mut store = store2;
 
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
@@ -310,7 +330,7 @@ fn latest_at_impl(store: &mut DataStore) {
         let components_all = &[ColorRGBA::name(), Point2D::name()];
 
         let df = polars_util::latest_components(
-            store,
+            &store,
             &LatestAtQuery::new(timeline_frame_nr, frame_nr),
             &ent_path,
             components_all,
@@ -433,10 +453,17 @@ fn range_impl(store: &mut DataStore) {
     // A single timepoint might have several of those! That's one of the behaviors specific to
     // range queries.
     #[allow(clippy::type_complexity)]
-    let mut assert_range_components =
+    let assert_range_components =
         |time_range: TimeRange,
          components: [ComponentName; 2],
          rows_at_times: &[(Option<TimeInt>, &[(ComponentName, &DataRow)])]| {
+            // Stress test save-to-disk & load-from-disk
+            let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+            for table in store.to_data_tables(None) {
+                store2.insert_table(&table).unwrap();
+            }
+            let mut store = store2;
+
             let mut expected_timeless = Vec::<DataFrame>::new();
             let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
 
@@ -456,7 +483,7 @@ fn range_impl(store: &mut DataStore) {
             let components = [InstanceKey::name(), components[0], components[1]];
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let dfs = polars_util::range_components(
-                store,
+                &store,
                 &query,
                 &ent_path,
                 components[1],

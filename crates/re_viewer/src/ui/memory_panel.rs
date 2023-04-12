@@ -1,4 +1,4 @@
-use re_arrow_store::DataStoreStats;
+use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_renderer::WgpuResourcePoolStatistics;
@@ -40,6 +40,7 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
     ) {
         crate::profile_function!();
@@ -52,7 +53,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
+                Self::left_side(ui, limit, gpu_resource_stats, store_config, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -65,6 +66,7 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
     ) {
         ui.strong("Rerun Viewer resource usage");
@@ -81,7 +83,7 @@ impl MemoryPanel {
 
         ui.separator();
         ui.collapsing("Datastore Resources", |ui| {
-            Self::store_stats(ui, store_stats);
+            Self::store_stats(ui, store_config, store_stats);
         });
     }
 
@@ -178,12 +180,14 @@ impl MemoryPanel {
             });
     }
 
-    fn store_stats(ui: &mut egui::Ui, store_stats: &DataStoreStats) {
+    fn store_stats(
+        ui: &mut egui::Ui,
+        store_config: &DataStoreConfig,
+        store_stats: &DataStoreStats,
+    ) {
         egui::Grid::new("store config grid")
             .num_columns(3)
             .show(ui, |ui| {
-                let DataStoreStats { config, .. } = store_stats;
-
                 ui.label(egui::RichText::new("Limits").italics());
                 ui.label("Row limit");
                 ui.end_row();
@@ -201,7 +205,7 @@ impl MemoryPanel {
                 ui.end_row();
 
                 ui.label("Temporal:");
-                label_rows(ui, config.indexed_bucket_num_rows);
+                label_rows(ui, store_config.indexed_bucket_num_rows);
                 ui.end_row();
             });
 
@@ -218,7 +222,6 @@ impl MemoryPanel {
                     total_temporal_buckets,
                     total_rows,
                     total_size_bytes,
-                    config: _,
                 } = *store_stats;
 
                 ui.label(egui::RichText::new("Stats").italics());

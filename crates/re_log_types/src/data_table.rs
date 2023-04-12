@@ -150,7 +150,6 @@ impl TableId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
 
     #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
     }
@@ -403,6 +402,13 @@ impl DataTable {
                         let entry = entry.get_mut();
                         entry.push(Some(time.as_i64()));
                     }
+                }
+            }
+
+            // handle potential sparseness
+            for (timeline, col_time) in &mut col_timelines {
+                if timepoint.get(timeline).is_none() {
+                    col_time.push(None);
                 }
             }
         }
