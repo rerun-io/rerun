@@ -44,8 +44,6 @@ pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
 // TODO(#1757): The timepoint should be serialized as one column per timeline... that would be both
 // more efficient and yield much better debugging views of our tables.
 
-// TODO(#1712): implement fast ser/deser paths for primitive types, both control & data.
-
 // ---
 
 pub type RowIdVec = SmallVec<[RowId; 4]>;
@@ -440,6 +438,7 @@ use arrow2::{
     chunk::Chunk,
     datatypes::{DataType, Field, Schema, TimeUnit},
     offset::Offsets,
+    types::NativeType,
 };
 use arrow2_convert::{
     deserialize::TryIntoCollection, field::ArrowField, serialize::ArrowSerialize,
@@ -448,6 +447,7 @@ use arrow2_convert::{
 
 // TODO(#1696): Those names should come from the datatypes themselves.
 
+pub const COLUMN_INSERT_ID: &str = "rerun.insert_id";
 pub const COLUMN_ROW_ID: &str = "rerun.row_id";
 pub const COLUMN_TIMEPOINT: &str = "rerun.timepoint";
 pub const COLUMN_ENTITY_PATH: &str = "rerun.entity_path";
@@ -570,9 +570,11 @@ impl DataTable {
         schema.fields.push(entity_path_field);
         columns.push(entity_path_column);
 
-        // TODO(#1712): This is unnecessarily slow...
-        let (num_instances_field, num_instances_column) =
-            Self::serialize_control_column(COLUMN_NUM_INSTANCES, col_num_instances)?;
+        let (num_instances_field, num_instances_column) = Self::serialize_primitive_column(
+            COLUMN_NUM_INSTANCES,
+            col_num_instances.as_slice(),
+            None,
+        )?;
         schema.fields.push(num_instances_field);
         columns.push(num_instances_column);
 
@@ -614,6 +616,31 @@ impl DataTable {
             field
                 .metadata
                 .extend([("ARROW:extension:name".to_owned(), name.clone())]);
+        }
+
+        Ok((field, data))
+    }
+
+    /// Serializes a single control column; optimized path for primitive datatypes.
+    pub fn serialize_primitive_column<T: NativeType>(
+        name: &str,
+        values: &[T],
+        datatype: Option<DataType>,
+    ) -> DataTableResult<(Field, Box<dyn Array>)> {
+        let data = PrimitiveArray::from_slice(values);
+
+        let datatype = datatype.unwrap_or(data.data_type().clone());
+        let data = data.to(datatype.clone()).boxed();
+
+        let mut field = Field::new(name, datatype.clone(), false)
+            .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into());
+
+        // TODO(cmc): why do we have to do this manually on the way out, but it's done
+        // automatically on our behalf on the way in...?
+        if let DataType::Extension(name, _, _) = datatype {
+            field
+                .metadata
+                .extend([("ARROW:extension:name".to_owned(), name)]);
         }
 
         Ok((field, data))
@@ -714,7 +741,11 @@ impl DataTable {
         } else {
             // NOTE: This is a column of cells, it shouldn't ever fail to concatenate since
             // they share the same underlying type.
-            let data = arrow2::compute::concatenate::concatenate(cell_refs.as_slice())?;
+            let data =
+                arrow2::compute::concatenate::concatenate(cell_refs.as_slice()).map_err(|err| {
+                    re_log::warn_once!("failed to concatenate cells for column {name}");
+                    err
+                })?;
             data_to_lists(column, data, ext_name.cloned())
         };
 

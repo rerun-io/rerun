@@ -9,7 +9,7 @@ use arrow2::{
     offset::Offsets,
 };
 use polars_core::{functions::diag_concat_df, prelude::*};
-use re_log_types::{ComponentName, DataCell};
+use re_log_types::{ComponentName, DataCell, DataTable};
 
 use crate::{
     store::InsertIdVec, ArrayExt, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
@@ -209,19 +209,24 @@ impl IndexedBucket {
     pub fn to_dataframe(&self, store: &DataStore, config: &DataStoreConfig) -> DataFrame {
         crate::profile_function!();
 
-        let (_, times) = self.times();
-        let num_rows = times.len();
-
         let IndexedBucketInner {
             is_sorted: _,
             time_range: _,
-            col_time: _,
+            col_time,
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
             total_size_bytes: _,
         } = &*self.inner.read();
+
+        let (_, times) = DataTable::serialize_primitive_column(
+            self.timeline.name(),
+            col_time,
+            self.timeline.datatype().into(),
+        )
+        .unwrap();
+        let num_rows = times.len();
 
         let insert_ids = config
             .store_insert_ids
@@ -234,7 +239,7 @@ impl IndexedBucket {
             // One column for the time index.
             Some(new_infallible_series(
                 self.timeline.name().as_str(),
-                &times,
+                &*times,
                 num_rows,
             )),
         ]

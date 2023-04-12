@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::atomic::AtomicU64;
 
 use ahash::HashMap;
-use arrow2::array::Int64Array;
-use arrow2::datatypes::{DataType, TimeUnit};
+use arrow2::datatypes::DataType;
 use smallvec::SmallVec;
 
 use nohash_hasher::{IntMap, IntSet};
@@ -272,8 +271,7 @@ fn datastore_internal_repr() {
     store.insert_table(&temporal).unwrap();
 
     store.sanity_check().unwrap();
-    // TODO(#1619): bring back formatting
-    // eprintln!("{store}");
+    eprintln!("{store}");
 }
 
 // --- Temporal ---
@@ -283,7 +281,13 @@ fn datastore_internal_repr() {
 ///
 /// See also [`IndexedBucket`].
 ///
-// TODO(#1619): show internal structure once formatting is back
+/// Run the following command to display a visualization of the store's internal datastructures and
+/// better understand how everything fits together:
+/// ```text
+/// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
+/// ```
+//
+// TODO(#1524): inline visualization once it's back to a manageable state
 #[derive(Debug)]
 pub struct IndexedTable {
     /// The timeline this table operates in, for debugging purposes.
@@ -432,26 +436,17 @@ impl Default for IndexedBucketInner {
     }
 }
 
-impl IndexedBucket {
-    /// Returns a (name, [`Int64Array`]) with a logical type matching the timeline.
-    // TODO(cmc): should be defined in `DataTable` serialization stuff
-    pub fn times(&self) -> (String, Int64Array) {
-        crate::profile_function!();
-
-        let times = Int64Array::from_slice(self.inner.read().col_time.as_slice());
-        let logical_type = match self.timeline.typ() {
-            re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
-            re_log_types::TimeType::Sequence => DataType::Int64,
-        };
-        (self.timeline.name().to_string(), times.to(logical_type))
-    }
-}
-
 // --- Timeless ---
 
 /// The timeless specialization of an [`IndexedTable`].
 ///
-// TODO(#1619): show internal structure once formatting is back
+/// Run the following command to display a visualization of the store's internal datastructures and
+/// better understand how everything fits together:
+/// ```text
+/// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
+/// ```
+//
+// TODO(#1524): inline visualization once it's back to a manageable state
 #[derive(Debug)]
 pub struct PersistentIndexedTable {
     /// The entity this table is related to, for debugging purposes.

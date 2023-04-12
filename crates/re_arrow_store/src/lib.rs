@@ -16,6 +16,7 @@
 
 mod arrow_util;
 mod store;
+mod store_arrow;
 mod store_format;
 mod store_gc;
 mod store_read;

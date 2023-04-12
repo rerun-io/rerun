@@ -130,16 +130,15 @@ impl std::fmt::Display for IndexedBucket {
         };
         f.write_fmt(format_args!("{time_range}\n"))?;
 
-        // TODO(#1619): bring back formatting
-        // let (schema, columns) = self.serialize().map_err(|err| {
-        //     re_log::error_once!("couldn't display indexed bucket: {err}");
-        //     std::fmt::Error
-        // })?;
-        // re_format::arrow::format_table(
-        //     columns.columns(),
-        //     schema.fields.iter().map(|field| field.name.as_str()),
-        // )
-        // .fmt(f)?;
+        let (schema, columns) = self.serialize().map_err(|err| {
+            re_log::error_once!("couldn't display indexed bucket: {err}");
+            std::fmt::Error
+        })?;
+        re_format::arrow::format_table(
+            columns.columns(),
+            schema.fields.iter().map(|field| field.name.as_str()),
+        )
+        .fmt(f)?;
 
         writeln!(f)
     }
@@ -168,16 +167,15 @@ impl std::fmt::Display for PersistentIndexedTable {
             format_number(self.total_rows() as _),
         ))?;
 
-        // TODO(#1619): bring back formatting
-        // let (schema, columns) = self.serialize().map_err(|err| {
-        //     re_log::error_once!("couldn't display timeless indexed table: {err}");
-        //     std::fmt::Error
-        // })?;
-        // re_format::arrow::format_table(
-        //     columns.columns(),
-        //     schema.fields.iter().map(|field| field.name.as_str()),
-        // )
-        // .fmt(f)?;
+        let (schema, columns) = self.serialize().map_err(|err| {
+            re_log::error_once!("couldn't display timeless indexed table: {err}");
+            std::fmt::Error
+        })?;
+        re_format::arrow::format_table(
+            columns.columns(),
+            schema.fields.iter().map(|field| field.name.as_str()),
+        )
+        .fmt(f)?;
 
         writeln!(f)
     }
