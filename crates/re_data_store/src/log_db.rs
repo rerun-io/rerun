@@ -81,14 +81,14 @@ impl EntityDb {
                 ComponentPath::new(row.entity_path().clone(), cell.component_name());
             let pending_clears = self.tree.add_data_msg(row.timepoint(), &component_path);
 
-            for (row_id, time_point) in pending_clears {
+            for (_, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
                 let cell =
                     DataCell::from_arrow_empty(cell.component_name(), cell.datatype().clone());
 
                 let row = DataRow::from_cells1(
-                    row_id,
+                    RowId::random(), // Use a random row-id to avoid collisions
                     row.entity_path.clone(),
                     time_point.clone(),
                     cell.num_instances(),
@@ -117,7 +117,7 @@ impl EntityDb {
                 let cell =
                     DataCell::from_arrow_empty(component_path.component_name, data_type.clone());
                 let row = DataRow::from_cells1(
-                    row_id,
+                    RowId::random(), // Use a random row-id to avoid collisions
                     component_path.entity_path.clone(),
                     time_point.clone(),
                     cell.num_instances(),
