@@ -64,7 +64,7 @@ def inline_show(width: int = 950, height: int = 712, app_location: Optional[str]
             return buff;
         }}()));
     </script>
-    <iframe id="{random_string}" width="{width}" height="{height}" src="{app_location}?url=web_event://"
+    <iframe id="{random_string}" width="{width}" height="{height}" src="{app_location}?url=web_event://&persist=0"
         frameborder="0" style="display: none;" allowfullscreen=""></iframe>
     """
     try:
