@@ -36,45 +36,9 @@ use crate::web_viewer::host_web_viewer;
 #[derive(Debug, clap::Parser)]
 #[clap(author, about)]
 struct Args {
-    /// Print version and quit
-    #[clap(long)]
-    version: bool,
-
-    /// Either a path to a `.rrd` file to load, an http url to an `.rrd` file,
-    /// or a websocket url to a Rerun Server from which to read data
-    ///
-    /// If none is given, a server will be hosted which the Rerun SDK can connect to.
-    url_or_path: Option<String>,
-
-    /// What TCP port do we listen to (for SDK:s to connect to)?
-    #[cfg(feature = "server")]
-    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
-    port: u16,
-
-    /// Start the viewer in the browser (instead of locally).
-    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
-    #[clap(long)]
-    web_viewer: bool,
-
-    /// Stream incoming log events to an .rrd file at the given path.
-    #[clap(long)]
-    save: Option<String>,
-
-    /// Start with the puffin profiler running.
-    #[clap(long)]
-    profile: bool,
-
-    /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
-    #[clap(long)]
-    strict: bool,
-
-    /// An upper limit on how much memory the Rerun Viewer should use.
-    ///
-    /// When this limit is used, Rerun will purge the oldest data.
-    ///
-    /// Example: `16GB`
-    #[clap(long)]
-    memory_limit: Option<String>,
+    // Note: arguments are sorted lexicographically for nicer `--help` message:
+    #[command(subcommand)]
+    commands: Option<Commands>,
 
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
@@ -86,8 +50,53 @@ struct Args {
     #[clap(long)]
     drop_at_latency: Option<String>,
 
-    #[command(subcommand)]
-    commands: Option<Commands>,
+    /// An upper limit on how much memory the Rerun Viewer should use.
+    ///
+    /// When this limit is used, Rerun will purge the oldest data.
+    ///
+    /// Example: `16GB`
+    #[clap(long)]
+    memory_limit: Option<String>,
+
+    /// What TCP port do we listen to (for SDK:s to connect to)?
+    #[cfg(feature = "server")]
+    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
+    port: u16,
+
+    /// Start with the puffin profiler running.
+    #[clap(long)]
+    profile: bool,
+
+    /// Stream incoming log events to an .rrd file at the given path.
+    #[clap(long)]
+    save: Option<String>,
+
+    /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
+    #[clap(long)]
+    strict: bool,
+
+    /// Ingest data and then quit once the goodbye message has been received.
+    ///
+    /// Used for testing together with the `--strict` argument.
+    ///
+    /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
+    #[clap(long)]
+    test_receive: bool,
+
+    /// Either a path to a `.rrd` file to load, an http url to an `.rrd` file,
+    /// or a websocket url to a Rerun Server from which to read data
+    ///
+    /// If none is given, a server will be hosted which the Rerun SDK can connect to.
+    url_or_path: Option<String>,
+
+    /// Print version and quit
+    #[clap(long)]
+    version: bool,
+
+    /// Start the viewer in the browser (instead of locally).
+    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
+    #[clap(long)]
+    web_viewer: bool,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -329,7 +338,9 @@ async fn run_impl(
 
     // Now what do we do with the data?
 
-    if let Some(rrd_path) = args.save {
+    if args.test_receive {
+        receive_into_log_db(&rx).map(|_db| ())
+    } else if let Some(rrd_path) = args.save {
         Ok(stream_to_rrd(&rx, &rrd_path.into(), &shutdown_bool)?)
     } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
@@ -400,6 +411,44 @@ async fn run_impl(
             anyhow::bail!(
                 "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
             );
+        }
+    }
+}
+
+fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::LogDb> {
+    use re_smart_channel::RecvTimeoutError;
+
+    re_log::info!("Receiving messages into a LogDb…");
+
+    let mut db = re_data_store::LogDb::default();
+
+    let mut num_messages = 0;
+
+    let timeout = std::time::Duration::from_secs(12);
+
+    loop {
+        match rx.recv_timeout(timeout) {
+            Ok(msg) => {
+                re_log::info_once!("Received first message.");
+                let is_goodbye = matches!(msg, re_log_types::LogMsg::Goodbye(_));
+                db.add(msg)?;
+                num_messages += 1;
+                if is_goodbye {
+                    db.entity_db.data_store.sanity_check()?;
+                    anyhow::ensure!(0 < num_messages, "No messages received");
+                    re_log::info!("Successfully ingested {num_messages} messages.");
+                    return Ok(db);
+                }
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                anyhow::bail!(
+                    "Didn't receive any messages within {} seconds. Giving up.",
+                    timeout.as_secs()
+                );
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                anyhow::bail!("Channel disconnected without a Goodbye message.");
+            }
         }
     }
 }
