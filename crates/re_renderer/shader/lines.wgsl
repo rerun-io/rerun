@@ -35,8 +35,8 @@ var<uniform> batch: BatchUniformBuffer;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
-const LINESTRIP_TEXTURE_SIZE: i32 = 512;
-const POSITION_DATA_TEXTURE_SIZE: i32 = 256;
+const POSITION_TEXTURE_SIZE: i32 = 512;
+const LINE_STRIP_TEXTURE_SIZE: i32 = 256;
 
 // Flags
 // See lines.rs#LineStripFlags
@@ -89,7 +89,7 @@ struct LineStripData {
 fn read_strip_data(idx: u32) -> LineStripData {
     // can be u32 once https://github.com/gfx-rs/naga/issues/1997 is solved
     let idx = i32(idx);
-    let coord = IVec2(idx % POSITION_DATA_TEXTURE_SIZE, idx / POSITION_DATA_TEXTURE_SIZE);
+    let coord = IVec2(idx % LINE_STRIP_TEXTURE_SIZE, idx / LINE_STRIP_TEXTURE_SIZE);
     var raw_data = textureLoad(position_data_texture, coord, 0).xy;
 
     var data: LineStripData;
@@ -112,7 +112,7 @@ struct PositionData {
 fn read_position_data(idx: u32) -> PositionData {
     // can be u32 once https://github.com/gfx-rs/naga/issues/1997 is solved
     let idx = i32(idx);
-    var raw_data = textureLoad(line_strip_texture, IVec2(idx % LINESTRIP_TEXTURE_SIZE, idx / LINESTRIP_TEXTURE_SIZE), 0);
+    var raw_data = textureLoad(line_strip_texture, IVec2(idx % POSITION_TEXTURE_SIZE, idx / POSITION_TEXTURE_SIZE), 0);
 
     var data: PositionData;
     let pos_4d = batch.world_from_obj * Vec4(raw_data.xyz, 1.0);
@@ -271,6 +271,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.active_radius = active_radius;
     out.fragment_flags = strip_data.flags &
                     (NO_COLOR_GRADIENT | (u32(is_cap_triangle) * select(CAP_START_ROUND, CAP_END_ROUND, is_right_triangle)));
+    out.picking_instance_id = strip_data.picking_instance_id;
 
     return out;
 }
