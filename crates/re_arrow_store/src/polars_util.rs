@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::*;
-use re_log_types::{ComponentName, DataCell, EntityPath, TimeInt};
+use re_log_types::{ComponentName, DataCell, EntityPath, RowId, TimeInt};
 
 use crate::{ArrayExt, DataStore, LatestAtQuery, RangeQuery};
 
@@ -37,9 +37,9 @@ pub fn latest_component(
     let cluster_key = store.cluster_key();
 
     let components = &[cluster_key, primary];
-    let cells = store
+    let (_, cells) = store
         .latest_at(query, ent_path, primary, components)
-        .unwrap_or([(); 2].map(|_| None));
+        .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
 
     dataframe_from_cells(&cells)
 }

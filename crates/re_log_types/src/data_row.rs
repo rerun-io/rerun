@@ -2,7 +2,7 @@ use ahash::HashSetExt;
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
-use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, RowId, TimePoint};
+use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, TableId, TimePoint};
 
 // ---
 
@@ -87,6 +87,62 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 
 // ---
 
+/// A unique ID for a [`DataRow`].
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    arrow2_convert::ArrowField,
+    arrow2_convert::ArrowSerialize,
+    arrow2_convert::ArrowDeserialize,
+)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(transparent)]
+pub struct RowId(pub(crate) re_tuid::Tuid);
+
+impl std::fmt::Display for RowId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl RowId {
+    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
+
+    #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn random() -> Self {
+        Self(re_tuid::Tuid::random())
+    }
+
+    /// Temporary utility while we transition to batching. See #1619.
+    #[doc(hidden)]
+    pub fn into_table_id(self) -> TableId {
+        TableId(self.0)
+    }
+}
+
+impl std::ops::Deref for RowId {
+    type Target = re_tuid::Tuid;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for RowId {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// A row's worth of data, i.e. an event: a list of [`DataCell`]s associated with an auto-generated
 /// `RowId`, a user-specified [`TimePoint`] and [`EntityPath`], and an expected number of
 /// instances.
@@ -134,8 +190,8 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, RowId, Point2D},
-/// #     DataRow, Timeline,
+/// #     component_types::{ColorRGBA, Label, Point2D},
+/// #     DataRow, RowId, Timeline,
 /// # };
 /// #
 /// # let row_id = RowId::ZERO;
@@ -162,7 +218,6 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 pub struct DataRow {
     /// Auto-generated `TUID`, uniquely identifying this event and keeping track of the client's
     /// wall-clock.
-    // TODO(#1619): introduce RowId & TableId
     pub row_id: RowId,
 
     /// User-specified [`TimePoint`] for this event.
@@ -226,26 +281,13 @@ impl DataRow {
             }
         }
 
-        let mut this = Self {
+        Ok(Self {
             row_id,
             entity_path,
             timepoint,
             num_instances,
             cells,
-        };
-
-        // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
-        // we need to craft an array of `MsgId`s that matches the length of the other components.
-        // TODO(#1619): This goes away once the store supports the new control columns
-        use crate::Component as _;
-        if !components.contains(&RowId::name()) {
-            let num_instances = this.num_instances();
-            this.cells.0.push(DataCell::from_native(
-                vec![row_id; num_instances as _].iter(),
-            ));
-        }
-
-        Ok(this)
+        })
     }
 
     /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
@@ -271,7 +313,7 @@ impl DataRow {
     #[doc(hidden)]
     #[inline]
     pub fn into_table(self) -> DataTable {
-        DataTable::from_rows(self.row_id, [self])
+        DataTable::from_rows(self.row_id.into_table_id(), [self])
     }
 }
 

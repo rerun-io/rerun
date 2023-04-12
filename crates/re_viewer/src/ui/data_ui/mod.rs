@@ -14,7 +14,7 @@ mod entity_path;
 pub(crate) mod image;
 mod instance_path;
 mod log_msg;
-mod msg_id;
+mod row_id;
 
 pub(crate) use component_ui_registry::ComponentUiRegistry;
 

@@ -7,7 +7,7 @@ use crate::{misc::ViewerContext, ui::UiVerbosity};
 use super::DataUi;
 
 const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.instance_key"];
-const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &["rerun.msg_id"];
+const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &[];
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -65,7 +65,7 @@ impl DataUi for InstancePath {
                         Err(err) => {
                             ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
                         }
-                        Ok(component_data) => {
+                        Ok((_, component_data)) => {
                             if self.instance_key.is_splat() {
                                 super::component::EntityComponentWithInstances {
                                     entity_path: self.entity_path.clone(),

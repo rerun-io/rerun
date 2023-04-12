@@ -6,7 +6,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
-    entity_path, DataRow, DataTable, Index, LogMsg, MsgId, RecordingId,
+    entity_path, DataRow, DataTable, Index, LogMsg, RecordingId, RowId, TableId,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -67,9 +67,9 @@ fn mono_points_arrow(c: &mut Criterion) {
         (0..NUM_POINTS)
             .map(|i| {
                 DataTable::from_rows(
-                    MsgId::ZERO,
+                    TableId::ZERO,
                     [DataRow::from_cells2(
-                        MsgId::ZERO,
+                        RowId::ZERO,
                         entity_path!("points", Index::Sequence(i as _)),
                         [build_frame_nr(0.into())],
                         1,
@@ -123,10 +123,10 @@ fn mono_points_arrow(c: &mut Criterion) {
 fn mono_points_arrow_batched(c: &mut Criterion) {
     fn generate_table() -> DataTable {
         DataTable::from_rows(
-            MsgId::ZERO,
+            TableId::ZERO,
             (0..NUM_POINTS).map(|i| {
                 DataRow::from_cells2(
-                    MsgId::ZERO,
+                    RowId::ZERO,
                     entity_path!("points", Index::Sequence(i as _)),
                     [build_frame_nr(0.into())],
                     1,
@@ -179,9 +179,9 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
 fn batch_points_arrow(c: &mut Criterion) {
     fn generate_tables() -> Vec<DataTable> {
         vec![DataTable::from_rows(
-            MsgId::ZERO,
+            TableId::ZERO,
             [DataRow::from_cells2(
-                MsgId::ZERO,
+                RowId::ZERO,
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 NUM_POINTS as _,

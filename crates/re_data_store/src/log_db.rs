@@ -3,8 +3,8 @@ use nohash_hasher::IntMap;
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
     component_types::InstanceKey, ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath,
-    DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, MsgId,
-    PathOp, RecordingId, RecordingInfo, TimePoint, Timeline,
+    DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp,
+    RecordingId, RecordingInfo, RowId, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -77,19 +77,16 @@ impl EntityDb {
         for cell in row.cells().iter() {
             let component_path =
                 ComponentPath::new(row.entity_path().clone(), cell.component_name());
-            if cell.component_name() == MsgId::name() {
-                continue;
-            }
             let pending_clears = self.tree.add_data_msg(row.timepoint(), &component_path);
 
-            for (msg_id, time_point) in pending_clears {
+            for (row_id, time_point) in pending_clears {
                 // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
                 let cell =
                     DataCell::from_arrow_empty(cell.component_name(), cell.datatype().clone());
 
                 let row = DataRow::from_cells1(
-                    msg_id,
+                    row_id,
                     row.entity_path.clone(),
                     time_point.clone(),
                     cell.num_instances(),
@@ -105,8 +102,8 @@ impl EntityDb {
         self.data_store.insert_row(row).map_err(Into::into)
     }
 
-    fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
-        let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
+    fn add_path_op(&mut self, row_id: RowId, time_point: &TimePoint, path_op: &PathOp) {
+        let cleared_paths = self.tree.add_path_op(row_id, time_point, path_op);
 
         for component_path in cleared_paths {
             if let Some(data_type) = self
@@ -118,7 +115,7 @@ impl EntityDb {
                 let cell =
                     DataCell::from_arrow_empty(component_path.component_name, data_type.clone());
                 let row = DataRow::from_cells1(
-                    msg_id,
+                    row_id,
                     component_path.entity_path.clone(),
                     time_point.clone(),
                     cell.num_instances(),
@@ -134,7 +131,7 @@ impl EntityDb {
     pub fn purge(
         &mut self,
         cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>,
-        drop_msg_ids: &ahash::HashSet<MsgId>,
+        drop_row_ids: &ahash::HashSet<RowId>,
     ) {
         crate::profile_function!();
 
@@ -152,7 +149,7 @@ impl EntityDb {
 
         {
             crate::profile_scope!("tree");
-            tree.purge(cutoff_times, drop_msg_ids);
+            tree.purge(cutoff_times, drop_row_ids);
         }
     }
 }
@@ -163,13 +160,13 @@ impl EntityDb {
 #[derive(Default)]
 pub struct LogDb {
     /// Messages in the order they arrived
-    chronological_message_ids: Vec<MsgId>,
-    log_messages: ahash::HashMap<MsgId, LogMsg>,
+    chronological_row_ids: Vec<RowId>,
+    log_messages: ahash::HashMap<RowId, LogMsg>,
 
     /// Data that was logged with [`TimePoint::timeless`].
     /// We need to re-insert those in any new timelines
     /// that are created after they were logged.
-    timeless_message_ids: Vec<MsgId>,
+    timeless_row_ids: Vec<RowId>,
 
     /// Set by whomever created this [`LogDb`].
     pub data_source: Option<re_smart_channel::Source>,
@@ -217,11 +214,11 @@ impl LogDb {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
             LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
-                    msg_id,
+                    row_id,
                     time_point,
                     path_op,
                 } = msg;
-                self.entity_db.add_path_op(*msg_id, time_point, path_op);
+                self.entity_db.add_path_op(*row_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
             LogMsg::Goodbye(_) => {}
@@ -230,7 +227,7 @@ impl LogDb {
         // TODO(#1619): the following only makes sense because, while we support sending and
         // receiving batches, we don't actually do so yet.
         // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
-        self.chronological_message_ids.push(msg.id());
+        self.chronological_row_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
 
         Ok(())
@@ -246,13 +243,13 @@ impl LogDb {
 
     /// In the order they arrived
     pub fn chronological_log_messages(&self) -> impl Iterator<Item = &LogMsg> {
-        self.chronological_message_ids
+        self.chronological_row_ids
             .iter()
             .filter_map(|id| self.get_log_msg(id))
     }
 
-    pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<&LogMsg> {
-        self.log_messages.get(msg_id)
+    pub fn get_log_msg(&self, row_id: &RowId) -> Option<&LogMsg> {
+        self.log_messages.get(row_id)
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
@@ -261,33 +258,33 @@ impl LogDb {
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         // TODO(#1619): bring back garbage collection
-        let drop_msg_ids: ahash::HashSet<_> = Default::default();
+        let drop_row_ids: ahash::HashSet<_> = Default::default();
 
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
-            chronological_message_ids,
+            chronological_row_ids,
             log_messages,
-            timeless_message_ids,
+            timeless_row_ids,
             data_source: _,
             recording_info: _,
             entity_db,
         } = self;
 
         {
-            crate::profile_scope!("chronological_message_ids");
-            chronological_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+            crate::profile_scope!("chronological_row_ids");
+            chronological_row_ids.retain(|row_id| !drop_row_ids.contains(row_id));
         }
 
         {
             crate::profile_scope!("log_messages");
-            log_messages.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
+            log_messages.retain(|row_id, _| !drop_row_ids.contains(row_id));
         }
         {
-            crate::profile_scope!("timeless_message_ids");
-            timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+            crate::profile_scope!("timeless_row_ids");
+            timeless_row_ids.retain(|row_id| !drop_row_ids.contains(row_id));
         }
 
-        entity_db.purge(&cutoff_times, &drop_msg_ids);
+        entity_db.purge(&cutoff_times, &drop_row_ids);
     }
 }

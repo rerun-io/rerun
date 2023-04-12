@@ -146,7 +146,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     // bunch of non-existing components
     {
         let components = &["they".into(), "dont".into(), "exist".into()];
-        let cells = store
+        let (_, cells) = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
@@ -159,7 +159,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 
     // empty component list
     {
-        let cells = store
+        let (_, cells) = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
@@ -309,18 +309,18 @@ fn gc_correct() {
 
     // TODO(#1619): bring back garbage collection
 
-    // let msg_id_chunks = store.gc(
+    // let row_id_chunks = store.gc(
     //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
     //     Timeline::new("frame_nr", TimeType::Sequence),
     //     MsgId::name(),
     // );
 
-    // let msg_ids = msg_id_chunks
+    // let row_ids = row_id_chunks
     //     .iter()
     //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
     //     .map(Option::unwrap) // MsgId is always present
     //     .collect::<ahash::HashSet<_>>();
-    // assert!(!msg_ids.is_empty());
+    // assert!(!row_ids.is_empty());
 
     // if let err @ Err(_) = store.sanity_check() {
     //     store.sort_indices_if_needed();
@@ -328,11 +328,11 @@ fn gc_correct() {
     //     err.unwrap();
     // }
     // check_still_readable(&store);
-    // for msg_id in &msg_ids {
-    //     assert!(store.get_msg_metadata(msg_id).is_some());
+    // for row_id in &row_ids {
+    //     assert!(store.get_msg_metadata(row_id).is_some());
     // }
 
-    // store.clear_msg_metadata(&msg_ids);
+    // store.clear_msg_metadata(&row_ids);
 
     // if let err @ Err(_) = store.sanity_check() {
     //     store.sort_indices_if_needed();
@@ -340,22 +340,22 @@ fn gc_correct() {
     //     err.unwrap();
     // }
     // check_still_readable(&store);
-    // for msg_id in &msg_ids {
-    //     assert!(store.get_msg_metadata(msg_id).is_none());
+    // for row_id in &row_ids {
+    //     assert!(store.get_msg_metadata(row_id).is_none());
     // }
 
-    // let msg_id_chunks = store.gc(
+    // let row_id_chunks = store.gc(
     //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
     //     Timeline::new("frame_nr", TimeType::Sequence),
     //     MsgId::name(),
     // );
 
-    // let msg_ids = msg_id_chunks
+    // let row_ids = row_id_chunks
     //     .iter()
     //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
     //     .map(Option::unwrap) // MsgId is always present
     //     .collect::<ahash::HashSet<_>>();
-    // assert!(msg_ids.is_empty());
+    // assert!(row_ids.is_empty());
 
     // if let err @ Err(_) = store.sanity_check() {
     //     store.sort_indices_if_needed();

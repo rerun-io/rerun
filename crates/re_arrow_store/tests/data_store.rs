@@ -75,18 +75,16 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         let components_a = &[
-            ColorRGBA::name(),           // added by us, timeless
-            Rect2D::name(),              // added by us
-            cluster_key,                 // always here
-            re_log_types::MsgId::name(), // injected automatically (..for now)
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(),           // added by us, timeless
-            Point2D::name(),             // added by us
-            Rect2D::name(),              // added by us
-            cluster_key,                 // always here
-            re_log_types::MsgId::name(), // injected automatically (..for now)
+            ColorRGBA::name(), // added by test, timeless
+            Point2D::name(),   // added by test
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -123,12 +121,12 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         // ┌──────────┬────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ msg_id ┆ insert_id ┆ instance │
+        // │ frame_nr ┆ rect2d ┆ row_id ┆ insert_id ┆ instance │
         // ╞══════════╪════════╪════════╪═══════════╪══════════╡
         // │ 1        ┆ 1      ┆ 1      ┆ 1         ┆ 1        │
         // └──────────┴────────┴────────┴───────────┴──────────┘
         // ┌──────────┬────────┬─────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ point2d ┆ msg_id ┆ insert_id ┆ instance │
+        // │ frame_nr ┆ rect2d ┆ point2d ┆ row_id ┆ insert_id ┆ instance │
         // ╞══════════╪════════╪═════════╪════════╪═══════════╪══════════╡
         // │ 2        ┆ -      ┆ -       ┆ 2      ┆ 2         ┆ 2        │
         // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
@@ -136,18 +134,16 @@ fn all_components() {
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(),           // added by us, timeless
-            Rect2D::name(),              // added by us
-            cluster_key,                 // always here
-            re_log_types::MsgId::name(), // injected automatically (..for now)
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(),           // added by us, timeless
-            Rect2D::name(),              // ⚠ inherited before the buckets got split apart!
-            Point2D::name(),             // added by us
-            cluster_key,                 // always here
-            re_log_types::MsgId::name(), // injected automatically (..for now)
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // ⚠ inherited before the buckets got split apart!
+            Point2D::name(),   // added by test
+            cluster_key,       // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -188,14 +184,14 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         // ┌──────────┬────────┬─────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ point2d ┆ msg_id ┆ insert_id ┆ instance │
+        // │ frame_nr ┆ rect2d ┆ point2d ┆ row_id ┆ insert_id ┆ instance │
         // ╞══════════╪════════╪═════════╪════════╪═══════════╪══════════╡
         // │ 1        ┆ -      ┆ 1       ┆ 4      ┆ 4         ┆ 1        │
         // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
         // │ 2        ┆ 1      ┆ -       ┆ 1      ┆ 1         ┆ 1        │
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
         // ┌──────────┬────────┬────────┬───────────┬──────────┐
-        // │ frame_nr ┆ rect2d ┆ msg_id ┆ insert_id ┆ instance │
+        // │ frame_nr ┆ rect2d ┆ row_id ┆ insert_id ┆ instance │
         // ╞══════════╪════════╪════════╪═══════════╪══════════╡
         // │ 3        ┆ 2      ┆ 2      ┆ 2         ┆ 1        │
         // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
@@ -203,18 +199,16 @@ fn all_components() {
         // └──────────┴────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(),           // added by us, timeless
-            Rect2D::name(),              // added by us
-            cluster_key,                 // always here
-            re_log_types::MsgId::name(), // injected automatically (..for now)
+            ColorRGBA::name(), // added by test, timeless
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let components_b = &[
-            ColorRGBA::name(),           // added by us, timeless
-            Point2D::name(),             // added by us but not contained in the second bucket
-            Rect2D::name(),              // added by use
-            cluster_key,                 // always here
-            re_log_types::MsgId::name(), // injected automatically (..for now)
+            ColorRGBA::name(), // added by test, timeless
+            Point2D::name(),   // added by test but not contained in the second bucket
+            Rect2D::name(),    // added by test
+            cluster_key,       // always here
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -870,26 +864,26 @@ fn gc_impl(store: &mut DataStore) {
 
         // TODO(#1619): bring back garbage collection
 
-        // let msg_id_chunks = store.gc(
+        // let row_id_chunks = store.gc(
         //     GarbageCollectionTarget::DropAtLeastPercentage(1.0 / 3.0),
         //     Timeline::new("frame_nr", TimeType::Sequence),
         //     MsgId::name(),
         // );
 
-        // let msg_ids = msg_id_chunks
+        // let row_ids = row_id_chunks
         //     .iter()
         //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
         //     .map(Option::unwrap) // MsgId is always present
         //     .collect::<ahash::HashSet<_>>();
 
-        // for msg_id in &msg_ids {
-        //     assert!(store.get_msg_metadata(msg_id).is_some());
+        // for row_id in &row_ids {
+        //     assert!(store.get_msg_metadata(row_id).is_some());
         // }
 
-        // store.clear_msg_metadata(&msg_ids);
+        // store.clear_msg_metadata(&row_ids);
 
-        // for msg_id in &msg_ids {
-        //     assert!(store.get_msg_metadata(msg_id).is_none());
+        // for row_id in &row_ids {
+        //     assert!(store.get_msg_metadata(row_id).is_none());
         // }
     }
 }

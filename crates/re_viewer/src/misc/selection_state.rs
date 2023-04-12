@@ -298,7 +298,7 @@ impl SelectionState {
             .hovered_previous_frame
             .iter()
             .any(|current| match current {
-                Item::MsgId(_)
+                Item::RowId(_)
                 | Item::ComponentPath(_)
                 | Item::SpaceView(_)
                 | Item::DataBlueprintGroup(_, _) => current == test,
@@ -356,7 +356,7 @@ impl SelectionState {
 
         for current_selection in self.selection.iter() {
             match current_selection {
-                Item::MsgId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
+                Item::RowId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
                 Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     if *group_space_view_id == space_view_id {
@@ -432,7 +432,7 @@ impl SelectionState {
 
         for current_hover in self.hovered_previous_frame.iter() {
             match current_hover {
-                Item::MsgId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
+                Item::RowId(_) | Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
                 Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                     // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights

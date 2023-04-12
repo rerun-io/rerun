@@ -34,7 +34,7 @@ impl DataUi for BeginRecordingMsg {
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         ui.code("BeginRecordingMsg");
-        let BeginRecordingMsg { msg_id: _, info } = self;
+        let BeginRecordingMsg { row_id: _, info } = self;
         let RecordingInfo {
             application_id,
             recording_id,
@@ -76,7 +76,7 @@ impl DataUi for EntityPathOpMsg {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let EntityPathOpMsg {
-            msg_id: _,
+            row_id: _,
             time_point,
             path_op,
         } = self;
