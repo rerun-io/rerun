@@ -11,6 +11,7 @@ This is an end-to-end test for testing:
 * Data store ingestion
 """
 
+import argparse
 import os
 import subprocess
 import sys
@@ -18,17 +19,23 @@ import time
 
 
 def main() -> None:
-    build_env = os.environ.copy()
-    if "RUST_LOG" in build_env:
-        del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
+    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
 
-    print("----------------------------------------------------------")
-    print("Building rerun-sdk…")
-    start_time = time.time()
-    subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
-    elapsed = time.time() - start_time
-    print(f"rerun-sdk built in {elapsed:.1f} seconds")
-    print("")
+    if parser.parse_args().no_build:
+        print("Skipping building rerun-sdk - assuming it is already built and up-to-date!")
+    else:
+        build_env = os.environ.copy()
+        if "RUST_LOG" in build_env:
+            del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
+
+        print("----------------------------------------------------------")
+        print("Building rerun-sdk…")
+        start_time = time.time()
+        subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
+        elapsed = time.time() - start_time
+        print(f"rerun-sdk built in {elapsed:.1f} seconds")
+        print("")
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data

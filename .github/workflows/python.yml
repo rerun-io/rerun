@@ -217,7 +217,7 @@ jobs:
         run: cd rerun_py/tests && pytest
 
       - name: Run e2e test
-        run: scripts/run_python_e2e_test.py
+        run: scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Unpack the wheel
         shell: bash
