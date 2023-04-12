@@ -2,12 +2,16 @@
 #import <./global_bindings.wgsl>
 #import <./utils/depth_offset.wgsl>
 
+const ERROR_COLOR = Vec4(1.0, 0.0, 1.0, 1.0); // TODO: move someplace global
+
 struct UniformBuffer {
     /// Top left corner position in world space.
     top_left_corner_position: Vec3,
 
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
     extent_u: Vec3,
+
+    sample_type: u32, // 1=float, 2=depth, 3=sint, 4=uint
 
     /// Vector that spans up the rectangle from its top left corner along the v axis of the texture.
     extent_v: Vec3,
@@ -24,10 +28,13 @@ struct UniformBuffer {
 var<uniform> rect_info: UniformBuffer;
 
 @group(1) @binding(1)
-var texture: texture_2d<f32>;
+var texture_sampler: sampler;
 
 @group(1) @binding(2)
-var texture_sampler: sampler;
+var texture_float: texture_2d<f32>;
+
+@group(1) @binding(3)
+var texture_uint: texture_2d<u32>;
 
 
 struct VertexOut {
@@ -50,7 +57,21 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    let texture_color = textureSample(texture, texture_sampler, in.texcoord);
+    var texture_color = ERROR_COLOR;
+
+    if rect_info.sample_type == 1u {
+        // float
+        texture_color = textureSample(texture_float, texture_sampler, in.texcoord);
+    } else if rect_info.sample_type == 2u {
+        // depth - not implemented
+    } else if rect_info.sample_type == 3u {
+        // sint - not implemented
+    } else if rect_info.sample_type == 4u {
+        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
+        let rgba_uint = textureLoad(texture_uint, icoords, 0);
+        // TODO: color-mapping
+    }
+
     return texture_color * rect_info.multiplicative_tint;
 }
 

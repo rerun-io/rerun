@@ -71,7 +71,7 @@ fn push_tensor_texture(
                     .push(instance_path_hash);
             }
             Err(err) => {
-                re_log::warn_once!(
+                re_log::error_once!(
                     "Failed to create texture from tensor for {debug_name:?}: {err}"
                 );
             }

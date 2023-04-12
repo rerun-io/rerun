@@ -10,6 +10,7 @@
 //! Since we're not allowed to bind many textures at once (no widespread bindless support!),
 //! we are forced to have individual bind groups per rectangle and thus a draw call per rectangle.
 
+use itertools::{izip, Itertools as _};
 use smallvec::smallvec;
 
 use crate::{
@@ -39,9 +40,12 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
         pub top_left_corner_position: wgpu_buffer_types::Vec3RowPadded,
-        pub extent_u: wgpu_buffer_types::Vec3RowPadded,
+        pub extent_u: wgpu_buffer_types::Vec3Unpadded,
+        pub sample_type: u32, // 1=float, 2=depth, 3=sint, 4=uint
+
         pub extent_v: wgpu_buffer_types::Vec3Unpadded,
         pub depth_offset: f32,
+
         pub multiplicative_tint: crate::Rgba,
         pub outline_mask: wgpu_buffer_types::UVec2RowPadded,
 
@@ -49,10 +53,25 @@ mod gpu_data {
     }
 
     impl UniformBuffer {
-        pub fn from_textured_rect(rectangle: &super::TexturedRect) -> Self {
+        pub fn from_textured_rect(
+            rectangle: &super::TexturedRect,
+            texture_format: &wgpu::TextureFormat,
+        ) -> Self {
+            let texture_info = texture_format.describe();
+
+            // Must match shader!
+
+            let sample_type = match texture_info.sample_type {
+                wgpu::TextureSampleType::Float { .. } => 1,
+                wgpu::TextureSampleType::Depth => 2,
+                wgpu::TextureSampleType::Sint => 3,
+                wgpu::TextureSampleType::Uint => 4,
+            };
+
             Self {
                 top_left_corner_position: rectangle.top_left_corner_position.into(),
                 extent_u: rectangle.extent_u.into(),
+                sample_type,
                 extent_v: rectangle.extent_v.into(),
                 depth_offset: rectangle.depth_offset as f32,
                 multiplicative_tint: rectangle.multiplicative_tint,
@@ -139,6 +158,15 @@ impl Default for TexturedRect {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum RectangleError {
+    #[error(transparent)]
+    ResourceManagerError(#[from] ResourceManagerError),
+
+    #[error("Texture required special features: {0:?}")]
+    SpecialFeatures(wgpu::Features),
+}
+
 #[derive(Clone)]
 struct RectangleInstance {
     bind_group: GpuBindGroup,
@@ -158,7 +186,7 @@ impl RectangleDrawData {
     pub fn new(
         ctx: &mut RenderContext,
         rectangles: &[TexturedRect],
-    ) -> Result<Self, ResourceManagerError> {
+    ) -> Result<Self, RectangleError> {
         crate::profile_function!();
 
         let mut renderers = ctx.renderers.write();
@@ -175,17 +203,30 @@ impl RectangleDrawData {
             });
         }
 
+        // TODO(emilk): continue on error (skipping just that rectangle)?
+        let textures: Vec<_> = rectangles
+            .iter()
+            .map(|rectangle| {
+                ctx.texture_manager_2d
+                    .get(&rectangle.colormapped_texture.texture)
+            })
+            .try_collect()?;
+
+        let uniform_buffers = izip!(rectangles, &textures)
+            .map(|(rect, texture)| {
+                gpu_data::UniformBuffer::from_textured_rect(rect, &texture.creation_desc.format)
+            })
+            .collect_vec();
+
         let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
             "rectangle uniform buffers".into(),
-            rectangles
-                .iter()
-                .map(gpu_data::UniformBuffer::from_textured_rect),
+            uniform_buffers.into_iter(),
         );
 
         let mut instances = Vec::with_capacity(rectangles.len());
-        for (rectangle, uniform_buffer) in
-            rectangles.iter().zip(uniform_buffer_bindings.into_iter())
+        for (rectangle, uniform_buffer, texture) in
+            izip!(rectangles, uniform_buffer_bindings, textures)
         {
             let sampler = ctx.gpu_resources.samplers.get_or_create(
                 &ctx.device,
@@ -209,9 +250,34 @@ impl RectangleDrawData {
                 },
             );
 
-            let texture = ctx
+            let texture_format = texture.creation_desc.format;
+            let texture_description = texture_format.describe();
+            if texture_description.required_features != Default::default() {
+                return Err(RectangleError::SpecialFeatures(
+                    texture_description.required_features,
+                ));
+            }
+
+            let mut texture_float = ctx
                 .texture_manager_2d
-                .get(&rectangle.colormapped_texture.texture)?;
+                .get(&ctx.texture_manager_2d.white_texture_unorm_handle().clone())?
+                .handle;
+            let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
+
+            match texture_description.sample_type {
+                wgpu::TextureSampleType::Float { .. } => {
+                    texture_float = texture.handle;
+                }
+                wgpu::TextureSampleType::Depth => {
+                    re_log::error_once!("Depth sampler not yet implemented.");
+                }
+                wgpu::TextureSampleType::Sint => {
+                    re_log::error_once!("Sint sampler not yet implemented.");
+                }
+                wgpu::TextureSampleType::Uint => {
+                    texture_uint = texture.handle;
+                }
+            }
 
             instances.push(RectangleInstance {
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
@@ -221,8 +287,9 @@ impl RectangleDrawData {
                         label: "RectangleInstance::bind_group".into(),
                         entries: smallvec![
                             uniform_buffer,
-                            BindGroupEntry::DefaultTextureView(texture.handle),
-                            BindGroupEntry::Sampler(sampler)
+                            BindGroupEntry::Sampler(sampler),
+                            BindGroupEntry::DefaultTextureView(texture_float),
+                            BindGroupEntry::DefaultTextureView(texture_uint),
                         ],
                         layout: rectangle_renderer.bind_group_layout,
                     },
@@ -273,8 +340,16 @@ impl Renderer for RectangleRenderer {
                         },
                         count: None,
                     },
+                    // float sampler:
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    // float texture:
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -283,10 +358,15 @@ impl Renderer for RectangleRenderer {
                         },
                         count: None,
                     },
+                    // uint texture:
                     wgpu::BindGroupLayoutEntry {
-                        binding: 2,
+                        binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
                         count: None,
                     },
                 ],
