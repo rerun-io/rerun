@@ -202,7 +202,7 @@ impl ImagesPart {
         entity_view: &EntityView<Tensor>,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
-        properties: &EntityProperties,
+        _properties: &EntityProperties,
         ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
         entity_highlight: &SpaceViewOutlineMasks,

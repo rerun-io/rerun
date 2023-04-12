@@ -837,6 +837,7 @@ pub fn picking(
         };
     }
 
+    ctx.select_hovered_on_click(&response);
     ctx.set_hovered(hovered_items.into_iter());
 
     let hovered_space = match state.nav_mode.get() {

@@ -24,7 +24,7 @@ pub struct Boxes3DPart;
 impl Boxes3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        properties: &EntityProperties,
+        _properties: &EntityProperties,
         entity_view: &EntityView<Box3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,

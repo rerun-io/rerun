@@ -62,7 +62,7 @@ impl Boxes2DPart {
                     entity_highlight.any_selection_highlight,
                 );
 
-                let annotation_info = annotations.class_description(None).annotation_info();
+                let annotation_info = annotations.class_description(class_id).annotation_info();
                 let color =
                     annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
                 let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
@@ -119,8 +119,6 @@ impl ScenePart for Boxes2DPart {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<Rect2D, 6>(
                 &ctx.log_db.entity_db.data_store,

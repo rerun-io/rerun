@@ -1,7 +1,9 @@
 use std::ops::Range;
 
 use crate::{
-    renderer::{LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo, LineVertex},
+    renderer::{
+        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags, LineStripInfo, LineVertex,
+    },
     Color32, DebugLabel, OutlineMaskPreference, PickingLayerInstanceId, PickingLayerObjectId,
     RenderContext, Size,
 };
@@ -76,15 +78,11 @@ impl LineStripSeriesBuilder {
     }
 
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
-    pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
-        LineDrawData::new(
-            ctx,
-            &self.vertices,
-            &self.strips,
-            &self.batches,
-            self.radius_boost_in_ui_points_for_outlines,
-        )
-        .unwrap()
+    pub fn to_draw_data(
+        self,
+        ctx: &mut crate::context::RenderContext,
+    ) -> Result<LineDrawData, LineDrawDataError> {
+        LineDrawData::new(ctx, self)
     }
 
     /// Iterates over all line strips batches together with their strips and their respective vertices.

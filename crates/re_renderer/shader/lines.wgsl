@@ -10,6 +10,8 @@
 var line_strip_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
+@group(1) @binding(2)
+var picking_instance_id_texture: texture_2d<u32>;
 
 struct DrawDataUniformBuffer {
     radius_boost_in_ui_points: f32,
@@ -25,6 +27,7 @@ var<uniform> draw_data: DrawDataUniformBuffer;
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
     outline_mask_ids: UVec2,
+    picking_layer_object_id: UVec2,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -69,6 +72,15 @@ struct VertexOut {
 
     @location(5) @interpolate(flat)
     fragment_flags: u32,
+
+    // TODO(andreas): picking layer instance are only used in some passes.
+    // Once we have shader variant support we should remove the unused ones
+    // (it's unclear how good shader compilers are at removing unused outputs and associated texture fetches)
+    // TODO(andreas): Is fetching picking layer in the fragment shader maybe more efficient?
+    // Yes, that's more fetches but all of these would be cache hits whereas vertex data pass through can be expensive, (especially on tiler architectures!)
+
+    @location(6) @interpolate(flat)
+    picking_instance_id: UVec2,
 };
 
 struct LineStripData {
@@ -76,6 +88,7 @@ struct LineStripData {
     unresolved_radius: f32,
     stippling: f32,
     flags: u32,
+    picking_instance_id: UVec2,
 }
 
 // Read and unpack line strip data at a given location
@@ -91,6 +104,7 @@ fn read_strip_data(idx: u32) -> LineStripData {
     data.unresolved_radius = unpack2x16float(raw_data.y).y;
     data.flags = ((raw_data.y >> 8u) & 0xFFu);
     data.stippling = f32((raw_data.y >> 16u) & 0xFFu) * (1.0 / 255.0);
+    data.picking_instance_id = textureLoad(picking_instance_id_texture, coord, 0).rg;
     return data;
 }
 
@@ -305,7 +319,7 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
     if coverage < 0.5 {
         discard;
     }
-    return UVec4(0u, 0u, 0u, 0u); // TODO(andreas): Implement picking layer id pass-through.
+    return UVec4(batch.picking_layer_object_id, in.picking_instance_id);
 }
 
 @fragment

@@ -124,7 +124,7 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc, TextureDesc,
     },
-    Color32, DebugLabel, OutlineMaskPreference, PickingLayerProcessor,
+    Color32, DebugLabel, LineStripSeriesBuilder, OutlineMaskPreference, PickingLayerProcessor,
 };
 
 use super::{
@@ -321,11 +321,7 @@ impl LineDrawData {
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &mut RenderContext,
-        // TODO(andreas): Take LineBuilder directly
-        vertices: &[gpu_data::LineVertex],
-        strips: &[LineStripInfo],
-        batches: &[LineBatchInfo],
-        radius_boost_in_ui_points_for_outlines: f32,
+        line_builder: LineStripSeriesBuilder,
     ) -> Result<Self, LineDrawDataError> {
         let mut renderers = ctx.renderers.write();
         let line_renderer = renderers.get_or_create::<_, LineRenderer>(
@@ -335,7 +331,7 @@ impl LineDrawData {
             &mut ctx.resolver,
         );
 
-        if strips.is_empty() {
+        if line_builder.strips.is_empty() {
             return Ok(LineDrawData {
                 bind_group_all_lines: None,
                 bind_group_all_lines_outline_mask: None,
@@ -343,15 +339,21 @@ impl LineDrawData {
             });
         }
 
-        let fallback_batches = [LineBatchInfo {
-            world_from_obj: glam::Mat4::IDENTITY,
-            label: "LineDrawData::fallback_batch".into(),
-            line_vertex_count: vertices.len() as _,
-            overall_outline_mask_ids: OutlineMaskPreference::NONE,
-            additional_outline_mask_ids_vertex_ranges: Vec::new(),
-        }];
+        let LineStripSeriesBuilder {
+            vertices,
+            strips,
+            batches,
+            radius_boost_in_ui_points_for_outlines,
+        } = line_builder;
+
         let batches = if batches.is_empty() {
-            &fallback_batches
+            vec![LineBatchInfo {
+                world_from_obj: glam::Mat4::IDENTITY,
+                label: "LineDrawData::fallback_batch".into(),
+                line_vertex_count: vertices.len() as _,
+                overall_outline_mask_ids: OutlineMaskPreference::NONE,
+                additional_outline_mask_ids_vertex_ranges: Vec::new(),
+            }]
         } else {
             batches
         };
@@ -373,7 +375,7 @@ impl LineDrawData {
  See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
             &vertices[..Self::MAX_NUM_VERTICES]
         } else {
-            vertices
+            &vertices[..]
         };
         let strips = if strips.len() > Self::MAX_NUM_STRIPS {
             re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. This may lead to rendering artifacts.
@@ -387,7 +389,7 @@ impl LineDrawData {
             {
                 return Err(LineDrawDataError::InvalidStripIndex);
             }
-            strips
+            &strips[..]
         };
 
         let num_strips = strips.len() as u32;
