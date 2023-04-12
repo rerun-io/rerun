@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
+use egui::util::hash;
 use wgpu::TextureFormat;
 
 use re_log_types::component_types::{Tensor, TensorData};
@@ -57,7 +58,7 @@ fn textured_rect_from_color_tensor(
     tensor: &Tensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    let texture_handle = get_or_create_texture(render_ctx, tensor.id().0.as_u128(), || {
+    let texture_handle = get_or_create_texture(render_ctx, hash(tensor.id()), || {
         let [height, width, depth] = height_width_depth(tensor)?;
         let (data, format) = match (depth, &tensor.data) {
             // Use R8Unorm and R8Snorm when we can to get filtering on the GPU:
@@ -147,7 +148,7 @@ fn textured_rect_from_class_id_tensor(
 
     let colormap_texture_handle = get_or_create_texture(
         render_ctx,
-        annotations.msg_id.as_u128(),
+        hash(annotations.row_id),
         || -> anyhow::Result<_> {
             let data: Vec<u8> = (0..(colormap_width * colormap_height))
                 .flat_map(|id| {
@@ -169,7 +170,7 @@ fn textured_rect_from_class_id_tensor(
         },
     )?;
 
-    let main_texture_handle = get_or_create_texture(render_ctx, tensor.id().0.as_u128(), || {
+    let main_texture_handle = get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })?;
 
@@ -198,7 +199,7 @@ fn textured_rect_from_depth_tensor(
     );
     let (min, max) = tensor_range(tensor, tensor_stats)?;
 
-    let texture = get_or_create_texture(render_ctx, tensor.id().0.as_u128(), || {
+    let texture = get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })?;
 
@@ -240,11 +241,11 @@ fn tensor_range(tensor: &Tensor, tensor_stats: &TensorStats) -> anyhow::Result<(
 
 fn get_or_create_texture<'a, Err>(
     render_ctx: &mut RenderContext,
-    texture_key: u128,
+    texture_key: u64,
     try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
 ) -> Result<GpuTexture2DHandle, Err> {
     render_ctx.texture_manager_2d.get_or_create_with(
-        texture_key as u64,
+        texture_key,
         &mut render_ctx.gpu_resources.textures,
         try_create_texture_desc,
     )
