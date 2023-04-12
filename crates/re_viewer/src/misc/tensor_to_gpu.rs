@@ -126,42 +126,16 @@ fn textured_rect_from_depth_tensor(
     tensor: &Tensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    let [height, width, depth] = height_width_depth(tensor)?;
-    anyhow::ensure!(depth == 1, "Depth tensor of shape {:?}", tensor.shape);
-    let (mut min, mut max) = tensor_range(tensor, tensor_stats)?;
-
-    // Some datatypes are using normalized samplers (see next below)
-    match tensor.data {
-        TensorData::U8(_) => {
-            min /= 255.0;
-            max /= 255.0;
-        }
-        TensorData::I8(_) => {
-            min /= 127.0;
-            max /= 127.0;
-        }
-        _ => {
-            // Other types are passed in as they are to the GPU
-        }
-    }
+    let [_height, _width, depth] = height_width_depth(tensor)?;
+    anyhow::ensure!(
+        depth == 1,
+        "Depth tensor of weird shape: {:?}",
+        tensor.shape
+    );
+    let (min, max) = tensor_range(tensor, tensor_stats)?;
 
     let texture = get_or_create_texture(render_ctx, tensor.id(), || {
-        let (data, format) = match &tensor.data {
-            // Use R8Unorm and R8Snorm when we can to get filtering on the GPU:
-            TensorData::U8(buf) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm),
-            TensorData::I8(buf) => (cast_slice_to_cow(buf), TextureFormat::R8Snorm),
-            _ => {
-                return general_texture_creation_desc_from_tensor(debug_name, tensor);
-            }
-        };
-
-        Ok(Texture2DCreationDesc {
-            label: debug_name.into(),
-            data,
-            format,
-            width,
-            height,
-        })
+        general_texture_creation_desc_from_tensor(debug_name, tensor)
     })?;
 
     Ok(ColormappedTexture {

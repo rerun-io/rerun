@@ -1,12 +1,13 @@
 #import <./types.wgsl>
+#import <./colormap.wgsl>
 #import <./global_bindings.wgsl>
 #import <./utils/depth_offset.wgsl>
-
-const ERROR_COLOR = Vec4(1.0, 0.0, 1.0, 1.0); // TODO: move someplace global
 
 struct UniformBuffer {
     /// Top left corner position in world space.
     top_left_corner_position: Vec3,
+
+    colormap: u32,
 
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
     extent_u: Vec3,
@@ -63,15 +64,15 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
 
-    var sampled_value = ERROR_COLOR;
+    var sampled_value = ERROR_RGBA;
 
     if rect_info.sample_type == 1u {
         // float
         sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
     } else if rect_info.sample_type == 2u {
-        // depth - not implemented
+        // depth - not supported
     } else if rect_info.sample_type == 3u {
-        // sint - not implemented
+        // sint - not yet implemented  - TODO
     } else if rect_info.sample_type == 4u {
         // uint
         sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
@@ -80,9 +81,15 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     }
 
     let range = rect_info.range_min_max;
-    let normalized_value = (sampled_value - range.x) / (range.y - range.x);
-    // TODO: color-mapping
-    let texture_color = normalized_value;
+    let normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
+
+    var texture_color: Vec4;
+    if rect_info.colormap == 0u {
+        texture_color = normalized_value;
+    } else {
+        let rgb = colormap_linear(rect_info.colormap, normalized_value.r);
+        texture_color = Vec4(rgb, 1.0);
+    }
 
     return texture_color * rect_info.multiplicative_tint;
 }

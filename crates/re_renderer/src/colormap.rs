@@ -8,12 +8,13 @@ use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum ColorMap {
-    Grayscale = 0,
-    ColorMapTurbo = 1,
-    ColorMapViridis = 2,
-    ColorMapPlasma = 3,
-    ColorMapMagma = 4,
-    ColorMapInferno = 5,
+    // reserve 0 for "disabled"
+    Grayscale = 1,
+    ColorMapTurbo = 2,
+    ColorMapViridis = 3,
+    ColorMapPlasma = 4,
+    ColorMapMagma = 5,
+    ColorMapInferno = 6,
 }
 
 pub fn colormap_srgb(which: ColorMap, t: f32) -> [u8; 4] {

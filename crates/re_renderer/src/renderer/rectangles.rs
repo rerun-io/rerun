@@ -33,13 +33,15 @@ use super::{
 };
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
+    use crate::{wgpu_buffer_types, ColorMap};
 
     // Keep in sync with mirror in rectangle.wgsl
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
-        pub top_left_corner_position: wgpu_buffer_types::Vec3RowPadded,
+        pub top_left_corner_position: wgpu_buffer_types::Vec3Unpadded,
+        /// 0=disabled, else see `colormap.rs`
+        pub colormap: u32,
 
         pub extent_u: wgpu_buffer_types::Vec3Unpadded,
         pub sample_type: u32, // 1=float, 2=depth, 3=sint, 4=uint
@@ -74,8 +76,15 @@ mod gpu_data {
                 wgpu::TextureSampleType::Uint => 4,
             };
 
+            let colormap = if texture_info.components == 1 {
+                ColorMap::ColorMapTurbo as u32 // TODO
+            } else {
+                0 // off
+            };
+
             Self {
                 top_left_corner_position: rectangle.top_left_corner_position.into(),
+                colormap,
                 extent_u: rectangle.extent_u.into(),
                 sample_type,
                 extent_v: rectangle.extent_v.into(),
