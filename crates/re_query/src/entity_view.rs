@@ -377,13 +377,7 @@ fn lookup_value() {
     use re_log_types::component_types::{InstanceKey, Point2D, Rect2D};
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
 
-    let instance_keys = [
-        InstanceKey(0), //
-        InstanceKey(1),
-        InstanceKey(2),
-        InstanceKey(3),
-        InstanceKey(4),
-    ];
+    let instance_keys = InstanceKey::from_iter(0..5);
 
     let points = [
         Point2D { x: 1.0, y: 2.0 }, //

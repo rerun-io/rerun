@@ -4,10 +4,7 @@ use re_query::{ComponentWithInstances, EntityView};
 
 #[test]
 fn basic_single_iter() {
-    let instance_keys = [
-        InstanceKey(0), //
-        InstanceKey(1),
-    ];
+    let instance_keys = InstanceKey::from_iter(0..2);
     let points = [
         Point2D { x: 1.0, y: 2.0 }, //
         Point2D { x: 3.0, y: 4.0 },
@@ -28,11 +25,7 @@ fn basic_single_iter() {
 
 #[test]
 fn implicit_joined_iter() {
-    let instance_keys = [
-        InstanceKey(0), //
-        InstanceKey(1),
-        InstanceKey(2),
-    ];
+    let instance_keys = InstanceKey::from_iter(0..3);
 
     let points = [
         Point2D { x: 1.0, y: 2.0 }, //
@@ -69,11 +62,7 @@ fn implicit_joined_iter() {
 
 #[test]
 fn implicit_primary_joined_iter() {
-    let point_ids = [
-        InstanceKey(0), //
-        InstanceKey(1),
-        InstanceKey(2),
-    ];
+    let point_ids = InstanceKey::from_iter(0..3);
 
     let points = [
         Point2D { x: 1.0, y: 2.0 }, //
@@ -126,13 +115,7 @@ fn implicit_component_joined_iter() {
         Point2D { x: 5.0, y: 6.0 },
     ];
 
-    let color_ids = [
-        InstanceKey(0), //
-        InstanceKey(1),
-        InstanceKey(2),
-        InstanceKey(3),
-        InstanceKey(4),
-    ];
+    let color_ids = InstanceKey::from_iter(0..5);
 
     let colors = [
         ColorRGBA(0), //
@@ -219,12 +202,7 @@ fn complex_joined_iter() {
 
 #[test]
 fn single_visit() {
-    let instance_keys = [
-        InstanceKey(0), //
-        InstanceKey(1),
-        InstanceKey(2),
-        InstanceKey(3),
-    ];
+    let instance_keys = InstanceKey::from_iter(0..4);
     let points = [
         Point2D { x: 1.0, y: 2.0 },
         Point2D { x: 3.0, y: 4.0 },
@@ -259,13 +237,7 @@ fn joint_visit() {
         Point2D { x: 9.0, y: 10.0 },
     ];
 
-    let point_ids = [
-        InstanceKey(0), //
-        InstanceKey(1),
-        InstanceKey(2),
-        InstanceKey(3),
-        InstanceKey(4),
-    ];
+    let point_ids = InstanceKey::from_iter(0..5);
 
     let colors = vec![
         ColorRGBA(0xff000000), //

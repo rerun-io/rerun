@@ -9,11 +9,7 @@
 //! # use re_query::EntityView;
 //! # use re_log_types::component_types::{ColorRGBA, InstanceKey, Point2D};
 //!
-//! let instances = [
-//!     InstanceKey(0),
-//!     InstanceKey(1),
-//!     InstanceKey(2),
-//! ];
+//! let instances = InstanceKey::from_iter(0..3);
 //!
 //! let points = [
 //!     Point2D { x: 1.0, y: 2.0 },

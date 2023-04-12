@@ -36,6 +36,12 @@ impl InstanceKey {
     /// for example all points in a point cloud entity.
     pub const SPLAT: Self = Self(u64::MAX);
 
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = impl Into<Self>>) -> Vec<Self> {
+        it.into_iter().map(Into::into).collect::<Vec<_>>()
+    }
+
     /// Are we referring to all instances of the entity (e.g. all points in a point cloud entity)?
     ///
     /// The opposite of [`Self::is_specific`].
