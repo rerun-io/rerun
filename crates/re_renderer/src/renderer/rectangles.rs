@@ -24,7 +24,7 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, SamplerDesc,
     },
-    OutlineMaskPreference, PickingLayerProcessor, Rgba,
+    ColorMap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
 };
 
 use super::{
@@ -33,7 +33,7 @@ use super::{
 };
 
 mod gpu_data {
-    use crate::{wgpu_buffer_types, ColorMap};
+    use crate::wgpu_buffer_types;
 
     // Keep in sync with mirror in rectangle.wgsl
     #[repr(C, align(256))]
@@ -66,7 +66,11 @@ mod gpu_data {
         ) -> Self {
             let texture_info = texture_format.describe();
 
-            let super::ColormappedTexture { texture: _, range } = rectangle.colormapped_texture;
+            let super::ColormappedTexture {
+                texture: _,
+                range,
+                colormap,
+            } = rectangle.colormapped_texture;
 
             let sample_type = match texture_info.sample_type {
                 // The number here must match the shader!
@@ -77,9 +81,9 @@ mod gpu_data {
             };
 
             let colormap = if texture_info.components == 1 {
-                ColorMap::ColorMapTurbo as u32 // TODO
+                colormap as u32
             } else {
-                0 // off
+                0 // RGBA doesn't need a colormap
             };
 
             Self {
@@ -121,6 +125,9 @@ pub struct ColormappedTexture {
     /// Min/max range of the values in the texture.
     /// Used for colormapping (if any).
     pub range: [f32; 2],
+
+    /// The colormap to apply to single-component textures.
+    pub colormap: ColorMap,
 }
 
 impl Default for ColormappedTexture {
@@ -128,6 +135,7 @@ impl Default for ColormappedTexture {
         Self {
             texture: GpuTexture2DHandle::invalid(),
             range: [0.0, 1.0],
+            colormap: ColorMap::default(), // Whatever
         }
     }
 }
@@ -137,6 +145,7 @@ impl ColormappedTexture {
         Self {
             texture,
             range: [0.0, 1.0],
+            colormap: ColorMap::default(), // Unused
         }
     }
 }

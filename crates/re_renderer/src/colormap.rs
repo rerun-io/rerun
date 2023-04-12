@@ -5,10 +5,12 @@ use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
 // ---
 
 // NOTE: Keep in sync with `colormap.wgsl`!
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum ColorMap {
-    // reserve 0 for "disabled"
+    // Reserve 0 for "disabled"
+    /// Perceptually even
+    #[default]
     Grayscale = 1,
     ColorMapTurbo = 2,
     ColorMapViridis = 3,
