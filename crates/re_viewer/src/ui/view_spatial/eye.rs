@@ -48,24 +48,24 @@ impl Eye {
         }
     }
 
-    pub fn ui_from_world(&self, rect: &Rect) -> Mat4 {
-        let aspect_ratio = rect.width() / rect.height();
+    pub fn ui_from_world(&self, space2d_rect: Rect) -> Mat4 {
+        let aspect_ratio = space2d_rect.width() / space2d_rect.height();
 
         let projection = if let Some(fov_y) = self.fov_y {
             Mat4::perspective_infinite_rh(fov_y, aspect_ratio, self.near())
         } else {
             Mat4::orthographic_rh(
-                rect.left(),
-                rect.right(),
-                rect.bottom(),
-                rect.top(),
+                space2d_rect.left(),
+                space2d_rect.right(),
+                space2d_rect.bottom(),
+                space2d_rect.top(),
                 self.near(),
                 self.far(),
             )
         };
 
-        Mat4::from_translation(vec3(rect.center().x, rect.center().y, 0.0))
-            * Mat4::from_scale(0.5 * vec3(rect.width(), -rect.height(), 1.0))
+        Mat4::from_translation(vec3(space2d_rect.center().x, space2d_rect.center().y, 0.0))
+            * Mat4::from_scale(0.5 * vec3(space2d_rect.width(), -space2d_rect.height(), 1.0))
             * projection
             * self.world_from_view.inverse()
     }
@@ -80,7 +80,7 @@ impl Eye {
 
     /// Picking ray for a given pointer in the parent space
     /// (i.e. prior to camera transform, "world" space)
-    pub fn picking_ray(&self, screen_rect: &Rect, pointer: glam::Vec2) -> macaw::Ray3 {
+    pub fn picking_ray(&self, screen_rect: Rect, pointer: glam::Vec2) -> macaw::Ray3 {
         if let Some(fov_y) = self.fov_y {
             let (w, h) = (screen_rect.width(), screen_rect.height());
             let aspect_ratio = w / h;

@@ -8,7 +8,7 @@ use re_log_types::{
 };
 use re_renderer::{Color32, OutlineMaskPreference, Size};
 
-use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
+use super::{SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
@@ -21,7 +21,7 @@ mod picking;
 mod primitives;
 mod scene_part;
 
-pub use self::picking::{AdditionalPickingInfo, PickingRayHit, PickingResult};
+pub use self::picking::{AdditionalPickingInfo, PickingContext, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
@@ -245,29 +245,5 @@ impl SceneSpatial {
         }
 
         SpatialNavigationMode::ThreeD
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn picking(
-        &self,
-        render_ctx: &re_renderer::RenderContext,
-        gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
-        previous_picking_result: &Option<PickingResult>,
-        pointer_in_ui: glam::Vec2,
-        ui_rect: &egui::Rect,
-        eye: &Eye,
-        ui_interaction_radius: f32,
-    ) -> PickingResult {
-        picking::picking(
-            render_ctx,
-            gpu_readback_identifier,
-            previous_picking_result,
-            pointer_in_ui,
-            ui_rect,
-            eye,
-            &self.primitives,
-            &self.ui,
-            ui_interaction_radius,
-        )
     }
 }

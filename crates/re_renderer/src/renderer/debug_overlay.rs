@@ -93,7 +93,7 @@ impl DebugOverlayDrawData {
             "DebugOverlayDrawData".into(),
             gpu_data::DebugOverlayUniformBuffer {
                 screen_resolution: screen_resolution.as_vec2().into(),
-                position_in_pixel: overlay_rect.top_left_corner.as_vec2().into(),
+                position_in_pixel: overlay_rect.left_top.as_vec2().into(),
                 extent_in_pixel: overlay_rect.extent.as_vec2().into(),
                 mode: mode as u32,
                 _padding: 0,
