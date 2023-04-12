@@ -245,8 +245,10 @@ impl MetadataRegistry<TimePoint> {
                 let entry = entry.get_mut();
                 for (timeline, time) in timepoint {
                     if let Some(old_time) = entry.insert(timeline, time) {
-                        re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
-                        debug_assert!(false, "detected re-used `RowId/Timeline`");
+                        if old_time != time {
+                            re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
+                            debug_assert!(false, "detected re-used `RowId/Timeline`");
+                        }
                     }
                 }
             }
