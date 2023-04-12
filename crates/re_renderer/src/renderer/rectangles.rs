@@ -70,7 +70,8 @@ mod gpu_data {
                 texture: _,
                 range,
                 colormap,
-            } = rectangle.colormapped_texture;
+                colormap_texture,
+            } = &rectangle.colormapped_texture;
 
             let sample_type = match texture_info.sample_type {
                 // The number here must match the shader!
@@ -80,8 +81,10 @@ mod gpu_data {
                 wgpu::TextureSampleType::Uint => 4,
             };
 
-            let colormap = if texture_info.components == 1 {
-                colormap as u32
+            let colormap = if colormap_texture.is_some() {
+                666
+            } else if texture_info.components == 1 {
+                *colormap as u32
             } else {
                 0 // RGBA doesn't need a colormap
             };
@@ -95,7 +98,7 @@ mod gpu_data {
                 depth_offset: rectangle.depth_offset as f32,
                 multiplicative_tint: rectangle.multiplicative_tint,
                 outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
-                range_min_max: range.into(),
+                range_min_max: (*range).into(),
                 end_padding: Default::default(),
             }
         }
@@ -128,6 +131,13 @@ pub struct ColormappedTexture {
 
     /// The colormap to apply to single-component textures.
     pub colormap: Colormap,
+
+    /// If set, used for looking up colors instead of [`Self::colormap`].
+    ///
+    /// The textured indexed in a row-major fashion, so that the top left pixel
+    /// corresponds to the the normalized value of 0.0, and the
+    /// bottom right pixel is 1.0.
+    pub colormap_texture: Option<GpuTexture2DHandle>,
 }
 
 impl Default for ColormappedTexture {
@@ -136,6 +146,7 @@ impl Default for ColormappedTexture {
             texture: GpuTexture2DHandle::invalid(),
             range: [0.0, 1.0],
             colormap: Colormap::default(), // Whatever
+            colormap_texture: None,
         }
     }
 }
@@ -146,6 +157,7 @@ impl ColormappedTexture {
             texture,
             range: [0.0, 1.0],
             colormap: Colormap::default(), // Unused
+            colormap_texture: None,
         }
     }
 }
@@ -296,10 +308,11 @@ impl RectangleDrawData {
                 ));
             }
 
-            let mut texture_float = ctx
+            let default_float_texture = ctx
                 .texture_manager_2d
                 .get(&ctx.texture_manager_2d.white_texture_unorm_handle().clone())?
                 .handle;
+            let mut texture_float = default_float_texture;
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
             match texture_description.sample_type {
@@ -317,6 +330,11 @@ impl RectangleDrawData {
                 }
             }
 
+            let colormap_texture = match &rectangle.colormapped_texture.colormap_texture {
+                Some(handle) => ctx.texture_manager_2d.get(handle)?.handle,
+                None => default_float_texture,
+            };
+
             instances.push(RectangleInstance {
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
@@ -328,6 +346,7 @@ impl RectangleDrawData {
                             BindGroupEntry::Sampler(sampler),
                             BindGroupEntry::DefaultTextureView(texture_float),
                             BindGroupEntry::DefaultTextureView(texture_uint),
+                            BindGroupEntry::DefaultTextureView(colormap_texture),
                         ],
                         layout: rectangle_renderer.bind_group_layout,
                     },
@@ -402,6 +421,17 @@ impl Renderer for RectangleRenderer {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // colormap texture:
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },

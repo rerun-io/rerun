@@ -7,7 +7,7 @@ struct UniformBuffer {
     /// Top left corner position in world space.
     top_left_corner_position: Vec3,
 
-    colormap: u32,
+    colormap: u32, // 0 = none, 666 = colormap_texture
 
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
     extent_u: Vec3,
@@ -40,6 +40,9 @@ var texture_float: texture_2d<f32>;
 
 @group(1) @binding(3)
 var texture_uint: texture_2d<u32>;
+
+@group(1) @binding(4)
+var colormap_texture: texture_2d<f32>;
 
 
 struct VertexOut {
@@ -86,6 +89,14 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     var texture_color: Vec4;
     if rect_info.colormap == 0u {
         texture_color = normalized_value;
+    } else if rect_info.colormap == 666u {
+        let colormap_size = textureDimensions(colormap_texture).xy;
+        let color_index_f32 = normalized_value.r * f32(colormap_size.x * colormap_size.y);
+        let color_index_i32 = i32(color_index_f32);
+        let x = color_index_i32 % colormap_size.x;
+        let y = color_index_i32 / colormap_size.x;
+        let color_int = textureLoad(colormap_texture, IVec2(x,y), 0);
+        texture_color = linear_from_srgba(vec4(color_int));
     } else {
         let rgb = colormap_linear(rect_info.colormap, normalized_value.r);
         texture_color = Vec4(rgb, 1.0);

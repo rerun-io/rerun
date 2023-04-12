@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use wgpu::TextureFormat;
 
-use re_log_types::component_types::{Tensor, TensorData, TensorId};
+use re_log_types::component_types::{Tensor, TensorData};
 use re_renderer::{
     renderer::ColormappedTexture,
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
@@ -34,9 +34,13 @@ pub fn textured_rect_from_tensor(
         TensorDataMeaning::Unknown => {
             textured_rect_from_color_tensor(render_ctx, debug_name, tensor, tensor_stats)
         }
-        TensorDataMeaning::ClassId => {
-            textured_rect_from_class_id_tensor(render_ctx, debug_name, tensor, annotations)
-        }
+        TensorDataMeaning::ClassId => textured_rect_from_class_id_tensor(
+            render_ctx,
+            debug_name,
+            tensor,
+            tensor_stats,
+            annotations,
+        ),
         TensorDataMeaning::Depth => {
             textured_rect_from_depth_tensor(render_ctx, debug_name, tensor, tensor_stats)
         }
@@ -52,7 +56,7 @@ fn textured_rect_from_color_tensor(
     tensor: &Tensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    let texture_handle = get_or_create_texture(render_ctx, tensor.id(), || {
+    let texture_handle = get_or_create_texture(render_ctx, tensor.id().0.as_u128(), || {
         let [height, width, depth] = height_width_depth(tensor)?;
         let (data, format) = match (depth, &tensor.data) {
             // Use R8Unorm and R8Snorm when we can to get filtering on the GPU:
@@ -103,6 +107,7 @@ fn textured_rect_from_color_tensor(
         texture: texture_handle,
         range,
         colormap: re_renderer::Colormap::Grayscale, // Single-channel images = luminance = grayscale
+        colormap_texture: None,
     })
 }
 
@@ -110,12 +115,69 @@ fn textured_rect_from_color_tensor(
 // Textures with class_id annotations:
 
 fn textured_rect_from_class_id_tensor(
-    _render_ctx: &mut RenderContext,
-    _debug_name: &str,
-    _tensor: &Tensor,
-    _annotations: &crate::ui::Annotations,
+    render_ctx: &mut RenderContext,
+    debug_name: &str,
+    tensor: &Tensor,
+    tensor_stats: &TensorStats,
+    annotations: &crate::ui::Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
-    anyhow::bail!("annotations mapping not implemented")
+    let [_height, _width, depth] = height_width_depth(tensor)?;
+    anyhow::ensure!(
+        depth == 1,
+        "Cannot apply annotations to tensor of shape {:?}",
+        tensor.shape
+    );
+    anyhow::ensure!(
+        tensor.dtype().is_integer(),
+        "Only integer tensors can be annotated"
+    );
+
+    let (min, max) = tensor_stats
+        .range
+        .ok_or_else(|| anyhow::anyhow!("compressed_tensor!?"))?;
+    anyhow::ensure!(0.0 <= min, "Negative class id");
+
+    // create a lookup texture for the colors that's 256 wide,
+    // and as many rows as needed to fit all the classes.
+    anyhow::ensure!(max <= 65535.0, "Too many class ids");
+
+    let colormap_width = 256;
+    let colormap_height = (max as usize + colormap_width - 1) / colormap_width;
+
+    let colormap_texture_handle = get_or_create_texture(
+        render_ctx,
+        annotations.msg_id.as_u128(),
+        || -> anyhow::Result<_> {
+            let data: Vec<u8> = (0..(colormap_width * colormap_height))
+                .flat_map(|id| {
+                    let color = annotations
+                        .class_description(Some(re_log_types::component_types::ClassId(id as u16)))
+                        .annotation_info()
+                        .color(None, crate::ui::DefaultColor::TransparentBlack);
+                    color.to_array() // premultiplied!
+                })
+                .collect();
+
+            Ok(Texture2DCreationDesc {
+                label: "class_id_colormap".into(),
+                data: data.into(),
+                format: TextureFormat::Rgba8UnormSrgb,
+                width: colormap_width as u32,
+                height: colormap_height as u32,
+            })
+        },
+    )?;
+
+    let main_texture_handle = get_or_create_texture(render_ctx, tensor.id().0.as_u128(), || {
+        general_texture_creation_desc_from_tensor(debug_name, tensor)
+    })?;
+
+    Ok(ColormappedTexture {
+        texture: main_texture_handle,
+        range: [0.0, (colormap_width * colormap_height) as f32],
+        colormap: Default::default(), // unused
+        colormap_texture: Some(colormap_texture_handle),
+    })
 }
 
 // ----------------------------------------------------------------------------
@@ -135,7 +197,7 @@ fn textured_rect_from_depth_tensor(
     );
     let (min, max) = tensor_range(tensor, tensor_stats)?;
 
-    let texture = get_or_create_texture(render_ctx, tensor.id(), || {
+    let texture = get_or_create_texture(render_ctx, tensor.id().0.as_u128(), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })?;
 
@@ -143,6 +205,7 @@ fn textured_rect_from_depth_tensor(
         texture,
         range: [min as f32, max as f32],
         colormap: re_renderer::Colormap::Turbo, // TODO(emilk): make this configurable in the UI
+        colormap_texture: None,
     })
 }
 
@@ -176,12 +239,11 @@ fn tensor_range(tensor: &Tensor, tensor_stats: &TensorStats) -> anyhow::Result<(
 
 fn get_or_create_texture<'a, Err>(
     render_ctx: &mut RenderContext,
-    tensor_id: TensorId,
+    texture_key: u128,
     try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
 ) -> Result<GpuTexture2DHandle, Err> {
-    let texture_key = tensor_id.0.as_u128() as u64;
     render_ctx.texture_manager_2d.get_or_create_with(
-        texture_key,
+        texture_key as u64,
         &mut render_ctx.gpu_resources.textures,
         try_create_texture_desc,
     )

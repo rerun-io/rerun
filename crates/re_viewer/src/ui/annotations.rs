@@ -21,6 +21,7 @@ pub struct Annotations {
 }
 
 impl Annotations {
+    #[inline]
     pub fn class_description(&self, class_id: Option<ClassId>) -> ResolvedClassDescription<'_> {
         ResolvedClassDescription {
             class_id,
@@ -35,6 +36,7 @@ pub struct ResolvedClassDescription<'a> {
 }
 
 impl<'a> ResolvedClassDescription<'a> {
+    #[inline]
     pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
         ResolvedAnnotationInfo {
             class_id: self.class_id,
