@@ -100,6 +100,7 @@ impl std::ops::DerefMut for DataTypeRegistry {
 #[derive(Debug, Clone)]
 pub struct MetadataRegistry<T: Clone> {
     pub registry: BTreeMap<RowId, T>,
+
     /// Cached heap size, because the registry gets very, very large.
     pub heap_size_bytes: u64,
 }

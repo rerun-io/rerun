@@ -75,8 +75,6 @@ impl DataStore {
         let initial_num_bytes =
             (stats_before.temporal.num_bytes + stats_before.metadata_registry.num_bytes) as f64;
 
-        dbg!(&stats_before);
-
         let row_ids = match target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
