@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use wgpu::TextureFormat;
 
-use re_log_types::component_types::{Tensor, TensorData, TensorTrait as _};
+use re_log_types::component_types::{Tensor, TensorData};
 use re_renderer::{
     renderer::ColormappedTexture,
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
