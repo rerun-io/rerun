@@ -49,6 +49,8 @@ pub fn get_component_with_instances(
     ent_path: &EntityPath,
     component: ComponentName,
 ) -> crate::Result<(RowId, ComponentWithInstances)> {
+    debug_assert_eq!(store.cluster_key(), InstanceKey::name());
+
     let components = [InstanceKey::name(), component];
 
     let (row_id, mut cells) = store
@@ -58,7 +60,9 @@ pub fn get_component_with_instances(
     Ok((
         row_id,
         ComponentWithInstances {
-            instance_keys: cells[0].take().map(|cell| cell.to_arrow()),
+            // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
+            // by the store.
+            instance_keys: cells[0].take().unwrap(),
             values: cells[1].take().ok_or(QueryError::PrimaryNotFound)?,
         },
     ))

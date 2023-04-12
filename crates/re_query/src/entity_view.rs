@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, marker::PhantomData};
 
-use arrow2::array::{Array, MutableArray, PrimitiveArray};
+use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
 use re_log_types::{
     component_types::InstanceKey,
@@ -20,8 +20,7 @@ use crate::QueryError;
 /// See: [`crate::get_component_with_instances`]
 #[derive(Clone, Debug)]
 pub struct ComponentWithInstances {
-    // TODO(jleibs): Remove optional once the store guarantees this will always exist
-    pub(crate) instance_keys: Option<Box<dyn Array>>,
+    pub(crate) instance_keys: DataCell,
     pub(crate) values: DataCell,
 }
 
@@ -47,13 +46,9 @@ impl ComponentWithInstances {
     /// If the instance keys don't exist, generate them based on array-index position of the values
     #[inline]
     pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
-        if let Some(keys) = &self.instance_keys {
-            let iter = arrow_array_deserialize_iterator::<InstanceKey>(keys.as_ref())?;
-            Ok(itertools::Either::Left(iter))
-        } else {
-            let auto_num = (0..self.len()).map(|i| InstanceKey(i as u64));
-            Ok(itertools::Either::Right(auto_num))
-        }
+        self.instance_keys
+            .try_to_native::<InstanceKey>()
+            .map_err(Into::into)
     }
 
     /// Iterate over the values and convert them to a native `Component`
@@ -100,27 +95,19 @@ impl ComponentWithInstances {
 
     /// Look up the value that corresponds to a given `InstanceKey` and return as an arrow `Array`
     pub fn lookup_arrow(&self, instance_key: &InstanceKey) -> Option<Box<dyn Array>> {
-        let offset = if let Some(instance_keys) = &self.instance_keys {
-            // If `instance_keys` is set, extract the `PrimitiveArray`, and find
-            // the index of the value by `binary_search`
+        let keys = self
+            .instance_keys
+            .as_arrow_ref()
+            .as_any()
+            .downcast_ref::<PrimitiveArray<u64>>()?
+            .values();
 
-            let keys = instance_keys
-                .as_any()
-                .downcast_ref::<PrimitiveArray<u64>>()?
-                .values();
-
-            // If the value is splatted, return the offset of the splat
-            if keys.len() == 1 && keys[0] == InstanceKey::SPLAT.0 {
-                0
-            } else {
-                // Otherwise binary search to find the offset of the instance
-                keys.binary_search(&instance_key.0).ok()? as u32
-            }
+        // If the value is splatted, return the offset of the splat
+        let offset = if keys.len() == 1 && keys[0] == InstanceKey::SPLAT.0 {
+            0
         } else {
-            // If `instance_keys` is not set, then offset is the instance because the implicit
-            // index is a sequential list
-            let offset = instance_key.0 as u32;
-            (offset < self.values.num_instances()).then_some(offset)?
+            // Otherwise binary search to find the offset of the instance
+            keys.binary_search(&instance_key.0).ok()? as u32
         };
 
         Some(self.values.as_arrow_ref().slice(offset as _, 1))
@@ -128,28 +115,15 @@ impl ComponentWithInstances {
 
     /// Produce a `ComponentWithInstances` from native component types
     pub fn from_native<C: SerializableComponent>(
-        instance_keys: Option<&Vec<InstanceKey>>,
-        values: &Vec<C>,
-    ) -> crate::Result<ComponentWithInstances> {
-        use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-
-        let instance_keys = if let Some(keys) = instance_keys {
-            Some(
-                arrow_serialize_to_mutable_array::<InstanceKey, InstanceKey, &Vec<InstanceKey>>(
-                    keys,
-                )?
-                .as_box(),
-            )
-        } else {
-            None
-        };
-
+        instance_keys: &[InstanceKey],
+        values: &[C],
+    ) -> ComponentWithInstances {
+        let instance_keys = DataCell::from_native(instance_keys);
         let values = DataCell::from_native(values);
-
-        Ok(ComponentWithInstances {
+        ComponentWithInstances {
             instance_keys,
             values,
-        })
+        }
     }
 }
 
@@ -267,7 +241,7 @@ impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let primary_table = arrow::format_table(
             [
-                self.primary.instance_keys.as_ref().unwrap().as_ref(),
+                self.primary.instance_keys.as_arrow_ref(),
                 self.primary.values.as_arrow_ref(),
             ],
             ["InstanceId", self.primary.name().as_str()],
@@ -363,46 +337,55 @@ where
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
     #[inline]
-    pub fn from_native(c0: (Option<&Vec<InstanceKey>>, &Vec<Primary>)) -> crate::Result<Self> {
-        let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
-
-        Ok(Self {
+    pub fn from_native(c0: (&[InstanceKey], &[Primary])) -> Self {
+        let primary = ComponentWithInstances::from_native(c0.0, c0.1);
+        Self {
             row_id: RowId::ZERO,
             primary,
             components: Default::default(),
             phantom: PhantomData,
-        })
+        }
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
     #[inline]
     pub fn from_native2<C>(
-        primary: (Option<&Vec<InstanceKey>>, &Vec<Primary>),
-        component: (Option<&Vec<InstanceKey>>, &Vec<C>),
-    ) -> crate::Result<Self>
+        primary: (&[InstanceKey], &[Primary]),
+        component: (&[InstanceKey], &[C]),
+    ) -> Self
     where
         C: Component + 'static,
         C: ArrowSerialize + ArrowField<Type = C>,
     {
-        let primary = ComponentWithInstances::from_native(primary.0, primary.1)?;
-        let component_c1 = ComponentWithInstances::from_native(component.0, component.1)?;
+        let primary = ComponentWithInstances::from_native(primary.0, primary.1);
+        let component_c1 = ComponentWithInstances::from_native(component.0, component.1);
 
         let components = [(component_c1.name(), component_c1)].into();
 
-        Ok(Self {
+        Self {
             row_id: RowId::ZERO,
             primary,
             components,
             phantom: PhantomData,
-        })
+        }
     }
 }
 
 #[test]
 fn lookup_value() {
+    use arrow2::array::MutableArray;
     use re_log_types::component_types::{InstanceKey, Point2D, Rect2D};
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-    let points = vec![
+
+    let instance_keys = [
+        InstanceKey(0), //
+        InstanceKey(1),
+        InstanceKey(2),
+        InstanceKey(3),
+        InstanceKey(4),
+    ];
+
+    let points = [
         Point2D { x: 1.0, y: 2.0 }, //
         Point2D { x: 3.0, y: 4.0 },
         Point2D { x: 5.0, y: 6.0 },
@@ -410,22 +393,23 @@ fn lookup_value() {
         Point2D { x: 9.0, y: 10.0 },
     ];
 
-    let component = ComponentWithInstances::from_native(None, &points).unwrap();
+    let component =
+        ComponentWithInstances::from_native(instance_keys.as_slice(), points.as_slice());
 
     let missing_value = component.lookup_arrow(&InstanceKey(5));
     assert_eq!(missing_value, None);
 
     let value = component.lookup_arrow(&InstanceKey(2)).unwrap();
 
-    let expected_point = vec![points[2].clone()];
+    let expected_point = [points[2].clone()];
     let expected_arrow =
-        arrow_serialize_to_mutable_array::<Point2D, Point2D, &Vec<Point2D>>(&expected_point)
+        arrow_serialize_to_mutable_array::<Point2D, Point2D, _>(expected_point.as_slice())
             .unwrap()
             .as_box();
 
     assert_eq!(expected_arrow, value);
 
-    let instance_keys = vec![
+    let instance_keys = [
         InstanceKey(17),
         InstanceKey(47),
         InstanceKey(48),
@@ -433,16 +417,16 @@ fn lookup_value() {
         InstanceKey(472),
     ];
 
-    let component = ComponentWithInstances::from_native(Some(&instance_keys), &points).unwrap();
+    let component = ComponentWithInstances::from_native(instance_keys.as_slice(), &points);
 
     let missing_value = component.lookup_arrow(&InstanceKey(46));
     assert_eq!(missing_value, None);
 
     let value = component.lookup_arrow(&InstanceKey(99)).unwrap();
 
-    let expected_point = vec![points[3].clone()];
+    let expected_point = [points[3].clone()];
     let expected_arrow =
-        arrow_serialize_to_mutable_array::<Point2D, Point2D, &Vec<Point2D>>(&expected_point)
+        arrow_serialize_to_mutable_array::<Point2D, Point2D, _>(expected_point.as_slice())
             .unwrap()
             .as_box();
 
@@ -469,14 +453,14 @@ fn lookup_value() {
 #[test]
 fn lookup_splat() {
     use re_log_types::component_types::{InstanceKey, Point2D};
-    let instances = vec![
+    let instances = [
         InstanceKey::SPLAT, //
     ];
-    let points = vec![
+    let points = [
         Point2D { x: 1.0, y: 2.0 }, //
     ];
 
-    let component = ComponentWithInstances::from_native(Some(&instances), &points).unwrap();
+    let component = ComponentWithInstances::from_native(instances.as_slice(), points.as_slice());
 
     // Any instance we look up will return the slatted value
     let value = component.lookup::<Point2D>(&InstanceKey(1)).unwrap();
