@@ -11,8 +11,8 @@ use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_row, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
-    RangeQuery, TimeInt, TimeRange,
+    polars_util, test_row, DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
+    TimeRange,
 };
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Point2D, Rect2D},
@@ -20,8 +20,7 @@ use re_log_types::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    Component as _, ComponentName, DataCell, DataRow, EntityPath, MsgId, TimeType, Timeline,
+    Component as _, ComponentName, DataCell, DataRow, EntityPath, TimeType, Timeline,
 };
 
 // TODO(#1619): introduce batching in the testing matrix
@@ -69,30 +68,25 @@ fn all_components() {
         let mut store = DataStore::new(
             InstanceKey::name(),
             DataStoreConfig {
-                component_bucket_nb_rows: u64::MAX,
-                index_bucket_nb_rows: u64::MAX,
+                indexed_bucket_num_rows: u64::MAX,
                 ..Default::default()
             },
         );
         let cluster_key = store.cluster_key();
 
         let components_a = &[
-            ColorRGBA::name(), // added by us, timeless
-            Rect2D::name(),    // added by us
-            cluster_key,       // always here
-            MsgId::name(),     // automatically appended by DataRow
-            #[cfg(debug_assertions)]
-            DataStore::insert_id_key(), // automatically added in debug
+            ColorRGBA::name(),           // added by us, timeless
+            Rect2D::name(),              // added by us
+            cluster_key,                 // always here
+            re_log_types::MsgId::name(), // injected automatically (..for now)
         ];
 
         let components_b = &[
-            ColorRGBA::name(), // added by us, timeless
-            Point2D::name(),   // added by us
-            Rect2D::name(),    // added by us
-            cluster_key,       // always here
-            MsgId::name(),     // automatically appended by DataRow
-            #[cfg(debug_assertions)]
-            DataStore::insert_id_key(), // automatically added in debug
+            ColorRGBA::name(),           // added by us, timeless
+            Point2D::name(),             // added by us
+            Rect2D::name(),              // added by us
+            cluster_key,                 // always here
+            re_log_types::MsgId::name(), // injected automatically (..for now)
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -122,8 +116,7 @@ fn all_components() {
         let mut store = DataStore::new(
             InstanceKey::name(),
             DataStoreConfig {
-                component_bucket_nb_rows: 0,
-                index_bucket_nb_rows: 0,
+                indexed_bucket_num_rows: 0,
                 ..Default::default()
             },
         );
@@ -143,22 +136,18 @@ fn all_components() {
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(), // added by us, timeless
-            Rect2D::name(),    // added by us
-            cluster_key,       // always here
-            MsgId::name(),     // automatically appended by DataRow
-            #[cfg(debug_assertions)]
-            DataStore::insert_id_key(), // automatically added in debug
+            ColorRGBA::name(),           // added by us, timeless
+            Rect2D::name(),              // added by us
+            cluster_key,                 // always here
+            re_log_types::MsgId::name(), // injected automatically (..for now)
         ];
 
         let components_b = &[
-            ColorRGBA::name(), // added by us, timeless
-            Rect2D::name(),    // ⚠ inherited before the buckets got split apart!
-            Point2D::name(),   // added by us
-            cluster_key,       // always here
-            MsgId::name(),     // automatically appended by DataRow
-            #[cfg(debug_assertions)]
-            DataStore::insert_id_key(), // automatically added in debug
+            ColorRGBA::name(),           // added by us, timeless
+            Rect2D::name(),              // ⚠ inherited before the buckets got split apart!
+            Point2D::name(),             // added by us
+            cluster_key,                 // always here
+            re_log_types::MsgId::name(), // injected automatically (..for now)
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -192,8 +181,7 @@ fn all_components() {
         let mut store = DataStore::new(
             InstanceKey::name(),
             DataStoreConfig {
-                component_bucket_nb_rows: 0,
-                index_bucket_nb_rows: 0,
+                indexed_bucket_num_rows: 0,
                 ..Default::default()
             },
         );
@@ -215,22 +203,18 @@ fn all_components() {
         // └──────────┴────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            ColorRGBA::name(), // added by us, timeless
-            Rect2D::name(),    // added by us
-            cluster_key,       // always here
-            MsgId::name(),     // automatically appended by DataRow
-            #[cfg(debug_assertions)]
-            DataStore::insert_id_key(), // automatically added in debug
+            ColorRGBA::name(),           // added by us, timeless
+            Rect2D::name(),              // added by us
+            cluster_key,                 // always here
+            re_log_types::MsgId::name(), // injected automatically (..for now)
         ];
 
         let components_b = &[
-            ColorRGBA::name(), // added by us, timeless
-            Point2D::name(),   // added by us but not contained in the second bucket
-            Rect2D::name(),    // added by use
-            cluster_key,       // always here
-            MsgId::name(),     // automatically appended by DataRow
-            #[cfg(debug_assertions)]
-            DataStore::insert_id_key(), // automatically added in debug
+            ColorRGBA::name(),           // added by us, timeless
+            Point2D::name(),             // added by us but not contained in the second bucket
+            Rect2D::name(),              // added by use
+            cluster_key,                 // always here
+            re_log_types::MsgId::name(), // injected automatically (..for now)
         ];
 
         let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
@@ -273,12 +257,13 @@ fn latest_at() {
     for config in re_arrow_store::test_util::all_configs() {
         let mut store = DataStore::new(InstanceKey::name(), config.clone());
         latest_at_impl(&mut store);
-        store.gc(
-            GarbageCollectionTarget::DropAtLeastPercentage(1.0),
-            Timeline::new("frame_nr", TimeType::Sequence),
-            MsgId::name(),
-        );
-        latest_at_impl(&mut store);
+        // TODO(#1619): bring back garbage collection
+        // store.gc(
+        //     GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        //     Timeline::new("frame_nr", TimeType::Sequence),
+        //     MsgId::name(),
+        // );
+        // latest_at_impl(&mut store);
     }
 }
 
@@ -883,27 +868,29 @@ fn gc_impl(store: &mut DataStore) {
         }
         _ = store.to_dataframe(); // simple way of checking that everything is still readable
 
-        let msg_id_chunks = store.gc(
-            GarbageCollectionTarget::DropAtLeastPercentage(1.0 / 3.0),
-            Timeline::new("frame_nr", TimeType::Sequence),
-            MsgId::name(),
-        );
+        // TODO(#1619): bring back garbage collection
 
-        let msg_ids = msg_id_chunks
-            .iter()
-            .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
-            .map(Option::unwrap) // MsgId is always present
-            .collect::<ahash::HashSet<_>>();
+        // let msg_id_chunks = store.gc(
+        //     GarbageCollectionTarget::DropAtLeastPercentage(1.0 / 3.0),
+        //     Timeline::new("frame_nr", TimeType::Sequence),
+        //     MsgId::name(),
+        // );
 
-        for msg_id in &msg_ids {
-            assert!(store.get_msg_metadata(msg_id).is_some());
-        }
+        // let msg_ids = msg_id_chunks
+        //     .iter()
+        //     .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+        //     .map(Option::unwrap) // MsgId is always present
+        //     .collect::<ahash::HashSet<_>>();
 
-        store.clear_msg_metadata(&msg_ids);
+        // for msg_id in &msg_ids {
+        //     assert!(store.get_msg_metadata(msg_id).is_some());
+        // }
 
-        for msg_id in &msg_ids {
-            assert!(store.get_msg_metadata(msg_id).is_none());
-        }
+        // store.clear_msg_metadata(&msg_ids);
+
+        // for msg_id in &msg_ids {
+        //     assert!(store.get_msg_metadata(msg_id).is_none());
+        // }
     }
 }
 

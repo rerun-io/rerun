@@ -49,16 +49,17 @@ pub fn get_component_with_instances(
 ) -> crate::Result<ComponentWithInstances> {
     let components = [InstanceKey::name(), component];
 
-    let row_indices = store
+    let mut cells = store
         .latest_at(query, ent_path, component, &components)
         .ok_or(QueryError::PrimaryNotFound)?;
 
-    let mut results = store.get(&components, &row_indices);
-
     Ok(ComponentWithInstances {
         name: component,
-        instance_keys: results[0].take(),
-        values: results[1].take().ok_or(QueryError::PrimaryNotFound)?,
+        instance_keys: cells[0].take().map(|cell| cell.as_arrow()),
+        values: cells[1]
+            .take()
+            .map(|cell| cell.as_arrow())
+            .ok_or(QueryError::PrimaryNotFound)?,
     })
 }
 

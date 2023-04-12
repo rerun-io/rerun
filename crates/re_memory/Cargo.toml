@@ -27,7 +27,7 @@ itertools = { workspace = true }
 nohash-hasher = "0.2"
 once_cell = "1.16"
 parking_lot.workspace = true
-smallvec = "1.10"
+smallvec.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

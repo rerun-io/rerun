@@ -38,16 +38,17 @@ re_log.workspace = true
 
 # External dependencies:
 ahash.workspace = true
-anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
 ] }
+arrow2_convert.workspace = true
 document-features = "0.2"
 indent = "0.1"
 itertools = { workspace = true }
 nohash-hasher = "0.2"
 parking_lot.workspace = true
+smallvec.workspace = true
 static_assertions = "1.1"
 thiserror.workspace = true
 
@@ -73,6 +74,7 @@ polars-ops = { workspace = true, optional = true, features = [
 
 
 [dev-dependencies]
+anyhow.workspace = true
 criterion = "0.4"
 mimalloc.workspace = true
 polars-core = { workspace = true, features = [
@@ -85,9 +87,7 @@ polars-core = { workspace = true, features = [
   "sort_multiple",
 ] }
 rand = "0.8"
-smallvec = { version = "1.0", features = ["const_generics", "union"] }
-tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
-
+tinyvec.workspace = true
 
 [lib]
 bench = false
