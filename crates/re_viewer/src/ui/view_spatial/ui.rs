@@ -4,7 +4,7 @@ use re_format::format_f32;
 
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_log_types::component_types::{Tensor, TensorDataMeaning, TensorTrait};
+use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
 
 use crate::{
@@ -220,7 +220,6 @@ impl ViewSpatialState {
         if tensor.meaning == TensorDataMeaning::Depth {
             if properties.depth_from_world_scale.is_auto() {
                 let auto = tensor.meter.unwrap_or_else(|| {
-                    use re_log_types::component_types::TensorTrait as _;
                     if tensor.dtype().is_integer() {
                         1000.0
                     } else {
