@@ -89,10 +89,10 @@ def main() -> None:
         cargo_toml = f.read()
 
     cargo_version = get_cargo_version(cargo_toml)
-    date = datetime.now().strftime("%Y-%m-%d")
-    new_version = f"{cargo_version}+{date}-{get_git_sha()}"
 
     if sys.argv[1] == "--patch_prerelease":
+        date = datetime.now().strftime("%Y-%m-%d")
+        new_version = f"{cargo_version}+{date}-{get_git_sha()}"
         new_cargo_toml = patch_cargo_version(cargo_toml, new_version)
 
         # Write the patched Cargo.toml back to disk
@@ -107,7 +107,9 @@ def main() -> None:
             )
         print(f"Version numbers match: {cargo_version} == {ref_version}")
     elif sys.argv[1] == "--expected_version":
-        print(f"expected_version={new_version}")
+        # We always expect the version built to match what is in cargo.toml
+        # NOTE: what is in Cargo.toml may have been modified by an earlier call to `--patch-prerelease`
+        print(f"expected_version={cargo_version}")
 
     else:
         raise Exception("Invalid argument")
