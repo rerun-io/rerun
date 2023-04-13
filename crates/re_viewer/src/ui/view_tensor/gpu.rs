@@ -85,20 +85,20 @@ fn texture_desc_from_tensor(
     match tensor.dtype() {
         TensorDataType::U8 => {
             let tensor = ndarray::ArrayViewD::<u8>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R8Uint, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R8Uint, |x| x)
         }
         TensorDataType::U16 => {
             let tensor = ndarray::ArrayViewD::<u16>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R16Uint, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R16Uint, |x| x)
         }
         TensorDataType::U32 => {
             let tensor = ndarray::ArrayViewD::<u32>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R32Uint, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R32Uint, |x| x)
         }
         TensorDataType::U64 => {
             // narrow to f32:
             let tensor = ndarray::ArrayViewD::<u64>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(
+            to_texture_desc(
                 &tensor,
                 slice_selection,
                 TextureFormat::R32Float,
@@ -107,20 +107,20 @@ fn texture_desc_from_tensor(
         }
         TensorDataType::I8 => {
             let tensor = ndarray::ArrayViewD::<i8>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R8Sint, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R8Sint, |x| x)
         }
         TensorDataType::I16 => {
             let tensor = ndarray::ArrayViewD::<i16>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R16Sint, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R16Sint, |x| x)
         }
         TensorDataType::I32 => {
             let tensor = ndarray::ArrayViewD::<i32>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R32Sint, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R32Sint, |x| x)
         }
         TensorDataType::I64 => {
             // narrow to f32:
             let tensor = ndarray::ArrayViewD::<i64>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(
+            to_texture_desc(
                 &tensor,
                 slice_selection,
                 TextureFormat::R32Float,
@@ -129,16 +129,16 @@ fn texture_desc_from_tensor(
         }
         TensorDataType::F16 => {
             let tensor = ndarray::ArrayViewD::<half::f16>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R16Float, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R16Float, |x| x)
         }
         TensorDataType::F32 => {
             let tensor = ndarray::ArrayViewD::<f32>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(&tensor, slice_selection, TextureFormat::R32Float, |x| x)
+            to_texture_desc(&tensor, slice_selection, TextureFormat::R32Float, |x| x)
         }
         TensorDataType::F64 => {
             // narrow to f32:
             let tensor = ndarray::ArrayViewD::<f64>::try_from(tensor)?;
-            texture_desc_from_tensor_slice(
+            to_texture_desc(
                 &tensor,
                 slice_selection,
                 TextureFormat::R32Float,
@@ -148,7 +148,7 @@ fn texture_desc_from_tensor(
     }
 }
 
-fn texture_desc_from_tensor_slice<From: Copy, To: bytemuck::Pod>(
+fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     tensor: &ndarray::ArrayViewD<'_, From>,
     slice_selection: &SliceSelection,
     format: wgpu::TextureFormat,
