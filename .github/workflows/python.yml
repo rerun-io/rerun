@@ -225,10 +225,12 @@ jobs:
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-        # the pre-dist folder.
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pip install rerun-sdk==${{ env.expected_version }} --no-index --find-links pre-dist --force-reinstall
+          pip uninstall rerun-sdk
+          pip install rerun-sdk==${{ env.expected_version }} --no-index --find-links pre-dist
 
       - name: Verify built wheel version
         shell: bash
