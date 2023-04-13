@@ -87,7 +87,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sample the main texture:
     var sampled_value: Vec4;
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
-        sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
+        sampled_value = textureSampleLevel(texture_float, texture_sampler, in.texcoord, 0.0); // TODO(emilk): support mipmaps
     } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
         let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_sint).xy));
         sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
