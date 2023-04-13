@@ -13,7 +13,7 @@ use pyo3::{
 
 use re_log_types::{ArrowMsg, DataRow, DataTableError};
 use rerun::{
-    log::{MsgId, PathOp},
+    log::{PathOp, RowId},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
 };
@@ -477,20 +477,14 @@ fn log_transform(
     // introducing new numerical issues.
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [transform].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 // ----------------------------------------------------------------------------
@@ -561,20 +555,14 @@ fn log_view_coordinates(
     // conversion errors.
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [coordinates].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 // ----------------------------------------------------------------------------
@@ -695,20 +683,14 @@ fn log_meshes(
     // TODO(jleibs) replace with python-native implementation
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         meshes.len() as _,
         meshes,
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[pyfunction]
@@ -776,20 +758,14 @@ fn log_mesh_file(
     // TODO(jleibs) replace with python-native implementation
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [mesh3d].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 /// Log an image file given its contents or path on disk.
@@ -868,20 +844,14 @@ fn log_image_file(
     };
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [tensor].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[derive(FromPyObject)]
@@ -947,20 +917,14 @@ fn log_annotation_context(
     // TODO(jleibs) replace with python-native implementation
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [annotation_context].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[pyfunction]
@@ -987,8 +951,8 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
 
     let mut session = python_session();
 
-    let msg: ArrowMsg = (&data_table)
-        .try_into()
+    let msg: ArrowMsg = data_table
+        .to_arrow_msg()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send_arrow_msg(msg);

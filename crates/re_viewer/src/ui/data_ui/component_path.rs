@@ -25,7 +25,7 @@ impl DataUi for ComponentPath {
                 // Any other failure to get a component is unexpected
                 ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
             }
-            Ok(component_data) => {
+            Ok((_, component_data)) => {
                 super::component::EntityComponentWithInstances {
                     entity_path: self.entity_path.clone(),
                     component_data,

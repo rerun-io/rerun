@@ -17,7 +17,7 @@ all-features = true
 
 
 [dependencies]
-smallvec = "1.10"
+smallvec.workspace = true
 static_assertions = "1.1"
 
 

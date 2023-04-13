@@ -747,9 +747,12 @@ fn initialize_time_ranges_ui(
         .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
-        let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
-        time_view = time_view.or_else(|| Some(view_everything(&time_x_range, &timeline_axis)));
-        time_range.extend(timeline_axis.ranges);
+        // NOTE: `times` can be empty if a GC wiped everything.
+        if !times.is_empty() {
+            let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
+            time_view = time_view.or_else(|| Some(view_everything(&time_x_range, &timeline_axis)));
+            time_range.extend(timeline_axis.ranges);
+        }
     }
 
     TimeRangesUi::new(

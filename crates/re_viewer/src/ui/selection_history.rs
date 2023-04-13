@@ -1,5 +1,3 @@
-use re_data_store::LogDb;
-
 use crate::misc::ItemCollection;
 
 use super::Blueprint;
@@ -32,12 +30,12 @@ pub struct SelectionHistory {
 }
 
 impl SelectionHistory {
-    pub(crate) fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
+    pub(crate) fn on_frame_start(&mut self, blueprint: &Blueprint) {
         crate::profile_function!();
 
         let mut i = 0;
         self.stack.retain_mut(|selection| {
-            selection.purge_invalid(log_db, blueprint);
+            selection.purge_invalid(blueprint);
             let retain = !selection.is_empty();
             if !retain && i <= self.current {
                 self.current = self.current.saturating_sub(1);

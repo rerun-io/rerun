@@ -2,7 +2,7 @@ use std::{net::SocketAddr, thread::JoinHandle};
 
 use crossbeam::channel::{select, Receiver, Sender};
 
-use re_log_types::{LogMsg, MsgId};
+use re_log_types::{LogMsg, RowId};
 
 #[derive(Debug, PartialEq, Eq)]
 struct FlushedMsg;
@@ -146,7 +146,7 @@ impl Drop for Client {
     /// Wait until everything has been sent.
     fn drop(&mut self) {
         re_log::debug!("Shutting down the client connection…");
-        self.send(LogMsg::Goodbye(MsgId::random()));
+        self.send(LogMsg::Goodbye(RowId::random()));
         self.flush();
         self.encode_quit_tx.send(QuitMsg).ok();
         self.send_quit_tx.send(InterruptMsg::Quit).ok();

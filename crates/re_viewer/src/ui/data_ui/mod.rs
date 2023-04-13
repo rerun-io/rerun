@@ -14,7 +14,6 @@ mod entity_path;
 pub(crate) mod image;
 mod instance_path;
 mod log_msg;
-mod msg_id;
 
 pub(crate) use component_ui_registry::ComponentUiRegistry;
 
@@ -23,9 +22,6 @@ pub(crate) use component_ui_registry::ComponentUiRegistry;
 pub enum UiVerbosity {
     /// Keep it small enough to fit on one row.
     Small,
-
-    /// At most this height
-    MaxHeight(f32),
 
     /// Display a reduced set, used for hovering.
     Reduced,
@@ -81,7 +77,7 @@ impl DataUi for [DataCell] {
         sorted.sort_by_key(|cb| cb.component_name());
 
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small => {
                 ui.label(sorted.iter().map(format_cell).join(", "));
             }
 

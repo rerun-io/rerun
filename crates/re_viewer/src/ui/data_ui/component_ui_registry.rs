@@ -47,7 +47,6 @@ impl Default for ComponentUiRegistry {
         registry.add::<re_log_types::component_types::LineStrip2D>();
         registry.add::<re_log_types::component_types::LineStrip3D>();
         registry.add::<re_log_types::component_types::Mesh3D>();
-        registry.add::<re_log_types::component_types::MsgId>();
         // registry.add::<re_log_types::component_types::Point2D>();
         // registry.add::<re_log_types::component_types::Point3D>();
         // registry.add::<re_log_types::component_types::Quaternion>();
@@ -143,7 +142,7 @@ impl DataUi for re_log_types::component_types::TextEntry {
         let Self { body, level } = self;
 
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::MaxHeight(_) => {
+            UiVerbosity::Small => {
                 ui.horizontal(|ui| {
                     if let Some(level) = level {
                         ui.label(level_to_rich_text(ui, level));

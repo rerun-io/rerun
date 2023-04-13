@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     hash::Hash64, parse_entity_path, path::entity_path_impl::EntityPathImpl, EntityPathPart,
+    SizeBytes,
 };
 
 // ----------------------------------------------------------------------------
@@ -153,6 +154,13 @@ impl EntityPath {
 
     pub fn join(&self, other: &Self) -> Self {
         self.iter().chain(other.iter()).cloned().collect()
+    }
+}
+
+impl SizeBytes for EntityPath {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0 // NOTE: we assume it's amortized due to the `Arc`
     }
 }
 
