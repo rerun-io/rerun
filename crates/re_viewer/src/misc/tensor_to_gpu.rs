@@ -309,7 +309,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
         }
         3 => {
             // There are no 3-channel textures in wgpu, so we need to pad to 4 channels.
-            // What should we pad with? It depends on wether or not the shader interprets these as alpha.
+            // What should we pad with? It depends on whether or not the shader interprets these as alpha.
             // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
             // TODO(emilk): tell the shader to ignore the alpha channel instead!
             match &tensor.data {
