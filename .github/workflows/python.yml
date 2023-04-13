@@ -215,9 +215,14 @@ jobs:
             --out pre-dist
 
       - name: Install built wheel
+        # First we install the dependencies manually so we can use `--no-index` when installing the
+        # main rerun wheel to guarantee we only get it from the pre-dist folder. We additionally
+        # specify the version explicitly to make sure we have built what we expected.
+        # TODO(jleibs): pull these deps from pyproject.toml
         shell: bash
         run: |
-          pip install rerun-sdk==${{ env.expected_version }} --find-links pre-dist --force-reinstall
+          pip install deprecated numpy>=1.23 pyarrow==10.0.1
+          pip install rerun-sdk==${{ env.expected_version }} --no-index --find-links pre-dist --force-reinstall
 
       - name: Verify built wheel version
         shell: bash
