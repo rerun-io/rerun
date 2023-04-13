@@ -679,88 +679,9 @@ impl Renderer for RectangleRenderer {
 }
 
 fn is_float_filterable(format: &wgpu::TextureFormat) -> bool {
-    // based on https://gpuweb.github.io/gpuweb/#texture-format-caps,
-    // TODO(emilk): add this to the wgpu crate
-    match format {
-        // Norms:
-        wgpu::TextureFormat::R8Unorm |
-        wgpu::TextureFormat::R8Snorm |
-        wgpu::TextureFormat::R16Unorm |
-        wgpu::TextureFormat::R16Snorm |
-        wgpu::TextureFormat::Rg8Unorm |
-        wgpu::TextureFormat::Rg8Snorm |
-        wgpu::TextureFormat::Rg16Unorm |
-        wgpu::TextureFormat::Rg16Snorm |
-        wgpu::TextureFormat::Rgba8Unorm |
-        wgpu::TextureFormat::Rgba8UnormSrgb |
-        wgpu::TextureFormat::Rgba8Snorm |
-        wgpu::TextureFormat::Bgra8Unorm |
-        wgpu::TextureFormat::Bgra8UnormSrgb |
-        wgpu::TextureFormat::Rgb10a2Unorm |
-        wgpu::TextureFormat::Rgba16Snorm |
-        wgpu::TextureFormat::Rgba16Unorm |
-        wgpu::TextureFormat::Depth16Unorm |
-        wgpu::TextureFormat::Bc1RgbaUnorm |
-        wgpu::TextureFormat::Bc1RgbaUnormSrgb |
-        wgpu::TextureFormat::Bc2RgbaUnorm |
-        wgpu::TextureFormat::Bc2RgbaUnormSrgb |
-        wgpu::TextureFormat::Bc3RgbaUnorm |
-        wgpu::TextureFormat::Bc3RgbaUnormSrgb |
-        wgpu::TextureFormat::Bc4RUnorm |
-        wgpu::TextureFormat::Bc4RSnorm |
-        wgpu::TextureFormat::Bc5RgUnorm |
-        wgpu::TextureFormat::Bc5RgSnorm |
-        wgpu::TextureFormat::Bc7RgbaUnorm |
-        wgpu::TextureFormat::Bc7RgbaUnormSrgb |
-        wgpu::TextureFormat::Etc2Rgb8Unorm |
-        wgpu::TextureFormat::Etc2Rgb8UnormSrgb |
-        wgpu::TextureFormat::Etc2Rgb8A1Unorm |
-        wgpu::TextureFormat::Etc2Rgb8A1UnormSrgb |
-        wgpu::TextureFormat::Etc2Rgba8Unorm |
-        wgpu::TextureFormat::Etc2Rgba8UnormSrgb |
-        wgpu::TextureFormat::EacR11Unorm |
-        wgpu::TextureFormat::EacR11Snorm |
-        wgpu::TextureFormat::EacRg11Unorm |
-        wgpu::TextureFormat::EacRg11Snorm |
-        wgpu::TextureFormat::Astc { .. } |
-
-        // Floats:
-        wgpu::TextureFormat::R16Float |
-        wgpu::TextureFormat::Rg16Float |
-        wgpu::TextureFormat::Rgba16Float => true,
-
-        // Requires "float32-filterable" extension:
-        wgpu::TextureFormat::R32Float |
-        wgpu::TextureFormat::Rg32Float |
-        wgpu::TextureFormat::Rgba32Float |
-
-        // Non-floats:
-        wgpu::TextureFormat::R8Uint |
-        wgpu::TextureFormat::R8Sint |
-        wgpu::TextureFormat::R16Uint |
-        wgpu::TextureFormat::R16Sint |
-        wgpu::TextureFormat::Rg8Uint |
-        wgpu::TextureFormat::Rg8Sint |
-        wgpu::TextureFormat::R32Uint |
-        wgpu::TextureFormat::R32Sint |
-        wgpu::TextureFormat::Rg16Uint |
-        wgpu::TextureFormat::Rg16Sint |
-        wgpu::TextureFormat::Rgba8Uint |
-        wgpu::TextureFormat::Rgba8Sint |
-        wgpu::TextureFormat::Rgb9e5Ufloat |
-        wgpu::TextureFormat::Rg11b10Float |
-        wgpu::TextureFormat::Rg32Uint |
-        wgpu::TextureFormat::Rg32Sint |
-        wgpu::TextureFormat::Rgba16Uint |
-        wgpu::TextureFormat::Rgba16Sint |
-        wgpu::TextureFormat::Rgba32Uint |
-        wgpu::TextureFormat::Rgba32Sint |
-        wgpu::TextureFormat::Stencil8 |
-        wgpu::TextureFormat::Depth24Plus |
-        wgpu::TextureFormat::Depth24PlusStencil8 |
-        wgpu::TextureFormat::Depth32Float |
-        wgpu::TextureFormat::Depth32FloatStencil8 |
-        wgpu::TextureFormat::Bc6hRgbUfloat |
-        wgpu::TextureFormat::Bc6hRgbSfloat => false,
-    }
+    format
+        .describe()
+        .guaranteed_format_features
+        .flags
+        .contains(wgpu::TextureFormatFeatureFlags::FILTERABLE)
 }
