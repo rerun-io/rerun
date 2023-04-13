@@ -7,10 +7,6 @@ use re_log_types::{
     component_types::{self, ClassId, Tensor, TensorData, TensorDataMeaning},
     RowId,
 };
-use re_renderer::{
-    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
-    RenderContext,
-};
 
 use crate::{
     misc::caches::TensorStats,
@@ -27,9 +23,6 @@ use crate::{
 /// In the case of images that leverage a `ColorMapping` this includes conversion from
 /// the native Tensor type A -> Color32.
 pub struct ColoredTensorView<'store, 'cache> {
-    /// Key used to retrieve this cached view
-    key: ImageCacheKey,
-
     /// Borrowed tensor from the data store
     pub tensor: &'store Tensor,
 
@@ -45,30 +38,6 @@ pub struct ColoredTensorView<'store, 'cache> {
 }
 
 impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
-    /// Try to get a [`GpuTexture2DHandle`] for the cached [`Tensor`].
-    ///
-    /// Will return None if a valid [`ColorImage`] could not be derived from the [`Tensor`].
-    pub fn texture_handle(&self, render_ctx: &mut RenderContext) -> Option<GpuTexture2DHandle> {
-        crate::profile_function!();
-        self.colored_image.map(|image| {
-            let texture_key = self.key.hash64();
-
-            let debug_name = format!("tensor {:?}", self.tensor.shape());
-            // TODO(andreas): The renderer should ingest images with less conversion (e.g. keep luma as 8bit texture, don't flip bits on bgra etc.)
-            render_ctx.texture_manager_2d.get_or_create(
-                texture_key,
-                &mut render_ctx.gpu_resources.textures,
-                Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: bytemuck::cast_slice(&image.pixels).into(),
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    width: image.width() as u32,
-                    height: image.height() as u32,
-                },
-            )
-        })
-    }
-
     /// Try to get a [`DynamicImage`] for the the cached [`Tensor`].
     ///
     /// Note: this is a `DynamicImage` created from the cached [`ColorImage`], not from the
@@ -138,7 +107,6 @@ impl ImageCache {
         ci.last_use_generation = self.generation;
 
         ColoredTensorView::<'store, '_> {
-            key,
             tensor,
             annotations,
             colored_image: ci.colored_image.as_ref(),
