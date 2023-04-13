@@ -126,7 +126,7 @@ impl PickingContext {
         rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
         hits.extend(rect_hits);
 
-        // UI rects are overlayed on top, but we don't let them hide other picking results either.
+        // UI rects are overlaid on top, but we don't let them hide other picking results either.
         hits.extend(picking_ui_rects(self, ui_data));
 
         PickingResult { hits }
