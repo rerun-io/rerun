@@ -144,9 +144,23 @@ impl PythonSession {
     /// If the previous sink is [`rerun::sink::BufferedSink`] (the default),
     /// it will be drained and sent to the new sink.
     pub fn set_sink(&mut self, sink: Box<dyn LogSink>) {
+        // Capture the backlog (should only apply if this was a `BufferedSink`)
         let backlog = self.sink.drain_backlog();
+
+        // Before changing the sink, we set drop_if_disconnected and
+        // flush. This ensures that any messages that are currently
+        // buffered will be sent.
+        self.sink.drop_msgs_if_disconnected();
+        self.sink.flush();
         self.sink = sink;
-        self.sink.send_all(backlog);
+
+        if backlog.is_empty() {
+            // If we had no backlog, we need to send the `BeginRecording` message to the new sink.
+            self.has_sent_begin_recording_msg = false;
+        } else {
+            // Otherwise the backlog should have had the `BeginRecording` message in it already.
+            self.sink.send_all(backlog);
+        }
     }
 
     /// Send log data to a remote viewer/server.
@@ -191,11 +205,6 @@ impl PythonSession {
     /// Wait until all logged data have been sent to the remove server (if any).
     pub fn flush(&mut self) {
         self.sink.flush();
-    }
-
-    /// If the tcp session is disconnected, allow it to quit early and drop unsent messages
-    pub fn drop_msgs_if_disconnected(&mut self) {
-        self.sink.drop_msgs_if_disconnected();
     }
 
     /// Send a single [`DataRow`].
