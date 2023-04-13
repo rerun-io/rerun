@@ -1,3 +1,7 @@
+- Start Date: 2023-03-18
+- RFC PR: [rerun-io/rerun#1610](https://github.com/rerun-io/rerun/pull/1610)
+- Tracking Issue: [rerun-io/rerun#1619](https://github.com/rerun-io/rerun/issues/1619)
+
 # End-to-end batching
 
 A design proposal for end-to-end data batches, from their creation on the client SDK and all the way until their end of life (GC).
