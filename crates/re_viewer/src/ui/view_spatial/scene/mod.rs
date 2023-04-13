@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::HashMap;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
-    component_types::{ClassId, KeypointId, Tensor},
+    component_types::{ClassId, InstanceKey, KeypointId, Tensor},
     MeshId,
 };
 use re_renderer::{Color32, OutlineMaskPreference, Size};
@@ -210,7 +210,9 @@ impl SceneSpatial {
                 line_batch
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
-                    .color(color);
+                    .color(color)
+                    // Select the entire object when clicking any of the lines.
+                    .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
             }
         }
     }
