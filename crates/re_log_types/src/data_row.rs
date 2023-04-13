@@ -2,7 +2,9 @@ use ahash::HashSetExt;
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
-use crate::{ComponentName, DataCell, DataCellError, DataTable, EntityPath, MsgId, TimePoint};
+use crate::{
+    ComponentName, DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint,
+};
 
 // ---
 
@@ -87,6 +89,68 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 
 // ---
 
+/// A unique ID for a [`DataRow`].
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    arrow2_convert::ArrowField,
+    arrow2_convert::ArrowSerialize,
+    arrow2_convert::ArrowDeserialize,
+)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(transparent)]
+pub struct RowId(pub(crate) re_tuid::Tuid);
+
+impl std::fmt::Display for RowId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl RowId {
+    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
+
+    #[inline]
+    pub fn random() -> Self {
+        Self(re_tuid::Tuid::random())
+    }
+
+    /// Temporary utility while we transition to batching. See #1619.
+    #[doc(hidden)]
+    pub fn into_table_id(self) -> TableId {
+        TableId(self.0)
+    }
+}
+
+impl SizeBytes for RowId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+impl std::ops::Deref for RowId {
+    type Target = re_tuid::Tuid;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for RowId {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// A row's worth of data, i.e. an event: a list of [`DataCell`]s associated with an auto-generated
 /// `RowId`, a user-specified [`TimePoint`] and [`EntityPath`], and an expected number of
 /// instances.
@@ -134,11 +198,11 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, MsgId, Point2D},
-/// #     DataRow, Timeline,
+/// #     component_types::{ColorRGBA, Label, Point2D},
+/// #     DataRow, RowId, Timeline,
 /// # };
 /// #
-/// # let row_id = MsgId::ZERO;
+/// # let row_id = RowId::ZERO;
 /// # let timepoint = [
 /// #     (Timeline::new_sequence("frame_nr"), 42.into()), //
 /// #     (Timeline::new_sequence("clock"), 666.into()),   //
@@ -162,8 +226,7 @@ impl std::ops::IndexMut<usize> for DataCellRow {
 pub struct DataRow {
     /// Auto-generated `TUID`, uniquely identifying this event and keeping track of the client's
     /// wall-clock.
-    // TODO(#1619): introduce RowId & TableId
-    pub row_id: MsgId,
+    pub row_id: RowId,
 
     /// User-specified [`TimePoint`] for this event.
     pub timepoint: TimePoint,
@@ -190,7 +253,7 @@ impl DataRow {
     /// - one or more cell isn't 0, 1 or `num_instances` long,
     /// - two or more cells share the same component type.
     pub fn try_from_cells(
-        row_id: MsgId,
+        row_id: RowId,
         timepoint: impl Into<TimePoint>,
         entity_path: impl Into<EntityPath>,
         num_instances: u32,
@@ -226,26 +289,13 @@ impl DataRow {
             }
         }
 
-        let mut this = Self {
+        Ok(Self {
             row_id,
             entity_path,
             timepoint,
             num_instances,
             cells,
-        };
-
-        // TODO(cmc): Since we don't yet support mixing splatted data within instanced rows,
-        // we need to craft an array of `MsgId`s that matches the length of the other components.
-        // TODO(#1619): This goes away once the store supports the new control columns
-        use crate::Component as _;
-        if !components.contains(&MsgId::name()) {
-            let num_instances = this.num_instances();
-            this.cells.0.push(DataCell::from_native(
-                vec![row_id; num_instances as _].iter(),
-            ));
-        }
-
-        Ok(this)
+        })
     }
 
     /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
@@ -256,7 +306,7 @@ impl DataRow {
     ///
     /// See [`Self::try_from_cells`] for the fallible alternative.
     pub fn from_cells(
-        row_id: MsgId,
+        row_id: RowId,
         timepoint: impl Into<TimePoint>,
         entity_path: impl Into<EntityPath>,
         num_instances: u32,
@@ -271,13 +321,13 @@ impl DataRow {
     #[doc(hidden)]
     #[inline]
     pub fn into_table(self) -> DataTable {
-        DataTable::from_rows(self.row_id, [self])
+        DataTable::from_rows(self.row_id.into_table_id(), [self])
     }
 }
 
 impl DataRow {
     #[inline]
-    pub fn row_id(&self) -> MsgId {
+    pub fn row_id(&self) -> RowId {
         self.row_id
     }
 
@@ -297,7 +347,7 @@ impl DataRow {
     }
 
     #[inline]
-    pub fn components(&self) -> impl ExactSizeIterator<Item = ComponentName> + '_ {
+    pub fn component_names(&self) -> impl ExactSizeIterator<Item = ComponentName> + '_ {
         self.cells.iter().map(|cell| cell.component_name())
     }
 
@@ -326,13 +376,25 @@ impl DataRow {
             .map(|cell| cell.component_name())
             .position(|name| name == *component)
     }
+
+    /// Compute and cache the total (heap) allocated size of each individual underlying
+    /// [`DataCell`].
+    /// This does nothing for cells whose size has already been computed and cached before.
+    ///
+    /// Beware: this is _very_ costly!
+    #[inline]
+    pub fn compute_all_size_bytes(&mut self) {
+        for cell in &mut self.cells.0 {
+            cell.compute_size_bytes();
+        }
+    }
 }
 
 // ---
 
 impl DataRow {
     pub fn from_cells1<C0>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -351,7 +413,7 @@ impl DataRow {
     }
 
     pub fn try_from_cells1<C0>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -371,7 +433,7 @@ impl DataRow {
     }
 
     pub fn from_cells2<C0, C1>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -394,7 +456,7 @@ impl DataRow {
     }
 
     pub fn try_from_cells2<C0, C1>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -419,7 +481,7 @@ impl DataRow {
     }
 
     pub fn from_cells3<C0, C1, C2>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -444,7 +506,7 @@ impl DataRow {
     }
 
     pub fn try_from_cells3<C0, C1, C2>(
-        row_id: MsgId,
+        row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         num_instances: u32,
@@ -482,7 +544,7 @@ impl std::fmt::Display for DataRow {
         }
 
         re_format::arrow::format_table(
-            self.cells.iter().map(|cell| cell.as_arrow_monolist()),
+            self.cells.iter().map(|cell| cell.to_arrow_monolist()),
             self.cells.iter().map(|cell| cell.component_name()),
         )
         .fmt(f)
@@ -502,7 +564,7 @@ mod tests {
 
     #[test]
     fn data_row_error_num_instances() {
-        let row_id = MsgId::ZERO;
+        let row_id = RowId::ZERO;
         let timepoint = TimePoint::timeless();
 
         let num_instances = 2;
@@ -549,7 +611,7 @@ mod tests {
 
     #[test]
     fn data_row_error_duped_components() {
-        let row_id = MsgId::ZERO;
+        let row_id = RowId::ZERO;
         let timepoint = TimePoint::timeless();
 
         let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];

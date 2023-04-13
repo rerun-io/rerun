@@ -8,7 +8,7 @@ use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Point2D, Vec3D},
     datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
-    entity_path, Component, DataRow, EntityPath, Index, MsgId, TimeType, Timeline,
+    entity_path, Component, DataRow, EntityPath, Index, RowId, TimeType, Timeline,
 };
 use re_query::query_entity_with_primary;
 
@@ -124,7 +124,7 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 DataRow::from_cells2(
-                    MsgId::ZERO,
+                    RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
@@ -140,7 +140,7 @@ fn build_vecs_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 DataRow::from_cells1(
-                    MsgId::ZERO,
+                    RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
