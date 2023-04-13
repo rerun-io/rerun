@@ -329,7 +329,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
-        "--demo", type=str, default="all", help="What demo to run", choices=["all"] + list(demos.keys())
+        "--demo", type=str, default="most", help="What demo to run", choices=["most", "all"] + list(demos.keys())
     )
 
     rr.script_add_args(parser)
@@ -337,9 +337,13 @@ def main() -> None:
 
     rr.script_setup(args, "api_demo")
 
-    if args.demo == "all":
-        print("Running all demos…")
+    if args.demo in ["most", "all"]:
+        print(f"Running {args.demo} demos…")
         for name, demo in demos.items():
+            # Some demos are just a bit… too much
+            if args.demo == "most" and name in ["image_tensors"]:
+                continue
+
             logging.info(f"Starting {name}")
             demo()
     else:
