@@ -22,9 +22,6 @@ pub enum TensorUploadError {
 
     #[error("Expected a 2D slice")]
     Not2D,
-
-    #[error("Unsupported datatype: {0:?}")] // TODO: emilk narrow to f32 instead
-    UnsupportedDataType(TensorDataType),
 }
 
 pub fn colormapped_texture(
@@ -102,7 +99,16 @@ fn texture_desc_from_tensor(
             let tensor = ndarray::ArrayViewD::<u32>::try_from(tensor)?;
             texture_desc_from_tensor_slice(tensor, slice_selection, TextureFormat::R32Uint, |x| x)
         }
-        TensorDataType::U64 => Err(TensorUploadError::UnsupportedDataType(tensor.dtype())),
+        TensorDataType::U64 => {
+            // narrow to f32:
+            let tensor = ndarray::ArrayViewD::<u64>::try_from(tensor)?;
+            texture_desc_from_tensor_slice(
+                tensor,
+                slice_selection,
+                TextureFormat::R32Float,
+                |x: u64| x as f32,
+            )
+        }
         TensorDataType::I8 => {
             let tensor = ndarray::ArrayViewD::<i8>::try_from(tensor)?;
             texture_desc_from_tensor_slice(tensor, slice_selection, TextureFormat::R8Sint, |x| x)
@@ -115,7 +121,16 @@ fn texture_desc_from_tensor(
             let tensor = ndarray::ArrayViewD::<i32>::try_from(tensor)?;
             texture_desc_from_tensor_slice(tensor, slice_selection, TextureFormat::R32Sint, |x| x)
         }
-        TensorDataType::I64 => Err(TensorUploadError::UnsupportedDataType(tensor.dtype())),
+        TensorDataType::I64 => {
+            // narrow to f32:
+            let tensor = ndarray::ArrayViewD::<i64>::try_from(tensor)?;
+            texture_desc_from_tensor_slice(
+                tensor,
+                slice_selection,
+                TextureFormat::R32Float,
+                |x: i64| x as f32,
+            )
+        }
         TensorDataType::F16 => {
             let tensor = ndarray::ArrayViewD::<half::f16>::try_from(tensor)?;
             texture_desc_from_tensor_slice(tensor, slice_selection, TextureFormat::R16Float, |x| x)
@@ -125,7 +140,7 @@ fn texture_desc_from_tensor(
             texture_desc_from_tensor_slice(tensor, slice_selection, TextureFormat::R32Float, |x| x)
         }
         TensorDataType::F64 => {
-            // narrow f64 -> f32:
+            // narrow to f32:
             let tensor = ndarray::ArrayViewD::<f64>::try_from(tensor)?;
             texture_desc_from_tensor_slice(
                 tensor,
@@ -148,7 +163,7 @@ fn texture_desc_from_tensor_slice<From: Copy, To: bytemuck::Pod>(
     let slice = selected_tensor_slice(slice_selection, &tensor);
     let slice = slice
         .into_dimensionality::<ndarray::Ix2>()
-        .map_err(|_| TensorUploadError::Not2D)?;
+        .map_err(|_err| TensorUploadError::Not2D)?;
 
     let (height, width) = slice.raw_dim().into_pattern();
     let mut pixels: Vec<To> = vec![To::zeroed(); height * width];
