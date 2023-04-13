@@ -192,7 +192,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
                     .map(|(position, radius)| PointCloudVertex { position, radius }),
             );
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
-            let num_default = (self.0.vertices.len() - num_before) - num_points;
+            let num_default = num_points - (self.0.vertices.len() - num_before);
             self.0.vertices.extend(
                 std::iter::repeat(PointCloudVertex {
                     position: glam::Vec3::ZERO,
@@ -207,7 +207,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .color_buffer
-                .extend(std::iter::repeat(Color32::TRANSPARENT).take(num_written - num_points));
+                .extend(std::iter::repeat(Color32::TRANSPARENT).take(num_points - num_written));
         }
         {
             crate::profile_scope!("picking_instance_ids");
@@ -217,7 +217,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
                 .extend(picking_instance_ids.take(num_points));
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0.picking_instance_ids_buffer.extend(
-                std::iter::repeat(PickingLayerInstanceId::default()).take(num_written - num_points),
+                std::iter::repeat(PickingLayerInstanceId::default()).take(num_points - num_written),
             );
         }
 
