@@ -56,6 +56,10 @@ pub struct ColormappedTexture {
     /// Used to normalize the input values (squash them to the 0-1 range).
     pub range: [f32; 2],
 
+    /// Raise the normalized values to this power (before any color mapping).
+    /// Acts like an inverse brightness.    /// Default: 1.0
+    pub gamma: f32,
+
     /// For any one-component texture, you need to supply a color mapper,
     /// which maps the normalized `.r` component to a color.
     pub color_mapper: Option<ColorMapper>,
@@ -81,6 +85,7 @@ impl Default for ColormappedTexture {
         Self {
             texture: GpuTexture2DHandle::invalid(),
             range: [0.0, 1.0],
+            gamma: 1.0,
             color_mapper: None,
         }
     }
@@ -91,6 +96,7 @@ impl ColormappedTexture {
         Self {
             texture,
             range: [0.0, 1.0],
+            gamma: 1.0,
             color_mapper: None,
         }
     }
@@ -200,7 +206,8 @@ mod gpu_data {
         range_min_max: wgpu_buffer_types::Vec2,
 
         color_mapper: u32,
-        _row_padding: [u32; 3],
+        gamma: f32,
+        _row_padding: [u32; 2],
 
         _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -215,6 +222,7 @@ mod gpu_data {
             let super::ColormappedTexture {
                 texture: _,
                 range,
+                gamma,
                 color_mapper,
             } = &rectangle.colormapped_texture;
 
@@ -266,6 +274,7 @@ mod gpu_data {
                 outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
                 range_min_max: (*range).into(),
                 color_mapper: color_mapper_int,
+                gamma: *gamma,
                 _row_padding: Default::default(),
                 _end_padding: Default::default(),
             })

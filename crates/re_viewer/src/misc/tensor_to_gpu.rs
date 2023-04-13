@@ -122,6 +122,7 @@ fn color_tensor_to_gpu(
     Ok(ColormappedTexture {
         texture: texture_handle,
         range,
+        gamma: 1.0,
         color_mapper,
     })
 }
@@ -190,6 +191,7 @@ fn class_id_tensor_to_gpu(
     Ok(ColormappedTexture {
         texture: main_texture_handle,
         range: [0.0, (colormap_width * colormap_height) as f32],
+        gamma: 1.0,
         color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
     })
 }
@@ -218,7 +220,7 @@ fn depth_tensor_to_gpu(
     Ok(ColormappedTexture {
         texture,
         range: [min as f32, max as f32],
-        // TODO(emilk): make this configurable in the UI
+        gamma: 1.0,
         color_mapper: Some(ColorMapper::Function(re_renderer::Colormap::Turbo)),
     })
 }

@@ -43,6 +43,10 @@ struct UniformBuffer {
     range_min_max: Vec2,
 
     color_mapper: u32,
+
+    /// Exponent to raise the normalized texture value.
+    /// Inverse brightness.
+    gamma: f32,
 };
 
 @group(1) @binding(0)
@@ -100,9 +104,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // Normalize the sample:
     let range = rect_info.range_min_max;
-    let normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
+    var normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
 
-    // TODO(emilk): apply a user-specified gamma-curve here
+    // Apply gamma:
+    normalized_value = vec4(pow(normalized_value.rgb, vec3(rect_info.gamma)), normalized_value.a); // TODO(emilk): handle premultiplied alpha
 
     // Apply colormap, if any:
     var texture_color: Vec4;
