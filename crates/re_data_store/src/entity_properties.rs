@@ -143,23 +143,24 @@ impl ExtraQueryHistory {
 pub enum Colormap {
     /// Perceptually even
     Grayscale,
+
+    Inferno,
+    Magma,
+    Plasma,
     #[default]
     Turbo,
     Viridis,
-    Plasma,
-    Magma,
-    Inferno,
 }
 
 impl std::fmt::Display for Colormap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Colormap::Grayscale => "Grayscale",
+            Colormap::Inferno => "Inferno",
+            Colormap::Magma => "Magma",
+            Colormap::Plasma => "Plasma",
             Colormap::Turbo => "Turbo",
             Colormap::Viridis => "Viridis",
-            Colormap::Plasma => "Plasma",
-            Colormap::Magma => "Magma",
-            Colormap::Inferno => "Inferno",
         })
     }
 }

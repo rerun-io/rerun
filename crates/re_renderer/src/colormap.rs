@@ -13,21 +13,21 @@ pub enum Colormap {
     /// Perceptually even
     #[default]
     Grayscale = 1,
+    Inferno = 6,
+    Magma = 5,
+    Plasma = 4,
     Turbo = 2,
     Viridis = 3,
-    Plasma = 4,
-    Magma = 5,
-    Inferno = 6,
 }
 
 impl Colormap {
     pub const ALL: [Self; 6] = [
         Self::Grayscale,
+        Self::Inferno,
+        Self::Magma,
+        Self::Plasma,
         Self::Turbo,
         Self::Viridis,
-        Self::Plasma,
-        Self::Magma,
-        Self::Inferno,
     ];
 }
 
@@ -35,11 +35,11 @@ impl std::fmt::Display for Colormap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Colormap::Grayscale => write!(f, "Grayscale"),
+            Colormap::Inferno => write!(f, "Inferno"),
+            Colormap::Magma => write!(f, "Magma"),
+            Colormap::Plasma => write!(f, "Plasma"),
             Colormap::Turbo => write!(f, "Turbo"),
             Colormap::Viridis => write!(f, "Viridis"),
-            Colormap::Plasma => write!(f, "Plasma"),
-            Colormap::Magma => write!(f, "Magma"),
-            Colormap::Inferno => write!(f, "Inferno"),
         }
     }
 }
