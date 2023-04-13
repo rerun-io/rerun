@@ -109,7 +109,7 @@ impl Points2DPart {
         }
 
         {
-            let mut point_batch = scene
+            let point_batch = scene
                 .primitives
                 .points
                 .batch("2d points")
@@ -124,17 +124,21 @@ impl Points2DPart {
                     .filter_map(|pt| pt.map(glam::Vec2::from))
             };
 
-            let mut point_range_builder = point_batch
-                .add_points_2d(entity_view.num_instances(), point_positions)
-                .colors(colors)
-                .radii(radii)
-                .picking_instance_ids(entity_view.iter_instance_keys()?.map(|instance_key| {
-                    instance_key_to_picking_id(
-                        instance_key,
-                        entity_view,
-                        entity_highlight.any_selection_highlight,
-                    )
-                }));
+            let picking_instance_ids = entity_view.iter_instance_keys()?.map(|instance_key| {
+                instance_key_to_picking_id(
+                    instance_key,
+                    entity_view,
+                    entity_highlight.any_selection_highlight,
+                )
+            });
+
+            let mut point_range_builder = point_batch.add_points_2d(
+                entity_view.num_instances(),
+                point_positions,
+                radii,
+                colors,
+                picking_instance_ids,
+            );
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {

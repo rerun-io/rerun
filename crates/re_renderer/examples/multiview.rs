@@ -323,9 +323,10 @@ impl Example for Multiview {
             .add_points(
                 self.random_points_positions.len(),
                 self.random_points_positions.iter().cloned(),
-            )
-            .radii(self.random_points_radii.iter().cloned())
-            .colors(self.random_points_colors.iter().cloned());
+                self.random_points_radii.iter().cloned(),
+                self.random_points_colors.iter().cloned(),
+                std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
+            );
 
         let point_cloud = builder.to_draw_data(re_ctx).unwrap();
         let meshes = build_mesh_instances(

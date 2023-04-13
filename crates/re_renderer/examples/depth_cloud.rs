@@ -99,11 +99,13 @@ impl RenderDepthClouds {
                 .multiunzip();
 
             let mut builder = PointCloudBuilder::new(re_ctx);
-            builder
-                .batch("backprojected point cloud")
-                .add_points(num_points as _, points.into_iter())
-                .colors(colors.into_iter())
-                .radii(radii.into_iter());
+            builder.batch("backprojected point cloud").add_points(
+                num_points as _,
+                points.into_iter(),
+                radii.into_iter(),
+                colors.into_iter(),
+                std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
+            );
 
             builder.to_draw_data(re_ctx).unwrap()
         };

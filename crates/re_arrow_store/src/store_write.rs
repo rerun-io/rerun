@@ -233,9 +233,14 @@ impl DataStore {
 
 impl MetadataRegistry<TimePoint> {
     fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) {
+        let mut added_size_bytes = 0;
+
         // This is valuable information even for a timeless timepoint!
         match self.entry(row_id) {
             std::collections::btree_map::Entry::Vacant(entry) => {
+                // NOTE: In a map, thus on the heap!
+                added_size_bytes += row_id.total_size_bytes();
+                added_size_bytes += timepoint.total_size_bytes();
                 entry.insert(timepoint);
             }
             // NOTE: When saving and loading data from disk, it's very possible that we try to
@@ -249,10 +254,16 @@ impl MetadataRegistry<TimePoint> {
                             re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
                             debug_assert!(false, "detected re-used `RowId/Timeline`");
                         }
+                    } else {
+                        // NOTE: In a map, thus on the heap!
+                        added_size_bytes += timeline.total_size_bytes();
+                        added_size_bytes += time.as_i64().total_size_bytes();
                     }
                 }
             }
         }
+
+        self.heap_size_bytes += added_size_bytes;
     }
 }
 

@@ -150,28 +150,25 @@ impl framework::Example for Render2D {
         // Also, it looks different under perspective projection.
         // The third point is automatic thickness which is determined by the point renderer implementation.
         let mut point_cloud_builder = PointCloudBuilder::new(re_ctx);
-        point_cloud_builder
-            .batch("points")
-            .add_points_2d(
-                4,
-                [
-                    glam::vec2(500.0, 120.0),
-                    glam::vec2(520.0, 120.0),
-                    glam::vec2(540.0, 120.0),
-                    glam::vec2(560.0, 120.0),
-                ]
-                .into_iter(),
-            )
-            .radii(
-                [
-                    Size::new_scene(4.0),
-                    Size::new_points(4.0),
-                    Size::AUTO,
-                    Size::AUTO_LARGE,
-                ]
-                .into_iter(),
-            )
-            .colors(std::iter::repeat(Color32::from_rgb(55, 180, 1)).take(4));
+        point_cloud_builder.batch("points").add_points_2d(
+            4,
+            [
+                glam::vec2(500.0, 120.0),
+                glam::vec2(520.0, 120.0),
+                glam::vec2(540.0, 120.0),
+                glam::vec2(560.0, 120.0),
+            ]
+            .into_iter(),
+            [
+                Size::new_scene(4.0),
+                Size::new_points(4.0),
+                Size::AUTO,
+                Size::AUTO_LARGE,
+            ]
+            .into_iter(),
+            std::iter::repeat(Color32::from_rgb(55, 180, 1)),
+            std::iter::repeat(re_renderer::PickingLayerInstanceId::default()),
+        );
 
         // Pile stuff to test for overlap handling
         {
