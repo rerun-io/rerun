@@ -280,8 +280,9 @@ def run_extension_component() -> None:
 
 
 def run_image_tensors() -> None:
+    # Make sure you use a colorful image with alpha!
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    img_path = f"{dir_path}/rerun_logo_color_alpha.png"
+    img_path = f"{dir_path}/../../../crates/re_ui/data/logo_dark_mode.png"
     img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
 
     img_rgba = cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGBA)
