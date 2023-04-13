@@ -328,8 +328,12 @@ fn color_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
             Ok(ColorImage { size, pixels })
         }
 
-        (_depth, dtype) => {
-            anyhow::bail!("Don't know how to turn a tensor of shape={:?} and dtype={dtype:?} into a color image", tensor.shape)
+        (_depth, _dtype) => {
+            anyhow::bail!(
+                "Don't know how to turn a tensor of shape={:?} and dtype={:?} into a color image",
+                tensor.shape,
+                tensor.dtype()
+            )
         }
     }
 }
