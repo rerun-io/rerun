@@ -25,6 +25,7 @@
         "andreas",
         "bbox",
         "bindgroup",
+        "colormap",
         "emath",
         "framebuffer",
         "hoverable",

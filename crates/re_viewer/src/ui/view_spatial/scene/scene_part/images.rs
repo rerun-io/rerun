@@ -179,6 +179,7 @@ impl ImagesPart {
                             transforms,
                             properties,
                             &tensor,
+                            ent_path,
                             &pinhole_ent_path,
                             entity_highlight,
                         ) {
@@ -279,6 +280,7 @@ impl ImagesPart {
         transforms: &TransformCache,
         properties: &EntityProperties,
         tensor: &Tensor,
+        ent_path: &EntityPath,
         pinhole_ent_path: &EntityPath,
         entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), String> {
@@ -360,6 +362,7 @@ impl ImagesPart {
             depth_data: data,
             colormap,
             outline_mask_id: entity_highlight.overall,
+            picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
         });
 
         Ok(())

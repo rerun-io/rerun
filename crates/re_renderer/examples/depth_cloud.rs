@@ -185,6 +185,7 @@ impl RenderDepthClouds {
                     depth_data: depth.data.clone(),
                     colormap: re_renderer::Colormap::Turbo,
                     outline_mask_id: Default::default(),
+                    picking_object_id: Default::default(),
                 }],
                 radius_boost_in_ui_points_for_outlines: 2.5,
             },
