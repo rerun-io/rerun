@@ -87,10 +87,10 @@ jobs:
         shell: bash
         run: |
           matrix=()
-          matrix+=('{"platform": "macos", "target": "x86_64-apple-darwin", "runs_on": "macos-latest"},')
-          matrix+=('{"platform": "macos", "target": "aarch64-apple-darwin", "runs_on": "macos-latest"},')
-          matrix+=('{"platform": "windows", "target": "x86_64-pc-windows-msvc", "runs_on": "windows-latest-8-cores"},')
-          matrix+=('{"platform": "linux", "target": "x86_64-unknown-linux-gnu", "runs_on": "ubuntu-latest-16-cores", container: {"image": "rerunio/ci_docker:0.6"}}')
+          matrix+=('{"platform": "macos",   "target": "x86_64-apple-darwin",      "wheel_suffix": "x86_64", "runs_on": "macos-latest"          },')
+          matrix+=('{"platform": "macos",   "target": "aarch64-apple-darwin",     "wheel_suffix": "arm64",  "runs_on": "macos-latest"          },')
+          matrix+=('{"platform": "windows", "target": "x86_64-pc-windows-msvc",   "wheel_suffix": "",       "runs_on": "windows-latest-8-cores"},')
+          matrix+=('{"platform": "linux",   "target": "x86_64-unknown-linux-gnu", "wheel_suffix": "",       "runs_on": "ubuntu-latest-16-cores", container: {"image": "rerunio/ci_docker:0.6"}}')
 
           echo "Matrix values: ${matrix[@]}"
 
@@ -212,7 +212,7 @@ jobs:
       - name: Install built wheel
         shell: bash
         run: |
-          pip install pre-dist/*.whl --force-reinstall
+          pip install pre-dist/*${{ matrix.wheel_suffix }}.whl --force-reinstall
 
       - name: Verify built wheel version
         shell: bash
@@ -234,6 +234,7 @@ jobs:
           pip install -r examples/python/text_logging/requirements.txt
 
       - name: Run e2e test
+        shell: bash
         run: scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Unpack the wheel

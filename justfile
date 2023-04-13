@@ -44,7 +44,7 @@ py-build *ARGS:
     unset CONDA_PREFIX && \
         source venv/bin/activate && \
         maturin develop \
-            -m rerun_py/Cargo.toml \
+            --manifest-path rerun_py/Cargo.toml \
             --extras="tests" \
             {{ARGS}}
 
