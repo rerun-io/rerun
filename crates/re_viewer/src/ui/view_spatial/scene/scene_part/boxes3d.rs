@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{Box3D, ClassId, ColorRGBA, InstanceKey, Label, Quaternion, Radius, Vec3D},
     Component,
@@ -24,7 +24,6 @@ pub struct Boxes3DPart;
 impl Boxes3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        _properties: &EntityProperties,
         entity_view: &EntityView<Box3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -133,7 +132,6 @@ impl ScenePart for Boxes3DPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        &props,
                         &entity,
                         ent_path,
                         world_from_obj,

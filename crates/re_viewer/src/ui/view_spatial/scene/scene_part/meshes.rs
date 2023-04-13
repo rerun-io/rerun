@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey},
     Component, Mesh3D,
@@ -21,11 +21,8 @@ use super::{instance_path_hash_for_picking, ScenePart};
 pub struct MeshPart;
 
 impl MeshPart {
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        _query: &SceneQuery<'_>,
-        _props: &EntityProperties,
         entity_view: &EntityView<Mesh3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -102,8 +99,6 @@ impl ScenePart for MeshPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        query,
-                        &props,
                         &entity,
                         ent_path,
                         world_from_obj,

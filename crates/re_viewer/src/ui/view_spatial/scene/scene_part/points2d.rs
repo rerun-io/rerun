@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point2D, Radius},
     Component,
@@ -62,7 +62,6 @@ impl Points2DPart {
         &self,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
-        _properties: &EntityProperties,
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -203,7 +202,6 @@ impl ScenePart for Points2DPart {
                     self.process_entity_view(
                         scene,
                         query,
-                        &props,
                         &entity,
                         ent_path,
                         world_from_obj,

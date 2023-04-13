@@ -242,7 +242,7 @@ fn picking_textured_rects(
         if !intersect {
             continue;
         }
-        let intersection_world = context.ray_in_world.origin + context.ray_in_world.dir * t;
+        let intersection_world = context.ray_in_world.point_along(t);
         let dir_from_rect_top_left = intersection_world - rect.top_left_corner_position;
         let u = dir_from_rect_top_left.dot(rect.extent_u) / rect.extent_u.length_squared();
         let v = dir_from_rect_top_left.dot(rect.extent_v) / rect.extent_v.length_squared();
@@ -250,7 +250,7 @@ fn picking_textured_rects(
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
             hits.push(PickingRayHit {
                 instance_path_hash: *id,
-                space_position: context.ray_in_world.origin + context.ray_in_world.dir * t,
+                space_position: intersection_world,
                 hit_type: PickingHitType::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
             });

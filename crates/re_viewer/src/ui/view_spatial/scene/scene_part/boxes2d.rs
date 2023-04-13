@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, Label, Radius, Rect2D},
     Component,
@@ -23,11 +23,8 @@ use super::{instance_key_to_picking_id, ScenePart};
 pub struct Boxes2DPart;
 
 impl Boxes2DPart {
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        _query: &SceneQuery<'_>,
-        _properties: &EntityProperties,
         entity_view: &EntityView<Rect2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -139,8 +136,6 @@ impl ScenePart for Boxes2DPart {
                 for entity_view in entities {
                     Self::process_entity_view(
                         scene,
-                        query,
-                        &props,
                         &entity_view,
                         ent_path,
                         world_from_obj,

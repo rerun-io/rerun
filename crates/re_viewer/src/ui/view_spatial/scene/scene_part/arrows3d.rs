@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Label, Radius},
     Arrow3D, Component,
@@ -17,11 +17,8 @@ use super::{instance_key_to_picking_id, ScenePart};
 pub struct Arrows3DPart;
 
 impl Arrows3DPart {
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        _query: &SceneQuery<'_>,
-        _properties: &EntityProperties,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -122,8 +119,6 @@ impl ScenePart for Arrows3DPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        query,
-                        &props,
                         &entity,
                         ent_path,
                         world_from_obj,
