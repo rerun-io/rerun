@@ -31,9 +31,6 @@ pub struct PickingRayHit {
     /// Where the ray hit the entity.
     pub space_position: glam::Vec3,
 
-    /// The squared distance to the eye.
-    pub distance_to_eye_sq: f32,
-
     pub depth_offset: re_renderer::DepthOffset,
 
     /// Any additional information about the picking hit.
@@ -42,7 +39,7 @@ pub struct PickingRayHit {
 
 #[derive(Clone)]
 pub struct PickingResult {
-    /// Picking ray hits sorted from far to near.
+    /// Picking ray hits. NOT sorted by distance but rather by source of picking.
     ///
     /// Typically there is only one hit, but there might be several if there are transparent objects
     /// or "aggressive" objects like 2D images which we always want to pick, even if they're in the background.
@@ -121,21 +118,16 @@ impl PickingContext {
         ));
 
         // We also never throw away any textured rects, even if they're behind other objects.
-        hits.extend(picking_textured_rects(
+        let mut rect_hits = picking_textured_rects(
             self,
             &primitives.textured_rectangles,
             &primitives.textured_rectangles_ids,
-        ));
+        );
+        rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
+        hits.extend(rect_hits);
 
         // UI rects are overlayed on top, but we don't let them hide other picking results either.
         hits.extend(picking_ui_rects(self, ui_data));
-
-        // Sort hits from far to near.
-        hits.sort_by(|a, b| {
-            b.distance_to_eye_sq
-                .partial_cmp(&a.distance_to_eye_sq)
-                .unwrap()
-        });
 
         PickingResult { hits }
     }
@@ -201,7 +193,6 @@ fn picking_gpu(
         Some(PickingRayHit {
             instance_path_hash: instance_path_hash_from_picking_layer_id(picked_id),
             space_position: picked_world_position,
-            distance_to_eye_sq: picked_world_position.distance_squared(context.ray_in_world.origin),
             depth_offset: 1,
             hit_type: PickingHitType::GpuPickingResult,
         })
@@ -260,7 +251,6 @@ fn picking_textured_rects(
             hits.push(PickingRayHit {
                 instance_path_hash: *id,
                 space_position: context.ray_in_world.origin + context.ray_in_world.dir * t,
-                distance_to_eye_sq: t * t,
                 hit_type: PickingHitType::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
             });
@@ -283,7 +273,6 @@ fn picking_ui_rects(
             return Some(PickingRayHit {
                 instance_path_hash: *instance_hash,
                 space_position: context.ray_in_world.origin,
-                distance_to_eye_sq: 0.0,
                 hit_type: PickingHitType::GuiOverlay,
                 depth_offset: 0,
             });
