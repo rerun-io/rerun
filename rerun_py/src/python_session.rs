@@ -144,7 +144,7 @@ impl PythonSession {
     /// If the previous sink is [`rerun::sink::BufferedSink`] (the default),
     /// it will be drained and sent to the new sink.
     pub fn set_sink(&mut self, sink: Box<dyn LogSink>) {
-        // Capture the backlog (should only applies if this was a `BufferedSink`)
+        // Capture the backlog (should only apply if this was a `BufferedSink`)
         let backlog = self.sink.drain_backlog();
 
         // Before changing the sink, we set drop_if_disconnected and
