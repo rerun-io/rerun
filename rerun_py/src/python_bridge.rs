@@ -136,6 +136,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
+    m.add_function(wrap_pyfunction!(flush, m)?)?;
     m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
     m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
@@ -354,15 +355,10 @@ fn get_app_url() -> String {
 
 #[pyfunction]
 fn shutdown(py: Python<'_>) {
-    // Release the GIL in case any flushing behavior needs to
-    // cleanup a python object.
-    py.allow_threads(|| {
-        re_log::debug!("Shutting down the Rerun SDK");
-        let mut session = python_session();
-        session.drop_msgs_if_disconnected();
-        session.flush();
-        session.disconnect();
-    });
+    re_log::debug!("Shutting down the Rerun SDK");
+    // Disconnect the current sink which ensures that
+    // it flushes and cleans up.
+    disconnect(py);
 }
 
 /// Is logging enabled in the global session?
@@ -380,13 +376,27 @@ fn set_enabled(enabled: bool) {
     python_session().set_enabled(enabled);
 }
 
+/// Block until outstanding data has been flushed to the sink
+#[pyfunction]
+fn flush(py: Python<'_>) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        python_session().flush();
+    });
+}
+
 /// Disconnect from remote server (if any).
 ///
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
 #[pyfunction]
-fn disconnect() {
-    python_session().disconnect();
+fn disconnect(py: Python<'_>) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        python_session().disconnect();
+    });
 }
 
 #[pyfunction]
