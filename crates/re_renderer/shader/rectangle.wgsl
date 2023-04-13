@@ -6,9 +6,10 @@
 // Keep in sync with mirror in rectangle.rs
 
 // Which texture to read from?
-const SAMPLE_TYPE_FLOAT = 1u;
-const SAMPLE_TYPE_SINT  = 2u;
-const SAMPLE_TYPE_UINT  = 3u;
+const SAMPLE_TYPE_FLOAT_FILTER   = 1u;
+const SAMPLE_TYPE_FLOAT_NOFILTER = 2u;
+const SAMPLE_TYPE_SINT_NOFILTER  = 3u;
+const SAMPLE_TYPE_UINT_NOFILTER  = 4u;
 
 // How do we do colormapping?
 const COLOR_MAPPER_OFF      = 1u;
@@ -67,6 +68,9 @@ var texture_uint: texture_2d<u32>;
 @group(1) @binding(5)
 var colormap_texture: texture_2d<f32>;
 
+@group(1) @binding(6)
+var texture_float_filterable: texture_2d<f32>;
+
 
 struct VertexOut {
     @builtin(position) position: Vec4,
@@ -90,12 +94,16 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sample the main texture:
     var sampled_value: Vec4;
-    if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
-        sampled_value = textureSampleLevel(texture_float, texture_sampler, in.texcoord, 0.0); // TODO(emilk): support mipmaps
-    } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
+    if rect_info.sample_type == SAMPLE_TYPE_FLOAT_FILTER {
+        // TODO(emilk): support mipmaps
+        sampled_value = textureSampleLevel(texture_float_filterable, texture_sampler, in.texcoord, 0.0);
+    } else if rect_info.sample_type == SAMPLE_TYPE_FLOAT_NOFILTER {
+        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_float).xy));
+        sampled_value = Vec4(textureLoad(texture_float, icoords, 0));
+    } else if rect_info.sample_type == SAMPLE_TYPE_SINT_NOFILTER {
         let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_sint).xy));
         sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
-    } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+    } else if rect_info.sample_type == SAMPLE_TYPE_UINT_NOFILTER {
         let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
         sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
     } else {

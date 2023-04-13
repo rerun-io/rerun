@@ -182,9 +182,10 @@ mod gpu_data {
     // Keep in sync with mirror in rectangle.wgsl
 
     // Which texture to read from?
-    const SAMPLE_TYPE_FLOAT: u32 = 1;
-    const SAMPLE_TYPE_SINT: u32 = 2;
-    const SAMPLE_TYPE_UINT: u32 = 3;
+    const SAMPLE_TYPE_FLOAT_FILTER: u32 = 1;
+    const SAMPLE_TYPE_FLOAT_NOFILTER: u32 = 2;
+    const SAMPLE_TYPE_SINT_NOFILTER: u32 = 3;
+    const SAMPLE_TYPE_UINT_NOFILTER: u32 = 4;
 
     // How do we do colormapping?
     const COLOR_MAPPER_OFF: u32 = 1;
@@ -232,12 +233,18 @@ mod gpu_data {
             } = &rectangle.colormapped_texture;
 
             let sample_type = match texture_info.sample_type {
-                wgpu::TextureSampleType::Float { .. } => SAMPLE_TYPE_FLOAT,
+                wgpu::TextureSampleType::Float { .. } => {
+                    if super::is_float_filterable(texture_format) {
+                        SAMPLE_TYPE_FLOAT_FILTER
+                    } else {
+                        SAMPLE_TYPE_FLOAT_NOFILTER
+                    }
+                }
                 wgpu::TextureSampleType::Depth => {
                     return Err(RectangleError::DepthTexturesNotSupported);
                 }
-                wgpu::TextureSampleType::Sint => SAMPLE_TYPE_SINT,
-                wgpu::TextureSampleType::Uint => SAMPLE_TYPE_UINT,
+                wgpu::TextureSampleType::Sint => SAMPLE_TYPE_SINT_NOFILTER,
+                wgpu::TextureSampleType::Uint => SAMPLE_TYPE_UINT_NOFILTER,
             };
 
             let mut colormap_function = 0;
@@ -378,14 +385,19 @@ impl RectangleDrawData {
                 ));
             }
 
-            // We set up three texture sources, then instruct the shader to read from at most one of them.
-            let mut texture_float = ctx.texture_manager_2d.zeroed_texture_float().handle;
+            // We set up several texture sources, then instruct the shader to read from at most one of them.
+            let mut texture_float_filterable = ctx.texture_manager_2d.zeroed_texture_float().handle;
+            let mut texture_float_nofilter = ctx.texture_manager_2d.zeroed_texture_float().handle;
             let mut texture_sint = ctx.texture_manager_2d.zeroed_texture_sint().handle;
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
             match texture_description.sample_type {
                 wgpu::TextureSampleType::Float { .. } => {
-                    texture_float = texture.handle;
+                    if is_float_filterable(&texture_format) {
+                        texture_float_filterable = texture.handle;
+                    } else {
+                        texture_float_nofilter = texture.handle;
+                    }
                 }
                 wgpu::TextureSampleType::Depth => {
                     return Err(RectangleError::DepthTexturesNotSupported);
@@ -422,10 +434,11 @@ impl RectangleDrawData {
                         entries: smallvec![
                             uniform_buffer,
                             BindGroupEntry::Sampler(sampler),
-                            BindGroupEntry::DefaultTextureView(texture_float),
+                            BindGroupEntry::DefaultTextureView(texture_float_nofilter),
                             BindGroupEntry::DefaultTextureView(texture_sint),
                             BindGroupEntry::DefaultTextureView(texture_uint),
                             BindGroupEntry::DefaultTextureView(colormap_texture),
+                            BindGroupEntry::DefaultTextureView(texture_float_filterable),
                         ],
                         layout: rectangle_renderer.bind_group_layout,
                     },
@@ -483,12 +496,12 @@ impl Renderer for RectangleRenderer {
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
-                    // float texture:
+                    // float textures without filtering (e.g. R32Float):
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
@@ -519,6 +532,17 @@ impl Renderer for RectangleRenderer {
                     // colormap texture:
                     wgpu::BindGroupLayoutEntry {
                         binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // float textures with filtering (e.g. Rgba8UnormSrgb):
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 6,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -651,5 +675,92 @@ impl Renderer for RectangleRenderer {
             DrawPhase::Opaque,
             DrawPhase::PickingLayer,
         ]
+    }
+}
+
+fn is_float_filterable(format: &wgpu::TextureFormat) -> bool {
+    // based on https://gpuweb.github.io/gpuweb/#texture-format-caps,
+    // TODO(emilk): add this to the wgpu crate
+    match format {
+        // Norms:
+        wgpu::TextureFormat::R8Unorm |
+        wgpu::TextureFormat::R8Snorm |
+        wgpu::TextureFormat::R16Unorm |
+        wgpu::TextureFormat::R16Snorm |
+        wgpu::TextureFormat::Rg8Unorm |
+        wgpu::TextureFormat::Rg8Snorm |
+        wgpu::TextureFormat::Rg16Unorm |
+        wgpu::TextureFormat::Rg16Snorm |
+        wgpu::TextureFormat::Rgba8Unorm |
+        wgpu::TextureFormat::Rgba8UnormSrgb |
+        wgpu::TextureFormat::Rgba8Snorm |
+        wgpu::TextureFormat::Bgra8Unorm |
+        wgpu::TextureFormat::Bgra8UnormSrgb |
+        wgpu::TextureFormat::Rgb10a2Unorm |
+        wgpu::TextureFormat::Rgba16Snorm |
+        wgpu::TextureFormat::Rgba16Unorm |
+        wgpu::TextureFormat::Depth16Unorm |
+        wgpu::TextureFormat::Bc1RgbaUnorm |
+        wgpu::TextureFormat::Bc1RgbaUnormSrgb |
+        wgpu::TextureFormat::Bc2RgbaUnorm |
+        wgpu::TextureFormat::Bc2RgbaUnormSrgb |
+        wgpu::TextureFormat::Bc3RgbaUnorm |
+        wgpu::TextureFormat::Bc3RgbaUnormSrgb |
+        wgpu::TextureFormat::Bc4RUnorm |
+        wgpu::TextureFormat::Bc4RSnorm |
+        wgpu::TextureFormat::Bc5RgUnorm |
+        wgpu::TextureFormat::Bc5RgSnorm |
+        wgpu::TextureFormat::Bc7RgbaUnorm |
+        wgpu::TextureFormat::Bc7RgbaUnormSrgb |
+        wgpu::TextureFormat::Etc2Rgb8Unorm |
+        wgpu::TextureFormat::Etc2Rgb8UnormSrgb |
+        wgpu::TextureFormat::Etc2Rgb8A1Unorm |
+        wgpu::TextureFormat::Etc2Rgb8A1UnormSrgb |
+        wgpu::TextureFormat::Etc2Rgba8Unorm |
+        wgpu::TextureFormat::Etc2Rgba8UnormSrgb |
+        wgpu::TextureFormat::EacR11Unorm |
+        wgpu::TextureFormat::EacR11Snorm |
+        wgpu::TextureFormat::EacRg11Unorm |
+        wgpu::TextureFormat::EacRg11Snorm |
+        wgpu::TextureFormat::Astc { .. } |
+
+        // Floats:
+        wgpu::TextureFormat::R16Float |
+        wgpu::TextureFormat::Rg16Float |
+        wgpu::TextureFormat::Rgba16Float => true,
+
+        // Requires "float32-filterable" extension:
+        wgpu::TextureFormat::R32Float |
+        wgpu::TextureFormat::Rg32Float |
+        wgpu::TextureFormat::Rgba32Float |
+
+        // Non-floats:
+        wgpu::TextureFormat::R8Uint |
+        wgpu::TextureFormat::R8Sint |
+        wgpu::TextureFormat::R16Uint |
+        wgpu::TextureFormat::R16Sint |
+        wgpu::TextureFormat::Rg8Uint |
+        wgpu::TextureFormat::Rg8Sint |
+        wgpu::TextureFormat::R32Uint |
+        wgpu::TextureFormat::R32Sint |
+        wgpu::TextureFormat::Rg16Uint |
+        wgpu::TextureFormat::Rg16Sint |
+        wgpu::TextureFormat::Rgba8Uint |
+        wgpu::TextureFormat::Rgba8Sint |
+        wgpu::TextureFormat::Rgb9e5Ufloat |
+        wgpu::TextureFormat::Rg11b10Float |
+        wgpu::TextureFormat::Rg32Uint |
+        wgpu::TextureFormat::Rg32Sint |
+        wgpu::TextureFormat::Rgba16Uint |
+        wgpu::TextureFormat::Rgba16Sint |
+        wgpu::TextureFormat::Rgba32Uint |
+        wgpu::TextureFormat::Rgba32Sint |
+        wgpu::TextureFormat::Stencil8 |
+        wgpu::TextureFormat::Depth24Plus |
+        wgpu::TextureFormat::Depth24PlusStencil8 |
+        wgpu::TextureFormat::Depth32Float |
+        wgpu::TextureFormat::Depth32FloatStencil8 |
+        wgpu::TextureFormat::Bc6hRgbUfloat |
+        wgpu::TextureFormat::Bc6hRgbSfloat => false,
     }
 }
