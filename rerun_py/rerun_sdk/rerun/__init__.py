@@ -21,7 +21,7 @@ from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import LoggingHandler, LogLevel, log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
-from rerun.notebook import inline_show
+from rerun.recording import MemoryRecording
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
 __all__ = [
@@ -402,10 +402,23 @@ def save(path: str) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - serve() call ignored")
+        print("Rerun is disabled - save() call ignored")
         return
 
     bindings.save(path)
+
+
+def memory_recording() -> MemoryRecording:
+    """
+    Streams all log-data to a memory buffer.
+
+    Returns
+    -------
+    MemoryRecording
+        A memory recording object that can be used to read the data.
+    """
+
+    return MemoryRecording(bindings.memory_recording())
 
 
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
