@@ -33,7 +33,7 @@ pub use allocator::GpuReadbackIdentifier;
 pub use color::Rgba32Unmul;
 pub use colormap::{
     colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
-    colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, ColorMap,
+    colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, Colormap,
 };
 pub use context::RenderContext;
 pub use debug_label::DebugLabel;

@@ -231,17 +231,12 @@ fn show_zoomed_image_region_tooltip(
         .on_hover_ui_at_pointer(|ui| {
             ui.set_max_width(320.0);
             ui.horizontal(|ui| {
-                if tensor_view.tensor.is_shaped_like_an_image() {
-                    let h = tensor_view.tensor.shape()[0].size as _;
-                    let w = tensor_view.tensor.shape()[1].size as _;
-
-                    use egui::NumExt;
+                if let Some([h, w, _]) = tensor_view.tensor.image_height_width_channels() {
+                    use egui::remap_clamp;
 
                     let center = [
-                        (egui::remap(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize)
-                            .at_most(w),
-                        (egui::remap(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize)
-                            .at_most(h),
+                        (remap_clamp(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize),
+                        (remap_clamp(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize),
                     ];
                     show_zoomed_image_region_area_outline(
                         parent_ui,
@@ -264,11 +259,11 @@ pub fn show_zoomed_image_region_area_outline(
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
-    if tensor_view.tensor.is_shaped_like_an_image() {
+    if let Some([height, width, _]) = tensor_view.tensor.image_height_width_channels() {
         use egui::{pos2, remap, Color32, Rect};
 
-        let h = tensor_view.tensor.shape()[0].size as _;
-        let w = tensor_view.tensor.shape()[1].size as _;
+        let width = width as f32;
+        let height = height as f32;
 
         // Show where on the original image the zoomed-in region is at:
         let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
@@ -276,10 +271,10 @@ pub fn show_zoomed_image_region_area_outline(
         let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
         let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
 
-        let left = remap(left, 0.0..=w, image_rect.x_range());
-        let right = remap(right, 0.0..=w, image_rect.x_range());
-        let top = remap(top, 0.0..=h, image_rect.y_range());
-        let bottom = remap(bottom, 0.0..=h, image_rect.y_range());
+        let left = remap(left, 0.0..=width, image_rect.x_range());
+        let right = remap(right, 0.0..=width, image_rect.x_range());
+        let top = remap(top, 0.0..=height, image_rect.y_range());
+        let bottom = remap(bottom, 0.0..=height, image_rect.y_range());
 
         let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
         // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done

@@ -48,3 +48,7 @@ const ONE  = Vec4(1.0, 1.0, 1.0, 1.0);
 // fn inf() -> f32 {
 //     return 1.0 / 0.0;
 // }
+
+
+/// The color to use when we encounter an error.
+const ERROR_RGBA = Vec4(1.0, 0.0, 1.0, 1.0);

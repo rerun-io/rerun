@@ -32,7 +32,7 @@ pub struct Texture2DCreationDesc<'a> {
     /// Data for the highest mipmap level.
     /// Must be padded according to wgpu rules and ready for upload.
     /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
-    pub data: &'a [u8],
+    pub data: std::borrow::Cow<'a, [u8]>,
     pub format: wgpu::TextureFormat,
     pub width: u32,
     pub height: u32,
@@ -60,6 +60,9 @@ pub struct TextureManager2D {
     // optimize for short lived textures as we do with buffer data.
     //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
     white_texture_unorm: GpuTexture2DHandle,
+    zeroed_texture_float: GpuTexture2DHandle,
+    zeroed_texture_depth: GpuTexture2DHandle,
+    zeroed_texture_sint: GpuTexture2DHandle,
     zeroed_texture_uint: GpuTexture2DHandle,
 
     // For convenience to reduce amount of times we need to pass them around
@@ -91,33 +94,27 @@ impl TextureManager2D {
             texture_pool,
             &Texture2DCreationDesc {
                 label: "white pixel - unorm".into(),
-                data: &[255, 255, 255, 255],
+                data: vec![255, 255, 255, 255].into(),
                 format: wgpu::TextureFormat::Rgba8Unorm,
                 width: 1,
                 height: 1,
             },
         );
 
-        // Wgpu zeros out new textures automatically
-        let zeroed_texture_uint = GpuTexture2DHandle(Some(texture_pool.alloc(
-            &device,
-            &TextureDesc {
-                label: "zeroed pixel - uint".into(),
-                format: wgpu::TextureFormat::Rgba8Uint,
-                size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING,
-            },
-        )));
+        let zeroed_texture_float =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Rgba8Unorm);
+        let zeroed_texture_depth =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Depth16Unorm);
+        let zeroed_texture_sint =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Rgba8Sint);
+        let zeroed_texture_uint =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Rgba8Uint);
 
         Self {
             white_texture_unorm,
+            zeroed_texture_float,
+            zeroed_texture_depth,
+            zeroed_texture_sint,
             zeroed_texture_uint,
             device,
             queue,
@@ -158,13 +155,45 @@ impl TextureManager2D {
         &mut self,
         key: u64,
         texture_pool: &mut GpuTexturePool,
-        creation_desc: &Texture2DCreationDesc<'_>,
+        texture_desc: Texture2DCreationDesc<'_>,
     ) -> GpuTexture2DHandle {
-        let texture_handle = self.texture_cache.entry(key).or_insert_with(|| {
-            Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc)
-        });
+        enum Never {}
+        match self.get_or_create_with(key, texture_pool, || -> Result<_, Never> {
+            Ok(texture_desc)
+        }) {
+            Ok(tex_handle) => tex_handle,
+            Err(never) => match never {},
+        }
+    }
+
+    /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
+    /// wasn't already created using the same key.
+    pub fn get_or_create_with<'a, Err>(
+        &mut self,
+        key: u64,
+        texture_pool: &mut GpuTexturePool,
+        try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
+    ) -> Result<GpuTexture2DHandle, Err> {
+        let texture_handle = match self.texture_cache.entry(key) {
+            std::collections::hash_map::Entry::Occupied(texture_handle) => {
+                texture_handle.get().clone() // already inserted
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                // Run potentially expensive texture creation code:
+                let tex_creation_desc = try_create_texture_desc()?;
+                entry
+                    .insert(Self::create_and_upload_texture(
+                        &self.device,
+                        &self.queue,
+                        texture_pool,
+                        &tex_creation_desc,
+                    ))
+                    .clone()
+            }
+        };
+
         self.accessed_textures.insert(key);
-        texture_handle.clone()
+        Ok(texture_handle)
     }
 
     /// Returns a single pixel white pixel with an rgba8unorm format.
@@ -177,7 +206,22 @@ impl TextureManager2D {
         self.white_texture_unorm.0.as_ref().unwrap()
     }
 
-    /// Returns a single pixel white pixel with an rgba8unorm format.
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Unorm`].
+    pub fn zeroed_texture_float(&self) -> &GpuTexture {
+        self.zeroed_texture_float.0.as_ref().unwrap()
+    }
+
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Depth16Unorm`].
+    pub fn zeroed_texture_depth(&self) -> &GpuTexture {
+        self.zeroed_texture_depth.0.as_ref().unwrap()
+    }
+
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Sint`].
+    pub fn zeroed_texture_sint(&self) -> &GpuTexture {
+        self.zeroed_texture_sint.0.as_ref().unwrap()
+    }
+
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Uint`].
     pub fn zeroed_texture_uint(&self) -> &GpuTexture {
         self.zeroed_texture_uint.0.as_ref().unwrap()
     }
@@ -213,7 +257,7 @@ impl TextureManager2D {
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuisance!
-        let data = creation_desc.data;
+        let data: &[u8] = creation_desc.data.as_ref();
 
         // TODO(andreas): temp allocator for staging data?
         // We don't do any further validation of the buffer here as wgpu does so extensively.
@@ -243,10 +287,7 @@ impl TextureManager2D {
 
     /// Retrieves gpu handle.
     #[allow(clippy::unused_self)]
-    pub(crate) fn get(
-        &self,
-        handle: &GpuTexture2DHandle,
-    ) -> Result<GpuTexture, ResourceManagerError> {
+    pub fn get(&self, handle: &GpuTexture2DHandle) -> Result<GpuTexture, ResourceManagerError> {
         handle
             .0
             .as_ref()
@@ -260,4 +301,28 @@ impl TextureManager2D {
             .retain(|k, _| self.accessed_textures.contains(k));
         self.accessed_textures.clear();
     }
+}
+
+fn create_zero_texture(
+    texture_pool: &mut GpuTexturePool,
+    device: &Arc<wgpu::Device>,
+    format: wgpu::TextureFormat,
+) -> GpuTexture2DHandle {
+    // Wgpu zeros out new textures automatically
+    GpuTexture2DHandle(Some(texture_pool.alloc(
+        device,
+        &TextureDesc {
+            label: format!("zeroed pixel {format:?}").into(),
+            format,
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+        },
+    )))
 }

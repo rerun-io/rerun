@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use re_data_store::{
-    query_latest_single, ColorMap, ColorMapper, EditableAutoValue, EntityPath, EntityProperties,
+    query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
 };
 use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
@@ -429,12 +429,12 @@ fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
                 }
             };
 
-            add_label(ColorMapper::ColorMap(ColorMap::Grayscale));
-            add_label(ColorMapper::ColorMap(ColorMap::Turbo));
-            add_label(ColorMapper::ColorMap(ColorMap::Viridis));
-            add_label(ColorMapper::ColorMap(ColorMap::Plasma));
-            add_label(ColorMapper::ColorMap(ColorMap::Magma));
-            add_label(ColorMapper::ColorMap(ColorMap::Inferno));
+            add_label(ColorMapper::Colormap(Colormap::Grayscale));
+            add_label(ColorMapper::Colormap(Colormap::Turbo));
+            add_label(ColorMapper::Colormap(Colormap::Viridis));
+            add_label(ColorMapper::Colormap(Colormap::Plasma));
+            add_label(ColorMapper::Colormap(Colormap::Magma));
+            add_label(ColorMapper::Colormap(Colormap::Inferno));
         });
 
     ui.end_row();
