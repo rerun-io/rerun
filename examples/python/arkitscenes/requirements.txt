@@ -1,7 +1,7 @@
-rerun-sdk
 numpy
-pandas
 opencv-python
-tqdm
+pandas
+rerun-sdk
 scipy
+tqdm
 trimesh

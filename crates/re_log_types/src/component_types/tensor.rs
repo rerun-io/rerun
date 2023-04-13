@@ -142,7 +142,7 @@ impl ArrowDeserialize for TensorId {
 ///     ),
 /// );
 /// ```
-#[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
     U8(BinaryBuffer),
@@ -195,6 +195,24 @@ impl TensorData {
 
     pub fn is_empty(&self) -> bool {
         self.size_in_bytes() == 0
+    }
+}
+
+impl std::fmt::Debug for TensorData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::U8(_) => write!(f, "U8({} bytes)", self.size_in_bytes()),
+            Self::U16(_) => write!(f, "U16({} bytes)", self.size_in_bytes()),
+            Self::U32(_) => write!(f, "U32({} bytes)", self.size_in_bytes()),
+            Self::U64(_) => write!(f, "U64({} bytes)", self.size_in_bytes()),
+            Self::I8(_) => write!(f, "I8({} bytes)", self.size_in_bytes()),
+            Self::I16(_) => write!(f, "I16({} bytes)", self.size_in_bytes()),
+            Self::I32(_) => write!(f, "I32({} bytes)", self.size_in_bytes()),
+            Self::I64(_) => write!(f, "I64({} bytes)", self.size_in_bytes()),
+            Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
+            Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
+            Self::JPEG(_) => write!(f, "JPEG({} bytes)", self.size_in_bytes()),
+        }
     }
 }
 
