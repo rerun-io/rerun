@@ -369,15 +369,15 @@ impl Tensor {
         self.shape.len()
     }
 
-    /// If this tensor is shaped as an image, return the height, width, and depth of it.
-    pub fn image_height_width_depth(&self) -> Option<[u64; 3]> {
+    /// If this tensor is shaped as an image, return the height, width, and channels/depth of it.
+    pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
         if self.shape.len() == 2 {
             Some([self.shape[0].size, self.shape[1].size, 1])
         } else if self.shape.len() == 3 {
-            let depth = self.shape[2].size;
+            let channels = self.shape[2].size;
             // gray, rgb, rgba
-            if matches!(depth, 1 | 3 | 4) {
-                Some([self.shape[0].size, self.shape[1].size, depth])
+            if matches!(channels, 1 | 3 | 4) {
+                Some([self.shape[0].size, self.shape[1].size, channels])
             } else {
                 None
             }

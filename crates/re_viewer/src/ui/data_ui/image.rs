@@ -231,7 +231,7 @@ fn show_zoomed_image_region_tooltip(
         .on_hover_ui_at_pointer(|ui| {
             ui.set_max_width(320.0);
             ui.horizontal(|ui| {
-                if let Some([h, w, _depth]) = tensor_view.tensor.image_height_width_depth() {
+                if let Some([h, w, _]) = tensor_view.tensor.image_height_width_channels() {
                     use egui::remap_clamp;
 
                     let center = [
@@ -259,7 +259,7 @@ pub fn show_zoomed_image_region_area_outline(
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
-    if let Some([height, width, _depth]) = tensor_view.tensor.image_height_width_depth() {
+    if let Some([height, width, _]) = tensor_view.tensor.image_height_width_channels() {
         use egui::{pos2, remap, Color32, Rect};
 
         let width = width as f32;

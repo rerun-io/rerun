@@ -40,7 +40,7 @@ fn push_tensor_texture(
 ) {
     crate::profile_function!();
 
-    let Some([height, width, _depth]) = tensor.image_height_width_depth() else { return; };
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return; };
 
     let debug_name = entity_path.to_string();
     let tensor_stats = ctx.cache.tensor_stats(tensor);
