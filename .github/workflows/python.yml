@@ -214,14 +214,20 @@ jobs:
             --features pypi
             --out pre-dist
 
-      - name: Install built wheel
-        # First we install the dependencies manually so we can use `--no-index` when installing the
-        # main rerun wheel to guarantee we only get it from the pre-dist folder. We additionally
-        # specify the version explicitly to make sure we have built what we expected.
+      - name: Install wheel dependencies
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
         # TODO(jleibs): pull these deps from pyproject.toml
+        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
         shell: bash
         run: |
           pip install deprecated numpy>=1.23 pyarrow==10.0.1
+
+      - name: Install built wheel
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder.
+        shell: bash
+        run: |
           pip install rerun-sdk==${{ env.expected_version }} --no-index --find-links pre-dist --force-reinstall
 
       - name: Verify built wheel version
