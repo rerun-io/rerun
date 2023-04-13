@@ -17,10 +17,10 @@ use super::dimension_mapping_ui;
 // ---
 
 /// How we slice a given tensor
-#[derive(Hash)]
+#[derive(Clone, Debug, Hash, serde::Deserialize, serde::Serialize)]
 struct SliceSelection {
     /// How we select which dimensions to project the tensor onto.
-    dimension_mapping: DimensionMapping,
+    dim_mapping: DimensionMapping,
 
     /// Selected value of every dimension (iff they are in [`DimensionMapping::selectors`]).
     selector_values: BTreeMap<usize, u64>,
@@ -28,11 +28,8 @@ struct SliceSelection {
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ViewTensorState {
-    /// How we select which dimensions to project the tensor onto.
-    dimension_mapping: DimensionMapping,
-
-    /// Selected value of every dimension (iff they are in [`DimensionMapping::selectors`]).
-    selector_values: BTreeMap<usize, u64>,
+    /// What slice are we vieiwing?
+    slice: SliceSelection,
 
     /// How we map values to colors.
     color_mapping: ColorMapping,
@@ -49,8 +46,10 @@ pub struct ViewTensorState {
 impl ViewTensorState {
     pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
-            selector_values: Default::default(),
-            dimension_mapping: DimensionMapping::create(tensor.shape()),
+            slice: SliceSelection {
+                dim_mapping: DimensionMapping::create(tensor.shape()),
+                selector_values: Default::default(),
+            },
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
             tensor: Some(tensor.clone()),
@@ -78,18 +77,18 @@ impl ViewTensorState {
 
         ui.separator();
         ui.strong("Dimension Mapping");
-        dimension_mapping_ui(ctx.re_ui, ui, &mut self.dimension_mapping, tensor.shape());
+        dimension_mapping_ui(ctx.re_ui, ui, &mut self.slice.dim_mapping, tensor.shape());
         let default_mapping = DimensionMapping::create(tensor.shape());
         if ui
             .add_enabled(
-                self.dimension_mapping != default_mapping,
+                self.slice.dim_mapping != default_mapping,
                 egui::Button::new("Reset mapping"),
             )
             .on_disabled_hover_text("The default is already set up.")
             .on_hover_text("Reset dimension mapping to the default.")
             .clicked()
         {
-            self.dimension_mapping = DimensionMapping::create(tensor.shape());
+            self.slice.dim_mapping = DimensionMapping::create(tensor.shape());
         }
     }
 }
@@ -104,15 +103,16 @@ pub(crate) fn view_tensor(
 
     state.tensor = Some(tensor.clone());
 
-    if !state.dimension_mapping.is_valid(tensor.num_dim()) {
-        state.dimension_mapping = DimensionMapping::create(tensor.shape());
+    if !state.slice.dim_mapping.is_valid(tensor.num_dim()) {
+        state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
     }
 
     let default_item_spacing = ui.spacing_mut().item_spacing;
     ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
 
     if state
-        .dimension_mapping
+        .slice
+        .dim_mapping
         .selectors
         .iter()
         .any(|selector| selector.visible)
@@ -141,10 +141,6 @@ fn tensor_ui(
     let tensor_stats = ctx.cache.tensor_stats(tensor);
     let range = tensor_stats.range;
     let color_mapping = &state.color_mapping;
-    let slice_selection = SliceSelection {
-        dimension_mapping: state.dimension_mapping.clone(),
-        selector_values: state.selector_values.clone(),
-    };
 
     match tensor.dtype() {
         TensorDataType::U8 => match ndarray::ArrayViewD::<u8>::try_from(tensor) {
@@ -154,7 +150,7 @@ fn tensor_ui(
                     color_mapping.color_from_normalized(value as f32 / 255.0)
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -173,7 +169,7 @@ fn tensor_ui(
                     ))
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -193,7 +189,7 @@ fn tensor_ui(
                     ) as f32)
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -212,7 +208,7 @@ fn tensor_ui(
                     ) as f32)
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -232,7 +228,7 @@ fn tensor_ui(
                     ))
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -252,7 +248,7 @@ fn tensor_ui(
                     ))
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -272,7 +268,7 @@ fn tensor_ui(
                     ) as f32)
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -292,7 +288,7 @@ fn tensor_ui(
                     ) as f32)
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -311,7 +307,7 @@ fn tensor_ui(
                     ))
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -330,7 +326,7 @@ fn tensor_ui(
                     ))
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -349,7 +345,7 @@ fn tensor_ui(
                     ) as f32)
                 };
 
-                let slice = selected_tensor_slice(&slice_selection, &tensor);
+                let slice = selected_tensor_slice(&state.slice, &tensor);
                 slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
@@ -589,7 +585,7 @@ fn selected_tensor_slice<'a, T: Copy>(
     tensor: &'a ndarray::ArrayViewD<'_, T>,
 ) -> ndarray::ArrayViewD<'a, T> {
     let SliceSelection {
-        dimension_mapping,
+        dim_mapping: dimension_mapping,
         selector_values,
     } = slice_selection;
 
@@ -643,7 +639,7 @@ fn slice_ui<T: Copy>(
     let ndims = slice.ndim();
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
         let dimension_labels = {
-            let dm = &view_state.dimension_mapping;
+            let dm = &view_state.slice.dim_mapping;
             [
                 (
                     dimension_name(tensor_shape, dm.width.unwrap()),
@@ -847,7 +843,7 @@ fn paint_axis_names(
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
-    for selector in &state.dimension_mapping.selectors {
+    for selector in &state.slice.dim_mapping.selectors {
         if !selector.visible {
             continue;
         }
@@ -856,6 +852,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
         let size = dim.size;
 
         let selector_value = state
+            .slice
             .selector_values
             .entry(selector.dim_idx)
             .or_insert_with(|| size / 2); // start in the middle
