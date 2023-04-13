@@ -18,12 +18,12 @@ use super::dimension_mapping_ui;
 
 /// How we slice a given tensor
 #[derive(Clone, Debug, Hash, serde::Deserialize, serde::Serialize)]
-struct SliceSelection {
+pub struct SliceSelection {
     /// How we select which dimensions to project the tensor onto.
-    dim_mapping: DimensionMapping,
+    pub dim_mapping: DimensionMapping,
 
     /// Selected value of every dimension (iff they are in [`DimensionMapping::selectors`]).
-    selector_values: BTreeMap<usize, u64>,
+    pub selector_values: BTreeMap<usize, u64>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
@@ -54,6 +54,14 @@ impl ViewTensorState {
             texture_settings: TextureSettings::default(),
             tensor: Some(tensor.clone()),
         }
+    }
+
+    pub fn slice(&self) -> &SliceSelection {
+        &self.slice
+    }
+
+    pub fn color_mapping(&self) -> &ColorMapping {
+        &self.color_mapping
     }
 
     pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -127,7 +135,82 @@ pub(crate) fn view_tensor(
         });
     }
 
-    tensor_ui(ctx, ui, state, tensor);
+    // tensor_ui(ctx, ui, state, tensor);
+
+    let dimension_labels = {
+        let dm = &state.slice.dim_mapping;
+        [
+            (
+                dimension_name(&tensor.shape, dm.width.unwrap()),
+                dm.invert_width,
+            ),
+            (
+                dimension_name(&tensor.shape, dm.height.unwrap()),
+                dm.invert_height,
+            ),
+        ]
+    };
+
+    egui::ScrollArea::both().show(ui, |ui| {
+        let font_id = egui::TextStyle::Body.resolve(ui.style());
+
+        let (response, painter, image_rect) = paint_tensor_slice(ctx, ui, state, tensor).unwrap(); // TODO: don't unwrap
+
+        if !response.hovered() {
+            paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
+        }
+    });
+}
+
+fn paint_tensor_slice(
+    ctx: &mut crate::misc::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut ViewTensorState,
+    tensor: &Tensor,
+) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
+    crate::profile_function!();
+
+    let tensor_stats = ctx.cache.tensor_stats(tensor);
+    let colormapped_texture =
+        super::gpu::colormapped_texture(ctx.render_ctx, tensor, tensor_stats, state)?;
+    let texture = ctx
+        .render_ctx
+        .texture_manager_2d
+        .get(&colormapped_texture.texture)?;
+    let size = texture.creation_desc.size;
+    let width = size.width;
+    let height = size.height;
+
+    let margin = egui::Vec2::ZERO;
+    let img_size = egui::vec2(width as _, height as _);
+    let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
+    let desired_size = match state.texture_settings.scaling {
+        TextureScaling::Original => img_size + margin,
+        TextureScaling::Fill => {
+            let desired_size = ui.available_size() - margin;
+            if state.texture_settings.keep_aspect_ratio {
+                let scale = (desired_size / img_size).min_elem();
+                img_size * scale
+            } else {
+                desired_size
+            }
+        }
+    };
+
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    let rect = response.rect;
+    let image_rect = egui::Rect::from_min_max(rect.min + margin, rect.max);
+
+    super::gpu::paint(
+        ctx.render_ctx,
+        &painter,
+        img_size,
+        image_rect,
+        colormapped_texture,
+        state.texture_settings.options,
+    )?;
+
+    Ok((response, painter, image_rect))
 }
 
 fn tensor_ui(
@@ -357,6 +440,7 @@ fn tensor_ui(
 
 // ----------------------------------------------------------------------------
 
+// TODO(emilk): replace with the one from re_renderer
 #[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 enum Colormap {
     Greyscale,
@@ -376,9 +460,9 @@ impl std::fmt::Display for Colormap {
 
 /// How we map values to colors.
 #[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
-struct ColorMapping {
+pub struct ColorMapping {
     map: Colormap,
-    gamma: f32,
+    pub gamma: f32,
 }
 
 impl Default for ColorMapping {
@@ -391,6 +475,14 @@ impl Default for ColorMapping {
 }
 
 impl ColorMapping {
+    pub fn renderer_colormap(&self) -> re_renderer::Colormap {
+        match self.map {
+            Colormap::Greyscale => re_renderer::Colormap::Grayscale,
+            Colormap::Turbo => re_renderer::Colormap::Turbo,
+            Colormap::Virdis => re_renderer::Colormap::Viridis,
+        }
+    }
+
     pub fn color_from_normalized(&self, f: f32) -> Color32 {
         let f = f.powf(self.gamma);
 
@@ -580,7 +672,7 @@ impl TextureSettings {
 
 // ----------------------------------------------------------------------------
 
-fn selected_tensor_slice<'a, T: Copy>(
+pub fn selected_tensor_slice<'a, T: Copy>(
     slice_selection: &SliceSelection,
     tensor: &'a ndarray::ArrayViewD<'_, T>,
 ) -> ndarray::ArrayViewD<'a, T> {

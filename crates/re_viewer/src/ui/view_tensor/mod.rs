@@ -1,3 +1,5 @@
+mod gpu;
+
 mod scene;
 pub(crate) use self::scene::SceneTensor;
 

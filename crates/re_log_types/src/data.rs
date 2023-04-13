@@ -115,6 +115,25 @@ impl TensorDataType {
     }
 
     #[inline]
+    pub fn min_value(&self) -> f64 {
+        match self {
+            Self::U8 => u8::MIN as _,
+            Self::U16 => u16::MIN as _,
+            Self::U32 => u32::MIN as _,
+            Self::U64 => u64::MIN as _,
+
+            Self::I8 => i8::MIN as _,
+            Self::I16 => i16::MIN as _,
+            Self::I32 => i32::MIN as _,
+            Self::I64 => i64::MIN as _,
+
+            Self::F16 => f16::MIN.into(),
+            Self::F32 => f32::MIN as _,
+            Self::F64 => f64::MIN,
+        }
+    }
+
+    #[inline]
     pub fn max_value(&self) -> f64 {
         match self {
             Self::U8 => u8::MAX as _,
