@@ -371,6 +371,36 @@ impl DataCell {
     {
         self.try_to_native().unwrap()
     }
+
+    /// Returns the contents of the cell as an iterator of native optional components.
+    ///
+    /// Fails if the underlying arrow data cannot be deserialized into `C`.
+    //
+    // TODO(#1694): There shouldn't need to be HRTBs (Higher-Rank Trait Bounds) here.
+    #[inline]
+    pub fn try_to_native_opt<C: DeserializableComponent>(
+        &self,
+    ) -> DataCellResult<impl Iterator<Item = Option<C>> + '_>
+    where
+        for<'a> &'a C::ArrayType: IntoIterator,
+    {
+        use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+        arrow_array_deserialize_iterator(&*self.inner.values).map_err(Into::into)
+    }
+
+    /// Returns the contents of the cell as an iterator of native optional components.
+    ///
+    /// Panics if the underlying arrow data cannot be deserialized into `C`.
+    /// See [`Self::try_to_native_opt`] for a fallible alternative.
+    //
+    // TODO(#1694): There shouldn't need to be HRTBs here.
+    #[inline]
+    pub fn to_native_opt<C: DeserializableComponent>(&self) -> impl Iterator<Item = Option<C>> + '_
+    where
+        for<'a> &'a C::ArrayType: IntoIterator,
+    {
+        self.try_to_native_opt().unwrap()
+    }
 }
 
 impl DataCell {

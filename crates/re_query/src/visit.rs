@@ -9,23 +9,24 @@
 //! # use re_query::EntityView;
 //! # use re_log_types::component_types::{ColorRGBA, InstanceKey, Point2D};
 //!
-//! let points = vec![
+//! let instances = InstanceKey::from_iter(0..3);
+//!
+//! let points = [
 //!     Point2D { x: 1.0, y: 2.0 },
 //!     Point2D { x: 3.0, y: 4.0 },
 //!     Point2D { x: 5.0, y: 6.0 },
 //! ];
 //!
-//! let colors = vec![
+//! let colors = [
 //!     ColorRGBA(0),
 //!     ColorRGBA(1),
 //!     ColorRGBA(2),
 //! ];
 //!
 //! let entity_view = EntityView::from_native2(
-//!     (None, &points),
-//!     (None, &colors),
-//! )
-//! .unwrap();
+//!     (&instances, &points),
+//!     (&instances, &colors),
+//! );
 //!
 //! let mut points_out = Vec::<Point2D>::new();
 //! let mut colors_out = Vec::<ColorRGBA>::new();
@@ -38,8 +39,8 @@
 //!     .ok()
 //!     .unwrap();
 //!
-//! assert_eq!(points, points_out);
-//! assert_eq!(colors, colors_out);
+//! assert_eq!(points.as_slice(), points_out.as_slice());
+//! assert_eq!(colors.as_slice(), colors_out.as_slice());
 //! ```
 
 use re_log_types::{

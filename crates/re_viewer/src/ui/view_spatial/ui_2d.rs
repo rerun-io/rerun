@@ -1,7 +1,7 @@
 use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
-use re_data_store::EntityPath;
+use re_data_store::{EntityPath, EntityPropertyMap};
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
 use super::{
@@ -227,6 +227,7 @@ pub fn view_2d(
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
     highlights: &SpaceViewHighlights,
+    entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -258,6 +259,7 @@ pub fn view_2d(
             scene_rect_accum,
             space_view_id,
             highlights,
+            entity_properties,
         )
     });
 
@@ -282,6 +284,7 @@ fn view_2d_scrollable(
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
     highlights: &SpaceViewHighlights,
+    entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
@@ -350,6 +353,7 @@ fn view_2d_scrollable(
             state,
             &scene,
             space,
+            entity_properties,
         );
     }
 

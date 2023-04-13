@@ -99,11 +99,13 @@ impl RenderDepthClouds {
                 .multiunzip();
 
             let mut builder = PointCloudBuilder::new(re_ctx);
-            builder
-                .batch("backprojected point cloud")
-                .add_points(num_points as _, points.into_iter())
-                .colors(colors.into_iter())
-                .radii(radii.into_iter());
+            builder.batch("backprojected point cloud").add_points(
+                num_points as _,
+                points.into_iter(),
+                radii.into_iter(),
+                colors.into_iter(),
+                std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
+            );
 
             builder.to_draw_data(re_ctx).unwrap()
         };
@@ -310,7 +312,7 @@ impl framework::Example for RenderDepthClouds {
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {
-            let mut builder = LineStripSeriesBuilder::<()>::new(re_ctx);
+            let mut builder = LineStripSeriesBuilder::new(re_ctx);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
                 line_batch.add_box_outline(glam::Affine3A::from_scale_rotation_translation(
@@ -319,7 +321,7 @@ impl framework::Example for RenderDepthClouds {
                     glam::Vec3::ONE * 0.5,
                 ));
             }
-            builder.to_draw_data(re_ctx)
+            builder.to_draw_data(re_ctx).unwrap()
         };
 
         let image_draw_data = RectangleDrawData::new(

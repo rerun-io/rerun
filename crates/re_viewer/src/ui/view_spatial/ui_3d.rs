@@ -3,7 +3,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{InstancePath, InstancePathHash};
+use re_data_store::{EntityPropertyMap, InstancePath, InstancePathHash};
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
@@ -257,6 +257,7 @@ pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     Double-click on empty space to reset the view.";
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
+#[allow(clippy::too_many_arguments)]
 pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -265,6 +266,7 @@ pub fn view_3d(
     space_view_id: SpaceViewId,
     mut scene: SceneSpatial,
     highlights: &SpaceViewHighlights,
+    entity_properties: &EntityPropertyMap,
 ) {
     crate::profile_function!();
 
@@ -369,6 +371,7 @@ pub fn view_3d(
             state,
             &scene,
             space,
+            entity_properties,
         );
     }
 

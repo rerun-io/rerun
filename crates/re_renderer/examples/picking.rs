@@ -165,10 +165,10 @@ impl framework::Example for Picking {
                 .add_points(
                     point_set.positions.len(),
                     point_set.positions.iter().cloned(),
-                )
-                .radii(point_set.radii.iter().cloned())
-                .colors(point_set.colors.iter().cloned())
-                .picking_instance_ids(point_set.picking_ids.iter().cloned());
+                    point_set.radii.iter().cloned(),
+                    point_set.colors.iter().cloned(),
+                    point_set.picking_ids.iter().cloned(),
+                );
         }
         view_builder.queue_draw(&point_builder.to_draw_data(re_ctx).unwrap());
 

@@ -1,5 +1,5 @@
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
+use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::{GpuReadbackIdentifier, ScreenshotProcessor};
 
 use crate::{
@@ -249,8 +249,15 @@ impl SpaceView {
                 self.view_state
                     .state_spatial
                     .update_object_property_heuristics(ctx, &mut self.data_blueprint);
-                self.view_state
-                    .ui_spatial(ctx, ui, &self.space_path, scene, self.id, highlights);
+                self.view_state.ui_spatial(
+                    ctx,
+                    ui,
+                    &self.space_path,
+                    scene,
+                    self.id,
+                    highlights,
+                    self.data_blueprint.data_blueprints_projected(),
+                );
             }
 
             ViewCategory::Tensor => {
@@ -333,10 +340,18 @@ impl ViewState {
         scene: view_spatial::SceneSpatial,
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
+        entity_properties: &EntityPropertyMap,
     ) {
         ui.vertical(|ui| {
-            self.state_spatial
-                .view_spatial(ctx, ui, space, scene, space_view_id, highlights);
+            self.state_spatial.view_spatial(
+                ctx,
+                ui,
+                space,
+                scene,
+                space_view_id,
+                highlights,
+                entity_properties,
+            );
         });
     }
 

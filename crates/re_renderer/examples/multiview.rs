@@ -84,7 +84,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
 
-    let mut builder = LineStripSeriesBuilder::<()>::new(re_ctx);
+    let mut builder = LineStripSeriesBuilder::new(re_ctx);
     {
         let mut batch = builder.batch("lines without transform");
 
@@ -125,7 +125,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         .radius(Size::new_scene(0.1))
         .flags(LineStripFlags::CAP_END_TRIANGLE);
 
-    builder.to_draw_data(re_ctx)
+    builder.to_draw_data(re_ctx).unwrap()
 }
 
 enum CameraControl {
@@ -323,9 +323,10 @@ impl Example for Multiview {
             .add_points(
                 self.random_points_positions.len(),
                 self.random_points_positions.iter().cloned(),
-            )
-            .radii(self.random_points_radii.iter().cloned())
-            .colors(self.random_points_colors.iter().cloned());
+                self.random_points_radii.iter().cloned(),
+                self.random_points_colors.iter().cloned(),
+                std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
+            );
 
         let point_cloud = builder.to_draw_data(re_ctx).unwrap();
         let meshes = build_mesh_instances(

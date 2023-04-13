@@ -5,7 +5,7 @@ use type_map::concurrent::{self, TypeMap};
 
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    config::RenderContextConfig,
+    config::{HardwareTier, RenderContextConfig},
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
@@ -78,14 +78,11 @@ impl Renderers {
 impl RenderContext {
     /// Chunk size for our cpu->gpu buffer manager.
     ///
-    /// For native: 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
-    /// For web (memory constraint!): 8MiB
-    #[cfg(not(target_arch = "wasm32"))]
+    /// 32MiB chunk size (as big as a for instance a 2048x1024 float4 texture)
+    /// (it's tempting to use something smaller on Web, but this may just cause more
+    /// buffers to be allocated the moment we want to upload a bigger chunk)
     const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
         wgpu::BufferSize::new(1024 * 1024 * 32);
-    #[cfg(target_arch = "wasm32")]
-    const CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE: Option<wgpu::BufferSize> =
-        wgpu::BufferSize::new(1024 * 1024 * 8);
 
     /// Chunk size for our gpu->cpu buffer manager.
     ///
@@ -210,14 +207,26 @@ impl RenderContext {
     fn poll_device(&mut self) {
         crate::profile_function!();
 
-        // Browsers don't let us wait for GPU work via `poll`.
-        // * WebGPU: `poll` is a no-op as the spec doesn't specify it at all.
+        // Browsers don't let us wait for GPU work via `poll`:
+        //
+        // * WebGPU: `poll` is a no-op as the spec doesn't specify it at all. Calling it doesn't hurt though.
+        //
         // * WebGL: Internal timeout can't go above a browser specific value.
         //          Since wgpu ran into issues in the past with some browsers returning errors,
         //          it uses a timeout of zero and ignores errors there.
-        //          TODO(andreas): That's not the only thing that's weird with `maintain` in general.
-        //                          See https://github.com/gfx-rs/wgpu/issues/3601
-        if cfg!(target_arch = "wasm32") {
+        //
+        //          This causes unused buffers to be freed immediately, which is wrong but also doesn't hurt
+        //          since WebGL doesn't care about freeing buffers/textures that are still in use.
+        //          Meaning, that from our POV we're actually freeing cpu memory that we wanted to free anyways.
+        //          *More importantly this means that we get buffers from the staging belts back earlier!*
+        //          Therefore, we just always "block" instead on WebGL to free as early as possible,
+        //          knowing that we're not _actually_ blocking.
+        //
+        //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
+        if cfg!(target_arch = "wasm32")
+            && self.shared_renderer_data.config.hardware_tier == HardwareTier::Gles
+        {
+            self.device.poll(wgpu::Maintain::Wait);
             return;
         }
 

@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point2D, Radius},
     Component,
@@ -62,7 +62,6 @@ impl Points2DPart {
         &self,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
-        properties: &EntityProperties,
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -94,7 +93,6 @@ impl Points2DPart {
                             ent_path,
                             instance_key,
                             entity_view,
-                            properties,
                             entity_highlight.any_selection_highlight,
                         )
                     })
@@ -110,16 +108,13 @@ impl Points2DPart {
         }
 
         {
-            let mut point_batch = scene
+            let point_batch = scene
                 .primitives
                 .points
                 .batch("2d points")
                 .world_from_obj(world_from_obj)
-                .outline_mask_ids(entity_highlight.overall);
-            if properties.interactive {
-                point_batch = point_batch
-                    .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-            }
+                .outline_mask_ids(entity_highlight.overall)
+                .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let point_positions = {
                 crate::profile_scope!("collect_points");
@@ -128,21 +123,21 @@ impl Points2DPart {
                     .filter_map(|pt| pt.map(glam::Vec2::from))
             };
 
-            let mut point_range_builder = point_batch
-                .add_points_2d(entity_view.num_instances(), point_positions)
-                .colors(colors)
-                .radii(radii);
-            if properties.interactive {
-                point_range_builder = point_range_builder.picking_instance_ids(
-                    entity_view.iter_instance_keys()?.map(|instance_key| {
-                        instance_key_to_picking_id(
-                            instance_key,
-                            entity_view,
-                            entity_highlight.any_selection_highlight,
-                        )
-                    }),
-                );
-            }
+            let picking_instance_ids = entity_view.iter_instance_keys()?.map(|instance_key| {
+                instance_key_to_picking_id(
+                    instance_key,
+                    entity_view,
+                    entity_highlight.any_selection_highlight,
+                )
+            });
+
+            let mut point_range_builder = point_batch.add_points_2d(
+                entity_view.num_instances(),
+                point_positions,
+                radii,
+                colors,
+                picking_instance_ids,
+            );
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -163,7 +158,7 @@ impl Points2DPart {
             }
         }
 
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
+        scene.load_keypoint_connections(ent_path, keypoints, &annotations);
 
         Ok(())
     }
@@ -207,7 +202,6 @@ impl ScenePart for Points2DPart {
                     self.process_entity_view(
                         scene,
                         query,
-                        &props,
                         &entity,
                         ent_path,
                         world_from_obj,

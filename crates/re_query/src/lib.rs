@@ -6,8 +6,6 @@
 
 // TODO(jleibs) better crate documentation.
 
-// TODO(cmc): make DataCells first-class citizens in re_query too.
-
 mod entity_view;
 mod query;
 mod range;
@@ -42,6 +40,9 @@ pub enum QueryError {
         actual: re_log_types::ComponentName,
         requested: re_log_types::ComponentName,
     },
+
+    #[error("Error with one or more the underlying data cells: {0}")]
+    DataCell(#[from] re_log_types::DataCellError),
 
     #[error("Error converting arrow data")]
     ArrowError(#[from] arrow2::error::Error),
