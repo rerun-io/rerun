@@ -350,8 +350,10 @@ fn cast_slice_to_cow<From: Pod>(slice: &[From]) -> Cow<'_, [u8]> {
 // wgpu doesn't support f64 textures, so we need to narrow to f32:
 fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
     crate::profile_function!();
-    let f32s: Vec<f32> = slice.iter().map(|&f| f as f32).collect::<Vec<f32>>();
-    let bytes: Vec<u8> = pod_collect_to_vec(&f32s);
+    let bytes: Vec<u8> = slice
+        .iter()
+        .flat_map(|&f| (f as f32).to_le_bytes())
+        .collect();
     bytes.into()
 }
 
