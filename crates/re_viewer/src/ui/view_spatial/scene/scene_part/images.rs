@@ -32,6 +32,7 @@ fn push_tensor_texture(
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
+    entity_path: &EntityPath,
     instance_path_hash: InstancePathHash,
     tensor: &Tensor,
     multiplicative_tint: egui::Rgba,
@@ -41,15 +42,15 @@ fn push_tensor_texture(
 
     let Some([height, width, _depth]) = tensor.image_height_width_depth() else { return; };
 
-    let experimental_gpu_colormapping = true;
+    let experimental_gpu_colormapping = true; // TODO: remove
     if experimental_gpu_colormapping {
-        let debug_name = "tensor"; // TODO: entity path
+        let debug_name = entity_path.to_string();
 
         let tensor_stats = ctx.cache.tensor_stats(tensor);
 
         match crate::misc::tensor_to_gpu::textured_rect_from_tensor(
             ctx.render_ctx,
-            debug_name,
+            &debug_name,
             tensor,
             tensor_stats,
             annotations,
@@ -277,6 +278,7 @@ impl ImagesPart {
                     ctx,
                     &annotations,
                     world_from_obj,
+                    ent_path,
                     instance_path_hash,
                     &tensor,
                     color.into(),

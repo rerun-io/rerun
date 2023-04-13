@@ -158,6 +158,9 @@ pub enum RectangleError {
 
     #[error("No color mapper was supplied for this 1-component texture")]
     MissingColorMapper,
+
+    #[error("Invalid color map texture format: {0:?}")]
+    UnsupportedColormapTextureFormat(wgpu::TextureFormat),
 }
 
 mod gpu_data {
@@ -383,8 +386,13 @@ impl RectangleDrawData {
             let colormap_texture = if let Some(ColorMapper::Texture(handle)) =
                 &rectangle.colormapped_texture.color_mapper
             {
-                // TODO: verify the that the format is Rgba8UnormSrgb
-                ctx.texture_manager_2d.get(handle)?.handle
+                let colormap_texture = ctx.texture_manager_2d.get(handle)?;
+                if colormap_texture.creation_desc.format != wgpu::TextureFormat::Rgba8UnormSrgb {
+                    return Err(RectangleError::UnsupportedColormapTextureFormat(
+                        colormap_texture.creation_desc.format,
+                    ));
+                }
+                colormap_texture.handle
             } else {
                 default_float_texture
             };
