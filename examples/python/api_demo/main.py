@@ -12,7 +12,9 @@ Example usage:
 import argparse
 import logging
 import math
+import os
 
+import cv2
 import numpy as np
 import rerun as rr
 from scipy.spatial.transform import Rotation
@@ -277,18 +279,40 @@ def run_extension_component() -> None:
     )
 
 
+def run_image_tensors() -> None:
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    img_path = f"{dir_path}/rerun_logo_color_alpha.png"
+    img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+
+    img_rgba = cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGBA)
+    rr.log_image("img_rgba", img_rgba)
+    img_rgb = cv2.cvtColor(img_rgba, cv2.COLOR_RGBA2RGB)
+    rr.log_image("img_rgb", img_rgb)
+    img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+    rr.log_image("img_gray", img_gray)
+
+    dtypes = [np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64]
+
+    for dtype in dtypes:
+        rr.log_image(f"img_rgba_{dtype}", img_rgba.astype(dtype))
+        rr.log_image(f"img_rgb_{dtype}", img_rgb.astype(dtype))
+        rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
+
+
+
 def main() -> None:
     demos = {
         "2d_lines": run_2d_lines,
         "3d_points": run_3d_points,
+        "bbox": run_bounding_box,
+        "extension_components": run_extension_component,
+        "image_tensors": run_image_tensors,
         "log_cleared": run_log_cleared,
         "raw_mesh": raw_mesh,
         "rects": run_rects,
         "segmentation": run_segmentation,
         "text": run_text_logs,
         "transforms_3d": transforms_rigid_3d,
-        "bbox": run_bounding_box,
-        "extension_components": run_extension_component,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
