@@ -40,7 +40,7 @@ pub fn colormapped_texture(
         range: [min as f32, max as f32],
         gamma: color_mapping.gamma,
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(
-            color_mapping.renderer_colormap(),
+            color_mapping.map,
         )),
     })
 }

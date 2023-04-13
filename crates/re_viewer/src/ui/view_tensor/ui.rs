@@ -5,6 +5,7 @@ use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
 use re_log_types::component_types::{self, Tensor};
+use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
 use crate::ui::data_ui::image::tensor_summary_ui_grid_contents;
@@ -225,49 +226,23 @@ fn paint_tensor_slice(
 
 // ----------------------------------------------------------------------------
 
-// TODO(emilk): replace with the one from re_renderer
-#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-enum Colormap {
-    Greyscale,
-    Turbo,
-    Virdis,
-}
-
-impl std::fmt::Display for Colormap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Colormap::Greyscale => "Greyscale",
-            Colormap::Turbo => "Turbo",
-            Colormap::Virdis => "Viridis",
-        })
-    }
-}
-
 /// How we map values to colors.
 #[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ColorMapping {
-    map: Colormap,
+    pub map: Colormap,
     pub gamma: f32,
 }
 
 impl Default for ColorMapping {
     fn default() -> Self {
         Self {
-            map: Colormap::Virdis,
+            map: Colormap::Viridis,
             gamma: 1.0,
         }
     }
 }
 
 impl ColorMapping {
-    pub fn renderer_colormap(&self) -> re_renderer::Colormap {
-        match self.map {
-            Colormap::Greyscale => re_renderer::Colormap::Grayscale,
-            Colormap::Turbo => re_renderer::Colormap::Turbo,
-            Colormap::Virdis => re_renderer::Colormap::Viridis,
-        }
-    }
-
     fn ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         let ColorMapping { map, gamma } = self;
 
@@ -276,9 +251,9 @@ impl ColorMapping {
             .selected_text(map.to_string())
             .show_ui(ui, |ui| {
                 ui.style_mut().wrap = Some(false);
-                ui.selectable_value(map, Colormap::Greyscale, Colormap::Greyscale.to_string());
-                ui.selectable_value(map, Colormap::Virdis, Colormap::Virdis.to_string());
-                ui.selectable_value(map, Colormap::Turbo, Colormap::Turbo.to_string());
+                for option in Colormap::ALL {
+                    ui.selectable_value(map, option, option.to_string());
+                }
             });
         ui.end_row();
 

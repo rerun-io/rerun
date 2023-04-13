@@ -6,6 +6,7 @@ use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
 
 // NOTE: Keep in sync with `colormap.wgsl`!
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(u32)]
 pub enum Colormap {
     // Reserve 0 for "disabled"
@@ -17,6 +18,30 @@ pub enum Colormap {
     Plasma = 4,
     Magma = 5,
     Inferno = 6,
+}
+
+impl Colormap {
+    pub const ALL: [Self; 6] = [
+        Self::Grayscale,
+        Self::Turbo,
+        Self::Viridis,
+        Self::Plasma,
+        Self::Magma,
+        Self::Inferno,
+    ];
+}
+
+impl std::fmt::Display for Colormap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Colormap::Grayscale => write!(f, "Grayscale"),
+            Colormap::Turbo => write!(f, "Turbo"),
+            Colormap::Viridis => write!(f, "Viridis"),
+            Colormap::Plasma => write!(f, "Plasma"),
+            Colormap::Magma => write!(f, "Magma"),
+            Colormap::Inferno => write!(f, "Inferno"),
+        }
+    }
 }
 
 pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
