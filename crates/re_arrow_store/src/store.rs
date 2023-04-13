@@ -111,7 +111,7 @@ impl Default for MetadataRegistry<TimePoint> {
             registry: Default::default(),
             heap_size_bytes: 0,
         };
-        this.heap_size_bytes = this.heap_size_bytes();
+        this.heap_size_bytes = this.heap_size_bytes(); // likely zero, just future proofing
         this
     }
 }
