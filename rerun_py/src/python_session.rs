@@ -202,13 +202,13 @@ impl PythonSession {
 
     /// Send all pending and future log messages to an in-memory store
     pub fn memory_recording(&mut self) -> rerun::sink::MemorySinkStorage {
-        let memory_sink = rerun::sink::MemorySink::default();
-        let buffer = memory_sink.buffer();
-
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to memory_recording() ignored");
-            return buffer;
+            return Default::default();
         }
+
+        let memory_sink = rerun::sink::MemorySink::default();
+        let buffer = memory_sink.buffer();
 
         self.set_sink(Box::new(memory_sink));
         self.has_sent_begin_recording_msg = false;
