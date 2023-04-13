@@ -84,15 +84,15 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
-
     // Sample the main texture:
     var sampled_value: Vec4;
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
     } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
+        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_sint).xy));
         sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
     } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
         sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
     } else {
         return ERROR_RGBA; // unknown sample type
