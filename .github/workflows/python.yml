@@ -195,9 +195,9 @@ jobs:
           python3 scripts/version_util.py --check_version
 
       - name: Store the expected version
-        # This call to version_util.py store the expected version number in the GitHub env `expected_version`
+        # Find the current cargo version and store it in the GITHUB_ENV var: `expected_version`
         run: |
-          python3 scripts/version_util.py --expected_version >> $GITHUB_ENV
+          echo "expected_version=$(python3 scripts/version_util.py --bare_cargo_version)" >> $GITHUB_ENV
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
