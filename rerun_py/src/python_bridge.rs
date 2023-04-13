@@ -300,6 +300,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     Ok(())
 }
 
+#[must_use]
 fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
     use once_cell::sync::Lazy;
     static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =

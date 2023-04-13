@@ -46,7 +46,7 @@ mod web_event_listener {
     use wasm_bindgen::{closure::Closure, JsCast, JsValue};
     use web_sys::MessageEvent;
 
-    /// Create an event-listener which will decode the incoming event as an rrd
+    /// Install an event-listener on `window` which will decode the incoming event as an rrd
     ///
     /// From javascript you can send an rrd using:
     /// ```
@@ -54,10 +54,10 @@ mod web_event_listener {
     /// window.postMessage(rrd, "*")
     /// ```
     pub fn stream_rrd_from_event_listener(on_msg: Arc<dyn Fn(LogMsg) + Send>) {
-        {
-            let window = web_sys::window().expect("no global `window` exists");
-            let closure = Closure::wrap(Box::new(move |event: JsValue| {
-                match event.dyn_into::<MessageEvent>() {
+        let window = web_sys::window().expect("no global `window` exists");
+        let closure =
+            Closure::wrap(Box::new(
+                move |event: JsValue| match event.dyn_into::<MessageEvent>() {
                     Ok(message_event) => {
                         let uint8_array = Uint8Array::new(&message_event.data());
                         let result: Vec<u8> = uint8_array.to_vec();
@@ -67,13 +67,12 @@ mod web_event_listener {
                     Err(js_val) => {
                         re_log::error!("Incoming event was not a MessageEvent. {:?}", js_val);
                     }
-                }
-            }) as Box<dyn FnMut(_)>);
-            window
-                .add_event_listener_with_callback("message", closure.as_ref().unchecked_ref())
-                .unwrap();
-            closure.forget();
-        }
+                },
+            ) as Box<dyn FnMut(_)>);
+        window
+            .add_event_listener_with_callback("message", closure.as_ref().unchecked_ref())
+            .unwrap();
+        closure.forget();
     }
 }
 

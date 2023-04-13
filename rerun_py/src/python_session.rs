@@ -302,23 +302,13 @@ impl PythonSession {
     /// This may point to app.rerun.io or localhost depending on
     /// whether `host_assets` was called.
     pub fn get_app_url(&self) -> String {
-        #[cfg(not(feature = "web_viewer"))]
-        {
-            format!(
-                "https://app.rerun.io/commit/{}/index.html",
-                &self.build_info.git_hash[..7]
-            )
-        }
-
         #[cfg(feature = "web_viewer")]
         if let Some(hosted_assets) = &self.self_hosted_web_viewer {
-            format!("http://localhost:{}", hosted_assets.get_port())
-        } else {
-            format!(
-                "https://app.rerun.io/commit/{}",
-                &self.build_info.git_hash[..7]
-            )
+            return format!("http://localhost:{}", hosted_assets.get_port());
         }
+
+        let short_git_hash = &self.build_info.git_hash[..7];
+        format!("https://app.rerun.io/commit/{short_git_hash}")
     }
 
     /// Start a web server to host the run web-asserts

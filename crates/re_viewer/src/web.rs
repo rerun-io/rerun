@@ -127,7 +127,7 @@ enum EndpointCategory {
 fn categorize_uri(mut uri: String) -> EndpointCategory {
     if uri.starts_with("http") || uri.ends_with(".rrd") {
         EndpointCategory::HttpRrd(uri)
-    } else if uri.starts_with("ws:") {
+    } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
         EndpointCategory::WebSocket(uri)
     } else if uri.starts_with("web_event:") {
         EndpointCategory::WebEventListener

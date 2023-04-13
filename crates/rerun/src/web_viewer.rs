@@ -54,6 +54,7 @@ impl RemoteViewerServer {
 /// Optionally opens a browser with the web-viewer.
 #[cfg(feature = "web_viewer")]
 pub async fn host_web_viewer(
+    web_port: u16,
     open_browser: bool,
     ws_server_url: String,
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
