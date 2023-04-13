@@ -168,28 +168,34 @@ mod gpu_data {
     const SAMPLE_TYPE_FLOAT: u32 = 1;
     const SAMPLE_TYPE_SINT: u32 = 2;
     const SAMPLE_TYPE_UINT: u32 = 3;
+
+    const COLOR_MAPPER_OFF: u32 = 1;
+    const COLOR_MAPPER_FUNCTION: u32 = 2;
+    const COLOR_MAPPER_TEXTURE: u32 = 3;
     // Keep in sync with mirror in rectangle.wgsl
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
-        pub top_left_corner_position: wgpu_buffer_types::Vec3Unpadded,
-        /// 0=disabled, else see `colormap.rs`
-        pub colormap: u32,
+        top_left_corner_position: wgpu_buffer_types::Vec3Unpadded,
+        colormap_function: u32,
 
-        pub extent_u: wgpu_buffer_types::Vec3Unpadded,
-        pub sample_type: u32,
+        extent_u: wgpu_buffer_types::Vec3Unpadded,
+        sample_type: u32,
 
-        pub extent_v: wgpu_buffer_types::Vec3Unpadded,
-        pub depth_offset: f32,
+        extent_v: wgpu_buffer_types::Vec3Unpadded,
+        depth_offset: f32,
 
-        pub multiplicative_tint: crate::Rgba,
-        pub outline_mask: wgpu_buffer_types::UVec2,
+        multiplicative_tint: crate::Rgba,
+        outline_mask: wgpu_buffer_types::UVec2,
 
         /// Range of the texture values.
         /// Will be mapped to the [0, 1] range before we colormap.
-        pub range_min_max: wgpu_buffer_types::Vec2,
+        range_min_max: wgpu_buffer_types::Vec2,
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
+        color_mapper: u32,
+        _row_padding: [u32; 3],
+
+        _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
 
     impl UniformBuffer {
@@ -214,15 +220,17 @@ mod gpu_data {
                 wgpu::TextureSampleType::Uint => SAMPLE_TYPE_UINT,
             };
 
-            let mut colormap = 0;
+            let mut colormap_function = 0;
+            let color_mapper_int;
 
             match texture_info.components {
                 1 => match color_mapper {
                     Some(ColorMapper::Function(cm)) => {
-                        colormap = *cm as u32;
+                        color_mapper_int = COLOR_MAPPER_FUNCTION;
+                        colormap_function = *cm as u32;
                     }
                     Some(ColorMapper::Texture(_)) => {
-                        colormap = 666;
+                        color_mapper_int = COLOR_MAPPER_TEXTURE;
                     }
                     None => {
                         return Err(RectangleError::MissingColorMapper);
@@ -231,6 +239,8 @@ mod gpu_data {
                 4 => {
                     if color_mapper.is_some() {
                         return Err(RectangleError::ColormappingRgbaTexture);
+                    } else {
+                        color_mapper_int = COLOR_MAPPER_OFF;
                     }
                 }
                 num_components => {
@@ -240,7 +250,7 @@ mod gpu_data {
 
             Ok(Self {
                 top_left_corner_position: rectangle.top_left_corner_position.into(),
-                colormap,
+                colormap_function,
                 extent_u: rectangle.extent_u.into(),
                 sample_type,
                 extent_v: rectangle.extent_v.into(),
@@ -248,7 +258,9 @@ mod gpu_data {
                 multiplicative_tint: rectangle.multiplicative_tint,
                 outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
                 range_min_max: (*range).into(),
-                end_padding: Default::default(),
+                color_mapper: color_mapper_int,
+                _row_padding: Default::default(),
+                _end_padding: Default::default(),
             })
         }
     }

@@ -7,11 +7,16 @@ const SAMPLE_TYPE_FLOAT = 1u;
 const SAMPLE_TYPE_SINT = 2u;
 const SAMPLE_TYPE_UINT = 3u;
 
+const COLOR_MAPPER_OFF = 1u;
+const COLOR_MAPPER_FUNCTION = 2u;
+const COLOR_MAPPER_TEXTURE = 3u;
+
 struct UniformBuffer {
     /// Top left corner position in world space.
     top_left_corner_position: Vec3,
 
-    colormap: u32, // 0 = none, 666 = colormap_texture
+    /// Which colormap to use, if any
+    colormap_function: u32,
 
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
     extent_u: Vec3,
@@ -32,6 +37,8 @@ struct UniformBuffer {
     /// Range of the texture values.
     /// Will be mapped to the [0, 1] range before we colormap.
     range_min_max: Vec2,
+
+    color_mapper: u32,
 };
 
 @group(1) @binding(0)
@@ -96,11 +103,13 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // Apply colormap, if any:
     var texture_color: Vec4;
-    if rect_info.colormap == 0u {
-        // no colormap
+
+    if rect_info.color_mapper == COLOR_MAPPER_OFF {
         texture_color = normalized_value;
-    } else if rect_info.colormap == 666u {
-        // colormap texture
+    } else if rect_info.color_mapper == COLOR_MAPPER_FUNCTION {
+        let rgb = colormap_linear(rect_info.colormap_function, normalized_value.r);
+        texture_color = Vec4(rgb, 1.0);
+    } else if rect_info.color_mapper == COLOR_MAPPER_TEXTURE {
         let colormap_size = textureDimensions(colormap_texture).xy;
         let color_index = normalized_value.r * f32(colormap_size.x * colormap_size.y);
         // TODO(emilk): interpolate between neighboring colors for non-integral color indices
@@ -109,9 +118,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         let y = color_index_i32 / colormap_size.x;
         texture_color = textureLoad(colormap_texture, IVec2(x, y), 0);
     } else {
-        // colormap function
-        let rgb = colormap_linear(rect_info.colormap, normalized_value.r);
-        texture_color = Vec4(rgb, 1.0);
+        return ERROR_RGBA; // unknown color mapper
     }
 
     return texture_color * rect_info.multiplicative_tint;
