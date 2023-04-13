@@ -183,7 +183,6 @@ impl ImagesPart {
                     entity_view,
                     scene,
                     ctx,
-                    properties,
                     ent_path,
                     world_from_obj,
                     entity_highlight,
@@ -202,7 +201,6 @@ impl ImagesPart {
         entity_view: &EntityView<Tensor>,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
-        properties: &EntityProperties,
         ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
         entity_highlight: &SpaceViewOutlineMasks,
@@ -216,7 +214,6 @@ impl ImagesPart {
             ent_path,
             instance_key,
             entity_view,
-            properties,
             entity_highlight.any_selection_highlight,
         );
 

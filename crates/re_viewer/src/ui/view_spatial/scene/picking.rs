@@ -1,22 +1,16 @@
 //! Handles picking in 2D & 3D spaces.
 
-use itertools::Itertools as _;
-
 use re_data_store::InstancePathHash;
 use re_renderer::PickingLayerProcessor;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
-    math::{line_segment_distance_sq_to_point_2d, ray_closest_t_line_segment},
     misc::instance_hash_conversions::instance_path_hash_from_picking_layer_id,
     ui::view_spatial::eye::Eye,
 };
 
 #[derive(Clone)]
-pub enum AdditionalPickingInfo {
-    /// No additional picking information.
-    None,
-
+pub enum PickingHitType {
     /// The hit was a textured rect at the given uv coordinates (ranging from 0 to 1)
     TexturedRect(glam::Vec2),
 
@@ -34,104 +28,28 @@ pub struct PickingRayHit {
     /// The ray hit position may not actually be on this entity, as we allow snapping to closest entity!
     pub instance_path_hash: InstancePathHash,
 
-    /// Where along the picking ray the hit occurred.
-    pub ray_t: f32,
+    /// Where the ray hit the entity.
+    pub space_position: glam::Vec3,
 
     pub depth_offset: re_renderer::DepthOffset,
 
     /// Any additional information about the picking hit.
-    pub info: AdditionalPickingInfo,
-}
-
-impl PickingRayHit {
-    fn from_instance_and_t(instance_path_hash: InstancePathHash, t: f32) -> Self {
-        Self {
-            instance_path_hash,
-            ray_t: t,
-            info: AdditionalPickingInfo::None,
-            depth_offset: 0,
-        }
-    }
-
-    pub fn space_position(&self, ray_in_world: &macaw::Ray3) -> glam::Vec3 {
-        ray_in_world.origin + ray_in_world.dir * self.ray_t
-    }
+    pub hit_type: PickingHitType,
 }
 
 #[derive(Clone)]
 pub struct PickingResult {
-    /// Picking ray hit for an opaque object (if any).
-    pub opaque_hit: Option<PickingRayHit>,
-
-    /// Picking ray hits for transparent objects, sorted from far to near.
-    /// If there is an opaque hit, all of them are in front of the opaque hit.
-    pub transparent_hits: Vec<PickingRayHit>,
+    /// Picking ray hits. NOT sorted by distance but rather by source of picking.
+    ///
+    /// Typically there is only one hit, but there might be several if there are transparent objects
+    /// or "aggressive" objects like 2D images which we always want to pick, even if they're in the background.
+    /// (This is very useful for 2D scenes and so far we keep this behavior in 3D for simplicity)
+    pub hits: Vec<PickingRayHit>,
 }
 
 impl PickingResult {
-    /// Iterates over all hits from far to close.
-    pub fn iter_hits(&self) -> impl Iterator<Item = &PickingRayHit> {
-        self.opaque_hit.iter().chain(self.transparent_hits.iter())
-    }
-
-    pub fn space_position(&self, ray_in_world: &macaw::Ray3) -> Option<glam::Vec3> {
-        self.opaque_hit
-            .as_ref()
-            .or_else(|| self.transparent_hits.last())
-            .map(|hit| hit.space_position(ray_in_world))
-    }
-}
-
-const RAY_T_EPSILON: f32 = f32::EPSILON;
-
-/// State used to build up picking results.
-struct PickingState {
-    closest_opaque_side_ui_dist_sq: f32,
-    closest_opaque_pick: PickingRayHit,
-    transparent_hits: Vec<PickingRayHit>,
-}
-
-impl PickingState {
-    fn check_hit(&mut self, side_ui_dist_sq: f32, ray_hit: PickingRayHit, transparent: bool) {
-        let gap_to_closest_opaque = self.closest_opaque_pick.ray_t - ray_hit.ray_t;
-
-        // Use depth offset if very close to each other in relative distance.
-        if gap_to_closest_opaque.abs()
-            < self.closest_opaque_pick.ray_t.max(ray_hit.ray_t) * RAY_T_EPSILON
-        {
-            if ray_hit.depth_offset < self.closest_opaque_pick.depth_offset {
-                return;
-            }
-        } else if gap_to_closest_opaque < 0.0 {
-            return;
-        }
-
-        if side_ui_dist_sq <= self.closest_opaque_side_ui_dist_sq {
-            if transparent {
-                self.transparent_hits.push(ray_hit);
-            } else {
-                self.closest_opaque_pick = ray_hit;
-                self.closest_opaque_side_ui_dist_sq = side_ui_dist_sq;
-            }
-        }
-    }
-
-    fn sort_and_remove_hidden_transparent(&mut self) {
-        // Sort from far to close
-        self.transparent_hits
-            .sort_by(|a, b| b.ray_t.partial_cmp(&a.ray_t).unwrap());
-
-        // Delete subset that is behind opaque hit.
-        if self.closest_opaque_pick.ray_t.is_finite() {
-            let mut num_hidden = 0;
-            for (i, transparent_hit) in self.transparent_hits.iter().enumerate() {
-                if transparent_hit.ray_t <= self.closest_opaque_pick.ray_t {
-                    break;
-                }
-                num_hidden = i + 1;
-            }
-            self.transparent_hits.drain(0..num_hidden);
-        }
+    pub fn space_position(&self) -> Option<glam::Vec3> {
+        self.hits.last().map(|hit| hit.space_position)
     }
 }
 
@@ -150,12 +68,6 @@ pub struct PickingContext {
 
     /// The picking ray used. Given in the coordinates of the space the picking is performed in.
     pub ray_in_world: macaw::Ray3,
-
-    /// Transformation from ui coordinates to world coordinates.
-    ui_from_world: glam::Mat4,
-
-    /// Multiply with this to convert to pixels from points.
-    pixels_from_points: f32,
 }
 
 impl PickingContext {
@@ -180,9 +92,7 @@ impl PickingContext {
             pointer_in_space2d,
             pointer_in_pixel: glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
             pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),
-            ui_from_world: eye.ui_from_world(*space2d_from_ui.to()),
             ray_in_world: eye.picking_ray(*space2d_from_ui.to(), pointer_in_space2d),
-            pixels_from_points,
         }
     }
 
@@ -197,69 +107,38 @@ impl PickingContext {
     ) -> PickingResult {
         crate::profile_function!();
 
-        let max_side_ui_dist_sq = Self::UI_INTERACTION_RADIUS * Self::UI_INTERACTION_RADIUS;
+        let mut hits = Vec::new();
 
-        let mut state = PickingState {
-            closest_opaque_side_ui_dist_sq: max_side_ui_dist_sq,
-            closest_opaque_pick: PickingRayHit {
-                instance_path_hash: InstancePathHash::NONE,
-                ray_t: f32::INFINITY,
-                info: AdditionalPickingInfo::None,
-                depth_offset: 0,
-            },
-            // Combined, sorted (and partially "hidden") by opaque results later.
-            transparent_hits: Vec::new(),
-        };
-
-        let SceneSpatialPrimitives {
-            bounding_box: _,
-            textured_rectangles,
-            textured_rectangles_ids,
-            line_strips,
-            points: _,
-            meshes: _,
-            depth_clouds: _, // no picking for depth clouds yet
-            any_outlines: _,
-        } = primitives;
-
-        // GPU based picking.
-        picking_gpu(
+        // Start with gpu based picking as baseline. This is our prime source of picking information.
+        hits.extend(picking_gpu(
             render_ctx,
             gpu_readback_identifier,
-            &mut state,
             self,
             previous_picking_result,
-        );
+        ));
 
-        picking_lines(self, &mut state, line_strips);
-        picking_textured_rects(
+        // We also never throw away any textured rects, even if they're behind other objects.
+        let mut rect_hits = picking_textured_rects(
             self,
-            &mut state,
-            textured_rectangles,
-            textured_rectangles_ids,
+            &primitives.textured_rectangles,
+            &primitives.textured_rectangles_ids,
         );
-        picking_ui_rects(self, &mut state, ui_data);
+        rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
+        hits.extend(rect_hits);
 
-        state.sort_and_remove_hidden_transparent();
+        // UI rects are overlaid on top, but we don't let them hide other picking results either.
+        hits.extend(picking_ui_rects(self, ui_data));
 
-        PickingResult {
-            opaque_hit: state
-                .closest_opaque_pick
-                .instance_path_hash
-                .is_some()
-                .then_some(state.closest_opaque_pick),
-            transparent_hits: state.transparent_hits,
-        }
+        PickingResult { hits }
     }
 }
 
 fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
-    state: &mut PickingState,
     context: &PickingContext,
     previous_picking_result: &Option<PickingResult>,
-) {
+) -> Option<PickingRayHit> {
     crate::profile_function!();
 
     // Only look at newest available result, discard everything else.
@@ -305,96 +184,44 @@ fn picking_gpu(
         }
         if picked_id == re_renderer::PickingLayerId::default() {
             // Nothing found.
-            return;
+            return None;
         }
 
-        let ui_distance_sq = picked_on_picking_rect.distance_squared(pointer_on_picking_rect)
-            / (context.pixels_from_points * context.pixels_from_points);
         let picked_world_position =
             gpu_picking_result.picked_world_position(picked_on_picking_rect.as_uvec2());
-        state.check_hit(
-            ui_distance_sq,
-            PickingRayHit {
-                instance_path_hash: instance_path_hash_from_picking_layer_id(picked_id),
-                // TODO(andreas): Once this is the primary path we should not awkwardly reconstruct the ray_t here. It's not entirely correct either!
-                ray_t: picked_world_position.distance(context.ray_in_world.origin),
-                depth_offset: 0,
-                info: AdditionalPickingInfo::GpuPickingResult,
-            },
-            false,
-        );
+
+        Some(PickingRayHit {
+            instance_path_hash: instance_path_hash_from_picking_layer_id(picked_id),
+            space_position: picked_world_position,
+            depth_offset: 1,
+            hit_type: PickingHitType::GpuPickingResult,
+        })
     } else {
         // It is possible that some frames we don't get a picking result and the frame after we get several.
         // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
-        if let Some(PickingResult {
-            opaque_hit: Some(previous_opaque_hit),
-            ..
-        }) = previous_picking_result
-        {
-            if matches!(
-                previous_opaque_hit.info,
-                AdditionalPickingInfo::GpuPickingResult
-            ) {
-                state.closest_opaque_pick = previous_opaque_hit.clone();
+        if let Some(PickingResult { hits }) = previous_picking_result {
+            for previous_opaque_hit in hits.iter() {
+                if matches!(
+                    previous_opaque_hit.hit_type,
+                    PickingHitType::GpuPickingResult
+                ) {
+                    return Some(previous_opaque_hit.clone());
+                }
             }
         }
-    }
-}
-
-fn picking_lines(
-    context: &PickingContext,
-    state: &mut PickingState,
-    line_strips: &re_renderer::LineStripSeriesBuilder<InstancePathHash>,
-) {
-    crate::profile_function!();
-
-    for (batch, vertices) in line_strips.iter_vertices_by_batch() {
-        // For getting the closest point we could transform the mouse ray into the "batch space".
-        // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
-        let ui_from_batch = context.ui_from_world * batch.world_from_obj;
-
-        for (start, end) in vertices.tuple_windows() {
-            // Skip unconnected tuples.
-            if start.strip_index != end.strip_index {
-                continue;
-            }
-
-            let instance_hash = line_strips.strip_user_data[start.strip_index as usize];
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            // TODO(emilk): take line segment radius into account
-            let a = ui_from_batch.project_point3(start.position);
-            let b = ui_from_batch.project_point3(end.position);
-            let side_ui_dist_sq = line_segment_distance_sq_to_point_2d(
-                [a.truncate(), b.truncate()],
-                context.pointer_in_space2d,
-            );
-
-            if side_ui_dist_sq < state.closest_opaque_side_ui_dist_sq {
-                let start_world = batch.world_from_obj.transform_point3(start.position);
-                let end_world = batch.world_from_obj.transform_point3(end.position);
-                let t = ray_closest_t_line_segment(&context.ray_in_world, [start_world, end_world]);
-
-                state.check_hit(
-                    side_ui_dist_sq,
-                    PickingRayHit::from_instance_and_t(instance_hash, t),
-                    false,
-                );
-            }
-        }
+        None
     }
 }
 
 fn picking_textured_rects(
     context: &PickingContext,
-    state: &mut PickingState,
     textured_rectangles: &[re_renderer::renderer::TexturedRect],
     textured_rectangles_ids: &[InstancePathHash],
-) {
+) -> Vec<PickingRayHit> {
     crate::profile_function!();
+
+    let mut hits = Vec::new();
 
     for (rect, id) in textured_rectangles
         .iter()
@@ -415,42 +242,41 @@ fn picking_textured_rects(
         if !intersect {
             continue;
         }
-        let intersection_world = context.ray_in_world.origin + context.ray_in_world.dir * t;
+        let intersection_world = context.ray_in_world.point_along(t);
         let dir_from_rect_top_left = intersection_world - rect.top_left_corner_position;
         let u = dir_from_rect_top_left.dot(rect.extent_u) / rect.extent_u.length_squared();
         let v = dir_from_rect_top_left.dot(rect.extent_v) / rect.extent_v.length_squared();
 
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
-            let picking_hit = PickingRayHit {
+            hits.push(PickingRayHit {
                 instance_path_hash: *id,
-                ray_t: t,
-                info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
+                space_position: intersection_world,
+                hit_type: PickingHitType::TexturedRect(glam::vec2(u, v)),
                 depth_offset: rect.depth_offset,
-            };
-            state.check_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
+            });
         }
     }
+
+    hits
 }
 
 fn picking_ui_rects(
     context: &PickingContext,
-    state: &mut PickingState,
     ui_data: &SceneSpatialUiData,
-) {
+) -> Option<PickingRayHit> {
     crate::profile_function!();
 
     let egui_pos = egui::pos2(context.pointer_in_space2d.x, context.pointer_in_space2d.y);
     for (bbox, instance_hash) in &ui_data.pickable_ui_rects {
-        let side_ui_dist_sq = bbox.distance_sq_to_pos(egui_pos);
-        state.check_hit(
-            side_ui_dist_sq,
-            PickingRayHit {
+        if bbox.contains(egui_pos) {
+            // Handle only a single ui rectangle (exit right away, ignore potential overlaps)
+            return Some(PickingRayHit {
                 instance_path_hash: *instance_hash,
-                ray_t: 0.0,
-                info: AdditionalPickingInfo::GuiOverlay,
+                space_position: context.ray_in_world.origin,
+                hit_type: PickingHitType::GuiOverlay,
                 depth_offset: 0,
-            },
-            false,
-        );
+            });
+        }
     }
+    None
 }

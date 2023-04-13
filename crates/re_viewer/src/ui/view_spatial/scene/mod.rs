@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::HashMap;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
-    component_types::{ClassId, KeypointId, Tensor},
+    component_types::{ClassId, InstanceKey, KeypointId, Tensor},
     MeshId,
 };
 use re_renderer::{Color32, OutlineMaskPreference, Size};
@@ -21,7 +21,7 @@ mod picking;
 mod primitives;
 mod scene_part;
 
-pub use self::picking::{AdditionalPickingInfo, PickingContext, PickingRayHit, PickingResult};
+pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
@@ -122,17 +122,6 @@ pub struct SceneSpatial {
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-fn instance_path_hash_if_interactive(
-    entity_path: &EntityPath,
-    interactive: bool,
-) -> InstancePathHash {
-    if interactive {
-        InstancePathHash::entity_splat(entity_path)
-    } else {
-        InstancePathHash::NONE
-    }
-}
-
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 impl SceneSpatial {
@@ -192,12 +181,13 @@ impl SceneSpatial {
         entity_path: &re_data_store::EntityPath,
         keypoints: Keypoints,
         annotations: &Arc<Annotations>,
-        interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_path_hash = instance_path_hash_if_interactive(entity_path, interactive);
-
-        let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
+        let mut line_batch = self
+            .primitives
+            .line_strips
+            .batch("keypoint connections")
+            .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
         for ((class_id, _time), keypoints_in_class) in keypoints {
             let Some(class_description) = annotations.context.class_map.get(&class_id) else {
@@ -221,7 +211,8 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(color)
-                    .user_data(instance_path_hash);
+                    // Select the entire object when clicking any of the lines.
+                    .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
             }
         }
     }

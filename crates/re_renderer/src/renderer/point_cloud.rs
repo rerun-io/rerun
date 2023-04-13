@@ -269,7 +269,7 @@ impl PointCloudDrawData {
         let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
-                label: "PointCloudDrawData::picking_layer_instance_id_texture".into(),
+                label: "PointCloudDrawData::picking_instance_id_texture".into(),
                 format: wgpu::TextureFormat::Rg32Uint,
                 ..position_data_texture_desc
             },

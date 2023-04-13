@@ -1,5 +1,5 @@
 use glam::Mat4;
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Label, Radius},
     Arrow3D, Component,
@@ -12,16 +12,13 @@ use crate::{
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::{instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, ScenePart};
 
 pub struct Arrows3DPart;
 
 impl Arrows3DPart {
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        _query: &SceneQuery<'_>,
-        props: &EntityProperties,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -39,21 +36,14 @@ impl Arrows3DPart {
             .line_strips
             .batch("arrows")
             .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall);
+            .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
                        arrow: Arrow3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
                        _label: Option<Label>| {
-            let picking_instance_hash = instance_path_hash_for_picking(
-                ent_path,
-                instance_key,
-                entity_view,
-                props,
-                entity_highlight.any_selection_highlight,
-            );
-
             // TODO(andreas): support labels
             // TODO(andreas): support class ids for arrows
             let annotation_info = annotations.class_description(None).annotation_info();
@@ -78,7 +68,11 @@ impl Arrows3DPart {
                         | re_renderer::renderer::LineStripFlags::CAP_START_ROUND
                         | re_renderer::renderer::LineStripFlags::CAP_START_EXTEND_OUTWARDS,
                 )
-                .user_data(picking_instance_hash);
+                .picking_instance_id(instance_key_to_picking_id(
+                    instance_key,
+                    entity_view,
+                    entity_highlight.any_selection_highlight,
+                ));
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
                 segment.outline_mask_ids(*outline_mask_ids);
@@ -125,8 +119,6 @@ impl ScenePart for Arrows3DPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        query,
-                        &props,
                         &entity,
                         ent_path,
                         world_from_obj,

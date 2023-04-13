@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, LineStrip3D, Radius},
     Component,
@@ -13,16 +13,13 @@ use crate::{
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 
-use super::{instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, ScenePart};
 
 pub struct Lines3DPart;
 
 impl Lines3DPart {
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        _query: &SceneQuery<'_>,
-        props: &EntityProperties,
         entity_view: &EntityView<LineStrip3D>,
         ent_path: &EntityPath,
         world_from_obj: Mat4,
@@ -37,20 +34,13 @@ impl Lines3DPart {
             .line_strips
             .batch("lines 3d")
             .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall);
+            .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
                        strip: LineStrip3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
-            let picking_instance_hash = instance_path_hash_for_picking(
-                ent_path,
-                instance_key,
-                entity_view,
-                props,
-                entity_highlight.any_selection_highlight,
-            );
-
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
 
             // TODO(andreas): support class ids for lines
@@ -62,7 +52,12 @@ impl Lines3DPart {
                 .add_strip(strip.0.into_iter().map(|v| v.into()))
                 .radius(radius)
                 .color(color)
-                .user_data(picking_instance_hash);
+                .picking_instance_id(instance_key_to_picking_id(
+                    instance_key,
+                    entity_view,
+                    entity_highlight.any_selection_highlight,
+                ));
+
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
                 lines.outline_mask_ids(*outline_mask_ids);
             }
@@ -108,8 +103,6 @@ impl ScenePart for Lines3DPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        query,
-                        &props,
                         &entity,
                         ent_path,
                         world_from_obj,

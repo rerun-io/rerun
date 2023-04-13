@@ -1,25 +1,25 @@
 use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
 use re_log_types::{
+    component_types::InstanceKey,
     coordinates::{Handedness, SignedAxis3},
     Pinhole, Transform, ViewCoordinates,
 };
-use re_query::{query_entity_with_primary, QueryError};
+use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 
 use crate::{
     misc::{
+        instance_hash_conversions::picking_layer_id_from_instance_path_hash,
         space_info::query_view_coordinates, SpaceViewHighlights, SpaceViewOutlineMasks,
         TransformCache, ViewerContext,
     },
     ui::{
         scene::SceneQuery,
-        view_spatial::{
-            scene::scene_part::instance_path_hash_for_picking, SceneSpatial, SpaceCamera3D,
-        },
+        view_spatial::{SceneSpatial, SpaceCamera3D},
     },
 };
 
-use super::ScenePart;
+use super::{instance_path_hash_for_picking, ScenePart};
 
 /// Determine the view coordinates (i.e.) the axis semantics.
 ///
@@ -59,10 +59,11 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
+        entity_view: &EntityView<Transform>,
         entity_path: &EntityPath,
+        instance_key: InstanceKey,
         props: &EntityProperties,
         transforms: &TransformCache,
-        instance_path_hash: InstancePathHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
@@ -89,7 +90,7 @@ impl CamerasPart {
         let frustum_length = *props.pinhole_image_plane_distance.get();
 
         scene.space_cameras.push(SpaceCamera3D {
-            instance_path_hash,
+            instance_path_hash: InstancePathHash::instance(entity_path, instance_key),
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
@@ -142,13 +143,22 @@ impl CamerasPart {
 
         let radius = re_renderer::Size::new_points(1.0);
         let color = SceneSpatial::CAMERA_COLOR;
+        let instance_path_for_picking = instance_path_hash_for_picking(
+            entity_path,
+            instance_key,
+            entity_view,
+            entity_highlight.any_selection_highlight,
+        );
+        let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
-        scene
+        let mut batch = scene
             .primitives
             .line_strips
             .batch("camera frustum")
             .world_from_obj(world_from_parent)
             .outline_mask_ids(entity_highlight.overall)
+            .picking_object_id(instance_layer_id.object);
+        let lines = batch
             .add_segments(segments.into_iter())
             .radius(radius)
             .color(color)
@@ -157,7 +167,11 @@ impl CamerasPart {
                     | LineStripFlags::CAP_END_ROUND
                     | LineStripFlags::CAP_START_ROUND,
             )
-            .user_data(instance_path_hash);
+            .picking_instance_id(instance_layer_id.instance);
+
+        if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+            lines.outline_mask_ids(*outline_mask_ids);
+        }
     }
 }
 
@@ -187,13 +201,6 @@ impl ScenePart for CamerasPart {
                         return;
                     };
                     let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-                    let instance_hash = instance_path_hash_for_picking(
-                        ent_path,
-                        instance_key,
-                        &entity_view,
-                        &props,
-                        entity_highlight.any_selection_highlight,
-                    );
 
                     let view_coordinates = determine_view_coordinates(
                         &ctx.log_db.entity_db,
@@ -203,10 +210,11 @@ impl ScenePart for CamerasPart {
 
                     Self::visit_instance(
                         scene,
+                        &entity_view,
                         ent_path,
+                        instance_key,
                         &props,
                         transforms,
-                        instance_hash,
                         pinhole,
                         view_coordinates,
                         entity_highlight,
