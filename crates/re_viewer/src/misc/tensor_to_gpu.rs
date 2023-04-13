@@ -262,63 +262,138 @@ fn general_texture_creation_desc_from_tensor<'a>(
     tensor: &'a Tensor,
 ) -> anyhow::Result<Texture2DCreationDesc<'a>> {
     let [height, width, depth] = height_width_depth(tensor)?;
-    let (data, format) = match (depth, &tensor.data) {
-        (1, TensorData::U8(buf)) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint),
-        (1, TensorData::I8(buf)) => (cast_slice_to_cow(buf), TextureFormat::R8Sint),
-        (1, TensorData::U16(buf)) => (cast_slice_to_cow(buf), TextureFormat::R16Uint),
-        (1, TensorData::I16(buf)) => (cast_slice_to_cow(buf), TextureFormat::R16Sint),
-        (1, TensorData::U32(buf)) => (cast_slice_to_cow(buf), TextureFormat::R32Uint),
-        (1, TensorData::I32(buf)) => (cast_slice_to_cow(buf), TextureFormat::R32Sint),
-        // (1, TensorData::F16(buf)) => (cast_slice_to_cow(buf), TextureFormat::R16Float), TODO(#854)
-        (1, TensorData::F32(buf)) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
-        (1, TensorData::F64(buf)) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float),
 
-        // NOTE: 2-channel images are not supported by the shader yet, but are included here for completeness:
-        (2, TensorData::U8(buf)) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg8Uint),
-        (2, TensorData::I8(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg8Sint),
-        (2, TensorData::U16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg16Uint),
-        (2, TensorData::I16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg16Sint),
-        (2, TensorData::U32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg32Uint),
-        (2, TensorData::I32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg32Sint),
-        // (2, TensorData::F16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float), TODO(#854)
-        (2, TensorData::F32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
-        (2, TensorData::F64(buf)) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float),
+    let (data, format) = match depth {
+        1 => {
+            match &tensor.data {
+                TensorData::U8(buf) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint),
+                TensorData::U16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Uint),
+                TensorData::U32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Uint),
+                TensorData::U64(buf) => (narrow_u64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
-        // There are no 3-channel textures in wgpu, so we need to pad to 4 channels:
-        (3, TensorData::U8(buf)) => (pad_and_cast(buf.as_slice(), 0), TextureFormat::Rgba8Uint),
-        (3, TensorData::I8(buf)) => (pad_and_cast(buf, 0), TextureFormat::Rgba8Sint),
-        (3, TensorData::U16(buf)) => (pad_and_cast(buf, 0), TextureFormat::Rgba16Uint),
-        (3, TensorData::I16(buf)) => (pad_and_cast(buf, 0), TextureFormat::Rgba16Sint),
-        (3, TensorData::U32(buf)) => (pad_and_cast(buf, 0), TextureFormat::Rgba32Uint),
-        (3, TensorData::I32(buf)) => (pad_and_cast(buf, 0), TextureFormat::Rgba32Sint),
-        // (3, TensorData::F16(buf)) => (pad_and_cast(buf, 0.0), TextureFormat::Rgba16Float), TODO(#854)
-        (3, TensorData::F32(buf)) => (pad_and_cast(buf, 0.0), TextureFormat::Rgba32Float),
-        (3, TensorData::F64(buf)) => {
-            let pad = 0.0;
-            let floats: Vec<f32> = buf
-                .chunks_exact(3)
-                .flat_map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32, pad])
-                .collect();
-            (
-                pod_collect_to_vec(&floats).into(),
-                TextureFormat::Rgba32Float,
-            )
+                TensorData::I8(buf) => (cast_slice_to_cow(buf), TextureFormat::R8Sint),
+                TensorData::I16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Sint),
+                TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Sint),
+                TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
+
+                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float), TODO(#854)
+                TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
+                TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
+
+                TensorData::JPEG(_) => {
+                    anyhow::bail!("JPEGs should have been decoded at this point")
+                }
+            }
         }
+        2 => {
+            // NOTE: 2-channel images are not supported by the shader yet, but are included here for completeness:
+            match &tensor.data {
+                TensorData::U8(buf) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg8Uint),
+                TensorData::U16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Uint),
+                TensorData::U32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Uint),
+                TensorData::U64(buf) => (narrow_u64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
-        // TODO(emilk): premultiply alpha
-        (4, TensorData::U8(buf)) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba8Uint),
-        (4, TensorData::I8(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba8Sint),
-        (4, TensorData::U16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Uint),
-        (4, TensorData::I16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Sint),
-        (4, TensorData::U32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Uint),
-        (4, TensorData::I32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Sint),
-        // (4, TensorData::F16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float), TODO(#854)
-        (4, TensorData::F32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
-        (4, TensorData::F64(buf)) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float),
+                TensorData::I8(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg8Sint),
+                TensorData::I16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Sint),
+                TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Sint),
+                TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
-        // TODO(emilk): U64/I64
-        (_depth, dtype) => {
-            anyhow::bail!("Don't know how to turn a tensor of shape={:?} and dtype={dtype:?} into a color image", tensor.shape)
+                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float), TODO(#854)
+                TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
+                TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
+
+                TensorData::JPEG(_) => {
+                    anyhow::bail!("JPEGs should have been decoded at this point")
+                }
+            }
+        }
+        3 => {
+            // There are no 3-channel textures in wgpu, so we need to pad to 4 channels.
+            // What should we pad with? It depends on wether or not the shader interprets these as alpha.
+            // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
+            // TODO(emilk): tell the shader to ignore the alpha channel instead!
+            match &tensor.data {
+                TensorData::U8(buf) => (
+                    pad_and_cast(buf.as_slice(), u8::MAX),
+                    TextureFormat::Rgba8Uint,
+                ),
+                TensorData::U16(buf) => (pad_and_cast(buf, u16::MAX), TextureFormat::Rgba16Uint),
+                TensorData::U32(buf) => (pad_and_cast(buf, u32::MAX), TextureFormat::Rgba32Uint),
+                TensorData::U64(buf) => {
+                    // narrowing to f32!
+                    let pad = u64::MAX as f32;
+                    let floats: Vec<f32> = buf
+                        .chunks_exact(3)
+                        .flat_map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32, pad])
+                        .collect();
+                    (
+                        pod_collect_to_vec(&floats).into(),
+                        TextureFormat::Rgba32Float,
+                    )
+                }
+
+                TensorData::I8(buf) => (pad_and_cast(buf, i8::MAX), TextureFormat::Rgba8Sint),
+                TensorData::I16(buf) => (pad_and_cast(buf, i16::MAX), TextureFormat::Rgba16Sint),
+                TensorData::I32(buf) => (pad_and_cast(buf, i32::MAX), TextureFormat::Rgba32Sint),
+                TensorData::I64(buf) => {
+                    // narrowing to f32!
+                    let pad = i64::MAX as f32;
+                    let floats: Vec<f32> = buf
+                        .chunks_exact(3)
+                        .flat_map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32, pad])
+                        .collect();
+                    (
+                        pod_collect_to_vec(&floats).into(),
+                        TextureFormat::Rgba32Float,
+                    )
+                }
+
+                // TensorData::F16(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F32(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba32Float),
+                TensorData::F64(buf) => {
+                    // narrowing to f32!
+                    let pad = 1.0;
+                    let floats: Vec<f32> = buf
+                        .chunks_exact(3)
+                        .flat_map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32, pad])
+                        .collect();
+                    (
+                        pod_collect_to_vec(&floats).into(),
+                        TextureFormat::Rgba32Float,
+                    )
+                }
+
+                TensorData::JPEG(_) => {
+                    anyhow::bail!("JPEGs should have been decoded at this point")
+                }
+            }
+        }
+        4 => {
+            // TODO(emilk): premultiply alpha, or tell the shader to assume unmultiplied alpha
+            match &tensor.data {
+                TensorData::U8(buf) => {
+                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba8Uint)
+                }
+                TensorData::U16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Uint),
+                TensorData::U32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Uint),
+                TensorData::U64(buf) => (narrow_u64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
+
+                TensorData::I8(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba8Sint),
+                TensorData::I16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Sint),
+                TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Sint),
+                TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
+
+                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
+                TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
+
+                TensorData::JPEG(_) => {
+                    anyhow::bail!("JPEGs should have been decoded at this point")
+                }
+            }
+        }
+        depth => {
+            anyhow::bail!("Cannot create texture from tensor of depth {depth}");
         }
     };
 
@@ -331,7 +406,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
     })
 }
 
-fn get_or_create_texture<'a, Err>(
+pub fn get_or_create_texture<'a, Err>(
     render_ctx: &mut RenderContext,
     texture_key: u64,
     try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
@@ -345,6 +420,26 @@ fn get_or_create_texture<'a, Err>(
 
 fn cast_slice_to_cow<From: Pod>(slice: &[From]) -> Cow<'_, [u8]> {
     cast_slice(slice).into()
+}
+
+// wgpu doesn't support u64 textures, so we need to narrow to f32:
+fn narrow_u64_to_f32s(slice: &[u64]) -> Cow<'static, [u8]> {
+    crate::profile_function!();
+    let bytes: Vec<u8> = slice
+        .iter()
+        .flat_map(|&f| (f as f32).to_le_bytes())
+        .collect();
+    bytes.into()
+}
+
+// wgpu doesn't support i64 textures, so we need to narrow to f32:
+fn narrow_i64_to_f32s(slice: &[i64]) -> Cow<'static, [u8]> {
+    crate::profile_function!();
+    let bytes: Vec<u8> = slice
+        .iter()
+        .flat_map(|&f| (f as f32).to_le_bytes())
+        .collect();
+    bytes.into()
 }
 
 // wgpu doesn't support f64 textures, so we need to narrow to f32:
