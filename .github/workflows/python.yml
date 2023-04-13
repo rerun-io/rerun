@@ -210,16 +210,19 @@ jobs:
             --out pre-dist
 
       - name: Install built wheel
+        shell: bash
         run: |
           pip install pre-dist/*.whl --force-reinstall
 
       - name: Verify built wheel version
+        shell: bash
         run: |
           python3 -m rerun --version
           which rerun
           rerun --version
 
       - name: Run unit tests
+        shell: bash
         run: cd rerun_py/tests && pytest
 
       - name: Install requriements for e2e test
