@@ -194,6 +194,11 @@ jobs:
         run: |
           python3 scripts/version_util.py --check_version
 
+      - name: Store the expected version
+        # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
+        run: |
+          python3 scripts/version_util.py --expected_version >> $GITHUB_ENV
+
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
         with:
@@ -212,7 +217,7 @@ jobs:
       - name: Install built wheel
         shell: bash
         run: |
-          pip install pre-dist/*${{ matrix.wheel_suffix }}.whl --force-reinstall
+          pip install rerun-sdk==${{ env.expected_version }} --find-links pre-dist --force-reinstall
 
       - name: Verify built wheel version
         shell: bash
