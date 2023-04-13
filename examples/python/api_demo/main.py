@@ -291,13 +291,24 @@ def run_image_tensors() -> None:
     img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
     rr.log_image("img_gray", img_gray)
 
-    dtypes = [np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64]
+    dtypes = [
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "float16",
+        "float32",
+        "float64",
+    ]
 
     for dtype in dtypes:
         rr.log_image(f"img_rgba_{dtype}", img_rgba.astype(dtype))
         rr.log_image(f"img_rgb_{dtype}", img_rgb.astype(dtype))
         rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
-
 
 
 def main() -> None:
