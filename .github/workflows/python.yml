@@ -195,7 +195,7 @@ jobs:
           python3 scripts/version_util.py --check_version
 
       - name: Store the expected version
-        # This call to version_util.py store the expected version number in the github env `expected_version`
+        # This call to version_util.py store the expected version number in the GitHub env `expected_version`
         run: |
           python3 scripts/version_util.py --expected_version >> $GITHUB_ENV
 
