@@ -18,6 +18,7 @@ from typing import Iterable, Iterator, List
 
 import numpy as np
 import numpy.typing as npt
+from rerun import bindings
 import rerun as rr
 from download_dataset import (
     ANNOTATIONS_FILENAME,
@@ -114,7 +115,7 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rr.log_view_coordinates("world", up="+Y", timeless=True)
+    rr.log_view_coordinates("world", up=(bindings.Sign.Positive, bindings.Axis3.Y), timeless=True)
 
     log_annotated_bboxes(seq.objects)
 
@@ -152,7 +153,7 @@ def log_camera(cam: ARCamera) -> None:
     rot = rot * R.from_rotvec((math.tau / 2.0) * X)  # TODO(emilk): figure out why this is needed
 
     rr.log_rigid3(
-        "world/camera", parent_from_child=(translation, rot.as_quat()), xyz="RDF"  # X=Right, Y=Down, Z=Forward
+        "world/camera", parent_from_child=(translation, rot.as_quat()), xyz=(bindings.ViewDir.Right, bindings.ViewDir.Down, bindings.ViewDir.Forward)  # X=Right, Y=Down, Z=Forward
     )
     rr.log_pinhole(
         "world/camera/video",

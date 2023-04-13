@@ -4,10 +4,12 @@ use arrow2_convert::{
     field::{ArrowField, FixedSizeBinary},
     serialize::ArrowSerialize,
 };
+use pyo3::prelude::*;
 
 use crate::Component;
 
 /// The six cardinal directions for 3D view-space and image-space.
+#[pyclass]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ViewDir {
@@ -311,7 +313,7 @@ impl ArrowDeserialize for ViewCoordinates {
 
 // ----------------------------------------------------------------------------
 
-/// One of `X`, `Y`, `Z`.
+#[pyclass]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Axis3 {
@@ -345,7 +347,7 @@ impl std::fmt::Display for Axis3 {
 
 // ----------------------------------------------------------------------------
 
-/// Positive (`+`) or Negative (`-`).
+#[pyclass]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Sign {
@@ -355,7 +357,6 @@ pub enum Sign {
 
 // ----------------------------------------------------------------------------
 
-/// One of: `+X`, `-X`, `+Y`, `-Y`, `+Z`, `-Z`,
 /// i.e. one of the six cardinal direction in 3D space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

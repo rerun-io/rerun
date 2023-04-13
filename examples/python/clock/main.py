@@ -11,6 +11,7 @@ import math
 from typing import Final, Tuple
 
 import numpy as np
+from rerun import bindings
 import rerun as rr
 
 LENGTH_S: Final = 20.0
@@ -30,7 +31,7 @@ def log_clock(steps: int) -> None:
             0.0,
         )
 
-    rr.log_view_coordinates("world", up="+Y", timeless=True)
+    rr.log_view_coordinates("world", up=(bindings.Sign.Positive, bindings.Axis3.Y), timeless=True)
 
     rr.log_obb(
         "world/frame",

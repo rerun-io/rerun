@@ -13,6 +13,7 @@ import mediapipe as mp
 import numpy as np
 import numpy.typing as npt
 import requests
+from rerun import bindings
 import rerun as rr
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
@@ -36,7 +37,7 @@ def track_pose(video_path: str, segment: bool) -> None:
         "video/mask",
         [rr.AnnotationInfo(id=0, label="Background"), rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0))],
     )
-    rr.log_view_coordinates("person", up="-Y", timeless=True)
+    rr.log_view_coordinates("person", up=(bindings.Sign.Negative, bindings.Axis3.Y), timeless=True)
 
     with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
         for bgr_frame in video_source.stream_bgr():

@@ -3937,6 +3937,8 @@ dependencies = [
  "num-derive",
  "num-traits",
  "puffin",
+ "pyo3",
+ "pyo3-build-config",
  "rand",
  "re_format",
  "re_log",

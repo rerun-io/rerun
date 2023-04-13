@@ -89,11 +89,14 @@ macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 serde_bytes = { version = "0.11", optional = true }
+pyo3 = { version = "0.18.0", features = ["abi3-py38"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true
 
+[build-dependencies]
+pyo3-build-config = "0.18.0"
 
 [dev-dependencies]
 rmp-serde = "1.1"

@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
+from rerun import bindings
 import rerun as rr
 from tqdm import tqdm
 
@@ -80,7 +81,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interval: int = 1) -> None:
     depth_images_counter = 0
 
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log_view_coordinates("world", up=(bindings.Sign.Negative, bindings.Axis3.Y), timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -118,7 +119,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interva
                     rr.log_rigid3(
                         "world/camera",
                         parent_from_child=(translation, rotation_q),
-                        xyz="RDF",  # X=Right, Y=Down, Z=Forward
+                        xyz=(bindings.ViewDir.Right, bindings.ViewDir.Down, bindings.ViewDir.Forward),  # X=Right, Y=Down, Z=Forward
                     )
                     rr.log_pinhole(
                         "world/camera/image",

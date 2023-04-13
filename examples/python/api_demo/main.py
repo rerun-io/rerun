@@ -14,6 +14,7 @@ import logging
 import math
 
 import numpy as np
+from rerun import bindings
 import rerun as rr
 from scipy.spatial.transform import Rotation
 
@@ -168,10 +169,10 @@ def transforms_rigid_3d() -> None:
     rotation_speed_moon = 5.0
 
     # Planetary motion is typically in the XY plane.
-    rr.log_view_coordinates("transforms3d", up="+Z", timeless=True)
-    rr.log_view_coordinates("transforms3d/sun", up="+Z", timeless=True)
-    rr.log_view_coordinates("transforms3d/sun/planet", up="+Z", timeless=True)
-    rr.log_view_coordinates("transforms3d/sun/planet/moon", up="+Z", timeless=True)
+    rr.log_view_coordinates("transforms3d", up=(bindings.Sign.Positive, bindings.Axis3.Z), timeless=True)
+    rr.log_view_coordinates("transforms3d/sun", up=(bindings.Sign.Positive, bindings.Axis3.Z), timeless=True)
+    rr.log_view_coordinates("transforms3d/sun/planet", up=(bindings.Sign.Positive, bindings.Axis3.Z), timeless=True)
+    rr.log_view_coordinates("transforms3d/sun/planet/moon", up=(bindings.Sign.Positive, bindings.Axis3.Z), timeless=True)
 
     # All are in the center of their own space:
     rr.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 200, 10])

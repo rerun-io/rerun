@@ -9,6 +9,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+from rerun import bindings
 import rerun as rr
 import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
@@ -253,7 +254,7 @@ def log_camera(
         # pathlib makes it easy to get the parent, but log_rigid requires a string
         str(Path(entity_id).parent),
         child_from_parent=camera_from_world,
-        xyz="RDF",  # X=Right, Y=Down, Z=Forward
+        xyz=(bindings.ViewDir.Right, bindings.ViewDir.Down, bindings.ViewDir.Forward),  # X=Right, Y=Down, Z=Forward
     )
     rr.log_pinhole(f"{entity_id}", child_from_parent=intrinsic, width=w, height=h)
 
@@ -342,7 +343,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
         timestamp = f"{round(float(timestamp), 3):.3f}"
         camera_from_world_dict[timestamp] = camera_from_world
 
-    rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
+    rr.log_view_coordinates("world", up=(bindings.Sign.Positive, bindings.Axis3.Z), right_handed=True, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
     print(f"Loading {ply_path}…")
     assert os.path.isfile(ply_path), f"Failed to find {ply_path}"

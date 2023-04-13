@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional, cast
 
 import numpy as np
+from rerun import bindings
 import rerun as rr
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
@@ -96,7 +97,7 @@ def main() -> None:
     root = next(iter(scene.graph.nodes))
 
     # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
-    rr.log_view_coordinates(root, xyz="RUB", timeless=True)
+    rr.log_view_coordinates(root, xyz=(bindings.ViewDir.Right, bindings.ViewDir.Up, bindings.ViewDir.Back), timeless=True)
     log_scene(scene, root)
 
     rr.script_teardown(args)

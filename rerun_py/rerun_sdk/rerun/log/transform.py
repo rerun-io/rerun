@@ -23,8 +23,8 @@ __all__ = [
 def log_view_coordinates(
     entity_path: str,
     *,
-    xyz: str = "",
-    up: str = "",
+    xyz: Optional[Tuple[bindings.ViewDir, bindings.ViewDir, bindings.ViewDir]] = None,
+    up: Optional[Tuple[bindings.Sign, bindings.Axis3]] = None,
     right_handed: Optional[bool] = None,
     timeless: bool = False,
 ) -> None:
@@ -35,34 +35,28 @@ def log_view_coordinates(
     By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
     This is for example useful for camera entities ("what axis is forward?").
 
-    For full control, set the `xyz` parameter to a three-letter acronym (`xyz="RDF"`). Each letter represents:
-
-    * R: Right
-    * L: Left
-    * U: Up
-    * D: Down
-    * F: Forward
-    * B: Back
+    For full control, set the `xyz` parameter to a three-component tuple (X, Y, Z).
+    Each component can be of the following variant: Right | Left | Up | Down | Forward | Back.
 
     Some of the most common are:
 
-    * "RDF": X=Right Y=Down Z=Forward  (right-handed)
-    * "RUB"  X=Right Y=Up   Z=Back     (right-handed)
-    * "RDB": X=Right Y=Down Z=Back     (left-handed)
-    * "RUF": X=Right Y=Up   Z=Forward  (left-handed)
+    * (Right, Down, Forward): X=Right Y=Down Z=Forward  (right-handed)
+    * (Right, Up, Back)  X=Right Y=Up   Z=Back     (right-handed)
+    * (Right, Down, Back): X=Right Y=Down Z=Back     (left-handed)
+    * (Right, Up, Forward): X=Right Y=Up   Z=Forward  (left-handed)
 
     Example
     -------
     ```
-    rerun.log_view_coordinates("world/camera", xyz="RUB")
+    rerun.log_view_coordinates("world/camera", xyz=(rerun.bindings.ViewDir.Right, rerun.bindings.ViewDir.Up, rerun.bindings.ViewDir.Back))
     ```
 
     For world-coordinates it's often convenient to just specify an up-axis.
-    You can do so by using the `up`-parameter (where `up` is one of "+X", "-X", "+Y", "-Y", "+Z", "-Z"):
+    You can do so by using the `up`-parameter:
 
     ```
-    rerun.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
-    rerun.log_view_coordinates("world", up="-Y", right_handed=False, timeless=True)
+    rerun.log_view_coordinates("world", up=(rerun.bindings.Sign.Positive, rerun.bindings.Axis3.Z), right_handed=True, timeless=True)
+    rerun.log_view_coordinates("world", up=(rerun.bindings.Sign.Negative, rerun.bindings.Axis3.Y), right_handed=False, timeless=True)
     ```
 
     Parameters
@@ -70,22 +64,22 @@ def log_view_coordinates(
     entity_path:
         Path in the space hierarchy where the view coordinate will be set.
     xyz:
-        Three-letter acronym for the view coordinate axes.
+        Three-component tuple for the view coordinate axes (X,Y,Z).
     up:
-        Which axis is up? One of "+X", "-X", "+Y", "-Y", "+Z", "-Z".
+        Which axis is up? Defined by a tuple with (Axis: X|Y|Z, Sign:Positive|Negative).
     right_handed:
         If True, the coordinate system is right-handed. If False, it is left-handed.
     timeless:
         If true, the view coordinates will be timeless (default: False).
 
     """
-    if xyz == "" and up == "":
+    if xyz is None and up is None:
         _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
         return
-    if xyz != "" and up != "":
+    if xyz is not None and up is not None:
         _send_warning("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
-        up = ""
-    if xyz != "":
+        up = None
+    if xyz is not None:
         bindings.log_view_coordinates_xyz(entity_path, xyz, right_handed, timeless)
     else:
         if right_handed is None:
@@ -106,7 +100,7 @@ def log_rigid3(
     *,
     parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
     child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
-    xyz: str = "",
+    xyz: Optional[Tuple[bindings.ViewDir, bindings.ViewDir, bindings.ViewDir]] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -173,5 +167,5 @@ def log_rigid3(
     else:
         raise TypeError("Set either parent_from_child or child_from_parent.")
 
-    if xyz != "":
+    if xyz is not None:
         log_view_coordinates(entity_path, xyz=xyz, timeless=timeless)

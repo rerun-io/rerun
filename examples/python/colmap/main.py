@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
+from rerun import bindings
 import rerun as rr
 from read_write_model import Camera, read_model
 from tqdm import tqdm
@@ -99,7 +100,7 @@ def read_and_log_sparse_reconstruction(
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    rr.log_view_coordinates("/", up="-Y", timeless=True)
+    rr.log_view_coordinates("/", up=(bindings.Sign.Negative, bindings.Axis3.Y), timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
@@ -147,7 +148,7 @@ def read_and_log_sparse_reconstruction(
         rr.log_rigid3(
             "camera",
             child_from_parent=camera_from_world,
-            xyz="RDF",  # X=Right, Y=Down, Z=Forward
+            xyz=(bindings.ViewDir.Right, bindings.ViewDir.Down, bindings.ViewDir.Forward),  # X=Right, Y=Down, Z=Forward
         )
 
         # Log camera intrinsics

@@ -8,6 +8,7 @@ from typing import Iterator, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
+from rerun import bindings
 import rerun as rr
 
 
@@ -16,7 +17,7 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log_view_coordinates("world", up=(bindings.Sign.Negative, bindings.Axis3.Y), timeless=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged entities a timeline called `frame_nr`.
@@ -30,7 +31,7 @@ def log_car_data() -> None:
         rr.log_rigid3(
             "world/camera",
             parent_from_child=(sample.camera.position, sample.camera.rotation_q),
-            xyz="RDF",  # X=Right, Y=Down, Z=Forward
+            xyz=(bindings.ViewDir.Right, bindings.ViewDir.Down, bindings.ViewDir.Forward),  # X=Right, Y=Down, Z=Forward
         )
 
         # Log the camera projection matrix:

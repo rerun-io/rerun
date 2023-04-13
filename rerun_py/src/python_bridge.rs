@@ -8,10 +8,10 @@ use itertools::izip;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
-    types::PyDict,
+    types::{PyDict, PyTuple},
 };
 
-use re_log_types::{ArrowMsg, DataRow, DataTableError};
+use re_log_types::{coordinates::ViewDir, ArrowMsg, DataRow, DataTableError};
 use rerun::{
     log::{MsgId, PathOp},
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
@@ -114,6 +114,9 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // TODO(jleibs): Refactor import logic so all we need is main
     m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
+    m.add_class::<ViewDir>()?;
+    m.add_class::<Sign>()?;
+    m.add_class::<Axis3>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -499,11 +502,12 @@ fn log_transform(
 #[pyo3(signature = (entity_path, xyz, right_handed = None, timeless = false))]
 fn log_view_coordinates_xyz(
     entity_path: &str,
-    xyz: &str,
+    xyz: &PyTuple,
     right_handed: Option<bool>,
     timeless: bool,
 ) -> PyResult<()> {
-    let coordinates: ViewCoordinates = xyz.parse().map_err(PyTypeError::new_err)?;
+    let (x, y, z): (ViewDir, ViewDir, ViewDir) = xyz.extract().map_err(PyTypeError::new_err)?;
+    let coordinates = ViewCoordinates([x, y, z]);
 
     if let Some(right_handed) = right_handed {
         let expected_handedness = Handedness::from_right_handed(right_handed);
@@ -524,11 +528,12 @@ fn log_view_coordinates_xyz(
 #[pyfunction]
 fn log_view_coordinates_up_handedness(
     entity_path: &str,
-    up: &str,
+    up: &PyTuple,
     right_handed: bool,
     timeless: bool,
 ) -> PyResult<()> {
-    let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
+    let (sign, axis): (Sign, Axis3) = up.extract().map_err(PyTypeError::new_err)?;
+    let up = SignedAxis3::new(sign, axis);
     let handedness = Handedness::from_right_handed(right_handed);
     let coordinates = ViewCoordinates::from_up_and_handedness(up, handedness);
 
