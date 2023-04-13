@@ -157,6 +157,8 @@ fn class_id_tensor_to_gpu(
     // and as many rows as needed to fit all the classes.
     anyhow::ensure!(max <= 65535.0, "Too many class ids");
 
+    // We pack the colormap into a 2D texture so we don't go over the max texture size.
+    // We only support u8 and u16 class ids, so 256^2 is the biggest texture we need.
     let colormap_width = 256;
     let colormap_height = (max as usize + colormap_width - 1) / colormap_width;
 

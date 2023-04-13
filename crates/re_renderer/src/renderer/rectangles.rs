@@ -57,11 +57,16 @@ pub struct ColormappedTexture {
     pub range: [f32; 2],
 
     /// Raise the normalized values to this power (before any color mapping).
-    /// Acts like an inverse brightness.    /// Default: 1.0
+    /// Acts like an inverse brightness.
+    ///
+    /// Default: 1.0
     pub gamma: f32,
 
     /// For any one-component texture, you need to supply a color mapper,
     /// which maps the normalized `.r` component to a color.
+    ///
+    /// Setting a color mapper for a four-component texture is an error.
+    /// Failure to set a color mapper for a one-component texture is an error.
     pub color_mapper: Option<ColorMapper>,
 }
 
@@ -92,7 +97,7 @@ impl Default for ColormappedTexture {
 }
 
 impl ColormappedTexture {
-    pub fn from_srgba_unorm(texture: GpuTexture2DHandle) -> Self {
+    pub fn from_unorm_srgba(texture: GpuTexture2DHandle) -> Self {
         Self {
             texture,
             range: [0.0, 1.0],
@@ -160,7 +165,7 @@ pub enum RectangleError {
     ColormappingRgbaTexture,
 
     #[error("Only 1 and 4 component textures are supported, got {0} components")]
-    UnssuportedComponentCount(u8),
+    UnsupportedComponentCount(u8),
 
     #[error("No color mapper was supplied for this 1-component texture")]
     MissingColorMapper,
@@ -259,7 +264,7 @@ mod gpu_data {
                     }
                 }
                 num_components => {
-                    return Err(RectangleError::UnssuportedComponentCount(num_components))
+                    return Err(RectangleError::UnsupportedComponentCount(num_components))
                 }
             }
 

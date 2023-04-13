@@ -197,7 +197,7 @@ impl framework::Example for Render2D {
                     top_left_corner_position: glam::vec3(500.0, 120.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    colormapped_texture: ColormappedTexture::from_srgba_unorm(
+                    colormapped_texture: ColormappedTexture::from_unorm_srgba(
                         self.rerun_logo_texture.clone(),
                     ),
                     texture_filter_magnification: TextureFilterMag::Nearest,
@@ -213,7 +213,7 @@ impl framework::Example for Render2D {
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    colormapped_texture: ColormappedTexture::from_srgba_unorm(
+                    colormapped_texture: ColormappedTexture::from_unorm_srgba(
                         self.rerun_logo_texture.clone(),
                     ),
                     texture_filter_magnification: TextureFilterMag::Linear,
