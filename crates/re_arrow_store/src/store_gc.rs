@@ -139,8 +139,10 @@ impl DataStore {
             let Some((row_id, timepoint)) = self.metadata_registry.pop_first() else {
                 break;
             };
-            num_bytes_to_drop -= row_id.total_size_bytes() as f64;
-            num_bytes_to_drop -= timepoint.total_size_bytes() as f64;
+            let metadata_dropped_size_bytes =
+                row_id.total_size_bytes() + timepoint.total_size_bytes();
+            self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
+            num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
             row_ids.push(row_id);
 
             // find all tables that could possibly contain this `RowId`
