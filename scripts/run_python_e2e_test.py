@@ -46,7 +46,7 @@ def main() -> None:
         ("examples/python/plots/main.py", []),
         ("examples/python/text_logging/main.py", []),
     ]
-    for (example, args) in examples:
+    for example, args in examples:
         print("----------------------------------------------------------")
         print(f"Testing {example}…\n")
         start_time = time.time()
