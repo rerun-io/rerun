@@ -168,14 +168,18 @@ mod gpu_data {
 
     use super::{ColorMapper, RectangleError};
 
+    // Keep in sync with mirror in rectangle.wgsl
+
+    // Which texture to read from?
     const SAMPLE_TYPE_FLOAT: u32 = 1;
     const SAMPLE_TYPE_SINT: u32 = 2;
     const SAMPLE_TYPE_UINT: u32 = 3;
 
+    // How do we do colormapping?
     const COLOR_MAPPER_OFF: u32 = 1;
     const COLOR_MAPPER_FUNCTION: u32 = 2;
     const COLOR_MAPPER_TEXTURE: u32 = 3;
-    // Keep in sync with mirror in rectangle.wgsl
+
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
@@ -228,9 +232,9 @@ mod gpu_data {
 
             match texture_info.components {
                 1 => match color_mapper {
-                    Some(ColorMapper::Function(cm)) => {
+                    Some(ColorMapper::Function(colormap)) => {
                         color_mapper_int = COLOR_MAPPER_FUNCTION;
-                        colormap_function = *cm as u32;
+                        colormap_function = *colormap as u32;
                     }
                     Some(ColorMapper::Texture(_)) => {
                         color_mapper_int = COLOR_MAPPER_TEXTURE;
@@ -360,11 +364,8 @@ impl RectangleDrawData {
                 ));
             }
 
-            let default_float_texture = ctx
-                .texture_manager_2d
-                .get(&ctx.texture_manager_2d.white_texture_unorm_handle().clone())?
-                .handle;
-            let mut texture_float = default_float_texture;
+            // We set up three texture sources, then instruct the shader to read from at most one of them.
+            let mut texture_float = ctx.texture_manager_2d.zeroed_texture_float().handle;
             let mut texture_sint = ctx.texture_manager_2d.zeroed_texture_sint().handle;
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
@@ -383,6 +384,7 @@ impl RectangleDrawData {
                 }
             }
 
+            // We also set up an optional colormap texture.
             let colormap_texture = if let Some(ColorMapper::Texture(handle)) =
                 &rectangle.colormapped_texture.color_mapper
             {
@@ -394,7 +396,7 @@ impl RectangleDrawData {
                 }
                 colormap_texture.handle
             } else {
-                default_float_texture
+                ctx.texture_manager_2d.zeroed_texture_float().handle
             };
 
             instances.push(RectangleInstance {

@@ -3,13 +3,17 @@
 #import <./global_bindings.wgsl>
 #import <./utils/depth_offset.wgsl>
 
-const SAMPLE_TYPE_FLOAT = 1u;
-const SAMPLE_TYPE_SINT = 2u;
-const SAMPLE_TYPE_UINT = 3u;
+// Keep in sync with mirror in rectangle.rs
 
-const COLOR_MAPPER_OFF = 1u;
+// Which texture to read from?
+const SAMPLE_TYPE_FLOAT = 1u;
+const SAMPLE_TYPE_SINT  = 2u;
+const SAMPLE_TYPE_UINT  = 3u;
+
+// How do we do colormapping?
+const COLOR_MAPPER_OFF      = 1u;
 const COLOR_MAPPER_FUNCTION = 2u;
-const COLOR_MAPPER_TEXTURE = 3u;
+const COLOR_MAPPER_TEXTURE  = 3u;
 
 struct UniformBuffer {
     /// Top left corner position in world space.
@@ -83,7 +87,6 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
 
     // Sample the main texture:
-
     var sampled_value: Vec4;
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
@@ -103,7 +106,6 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // Apply colormap, if any:
     var texture_color: Vec4;
-
     if rect_info.color_mapper == COLOR_MAPPER_OFF {
         texture_color = normalized_value;
     } else if rect_info.color_mapper == COLOR_MAPPER_FUNCTION {

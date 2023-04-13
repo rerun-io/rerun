@@ -17,9 +17,11 @@ use super::caches::TensorStats;
 
 /// Set up tensor for rendering on the GPU.
 ///
+/// This will only upload the tensor if it isn't on the GPU already.
+///
 /// `tensor_stats` is used for determining the range of the texture.
 // TODO(emilk): allow user to specify the range in ui.
-pub fn textured_rect_from_tensor(
+pub fn tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
     tensor: &Tensor,
@@ -37,17 +39,13 @@ pub fn textured_rect_from_tensor(
 
     match tensor.meaning {
         TensorDataMeaning::Unknown => {
-            textured_rect_from_color_tensor(render_ctx, debug_name, tensor, tensor_stats)
+            color_tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats)
         }
-        TensorDataMeaning::ClassId => textured_rect_from_class_id_tensor(
-            render_ctx,
-            debug_name,
-            tensor,
-            tensor_stats,
-            annotations,
-        ),
+        TensorDataMeaning::ClassId => {
+            class_id_tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)
+        }
         TensorDataMeaning::Depth => {
-            textured_rect_from_depth_tensor(render_ctx, debug_name, tensor, tensor_stats)
+            depth_tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats)
         }
     }
 }
@@ -55,7 +53,7 @@ pub fn textured_rect_from_tensor(
 // ----------------------------------------------------------------------------
 // Color textures:
 
-fn textured_rect_from_color_tensor(
+fn color_tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
     tensor: &Tensor,
@@ -64,7 +62,7 @@ fn textured_rect_from_color_tensor(
     let texture_handle = get_or_create_texture(render_ctx, hash(tensor.id()), || {
         let [height, width, depth] = height_width_depth(tensor)?;
         let (data, format) = match (depth, &tensor.data) {
-            // Use R8Unorm and R8Snorm when we can to get filtering on the GPU:
+            // Use R8Unorm and R8Snorm to get filtering on the GPU:
             (1, TensorData::U8(buf)) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm),
             (1, TensorData::I8(buf)) => (cast_slice_to_cow(buf), TextureFormat::R8Snorm),
 
@@ -131,7 +129,7 @@ fn textured_rect_from_color_tensor(
 // ----------------------------------------------------------------------------
 // Textures with class_id annotations:
 
-fn textured_rect_from_class_id_tensor(
+fn class_id_tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
     tensor: &Tensor,
@@ -199,7 +197,7 @@ fn textured_rect_from_class_id_tensor(
 // ----------------------------------------------------------------------------
 // Depth textures:
 
-fn textured_rect_from_depth_tensor(
+fn depth_tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
     tensor: &Tensor,
@@ -211,7 +209,7 @@ fn textured_rect_from_depth_tensor(
         "Depth tensor of weird shape: {:?}",
         tensor.shape
     );
-    let (min, max) = tensor_range(tensor, tensor_stats)?;
+    let (min, max) = depth_tensor_range(tensor, tensor_stats)?;
 
     let texture = get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
@@ -225,15 +223,15 @@ fn textured_rect_from_depth_tensor(
     })
 }
 
-fn tensor_range(tensor: &Tensor, tensor_stats: &TensorStats) -> anyhow::Result<(f64, f64)> {
+fn depth_tensor_range(tensor: &Tensor, tensor_stats: &TensorStats) -> anyhow::Result<(f64, f64)> {
     let range = tensor_stats.range.ok_or(anyhow::anyhow!(
-        "Depth image had no range!? Was this compressed?"
+        "Tensor has no range!? Was this compressed?"
     ))?;
     let (mut min, mut max) = range;
 
     anyhow::ensure!(
         min.is_finite() && max.is_finite(),
-        "Depth image had non-finite values"
+        "Tensor has non-finite values"
     );
 
     min = min.min(0.0); // Depth usually start at zero.
@@ -253,55 +251,12 @@ fn tensor_range(tensor: &Tensor, tensor_stats: &TensorStats) -> anyhow::Result<(
 
 // ----------------------------------------------------------------------------
 
-fn get_or_create_texture<'a, Err>(
-    render_ctx: &mut RenderContext,
-    texture_key: u64,
-    try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
-) -> Result<GpuTexture2DHandle, Err> {
-    render_ctx.texture_manager_2d.get_or_create_with(
-        texture_key,
-        &mut render_ctx.gpu_resources.textures,
-        try_create_texture_desc,
-    )
-}
-
-fn cast_slice_to_cow<From: Pod>(slice: &[From]) -> Cow<'_, [u8]> {
-    cast_slice(slice).into()
-}
-
-// wgpu doesn't support f64 textures, so we need to convert to f32:
-fn cast_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
-    crate::profile_function!();
-    let f32s: Vec<f32> = slice.iter().map(|&f| f as f32).collect::<Vec<f32>>();
-    let bytes: Vec<u8> = pod_collect_to_vec(&f32s);
-    bytes.into()
-}
-
-fn pad_to_four_elements<T: Copy>(data: &[T], pad: T) -> Vec<T> {
-    crate::profile_function!();
-    data.chunks_exact(3)
-        .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], pad])
-        .collect::<Vec<T>>()
-}
-
-fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
-    crate::profile_function!();
-    let padded: Vec<T> = pad_to_four_elements(data, pad);
-    let bytes: Vec<u8> = pod_collect_to_vec(&padded);
-    bytes.into()
-}
-
 /// Uploads the tensor to a texture in a format that closely resembled the input.
 /// Uses no `Unorm/Snorm` formats.
 fn general_texture_creation_desc_from_tensor<'a>(
     debug_name: &str,
     tensor: &'a Tensor,
 ) -> anyhow::Result<Texture2DCreationDesc<'a>> {
-    crate::profile_function!(format!(
-        "dtype: {}, shape: {:?}",
-        tensor.dtype(),
-        tensor.shape()
-    ));
     let [height, width, depth] = height_width_depth(tensor)?;
     let (data, format) = match (depth, &tensor.data) {
         (1, TensorData::U8(buf)) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint),
@@ -312,9 +267,9 @@ fn general_texture_creation_desc_from_tensor<'a>(
         (1, TensorData::I32(buf)) => (cast_slice_to_cow(buf), TextureFormat::R32Sint),
         // (1, TensorData::F16(buf)) => (cast_slice_to_cow(buf), TextureFormat::R16Float), TODO(#854)
         (1, TensorData::F32(buf)) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
-        (1, TensorData::F64(buf)) => (cast_f64_to_f32s(buf), TextureFormat::R32Float),
+        (1, TensorData::F64(buf)) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float),
 
-        // NOTE: 2-channel images are not supported by all of Rerun yet, but are included here for completeness:
+        // NOTE: 2-channel images are not supported by the shader yet, but are included here for completeness:
         (2, TensorData::U8(buf)) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rg8Uint),
         (2, TensorData::I8(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg8Sint),
         (2, TensorData::U16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg16Uint),
@@ -323,7 +278,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
         (2, TensorData::I32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg32Sint),
         // (2, TensorData::F16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float), TODO(#854)
         (2, TensorData::F32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
-        (2, TensorData::F64(buf)) => (cast_f64_to_f32s(buf), TextureFormat::Rg32Float),
+        (2, TensorData::F64(buf)) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float),
 
         // There are no 3-channel textures in wgpu, so we need to pad to 4 channels:
         (3, TensorData::U8(buf)) => (pad_and_cast(buf.as_slice(), 0), TextureFormat::Rgba8Uint),
@@ -355,7 +310,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
         (4, TensorData::I32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Sint),
         // (4, TensorData::F16(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float), TODO(#854)
         (4, TensorData::F32(buf)) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
-        (4, TensorData::F64(buf)) => (cast_f64_to_f32s(buf), TextureFormat::Rgba32Float),
+        (4, TensorData::F64(buf)) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float),
 
         // TODO(emilk): U64/I64
         (_depth, dtype) => {
@@ -370,6 +325,44 @@ fn general_texture_creation_desc_from_tensor<'a>(
         width,
         height,
     })
+}
+
+fn get_or_create_texture<'a, Err>(
+    render_ctx: &mut RenderContext,
+    texture_key: u64,
+    try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
+) -> Result<GpuTexture2DHandle, Err> {
+    render_ctx.texture_manager_2d.get_or_create_with(
+        texture_key,
+        &mut render_ctx.gpu_resources.textures,
+        try_create_texture_desc,
+    )
+}
+
+fn cast_slice_to_cow<From: Pod>(slice: &[From]) -> Cow<'_, [u8]> {
+    cast_slice(slice).into()
+}
+
+// wgpu doesn't support f64 textures, so we need to narrow to f32:
+fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
+    crate::profile_function!();
+    let f32s: Vec<f32> = slice.iter().map(|&f| f as f32).collect::<Vec<f32>>();
+    let bytes: Vec<u8> = pod_collect_to_vec(&f32s);
+    bytes.into()
+}
+
+fn pad_to_four_elements<T: Copy>(data: &[T], pad: T) -> Vec<T> {
+    crate::profile_function!();
+    data.chunks_exact(3)
+        .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], pad])
+        .collect::<Vec<T>>()
+}
+
+fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
+    crate::profile_function!();
+    let padded: Vec<T> = pad_to_four_elements(data, pad);
+    let bytes: Vec<u8> = pod_collect_to_vec(&padded);
+    bytes.into()
 }
 
 // ----------------------------------------------------------------------------;

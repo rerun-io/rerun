@@ -60,6 +60,7 @@ pub struct TextureManager2D {
     // optimize for short lived textures as we do with buffer data.
     //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
     white_texture_unorm: GpuTexture2DHandle,
+    zeroed_texture_float: GpuTexture2DHandle,
     zeroed_texture_depth: GpuTexture2DHandle,
     zeroed_texture_sint: GpuTexture2DHandle,
     zeroed_texture_uint: GpuTexture2DHandle,
@@ -100,58 +101,18 @@ impl TextureManager2D {
             },
         );
 
-        // Wgpu zeros out new textures automatically
-        let zeroed_texture_depth = GpuTexture2DHandle(Some(texture_pool.alloc(
-            &device,
-            &TextureDesc {
-                label: "zeroed pixel - depth".into(),
-                format: wgpu::TextureFormat::Depth16Unorm,
-                size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING,
-            },
-        )));
-        let zeroed_texture_sint = GpuTexture2DHandle(Some(texture_pool.alloc(
-            &device,
-            &TextureDesc {
-                label: "zeroed pixel - sint".into(),
-                format: wgpu::TextureFormat::Rgba8Sint,
-                size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING,
-            },
-        )));
-        let zeroed_texture_uint = GpuTexture2DHandle(Some(texture_pool.alloc(
-            &device,
-            &TextureDesc {
-                label: "zeroed pixel - uint".into(),
-                format: wgpu::TextureFormat::Rgba8Uint,
-                size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING,
-            },
-        )));
+        let zeroed_texture_float =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Rgba8Unorm);
+        let zeroed_texture_depth =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Depth16Unorm);
+        let zeroed_texture_sint =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Rgba8Sint);
+        let zeroed_texture_uint =
+            create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Rgba8Uint);
 
         Self {
             white_texture_unorm,
+            zeroed_texture_float,
             zeroed_texture_depth,
             zeroed_texture_sint,
             zeroed_texture_uint,
@@ -245,17 +206,22 @@ impl TextureManager2D {
         self.white_texture_unorm.0.as_ref().unwrap()
     }
 
-    /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Depth16Unorm`].
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Unorm`].
+    pub fn zeroed_texture_float(&self) -> &GpuTexture {
+        self.zeroed_texture_float.0.as_ref().unwrap()
+    }
+
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Depth16Unorm`].
     pub fn zeroed_texture_depth(&self) -> &GpuTexture {
         self.zeroed_texture_depth.0.as_ref().unwrap()
     }
 
-    /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Rgba8Sint`].
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Sint`].
     pub fn zeroed_texture_sint(&self) -> &GpuTexture {
         self.zeroed_texture_sint.0.as_ref().unwrap()
     }
 
-    /// Returns a single pixel white pixel with format [`wgpu::TextureFormat::Rgba8Uint`].
+    /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Uint`].
     pub fn zeroed_texture_uint(&self) -> &GpuTexture {
         self.zeroed_texture_uint.0.as_ref().unwrap()
     }
@@ -335,4 +301,28 @@ impl TextureManager2D {
             .retain(|k, _| self.accessed_textures.contains(k));
         self.accessed_textures.clear();
     }
+}
+
+fn create_zero_texture(
+    texture_pool: &mut GpuTexturePool,
+    device: &Arc<wgpu::Device>,
+    format: wgpu::TextureFormat,
+) -> GpuTexture2DHandle {
+    // Wgpu zeros out new textures automatically
+    GpuTexture2DHandle(Some(texture_pool.alloc(
+        device,
+        &TextureDesc {
+            label: format!("zeroed pixel {format:?}").into(),
+            format,
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+        },
+    )))
 }
