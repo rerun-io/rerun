@@ -196,6 +196,7 @@ jobs:
 
       - name: Store the expected version
         # Find the current cargo version and store it in the GITHUB_ENV var: `expected_version`
+        shell: bash
         run: |
           echo "expected_version=$(python3 scripts/version_util.py --bare_cargo_version)" >> $GITHUB_ENV
 
