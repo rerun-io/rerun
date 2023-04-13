@@ -1,6 +1,6 @@
 use re_log_types::component_types;
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DimensionSelector {
     pub visible: bool,
     pub dim_idx: usize,
@@ -15,7 +15,7 @@ impl DimensionSelector {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DimensionMapping {
     /// Which dimensions have selectors, and are they visible?
     pub selectors: Vec<DimensionSelector>,
