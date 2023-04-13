@@ -3,6 +3,10 @@
 #import <./global_bindings.wgsl>
 #import <./utils/depth_offset.wgsl>
 
+const SAMPLE_TYPE_FLOAT = 1u;
+const SAMPLE_TYPE_SINT = 2u;
+const SAMPLE_TYPE_UINT = 3u;
+
 struct UniformBuffer {
     /// Top left corner position in world space.
     top_left_corner_position: Vec3,
@@ -12,7 +16,8 @@ struct UniformBuffer {
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
     extent_u: Vec3,
 
-    sample_type: u32, // 1=float, 2=depth, 3=sint, 4=uint
+    /// Which texture sample to use
+    sample_type: u32,
 
     /// Vector that spans up the rectangle from its top left corner along the v axis of the texture.
     extent_v: Vec3,
@@ -73,13 +78,11 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sample the main texture:
 
     var sampled_value: Vec4;
-    if rect_info.sample_type == 1u {
-        // float
+    if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         sampled_value = textureSample(texture_float, texture_sampler, in.texcoord);
-    } else if rect_info.sample_type == 3u {
+    } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
         sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
-    } else if rect_info.sample_type == 4u {
-        // uint
+    } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
         sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
     } else {
         return ERROR_RGBA; // unknown sample type

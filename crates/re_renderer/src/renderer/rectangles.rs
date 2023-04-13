@@ -165,6 +165,9 @@ mod gpu_data {
 
     use super::{ColorMapper, RectangleError};
 
+    const SAMPLE_TYPE_FLOAT: u32 = 1;
+    const SAMPLE_TYPE_SINT: u32 = 2;
+    const SAMPLE_TYPE_UINT: u32 = 3;
     // Keep in sync with mirror in rectangle.wgsl
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -174,7 +177,7 @@ mod gpu_data {
         pub colormap: u32,
 
         pub extent_u: wgpu_buffer_types::Vec3Unpadded,
-        pub sample_type: u32, // 1=float, 2=depth, 3=sint, 4=uint
+        pub sample_type: u32,
 
         pub extent_v: wgpu_buffer_types::Vec3Unpadded,
         pub depth_offset: f32,
@@ -203,11 +206,12 @@ mod gpu_data {
             } = &rectangle.colormapped_texture;
 
             let sample_type = match texture_info.sample_type {
-                // The number here must match the shader!
-                wgpu::TextureSampleType::Float { .. } => 1,
-                wgpu::TextureSampleType::Depth => 2,
-                wgpu::TextureSampleType::Sint => 3,
-                wgpu::TextureSampleType::Uint => 4,
+                wgpu::TextureSampleType::Float { .. } => SAMPLE_TYPE_FLOAT,
+                wgpu::TextureSampleType::Depth => {
+                    return Err(RectangleError::DepthTexturesNotSupported);
+                }
+                wgpu::TextureSampleType::Sint => SAMPLE_TYPE_SINT,
+                wgpu::TextureSampleType::Uint => SAMPLE_TYPE_UINT,
             };
 
             let mut colormap = 0;
