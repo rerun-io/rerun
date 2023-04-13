@@ -6,7 +6,7 @@ use wgpu::TextureFormat;
 
 use re_log_types::component_types::{Tensor, TensorData};
 use re_renderer::{
-    renderer::ColormappedTexture,
+    renderer::{ColorMapper, ColormappedTexture},
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     RenderContext,
 };
@@ -114,11 +114,17 @@ fn textured_rect_from_color_tensor(
         [min as f32, max as f32]
     };
 
+    let color_mapper = if texture_format.describe().components == 1 {
+        // Single-channel images = luminance = grayscale
+        Some(ColorMapper::Function(re_renderer::Colormap::Grayscale))
+    } else {
+        None
+    };
+
     Ok(ColormappedTexture {
         texture: texture_handle,
         range,
-        colormap: re_renderer::Colormap::Grayscale, // Single-channel images = luminance = grayscale
-        colormap_texture: None,
+        color_mapper,
     })
 }
 
@@ -186,8 +192,7 @@ fn textured_rect_from_class_id_tensor(
     Ok(ColormappedTexture {
         texture: main_texture_handle,
         range: [0.0, (colormap_width * colormap_height) as f32],
-        colormap: Default::default(), // unused
-        colormap_texture: Some(colormap_texture_handle),
+        color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
     })
 }
 
@@ -215,8 +220,8 @@ fn textured_rect_from_depth_tensor(
     Ok(ColormappedTexture {
         texture,
         range: [min as f32, max as f32],
-        colormap: re_renderer::Colormap::Turbo, // TODO(emilk): make this configurable in the UI
-        colormap_texture: None,
+        // TODO(emilk): make this configurable in the UI
+        color_mapper: Some(ColorMapper::Function(re_renderer::Colormap::Turbo)),
     })
 }
 
