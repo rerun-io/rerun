@@ -319,49 +319,25 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 ),
                 TensorData::U16(buf) => (pad_and_cast(buf, u16::MAX), TextureFormat::Rgba16Uint),
                 TensorData::U32(buf) => (pad_and_cast(buf, u32::MAX), TextureFormat::Rgba32Uint),
-                TensorData::U64(buf) => {
-                    // narrowing to f32!
-                    let pad = u64::MAX as f32;
-                    let floats: Vec<f32> = buf
-                        .chunks_exact(3)
-                        .flat_map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32, pad])
-                        .collect();
-                    (
-                        pod_collect_to_vec(&floats).into(),
-                        TextureFormat::Rgba32Float,
-                    )
-                }
+                TensorData::U64(buf) => (
+                    pad_and_narrow_and_cast(buf, 1.0, |x: u64| x as f32),
+                    TextureFormat::Rgba32Float,
+                ),
 
                 TensorData::I8(buf) => (pad_and_cast(buf, i8::MAX), TextureFormat::Rgba8Sint),
                 TensorData::I16(buf) => (pad_and_cast(buf, i16::MAX), TextureFormat::Rgba16Sint),
                 TensorData::I32(buf) => (pad_and_cast(buf, i32::MAX), TextureFormat::Rgba32Sint),
-                TensorData::I64(buf) => {
-                    // narrowing to f32!
-                    let pad = i64::MAX as f32;
-                    let floats: Vec<f32> = buf
-                        .chunks_exact(3)
-                        .flat_map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32, pad])
-                        .collect();
-                    (
-                        pod_collect_to_vec(&floats).into(),
-                        TextureFormat::Rgba32Float,
-                    )
-                }
+                TensorData::I64(buf) => (
+                    pad_and_narrow_and_cast(buf, 1.0, |x: i64| x as f32),
+                    TextureFormat::Rgba32Float,
+                ),
 
                 // TensorData::F16(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba16Float), TODO(#854)
                 TensorData::F32(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba32Float),
-                TensorData::F64(buf) => {
-                    // narrowing to f32!
-                    let pad = 1.0;
-                    let floats: Vec<f32> = buf
-                        .chunks_exact(3)
-                        .flat_map(|chunk| [chunk[0] as f32, chunk[1] as f32, chunk[2] as f32, pad])
-                        .collect();
-                    (
-                        pod_collect_to_vec(&floats).into(),
-                        TextureFormat::Rgba32Float,
-                    )
-                }
+                TensorData::F64(buf) => (
+                    pad_and_narrow_and_cast(buf, 1.0, |x: f64| x as f32),
+                    TextureFormat::Rgba32Float,
+                ),
 
                 TensorData::JPEG(_) => {
                     anyhow::bail!("JPEGs should have been decoded at this point")
@@ -464,6 +440,20 @@ fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
     let padded: Vec<T> = pad_to_four_elements(data, pad);
     let bytes: Vec<u8> = pod_collect_to_vec(&padded);
     bytes.into()
+}
+
+fn pad_and_narrow_and_cast<T: Copy + Pod>(
+    data: &[T],
+    pad: f32,
+    narrow: impl Fn(T) -> f32,
+) -> Cow<'static, [u8]> {
+    crate::profile_function!();
+
+    let floats: Vec<f32> = data
+        .chunks_exact(3)
+        .flat_map(|chunk| [narrow(chunk[0]), narrow(chunk[1]), narrow(chunk[2]), pad])
+        .collect();
+    pod_collect_to_vec(&floats).into()
 }
 
 // ----------------------------------------------------------------------------;
