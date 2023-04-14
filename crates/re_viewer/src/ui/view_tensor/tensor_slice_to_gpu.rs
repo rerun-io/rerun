@@ -33,6 +33,8 @@ pub fn colormapped_texture(
     tensor_stats: &TensorStats,
     state: &ViewTensorState,
 ) -> Result<ColormappedTexture, TensorUploadError> {
+    crate::profile_function!();
+
     let (min, max) = range(tensor_stats)?;
     let texture = upload_texture_slice_to_gpu(render_ctx, tensor, state.slice())?;
 
@@ -78,6 +80,8 @@ fn texture_desc_from_tensor(
     slice_selection: &SliceSelection,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
     use wgpu::TextureFormat;
+    crate::profile_function!();
+
     match tensor.dtype() {
         TensorDataType::U8 => {
             let tensor = ndarray::ArrayViewD::<u8>::try_from(tensor)?;
@@ -150,6 +154,8 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     format: wgpu::TextureFormat,
     caster: impl Fn(From) -> To,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
+    crate::profile_function!();
+
     use ndarray::Dimension as _;
 
     let slice = selected_tensor_slice(slice_selection, tensor);
@@ -161,12 +167,17 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     let mut pixels: Vec<To> = vec![To::zeroed(); height * width];
     let pixels_view = ndarray::ArrayViewMut2::from_shape(slice.raw_dim(), pixels.as_mut_slice())
         .expect("Mismatched length.");
-    ndarray::Zip::from(pixels_view)
-        .and(slice)
-        .for_each(|pixel: &mut To, value: &From| {
-            *pixel = caster(*value);
-        });
 
+    {
+        crate::profile_scope!("copy_from_slice");
+        ndarray::Zip::from(pixels_view)
+            .and(slice)
+            .for_each(|pixel: &mut To, value: &From| {
+                *pixel = caster(*value);
+            });
+    }
+
+    crate::profile_scope!("pod_collect_to_vec");
     Ok(Texture2DCreationDesc {
         label: "tensor_slice".into(),
         data: bytemuck::pod_collect_to_vec(&pixels).into(),
