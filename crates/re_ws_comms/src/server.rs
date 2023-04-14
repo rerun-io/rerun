@@ -41,7 +41,7 @@ impl RerunServer {
 
         let listener = TcpListener::bind(&bind_addr)
             .await
-            .map_err(|e| RerunServerError::BindError(port, e))?;
+            .map_err(|e| RerunServerError::BindFailed(port, e))?;
 
         re_log::info!(
             "Listening for websocket traffic on {bind_addr}. Connect with a web Rerun Viewer."
