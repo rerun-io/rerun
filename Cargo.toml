@@ -52,8 +52,8 @@ rerun = { path = "crates/rerun", version = "0.4.0" }
 
 ahash = "0.8"
 anyhow = "1.0"
-arrow2 = "0.16"
-arrow2_convert = "0.4.2"
+arrow2 = "0.17"
+arrow2_convert = "0.5.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
 ctrlc = { version = "3.0", features = ["termination"] }
@@ -112,3 +112,5 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+arrow2 = { git = "https://github.com/rerun-io/arrow2", branch = "cmc/arc_datatype" }
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", branch = "cmc/arc_datatype" }

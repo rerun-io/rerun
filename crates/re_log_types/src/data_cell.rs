@@ -717,10 +717,10 @@ fn test_arrow_estimated_size_bytes() {
         let array = {
             let x = Float64Array::from_vec(data.iter().map(|p| p.x).collect()).boxed();
             let y = Float64Array::from_vec(data.iter().map(|p| p.y).collect()).boxed();
-            let fields = vec![
+            let fields = Arc::new(vec![
                 Field::new("x", DataType::Float64, false),
                 Field::new("y", DataType::Float64, false),
-            ];
+            ]);
             StructArray::new(DataType::Struct(fields), vec![x, y], None).boxed()
         };
 
@@ -754,10 +754,10 @@ fn test_arrow_estimated_size_bytes() {
                     Float64Array::from_vec(data.iter().flatten().map(|p| p.x).collect()).boxed();
                 let y =
                     Float64Array::from_vec(data.iter().flatten().map(|p| p.y).collect()).boxed();
-                let fields = vec![
+                let fields = Arc::new(vec![
                     Field::new("x", DataType::Float64, false),
                     Field::new("y", DataType::Float64, false),
-                ];
+                ]);
                 StructArray::new(DataType::Struct(fields), vec![x, y], None)
             };
 

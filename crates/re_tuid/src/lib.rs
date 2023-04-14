@@ -6,6 +6,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+use std::sync::Arc;
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(
     feature = "arrow2_convert",
@@ -30,11 +32,11 @@ impl arrow2_convert::field::ArrowField for Tuid {
     type Type = Self;
 
     fn data_type() -> arrow2::datatypes::DataType {
-        let datatype = arrow2::datatypes::DataType::Struct(<[_]>::into_vec(Box::new([
+        let datatype = arrow2::datatypes::DataType::Struct(Arc::new(<[_]>::into_vec(Box::new([
             <u64 as arrow2_convert::field::ArrowField>::field("time_ns"),
             <u64 as arrow2_convert::field::ArrowField>::field("inc"),
-        ])));
-        arrow2::datatypes::DataType::Extension("rerun.tuid".into(), Box::new(datatype), None)
+        ]))));
+        arrow2::datatypes::DataType::Extension("rerun.tuid".into(), Arc::new(datatype), None)
     }
 }
 

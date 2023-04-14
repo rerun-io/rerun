@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use arrow2::{
     array::{
         growable::make_growable, Array, FixedSizeListArray, ListArray, StructArray, UnionArray,
@@ -63,7 +65,7 @@ impl ArrayExt for dyn Array {
                 // Recursively clean the contents
                 let typed_arr = self.as_any().downcast_ref::<ListArray<i32>>().unwrap();
                 let clean_vals = typed_arr.values().as_ref().clean_for_polars();
-                let clean_data = DataType::List(Box::new(Field::new(
+                let clean_data = DataType::List(Arc::new(Field::new(
                     &field.name,
                     clean_vals.data_type().clone(),
                     field.is_nullable,
@@ -81,7 +83,7 @@ impl ArrayExt for dyn Array {
                 // Recursively clean the contents
                 let typed_arr = self.as_any().downcast_ref::<ListArray<i64>>().unwrap();
                 let clean_vals = typed_arr.values().as_ref().clean_for_polars();
-                let clean_data = DataType::LargeList(Box::new(Field::new(
+                let clean_data = DataType::LargeList(Arc::new(Field::new(
                     &field.name,
                     clean_vals.data_type().clone(),
                     field.is_nullable,
@@ -99,7 +101,7 @@ impl ArrayExt for dyn Array {
                 // Recursively clean the contents and convert `FixedSizeListArray` -> `ListArray`
                 let typed_arr = self.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
                 let clean_vals = typed_arr.values().as_ref().clean_for_polars();
-                let clean_data = DataType::List(Box::new(Field::new(
+                let clean_data = DataType::List(Arc::new(Field::new(
                     &field.name,
                     clean_vals.data_type().clone(),
                     field.is_nullable,
@@ -123,10 +125,10 @@ impl ArrayExt for dyn Array {
                     .iter()
                     .map(|v| v.as_ref().clean_for_polars())
                     .collect_vec();
-                let clean_fields = itertools::izip!(fields, &clean_vals)
+                let clean_fields = itertools::izip!(fields.iter(), &clean_vals)
                     .map(|(f, v)| Field::new(&f.name, v.data_type().clone(), f.is_nullable))
                     .collect_vec();
-                let clean_data = DataType::Struct(clean_fields);
+                let clean_data = DataType::Struct(Arc::new(clean_fields));
                 StructArray::try_new(clean_data, clean_vals, typed_arr.validity().cloned())
                     .unwrap()
                     .boxed()
@@ -144,12 +146,12 @@ impl ArrayExt for dyn Array {
 
                 let ids = ids
                     .clone()
-                    .unwrap_or_else(|| (0i32..(clean_vals.len() as i32)).collect_vec());
+                    .unwrap_or_else(|| Arc::new((0i32..(clean_vals.len() as i32)).collect_vec()));
 
                 // For Dense Unions, the value-arrays need to be padded to the
                 // correct length, which we do by growing using the existing type
                 // table.
-                let padded_vals = itertools::izip!(&clean_vals, &ids)
+                let padded_vals = itertools::izip!(clean_vals.iter(), ids.iter())
                     .map(|(dense, id)| {
                         let mut next = 0;
                         let mut grow = make_growable(&[dense.as_ref()], true, self.len());
@@ -165,12 +167,12 @@ impl ArrayExt for dyn Array {
                     })
                     .collect_vec();
 
-                let clean_field_types = itertools::izip!(fields, &clean_vals)
+                let clean_field_types = itertools::izip!(fields.iter(), &clean_vals)
                     .map(|(f, v)| Field::new(&f.name, v.data_type().clone(), f.is_nullable))
                     .collect_vec();
 
                 // The new type will be a struct
-                let clean_data = DataType::Struct(clean_field_types);
+                let clean_data = DataType::Struct(Arc::new(clean_field_types));
 
                 StructArray::try_new(clean_data, padded_vals, typed_arr.validity().cloned())
                     .unwrap()
@@ -189,11 +191,11 @@ impl ArrayExt for dyn Array {
 
                 let ids = ids
                     .clone()
-                    .unwrap_or_else(|| (0i32..(clean_vals.len() as i32)).collect_vec());
+                    .unwrap_or_else(|| Arc::new((0i32..(clean_vals.len() as i32)).collect_vec()));
 
                 // For Sparse Unions, the value-arrays is already the right
                 // correct length, but should have a validity derived from the types array.
-                let padded_vals = itertools::izip!(&clean_vals, &ids)
+                let padded_vals = itertools::izip!(&clean_vals, ids.iter())
                     .map(|(sparse, id)| {
                         let validity = Bitmap::from(
                             typed_arr
@@ -206,12 +208,12 @@ impl ArrayExt for dyn Array {
                     })
                     .collect_vec();
 
-                let clean_field_types = itertools::izip!(fields, &clean_vals)
+                let clean_field_types = itertools::izip!(fields.iter(), &clean_vals)
                     .map(|(f, v)| Field::new(&f.name, v.data_type().clone(), f.is_nullable))
                     .collect_vec();
 
                 // The new type will be a struct
-                let clean_data = DataType::Struct(clean_field_types);
+                let clean_data = DataType::Struct(Arc::new(clean_field_types));
 
                 StructArray::try_new(clean_data, padded_vals, typed_arr.validity().cloned())
                     .unwrap()
@@ -246,15 +248,15 @@ fn test_clean_for_polars_modify() {
     assert_eq!(
         *cell.datatype(),
         DataType::Union(
-            vec![
+            Arc::new(vec![
                 Field::new("Unknown", DataType::Boolean, false),
                 Field::new(
                     "Rigid3",
-                    DataType::Struct(vec![
+                    DataType::Struct(Arc::new(vec![
                         Field::new(
                             "rotation",
                             DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
+                                Arc::new(Field::new("item", DataType::Float32, false)),
                                 4
                             ),
                             false
@@ -262,21 +264,21 @@ fn test_clean_for_polars_modify() {
                         Field::new(
                             "translation",
                             DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
+                                Arc::new(Field::new("item", DataType::Float32, false)),
                                 3
                             ),
                             false
                         )
-                    ]),
+                    ])),
                     false
                 ),
                 Field::new(
                     "Pinhole",
-                    DataType::Struct(vec![
+                    DataType::Struct(Arc::new(vec![
                         Field::new(
                             "image_from_cam",
                             DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
+                                Arc::new(Field::new("item", DataType::Float32, false)),
                                 9
                             ),
                             false,
@@ -284,15 +286,15 @@ fn test_clean_for_polars_modify() {
                         Field::new(
                             "resolution",
                             DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
+                                Arc::new(Field::new("item", DataType::Float32, false)),
                                 2
                             ),
                             true,
                         ),
-                    ]),
+                    ])),
                     false
                 )
-            ],
+            ]),
             None,
             UnionMode::Dense
         ),
@@ -302,40 +304,40 @@ fn test_clean_for_polars_modify() {
 
     assert_eq!(
         *cleaned.data_type(),
-        DataType::Struct(vec![
+        DataType::Struct(Arc::new(vec![
             Field::new("Unknown", DataType::Boolean, false),
             Field::new(
                 "Rigid3",
-                DataType::Struct(vec![
+                DataType::Struct(Arc::new(vec![
                     Field::new(
                         "rotation",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
+                        DataType::List(Arc::new(Field::new("item", DataType::Float32, false)),),
                         false
                     ),
                     Field::new(
                         "translation",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
+                        DataType::List(Arc::new(Field::new("item", DataType::Float32, false)),),
                         false
                     )
-                ]),
+                ])),
                 false
             ),
             Field::new(
                 "Pinhole",
-                DataType::Struct(vec![
+                DataType::Struct(Arc::new(vec![
                     Field::new(
                         "image_from_cam",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+                        DataType::List(Arc::new(Field::new("item", DataType::Float32, false))),
                         false,
                     ),
                     Field::new(
                         "resolution",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+                        DataType::List(Arc::new(Field::new("item", DataType::Float32, false))),
                         true,
                     ),
-                ]),
+                ])),
                 false
             )
-        ],),
+        ],)),
     );
 }

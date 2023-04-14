@@ -4,7 +4,7 @@ use std::fmt::Formatter;
 
 use arrow2::{
     array::{get_display, Array, ListArray, StructArray},
-    datatypes::{DataType, IntervalUnit, TimeUnit},
+    datatypes::{ArcExt, DataType, IntervalUnit, TimeUnit},
 };
 use arrow2_convert::deserialize::TryIntoCollection;
 use comfy_table::{presets, Cell, Table};
@@ -183,7 +183,10 @@ impl std::fmt::Display for DisplayDataType {
             DataType::Decimal(_, _) => "decimal",
             DataType::Decimal256(_, _) => "decimal256",
             DataType::Extension(name, data_type, _) => {
-                let s = format!("extension<{name}>[{}]", DisplayDataType(*data_type.clone()));
+                let s = format!(
+                    "extension<{name}>[{}]",
+                    DisplayDataType((**data_type).clone())
+                );
                 return f.write_str(&s);
             }
         };

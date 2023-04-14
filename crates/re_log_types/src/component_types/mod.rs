@@ -3,6 +3,8 @@
 //! The SDK is responsible for submitting component columns that conforms to these schemas. The
 //! schemas are additionally documented in doctests.
 
+use std::sync::Arc;
+
 use arrow2::{
     array::{FixedSizeListArray, MutableFixedSizeListArray, PrimitiveArray},
     datatypes::{DataType, Field},
@@ -140,7 +142,7 @@ where
 
     #[inline]
     fn data_type() -> DataType {
-        arrow2::datatypes::DataType::FixedSizeList(Box::new(<T as ArrowField>::field("item")), SIZE)
+        arrow2::datatypes::DataType::FixedSizeList(Arc::new(<T as ArrowField>::field("item")), SIZE)
     }
 }
 

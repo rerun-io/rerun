@@ -11,6 +11,7 @@ use arrow2_convert::{
     ArrowField, ArrowSerialize,
 };
 
+// TODO: ?
 /// Shim to enable zero-copy arrow deserialization for `Buffer<u8>`
 /// Can be removed when: [arrow2-convert#103](https://github.com/DataEngineeringLabs/arrow2-convert/pull/103) lands
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize)]
@@ -71,7 +72,7 @@ impl<'a> Iterator for BufferBinaryArrayIter<'a> {
             }
             let (start, end) = self.array.offsets().start_end(self.index);
             self.index += 1;
-            Some(Some(self.array.values().clone().slice(start, end - start)))
+            Some(Some(self.array.values().clone().sliced(start, end - start)))
         }
     }
 }

@@ -234,7 +234,7 @@ impl ArrowField for EntityPath {
     fn data_type() -> DataType {
         DataType::Extension(
             "rerun.entity_path".to_owned(),
-            Box::new(DataType::Utf8),
+            Arc::new(DataType::Utf8),
             None,
         )
     }

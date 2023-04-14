@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 use arrow2::datatypes::{DataType, Field};
 use smallvec::SmallVec;
@@ -84,6 +87,13 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.as_ref().map_or(0, SizeBytes::heap_size_bytes)
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for Arc<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        (**self).heap_size_bytes()
     }
 }
 
