@@ -234,7 +234,7 @@ impl WebViewerServerHandle {
         Ok(Self { port, shutdown_tx })
     }
 
-    /// Get the port where the web assets are hosted
+    /// Get the port where the HTTP server is listening
     pub fn port(&self) -> u16 {
         self.port
     }

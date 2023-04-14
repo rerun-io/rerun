@@ -32,6 +32,7 @@ pub enum RerunServerError {
     TokioIoError(#[from] tokio::io::Error),
 }
 
+/// Websocket host for relaying [`LogMsg`]s to a web viewer.
 pub struct RerunServer {
     listener: TcpListener,
     port: u16,
@@ -89,6 +90,9 @@ impl RerunServer {
     }
 }
 
+/// Sync handle for the [`RerunServer`]
+///
+/// When dropped, the server will be shut down.
 pub struct RerunServerHandle {
     port: u16,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
@@ -124,7 +128,7 @@ impl RerunServerHandle {
         Ok(Self { port, shutdown_tx })
     }
 
-    /// Get the port where the web assets are hosted
+    /// Get the port where the websocket server is listening
     pub fn port(&self) -> u16 {
         self.port
     }
