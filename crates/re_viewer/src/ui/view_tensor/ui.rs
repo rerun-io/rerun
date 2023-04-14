@@ -196,13 +196,12 @@ fn paint_tensor_slice(
     let width = size.width;
     let height = size.height;
 
-    let margin = egui::Vec2::ZERO;
     let img_size = egui::vec2(width as _, height as _);
     let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
     let desired_size = match state.texture_settings.scaling {
-        TextureScaling::Original => img_size + margin,
+        TextureScaling::Original => img_size,
         TextureScaling::Fill => {
-            let desired_size = ui.available_size() - margin;
+            let desired_size = ui.available_size();
             if state.texture_settings.keep_aspect_ratio {
                 let scale = (desired_size / img_size).min_elem();
                 img_size * scale
@@ -214,12 +213,11 @@ fn paint_tensor_slice(
 
     let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
     let rect = response.rect;
-    let image_rect = egui::Rect::from_min_max(rect.min + margin, rect.max);
+    let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
 
     crate::gpu_bridge::render_image(
         ctx.render_ctx,
         &painter,
-        img_size,
         image_rect,
         colormapped_texture,
         state.texture_settings.options,

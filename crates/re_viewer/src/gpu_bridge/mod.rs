@@ -87,11 +87,11 @@ pub fn renderer_paint_callback(
     }
 }
 
+/// Render the given image, respecting the clip rectangle of the given painter.
 pub fn render_image(
     render_ctx: &mut re_renderer::RenderContext,
     painter: &egui::Painter,
-    image_size_in_space: egui::Vec2,
-    image_position_on_screen: egui::Rect,
+    image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
 ) -> anyhow::Result<()> {
@@ -99,12 +99,13 @@ pub fn render_image(
 
     use re_renderer::renderer::{TextureFilterMag, TextureFilterMin};
 
-    let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, image_size_in_space);
+    // Where in "world space" to paint the image.
+    let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, image_rect_on_screen.size());
 
     let textured_rectangle = re_renderer::renderer::TexturedRect {
-        top_left_corner_position: glam::Vec3::ZERO,
-        extent_u: glam::Vec3::X * image_size_in_space.x,
-        extent_v: glam::Vec3::Y * image_size_in_space.y,
+        top_left_corner_position: glam::vec3(space_rect.min.x, space_rect.min.y, 0.0),
+        extent_u: glam::Vec3::X * space_rect.width(),
+        extent_v: glam::Vec3::Y * space_rect.height(),
         colormapped_texture,
         texture_filter_magnification: match texture_options.magnification {
             egui::TextureFilter::Nearest => TextureFilterMag::Nearest,
@@ -122,7 +123,7 @@ pub fn render_image(
     // ------------------------------------------------------------------------
 
     let pixels_from_points = painter.ctx().pixels_per_point();
-    let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_position_on_screen);
+    let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_rect_on_screen);
     let space_from_ui = ui_from_space.inverse();
     let space_from_points = space_from_ui.scale().y;
     let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
