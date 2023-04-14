@@ -13,9 +13,9 @@ use re_renderer::{
     RenderContext,
 };
 
-use crate::misc::caches::TensorStats;
+use crate::{gpu_bridge::get_or_create_texture, misc::caches::TensorStats};
 
-use super::get_or_create_texture;
+use super::try_get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 
@@ -63,7 +63,7 @@ fn color_tensor_to_gpu(
     tensor: &Tensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    let texture_handle = get_or_create_texture(render_ctx, hash(tensor.id()), || {
+    let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         let [height, width, depth] = height_width_depth(tensor)?;
         let (data, format) = match (depth, &tensor.data) {
             // Use R8Unorm and R8Snorm to get filtering on the GPU:
@@ -161,10 +161,8 @@ fn class_id_tensor_to_gpu(
     let colormap_width = 256;
     let colormap_height = (max as usize + colormap_width - 1) / colormap_width;
 
-    let colormap_texture_handle = get_or_create_texture(
-        render_ctx,
-        hash(annotations.row_id),
-        || -> anyhow::Result<_> {
+    let colormap_texture_handle =
+        get_or_create_texture(render_ctx, hash(annotations.row_id), || {
             let data: Vec<u8> = (0..(colormap_width * colormap_height))
                 .flat_map(|id| {
                     let color = annotations
@@ -175,17 +173,16 @@ fn class_id_tensor_to_gpu(
                 })
                 .collect();
 
-            Ok(Texture2DCreationDesc {
+            Texture2DCreationDesc {
                 label: "class_id_colormap".into(),
                 data: data.into(),
                 format: TextureFormat::Rgba8UnormSrgb,
                 width: colormap_width as u32,
                 height: colormap_height as u32,
-            })
-        },
-    )?;
+            }
+        });
 
-    let main_texture_handle = get_or_create_texture(render_ctx, hash(tensor.id()), || {
+    let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })?;
 
@@ -214,7 +211,7 @@ fn depth_tensor_to_gpu(
     );
     let (min, max) = depth_tensor_range(tensor, tensor_stats)?;
 
-    let texture = get_or_create_texture(render_ctx, hash(tensor.id()), || {
+    let texture = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })?;
 
