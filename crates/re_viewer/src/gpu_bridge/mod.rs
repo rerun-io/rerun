@@ -15,7 +15,7 @@ use re_renderer::{
 
 // ----------------------------------------------------------------------------
 
-/// Errrors that can happen when supplying a tensor range to the GPU.
+/// Errors that can happen when supplying a tensor range to the GPU.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum RangeError {
     /// This is weird. Should only happen with JPEGs, and those should have been decoded already
