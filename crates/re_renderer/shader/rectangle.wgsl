@@ -121,7 +121,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
             // nearest
             sampled_value = textureLoad(texture_float, IVec2(coord + vec2(0.5)), 0);
         } else {
-            // billinear
+            // bilinear
             let v00 = textureLoad(texture_float, IVec2(coord) + IVec2(0, 0), 0);
             let v01 = textureLoad(texture_float, IVec2(coord) + IVec2(0, 1), 0);
             let v10 = textureLoad(texture_float, IVec2(coord) + IVec2(1, 0), 0);
@@ -136,7 +136,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
             // nearest
             sampled_value = Vec4(textureLoad(texture_sint, IVec2(coord + vec2(0.5)), 0));
         } else {
-            // billinear
+            // bilinear
             let v00 = Vec4(textureLoad(texture_sint, IVec2(coord) + IVec2(0, 0), 0));
             let v01 = Vec4(textureLoad(texture_sint, IVec2(coord) + IVec2(0, 1), 0));
             let v10 = Vec4(textureLoad(texture_sint, IVec2(coord) + IVec2(1, 0), 0));
@@ -151,7 +151,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
             // nearest
             sampled_value = Vec4(textureLoad(texture_uint, IVec2(coord + vec2(0.5)), 0));
         } else {
-            // billinear
+            // bilinear
             let v00 = Vec4(textureLoad(texture_uint, IVec2(coord) + IVec2(0, 0), 0));
             let v01 = Vec4(textureLoad(texture_uint, IVec2(coord) + IVec2(0, 1), 0));
             let v10 = Vec4(textureLoad(texture_uint, IVec2(coord) + IVec2(1, 0), 0));
