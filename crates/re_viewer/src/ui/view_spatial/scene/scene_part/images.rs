@@ -4,7 +4,7 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_data_store::{query_latest_single, EntityPath, EntityProperties, InstancePathHash};
+use re_data_store::{query_latest_single, EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning},
     Component, Transform,
@@ -19,7 +19,7 @@ use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{scene::scene_part::instance_path_hash_for_picking, Image, SceneSpatial},
+        view_spatial::{Image, SceneSpatial},
         Annotations, DefaultColor,
     },
 };
@@ -32,8 +32,7 @@ fn push_tensor_texture(
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
-    entity_path: &EntityPath,
-    instance_path_hash: InstancePathHash,
+    ent_path: &EntityPath,
     tensor: &Tensor,
     multiplicative_tint: egui::Rgba,
     outline_mask: OutlineMaskPreference,
@@ -42,7 +41,7 @@ fn push_tensor_texture(
 
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return; };
 
-    let debug_name = entity_path.to_string();
+    let debug_name = ent_path.to_string();
     let tensor_stats = ctx.cache.tensor_stats(tensor);
 
     match crate::misc::tensor_to_gpu::tensor_to_gpu(
@@ -68,7 +67,7 @@ fn push_tensor_texture(
             scene
                 .primitives
                 .textured_rectangles_ids
-                .push(instance_path_hash);
+                .push(ent_path.hash());
         }
         Err(err) => {
             re_log::error_once!("Failed to create texture from tensor for {debug_name:?}: {err}");
@@ -150,8 +149,8 @@ impl ImagesPart {
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
-        for (instance_key, tensor, color) in itertools::izip!(
-            entity_view.iter_instance_keys()?,
+        // Instance ids of tensors refer to entries inside the tensor.
+        for (tensor, color) in itertools::izip!(
             entity_view.iter_primary()?,
             entity_view.iter_component::<ColorRGBA>()?
         ) {
@@ -160,6 +159,17 @@ impl ImagesPart {
                 if !tensor.is_shaped_like_an_image() {
                     return Ok(());
                 }
+
+                let annotations = scene.annotation_map.find(ent_path);
+
+                // TODO(jleibs): Meter should really be its own component
+                let meter = tensor.meter;
+                scene.ui.images.push(Image {
+                    ent_path: ent_path.clone(),
+                    tensor: tensor.clone(),
+                    meter,
+                    annotations: annotations.clone(),
+                });
 
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
@@ -192,15 +202,14 @@ impl ImagesPart {
                 }
 
                 Self::process_entity_view_as_image(
-                    entity_view,
                     scene,
                     ctx,
                     ent_path,
                     world_from_obj,
                     entity_highlight,
-                    instance_key,
                     tensor,
                     color,
+                    &annotations,
                 );
             }
         }
@@ -210,57 +219,34 @@ impl ImagesPart {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_image(
-        entity_view: &EntityView<Tensor>,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         ent_path: &EntityPath,
         world_from_obj: glam::Mat4,
         entity_highlight: &SpaceViewOutlineMasks,
-        instance_key: InstanceKey,
         tensor: Tensor,
         color: Option<ColorRGBA>,
+        annotations: &Arc<Annotations>,
     ) {
         crate::profile_function!();
-
-        let instance_path_hash = instance_path_hash_for_picking(
-            ent_path,
-            instance_key,
-            entity_view,
-            entity_highlight.any_selection_highlight,
-        );
-
-        let annotations = scene.annotation_map.find(ent_path);
 
         let color = annotations.class_description(None).annotation_info().color(
             color.map(|c| c.to_array()).as_ref(),
             DefaultColor::OpaqueWhite,
         );
 
-        let outline_mask = entity_highlight.index_outline_mask(instance_path_hash.instance_key);
-
         match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
             Ok(tensor) => {
                 push_tensor_texture(
                     scene,
                     ctx,
-                    &annotations,
+                    annotations,
                     world_from_obj,
                     ent_path,
-                    instance_path_hash,
                     &tensor,
                     color.into(),
-                    outline_mask,
+                    entity_highlight.overall,
                 );
-
-                // TODO(jleibs): Meter should really be its own component
-                let meter = tensor.meter;
-
-                scene.ui.images.push(Image {
-                    instance_path_hash,
-                    tensor,
-                    meter,
-                    annotations,
-                });
             }
             Err(err) => {
                 // TODO(jleibs): Would be nice to surface these through the UI instead

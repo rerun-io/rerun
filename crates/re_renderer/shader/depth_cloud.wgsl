@@ -70,7 +70,7 @@ struct VertexOut {
     point_radius: f32,
 
     @location(4) @interpolate(flat)
-    picking_instance_id: UVec2,
+    quad_idx: u32,
 };
 
 // ---
@@ -79,7 +79,6 @@ struct PointData {
     pos_in_world: Vec3,
     unresolved_radius: f32,
     color: Vec4,
-    picking_instance_id: UVec2,
 }
 
 // Backprojects the depth texture using the intrinsics passed in the uniform buffer.
@@ -91,7 +90,6 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
 
     var data: PointData;
-    data.picking_instance_id = UVec2(texcoords);
 
     if 0.0 < world_space_depth && world_space_depth < f32max {
         // TODO(cmc): albedo textures
@@ -131,7 +129,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.point_pos_in_world = point_data.pos_in_world;
     out.point_color = point_data.color;
-    out.picking_instance_id = point_data.picking_instance_id;
+    out.quad_idx = u32(quad_idx);
 
     if 0.0 < point_data.unresolved_radius {
         // Span quad
@@ -164,7 +162,7 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
     if coverage <= 0.5 {
         discard;
     }
-    return UVec4(depth_cloud_info.picking_layer_object_id, in.picking_instance_id);
+    return UVec4(depth_cloud_info.picking_layer_object_id, in.quad_idx, 0u);
 }
 
 @fragment

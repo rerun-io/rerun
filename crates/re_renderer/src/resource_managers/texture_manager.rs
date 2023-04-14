@@ -21,6 +21,16 @@ impl GpuTexture2DHandle {
     pub fn invalid() -> Self {
         Self(None)
     }
+
+    /// Width of the texture, defaults to 1 if invalid since fallback textures are typically one pixel.
+    pub fn width(&self) -> u32 {
+        self.0.as_ref().map_or(1, |t| t.texture.width())
+    }
+
+    /// Height of the texture, defaults to 1 if invalid since fallback textures are typically one pixel.
+    pub fn height(&self) -> u32 {
+        self.0.as_ref().map_or(1, |t| t.texture.height())
+    }
 }
 
 /// Data required to create a texture 2d resource.

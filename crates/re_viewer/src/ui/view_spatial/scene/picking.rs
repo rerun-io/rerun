@@ -1,6 +1,7 @@
 //! Handles picking in 2D & 3D spaces.
 
 use re_data_store::InstancePathHash;
+use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::PickingLayerProcessor;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
@@ -9,10 +10,10 @@ use crate::{
     ui::view_spatial::eye::Eye,
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum PickingHitType {
-    /// The hit was a textured rect at the given uv coordinates (ranging from 0 to 1)
-    TexturedRect(glam::Vec2),
+    /// The hit was a textured rect.
+    TexturedRect,
 
     /// The result came from GPU based picking.
     GpuPickingResult,
@@ -217,7 +218,7 @@ fn picking_gpu(
 fn picking_textured_rects(
     context: &PickingContext,
     textured_rectangles: &[re_renderer::renderer::TexturedRect],
-    textured_rectangles_ids: &[InstancePathHash],
+    textured_rectangles_ids: &[EntityPathHash],
 ) -> Vec<PickingRayHit> {
     crate::profile_function!();
 
@@ -249,9 +250,16 @@ fn picking_textured_rects(
 
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
             hits.push(PickingRayHit {
-                instance_path_hash: *id,
+                instance_path_hash: InstancePathHash {
+                    entity_path_hash: *id,
+                    instance_key: InstanceKey::from_2d_image_coordinate(
+                        (u * rect.colormapped_texture.texture.width() as f32) as u32,
+                        (v * rect.colormapped_texture.texture.height() as f32) as u32,
+                        rect.colormapped_texture.texture.width() as u64,
+                    ),
+                },
                 space_position: intersection_world,
-                hit_type: PickingHitType::TexturedRect(glam::vec2(u, v)),
+                hit_type: PickingHitType::TexturedRect,
                 depth_offset: rect.depth_offset,
             });
         }
