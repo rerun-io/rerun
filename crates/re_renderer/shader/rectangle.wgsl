@@ -16,9 +16,6 @@ const COLOR_MAPPER_OFF      = 1u;
 const COLOR_MAPPER_FUNCTION = 2u;
 const COLOR_MAPPER_TEXTURE  = 3u;
 
-const FILTER_NEAREST = 1u;
-const FILTER_BILINEAR = 2u;
-
 struct UniformBuffer {
     /// Top left corner position in world space.
     top_left_corner_position: Vec3,
@@ -51,9 +48,6 @@ struct UniformBuffer {
     /// Exponent to raise the normalized texture value.
     /// Inverse brightness.
     gamma: f32,
-
-    minification_filter: u32,
-    magnification_filter: u32,
 };
 
 @group(1) @binding(0)
@@ -96,18 +90,6 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     return out;
 }
 
-fn is_magnifying(pixel_coord: Vec2) -> bool {
-    return fwidth(pixel_coord.x) < 1.0;
-}
-
-fn tex_filter(pixel_coord: Vec2) -> u32 {
-    if is_magnifying(pixel_coord) {
-        return rect_info.magnification_filter;
-    } else {
-        return rect_info.minification_filter;
-    }
-}
-
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sample the main texture:
@@ -116,50 +98,14 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         // TODO(emilk): support mipmaps
         sampled_value = textureSampleLevel(texture_float_filterable, texture_sampler, in.texcoord, 0.0);
     } else if rect_info.sample_type == SAMPLE_TYPE_FLOAT_NOFILTER {
-        let coord = in.texcoord * Vec2(textureDimensions(texture_float).xy);
-        if tex_filter(coord) == FILTER_NEAREST {
-            // nearest
-            sampled_value = textureLoad(texture_float, IVec2(coord + vec2(0.5)), 0);
-        } else {
-            // bilinear
-            let v00 = textureLoad(texture_float, IVec2(coord) + IVec2(0, 0), 0);
-            let v01 = textureLoad(texture_float, IVec2(coord) + IVec2(0, 1), 0);
-            let v10 = textureLoad(texture_float, IVec2(coord) + IVec2(1, 0), 0);
-            let v11 = textureLoad(texture_float, IVec2(coord) + IVec2(1, 1), 0);
-            let top = mix(v00, v10, fract(coord.x));
-            let bottom = mix(v01, v11, fract(coord.x));
-            sampled_value = mix(top, bottom, fract(coord.y));
-        }
+        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_float).xy));
+        sampled_value = Vec4(textureLoad(texture_float, icoords, 0));
     } else if rect_info.sample_type == SAMPLE_TYPE_SINT_NOFILTER {
-        let coord = in.texcoord * Vec2(textureDimensions(texture_sint).xy);
-        if tex_filter(coord) == FILTER_NEAREST {
-            // nearest
-            sampled_value = Vec4(textureLoad(texture_sint, IVec2(coord + vec2(0.5)), 0));
-        } else {
-            // bilinear
-            let v00 = Vec4(textureLoad(texture_sint, IVec2(coord) + IVec2(0, 0), 0));
-            let v01 = Vec4(textureLoad(texture_sint, IVec2(coord) + IVec2(0, 1), 0));
-            let v10 = Vec4(textureLoad(texture_sint, IVec2(coord) + IVec2(1, 0), 0));
-            let v11 = Vec4(textureLoad(texture_sint, IVec2(coord) + IVec2(1, 1), 0));
-            let top = mix(v00, v10, fract(coord.x));
-            let bottom = mix(v01, v11, fract(coord.x));
-            sampled_value = mix(top, bottom, fract(coord.y));
-        }
+        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_sint).xy));
+        sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
     } else if rect_info.sample_type == SAMPLE_TYPE_UINT_NOFILTER {
-        let coord = in.texcoord * Vec2(textureDimensions(texture_uint).xy);
-        if tex_filter(coord) == FILTER_NEAREST {
-            // nearest
-            sampled_value = Vec4(textureLoad(texture_uint, IVec2(coord + vec2(0.5)), 0));
-        } else {
-            // bilinear
-            let v00 = Vec4(textureLoad(texture_uint, IVec2(coord) + IVec2(0, 0), 0));
-            let v01 = Vec4(textureLoad(texture_uint, IVec2(coord) + IVec2(0, 1), 0));
-            let v10 = Vec4(textureLoad(texture_uint, IVec2(coord) + IVec2(1, 0), 0));
-            let v11 = Vec4(textureLoad(texture_uint, IVec2(coord) + IVec2(1, 1), 0));
-            let top = mix(v00, v10, fract(coord.x));
-            let bottom = mix(v01, v11, fract(coord.x));
-            sampled_value = mix(top, bottom, fract(coord.y));
-        }
+        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
+        sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
     } else {
         return ERROR_RGBA; // unknown sample type
     }
