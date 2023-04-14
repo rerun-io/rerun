@@ -7,6 +7,7 @@ use anyhow::Context as _;
 use clap::Subcommand;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
+#[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
 
 #[cfg(feature = "web_viewer")]
