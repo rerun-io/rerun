@@ -205,6 +205,9 @@ pub struct WebViewerServer {
 }
 
 impl WebViewerServer {
+    /// Create new [`WebViewerServer`] to host the Rerun Web Viewer on a specified port.
+    ///
+    /// A port of 0 will let the OS choose a free port.
     pub fn new(port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
         let bind_addr = format!("0.0.0.0:{port}").parse()?;
         let server = hyper::Server::try_bind(&bind_addr)
@@ -248,6 +251,7 @@ impl Drop for WebViewerServerHandle {
 
 impl WebViewerServerHandle {
     /// Create new [`WebViewerServer`] to host the Rerun Web Viewer on a specified port.
+    /// Returns a [`WebViewerServerHandle`] that will shutdown the server when dropped.
     ///
     /// A port of 0 will let the OS choose a free port.
     ///

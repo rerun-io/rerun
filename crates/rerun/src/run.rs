@@ -5,6 +5,7 @@ use re_smart_channel::Receiver;
 
 use anyhow::Context as _;
 use clap::Subcommand;
+#[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 use re_ws_comms::RerunServerPort;
 
@@ -109,12 +110,14 @@ struct Args {
     #[clap(long)]
     web_viewer: bool,
 
-    /// What port do we listen to for hosting the web viewer
+    /// What port do we listen to for hosting the web viewer over HTTP.
+    /// A port of 0 will pick a random port.
     #[cfg(feature = "web_viewer")]
     #[clap(long, default_value_t = Default::default())]
     web_viewer_port: WebViewerServerPort,
 
     /// What port do we listen to for incoming websocket connections from the viewer
+    /// A port of 0 will pick a random port.
     #[cfg(feature = "web_viewer")]
     #[clap(long, default_value_t = Default::default())]
     ws_server_port: RerunServerPort,
