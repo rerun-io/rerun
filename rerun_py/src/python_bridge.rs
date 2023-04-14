@@ -65,6 +65,10 @@ impl ThreadInfo {
         Self::with(|ti| ti.set_time(timeline, time_int));
     }
 
+    pub fn reset_thread_time() {
+        Self::with(|ti| ti.reset_time());
+    }
+
     /// Get access to the thread-local [`ThreadInfo`].
     fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
         use std::cell::RefCell;
@@ -91,6 +95,10 @@ impl ThreadInfo {
         } else {
             self.time_point.remove(&timeline);
         }
+    }
+
+    fn reset_time(&mut self) {
+        self.time_point = TimePoint::default();
     }
 }
 
@@ -155,6 +163,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
+    m.add_function(wrap_pyfunction!(reset_time, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_rigid3, m)?)?;
@@ -484,6 +493,11 @@ fn set_time_nanos(timeline: &str, ns: Option<i64>) {
         Timeline::new(timeline, TimeType::Time),
         ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
     );
+}
+
+#[pyfunction]
+fn reset_time() {
+    ThreadInfo::reset_thread_time();
 }
 
 fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
