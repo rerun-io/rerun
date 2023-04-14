@@ -32,6 +32,7 @@ pub enum RerunServerError {
 
 pub struct RerunServer {
     listener: TcpListener,
+    port: u16,
 }
 
 impl RerunServer {
@@ -43,11 +44,14 @@ impl RerunServer {
             .await
             .map_err(|e| RerunServerError::BindFailed(port, e))?;
 
+        let port = listener.local_addr()?.port();
+
         re_log::info!(
-            "Listening for websocket traffic on {bind_addr}. Connect with a web Rerun Viewer."
+            "Listening for websocket traffic on {}. Connect with a Rerun Web Viewer.",
+            listener.local_addr()?
         );
 
-        Ok(Self { listener })
+        Ok(Self { listener, port })
     }
 
     /// Accept new connections until we get a message on `shutdown_rx`
@@ -78,8 +82,8 @@ impl RerunServer {
         }
     }
 
-    pub fn server_url(&self) -> Result<String, RerunServerError> {
-        Ok(server_url("localhost", self.listener.local_addr()?.port()))
+    pub fn server_url(&self) -> String {
+        server_url("localhost", self.port)
     }
 }
 
@@ -111,7 +115,7 @@ impl RerunServerHandle {
             ws_server
         }))??;
 
-        let port = ws_server.listener.local_addr()?.port();
+        let port = ws_server.port;
 
         tokio::spawn(async move { ws_server.listen(rerun_rx, shutdown_rx).await });
 
