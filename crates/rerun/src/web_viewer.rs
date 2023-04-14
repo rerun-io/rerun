@@ -2,17 +2,17 @@ use re_log_types::LogMsg;
 use re_web_viewer_server::WebViewerServerHandle;
 use re_ws_comms::RerunServerHandle;
 
-/// A [`LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
+/// A [`crate::sink::LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
 /// * A [`RerunServer`] to relay messages from the sink to a websocket connection
 /// * A [`WebViewerServer`] to serve the Wasm+HTML
 struct WebViewerSink {
-    /// Sender to send messages to the [`RerunServer`]
+    /// Sender to send messages to the [`re_ws_comms::RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
 
-    /// Handle to keep the [`RerunServer`] alive
+    /// Handle to keep the [`re_ws_comms::RerunServer`] alive
     _rerun_server: RerunServerHandle,
 
-    /// Handle to keep the [`WebViewerServer`] alive
+    /// Handle to keep the [`re_web_viewer_server::WebViewerServer`] alive
     _webviewer_server: WebViewerServerHandle,
 }
 
