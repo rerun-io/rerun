@@ -2,10 +2,10 @@ use re_log_types::LogMsg;
 use re_web_viewer_server::WebViewerServerHandle;
 use re_ws_comms::RerunServerHandle;
 
-/// Hosts two servers:
-/// * A [`RerunServer`] to relay messages to a websocket connection
+/// A [`LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
+/// * A [`RerunServer`] to relay messages from the sink to a websocket connection
 /// * A [`WebViewerServer`] to serve the WASM+HTML
-struct RemoteViewerServer {
+struct WebViewerSink {
     /// Sender to send messages to the [`RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
 
@@ -16,7 +16,7 @@ struct RemoteViewerServer {
     _webviewer_server: WebViewerServerHandle,
 }
 
-impl RemoteViewerServer {
+impl WebViewerSink {
     pub fn new(open_browser: bool) -> anyhow::Result<Self> {
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
@@ -68,7 +68,7 @@ pub async fn host_web_viewer(
     web_server_handle.await.map_err(anyhow::Error::msg)
 }
 
-impl crate::sink::LogSink for RemoteViewerServer {
+impl crate::sink::LogSink for WebViewerSink {
     fn send(&self, msg: LogMsg) {
         if let Err(err) = self.sender.send(msg) {
             re_log::error_once!("Failed to send log message to web server: {err}");
@@ -92,5 +92,5 @@ impl crate::sink::LogSink for RemoteViewerServer {
 /// The caller needs to ensure that there is a `tokio` runtime running.
 #[must_use = "the sink must be kept around to keep the servers running"]
 pub fn new_sink(open_browser: bool) -> anyhow::Result<Box<dyn crate::sink::LogSink>> {
-    Ok(Box::new(RemoteViewerServer::new(open_browser)?))
+    Ok(Box::new(WebViewerSink::new(open_browser)?))
 }
