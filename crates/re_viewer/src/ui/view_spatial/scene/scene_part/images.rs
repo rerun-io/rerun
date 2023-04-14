@@ -45,7 +45,7 @@ fn push_tensor_texture(
     let debug_name = entity_path.to_string();
     let tensor_stats = ctx.cache.tensor_stats(tensor);
 
-    match crate::misc::tensor_to_gpu::tensor_to_gpu(
+    match crate::gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,

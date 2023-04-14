@@ -5,6 +5,7 @@
 
 mod app;
 pub mod env_vars;
+pub(crate) mod gpu_bridge;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
