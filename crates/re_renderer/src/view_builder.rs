@@ -435,7 +435,7 @@ impl ViewBuilder {
             )
         });
 
-        let first_draw = queued_draw(&CompositorDrawData::new(
+        let composition_draw = queued_draw(&CompositorDrawData::new(
             ctx,
             &main_target_resolved,
             outline_mask_processor
@@ -456,7 +456,7 @@ impl ViewBuilder {
 
         Self {
             setup,
-            queued_draws: vec![first_draw],
+            queued_draws: vec![composition_draw],
             outline_mask_processor,
             screenshot_processor: Default::default(),
             picking_processor: Default::default(),
@@ -590,7 +590,7 @@ impl ViewBuilder {
 
     /// Schedules the taking of a screenshot.
     ///
-    /// Needs to be called after [`ViewBuilder::new`] and before [`ViewBuilder::draw`].
+    /// Needs to be called before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// Data from the screenshot needs to be retrieved via [`crate::ScreenshotProcessor::next_readback_result`].
@@ -633,7 +633,7 @@ impl ViewBuilder {
 
     /// Schedules the readback of a rectangle from the picking layer.
     ///
-    /// Needs to be called after [`ViewBuilder::new`] and before [`ViewBuilder::draw`].
+    /// Needs to be called before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// The result will still be valid if the rectangle is partially or fully outside of bounds.

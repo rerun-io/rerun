@@ -133,8 +133,6 @@ pub(crate) fn view_tensor(
         });
     }
 
-    // tensor_ui(ctx, ui, state, tensor);
-
     let dimension_labels = {
         let dm = &state.slice.dim_mapping;
         [
@@ -150,13 +148,13 @@ pub(crate) fn view_tensor(
     };
 
     egui::ScrollArea::both().show(ui, |ui| {
-        if let Err(err) = fun_name(ctx, ui, state, tensor, dimension_labels) {
+        if let Err(err) = tensor_slice_ui(ctx, ui, state, tensor, dimension_labels) {
             ui.label(ctx.re_ui.error_text(err.to_string()));
         }
     });
 }
 
-fn fun_name(
+fn tensor_slice_ui(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
