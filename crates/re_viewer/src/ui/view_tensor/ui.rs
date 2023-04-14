@@ -182,8 +182,12 @@ fn paint_tensor_slice(
     crate::profile_function!();
 
     let tensor_stats = ctx.cache.tensor_stats(tensor);
-    let colormapped_texture =
-        super::gpu::colormapped_texture(ctx.render_ctx, tensor, tensor_stats, state)?;
+    let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
+        ctx.render_ctx,
+        tensor,
+        tensor_stats,
+        state,
+    )?;
     let texture = ctx
         .render_ctx
         .texture_manager_2d
@@ -212,7 +216,7 @@ fn paint_tensor_slice(
     let rect = response.rect;
     let image_rect = egui::Rect::from_min_max(rect.min + margin, rect.max);
 
-    super::gpu::paint(
+    crate::gpu_bridge::render_image(
         ctx.render_ctx,
         &painter,
         img_size,

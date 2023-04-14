@@ -2,11 +2,7 @@ use re_log_types::{
     component_types::{Tensor, TensorCastError},
     TensorDataType,
 };
-use re_renderer::{
-    renderer::{ColormappedTexture, RectangleDrawData, TextureFilterMag, TextureFilterMin},
-    resource_managers::Texture2DCreationDesc,
-    view_builder::{TargetConfiguration, ViewBuilder},
-};
+use re_renderer::{renderer::ColormappedTexture, resource_managers::Texture2DCreationDesc};
 
 use crate::misc::caches::TensorStats;
 
@@ -178,93 +174,4 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
         width: width as u32,
         height: height as u32,
     })
-}
-
-// ----------------------------------------------------------------------------
-
-pub fn paint(
-    render_ctx: &mut re_renderer::RenderContext,
-    painter: &egui::Painter,
-    slice_size: egui::Vec2,
-    image_position_on_screen: egui::Rect,
-    colormapped_texture: ColormappedTexture,
-    texture_options: egui::TextureOptions,
-) -> anyhow::Result<()> {
-    crate::profile_function!();
-
-    let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, slice_size);
-
-    let textured_rectangle = re_renderer::renderer::TexturedRect {
-        top_left_corner_position: glam::Vec3::ZERO,
-        extent_u: glam::Vec3::X * slice_size.x,
-        extent_v: glam::Vec3::Y * slice_size.y,
-        colormapped_texture,
-        texture_filter_magnification: match texture_options.magnification {
-            egui::TextureFilter::Nearest => TextureFilterMag::Nearest,
-            egui::TextureFilter::Linear => TextureFilterMag::Linear,
-        },
-        texture_filter_minification: match texture_options.minification {
-            egui::TextureFilter::Nearest => TextureFilterMin::Nearest,
-            egui::TextureFilter::Linear => TextureFilterMin::Linear,
-        },
-        multiplicative_tint: egui::Rgba::WHITE,
-        depth_offset: 0,
-        outline_mask: Default::default(),
-    };
-
-    // ------------------------------------------------------------------------
-
-    let pixels_from_points = painter.ctx().pixels_per_point();
-    let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_position_on_screen);
-    let space_from_ui = ui_from_space.inverse();
-    let space_from_points = space_from_ui.scale().y;
-    let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
-    let space_from_pixel = space_from_points * points_from_pixels;
-
-    let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
-    anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
-
-    let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
-
-    let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
-    let target_config = TargetConfiguration {
-        name: "tensor_view".into(),
-        resolution_in_pixel,
-        view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
-        projection_from_view: re_renderer::view_builder::Projection::Orthographic {
-            camera_mode: re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
-            vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,
-            far_plane_distance: 1000.0,
-        },
-        pixels_from_point: pixels_from_points,
-        auto_size_config: Default::default(),
-        outline_config: None,
-    };
-
-    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
-    let mut view_builder = ViewBuilder::default();
-    view_builder.setup_view(render_ctx, target_config)?;
-
-    view_builder.queue_draw(&RectangleDrawData::new(render_ctx, &[textured_rectangle])?);
-
-    let command_buffer = view_builder.draw(render_ctx, re_renderer::Rgba::TRANSPARENT)?;
-
-    painter.add(
-        crate::ui::view_spatial::ui_renderer_bridge::renderer_paint_callback(
-            render_ctx,
-            command_buffer,
-            view_builder,
-            painter.clip_rect(),
-            painter.ctx().pixels_per_point(),
-        ),
-    );
-
-    Ok(())
-}
-
-fn get_viewport(clip_rect: egui::Rect, pixels_from_point: f32) -> [u32; 2] {
-    let min = (clip_rect.min.to_vec2() * pixels_from_point).round();
-    let max = (clip_rect.max.to_vec2() * pixels_from_point).round();
-    let resolution = max - min;
-    [resolution.x as u32, resolution.y as u32]
 }

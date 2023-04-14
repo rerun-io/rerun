@@ -11,13 +11,12 @@ use re_renderer::{
 };
 
 use crate::{
+    gpu_bridge,
     misc::{HoveredSpace, Item, SpaceViewHighlights},
     ui::{
         view_spatial::{
             ui::{create_labels, outline_config, picking, screenshot_context_menu},
-            ui_renderer_bridge::{
-                fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
-            },
+            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
             SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
         },
         SpaceViewId,
@@ -315,7 +314,8 @@ pub fn view_3d(
     }
 
     // Determine view port resolution and position.
-    let resolution_in_pixel = get_viewport(rect, ui.ctx().pixels_per_point());
+    let resolution_in_pixel =
+        gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
         return;
     }
@@ -508,7 +508,7 @@ pub fn view_3d(
             return;
         }
     };
-    ui.painter().add(renderer_paint_callback(
+    ui.painter().add(gpu_bridge::renderer_paint_callback(
         ctx.render_ctx,
         command_buffer,
         view_builder,

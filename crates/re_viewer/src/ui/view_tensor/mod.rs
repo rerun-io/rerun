@@ -1,4 +1,4 @@
-mod gpu;
+mod tensor_slice_to_gpu;
 
 mod scene;
 pub(crate) use self::scene::SceneTensor;
