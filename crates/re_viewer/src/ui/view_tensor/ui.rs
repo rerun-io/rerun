@@ -349,32 +349,29 @@ impl TextureSettings {
         });
         ui.end_row();
 
-        // TODO(#1612): support texture filtering again
-        if false {
-            re_ui
-                .grid_left_hand_label(ui, "Filtering")
-                .on_hover_text("Filtering to use when magnifying");
+        re_ui
+            .grid_left_hand_label(ui, "Filtering")
+            .on_hover_text("Filtering to use when magnifying");
 
-            fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
-                match tf {
-                    egui::TextureFilter::Nearest => "Nearest",
-                    egui::TextureFilter::Linear => "Linear",
-                }
+        fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
+            match tf {
+                egui::TextureFilter::Nearest => "Nearest",
+                egui::TextureFilter::Linear => "Linear",
             }
-            egui::ComboBox::from_id_source("texture_filter")
-                .selected_text(tf_to_string(options.magnification))
-                .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
-
-                    let mut selectable_value = |ui: &mut egui::Ui, e| {
-                        ui.selectable_value(&mut options.magnification, e, tf_to_string(e))
-                    };
-                    selectable_value(ui, egui::TextureFilter::Linear);
-                    selectable_value(ui, egui::TextureFilter::Nearest);
-                });
-            ui.end_row();
         }
+        egui::ComboBox::from_id_source("texture_filter")
+            .selected_text(tf_to_string(options.magnification))
+            .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.set_min_width(64.0);
+
+                let mut selectable_value = |ui: &mut egui::Ui, e| {
+                    ui.selectable_value(&mut options.magnification, e, tf_to_string(e))
+                };
+                selectable_value(ui, egui::TextureFilter::Nearest);
+                selectable_value(ui, egui::TextureFilter::Linear);
+            });
+        ui.end_row();
     }
 }
 
