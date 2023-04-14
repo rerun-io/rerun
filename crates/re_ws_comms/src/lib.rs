@@ -12,7 +12,7 @@ pub use client::Connection;
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
-pub use server::Server;
+pub use server::{RerunServer, RerunServerHandle};
 
 use re_log_types::LogMsg;
 
@@ -26,8 +26,8 @@ pub const PROTOCOL: &str = "wss";
 #[cfg(not(feature = "tls"))]
 pub const PROTOCOL: &str = "ws";
 
-pub fn default_server_url(hostname: &str) -> String {
-    format!("{PROTOCOL}://{hostname}:{DEFAULT_WS_SERVER_PORT}")
+pub fn server_url(hostname: &str, port: u16) -> String {
+    format!("{PROTOCOL}://{hostname}:{port}")
 }
 
 const PREFIX: [u8; 4] = *b"RR00";

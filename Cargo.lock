@@ -4226,6 +4226,7 @@ dependencies = [
  "re_analytics",
  "re_build_web_viewer",
  "re_log",
+ "thiserror",
  "tokio",
 ]
 
@@ -4243,6 +4244,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_smart_channel",
+ "thiserror",
  "tokio",
  "tokio-tungstenite",
  "tungstenite",
@@ -4356,6 +4358,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_web_viewer_server",
  "rerun",
  "thiserror",
  "tokio",

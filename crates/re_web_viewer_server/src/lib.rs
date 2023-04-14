@@ -12,6 +12,8 @@ use std::task::{Context, Poll};
 use futures_util::future;
 use hyper::{server::conn::AddrIncoming, service::Service, Body, Request, Response};
 
+pub const DEFAULT_WEB_VIEWER_PORT: u16 = 9090;
+
 #[cfg(not(feature = "__ci"))]
 mod data {
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
@@ -30,6 +32,18 @@ mod data {
 
     #[cfg(not(debug_assertions))]
     pub const VIEWER_WASM_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum WebViewerServerError {
+    #[error("Could not parse address: {0}")]
+    AddrParseFailed(#[from] std::net::AddrParseError),
+    #[error("failed to bind to port {0}: {1}")]
+    BindFailed(u16, hyper::Error),
+    #[error("failed to join web viewer server task: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
+    #[error("failed to serve web viewer: {0}")]
+    ServeFailed(hyper::Error),
 }
 
 struct Svc {
@@ -149,27 +163,72 @@ impl<T> Service<T> for MakeSvc {
 
 // ----------------------------------------------------------------------------
 
-/// Hosts the Web Viewer Wasm+HTML
+/// HTTP host for the Rerun Web Viewer application
+/// This serves the HTTP+WASM+JS files that make up the web-viewer.
 pub struct WebViewerServer {
     server: hyper::Server<AddrIncoming, MakeSvc>,
 }
 
 impl WebViewerServer {
-    pub fn new(port: u16) -> Self {
-        let bind_addr = format!("0.0.0.0:{port}").parse().unwrap();
-        let server = hyper::Server::bind(&bind_addr).serve(MakeSvc);
-        Self { server }
+    pub fn new(port: u16) -> Result<Self, WebViewerServerError> {
+        let bind_addr = format!("0.0.0.0:{port}").parse()?;
+        let server = hyper::Server::try_bind(&bind_addr)
+            .map_err(|e| WebViewerServerError::BindFailed(port, e))?
+            .serve(MakeSvc);
+        Ok(Self { server })
     }
 
     pub async fn serve(
         self,
         mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), WebViewerServerError> {
         self.server
             .with_graceful_shutdown(async {
                 shutdown_rx.recv().await.ok();
             })
-            .await?;
+            .await
+            .map_err(WebViewerServerError::ServeFailed)?;
         Ok(())
+    }
+}
+
+/// Sync handle for the [`WebViewerServer`]
+///
+/// When dropped, the server will be shut down.
+pub struct WebViewerServerHandle {
+    port: u16,
+    shutdown_tx: tokio::sync::broadcast::Sender<()>,
+}
+
+impl Drop for WebViewerServerHandle {
+    fn drop(&mut self) {
+        re_log::info!("Shutting down web server on port {}.", self.port);
+        self.shutdown_tx.send(()).ok();
+    }
+}
+
+impl WebViewerServerHandle {
+    /// Create new [`WebViewerServer`] to host the Rerun Web Viewer on a specified port.
+    ///
+    /// A port of 0 will let the OS choose a free port.
+    ///
+    /// The caller needs to ensure that there is a `tokio` runtime running.
+    pub fn new(requested_port: u16) -> Result<Self, WebViewerServerError> {
+        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
+
+        let web_server = WebViewerServer::new(requested_port)?;
+
+        let port = web_server.server.local_addr().port();
+
+        tokio::spawn(async move { web_server.serve(shutdown_rx).await });
+
+        re_log::info!("Started web server on port {}.", port);
+
+        Ok(Self { port, shutdown_tx })
+    }
+
+    /// Get the port where the web assets are hosted
+    pub fn port(&self) -> u16 {
+        self.port
     }
 }

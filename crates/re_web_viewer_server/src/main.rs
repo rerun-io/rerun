@@ -16,6 +16,7 @@ async fn main() {
     .expect("Error setting Ctrl-C handler");
 
     re_web_viewer_server::WebViewerServer::new(port)
+        .expect("Could not create web server")
         .serve(shutdown_rx)
         .await
         .unwrap();

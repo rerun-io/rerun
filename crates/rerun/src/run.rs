@@ -303,8 +303,15 @@ async fn run_impl(
                 if args.web_viewer {
                     #[cfg(feature = "web_viewer")]
                     {
-                        let web_viewer =
-                            host_web_viewer(true, rerun_server_ws_url, shutdown_rx.resubscribe());
+                        let web_port = re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT;
+                        let web_viewer = host_web_viewer(
+                            web_port,
+                            true,
+                            rerun_server_ws_url,
+                            shutdown_rx.resubscribe(),
+                        );
+                        // We return here because the running [`WebViewerServer`] is all we need.
+                        // The page we open will be pointed at a websocket url hosted by a *different* server.
                         return web_viewer.await;
                     }
                     #[cfg(not(feature = "web_viewer"))]
@@ -369,17 +376,23 @@ async fn run_impl(
             let shutdown_web_viewer = shutdown_rx.resubscribe();
 
             // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
+            let ws_server =
+                re_ws_comms::RerunServer::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
             let ws_server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
-            let ws_server_url = re_ws_comms::default_server_url("127.0.0.1");
+            let ws_server_url =
+                re_ws_comms::server_url("127.0.0.1", re_ws_comms::DEFAULT_WS_SERVER_PORT);
 
             // This is the server that serves the Wasm+HTML:
-            let web_server_handle =
-                tokio::spawn(host_web_viewer(true, ws_server_url, shutdown_web_viewer));
+            let web_server_handle = tokio::spawn(host_web_viewer(
+                re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT,
+                true,
+                ws_server_url,
+                shutdown_web_viewer,
+            ));
 
             // Wait for both servers to shutdown.
             web_server_handle.await?.ok();
-            return ws_server_handle.await?;
+            return ws_server_handle.await?.map_err(anyhow::Error::from);
         }
 
         #[cfg(not(feature = "web_viewer"))]

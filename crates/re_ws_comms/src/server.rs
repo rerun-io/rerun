@@ -16,22 +16,32 @@ use tokio_tungstenite::{accept_async, tungstenite::Error};
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
+use crate::server_url;
+
 // ----------------------------------------------------------------------------
 
-pub struct Server {
+#[derive(thiserror::Error, Debug)]
+pub enum RerunServerError {
+    #[error("failed to bind to port {0}: {1}")]
+    BindFailed(u16, std::io::Error),
+    #[error("failed to join web viewer server task: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
+    #[error("tokio error: {0}")]
+    TokioIoError(#[from] tokio::io::Error),
+}
+
+pub struct RerunServer {
     listener: TcpListener,
 }
 
-impl Server {
+impl RerunServer {
     /// Start a pub-sub server listening on the given port
-    pub async fn new(port: u16) -> anyhow::Result<Self> {
-        use anyhow::Context as _;
-
+    pub async fn new(port: u16) -> Result<Self, RerunServerError> {
         let bind_addr = format!("0.0.0.0:{port}");
 
         let listener = TcpListener::bind(&bind_addr)
             .await
-            .with_context(|| format!("Can't listen on {bind_addr:?}"))?;
+            .map_err(|e| RerunServerError::BindError(port, e))?;
 
         re_log::info!(
             "Listening for websocket traffic on {bind_addr}. Connect with a web Rerun Viewer."
@@ -45,9 +55,7 @@ impl Server {
         self,
         rx: Receiver<LogMsg>,
         mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-    ) -> anyhow::Result<()> {
-        use anyhow::Context as _;
-
+    ) -> Result<(), RerunServerError> {
         let history = Arc::new(Mutex::new(Vec::new()));
 
         let log_stream = to_broadcast_stream(rx, history.clone());
@@ -60,9 +68,7 @@ impl Server {
                 }
             };
 
-            let peer = tcp_stream
-                .peer_addr()
-                .context("connected streams should have a peer address")?;
+            let peer = tcp_stream.peer_addr()?;
             tokio::spawn(accept_connection(
                 log_stream.clone(),
                 peer,
@@ -70,6 +76,51 @@ impl Server {
                 history.clone(),
             ));
         }
+    }
+}
+
+pub struct RerunServerHandle {
+    port: u16,
+    shutdown_tx: tokio::sync::broadcast::Sender<()>,
+}
+
+impl Drop for RerunServerHandle {
+    fn drop(&mut self) {
+        re_log::info!("Shutting down Rerun server on port {}.", self.port);
+        self.shutdown_tx.send(()).ok();
+    }
+}
+
+impl RerunServerHandle {
+    /// Create new [`RerunServer`] to relay [`LogMsg`]s to a web viewer.
+    ///
+    /// A port of 0 will let the OS choose a free port.
+    ///
+    /// The caller needs to ensure that there is a `tokio` runtime running.
+    pub fn new(rerun_rx: Receiver<LogMsg>, requested_port: u16) -> Result<Self, RerunServerError> {
+        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
+
+        let rt = tokio::runtime::Handle::current();
+
+        let ws_server = rt.block_on(tokio::spawn(async move {
+            let ws_server = RerunServer::new(requested_port).await;
+            ws_server
+        }))??;
+
+        let port = ws_server.listener.local_addr()?.port();
+
+        tokio::spawn(async move { ws_server.listen(rerun_rx, shutdown_rx).await });
+
+        Ok(Self { port, shutdown_tx })
+    }
+
+    /// Get the port where the web assets are hosted
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
+    pub fn server_url(&self) -> String {
+        server_url("localhost", self.port)
     }
 }
 

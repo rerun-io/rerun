@@ -142,7 +142,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
-    m.add_function(wrap_pyfunction!(self_host_assets, m)?)?;
+    m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
@@ -324,7 +324,10 @@ fn serve(open_browser: bool) -> PyResult<()> {
 
         let _guard = enter_tokio_runtime();
 
-        session.set_sink(rerun::web_viewer::new_sink(open_browser));
+        session.set_sink(
+            rerun::web_viewer::new_sink(open_browser)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+        );
 
         Ok(())
     }
@@ -339,11 +342,11 @@ fn serve(open_browser: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn self_host_assets(port: Option<u16>) -> PyResult<()> {
+fn start_web_viewer_server(port: u16) -> PyResult<()> {
     let mut session = python_session();
     let _guard = enter_tokio_runtime();
     session
-        .self_host_assets(port)
+        .start_web_viewer_server(port)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 

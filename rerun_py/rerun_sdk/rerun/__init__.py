@@ -362,21 +362,21 @@ def serve(open_browser: bool = True) -> None:
     bindings.serve(open_browser)
 
 
-def self_host_assets(port: int = 9090) -> None:
+def start_web_viewer_server(port: int = 0) -> None:
     """
     Self-host the rerun web-viewer assets on a specified port.
 
     Parameters
     ----------
     port
-        Port to serve assets on. Pass None to disable. (Defaults to 9090)
+        Port to serve assets on. Defaults to 0 (random port).
     """
 
     if not bindings.is_enabled():
         print("Rerun is disabled - self_host_assets() call ignored")
         return
 
-    bindings.self_host_assets(port)
+    bindings.start_web_viewer_server(port)
 
 
 def disconnect() -> None:
