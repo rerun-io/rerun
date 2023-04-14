@@ -25,7 +25,10 @@ pub struct RerunServer {
 }
 
 impl RerunServer {
-    /// Start a pub-sub server listening on the given port
+    /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
+    /// The websocket will be available at `port`.
+    ///
+    /// A port of 0 will let the OS choose a free port.
     pub async fn new(port: RerunServerPort) -> Result<Self, RerunServerError> {
         let bind_addr = format!("0.0.0.0:{port}");
 
@@ -92,7 +95,8 @@ impl Drop for RerunServerHandle {
 }
 
 impl RerunServerHandle {
-    /// Create new [`RerunServer`] to relay [`LogMsg`]s to a web viewer.
+    /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
+    /// Returns a [`RerunServerHandle`] that will shutdown the server when dropped.
     ///
     /// A port of 0 will let the OS choose a free port.
     ///
