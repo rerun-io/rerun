@@ -110,28 +110,25 @@ impl RenderDepthClouds {
             builder.to_draw_data(re_ctx).unwrap()
         };
 
-        let mut view_builder = ViewBuilder::default();
-        view_builder
-            .setup_view(
-                re_ctx,
-                view_builder::TargetConfiguration {
-                    name: "Point Cloud".into(),
-                    resolution_in_pixel,
-                    view_from_world: IsoTransform::look_at_rh(
-                        self.camera_position,
-                        Vec3::ZERO,
-                        Vec3::Y,
-                    )
-                    .unwrap(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
-                    pixels_from_point,
-                    ..Default::default()
+        let mut view_builder = ViewBuilder::new(
+            re_ctx,
+            view_builder::TargetConfiguration {
+                name: "Point Cloud".into(),
+                resolution_in_pixel,
+                view_from_world: IsoTransform::look_at_rh(
+                    self.camera_position,
+                    Vec3::ZERO,
+                    Vec3::Y,
+                )
+                .unwrap(),
+                projection_from_view: Projection::Perspective {
+                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                    near_plane_distance: 0.01,
                 },
-            )
-            .unwrap();
+                pixels_from_point,
+                ..Default::default()
+            },
+        );
 
         let command_buffer = view_builder
             .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
@@ -191,28 +188,25 @@ impl RenderDepthClouds {
         )
         .unwrap();
 
-        let mut view_builder = ViewBuilder::default();
-        view_builder
-            .setup_view(
-                re_ctx,
-                view_builder::TargetConfiguration {
-                    name: "Depth Cloud".into(),
-                    resolution_in_pixel,
-                    view_from_world: IsoTransform::look_at_rh(
-                        self.camera_position,
-                        Vec3::ZERO,
-                        Vec3::Y,
-                    )
-                    .unwrap(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
-                    pixels_from_point,
-                    ..Default::default()
+        let mut view_builder = ViewBuilder::new(
+            re_ctx,
+            view_builder::TargetConfiguration {
+                name: "Depth Cloud".into(),
+                resolution_in_pixel,
+                view_from_world: IsoTransform::look_at_rh(
+                    self.camera_position,
+                    Vec3::ZERO,
+                    Vec3::Y,
+                )
+                .unwrap(),
+                projection_from_view: Projection::Perspective {
+                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                    near_plane_distance: 0.01,
                 },
-            )
-            .unwrap();
+                pixels_from_point,
+                ..Default::default()
+            },
+        );
 
         let command_buffer = view_builder
             .queue_draw(&GenericSkyboxDrawData::new(re_ctx))

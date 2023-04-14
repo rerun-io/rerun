@@ -1,3 +1,5 @@
+//! Upload [`Tensor`] to [`re_renderer`].
+
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
@@ -7,11 +9,13 @@ use wgpu::TextureFormat;
 use re_log_types::component_types::{Tensor, TensorData};
 use re_renderer::{
     renderer::{ColorMapper, ColormappedTexture},
-    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
+    resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
 
-use super::caches::TensorStats;
+use crate::misc::caches::TensorStats;
+
+use super::get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 
@@ -104,12 +108,7 @@ fn color_tensor_to_gpu(
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
     } else {
-        // For instance: 16-bit images.
-        // TODO(emilk): consider assuming [0-1] range for all float tensors.
-        let (min, max) = tensor_stats
-            .range
-            .ok_or_else(|| anyhow::anyhow!("missing tensor range. compressed?"))?;
-        [min as f32, max as f32]
+        crate::gpu_bridge::range(tensor_stats)?
     };
 
     let color_mapper = if texture_format.describe().components == 1 {
@@ -380,18 +379,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
         width,
         height,
     })
-}
-
-pub fn get_or_create_texture<'a, Err>(
-    render_ctx: &mut RenderContext,
-    texture_key: u64,
-    try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
-) -> Result<GpuTexture2DHandle, Err> {
-    render_ctx.texture_manager_2d.get_or_create_with(
-        texture_key,
-        &mut render_ctx.gpu_resources.textures,
-        try_create_texture_desc,
-    )
 }
 
 fn cast_slice_to_cow<From: Pod>(slice: &[From]) -> Cow<'_, [u8]> {

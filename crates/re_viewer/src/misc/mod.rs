@@ -6,7 +6,6 @@ pub(crate) mod mesh_loader;
 pub mod queries;
 mod selection_state;
 pub(crate) mod space_info;
-pub mod tensor_to_gpu;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
 mod transform_cache;

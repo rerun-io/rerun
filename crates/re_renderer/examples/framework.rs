@@ -288,14 +288,11 @@ impl<E: Example + 'static> Application<E> {
                             });
 
                         for draw_result in &draw_results {
-                            draw_result
-                                .view_builder
-                                .composite(
-                                    &self.re_ctx,
-                                    &mut composite_pass,
-                                    draw_result.target_location,
-                                )
-                                .expect("Failed to composite view main surface");
+                            draw_result.view_builder.composite(
+                                &self.re_ctx,
+                                &mut composite_pass,
+                                draw_result.target_location,
+                            );
                         }
                     };
 

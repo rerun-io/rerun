@@ -270,7 +270,7 @@ def lint_file(filepath: str, args: Any) -> int:
         errors, lines_out = lint_vertical_spacing(lines_in)
 
         for error in errors:
-            print(f"{filepath}{error}")
+            print(f"{filepath}:{error}")
 
         if args.fix and lines_in != lines_out:
             with open(filepath, "w") as f:

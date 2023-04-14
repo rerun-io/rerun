@@ -118,33 +118,29 @@ impl framework::Example for Picking {
             }
         }
 
-        let mut view_builder = ViewBuilder::default();
-
         // TODO(#1426): unify camera logic between examples.
         let camera_position = glam::vec3(1.0, 3.5, 7.0);
 
-        view_builder
-            .setup_view(
-                re_ctx,
-                TargetConfiguration {
-                    name: "OutlinesDemo".into(),
-                    resolution_in_pixel: resolution,
-                    view_from_world: macaw::IsoTransform::look_at_rh(
-                        camera_position,
-                        glam::Vec3::ZERO,
-                        glam::Vec3::Y,
-                    )
-                    .unwrap(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
-                    pixels_from_point,
-                    outline_config: None,
-                    ..Default::default()
+        let mut view_builder = ViewBuilder::new(
+            re_ctx,
+            TargetConfiguration {
+                name: "OutlinesDemo".into(),
+                resolution_in_pixel: resolution,
+                view_from_world: macaw::IsoTransform::look_at_rh(
+                    camera_position,
+                    glam::Vec3::ZERO,
+                    glam::Vec3::Y,
+                )
+                .unwrap(),
+                projection_from_view: Projection::Perspective {
+                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                    near_plane_distance: 0.01,
                 },
-            )
-            .unwrap();
+                pixels_from_point,
+                outline_config: None,
+                ..Default::default()
+            },
+        );
 
         // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
         // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
