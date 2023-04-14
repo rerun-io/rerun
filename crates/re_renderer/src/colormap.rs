@@ -13,11 +13,11 @@ pub enum Colormap {
     /// Perceptually even
     #[default]
     Grayscale = 1,
-    Inferno = 6,
-    Magma = 5,
+    Inferno = 2,
+    Magma = 3,
     Plasma = 4,
-    Turbo = 2,
-    Viridis = 3,
+    Turbo = 5,
+    Viridis = 6,
 }
 
 impl Colormap {
