@@ -67,7 +67,7 @@ struct Args {
     #[clap(long, default_value_t = true)]
     persist_state: bool,
 
-    /// What TCP port do we listen to (for SDK:s to connect to)?
+    /// What TCP port do we listen to (for SDKs to connect to)?
     #[cfg(feature = "server")]
     #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
     port: u16,
@@ -106,6 +106,16 @@ struct Args {
     /// Requires Rerun to have been compiled with the 'web_viewer' feature.
     #[clap(long)]
     web_viewer: bool,
+
+    /// What port do we listen to for hosting the web viewer
+    #[cfg(feature = "web_viewer")]
+    #[clap(long, default_value_t = re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT)]
+    web_viewer_port: u16,
+
+    /// What port do we listen to for incoming websocket connections from the viewer
+    #[cfg(feature = "web_viewer")]
+    #[clap(long, default_value_t = re_ws_comms::DEFAULT_WS_SERVER_PORT)]
+    ws_server_port: u16,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -303,9 +313,8 @@ async fn run_impl(
                 if args.web_viewer {
                     #[cfg(feature = "web_viewer")]
                     {
-                        let web_port = re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT;
                         let web_viewer = host_web_viewer(
-                            web_port,
+                            args.web_viewer_port,
                             true,
                             rerun_server_ws_url,
                             shutdown_rx.resubscribe(),
@@ -363,7 +372,9 @@ async fn run_impl(
         #[cfg(feature = "web_viewer")]
         {
             #[cfg(feature = "server")]
-            if args.url_or_path.is_none() && args.port == re_ws_comms::DEFAULT_WS_SERVER_PORT {
+            if args.url_or_path.is_none()
+                && (args.port == args.web_viewer_port || args.port == args.ws_server_port)
+            {
                 anyhow::bail!(
                     "Trying to spawn a websocket server on {}, but this port is \
                 already used by the server we're connecting to. Please specify a different port.",
@@ -376,15 +387,13 @@ async fn run_impl(
             let shutdown_web_viewer = shutdown_rx.resubscribe();
 
             // This is the server which the web viewer will talk to:
-            let ws_server =
-                re_ws_comms::RerunServer::new(re_ws_comms::DEFAULT_WS_SERVER_PORT).await?;
+            let ws_server = re_ws_comms::RerunServer::new(args.ws_server_port).await?;
+            let ws_server_url = ws_server.server_url()?;
             let ws_server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
-            let ws_server_url =
-                re_ws_comms::server_url("127.0.0.1", re_ws_comms::DEFAULT_WS_SERVER_PORT);
 
             // This is the server that serves the Wasm+HTML:
             let web_server_handle = tokio::spawn(host_web_viewer(
-                re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT,
+                args.web_viewer_port,
                 true,
                 ws_server_url,
                 shutdown_web_viewer,

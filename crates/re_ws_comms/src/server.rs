@@ -77,6 +77,10 @@ impl RerunServer {
             ));
         }
     }
+
+    pub fn server_url(&self) -> Result<String, RerunServerError> {
+        Ok(server_url("localhost", self.listener.local_addr()?.port()))
+    }
 }
 
 pub struct RerunServerHandle {

@@ -190,6 +190,10 @@ impl WebViewerServer {
             .map_err(WebViewerServerError::ServeFailed)?;
         Ok(())
     }
+
+    pub fn port(&self) -> u16 {
+        self.server.local_addr().port()
+    }
 }
 
 /// Sync handle for the [`WebViewerServer`]

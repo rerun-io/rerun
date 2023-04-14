@@ -312,7 +312,7 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-fn serve(open_browser: bool) -> PyResult<()> {
+fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
         let mut session = python_session();
@@ -325,8 +325,12 @@ fn serve(open_browser: bool) -> PyResult<()> {
         let _guard = enter_tokio_runtime();
 
         session.set_sink(
-            rerun::web_viewer::new_sink(open_browser)
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            rerun::web_viewer::new_sink(
+                open_browser,
+                web_port.unwrap_or(re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT),
+                ws_port.unwrap_or(re_ws_comms::DEFAULT_WS_SERVER_PORT),
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
         );
 
         Ok(())

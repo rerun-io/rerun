@@ -103,7 +103,11 @@ impl RerunArgs {
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
                 let open_browser = true;
-                crate::web_viewer::new_sink(open_browser)?
+                crate::web_viewer::new_sink(
+                    open_browser,
+                    re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT,
+                    re_ws_comms::DEFAULT_WS_SERVER_PORT,
+                )?
             }
 
             #[cfg(feature = "native_viewer")]
