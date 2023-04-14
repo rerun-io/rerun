@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 Open the notebook
 ```
-jupyyter notebook cube.ipynb
+jupyter notebook cube.ipynb
 ```
 
 Follow along in the browser that opens.
