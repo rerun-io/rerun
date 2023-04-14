@@ -108,12 +108,7 @@ fn color_tensor_to_gpu(
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
     } else {
-        // For instance: 16-bit images.
-        // TODO(emilk): consider assuming [0-1] range for all float tensors.
-        let (min, max) = tensor_stats
-            .range
-            .ok_or_else(|| anyhow::anyhow!("missing tensor range. compressed?"))?;
-        [min as f32, max as f32]
+        crate::gpu_bridge::range(tensor_stats)?
     };
 
     let color_mapper = if texture_format.describe().components == 1 {

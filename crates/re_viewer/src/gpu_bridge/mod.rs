@@ -13,6 +13,38 @@ use re_renderer::{
     RenderContext, ViewBuilder,
 };
 
+// ----------------------------------------------------------------------------
+
+/// Errrors that can happen when supplying a tensor range to the GPU.
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum RangeError {
+    /// This is weird. Should only happen with JPEGs, and those should have been decoded already
+    #[error("Missing a range.")]
+    MissingRange,
+
+    #[error("Non-finite range of values")]
+    NonfiniteRange,
+}
+
+/// Get a valid, finite range for the gpu to use.
+pub fn range(tensor_stats: &crate::misc::caches::TensorStats) -> Result<[f32; 2], RangeError> {
+    let (min, max) = tensor_stats.range.ok_or(RangeError::MissingRange)?;
+
+    let min = min as f32;
+    let max = max as f32;
+
+    if !min.is_finite() || !max.is_finite() {
+        Err(RangeError::NonfiniteRange)
+    } else if min == max {
+        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
+        Ok([min - 1.0, max + 1.0])
+    } else {
+        Ok([min, max])
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_from_point: f32) -> [u32; 2] {
     let min = (clip_rect.min.to_vec2() * pixels_from_point).round();
     let max = (clip_rect.max.to_vec2() * pixels_from_point).round();

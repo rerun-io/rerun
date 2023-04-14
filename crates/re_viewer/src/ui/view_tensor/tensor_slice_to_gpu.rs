@@ -4,7 +4,10 @@ use re_log_types::{
 };
 use re_renderer::{renderer::ColormappedTexture, resource_managers::Texture2DCreationDesc};
 
-use crate::misc::caches::TensorStats;
+use crate::{
+    gpu_bridge::{range, RangeError},
+    misc::caches::TensorStats,
+};
 
 use super::{
     ui::{selected_tensor_slice, SliceSelection},
@@ -19,12 +22,8 @@ pub enum TensorUploadError {
     #[error("Expected a 2D slice")]
     Not2D,
 
-    /// This is weird. Should only happen with JPEGs, and those should have been decoded already
-    #[error("Missing a range.")]
-    MissingRange,
-
-    #[error("Non-finite range of values")]
-    NonfiniteRange,
+    #[error(transparent)]
+    RangeError(#[from] RangeError),
 }
 
 pub fn colormapped_texture(
@@ -35,32 +34,19 @@ pub fn colormapped_texture(
 ) -> Result<ColormappedTexture, TensorUploadError> {
     crate::profile_function!();
 
-    let (min, max) = range(tensor_stats)?;
+    let range = range(tensor_stats)?;
     let texture = upload_texture_slice_to_gpu(render_ctx, tensor, state.slice())?;
 
     let color_mapping = state.color_mapping();
 
     Ok(ColormappedTexture {
         texture,
-        range: [min as f32, max as f32],
+        range,
         gamma: color_mapping.gamma,
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(
             color_mapping.map,
         )),
     })
-}
-
-fn range(tensor_stats: &TensorStats) -> Result<(f64, f64), TensorUploadError> {
-    let (min, max) = tensor_stats.range.ok_or(TensorUploadError::MissingRange)?;
-
-    if !min.is_finite() || !max.is_finite() {
-        Err(TensorUploadError::NonfiniteRange)
-    } else if min == max {
-        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        Ok((min - 1.0, max + 1.0))
-    } else {
-        Ok((min, max))
-    }
 }
 
 fn upload_texture_slice_to_gpu(
