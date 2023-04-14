@@ -6,7 +6,7 @@
 //! In the future thing will be changed to a protocol where the clients can query
 //! for specific data based on e.g. time.
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{fmt::Display, net::SocketAddr, str::FromStr, sync::Arc};
 
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
@@ -16,14 +16,14 @@ use tokio_tungstenite::{accept_async, tungstenite::Error};
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
-use crate::server_url;
+use crate::{server_url, DEFAULT_WS_SERVER_PORT};
 
 // ----------------------------------------------------------------------------
 
 #[derive(thiserror::Error, Debug)]
 pub enum RerunServerError {
     #[error("failed to bind to port {0}: {1}")]
-    BindFailed(u16, std::io::Error),
+    BindFailed(RerunServerPort, std::io::Error),
 
     #[error("failed to join web viewer server task: {0}")]
     JoinError(#[from] tokio::task::JoinError),
@@ -32,22 +32,50 @@ pub enum RerunServerError {
     TokioIoError(#[from] tokio::io::Error),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Typed port for use with [`RerunServer`]
+pub struct RerunServerPort(pub u16);
+
+impl Default for RerunServerPort {
+    fn default() -> Self {
+        Self(DEFAULT_WS_SERVER_PORT)
+    }
+}
+
+impl Display for RerunServerPort {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+// Needed for clap
+impl FromStr for RerunServerPort {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.parse::<u16>() {
+            Ok(port) => Ok(RerunServerPort(port)),
+            Err(e) => Err(format!("Failed to parse port: {e}")),
+        }
+    }
+}
+
 /// Websocket host for relaying [`LogMsg`]s to a web viewer.
 pub struct RerunServer {
     listener: TcpListener,
-    port: u16,
+    port: RerunServerPort,
 }
 
 impl RerunServer {
     /// Start a pub-sub server listening on the given port
-    pub async fn new(port: u16) -> Result<Self, RerunServerError> {
+    pub async fn new(port: RerunServerPort) -> Result<Self, RerunServerError> {
         let bind_addr = format!("0.0.0.0:{port}");
 
         let listener = TcpListener::bind(&bind_addr)
             .await
             .map_err(|e| RerunServerError::BindFailed(port, e))?;
 
-        let port = listener.local_addr()?.port();
+        let port = RerunServerPort(listener.local_addr()?.port());
 
         re_log::info!(
             "Listening for websocket traffic on {}. Connect with a Rerun Web Viewer.",
@@ -94,7 +122,7 @@ impl RerunServer {
 ///
 /// When dropped, the server will be shut down.
 pub struct RerunServerHandle {
-    port: u16,
+    port: RerunServerPort,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
@@ -111,7 +139,10 @@ impl RerunServerHandle {
     /// A port of 0 will let the OS choose a free port.
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
-    pub fn new(rerun_rx: Receiver<LogMsg>, requested_port: u16) -> Result<Self, RerunServerError> {
+    pub fn new(
+        rerun_rx: Receiver<LogMsg>,
+        requested_port: RerunServerPort,
+    ) -> Result<Self, RerunServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
 
         let rt = tokio::runtime::Handle::current();
@@ -129,7 +160,7 @@ impl RerunServerHandle {
     }
 
     /// Get the port where the websocket server is listening
-    pub fn port(&self) -> u16 {
+    pub fn port(&self) -> RerunServerPort {
         self.port
     }
 

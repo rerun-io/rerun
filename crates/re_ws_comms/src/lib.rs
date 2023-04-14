@@ -12,7 +12,7 @@ pub use client::Connection;
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
-pub use server::{RerunServer, RerunServerHandle};
+pub use server::{RerunServer, RerunServerHandle, RerunServerPort};
 
 use re_log_types::LogMsg;
 
@@ -26,7 +26,7 @@ pub const PROTOCOL: &str = "wss";
 #[cfg(not(feature = "tls"))]
 pub const PROTOCOL: &str = "ws";
 
-pub fn server_url(hostname: &str, port: u16) -> String {
+pub fn server_url(hostname: &str, port: RerunServerPort) -> String {
     format!("{PROTOCOL}://{hostname}:{port}")
 }
 

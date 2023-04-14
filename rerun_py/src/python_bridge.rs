@@ -30,6 +30,9 @@ pub use rerun::{
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
+use re_web_viewer_server::WebViewerServerPort;
+use re_ws_comms::RerunServerPort;
+
 use crate::{arrow::get_registered_component_names, python_session::PythonSession};
 
 // ----------------------------------------------------------------------------
@@ -327,8 +330,8 @@ fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyR
         session.set_sink(
             rerun::web_viewer::new_sink(
                 open_browser,
-                web_port.unwrap_or(re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT),
-                ws_port.unwrap_or(re_ws_comms::DEFAULT_WS_SERVER_PORT),
+                web_port.map(WebViewerServerPort).unwrap_or_default(),
+                ws_port.map(RerunServerPort).unwrap_or_default(),
             )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
         );
@@ -346,12 +349,24 @@ fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyR
 }
 
 #[pyfunction]
+// TODO(jleibs) expose this as a python type
 fn start_web_viewer_server(port: u16) -> PyResult<()> {
-    let mut session = python_session();
-    let _guard = enter_tokio_runtime();
-    session
-        .start_web_viewer_server(port)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    #[cfg(feature = "web_viewer")]
+    {
+        let mut session = python_session();
+        let _guard = enter_tokio_runtime();
+        session
+            .start_web_viewer_server(WebViewerServerPort(port))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+
+    #[cfg(not(feature = "web_viewer"))]
+    {
+        _ = open_browser;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
+        ))
+    }
 }
 
 #[pyfunction]

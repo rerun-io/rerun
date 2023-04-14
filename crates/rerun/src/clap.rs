@@ -2,6 +2,9 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
+use re_web_viewer_server::WebViewerServerPort;
+use re_ws_comms::RerunServerPort;
+
 use crate::Session;
 
 // ---
@@ -105,8 +108,8 @@ impl RerunArgs {
                 let open_browser = true;
                 crate::web_viewer::new_sink(
                     open_browser,
-                    re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT,
-                    re_ws_comms::DEFAULT_WS_SERVER_PORT,
+                    WebViewerServerPort::default(),
+                    RerunServerPort::default(),
                 )?
             }
 

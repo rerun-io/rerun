@@ -5,6 +5,8 @@ use re_smart_channel::Receiver;
 
 use anyhow::Context as _;
 use clap::Subcommand;
+use re_web_viewer_server::WebViewerServerPort;
+use re_ws_comms::RerunServerPort;
 
 #[cfg(feature = "web_viewer")]
 use crate::web_viewer::host_web_viewer;
@@ -109,13 +111,13 @@ struct Args {
 
     /// What port do we listen to for hosting the web viewer
     #[cfg(feature = "web_viewer")]
-    #[clap(long, default_value_t = re_web_viewer_server::DEFAULT_WEB_VIEWER_PORT)]
-    web_viewer_port: u16,
+    #[clap(long)]
+    web_viewer_port: WebViewerServerPort,
 
     /// What port do we listen to for incoming websocket connections from the viewer
     #[cfg(feature = "web_viewer")]
-    #[clap(long, default_value_t = re_ws_comms::DEFAULT_WS_SERVER_PORT)]
-    ws_server_port: u16,
+    #[clap(long)]
+    ws_server_port: RerunServerPort,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -373,7 +375,7 @@ async fn run_impl(
         {
             #[cfg(feature = "server")]
             if args.url_or_path.is_none()
-                && (args.port == args.web_viewer_port || args.port == args.ws_server_port)
+                && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
             {
                 anyhow::bail!(
                     "Trying to spawn a websocket server on {}, but this port is \

@@ -1,6 +1,6 @@
 use re_log_types::LogMsg;
-use re_web_viewer_server::WebViewerServerHandle;
-use re_ws_comms::RerunServerHandle;
+use re_web_viewer_server::{WebViewerServerHandle, WebViewerServerPort};
+use re_ws_comms::{RerunServerHandle, RerunServerPort};
 
 /// A [`crate::sink::LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
 /// * A [`re_ws_comms::RerunServer`] to relay messages from the sink to a websocket connection
@@ -17,7 +17,11 @@ struct WebViewerSink {
 }
 
 impl WebViewerSink {
-    pub fn new(open_browser: bool, web_port: u16, ws_port: u16) -> anyhow::Result<Self> {
+    pub fn new(
+        open_browser: bool,
+        web_port: WebViewerServerPort,
+        ws_port: RerunServerPort,
+    ) -> anyhow::Result<Self> {
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
         let rerun_server = RerunServerHandle::new(rerun_rx, ws_port)?;
@@ -49,7 +53,7 @@ impl WebViewerSink {
 /// Note: this does not include the websocket server.
 #[cfg(feature = "web_viewer")]
 pub async fn host_web_viewer(
-    web_port: u16,
+    web_port: WebViewerServerPort,
     open_browser: bool,
     source_url: String,
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
@@ -93,8 +97,8 @@ impl crate::sink::LogSink for WebViewerSink {
 #[must_use = "the sink must be kept around to keep the servers running"]
 pub fn new_sink(
     open_browser: bool,
-    web_port: u16,
-    ws_port: u16,
+    web_port: WebViewerServerPort,
+    ws_port: RerunServerPort,
 ) -> anyhow::Result<Box<dyn crate::sink::LogSink>> {
     Ok(Box::new(WebViewerSink::new(
         open_browser,

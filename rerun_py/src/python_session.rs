@@ -6,8 +6,8 @@ use re_log_types::{
     RecordingId, RecordingInfo, RecordingSource, RowId, Time, TimePoint,
 };
 
+use re_web_viewer_server::WebViewerServerPort;
 use rerun::sink::LogSink;
-
 // ----------------------------------------------------------------------------
 
 #[derive(thiserror::Error, Debug)]
@@ -327,18 +327,13 @@ impl PythonSession {
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
     #[allow(clippy::unnecessary_wraps)]
-    pub fn start_web_viewer_server(&mut self, _web_port: u16) -> Result<(), PythonSessionError> {
-        #[cfg(feature = "web_viewer")]
-        {
-            self.web_viewer_server =
-                Some(re_web_viewer_server::WebViewerServerHandle::new(_web_port)?);
+    #[cfg(feature = "web_viewer")]
+    pub fn start_web_viewer_server(
+        &mut self,
+        _web_port: WebViewerServerPort,
+    ) -> Result<(), PythonSessionError> {
+        self.web_viewer_server = Some(re_web_viewer_server::WebViewerServerHandle::new(_web_port)?);
 
-            Ok(())
-        }
-
-        #[cfg(not(feature = "web_viewer"))]
-        {
-            Err(PythonSessionError::FeatureNotEnabled("web_viewer"))
-        }
+        Ok(())
     }
 }

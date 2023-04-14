@@ -7,12 +7,16 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
 
-use std::task::{Context, Poll};
+use std::{
+    fmt::Display,
+    str::FromStr,
+    task::{Context, Poll},
+};
 
 use futures_util::future;
 use hyper::{server::conn::AddrIncoming, service::Service, Body, Request, Response};
 
-pub const DEFAULT_WEB_VIEWER_PORT: u16 = 9090;
+pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
 #[cfg(not(feature = "__ci"))]
 mod data {
@@ -40,7 +44,7 @@ pub enum WebViewerServerError {
     AddrParseFailed(#[from] std::net::AddrParseError),
 
     #[error("failed to bind to port {0}: {1}")]
-    BindFailed(u16, hyper::Error),
+    BindFailed(WebViewerServerPort, hyper::Error),
 
     #[error("failed to join web viewer server task: {0}")]
     JoinError(#[from] tokio::task::JoinError),
@@ -166,6 +170,34 @@ impl<T> Service<T> for MakeSvc {
 
 // ----------------------------------------------------------------------------
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Typed port for use with [`WebViewerServer`]
+pub struct WebViewerServerPort(pub u16);
+
+impl Default for WebViewerServerPort {
+    fn default() -> Self {
+        Self(DEFAULT_WEB_VIEWER_SERVER_PORT)
+    }
+}
+
+impl Display for WebViewerServerPort {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+// Needed for clap
+impl FromStr for WebViewerServerPort {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.parse::<u16>() {
+            Ok(port) => Ok(WebViewerServerPort(port)),
+            Err(e) => Err(format!("Failed to parse port: {e}")),
+        }
+    }
+}
+
 /// HTTP host for the Rerun Web Viewer application
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 pub struct WebViewerServer {
@@ -173,7 +205,7 @@ pub struct WebViewerServer {
 }
 
 impl WebViewerServer {
-    pub fn new(port: u16) -> Result<Self, WebViewerServerError> {
+    pub fn new(port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
         let bind_addr = format!("0.0.0.0:{port}").parse()?;
         let server = hyper::Server::try_bind(&bind_addr)
             .map_err(|e| WebViewerServerError::BindFailed(port, e))?
@@ -194,8 +226,8 @@ impl WebViewerServer {
         Ok(())
     }
 
-    pub fn port(&self) -> u16 {
-        self.server.local_addr().port()
+    pub fn port(&self) -> WebViewerServerPort {
+        WebViewerServerPort(self.server.local_addr().port())
     }
 }
 
@@ -203,7 +235,7 @@ impl WebViewerServer {
 ///
 /// When dropped, the server will be shut down.
 pub struct WebViewerServerHandle {
-    port: u16,
+    port: WebViewerServerPort,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
@@ -220,12 +252,12 @@ impl WebViewerServerHandle {
     /// A port of 0 will let the OS choose a free port.
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
-    pub fn new(requested_port: u16) -> Result<Self, WebViewerServerError> {
+    pub fn new(requested_port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
 
         let web_server = WebViewerServer::new(requested_port)?;
 
-        let port = web_server.server.local_addr().port();
+        let port = web_server.port();
 
         tokio::spawn(async move { web_server.serve(shutdown_rx).await });
 
@@ -235,7 +267,7 @@ impl WebViewerServerHandle {
     }
 
     /// Get the port where the HTTP server is listening
-    pub fn port(&self) -> u16 {
+    pub fn port(&self) -> WebViewerServerPort {
         self.port
     }
 }
