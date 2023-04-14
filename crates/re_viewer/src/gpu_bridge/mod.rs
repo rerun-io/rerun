@@ -52,7 +52,7 @@ pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_from_point: f
     [resolution.x as u32, resolution.y as u32]
 }
 
-pub fn get_or_create_texture<'a, Err>(
+pub fn try_get_or_create_texture<'a, Err>(
     render_ctx: &mut RenderContext,
     texture_key: u64,
     try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
@@ -62,6 +62,23 @@ pub fn get_or_create_texture<'a, Err>(
         &mut render_ctx.gpu_resources.textures,
         try_create_texture_desc,
     )
+}
+
+pub fn get_or_create_texture<'a>(
+    render_ctx: &mut RenderContext,
+    texture_key: u64,
+    create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
+) -> GpuTexture2DHandle {
+    enum Never {}
+    let result: Result<GpuTexture2DHandle, Never> = render_ctx
+        .texture_manager_2d
+        .get_or_create_with(texture_key, &mut render_ctx.gpu_resources.textures, || {
+            Ok(create_texture_desc())
+        });
+    match result {
+        Ok(handle) => handle,
+        Err(never) => match never {},
+    }
 }
 
 /// Render a `re_render` view using the given clip rectangle.
@@ -132,6 +149,11 @@ pub fn render_image(
 
     use re_renderer::renderer::{TextureFilterMag, TextureFilterMin};
 
+    let clip_rect = painter.clip_rect().intersect(image_rect_on_screen);
+    if !clip_rect.is_positive() {
+        return Ok(());
+    }
+
     // Where in "world space" to paint the image.
     let space_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, image_rect_on_screen.size());
 
@@ -163,10 +185,10 @@ pub fn render_image(
     let space_from_pixel = space_from_points * points_from_pixels;
 
     let resolution_in_pixel =
-        crate::gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
+        crate::gpu_bridge::viewport_resolution_in_pixels(clip_rect, pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
-    let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
+    let camera_position_space = space_from_ui.transform_pos(clip_rect.min);
 
     let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
     let target_config = re_renderer::view_builder::TargetConfiguration {
@@ -196,7 +218,7 @@ pub fn render_image(
         render_ctx,
         command_buffer,
         view_builder,
-        painter.clip_rect(),
+        clip_rect,
         painter.ctx().pixels_per_point(),
     ));
 
