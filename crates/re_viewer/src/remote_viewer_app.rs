@@ -56,7 +56,7 @@ impl RemoteViewerApp {
                     }
                 }
                 Err(err) => {
-                    re_log::error!("Failed to parse message: {:?}", err);
+                    re_log::error!("Failed to parse message: {err}");
                     std::ops::ControlFlow::Break(())
                 }
             }
