@@ -192,6 +192,9 @@ mod gpu_data {
     const COLOR_MAPPER_FUNCTION: u32 = 2;
     const COLOR_MAPPER_TEXTURE: u32 = 3;
 
+    const FILTER_NEAREST: u32 = 1;
+    const FILTER_BILINEAR: u32 = 2;
+
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
@@ -213,7 +216,8 @@ mod gpu_data {
 
         color_mapper: u32,
         gamma: f32,
-        _row_padding: [u32; 2],
+        minification_filter: u32,
+        magnification_filter: u32,
 
         _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -275,6 +279,15 @@ mod gpu_data {
                 }
             }
 
+            let minification_filter = match rectangle.texture_filter_minification {
+                super::TextureFilterMin::Linear => FILTER_BILINEAR,
+                super::TextureFilterMin::Nearest => FILTER_NEAREST,
+            };
+            let magnification_filter = match rectangle.texture_filter_magnification {
+                super::TextureFilterMag::Linear => FILTER_BILINEAR,
+                super::TextureFilterMag::Nearest => FILTER_NEAREST,
+            };
+
             Ok(Self {
                 top_left_corner_position: rectangle.top_left_corner_position.into(),
                 colormap_function,
@@ -287,7 +300,8 @@ mod gpu_data {
                 range_min_max: (*range).into(),
                 color_mapper: color_mapper_int,
                 gamma: *gamma,
-                _row_padding: Default::default(),
+                minification_filter,
+                magnification_filter,
                 _end_padding: Default::default(),
             })
         }
