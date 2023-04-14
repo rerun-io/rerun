@@ -78,7 +78,7 @@ impl ViewTensorState {
                     Some(ctx.cache.tensor_stats(tensor)),
                 );
                 self.texture_settings.ui(ctx.re_ui, ui);
-                self.color_mapping.ui(ctx.re_ui, ui);
+                self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
             });
 
         ui.separator();
@@ -245,7 +245,12 @@ impl Default for ColorMapping {
 }
 
 impl ColorMapping {
-    fn ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+    fn ui(
+        &mut self,
+        render_ctx: &mut re_renderer::RenderContext,
+        re_ui: &re_ui::ReUi,
+        ui: &mut egui::Ui,
+    ) {
         let ColorMapping { map, gamma } = self;
 
         re_ui.grid_left_hand_label(ui, "Color map");
@@ -253,9 +258,16 @@ impl ColorMapping {
             .selected_text(map.to_string())
             .show_ui(ui, |ui| {
                 ui.style_mut().wrap = Some(false);
-                for option in Colormap::ALL {
-                    ui.selectable_value(map, option, option.to_string());
-                }
+
+                egui::Grid::new("colormap_selector")
+                    .num_columns(2)
+                    .show(ui, |ui| {
+                        for option in Colormap::ALL {
+                            ui.selectable_value(map, option, option.to_string());
+                            colormap_preview_ui(render_ctx, ui, option);
+                            ui.end_row();
+                        }
+                    });
             });
         ui.end_row();
 
@@ -265,6 +277,71 @@ impl ColorMapping {
         *gamma = 1.0 / brightness;
         ui.end_row();
     }
+}
+
+/// Show the given colormap as a horizontal bar.
+fn colormap_preview_ui(
+    render_ctx: &mut re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    colormap: Colormap,
+) -> egui::Response {
+    crate::profile_function!();
+
+    let desired_size = egui::vec2(128.0, 16.0);
+    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
+
+    if ui.is_rect_visible(rect) {
+        if let Err(err) = paint_colormap_graident(render_ctx, colormap, ui, rect) {
+            re_log::error_once!("Failed to paint colormap preview: {err}");
+        }
+    }
+
+    response
+}
+
+fn paint_colormap_graident(
+    render_ctx: &mut re_renderer::RenderContext,
+    colormap: Colormap,
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+) -> anyhow::Result<()> {
+    let horizontal_gradient_id = egui::util::hash("horizontal_gradient");
+    let horizontal_gradient =
+        crate::gpu_bridge::get_or_create_texture(render_ctx, horizontal_gradient_id, || {
+            let width = 256;
+            let height = 1;
+            let data: Vec<u8> = (0..width)
+                .flat_map(|x| {
+                    let t = x as f32 / (width as f32 - 1.0);
+                    half::f16::from_f32(t).to_le_bytes()
+                })
+                .collect();
+
+            re_renderer::resource_managers::Texture2DCreationDesc {
+                label: "horizontal_gradient".into(),
+                data: data.into(),
+                format: wgpu::TextureFormat::R16Float,
+                width,
+                height,
+            }
+        });
+
+    let colormapped_texture = re_renderer::renderer::ColormappedTexture {
+        texture: horizontal_gradient,
+        range: [0.0, 1.0],
+        gamma: 1.0,
+        color_mapper: Some(re_renderer::renderer::ColorMapper::Function(colormap)),
+    };
+
+    let debug_name = format!("colormap_{colormap}");
+    crate::gpu_bridge::render_image(
+        render_ctx,
+        ui.painter(),
+        rect,
+        colormapped_texture,
+        egui::TextureOptions::LINEAR,
+        &debug_name,
+    )
 }
 
 // ----------------------------------------------------------------------------
