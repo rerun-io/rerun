@@ -81,8 +81,7 @@ pub fn renderer_paint_callback(
                         .per_frame_data_helper
                         .get::<ViewBuilderMap>()
                         .unwrap()[view_builder_handle]
-                        .composite(ctx, render_pass, screen_position)
-                        .expect("Failed compositing view builder with main target.");
+                        .composite(ctx, render_pass, screen_position);
                 }),
         ),
     }

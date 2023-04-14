@@ -709,7 +709,7 @@ impl ViewBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
         screen_position: glam::Vec2,
-    ) -> Result<(), ViewBuilderError> {
+    ) {
         crate::profile_function!();
 
         pass.set_viewport(
@@ -723,8 +723,6 @@ impl ViewBuilder {
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
         self.draw_phase(ctx, DrawPhase::Compositing, pass);
-
-        Ok(())
     }
 }
 
