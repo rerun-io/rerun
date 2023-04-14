@@ -38,10 +38,13 @@ mod data {
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
+
     #[error("failed to bind to port {0}: {1}")]
     BindFailed(u16, hyper::Error),
+
     #[error("failed to join web viewer server task: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+
     #[error("failed to serve web viewer: {0}")]
     ServeFailed(hyper::Error),
 }
@@ -164,7 +167,7 @@ impl<T> Service<T> for MakeSvc {
 // ----------------------------------------------------------------------------
 
 /// HTTP host for the Rerun Web Viewer application
-/// This serves the HTTP+WASM+JS files that make up the web-viewer.
+/// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 pub struct WebViewerServer {
     server: hyper::Server<AddrIncoming, MakeSvc>,
 }

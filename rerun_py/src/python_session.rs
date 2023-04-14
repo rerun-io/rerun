@@ -15,6 +15,7 @@ pub enum PythonSessionError {
     #[allow(dead_code)]
     #[error("The Rerun SDK was not compiled with the '{0}' feature")]
     FeatureNotEnabled(&'static str),
+
     #[error("Could not start the WebViewerServer: '{0}'")]
     WebViewerServerError(#[from] re_web_viewer_server::WebViewerServerError),
 }

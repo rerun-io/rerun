@@ -4,7 +4,7 @@ use re_ws_comms::RerunServerHandle;
 
 /// A [`LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
 /// * A [`RerunServer`] to relay messages from the sink to a websocket connection
-/// * A [`WebViewerServer`] to serve the WASM+HTML
+/// * A [`WebViewerServer`] to serve the Wasm+HTML
 struct WebViewerSink {
     /// Sender to send messages to the [`RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
@@ -41,7 +41,7 @@ impl WebViewerSink {
 }
 
 /// Async helper to spawn an instance of the [`re_web_viewer_server::WebViewerServer`].
-/// This serves the HTTP+WASM+JS files that make up the web-viewer.
+/// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 ///
 /// Optionally opens a browser with the web-viewer and connects to the provided `target_url`.
 /// This url could be a hosted RRD file or a `ws://` url to a running [`re_ws_comms::RerunServer`].

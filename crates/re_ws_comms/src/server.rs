@@ -24,8 +24,10 @@ use crate::server_url;
 pub enum RerunServerError {
     #[error("failed to bind to port {0}: {1}")]
     BindFailed(u16, std::io::Error),
+
     #[error("failed to join web viewer server task: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+
     #[error("tokio error: {0}")]
     TokioIoError(#[from] tokio::io::Error),
 }
