@@ -30,7 +30,9 @@ pub use rerun::{
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
+#[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
+#[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
 
 use crate::{arrow::get_registered_component_names, python_session::PythonSession};
@@ -305,6 +307,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 }
 
 #[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
+#[cfg(feature = "web_viewer")]
 fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
     use once_cell::sync::Lazy;
     static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
@@ -341,6 +344,8 @@ fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyR
 
     #[cfg(not(feature = "web_viewer"))]
     {
+        _ = web_port;
+        _ = ws_port;
         _ = open_browser;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
@@ -362,7 +367,7 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
 
     #[cfg(not(feature = "web_viewer"))]
     {
-        _ = open_browser;
+        _ = port;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
