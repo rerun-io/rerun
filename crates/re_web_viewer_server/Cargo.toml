@@ -46,11 +46,11 @@ analytics = ["dep:re_analytics"]
 [dependencies]
 re_log.workspace = true
 
-anyhow.workspace = true
 ctrlc.workspace = true
 document-features = "0.2"
 futures-util = "0.3"
 hyper = { version = "0.14", features = ["full"] }
+thiserror.workspace = true
 tokio = { workspace = true, default-features = false, features = [
   "macros",
   "rt-multi-thread",

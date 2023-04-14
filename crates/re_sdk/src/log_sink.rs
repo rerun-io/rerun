@@ -76,6 +76,53 @@ impl LogSink for BufferedSink {
     }
 }
 
+/// Store log messages directly in memory
+///
+/// Although very similar to `BufferedSink` this sink is a real-endpoint. When creating
+/// a new sink the logged messages stay with the `MemorySink` (`drain_backlog` does nothing).
+///
+/// Additionally the raw storage can be accessed and used to create an in-memory RRD.
+/// This is useful for things like the inline rrd-viewer in Jupyter notebooks.
+#[derive(Default)]
+pub struct MemorySink(MemorySinkStorage);
+
+impl MemorySink {
+    /// Access the raw `MemorySinkStorage`
+    pub fn buffer(&self) -> MemorySinkStorage {
+        self.0.clone()
+    }
+}
+
+impl LogSink for MemorySink {
+    fn send(&self, msg: LogMsg) {
+        self.0.lock().push(msg);
+    }
+
+    fn send_all(&self, mut messages: Vec<LogMsg>) {
+        self.0.lock().append(&mut messages);
+    }
+}
+
+/// The storage used by [`MemorySink`]
+#[derive(Default, Clone)]
+pub struct MemorySinkStorage(std::sync::Arc<parking_lot::Mutex<Vec<LogMsg>>>);
+
+///
+impl MemorySinkStorage {
+    /// Lock the contained buffer
+    fn lock(&self) -> parking_lot::MutexGuard<'_, Vec<LogMsg>> {
+        self.0.lock()
+    }
+
+    /// Convert the stored messages into an in-memory Rerun log file
+    pub fn rrd_as_bytes(&self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+        let messages = self.lock();
+        let mut buffer = std::io::Cursor::new(Vec::new());
+        re_log_encoding::encoder::encode(messages.iter(), &mut buffer)?;
+        Ok(buffer.into_inner())
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Stream log messages to a Rerun TCP server.

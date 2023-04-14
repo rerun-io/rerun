@@ -178,6 +178,10 @@
 
             console.debug("app started.");
             document.getElementById("center_text").remove();
+
+            if (window.location !== window.parent.location) {
+                window.parent.postMessage("READY", "*");
+            }
         }
 
         function determine_url() {

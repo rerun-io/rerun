@@ -6,9 +6,19 @@ use re_log_types::{
     RecordingId, RecordingInfo, RecordingSource, RowId, Time, TimePoint,
 };
 
+use re_web_viewer_server::WebViewerServerPort;
 use rerun::sink::LogSink;
-
 // ----------------------------------------------------------------------------
+
+#[derive(thiserror::Error, Debug)]
+pub enum PythonSessionError {
+    #[allow(dead_code)]
+    #[error("The Rerun SDK was not compiled with the '{0}' feature")]
+    FeatureNotEnabled(&'static str),
+
+    #[error("Could not start the WebViewerServer: '{0}'")]
+    WebViewerServerError(#[from] re_web_viewer_server::WebViewerServerError),
+}
 
 /// Used to construct a [`RecordingInfo`]:
 struct RecordingMetaData {
@@ -68,6 +78,13 @@ pub struct PythonSession {
 
     /// Where we put the log messages.
     sink: Box<dyn LogSink>,
+
+    build_info: re_build_info::BuildInfo,
+
+    /// Used to serve the web viewer assets.
+    /// TODO(jleibs): Potentially use this for serve as well
+    #[cfg(feature = "web_viewer")]
+    web_viewer_server: Option<re_web_viewer_server::WebViewerServerHandle>,
 }
 
 impl Default for PythonSession {
@@ -78,6 +95,9 @@ impl Default for PythonSession {
             has_sent_begin_recording_msg: false,
             recording_meta_data: Default::default(),
             sink: Box::new(rerun::sink::BufferedSink::new()),
+            build_info: re_build_info::build_info!(),
+            #[cfg(feature = "web_viewer")]
+            web_viewer_server: None,
         }
     }
 }
@@ -183,7 +203,7 @@ impl PythonSession {
         self.set_sink(Box::new(rerun::sink::TcpSink::new(addr)));
     }
 
-    /// Drains all pending log messages and saves them to disk into an rrd file.
+    /// Send all pending and future log messages to disk as an rrd file
     pub fn save(
         &mut self,
         path: impl Into<std::path::PathBuf>,
@@ -197,9 +217,26 @@ impl PythonSession {
         Ok(())
     }
 
+    /// Send all pending and future log messages to an in-memory store
+    pub fn memory_recording(&mut self) -> rerun::sink::MemorySinkStorage {
+        if !self.enabled {
+            re_log::debug!("Rerun disabled - call to memory_recording() ignored");
+            return Default::default();
+        }
+
+        let memory_sink = rerun::sink::MemorySink::default();
+        let buffer = memory_sink.buffer();
+
+        self.set_sink(Box::new(memory_sink));
+        self.has_sent_begin_recording_msg = false;
+
+        buffer
+    }
+
     /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
         self.set_sink(Box::new(rerun::sink::BufferedSink::new()));
+        self.has_sent_begin_recording_msg = false;
     }
 
     /// Wait until all logged data have been sent to the remove server (if any).
@@ -270,5 +307,33 @@ impl PythonSession {
                 path_op,
             },
         ));
+    }
+
+    /// Get a url to an instance of the web-viewer
+    ///
+    /// This may point to app.rerun.io or localhost depending on
+    /// whether `host_assets` was called.
+    pub fn get_app_url(&self) -> String {
+        #[cfg(feature = "web_viewer")]
+        if let Some(hosted_assets) = &self.web_viewer_server {
+            return format!("http://localhost:{}", hosted_assets.port());
+        }
+
+        let short_git_hash = &self.build_info.git_hash[..7];
+        format!("https://app.rerun.io/commit/{short_git_hash}")
+    }
+
+    /// Start a web server to host the run web-asserts
+    ///
+    /// The caller needs to ensure that there is a `tokio` runtime running.
+    #[allow(clippy::unnecessary_wraps)]
+    #[cfg(feature = "web_viewer")]
+    pub fn start_web_viewer_server(
+        &mut self,
+        _web_port: WebViewerServerPort,
+    ) -> Result<(), PythonSessionError> {
+        self.web_viewer_server = Some(re_web_viewer_server::WebViewerServerHandle::new(_web_port)?);
+
+        Ok(())
     }
 }

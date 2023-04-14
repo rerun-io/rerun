@@ -640,6 +640,9 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
             re_smart_channel::Source::RrdHttpStream { url } => {
                 ui.strong(format!("Loading {url}…"));
             }
+            re_smart_channel::Source::RrdWebEventListener => {
+                ready_and_waiting(ui, "Waiting for logging data…");
+            }
             re_smart_channel::Source::Sdk => {
                 ready_and_waiting(ui, "Waiting for logging data from SDK");
             }
@@ -1885,9 +1888,9 @@ fn new_recording_confg(
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
         // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-        re_smart_channel::Source::File { .. } | re_smart_channel::Source::RrdHttpStream { .. } => {
-            PlayState::Playing
-        }
+        re_smart_channel::Source::File { .. }
+        | re_smart_channel::Source::RrdHttpStream { .. }
+        | re_smart_channel::Source::RrdWebEventListener => PlayState::Playing,
 
         // Live data - follow it!
         re_smart_channel::Source::Sdk
