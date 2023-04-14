@@ -340,12 +340,7 @@ pub fn view_3d(
             .then(|| outline_config(ui.ctx())),
     };
 
-    let mut view_builder = ViewBuilder::default();
-    // TODO(andreas): separate setup_view doesn't make sense, add a `new` method instead.
-    if let Err(err) = view_builder.setup_view(ctx.render_ctx, target_config) {
-        re_log::error!("Failed to setup view: {}", err);
-        return;
-    }
+    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(

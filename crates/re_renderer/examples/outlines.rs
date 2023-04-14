@@ -40,8 +40,6 @@ impl framework::Example for Outlines {
         time: &framework::Time,
         pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
-        let mut view_builder = ViewBuilder::default();
-
         if !self.is_paused {
             self.seconds_since_startup += time.last_frame_duration.as_secs_f32();
         }
@@ -49,35 +47,30 @@ impl framework::Example for Outlines {
         // TODO(#1426): unify camera logic between examples.
         let camera_position = glam::vec3(1.0, 3.5, 7.0);
 
-        view_builder
-            .setup_view(
-                re_ctx,
-                TargetConfiguration {
-                    name: "OutlinesDemo".into(),
-                    resolution_in_pixel: resolution,
-                    view_from_world: macaw::IsoTransform::look_at_rh(
-                        camera_position,
-                        glam::Vec3::ZERO,
-                        glam::Vec3::Y,
-                    )
-                    .unwrap(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
-                    pixels_from_point,
-                    outline_config: Some(OutlineConfig {
-                        outline_radius_pixel: (seconds_since_startup * 2.0).sin().abs() * 10.0
-                            + 2.0,
-                        color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),
-                        color_layer_b: re_renderer::Rgba::from_rgba_unmultiplied(
-                            0.25, 0.3, 1.0, 0.5,
-                        ),
-                    }),
-                    ..Default::default()
+        let mut view_builder = ViewBuilder::new(
+            re_ctx,
+            TargetConfiguration {
+                name: "OutlinesDemo".into(),
+                resolution_in_pixel: resolution,
+                view_from_world: macaw::IsoTransform::look_at_rh(
+                    camera_position,
+                    glam::Vec3::ZERO,
+                    glam::Vec3::Y,
+                )
+                .unwrap(),
+                projection_from_view: Projection::Perspective {
+                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                    near_plane_distance: 0.01,
                 },
-            )
-            .unwrap();
+                pixels_from_point,
+                outline_config: Some(OutlineConfig {
+                    outline_radius_pixel: (seconds_since_startup * 2.0).sin().abs() * 10.0 + 2.0,
+                    color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),
+                    color_layer_b: re_renderer::Rgba::from_rgba_unmultiplied(0.25, 0.3, 1.0, 0.5),
+                }),
+                ..Default::default()
+            },
+        );
 
         let outline_mask_large_mesh = match ((seconds_since_startup * 0.5) as u64) % 5 {
             0 => OutlineMaskPreference::NONE,

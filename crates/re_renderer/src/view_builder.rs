@@ -248,12 +248,10 @@ impl ViewBuilder {
             },
         });
 
-    pub fn setup_view(
-        &mut self,
-        ctx: &mut RenderContext,
-        config: TargetConfiguration,
-    ) -> Result<&mut Self, ViewBuilderError> {
+    pub fn new(ctx: &mut RenderContext, config: TargetConfiguration) -> Self {
         crate::profile_function!();
+
+        let mut slf = Self::default();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
         assert_ne!(config.resolution_in_pixel[0], 0);
@@ -297,7 +295,7 @@ impl ViewBuilder {
             },
         );
 
-        self.outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
+        slf.outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
             OutlineMaskProcessor::new(
                 ctx,
                 outline_config,
@@ -306,10 +304,10 @@ impl ViewBuilder {
             )
         });
 
-        self.queue_draw(&CompositorDrawData::new(
+        slf.queue_draw(&CompositorDrawData::new(
             ctx,
             &main_target_resolved,
-            self.outline_mask_processor
+            slf.outline_mask_processor
                 .as_ref()
                 .map(|p| p.final_voronoi_texture()),
             &config.outline_config,
@@ -453,7 +451,7 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
-        self.setup = Some(ViewTargetSetup {
+        slf.setup = Some(ViewTargetSetup {
             name: config.name,
             bind_group_0,
             main_target_msaa: hdr_render_target_msaa,
@@ -463,7 +461,7 @@ impl ViewBuilder {
             frame_uniform_buffer_content,
         });
 
-        Ok(self)
+        slf
     }
 
     fn draw_phase<'a>(

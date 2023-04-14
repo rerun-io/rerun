@@ -150,9 +150,7 @@ pub fn render_image(
         outline_config: None,
     };
 
-    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
-    let mut view_builder = ViewBuilder::default();
-    view_builder.setup_view(render_ctx, target_config)?;
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
     view_builder.queue_draw(&re_renderer::renderer::RectangleDrawData::new(
         render_ctx,

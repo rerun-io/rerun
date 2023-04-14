@@ -321,12 +321,7 @@ fn view_2d_scrollable(
         return response;
     };
 
-    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
-    let mut view_builder = ViewBuilder::default();
-    if let Err(err) = view_builder.setup_view(ctx.render_ctx, target_config) {
-        re_log::error!("Failed to setup view: {}", err);
-        return response;
-    }
+    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
