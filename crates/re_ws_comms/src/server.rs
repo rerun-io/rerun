@@ -16,28 +16,34 @@ use tokio_tungstenite::{accept_async, tungstenite::Error};
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
-// ----------------------------------------------------------------------------
+use crate::{server_url, RerunServerError, RerunServerPort};
 
-pub struct Server {
+/// Websocket host for relaying [`LogMsg`]s to a web viewer.
+pub struct RerunServer {
     listener: TcpListener,
+    port: RerunServerPort,
 }
 
-impl Server {
-    /// Start a pub-sub server listening on the given port
-    pub async fn new(port: u16) -> anyhow::Result<Self> {
-        use anyhow::Context as _;
-
+impl RerunServer {
+    /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
+    /// The websocket will be available at `port`.
+    ///
+    /// A port of 0 will let the OS choose a free port.
+    pub async fn new(port: RerunServerPort) -> Result<Self, RerunServerError> {
         let bind_addr = format!("0.0.0.0:{port}");
 
         let listener = TcpListener::bind(&bind_addr)
             .await
-            .with_context(|| format!("Can't listen on {bind_addr:?}"))?;
+            .map_err(|e| RerunServerError::BindFailed(port, e))?;
+
+        let port = RerunServerPort(listener.local_addr()?.port());
 
         re_log::info!(
-            "Listening for websocket traffic on {bind_addr}. Connect with a web Rerun Viewer."
+            "Listening for websocket traffic on {}. Connect with a Rerun Web Viewer.",
+            listener.local_addr()?
         );
 
-        Ok(Self { listener })
+        Ok(Self { listener, port })
     }
 
     /// Accept new connections until we get a message on `shutdown_rx`
@@ -45,9 +51,7 @@ impl Server {
         self,
         rx: Receiver<LogMsg>,
         mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-    ) -> anyhow::Result<()> {
-        use anyhow::Context as _;
-
+    ) -> Result<(), RerunServerError> {
         let history = Arc::new(Mutex::new(Vec::new()));
 
         let log_stream = to_broadcast_stream(rx, history.clone());
@@ -60,9 +64,7 @@ impl Server {
                 }
             };
 
-            let peer = tcp_stream
-                .peer_addr()
-                .context("connected streams should have a peer address")?;
+            let peer = tcp_stream.peer_addr()?;
             tokio::spawn(accept_connection(
                 log_stream.clone(),
                 peer,
@@ -70,6 +72,62 @@ impl Server {
                 history.clone(),
             ));
         }
+    }
+
+    pub fn server_url(&self) -> String {
+        server_url("localhost", self.port)
+    }
+}
+
+/// Sync handle for the [`RerunServer`]
+///
+/// When dropped, the server will be shut down.
+pub struct RerunServerHandle {
+    port: RerunServerPort,
+    shutdown_tx: tokio::sync::broadcast::Sender<()>,
+}
+
+impl Drop for RerunServerHandle {
+    fn drop(&mut self) {
+        re_log::info!("Shutting down Rerun server on port {}.", self.port);
+        self.shutdown_tx.send(()).ok();
+    }
+}
+
+impl RerunServerHandle {
+    /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
+    /// Returns a [`RerunServerHandle`] that will shutdown the server when dropped.
+    ///
+    /// A port of 0 will let the OS choose a free port.
+    ///
+    /// The caller needs to ensure that there is a `tokio` runtime running.
+    pub fn new(
+        rerun_rx: Receiver<LogMsg>,
+        requested_port: RerunServerPort,
+    ) -> Result<Self, RerunServerError> {
+        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
+
+        let rt = tokio::runtime::Handle::current();
+
+        let ws_server = rt.block_on(tokio::spawn(async move {
+            let ws_server = RerunServer::new(requested_port).await;
+            ws_server
+        }))??;
+
+        let port = ws_server.port;
+
+        tokio::spawn(async move { ws_server.listen(rerun_rx, shutdown_rx).await });
+
+        Ok(Self { port, shutdown_tx })
+    }
+
+    /// Get the port where the websocket server is listening
+    pub fn port(&self) -> RerunServerPort {
+        self.port
+    }
+
+    pub fn server_url(&self) -> String {
+        server_url("localhost", self.port)
     }
 }
 

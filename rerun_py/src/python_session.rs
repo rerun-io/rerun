@@ -6,8 +6,8 @@ use re_log_types::{
     RecordingId, RecordingInfo, RecordingSource, RowId, Time, TimePoint,
 };
 
+use re_web_viewer_server::WebViewerServerPort;
 use rerun::sink::LogSink;
-
 // ----------------------------------------------------------------------------
 
 #[derive(thiserror::Error, Debug)]
@@ -15,6 +15,9 @@ pub enum PythonSessionError {
     #[allow(dead_code)]
     #[error("The Rerun SDK was not compiled with the '{0}' feature")]
     FeatureNotEnabled(&'static str),
+
+    #[error("Could not start the WebViewerServer: '{0}'")]
+    WebViewerServerError(#[from] re_web_viewer_server::WebViewerServerError),
 }
 
 /// Used to construct a [`RecordingInfo`]:
@@ -81,7 +84,7 @@ pub struct PythonSession {
     /// Used to serve the web viewer assets.
     /// TODO(jleibs): Potentially use this for serve as well
     #[cfg(feature = "web_viewer")]
-    self_hosted_web_viewer: Option<rerun::web_viewer::HostAssets>,
+    web_viewer_server: Option<re_web_viewer_server::WebViewerServerHandle>,
 }
 
 impl Default for PythonSession {
@@ -94,7 +97,7 @@ impl Default for PythonSession {
             sink: Box::new(rerun::sink::BufferedSink::new()),
             build_info: re_build_info::build_info!(),
             #[cfg(feature = "web_viewer")]
-            self_hosted_web_viewer: None,
+            web_viewer_server: None,
         }
     }
 }
@@ -312,8 +315,8 @@ impl PythonSession {
     /// whether `host_assets` was called.
     pub fn get_app_url(&self) -> String {
         #[cfg(feature = "web_viewer")]
-        if let Some(hosted_assets) = &self.self_hosted_web_viewer {
-            return format!("http://localhost:{}", hosted_assets.get_port());
+        if let Some(hosted_assets) = &self.web_viewer_server {
+            return format!("http://localhost:{}", hosted_assets.port());
         }
 
         let short_git_hash = &self.build_info.git_hash[..7];
@@ -324,17 +327,13 @@ impl PythonSession {
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
     #[allow(clippy::unnecessary_wraps)]
-    pub fn self_host_assets(&mut self, _web_port: Option<u16>) -> Result<(), PythonSessionError> {
-        #[cfg(feature = "web_viewer")]
-        {
-            self.self_hosted_web_viewer = _web_port.map(rerun::web_viewer::HostAssets::new);
+    #[cfg(feature = "web_viewer")]
+    pub fn start_web_viewer_server(
+        &mut self,
+        _web_port: WebViewerServerPort,
+    ) -> Result<(), PythonSessionError> {
+        self.web_viewer_server = Some(re_web_viewer_server::WebViewerServerHandle::new(_web_port)?);
 
-            Ok(())
-        }
-
-        #[cfg(not(feature = "web_viewer"))]
-        {
-            Err(PythonSessionError::FeatureNotEnabled("web_viewer"))
-        }
+        Ok(())
     }
 }

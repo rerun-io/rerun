@@ -338,7 +338,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 _spawn = spawn  # we need this because Python scoping is horrible
 
 
-def serve(open_browser: bool = True) -> None:
+def serve(open_browser: bool = True, web_port: Optional[int] = None, ws_port: Optional[int] = None) -> None:
     """
     Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
 
@@ -352,31 +352,34 @@ def serve(open_browser: bool = True) -> None:
     ----------
     open_browser
         Open the default browser to the viewer.
-
+    web_port:
+        The port to serve the web viewer on (defaults to 9090).
+    ws_port:
+        The port to serve the WebSocket server on (defaults to 9877)
     """
 
     if not bindings.is_enabled():
         print("Rerun is disabled - serve() call ignored")
         return
 
-    bindings.serve(open_browser)
+    bindings.serve(open_browser, web_port, ws_port)
 
 
-def self_host_assets(port: int = 9090) -> None:
+def start_web_viewer_server(port: int = 0) -> None:
     """
     Self-host the rerun web-viewer assets on a specified port.
 
     Parameters
     ----------
     port
-        Port to serve assets on. Pass None to disable. (Defaults to 9090)
+        Port to serve assets on. Defaults to 0 (random port).
     """
 
     if not bindings.is_enabled():
         print("Rerun is disabled - self_host_assets() call ignored")
         return
 
-    bindings.self_host_assets(port)
+    bindings.start_web_viewer_server(port)
 
 
 def disconnect() -> None:

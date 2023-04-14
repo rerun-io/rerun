@@ -1,78 +1,78 @@
 use re_log_types::LogMsg;
+use re_web_viewer_server::{WebViewerServerHandle, WebViewerServerPort};
+use re_ws_comms::{RerunServerHandle, RerunServerPort};
 
-/// Hosts two servers:
-/// * A web-server, serving the web-viewer
-/// * A `WebSocket` server, server [`LogMsg`]es to remote viewer(s).
-struct RemoteViewerServer {
+/// A [`crate::sink::LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
+/// * A [`re_ws_comms::RerunServer`] to relay messages from the sink to a websocket connection
+/// * A [`re_web_viewer_server::WebViewerServer`] to serve the Wasm+HTML
+struct WebViewerSink {
+    /// Sender to send messages to the [`re_ws_comms::RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
-    shutdown_tx: tokio::sync::broadcast::Sender<()>,
+
+    /// Handle to keep the [`re_ws_comms::RerunServer`] alive
+    _rerun_server: RerunServerHandle,
+
+    /// Handle to keep the [`re_web_viewer_server::WebViewerServer`] alive
+    _webviewer_server: WebViewerServerHandle,
 }
 
-impl Drop for RemoteViewerServer {
-    fn drop(&mut self) {
-        re_log::info!("Shutting down web server.");
-        self.shutdown_tx.send(()).ok();
-    }
-}
-
-impl RemoteViewerServer {
-    pub fn new(open_browser: bool) -> Self {
+impl WebViewerSink {
+    pub fn new(
+        open_browser: bool,
+        web_port: WebViewerServerPort,
+        ws_port: RerunServerPort,
+    ) -> anyhow::Result<Self> {
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
-        let (shutdown_tx, shutdown_rx_ws_server) = tokio::sync::broadcast::channel(1);
-        let shutdown_rx_web_server = shutdown_tx.subscribe();
 
-        tokio::spawn(async move {
-            // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::Server::new(re_ws_comms::DEFAULT_WS_SERVER_PORT)
-                .await
-                .unwrap();
-            let ws_server_handle = tokio::spawn(ws_server.listen(rerun_rx, shutdown_rx_ws_server));
-            let ws_server_url = re_ws_comms::default_server_url("127.0.0.1");
+        let rerun_server = RerunServerHandle::new(rerun_rx, ws_port)?;
+        let webviewer_server = WebViewerServerHandle::new(web_port)?;
 
-            // This is the server that serves the Wasm+HTML:
-            let web_server_handle = tokio::spawn(host_web_viewer(
-                open_browser,
-                ws_server_url,
-                shutdown_rx_web_server,
-            ));
+        let web_port = webviewer_server.port();
+        let server_url = rerun_server.server_url();
+        let viewer_url = format!("http://127.0.0.1:{web_port}?url={server_url}");
 
-            ws_server_handle.await.unwrap().unwrap();
-            web_server_handle.await.unwrap().unwrap();
-        });
-
-        Self {
-            sender: rerun_tx,
-            shutdown_tx,
+        re_log::info!("Web server is running - view it at {viewer_url}");
+        if open_browser {
+            webbrowser::open(&viewer_url).ok();
         }
+
+        Ok(Self {
+            sender: rerun_tx,
+            _rerun_server: rerun_server,
+            _webviewer_server: webviewer_server,
+        })
     }
 }
 
-/// Hosts two servers:
-/// * A web-server, serving the web-viewer
-/// * A `WebSocket` server, server [`LogMsg`]es to remote viewer(s).
+/// Async helper to spawn an instance of the [`re_web_viewer_server::WebViewerServer`].
+/// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 ///
-/// Optionally opens a browser with the web-viewer.
+/// Optionally opens a browser with the web-viewer and connects to the provided `target_url`.
+/// This url could be a hosted RRD file or a `ws://` url to a running [`re_ws_comms::RerunServer`].
+///
+/// Note: this does not include the websocket server.
 #[cfg(feature = "web_viewer")]
 pub async fn host_web_viewer(
+    web_port: WebViewerServerPort,
     open_browser: bool,
-    ws_server_url: String,
+    source_url: String,
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<()> {
-    let web_port = 9090;
-    let viewer_url = format!("http://127.0.0.1:{web_port}?url={ws_server_url}");
+    let web_server = re_web_viewer_server::WebViewerServer::new(web_port)?;
+    let port = web_server.port();
+    let web_server_handle = web_server.serve(shutdown_rx);
 
-    let web_server = re_web_viewer_server::WebViewerServer::new(web_port);
-    let web_server_handle = tokio::spawn(web_server.serve(shutdown_rx));
+    let viewer_url = format!("http://127.0.0.1:{port}?url={source_url}");
 
     re_log::info!("Web server is running - view it at {viewer_url}");
     if open_browser {
         webbrowser::open(&viewer_url).ok();
     }
 
-    web_server_handle.await?
+    web_server_handle.await.map_err(anyhow::Error::msg)
 }
 
-impl crate::sink::LogSink for RemoteViewerServer {
+impl crate::sink::LogSink for WebViewerSink {
     fn send(&self, msg: LogMsg) {
         if let Err(err) = self.sender.send(msg) {
             re_log::error_once!("Failed to send log message to web server: {err}");
@@ -94,47 +94,15 @@ impl crate::sink::LogSink for RemoteViewerServer {
 /// This function returns immediately.
 ///
 /// The caller needs to ensure that there is a `tokio` runtime running.
-#[must_use]
-pub fn new_sink(open_browser: bool) -> Box<dyn crate::sink::LogSink> {
-    Box::new(RemoteViewerServer::new(open_browser))
-}
-
-/// Hosts the rerun web assets only
-pub struct HostAssets {
-    web_port: u16,
-    shutdown_tx: tokio::sync::broadcast::Sender<()>,
-}
-
-impl Drop for HostAssets {
-    fn drop(&mut self) {
-        re_log::info!("Shutting down web server.");
-        self.shutdown_tx.send(()).ok();
-    }
-}
-
-impl HostAssets {
-    /// Create new web server hosting rerun assets on `web_port`
-    ///
-    /// The caller needs to ensure that there is a `tokio` runtime running.
-    #[cfg(feature = "web_viewer")]
-    pub fn new(web_port: u16) -> Self {
-        let (shutdown_tx, shutdown_rx_web_server) = tokio::sync::broadcast::channel(1);
-
-        tokio::spawn(async move {
-            let web_server = re_web_viewer_server::WebViewerServer::new(web_port);
-            let web_server_handle = tokio::spawn(web_server.serve(shutdown_rx_web_server));
-
-            web_server_handle.await.unwrap().unwrap();
-        });
-
-        Self {
-            web_port,
-            shutdown_tx,
-        }
-    }
-
-    /// Get the port where the web assets are hosted
-    pub fn get_port(&self) -> u16 {
-        self.web_port
-    }
+#[must_use = "the sink must be kept around to keep the servers running"]
+pub fn new_sink(
+    open_browser: bool,
+    web_port: WebViewerServerPort,
+    ws_port: RerunServerPort,
+) -> anyhow::Result<Box<dyn crate::sink::LogSink>> {
+    Ok(Box::new(WebViewerSink::new(
+        open_browser,
+        web_port,
+        ws_port,
+    )?))
 }

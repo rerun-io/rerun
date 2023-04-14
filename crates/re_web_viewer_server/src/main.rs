@@ -4,7 +4,7 @@
 #[tokio::main]
 async fn main() {
     re_log::setup_native_logging();
-    let port = 9090;
+    let port = Default::default();
     eprintln!("Hosting web-viewer on http://127.0.0.1:{port}");
 
     // Shutdown server via Ctrl+C
@@ -16,6 +16,7 @@ async fn main() {
     .expect("Error setting Ctrl-C handler");
 
     re_web_viewer_server::WebViewerServer::new(port)
+        .expect("Could not create web server")
         .serve(shutdown_rx)
         .await
         .unwrap();

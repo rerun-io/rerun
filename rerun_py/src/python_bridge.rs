@@ -30,6 +30,9 @@ pub use rerun::{
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
 
+use re_web_viewer_server::WebViewerServerPort;
+use re_ws_comms::RerunServerPort;
+
 use crate::{arrow::get_registered_component_names, python_session::PythonSession};
 
 // ----------------------------------------------------------------------------
@@ -142,7 +145,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
-    m.add_function(wrap_pyfunction!(self_host_assets, m)?)?;
+    m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
@@ -312,7 +315,7 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-fn serve(open_browser: bool) -> PyResult<()> {
+fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
         let mut session = python_session();
@@ -324,7 +327,14 @@ fn serve(open_browser: bool) -> PyResult<()> {
 
         let _guard = enter_tokio_runtime();
 
-        session.set_sink(rerun::web_viewer::new_sink(open_browser));
+        session.set_sink(
+            rerun::web_viewer::new_sink(
+                open_browser,
+                web_port.map(WebViewerServerPort).unwrap_or_default(),
+                ws_port.map(RerunServerPort).unwrap_or_default(),
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+        );
 
         Ok(())
     }
@@ -339,12 +349,24 @@ fn serve(open_browser: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn self_host_assets(port: Option<u16>) -> PyResult<()> {
-    let mut session = python_session();
-    let _guard = enter_tokio_runtime();
-    session
-        .self_host_assets(port)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+// TODO(jleibs) expose this as a python type
+fn start_web_viewer_server(port: u16) -> PyResult<()> {
+    #[cfg(feature = "web_viewer")]
+    {
+        let mut session = python_session();
+        let _guard = enter_tokio_runtime();
+        session
+            .start_web_viewer_server(WebViewerServerPort(port))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+
+    #[cfg(not(feature = "web_viewer"))]
+    {
+        _ = open_browser;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
+        ))
+    }
 }
 
 #[pyfunction]
