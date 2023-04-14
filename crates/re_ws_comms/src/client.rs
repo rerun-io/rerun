@@ -2,7 +2,8 @@ use std::ops::ControlFlow;
 
 use ewebsock::{WsEvent, WsMessage, WsSender};
 
-use crate::Result;
+// TODO(jleibs): use thiserror
+pub type Result<T> = anyhow::Result<T>;
 
 /// Represents a connection to the server.
 /// Disconnects on drop.

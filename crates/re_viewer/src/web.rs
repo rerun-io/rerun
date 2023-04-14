@@ -148,10 +148,7 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
         url = param.clone();
     }
     if url.is_empty() {
-        re_ws_comms::server_url(
-            &info.web_info.location.hostname,
-            re_ws_comms::DEFAULT_WS_SERVER_PORT,
-        )
+        re_ws_comms::server_url(&info.web_info.location.hostname, Default::default())
     } else {
         url
     }

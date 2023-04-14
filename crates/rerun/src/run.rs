@@ -111,12 +111,12 @@ struct Args {
 
     /// What port do we listen to for hosting the web viewer
     #[cfg(feature = "web_viewer")]
-    #[clap(long)]
+    #[clap(long, default_value_t = Default::default())]
     web_viewer_port: WebViewerServerPort,
 
     /// What port do we listen to for incoming websocket connections from the viewer
     #[cfg(feature = "web_viewer")]
-    #[clap(long)]
+    #[clap(long, default_value_t = Default::default())]
     ws_server_port: RerunServerPort,
 }
 

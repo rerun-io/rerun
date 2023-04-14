@@ -4216,7 +4216,6 @@ dependencies = [
 name = "re_web_viewer_server"
 version = "0.4.0"
 dependencies = [
- "anyhow",
  "cargo_metadata",
  "ctrlc",
  "document-features",

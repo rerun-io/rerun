@@ -6,7 +6,7 @@
 //! In the future thing will be changed to a protocol where the clients can query
 //! for specific data based on e.g. time.
 
-use std::{fmt::Display, net::SocketAddr, str::FromStr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
@@ -16,49 +16,7 @@ use tokio_tungstenite::{accept_async, tungstenite::Error};
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
-use crate::{server_url, DEFAULT_WS_SERVER_PORT};
-
-// ----------------------------------------------------------------------------
-
-#[derive(thiserror::Error, Debug)]
-pub enum RerunServerError {
-    #[error("failed to bind to port {0}: {1}")]
-    BindFailed(RerunServerPort, std::io::Error),
-
-    #[error("failed to join web viewer server task: {0}")]
-    JoinError(#[from] tokio::task::JoinError),
-
-    #[error("tokio error: {0}")]
-    TokioIoError(#[from] tokio::io::Error),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/// Typed port for use with [`RerunServer`]
-pub struct RerunServerPort(pub u16);
-
-impl Default for RerunServerPort {
-    fn default() -> Self {
-        Self(DEFAULT_WS_SERVER_PORT)
-    }
-}
-
-impl Display for RerunServerPort {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-// Needed for clap
-impl FromStr for RerunServerPort {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.parse::<u16>() {
-            Ok(port) => Ok(RerunServerPort(port)),
-            Err(e) => Err(format!("Failed to parse port: {e}")),
-        }
-    }
-}
+use crate::{server_url, RerunServerError, RerunServerPort};
 
 /// Websocket host for relaying [`LogMsg`]s to a web viewer.
 pub struct RerunServer {
