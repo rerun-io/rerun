@@ -213,12 +213,14 @@ fn paint_tensor_slice(
     let rect = response.rect;
     let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
 
+    let debug_name = "tensor_slice";
     crate::gpu_bridge::render_image(
         ctx.render_ctx,
         &painter,
         image_rect,
         colormapped_texture,
         state.texture_settings.options,
+        debug_name,
     )?;
 
     Ok((response, painter, image_rect))
