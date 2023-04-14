@@ -142,7 +142,7 @@ impl ArrowDeserialize for TensorId {
 ///     ),
 /// );
 /// ```
-#[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
     U8(BinaryBuffer),
@@ -195,6 +195,24 @@ impl TensorData {
 
     pub fn is_empty(&self) -> bool {
         self.size_in_bytes() == 0
+    }
+}
+
+impl std::fmt::Debug for TensorData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::U8(_) => write!(f, "U8({} bytes)", self.size_in_bytes()),
+            Self::U16(_) => write!(f, "U16({} bytes)", self.size_in_bytes()),
+            Self::U32(_) => write!(f, "U32({} bytes)", self.size_in_bytes()),
+            Self::U64(_) => write!(f, "U64({} bytes)", self.size_in_bytes()),
+            Self::I8(_) => write!(f, "I8({} bytes)", self.size_in_bytes()),
+            Self::I16(_) => write!(f, "I16({} bytes)", self.size_in_bytes()),
+            Self::I32(_) => write!(f, "I32({} bytes)", self.size_in_bytes()),
+            Self::I64(_) => write!(f, "I64({} bytes)", self.size_in_bytes()),
+            Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
+            Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
+            Self::JPEG(_) => write!(f, "JPEG({} bytes)", self.size_in_bytes()),
+        }
     }
 }
 
@@ -367,6 +385,23 @@ impl Tensor {
     #[inline]
     pub fn num_dim(&self) -> usize {
         self.shape.len()
+    }
+
+    /// If this tensor is shaped as an image, return the height, width, and channels/depth of it.
+    pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
+        if self.shape.len() == 2 {
+            Some([self.shape[0].size, self.shape[1].size, 1])
+        } else if self.shape.len() == 3 {
+            let channels = self.shape[2].size;
+            // gray, rgb, rgba
+            if matches!(channels, 1 | 3 | 4) {
+                Some([self.shape[0].size, self.shape[1].size, channels])
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     pub fn is_shaped_like_an_image(&self) -> bool {

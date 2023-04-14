@@ -140,25 +140,27 @@ impl ExtraQueryHistory {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ColorMap {
+pub enum Colormap {
+    /// Perceptually even
     Grayscale,
+
+    Inferno,
+    Magma,
+    Plasma,
     #[default]
     Turbo,
     Viridis,
-    Plasma,
-    Magma,
-    Inferno,
 }
 
-impl std::fmt::Display for ColorMap {
+impl std::fmt::Display for Colormap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            ColorMap::Grayscale => "Grayscale",
-            ColorMap::Turbo => "Turbo",
-            ColorMap::Viridis => "Viridis",
-            ColorMap::Plasma => "Plasma",
-            ColorMap::Magma => "Magma",
-            ColorMap::Inferno => "Inferno",
+            Colormap::Grayscale => "Grayscale",
+            Colormap::Inferno => "Inferno",
+            Colormap::Magma => "Magma",
+            Colormap::Plasma => "Plasma",
+            Colormap::Turbo => "Turbo",
+            Colormap::Viridis => "Viridis",
         })
     }
 }
@@ -167,7 +169,7 @@ impl std::fmt::Display for ColorMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ColorMapper {
     /// Use a well-known color map, pre-implemented as a wgsl module.
-    ColorMap(ColorMap),
+    Colormap(Colormap),
     // TODO(cmc): support textures.
     // TODO(cmc): support custom transfer functions.
 }
@@ -175,7 +177,7 @@ pub enum ColorMapper {
 impl std::fmt::Display for ColorMapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ColorMapper::ColorMap(colormap) => colormap.fmt(f),
+            ColorMapper::Colormap(colormap) => colormap.fmt(f),
         }
     }
 }
@@ -183,7 +185,7 @@ impl std::fmt::Display for ColorMapper {
 impl Default for ColorMapper {
     #[inline]
     fn default() -> Self {
-        Self::ColorMap(ColorMap::default())
+        Self::Colormap(Colormap::default())
     }
 }
 

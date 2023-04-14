@@ -5,7 +5,7 @@ mod space_camera_3d;
 mod ui;
 mod ui_2d;
 mod ui_3d;
-mod ui_renderer_bridge;
+pub mod ui_renderer_bridge;
 
 pub use self::scene::{Image, MeshSource, MeshSourceData, SceneSpatial, UiLabel, UiLabelTarget};
 pub use self::space_camera_3d::SpaceCamera3D;

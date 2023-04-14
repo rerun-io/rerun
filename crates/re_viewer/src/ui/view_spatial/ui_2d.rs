@@ -10,13 +10,12 @@ use super::{
     SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
+    gpu_bridge,
     misc::{HoveredSpace, SpaceViewHighlights},
     ui::{
         view_spatial::{
             ui::outline_config,
-            ui_renderer_bridge::{
-                fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
-            },
+            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
             SceneSpatial,
         },
         SpaceViewId,
@@ -322,12 +321,7 @@ fn view_2d_scrollable(
         return response;
     };
 
-    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
-    let mut view_builder = ViewBuilder::default();
-    if let Err(err) = view_builder.setup_view(ctx.render_ctx, target_config) {
-        re_log::error!("Failed to setup view: {}", err);
-        return response;
-    }
+    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
@@ -381,7 +375,7 @@ fn view_2d_scrollable(
                 return response;
             }
         };
-        painter.add(renderer_paint_callback(
+        painter.add(gpu_bridge::renderer_paint_callback(
             ctx.render_ctx,
             command_buffer,
             view_builder,
@@ -412,7 +406,8 @@ fn setup_target_config(
     any_outlines: bool,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
-    let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
+    let resolution_in_pixel =
+        gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
     let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);

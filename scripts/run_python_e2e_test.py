@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import time
+from typing import List
 
 
 def main() -> None:
@@ -39,17 +40,17 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        "examples/python/api_demo/main.py",
-        "examples/python/car/main.py",
-        "examples/python/multithreading/main.py",
-        "examples/python/plots/main.py",
-        "examples/python/text_logging/main.py",
+        ("examples/python/api_demo/main.py", ["--demo", "all"]),
+        ("examples/python/car/main.py", []),
+        ("examples/python/multithreading/main.py", []),
+        ("examples/python/plots/main.py", []),
+        ("examples/python/text_logging/main.py", []),
     ]
-    for example in examples:
+    for example, args in examples:
         print("----------------------------------------------------------")
         print(f"Testing {example}…\n")
         start_time = time.time()
-        run_example(example)
+        run_example(example, args)
         elapsed = time.time() - start_time
         print(f"{example} done in {elapsed:.1f} seconds")
         print()
@@ -58,7 +59,7 @@ def main() -> None:
     print("All tests passed successfully!")
 
 
-def run_example(example: str) -> None:
+def run_example(example: str, args: List[str]) -> None:
     port = 9752
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
@@ -71,7 +72,7 @@ def run_example(example: str) -> None:
     )
     time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
 
-    python_process = subprocess.Popen([python_executable, example, "--connect", "--addr", f"127.0.0.1:{port}"])
+    python_process = subprocess.Popen([python_executable, example, "--connect", "--addr", f"127.0.0.1:{port}"] + args)
 
     print("Waiting for python process to finish…")
     returncode = python_process.wait(timeout=30)

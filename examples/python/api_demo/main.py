@@ -12,7 +12,9 @@ Example usage:
 import argparse
 import logging
 import math
+import os
 
+import cv2
 import numpy as np
 import rerun as rr
 from scipy.spatial.transform import Rotation
@@ -277,23 +279,57 @@ def run_extension_component() -> None:
     )
 
 
+def run_image_tensors() -> None:
+    # Make sure you use a colorful image with alpha!
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    img_path = f"{dir_path}/../../../crates/re_ui/data/logo_dark_mode.png"
+    img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+
+    img_rgba = cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGBA)
+    rr.log_image("img_rgba", img_rgba)
+    img_rgb = cv2.cvtColor(img_rgba, cv2.COLOR_RGBA2RGB)
+    rr.log_image("img_rgb", img_rgb)
+    img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+    rr.log_image("img_gray", img_gray)
+
+    dtypes = [
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "float16",
+        "float32",
+        "float64",
+    ]
+
+    for dtype in dtypes:
+        rr.log_image(f"img_rgba_{dtype}", img_rgba.astype(dtype))
+        rr.log_image(f"img_rgb_{dtype}", img_rgb.astype(dtype))
+        rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
+
+
 def main() -> None:
     demos = {
         "2d_lines": run_2d_lines,
         "3d_points": run_3d_points,
+        "bbox": run_bounding_box,
+        "extension_components": run_extension_component,
+        "image_tensors": run_image_tensors,
         "log_cleared": run_log_cleared,
         "raw_mesh": raw_mesh,
         "rects": run_rects,
         "segmentation": run_segmentation,
         "text": run_text_logs,
         "transforms_3d": transforms_rigid_3d,
-        "bbox": run_bounding_box,
-        "extension_components": run_extension_component,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
-        "--demo", type=str, default="all", help="What demo to run", choices=["all"] + list(demos.keys())
+        "--demo", type=str, default="most", help="What demo to run", choices=["most", "all"] + list(demos.keys())
     )
 
     rr.script_add_args(parser)
@@ -301,9 +337,13 @@ def main() -> None:
 
     rr.script_setup(args, "api_demo")
 
-    if args.demo == "all":
-        print("Running all demos…")
+    if args.demo in ["most", "all"]:
+        print(f"Running {args.demo} demos…")
         for name, demo in demos.items():
+            # Some demos are just a bit… too much
+            if args.demo == "most" and name in ["image_tensors"]:
+                continue
+
             logging.info(f"Starting {name}")
             demo()
     else:

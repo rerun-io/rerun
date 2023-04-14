@@ -12,7 +12,7 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthCloudDepthData},
-    ColorMap, OutlineMaskPreference,
+    Colormap, OutlineMaskPreference,
 };
 
 use crate::{
@@ -32,36 +32,47 @@ fn push_tensor_texture(
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
+    entity_path: &EntityPath,
     instance_path_hash: InstancePathHash,
     tensor: &Tensor,
-    tint: egui::Rgba,
+    multiplicative_tint: egui::Rgba,
     outline_mask: OutlineMaskPreference,
 ) {
     crate::profile_function!();
 
-    let tensor_view = ctx.cache.image.get_colormapped_view(tensor, annotations);
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return; };
 
-    if let Some(texture_handle) = tensor_view.texture_handle(ctx.render_ctx) {
-        let (h, w) = (tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
-        scene
-            .primitives
-            .textured_rectangles
-            .push(re_renderer::renderer::TexturedRect {
+    let debug_name = entity_path.to_string();
+    let tensor_stats = ctx.cache.tensor_stats(tensor);
+
+    match crate::gpu_bridge::tensor_to_gpu(
+        ctx.render_ctx,
+        &debug_name,
+        tensor,
+        tensor_stats,
+        annotations,
+    ) {
+        Ok(colormapped_texture) => {
+            let textured_rect = re_renderer::renderer::TexturedRect {
                 top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
-                extent_u: world_from_obj.transform_vector3(glam::Vec3::X * w),
-                extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * h),
-                texture: texture_handle,
+                extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
+                extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
+                colormapped_texture,
                 texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
                 texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-                multiplicative_tint: tint,
-                // Push to background. Mostly important for mouse picking order!
-                depth_offset: -1,
+                multiplicative_tint,
+                depth_offset: -1, // Push to background. Mostly important for mouse picking order!
                 outline_mask,
-            });
-        scene
-            .primitives
-            .textured_rectangles_ids
-            .push(instance_path_hash);
+            };
+            scene.primitives.textured_rectangles.push(textured_rect);
+            scene
+                .primitives
+                .textured_rectangles_ids
+                .push(instance_path_hash);
+        }
+        Err(err) => {
+            re_log::error_once!("Failed to create texture from tensor for {debug_name:?}: {err}");
+        }
     }
 }
 
@@ -233,6 +244,7 @@ impl ImagesPart {
                     ctx,
                     &annotations,
                     world_from_obj,
+                    ent_path,
                     instance_path_hash,
                     &tensor,
                     color.into(),
@@ -308,13 +320,13 @@ impl ImagesPart {
         let dimensions = glam::UVec2::new(w as _, h as _);
 
         let colormap = match *properties.color_mapper.get() {
-            re_data_store::ColorMapper::ColorMap(colormap) => match colormap {
-                re_data_store::ColorMap::Grayscale => ColorMap::Grayscale,
-                re_data_store::ColorMap::Turbo => ColorMap::ColorMapTurbo,
-                re_data_store::ColorMap::Viridis => ColorMap::ColorMapViridis,
-                re_data_store::ColorMap::Plasma => ColorMap::ColorMapPlasma,
-                re_data_store::ColorMap::Magma => ColorMap::ColorMapMagma,
-                re_data_store::ColorMap::Inferno => ColorMap::ColorMapInferno,
+            re_data_store::ColorMapper::Colormap(colormap) => match colormap {
+                re_data_store::Colormap::Grayscale => Colormap::Grayscale,
+                re_data_store::Colormap::Turbo => Colormap::Turbo,
+                re_data_store::Colormap::Viridis => Colormap::Viridis,
+                re_data_store::Colormap::Plasma => Colormap::Plasma,
+                re_data_store::Colormap::Magma => Colormap::Magma,
+                re_data_store::Colormap::Inferno => Colormap::Inferno,
             },
         };
 

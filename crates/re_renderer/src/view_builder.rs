@@ -32,9 +32,6 @@ struct QueuedDraw {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
-    #[error("ViewBuilder::setup_view needs to be called first.")]
-    ViewNotSetup,
-
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
 
@@ -43,11 +40,9 @@ pub enum ViewBuilderError {
 }
 
 /// The highest level rendering block in `re_renderer`.
-/// Used to build up/collect various resources and then send them off for rendering of  a single view.
-#[derive(Default)]
+/// Used to build up/collect various resources and then send them off for rendering of a single view.
 pub struct ViewBuilder {
-    /// Result of [`ViewBuilder::setup_view`] - needs to be `Option` sine some of the fields don't have a default.
-    setup: Option<ViewTargetSetup>,
+    setup: ViewTargetSetup,
     queued_draws: Vec<QueuedDraw>,
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
@@ -248,11 +243,7 @@ impl ViewBuilder {
             },
         });
 
-    pub fn setup_view(
-        &mut self,
-        ctx: &mut RenderContext,
-        config: TargetConfiguration,
-    ) -> Result<&mut Self, ViewBuilderError> {
+    pub fn new(ctx: &mut RenderContext, config: TargetConfiguration) -> Self {
         crate::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
@@ -296,24 +287,6 @@ impl ViewBuilder {
                 ..main_target_desc
             },
         );
-
-        self.outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
-            OutlineMaskProcessor::new(
-                ctx,
-                outline_config,
-                &config.name,
-                config.resolution_in_pixel,
-            )
-        });
-
-        self.queue_draw(&CompositorDrawData::new(
-            ctx,
-            &main_target_resolved,
-            self.outline_mask_processor
-                .as_ref()
-                .map(|p| p.final_voronoi_texture()),
-            &config.outline_config,
-        ));
 
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
@@ -453,7 +426,25 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
-        self.setup = Some(ViewTargetSetup {
+        let outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
+            OutlineMaskProcessor::new(
+                ctx,
+                outline_config,
+                &config.name,
+                config.resolution_in_pixel,
+            )
+        });
+
+        let composition_draw = queued_draw(&CompositorDrawData::new(
+            ctx,
+            &main_target_resolved,
+            outline_mask_processor
+                .as_ref()
+                .map(|p| p.final_voronoi_texture()),
+            &config.outline_config,
+        ));
+
+        let setup = ViewTargetSetup {
             name: config.name,
             bind_group_0,
             main_target_msaa: hdr_render_target_msaa,
@@ -461,9 +452,15 @@ impl ViewBuilder {
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
             frame_uniform_buffer_content,
-        });
+        };
 
-        Ok(self)
+        Self {
+            setup,
+            queued_draws: vec![composition_draw],
+            outline_mask_processor,
+            screenshot_processor: Default::default(),
+            picking_processor: Default::default(),
+        }
     }
 
     fn draw_phase<'a>(
@@ -491,21 +488,7 @@ impl ViewBuilder {
         draw_data: &D,
     ) -> &mut Self {
         crate::profile_function!();
-        self.queued_draws.push(QueuedDraw {
-            draw_func: Box::new(move |ctx, phase, pass, draw_data| {
-                let renderers = ctx.renderers.read();
-                let renderer = renderers
-                    .get::<D::Renderer>()
-                    .context("failed to retrieve renderer")?;
-                let draw_data = draw_data
-                    .downcast_ref::<D>()
-                    .expect("passed wrong type of draw data");
-                renderer.draw(&ctx.gpu_resources, phase, pass, draw_data)
-            }),
-            draw_data: Box::new(draw_data.clone()),
-            renderer_name: std::any::type_name::<D::Renderer>(),
-            participated_phases: D::Renderer::participated_phases(),
-        });
+        self.queued_draws.push(queued_draw(draw_data));
 
         self
     }
@@ -518,10 +501,7 @@ impl ViewBuilder {
     ) -> anyhow::Result<wgpu::CommandBuffer> {
         crate::profile_function!();
 
-        let setup = self
-            .setup
-            .as_ref()
-            .context("ViewBuilder::setup_view wasn't called yet")?;
+        let setup = &self.setup;
 
         let mut encoder = ctx
             .device
@@ -610,7 +590,7 @@ impl ViewBuilder {
 
     /// Schedules the taking of a screenshot.
     ///
-    /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
+    /// Needs to be called before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// Data from the screenshot needs to be retrieved via [`crate::ScreenshotProcessor::next_readback_result`].
@@ -640,12 +620,10 @@ impl ViewBuilder {
             return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
         };
 
-        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
-
         self.screenshot_processor = Some(ScreenshotProcessor::new(
             ctx,
-            &setup.name,
-            setup.resolution_in_pixel.into(),
+            &self.setup.name,
+            self.setup.resolution_in_pixel.into(),
             identifier,
             user_data,
         ));
@@ -655,7 +633,7 @@ impl ViewBuilder {
 
     /// Schedules the readback of a rectangle from the picking layer.
     ///
-    /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
+    /// Needs to be called before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// The result will still be valid if the rectangle is partially or fully outside of bounds.
@@ -697,14 +675,12 @@ impl ViewBuilder {
             return Err(ViewBuilderError::PickingRectAlreadyScheduled);
         };
 
-        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
-
         let picking_processor = PickingLayerProcessor::new(
             ctx,
-            &setup.name,
-            setup.resolution_in_pixel.into(),
+            &self.setup.name,
+            self.setup.resolution_in_pixel.into(),
             picking_rect,
-            &setup.frame_uniform_buffer_content,
+            &self.setup.frame_uniform_buffer_content,
             show_debug_view,
             readback_identifier,
             readback_user_data,
@@ -714,7 +690,7 @@ impl ViewBuilder {
             self.queue_draw(&DebugOverlayDrawData::new(
                 ctx,
                 &picking_processor.picking_target,
-                setup.resolution_in_pixel.into(),
+                self.setup.resolution_in_pixel.into(),
                 picking_rect,
             ));
         }
@@ -733,22 +709,37 @@ impl ViewBuilder {
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
         screen_position: glam::Vec2,
-    ) -> Result<(), ViewBuilderError> {
+    ) {
         crate::profile_function!();
 
-        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
         pass.set_viewport(
             screen_position.x,
             screen_position.y,
-            setup.resolution_in_pixel[0] as f32,
-            setup.resolution_in_pixel[1] as f32,
+            self.setup.resolution_in_pixel[0] as f32,
+            self.setup.resolution_in_pixel[1] as f32,
             0.0,
             1.0,
         );
 
-        pass.set_bind_group(0, &setup.bind_group_0, &[]);
+        pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
         self.draw_phase(ctx, DrawPhase::Compositing, pass);
+    }
+}
 
-        Ok(())
+fn queued_draw<D: DrawData + Sync + Send + Clone + 'static>(draw_data: &D) -> QueuedDraw {
+    QueuedDraw {
+        draw_func: Box::new(move |ctx, phase, pass, draw_data| {
+            let renderers = ctx.renderers.read();
+            let renderer = renderers
+                .get::<D::Renderer>()
+                .context("failed to retrieve renderer")?;
+            let draw_data = draw_data
+                .downcast_ref::<D>()
+                .expect("passed wrong type of draw data");
+            renderer.draw(&ctx.gpu_resources, phase, pass, draw_data)
+        }),
+        draw_data: Box::new(draw_data.clone()),
+        renderer_name: std::any::type_name::<D::Renderer>(),
+        participated_phases: D::Renderer::participated_phases(),
     }
 }
