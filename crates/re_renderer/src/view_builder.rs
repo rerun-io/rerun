@@ -32,9 +32,6 @@ struct QueuedDraw {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
-    #[error("ViewBuilder::new needs to be called first.")]
-    ViewNotSetup, // TODO(emilk): remove
-
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
 
@@ -45,8 +42,7 @@ pub enum ViewBuilderError {
 /// The highest level rendering block in `re_renderer`.
 /// Used to build up/collect various resources and then send them off for rendering of a single view.
 pub struct ViewBuilder {
-    /// Result of [`ViewBuilder::new`] - needs to be `Option` since some of the fields don't have a default.
-    setup: Option<ViewTargetSetup>,
+    setup: ViewTargetSetup,
     queued_draws: Vec<QueuedDraw>,
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
@@ -459,7 +455,7 @@ impl ViewBuilder {
         };
 
         Self {
-            setup: Some(setup),
+            setup,
             queued_draws: vec![first_draw],
             outline_mask_processor,
             screenshot_processor: Default::default(),
@@ -505,10 +501,7 @@ impl ViewBuilder {
     ) -> anyhow::Result<wgpu::CommandBuffer> {
         crate::profile_function!();
 
-        let setup = self
-            .setup
-            .as_ref()
-            .context("ViewBuilder::new wasn't called yet")?;
+        let setup = &self.setup;
 
         let mut encoder = ctx
             .device
@@ -627,12 +620,10 @@ impl ViewBuilder {
             return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
         };
 
-        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
-
         self.screenshot_processor = Some(ScreenshotProcessor::new(
             ctx,
-            &setup.name,
-            setup.resolution_in_pixel.into(),
+            &self.setup.name,
+            self.setup.resolution_in_pixel.into(),
             identifier,
             user_data,
         ));
@@ -684,14 +675,12 @@ impl ViewBuilder {
             return Err(ViewBuilderError::PickingRectAlreadyScheduled);
         };
 
-        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
-
         let picking_processor = PickingLayerProcessor::new(
             ctx,
-            &setup.name,
-            setup.resolution_in_pixel.into(),
+            &self.setup.name,
+            self.setup.resolution_in_pixel.into(),
             picking_rect,
-            &setup.frame_uniform_buffer_content,
+            &self.setup.frame_uniform_buffer_content,
             show_debug_view,
             readback_identifier,
             readback_user_data,
@@ -701,7 +690,7 @@ impl ViewBuilder {
             self.queue_draw(&DebugOverlayDrawData::new(
                 ctx,
                 &picking_processor.picking_target,
-                setup.resolution_in_pixel.into(),
+                self.setup.resolution_in_pixel.into(),
                 picking_rect,
             ));
         }
@@ -723,17 +712,16 @@ impl ViewBuilder {
     ) -> Result<(), ViewBuilderError> {
         crate::profile_function!();
 
-        let setup = self.setup.as_ref().ok_or(ViewBuilderError::ViewNotSetup)?;
         pass.set_viewport(
             screen_position.x,
             screen_position.y,
-            setup.resolution_in_pixel[0] as f32,
-            setup.resolution_in_pixel[1] as f32,
+            self.setup.resolution_in_pixel[0] as f32,
+            self.setup.resolution_in_pixel[1] as f32,
             0.0,
             1.0,
         );
 
-        pass.set_bind_group(0, &setup.bind_group_0, &[]);
+        pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
         self.draw_phase(ctx, DrawPhase::Compositing, pass);
 
         Ok(())
