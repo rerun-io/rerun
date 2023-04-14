@@ -84,7 +84,7 @@ class MemoryRecording:
             return HTML(html)  # type: ignore[no-untyped-call]
         except ImportError:
             logging.warning("Could not import IPython.core.display. Returning raw HTML string instead.")
-        return html
+            return html
 
     def _repr_html_(self) -> Any:
         return self.as_html()

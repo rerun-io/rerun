@@ -49,7 +49,7 @@ mod web_event_listener {
     /// Install an event-listener on `window` which will decode the incoming event as an rrd
     ///
     /// From javascript you can send an rrd using:
-    /// ```
+    /// ``` ignore
     /// var rrd = new Uint8Array(...); // Get an RRD from somewhere
     /// window.postMessage(rrd, "*")
     /// ```

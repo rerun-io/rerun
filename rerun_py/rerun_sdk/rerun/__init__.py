@@ -367,7 +367,15 @@ def serve(open_browser: bool = True, web_port: Optional[int] = None, ws_port: Op
 
 def start_web_viewer_server(port: int = 0) -> None:
     """
-    Self-host the rerun web-viewer assets on a specified port.
+    Start an HTTP server that hosts the rerun web viewer.
+
+    This only provides the web-server that makes the viewer available and
+    does not otherwise provide a rerun websocket server or facilitate any routing of
+    data.
+
+    This is generally only necessary for application such as running a jupyter notebook
+    in a context where app.rerun.io is unavailable, or does not having the matching
+    resources for your build (such as when running from source.)
 
     Parameters
     ----------
