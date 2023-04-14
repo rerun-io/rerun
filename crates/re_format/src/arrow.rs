@@ -4,7 +4,7 @@ use std::fmt::Formatter;
 
 use arrow2::{
     array::{get_display, Array, ListArray, StructArray},
-    datatypes::{ArcExt, DataType, IntervalUnit, TimeUnit},
+    datatypes::{DataType, IntervalUnit, TimeUnit},
 };
 use arrow2_convert::deserialize::TryIntoCollection;
 use comfy_table::{presets, Cell, Table};

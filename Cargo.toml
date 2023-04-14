@@ -76,9 +76,9 @@ macaw = "0.18"
 mimalloc = "0.1.29"
 ndarray = "0.15"
 parking_lot = "0.12"
-polars-core = "0.27.1"
-polars-lazy = "0.27.1"
-polars-ops = "0.27.1"
+polars-core = "0.28.0"
+polars-lazy = "0.28.0"
+polars-ops = "0.28.0"
 puffin = "0.14"
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 thiserror = "1.0"
@@ -114,3 +114,5 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 arrow2 = { git = "https://github.com/rerun-io/arrow2", branch = "cmc/arc_datatype" }
 arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", branch = "cmc/arc_datatype" }
+polars-core = { git = "https://github.com/rerun-io/polars", branch = "cmc/arc_datatype" }
+polars-ops = { git = "https://github.com/rerun-io/polars", branch = "cmc/arc_datatype" }

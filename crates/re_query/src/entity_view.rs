@@ -110,7 +110,7 @@ impl ComponentWithInstances {
             keys.binary_search(&instance_key.0).ok()? as u32
         };
 
-        Some(self.values.as_arrow_ref().slice(offset as _, 1))
+        Some(self.values.as_arrow_ref().sliced(offset as _, 1))
     }
 
     /// Produce a `ComponentWithInstances` from native component types
