@@ -32,8 +32,8 @@ struct QueuedDraw {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
-    #[error("ViewBuilder::setup_view needs to be called first.")]
-    ViewNotSetup,
+    #[error("ViewBuilder::new needs to be called first.")]
+    ViewNotSetup, // TODO(emilk): remove
 
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
@@ -46,7 +46,7 @@ pub enum ViewBuilderError {
 /// Used to build up/collect various resources and then send them off for rendering of  a single view.
 #[derive(Default)]
 pub struct ViewBuilder {
-    /// Result of [`ViewBuilder::setup_view`] - needs to be `Option` sine some of the fields don't have a default.
+    /// Result of [`ViewBuilder::new`] - needs to be `Option` since some of the fields don't have a default.
     setup: Option<ViewTargetSetup>,
     queued_draws: Vec<QueuedDraw>,
 
@@ -519,7 +519,7 @@ impl ViewBuilder {
         let setup = self
             .setup
             .as_ref()
-            .context("ViewBuilder::setup_view wasn't called yet")?;
+            .context("ViewBuilder::new wasn't called yet")?;
 
         let mut encoder = ctx
             .device
@@ -608,7 +608,7 @@ impl ViewBuilder {
 
     /// Schedules the taking of a screenshot.
     ///
-    /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
+    /// Needs to be called after [`ViewBuilder::new`] and before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// Data from the screenshot needs to be retrieved via [`crate::ScreenshotProcessor::next_readback_result`].
@@ -653,7 +653,7 @@ impl ViewBuilder {
 
     /// Schedules the readback of a rectangle from the picking layer.
     ///
-    /// Needs to be called after [`ViewBuilder::setup_view`] and before [`ViewBuilder::draw`].
+    /// Needs to be called after [`ViewBuilder::new`] and before [`ViewBuilder::draw`].
     /// Can only be called once per frame per [`ViewBuilder`].
     ///
     /// The result will still be valid if the rectangle is partially or fully outside of bounds.
