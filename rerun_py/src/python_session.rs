@@ -6,6 +6,7 @@ use re_log_types::{
     RecordingId, RecordingInfo, RecordingSource, RowId, Time, TimePoint,
 };
 
+#[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 use rerun::sink::LogSink;
 // ----------------------------------------------------------------------------
@@ -16,6 +17,7 @@ pub enum PythonSessionError {
     #[error("The Rerun SDK was not compiled with the '{0}' feature")]
     FeatureNotEnabled(&'static str),
 
+    #[cfg(feature = "web_viewer")]
     #[error("Could not start the WebViewerServer: '{0}'")]
     WebViewerServerError(#[from] re_web_viewer_server::WebViewerServerError),
 }
