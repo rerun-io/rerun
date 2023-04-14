@@ -23,7 +23,7 @@ pub enum TensorUploadError {
     #[error("Missing a range.")]
     MissingRange,
 
-    #[error("Non-finite range of vlaues")]
+    #[error("Non-finite range of values")]
     NonfiniteRange,
 }
 

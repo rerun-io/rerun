@@ -43,6 +43,7 @@ pub fn renderer_paint_callback(
     crate::profile_function!();
 
     slotmap::new_key_type! { pub struct ViewBuilderHandle; }
+
     type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
 
     // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
