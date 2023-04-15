@@ -5,10 +5,15 @@ use re_log_types::{
     component_types::{ClassId, Tensor, TensorDataMeaning},
     TensorElement,
 };
+use re_renderer::renderer::ColormappedTexture;
+use re_ui::ReUi;
 
-use crate::misc::{
-    caches::{ColoredTensorView, TensorStats},
-    ViewerContext,
+use crate::{
+    misc::{
+        caches::{ColoredTensorView, TensorStats},
+        ViewerContext,
+    },
+    ui::annotations::AnnotationMap,
 };
 
 use super::{EntityDataUi, UiVerbosity};
@@ -25,15 +30,49 @@ impl EntityDataUi for Tensor {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: crate::ui::UiVerbosity,
-        _entity_path: &re_log_types::EntityPath,
-        _query: &re_arrow_store::LatestAtQuery,
+        entity_path: &re_log_types::EntityPath,
+        query: &re_arrow_store::LatestAtQuery,
     ) {
+        crate::profile_function!();
+
         let tensor_stats = *ctx.cache.tensor_stats(self);
 
         let decoded = ctx
             .cache
             .decode
             .try_decode_tensor_if_necessary(self.clone());
+
+        let annotations = {
+            let mut annotation_map = AnnotationMap::default();
+            let entity_paths: nohash_hasher::IntSet<_> =
+                std::iter::once(entity_path.clone()).collect();
+            let entity_props_map = re_data_store::EntityPropertyMap::default();
+            let scene_query = crate::ui::scene::SceneQuery {
+                entity_paths: &entity_paths,
+                timeline: query.timeline,
+                latest_at: query.at,
+                entity_props_map: &entity_props_map,
+            };
+            annotation_map.load(ctx, &scene_query);
+            annotation_map.find(entity_path)
+        };
+
+        let debug_name = entity_path.to_string();
+        let colormapped_texture = crate::gpu_bridge::tensor_to_gpu(
+            ctx.render_ctx,
+            &debug_name,
+            self,
+            &tensor_stats,
+            &annotations,
+        );
+
+        let colormapped_texture = match colormapped_texture {
+            Ok(colormapped_texture) => colormapped_texture,
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+                return;
+            }
+        };
 
         let tensor_view = match &decoded {
             Ok(decoded) => ctx.cache.image.get_view(decoded),
@@ -49,17 +88,28 @@ impl EntityDataUi for Tensor {
         match verbosity {
             UiVerbosity::Small => {
                 ui.horizontal_centered(|ui| {
-                    if let Some(retained_img) = tensor_view.retained_image {
-                        let max_height = match verbosity {
-                            UiVerbosity::Small => 24.0,
-                            UiVerbosity::All | UiVerbosity::Reduced => 128.0,
-                        };
-                        retained_img
-                            .show_max_size(ui, Vec2::new(4.0 * max_height, max_height))
-                            .on_hover_ui(|ui| {
-                                retained_img.show_max_size(ui, Vec2::splat(400.0));
-                            });
-                    }
+                    let max_height = 24.0;
+                    let max_size = Vec2::new(4.0 * max_height, max_height);
+                    show_image_at_max_size(
+                        ctx.render_ctx,
+                        ctx.re_ui,
+                        ui,
+                        colormapped_texture.clone(),
+                        &debug_name,
+                        max_size,
+                    )
+                    .on_hover_ui(|ui| {
+                        // Show larger image on hover
+                        let max_size = Vec2::splat(400.0);
+                        show_image_at_max_size(
+                            ctx.render_ctx,
+                            ctx.re_ui,
+                            ui,
+                            colormapped_texture,
+                            &debug_name,
+                            max_size,
+                        );
+                    });
 
                     ui.label(format!(
                         "{} x {}",
@@ -75,25 +125,32 @@ impl EntityDataUi for Tensor {
                     ui.set_min_width(100.0);
                     tensor_summary_ui(ctx.re_ui, ui, self, &tensor_stats);
 
-                    if let Some(retained_img) = tensor_view.retained_image {
-                        let max_size = ui
-                            .available_size()
-                            .min(retained_img.size_vec2())
-                            .min(egui::vec2(150.0, 300.0));
-                        let response = retained_img.show_max_size(ui, max_size);
+                    let max_size = ui
+                        .available_size()
+                        .min(
+                            texture_size(ctx.render_ctx, &colormapped_texture)
+                                .unwrap_or(egui::Vec2::INFINITY),
+                        )
+                        .min(egui::vec2(150.0, 300.0));
+                    let response = show_image_at_max_size(
+                        ctx.render_ctx,
+                        ctx.re_ui,
+                        ui,
+                        colormapped_texture,
+                        &debug_name,
+                        max_size,
+                    );
 
+                    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                         let image_rect = response.rect;
-
-                        if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-                            show_zoomed_image_region_tooltip(
-                                ui,
-                                response,
-                                &tensor_view,
-                                image_rect,
-                                pointer_pos,
-                                None,
-                            );
-                        }
+                        show_zoomed_image_region_tooltip(
+                            ui,
+                            response,
+                            &tensor_view,
+                            image_rect,
+                            pointer_pos,
+                            None,
+                        );
                     }
 
                     #[allow(clippy::collapsible_match)] // false positive on wasm32
@@ -112,6 +169,55 @@ impl EntityDataUi for Tensor {
                 });
             }
         }
+    }
+}
+
+fn texture_size(
+    render_ctx: &mut re_renderer::RenderContext,
+    colormapped_texture: &ColormappedTexture,
+) -> Option<Vec2> {
+    // TODO(emilk): it would be so nice if this couldn't fail, if `GpuTexture2DHandle` was never invalid,
+    // or if the texture size was returned by tensor_to_gpu
+    render_ctx
+        .texture_manager_2d
+        .get(&colormapped_texture.texture)
+        .ok()
+        .map(|texture| {
+            let tex_size = texture.creation_desc.size;
+            egui::vec2(tex_size.width as f32, tex_size.height as f32)
+        })
+}
+
+fn show_image_at_max_size(
+    render_ctx: &mut re_renderer::RenderContext,
+    re_ui: &ReUi,
+    ui: &mut egui::Ui,
+    colormapped_texture: ColormappedTexture,
+    debug_name: &str,
+    max_size: Vec2,
+) -> egui::Response {
+    let desired_size = if let Some(tex_size) = texture_size(render_ctx, &colormapped_texture) {
+        let mut desired_size = tex_size;
+        desired_size *= (max_size.x / desired_size.x).min(1.0);
+        desired_size *= (max_size.y / desired_size.y).min(1.0);
+        desired_size
+    } else {
+        max_size
+    };
+
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    if let Err(err) = crate::gpu_bridge::render_image(
+        render_ctx,
+        &painter,
+        response.rect,
+        colormapped_texture,
+        egui::TextureOptions::LINEAR,
+        debug_name,
+    ) {
+        let label_response = ui.label(re_ui.error_text(err.to_string()));
+        response.union(label_response)
+    } else {
+        response
     }
 }
 
