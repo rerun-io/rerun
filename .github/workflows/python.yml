@@ -174,7 +174,7 @@ jobs:
 
       - name: Run e2e test
         shell: bash
-        run: scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Unpack the wheel
         shell: bash
@@ -400,7 +400,7 @@ jobs:
       - name: Run e2e test
         if: ${{ matrix.run_tests }}
         shell: bash
-        run: scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Unpack the wheel
         shell: bash
