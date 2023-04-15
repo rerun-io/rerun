@@ -578,19 +578,24 @@ impl Renderer for RectangleRenderer {
             &pools.bind_group_layouts,
         );
 
-        let shader_module = pools.shader_modules.get_or_create(
+        let shader_module_vs = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &include_shader_module!("../../shader/rectangle.wgsl"),
+            &include_shader_module!("../../shader/rectangle_vs.wgsl"),
+        );
+        let shader_module_fs = pools.shader_modules.get_or_create(
+            device,
+            resolver,
+            &include_shader_module!("../../shader/rectangle_fs.wgsl"),
         );
 
         let render_pipeline_desc_color = RenderPipelineDesc {
             label: "RectangleRenderer::render_pipeline_color".into(),
             pipeline_layout,
             vertex_entrypoint: "vs_main".into(),
-            vertex_handle: shader_module,
+            vertex_handle: shader_module_vs,
             fragment_entrypoint: "fs_main".into(),
-            fragment_handle: shader_module,
+            fragment_handle: shader_module_fs,
             vertex_buffers: smallvec![],
             render_targets: smallvec![Some(wgpu::ColorTargetState {
                 format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
