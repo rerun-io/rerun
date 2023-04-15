@@ -3812,7 +3812,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "smallvec",
- "static_assertions",
  "thiserror",
  "tinyvec",
 ]
@@ -3873,7 +3872,6 @@ dependencies = [
  "arrow2",
  "arrow2_convert",
  "comfy-table 6.1.4",
- "parking_lot 0.12.1",
  "re_tuid",
 ]
 
@@ -4354,7 +4352,6 @@ dependencies = [
  "re_build_info",
  "re_error",
  "re_log",
- "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_web_viewer_server",

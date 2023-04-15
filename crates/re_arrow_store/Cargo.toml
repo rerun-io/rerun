@@ -46,7 +46,6 @@ itertools = { workspace = true }
 nohash-hasher = "0.2"
 parking_lot.workspace = true
 smallvec.workspace = true
-static_assertions = "1.1"
 thiserror.workspace = true
 
 # Native dependencies:
