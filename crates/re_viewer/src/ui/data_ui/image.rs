@@ -177,7 +177,7 @@ fn texture_size(
     colormapped_texture: &ColormappedTexture,
 ) -> Option<Vec2> {
     // TODO(emilk): it would be so nice if this couldn't fail, if `GpuTexture2DHandle` was never invalid,
-    // or if the texture size was returned by tensor_to_gpu
+    // https://github.com/rerun-io/rerun/issues/1864
     render_ctx
         .texture_manager_2d
         .get(&colormapped_texture.texture)
