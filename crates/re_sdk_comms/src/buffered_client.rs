@@ -148,10 +148,12 @@ impl Drop for Client {
         re_log::debug!("Shutting down the client connection…");
         self.send(LogMsg::Goodbye(RowId::random()));
         self.flush();
+        // First shut down the encoder:
         self.encode_quit_tx.send(QuitMsg).ok();
+        self.encode_join.take().map(|j| j.join().ok());
+        // Then the other threads:
         self.send_quit_tx.send(InterruptMsg::Quit).ok();
         self.drop_quit_tx.send(QuitMsg).ok();
-        self.encode_join.take().map(|j| j.join().ok());
         self.send_join.take().map(|j| j.join().ok());
         self.drop_join.take().map(|j| j.join().ok());
         re_log::debug!("TCP client has shut down.");
