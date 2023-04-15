@@ -15,7 +15,7 @@ pub struct Caches {
     /// For displaying meshes efficiently in immediate mode.
     pub mesh: mesh_cache::MeshCache,
 
-    pub tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
+    tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
 }
 
 impl Caches {
@@ -52,6 +52,7 @@ impl Caches {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct TensorStats {
     /// This will currently only be `None` for jpeg-encoded tensors.
     pub range: Option<(f64, f64)>,

@@ -75,7 +75,7 @@ impl ViewTensorState {
                     ctx.re_ui,
                     ui,
                     tensor,
-                    Some(ctx.cache.tensor_stats(tensor)),
+                    ctx.cache.tensor_stats(tensor),
                 );
                 self.texture_settings.ui(ctx.re_ui, ui);
                 self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);

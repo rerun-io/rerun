@@ -28,6 +28,8 @@ impl EntityDataUi for Tensor {
         _entity_path: &re_log_types::EntityPath,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
+        let tensor_stats = *ctx.cache.tensor_stats(self);
+
         let decoded = ctx
             .cache
             .decode
@@ -43,8 +45,6 @@ impl EntityDataUi for Tensor {
                 return;
             }
         };
-
-        let tensor_stats = ctx.cache.tensor_stats.get(&self.id());
 
         match verbosity {
             UiVerbosity::Small => {
@@ -66,14 +66,14 @@ impl EntityDataUi for Tensor {
                         self.dtype(),
                         format_tensor_shape_single_line(self.shape())
                     ))
-                    .on_hover_ui(|ui| tensor_summary_ui(ctx.re_ui, ui, self, tensor_stats));
+                    .on_hover_ui(|ui| tensor_summary_ui(ctx.re_ui, ui, self, &tensor_stats));
                 });
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
-                    tensor_summary_ui(ctx.re_ui, ui, self, tensor_stats);
+                    tensor_summary_ui(ctx.re_ui, ui, self, &tensor_stats);
 
                     if let Some(retained_img) = tensor_view.retained_image {
                         let max_size = ui
@@ -119,7 +119,7 @@ pub fn tensor_summary_ui_grid_contents(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     tensor: &Tensor,
-    tensor_stats: Option<&TensorStats>,
+    tensor_stats: &TensorStats,
 ) {
     let Tensor {
         tensor_id: _,
@@ -191,10 +191,9 @@ pub fn tensor_summary_ui_grid_contents(
         }
     }
 
-    if let Some(TensorStats {
-        range: Some((min, max)),
-    }) = tensor_stats
-    {
+    let TensorStats { range } = tensor_stats;
+
+    if let Some((min, max)) = range {
         ui.label("Data range")
             .on_hover_text("All values of the tensor range within these bounds.");
         ui.monospace(format!(
@@ -210,7 +209,7 @@ pub fn tensor_summary_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     tensor: &Tensor,
-    tensor_stats: Option<&TensorStats>,
+    tensor_stats: &TensorStats,
 ) {
     egui::Grid::new("tensor_summary_ui")
         .num_columns(2)
