@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
@@ -30,7 +28,7 @@ use super::ScenePart;
 fn push_tensor_texture(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
-    annotations: &Arc<Annotations>,
+    annotations: &Annotations,
     world_from_obj: glam::Mat4,
     ent_path: &EntityPath,
     tensor: &Tensor,
