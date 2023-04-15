@@ -18,10 +18,6 @@ use super::ResourceManagerError;
 pub struct GpuTexture2DHandle(Option<GpuTexture>);
 
 impl GpuTexture2DHandle {
-    pub fn invalid() -> Self {
-        Self(None)
-    }
-
     /// Width of the texture, defaults to 1 if invalid since fallback textures are typically one pixel.
     pub fn width(&self) -> u32 {
         self.0.as_ref().map_or(1, |t| t.texture.width())
@@ -32,7 +28,6 @@ impl GpuTexture2DHandle {
         self.0.as_ref().map_or(1, |t| t.texture.height())
     }
 }
-
 /// Data required to create a texture 2d resource.
 ///
 /// It is *not* stored along side the resulting texture resource!
