@@ -11,7 +11,7 @@ use crate::misc::{
     ViewerContext,
 };
 
-use super::{DataUi, UiVerbosity};
+use super::{EntityDataUi, UiVerbosity};
 
 pub fn format_tensor_shape_single_line(
     shape: &[re_log_types::component_types::TensorDimension],
@@ -19,12 +19,13 @@ pub fn format_tensor_shape_single_line(
     format!("[{}]", shape.iter().join(", "))
 }
 
-impl DataUi for Tensor {
-    fn data_ui(
+impl EntityDataUi for Tensor {
+    fn entity_data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: crate::ui::UiVerbosity,
+        _entity_path: &re_log_types::EntityPath,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         let decoded = ctx

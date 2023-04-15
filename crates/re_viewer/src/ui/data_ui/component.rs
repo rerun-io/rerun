@@ -56,6 +56,7 @@ impl DataUi for EntityComponentWithInstances {
                     ui,
                     verbosity,
                     query,
+                    &self.entity_path,
                     &self.component_data,
                     &instance_key,
                 );
@@ -107,6 +108,7 @@ impl DataUi for EntityComponentWithInstances {
                                     ui,
                                     crate::ui::UiVerbosity::Small,
                                     query,
+                                    &self.entity_path,
                                     &self.component_data,
                                     &instance_key,
                                 );
