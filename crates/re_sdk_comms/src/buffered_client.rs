@@ -198,23 +198,14 @@ fn msg_encode(
                         MsgMsg::Flush => PacketMsg::Flush,
                     };
 
-                    // TODO(jleibs): It's not clear why we're hitting this case, but an error here is still better than
-                    // a panic. See: https://github.com/rerun-io/rerun/issues/1855
-                    match packet_tx.send(packet_msg) {
-                        Ok(_) => {},
-                        Err(_) => {
-                            re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
-                        },
-                    };
-
-                    // TODO(jleibs): It's not clear why we're hitting this case, but an error here is still better than
-                    // a panic. See: https://github.com/rerun-io/rerun/issues/1855
-                    match msg_drop_tx.send(msg_msg) {
-                        Ok(_) => {},
-                        Err(_) => {
-                            re_log::error!("Failed to send message to msg_dropp thread. Likely a shutdown race-condition");
-                        },
-                    };
+                    if packet_tx.send(packet_msg).is_err() {
+                        re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
+                        return;
+                    }
+                    if msg_drop_tx.send(msg_msg).is_err() {
+                        re_log::error!("Failed to send message to msg_drop thread. Likely a shutdown race-condition");
+                        return;
+                    }
                 } else {
                     return; // channel has closed
                 }
