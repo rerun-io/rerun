@@ -21,6 +21,7 @@ from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import LoggingHandler, LogLevel, log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
+from rerun.recording import MemoryRecording
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "LoggingHandler",
     "bindings",
     "components",
+    "inline_show",
     "ImageFormat",
     "log_annotation_context",
     "log_arrow",
@@ -56,6 +58,7 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
+    "notebook",
     "LogLevel",
     "MeshFormat",
     "RectFormat",
@@ -335,7 +338,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
 _spawn = spawn  # we need this because Python scoping is horrible
 
 
-def serve(open_browser: bool = True) -> None:
+def serve(open_browser: bool = True, web_port: Optional[int] = None, ws_port: Optional[int] = None) -> None:
     """
     Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
 
@@ -349,14 +352,42 @@ def serve(open_browser: bool = True) -> None:
     ----------
     open_browser
         Open the default browser to the viewer.
-
+    web_port:
+        The port to serve the web viewer on (defaults to 9090).
+    ws_port:
+        The port to serve the WebSocket server on (defaults to 9877)
     """
 
     if not bindings.is_enabled():
         print("Rerun is disabled - serve() call ignored")
         return
 
-    bindings.serve(open_browser)
+    bindings.serve(open_browser, web_port, ws_port)
+
+
+def start_web_viewer_server(port: int = 0) -> None:
+    """
+    Start an HTTP server that hosts the rerun web viewer.
+
+    This only provides the web-server that makes the viewer available and
+    does not otherwise provide a rerun websocket server or facilitate any routing of
+    data.
+
+    This is generally only necessary for application such as running a jupyter notebook
+    in a context where app.rerun.io is unavailable, or does not having the matching
+    resources for your build (such as when running from source.)
+
+    Parameters
+    ----------
+    port
+        Port to serve assets on. Defaults to 0 (random port).
+    """
+
+    if not bindings.is_enabled():
+        print("Rerun is disabled - self_host_assets() call ignored")
+        return
+
+    bindings.start_web_viewer_server(port)
 
 
 def disconnect() -> None:
@@ -382,10 +413,23 @@ def save(path: str) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - serve() call ignored")
+        print("Rerun is disabled - save() call ignored")
         return
 
     bindings.save(path)
+
+
+def memory_recording() -> MemoryRecording:
+    """
+    Streams all log-data to a memory buffer.
+
+    Returns
+    -------
+    MemoryRecording
+        A memory recording object that can be used to read the data.
+    """
+
+    return MemoryRecording(bindings.memory_recording())
 
 
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
@@ -484,3 +528,19 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
         return
 
     bindings.set_time_nanos(timeline, nanos)
+
+
+def reset_time() -> None:
+    """
+    Clear all timeline information on this thread.
+
+    This is the same as calling `set_time_*` with `None` for all of the active timelines.
+
+    Used for all subsequent logging on the same thread,
+    until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
+    """
+
+    if not bindings.is_enabled():
+        return
+
+    bindings.reset_time()

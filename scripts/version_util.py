@@ -106,6 +106,10 @@ def main() -> None:
                 f"Version number in Cargo.toml ({cargo_version}) does not match tag version ({ref_version})"
             )
         print(f"Version numbers match: {cargo_version} == {ref_version}")
+    elif sys.argv[1] == "--bare_cargo_version":
+        # Print the bare cargo version. NOTE: do not add additional formatting here. This output
+        # is expected to be fed into an environment variable.
+        print(f"{cargo_version}")
 
     else:
         raise Exception("Invalid argument")

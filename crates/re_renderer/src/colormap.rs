@@ -5,25 +5,53 @@ use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
 // ---
 
 // NOTE: Keep in sync with `colormap.wgsl`!
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(u32)]
-pub enum ColorMap {
-    Grayscale = 0,
-    ColorMapTurbo = 1,
-    ColorMapViridis = 2,
-    ColorMapPlasma = 3,
-    ColorMapMagma = 4,
-    ColorMapInferno = 5,
+pub enum Colormap {
+    // Reserve 0 for "disabled"
+    /// Perceptually even
+    #[default]
+    Grayscale = 1,
+    Inferno = 2,
+    Magma = 3,
+    Plasma = 4,
+    Turbo = 5,
+    Viridis = 6,
 }
 
-pub fn colormap_srgb(which: ColorMap, t: f32) -> [u8; 4] {
+impl Colormap {
+    pub const ALL: [Self; 6] = [
+        Self::Grayscale,
+        Self::Inferno,
+        Self::Magma,
+        Self::Plasma,
+        Self::Turbo,
+        Self::Viridis,
+    ];
+}
+
+impl std::fmt::Display for Colormap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Colormap::Grayscale => write!(f, "Grayscale"),
+            Colormap::Inferno => write!(f, "Inferno"),
+            Colormap::Magma => write!(f, "Magma"),
+            Colormap::Plasma => write!(f, "Plasma"),
+            Colormap::Turbo => write!(f, "Turbo"),
+            Colormap::Viridis => write!(f, "Viridis"),
+        }
+    }
+}
+
+pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
     match which {
-        ColorMap::Grayscale => grayscale_srgb(t),
-        ColorMap::ColorMapTurbo => colormap_turbo_srgb(t),
-        ColorMap::ColorMapViridis => colormap_viridis_srgb(t),
-        ColorMap::ColorMapPlasma => colormap_plasma_srgb(t),
-        ColorMap::ColorMapMagma => colormap_magma_srgb(t),
-        ColorMap::ColorMapInferno => colormap_inferno_srgb(t),
+        Colormap::Grayscale => grayscale_srgb(t),
+        Colormap::Turbo => colormap_turbo_srgb(t),
+        Colormap::Viridis => colormap_viridis_srgb(t),
+        Colormap::Plasma => colormap_plasma_srgb(t),
+        Colormap::Magma => colormap_magma_srgb(t),
+        Colormap::Inferno => colormap_inferno_srgb(t),
     }
 }
 

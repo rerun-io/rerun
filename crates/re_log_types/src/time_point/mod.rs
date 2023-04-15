@@ -3,7 +3,7 @@ use std::collections::{btree_map, BTreeMap};
 mod time_int;
 mod timeline;
 
-use crate::{time::Time, TimeRange};
+use crate::{time::Time, SizeBytes, TimeRange};
 
 // Re-exports
 pub use time_int::TimeInt;
@@ -73,6 +73,7 @@ impl TimePoint {
 
     /// Computes the union of two `TimePoint`s, keeping the maximum time value in case of
     /// conflicts.
+    #[inline]
     pub fn union_max(mut self, rhs: &Self) -> Self {
         for (&timeline, &time) in rhs {
             match self.0.entry(timeline) {
@@ -86,6 +87,23 @@ impl TimePoint {
             }
         }
         self
+    }
+}
+
+impl SizeBytes for TimePoint {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        type K = Timeline;
+        type V = TimeInt;
+
+        // NOTE: This is only here to make sure this method fails to compile if the inner type
+        // changes, as the following size computation assumes POD types.
+        let inner: &BTreeMap<K, V> = &self.0;
+
+        let keys_size_bytes = std::mem::size_of::<K>() * inner.len();
+        let values_size_bytes = std::mem::size_of::<V>() * inner.len();
+
+        (keys_size_bytes + values_size_bytes) as u64
     }
 }
 

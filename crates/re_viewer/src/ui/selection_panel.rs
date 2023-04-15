@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use re_data_store::{
-    query_latest_single, ColorMap, ColorMapper, EditableAutoValue, EntityPath, EntityProperties,
+    query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
 };
 use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
@@ -119,7 +119,7 @@ impl SelectionPanel {
 
 fn has_data_section(item: &Item) -> bool {
     match item {
-        Item::MsgId(_) | Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
+        Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
         Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => false,
     }
@@ -133,12 +133,6 @@ pub fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
-        Item::MsgId(msg_id) => {
-            ui.horizontal(|ui| {
-                ui.label("Message ID:");
-                ctx.msg_id_button(ui, *msg_id);
-            });
-        }
         Item::ComponentPath(re_log_types::ComponentPath {
             entity_path,
             component_name,
@@ -230,9 +224,6 @@ impl DataUi for Item {
                 // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
                 debug_assert!(!has_data_section(self));
             }
-            Item::MsgId(msg_id) => {
-                msg_id.data_ui(ctx, ui, verbosity, query);
-            }
             Item::ComponentPath(component_path) => {
                 component_path.data_ui(ctx, ui, verbosity, query);
             }
@@ -251,11 +242,6 @@ fn blueprint_ui(
     item: &Item,
 ) {
     match item {
-        Item::MsgId(_) => {
-            // TODO(andreas): Show space views that contains entities that's part of this message.
-            ui.weak("(nothing)");
-        }
-
         Item::ComponentPath(component_path) => {
             list_existing_data_blueprints(ui, ctx, component_path.entity_path(), blueprint);
         }
@@ -443,12 +429,12 @@ fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
                 }
             };
 
-            add_label(ColorMapper::ColorMap(ColorMap::Grayscale));
-            add_label(ColorMapper::ColorMap(ColorMap::Turbo));
-            add_label(ColorMapper::ColorMap(ColorMap::Viridis));
-            add_label(ColorMapper::ColorMap(ColorMap::Plasma));
-            add_label(ColorMapper::ColorMap(ColorMap::Magma));
-            add_label(ColorMapper::ColorMap(ColorMap::Inferno));
+            add_label(ColorMapper::Colormap(Colormap::Grayscale));
+            add_label(ColorMapper::Colormap(Colormap::Turbo));
+            add_label(ColorMapper::Colormap(Colormap::Viridis));
+            add_label(ColorMapper::Colormap(Colormap::Plasma));
+            add_label(ColorMapper::Colormap(Colormap::Magma));
+            add_label(ColorMapper::Colormap(Colormap::Inferno));
         });
 
     ui.end_row();

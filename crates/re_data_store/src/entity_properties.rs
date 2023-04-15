@@ -1,8 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_log_types::{
-    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    DeserializableComponent, EntityPath,
-};
+use re_log_types::{DeserializableComponent, EntityPath};
 
 use crate::log_db::EntityDb;
 
@@ -143,25 +140,27 @@ impl ExtraQueryHistory {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ColorMap {
+pub enum Colormap {
+    /// Perceptually even
     Grayscale,
+
+    Inferno,
+    Magma,
+    Plasma,
     #[default]
     Turbo,
     Viridis,
-    Plasma,
-    Magma,
-    Inferno,
 }
 
-impl std::fmt::Display for ColorMap {
+impl std::fmt::Display for Colormap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            ColorMap::Grayscale => "Grayscale",
-            ColorMap::Turbo => "Turbo",
-            ColorMap::Viridis => "Viridis",
-            ColorMap::Plasma => "Plasma",
-            ColorMap::Magma => "Magma",
-            ColorMap::Inferno => "Inferno",
+            Colormap::Grayscale => "Grayscale",
+            Colormap::Inferno => "Inferno",
+            Colormap::Magma => "Magma",
+            Colormap::Plasma => "Plasma",
+            Colormap::Turbo => "Turbo",
+            Colormap::Viridis => "Viridis",
         })
     }
 }
@@ -170,7 +169,7 @@ impl std::fmt::Display for ColorMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ColorMapper {
     /// Use a well-known color map, pre-implemented as a wgsl module.
-    ColorMap(ColorMap),
+    Colormap(Colormap),
     // TODO(cmc): support textures.
     // TODO(cmc): support custom transfer functions.
 }
@@ -178,7 +177,7 @@ pub enum ColorMapper {
 impl std::fmt::Display for ColorMapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ColorMapper::ColorMap(colormap) => colormap.fmt(f),
+            ColorMapper::Colormap(colormap) => colormap.fmt(f),
         }
     }
 }
@@ -186,7 +185,7 @@ impl std::fmt::Display for ColorMapper {
 impl Default for ColorMapper {
     #[inline]
     fn default() -> Self {
-        Self::ColorMap(ColorMap::default())
+        Self::Colormap(Colormap::default())
     }
 }
 
@@ -211,14 +210,10 @@ where
     // single components this is easy enough.
     let data_store = &entity_db.data_store;
 
-    let components = [C::name()];
+    let (_, cells) = data_store.latest_at(query, entity_path, C::name(), &[C::name()])?;
+    let cell = cells.get(0)?.as_ref()?;
 
-    let row_indices = data_store.latest_at(query, entity_path, C::name(), &components)?;
-
-    let results = data_store.get(&components, &row_indices);
-    let arr = results.get(0)?.as_ref()?.as_ref();
-
-    let mut iter = arrow_array_deserialize_iterator::<C>(arr).ok()?;
+    let mut iter = cell.try_to_native::<C>().ok()?;
 
     let component = iter.next();
 

@@ -1,4 +1,5 @@
 use eframe::wasm_bindgen::{self, prelude::*};
+use std::sync::Arc;
 
 use re_memory::AccountingAllocator;
 
@@ -33,11 +34,13 @@ pub async fn start(
         Box::new(move |cc| {
             let build_info = re_build_info::build_info!();
             let app_env = crate::AppEnvironment::Web;
+            let persist_state = get_persist_state(&cc.integration_info);
             let startup_options = crate::StartupOptions {
                 memory_limit: re_memory::MemoryLimit {
                     // On wasm32 we only have 4GB of memory to play around with.
                     limit: Some(3_500_000_000),
                 },
+                persist_state,
             };
             let re_ui = crate::customize_eframe(cc);
             let url = url.unwrap_or_else(|| get_url(&cc.integration_info));
@@ -52,7 +55,30 @@ pub async fn start(
                     let egui_ctx = cc.egui_ctx.clone();
                     re_log_encoding::stream_rrd_from_http::stream_rrd_from_http(
                         url,
-                        Box::new(move |msg| {
+                        Arc::new(move |msg| {
+                            egui_ctx.request_repaint(); // wake up ui thread
+                            tx.send(msg).ok();
+                        }),
+                    );
+
+                    Box::new(crate::App::from_receiver(
+                        build_info,
+                        &app_env,
+                        startup_options,
+                        re_ui,
+                        cc.storage,
+                        rx,
+                        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+                    ))
+                }
+                EndpointCategory::WebEventListener => {
+                    // Process an rrd when it's posted via `window.postMessage`
+                    let (tx, rx) = re_smart_channel::smart_channel(
+                        re_smart_channel::Source::RrdWebEventListener,
+                    );
+                    let egui_ctx = cc.egui_ctx.clone();
+                    re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
+                        Arc::new(move |msg| {
                             egui_ctx.request_repaint(); // wake up ui thread
                             tx.send(msg).ok();
                         }),
@@ -93,13 +119,18 @@ enum EndpointCategory {
 
     /// A remote Rerun server.
     WebSocket(String),
+
+    /// An eventListener for rrd posted from containing html
+    WebEventListener,
 }
 
 fn categorize_uri(mut uri: String) -> EndpointCategory {
     if uri.starts_with("http") || uri.ends_with(".rrd") {
         EndpointCategory::HttpRrd(uri)
-    } else if uri.starts_with("ws") {
+    } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
         EndpointCategory::WebSocket(uri)
+    } else if uri.starts_with("web_event:") {
+        EndpointCategory::WebEventListener
     } else {
         // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
         // We could/should connect and see what it is, but for now we just take a wild guess instead:
@@ -117,8 +148,28 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
         url = param.clone();
     }
     if url.is_empty() {
-        re_ws_comms::default_server_url(&info.web_info.location.hostname)
+        re_ws_comms::server_url(&info.web_info.location.hostname, Default::default())
     } else {
         url
+    }
+}
+
+fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
+    match info
+        .web_info
+        .location
+        .query_map
+        .get("persist")
+        .map(String::as_str)
+    {
+        Some("0") => false,
+        Some("1") => true,
+        Some(other) => {
+            re_log::warn!(
+                "Unexpected value for 'persist' query: {other:?}. Expected either '0' or '1'. Defaulting to '1'."
+            );
+            true
+        }
+        _ => true,
     }
 }

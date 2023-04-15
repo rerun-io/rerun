@@ -2,7 +2,7 @@ use std::{net::SocketAddr, thread::JoinHandle};
 
 use crossbeam::channel::{select, Receiver, Sender};
 
-use re_log_types::{LogMsg, MsgId};
+use re_log_types::{LogMsg, RowId};
 
 #[derive(Debug, PartialEq, Eq)]
 struct FlushedMsg;
@@ -146,7 +146,7 @@ impl Drop for Client {
     /// Wait until everything has been sent.
     fn drop(&mut self) {
         re_log::debug!("Shutting down the client connection…");
-        self.send(LogMsg::Goodbye(MsgId::random()));
+        self.send(LogMsg::Goodbye(RowId::random()));
         self.flush();
         self.encode_quit_tx.send(QuitMsg).ok();
         self.send_quit_tx.send(InterruptMsg::Quit).ok();
@@ -196,11 +196,23 @@ fn msg_encode(
                         MsgMsg::Flush => PacketMsg::Flush,
                     };
 
-                    packet_tx
-                        .send(packet_msg)
-                        .expect("tcp_sender thread should live longer");
+                    // TODO(jleibs): It's not clear why we're hitting this case, but an error here is still better than
+                    // a panic. See: https://github.com/rerun-io/rerun/issues/1855
+                    match packet_tx.send(packet_msg) {
+                        Ok(_) => {},
+                        Err(_) => {
+                            re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
+                        },
+                    };
 
-                    msg_drop_tx.send(msg_msg).expect("Main thread should still be alive");
+                    // TODO(jleibs): It's not clear why we're hitting this case, but an error here is still better than
+                    // a panic. See: https://github.com/rerun-io/rerun/issues/1855
+                    match msg_drop_tx.send(msg_msg) {
+                        Ok(_) => {},
+                        Err(_) => {
+                            re_log::error!("Failed to send message to msg_dropp thread. Likely a shutdown race-condition");
+                        },
+                    };
                 } else {
                     return; // channel has closed
                 }

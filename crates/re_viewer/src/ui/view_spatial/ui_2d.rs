@@ -1,29 +1,24 @@
 use eframe::emath::RectTransform;
-use egui::{
-    pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape, Vec2,
-};
+use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
-use re_data_store::EntityPath;
+use re_data_store::{EntityPath, EntityPropertyMap};
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
 use super::{
     eye::Eye,
-    scene::AdditionalPickingInfo,
-    ui::{create_labels, screenshot_context_menu, PICKING_RECT_SIZE},
+    ui::{create_labels, picking, screenshot_context_menu},
     SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
-    misc::{HoveredSpace, Item, SpaceViewHighlights},
+    gpu_bridge,
+    misc::{HoveredSpace, SpaceViewHighlights},
     ui::{
-        data_ui::{self, DataUi},
         view_spatial::{
             ui::outline_config,
-            ui_renderer_bridge::{
-                fill_view_builder, get_viewport, renderer_paint_callback, ScreenBackground,
-            },
+            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
             SceneSpatial,
         },
-        SpaceViewId, UiVerbosity,
+        SpaceViewId,
     },
     ViewerContext,
 };
@@ -231,6 +226,7 @@ pub fn view_2d(
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
     highlights: &SpaceViewHighlights,
+    entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -262,6 +258,7 @@ pub fn view_2d(
             scene_rect_accum,
             space_view_id,
             highlights,
+            entity_properties,
         )
     });
 
@@ -286,6 +283,7 @@ fn view_2d_scrollable(
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
     highlights: &SpaceViewHighlights,
+    entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
@@ -323,12 +321,7 @@ fn view_2d_scrollable(
         return response;
     };
 
-    // TODO(andreas): separate setup for viewbuilder doesn't make sense.
-    let mut view_builder = ViewBuilder::default();
-    if let Err(err) = view_builder.setup_view(ctx.render_ctx, target_config) {
-        re_log::error!("Failed to setup view: {}", err);
-        return response;
-    }
+    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let label_shapes = create_labels(
@@ -341,133 +334,22 @@ fn view_2d_scrollable(
         SpatialNavigationMode::TwoD,
     );
 
-    let should_do_hovering = !re_ui::egui_helpers::is_anything_being_dragged(parent_ui.ctx());
-
-    // Check if we're hovering any hover primitive.
-    let mut depth_at_pointer = None;
-    if let (true, Some(pointer_pos_ui)) = (should_do_hovering, response.hover_pos()) {
-        // Schedule GPU picking.
-        let pointer_in_pixel = ((pointer_pos_ui - response.rect.left_top())
-            * parent_ui.ctx().pixels_per_point())
-        .round();
-        let _ = view_builder.schedule_picking_rect(
-            ctx.render_ctx,
-            re_renderer::IntRect::from_middle_and_extent(
-                glam::ivec2(pointer_in_pixel.x as i32, pointer_in_pixel.y as i32),
-                glam::uvec2(PICKING_RECT_SIZE, PICKING_RECT_SIZE),
-            ),
-            space_view_id.gpu_readback_id(),
-            (),
-            ctx.app_options.show_picking_debug_overlay,
+    if !re_ui::egui_helpers::is_anything_being_dragged(parent_ui.ctx()) {
+        response = picking(
+            ctx,
+            response,
+            space_from_ui,
+            painter.clip_rect(),
+            parent_ui,
+            eye,
+            &mut view_builder,
+            space_view_id,
+            state,
+            &scene,
+            space,
+            entity_properties,
         );
-
-        let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
-        let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
-        let picking_result = scene.picking(
-            ctx.render_ctx,
-            space_view_id.gpu_readback_id(),
-            &state.previous_picking_result,
-            glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
-            &scene_rect_accum,
-            &eye,
-            hover_radius,
-        );
-        state.previous_picking_result = Some(picking_result.clone());
-
-        for hit in picking_result.iter_hits() {
-            let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
-            else { continue; };
-
-            // Special hover ui for images.
-            let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
-                scene
-                    .ui
-                    .images
-                    .iter()
-                    .find(|image| image.instance_path_hash == hit.instance_path_hash)
-                    .map(|image| (image, uv))
-            } else {
-                None
-            };
-            response = if let Some((image, uv)) = picked_image_with_uv {
-                // TODO(andreas): This is different in 3d view.
-                if let Some(meter) = image.meter {
-                    if let Some(raw_value) = image.tensor.get(&[
-                        pointer_pos_space.y.round() as _,
-                        pointer_pos_space.x.round() as _,
-                    ]) {
-                        let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / meter as f64;
-                        depth_at_pointer = Some(depth_in_meters as f32);
-                    }
-                }
-
-                response
-                    .on_hover_cursor(egui::CursorIcon::Crosshair)
-                    .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(320.0);
-
-                        ui.vertical(|ui| {
-                            ui.label(instance_path.to_string());
-                            instance_path.data_ui(
-                                ctx,
-                                ui,
-                                UiVerbosity::Small,
-                                &ctx.current_query(),
-                            );
-
-                            let tensor_view = ctx
-                                .cache
-                                .image
-                                .get_colormapped_view(&image.tensor, &image.annotations);
-
-                            if let [h, w, ..] = image.tensor.shape() {
-                                ui.separator();
-                                ui.horizontal(|ui| {
-                                    // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.
-                                    let (w, h) = (w.size as f32, h.size as f32);
-                                    let center = [(uv.x * w) as isize, (uv.y * h) as isize];
-                                    let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(w, h));
-                                    data_ui::image::show_zoomed_image_region_area_outline(
-                                        parent_ui,
-                                        &tensor_view,
-                                        center,
-                                        ui_from_space.transform_rect(rect),
-                                    );
-                                    data_ui::image::show_zoomed_image_region(
-                                        ui,
-                                        &tensor_view,
-                                        center,
-                                        image.meter,
-                                    );
-                                });
-                            }
-                        });
-                    })
-            } else {
-                // Hover ui for everything else
-                response.on_hover_ui_at_pointer(|ui| {
-                    ctx.instance_path_button(ui, Some(space_view_id), &instance_path);
-                    instance_path.data_ui(
-                        ctx,
-                        ui,
-                        crate::ui::UiVerbosity::Reduced,
-                        &ctx.current_query(),
-                    );
-                })
-            };
-
-            ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
-                pick.instance_path_hash
-                    .resolve(&ctx.log_db.entity_db)
-                    .map(|instance_path| Item::InstancePath(Some(space_view_id), instance_path))
-            }));
-        }
-    } else {
-        state.previous_picking_result = None;
     }
-
-    ctx.select_hovered_on_click(&response);
 
     // ------------------------------------------------------------------------
 
@@ -493,7 +375,7 @@ fn view_2d_scrollable(
                 return response;
             }
         };
-        painter.add(renderer_paint_callback(
+        painter.add(gpu_bridge::renderer_paint_callback(
             ctx.render_ctx,
             command_buffer,
             view_builder,
@@ -502,7 +384,6 @@ fn view_2d_scrollable(
         ));
     }
 
-    project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
     painter.extend(show_projections_from_3d_space(
         ctx,
         parent_ui,
@@ -525,7 +406,8 @@ fn setup_target_config(
     any_outlines: bool,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
-    let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
+    let resolution_in_pixel =
+        gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
     let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
@@ -551,27 +433,6 @@ fn setup_target_config(
 }
 
 // ------------------------------------------------------------------------
-
-fn project_onto_other_spaces(
-    ctx: &mut ViewerContext<'_>,
-    space: &EntityPath,
-    response: &Response,
-    space_from_ui: &RectTransform,
-    z: Option<f32>,
-) {
-    if let Some(pointer_in_screen) = response.hover_pos() {
-        let pointer_in_space = space_from_ui.transform_pos(pointer_in_screen);
-        ctx.selection_state_mut()
-            .set_hovered_space(HoveredSpace::TwoD {
-                space_2d: space.clone(),
-                pos: glam::vec3(
-                    pointer_in_space.x,
-                    pointer_in_space.y,
-                    z.unwrap_or(f32::INFINITY),
-                ),
-            });
-    }
-}
 
 fn show_projections_from_3d_space(
     ctx: &ViewerContext<'_>,

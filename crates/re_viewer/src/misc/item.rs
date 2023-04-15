@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use re_data_store::{InstancePath, LogDb};
-use re_log_types::{ComponentPath, MsgId};
+use re_data_store::InstancePath;
+use re_log_types::ComponentPath;
 
 use crate::ui::SpaceViewId;
 
@@ -11,7 +11,6 @@ use crate::ui::SpaceViewId;
 /// A set of these is a an [`ItemCollection`].
 #[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Item {
-    MsgId(MsgId),
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
@@ -21,7 +20,6 @@ pub enum Item {
 impl std::fmt::Debug for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Item::MsgId(s) => s.fmt(f),
             Item::ComponentPath(s) => s.fmt(f),
             Item::SpaceView(s) => write!(f, "{s:?}"),
             Item::InstancePath(sid, path) => write!(f, "({sid:?}, {path})"),
@@ -32,13 +30,12 @@ impl std::fmt::Debug for Item {
 
 impl Item {
     /// If `false`, the selection is referring to data that is no longer present.
-    pub(crate) fn is_valid(&self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) -> bool {
+    pub(crate) fn is_valid(&self, blueprint: &crate::ui::Blueprint) -> bool {
         match self {
             Item::ComponentPath(_) => true,
             Item::InstancePath(space_view_id, _) => space_view_id
                 .map(|space_view_id| blueprint.viewport.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
-            Item::MsgId(msg_id) => log_db.get_log_msg(msg_id).is_some(),
             Item::SpaceView(space_view_id) => {
                 blueprint.viewport.space_view(space_view_id).is_some()
             }
@@ -57,7 +54,6 @@ impl Item {
 
     pub fn kind(self: &Item) -> &'static str {
         match self {
-            Item::MsgId(_) => "Message",
             Item::InstancePath(space_view_id, instance_path) => {
                 match (
                     instance_path.instance_key.is_specific(),
@@ -138,8 +134,7 @@ impl ItemCollection {
     }
 
     /// Remove all invalid selections.
-    pub fn purge_invalid(&mut self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) {
-        self.items
-            .retain(|selection| selection.is_valid(log_db, blueprint));
+    pub fn purge_invalid(&mut self, blueprint: &crate::ui::Blueprint) {
+        self.items.retain(|selection| selection.is_valid(blueprint));
     }
 }

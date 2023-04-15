@@ -48,7 +48,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, DataRow, MsgId, RecordingId};
+use re_log_types::{entity_path, DataRow, RecordingId, RowId};
 
 fn main() {
     log_messages();
@@ -57,7 +57,7 @@ fn main() {
 fn log_messages() {
     use re_log_types::{
         datagen::{build_frame_nr, build_some_point2d},
-        ArrowMsg, LogMsg, TimeInt, TimePoint, Timeline,
+        LogMsg, TimeInt, TimePoint, Timeline,
     };
 
     // Note: we use Box in this function so that we also count the "static"
@@ -108,7 +108,7 @@ fn log_messages() {
         let used_bytes_start = live_bytes();
         let table = Box::new(
             DataRow::from_cells1(
-                MsgId::random(),
+                RowId::random(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 1,
@@ -119,7 +119,7 @@ fn log_messages() {
         let table_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(
             recording_id,
-            ArrowMsg::try_from(&*table).unwrap(),
+            table.to_arrow_msg().unwrap(),
         ));
         let log_msg_bytes = live_bytes() - used_bytes_start;
         println!("Arrow payload containing a Pos2 uses {table_bytes} bytes in RAM");
@@ -134,7 +134,7 @@ fn log_messages() {
         let used_bytes_start = live_bytes();
         let table = Box::new(
             DataRow::from_cells1(
-                MsgId::random(),
+                RowId::random(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 NUM_POINTS as _,
@@ -145,7 +145,7 @@ fn log_messages() {
         let table_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(
             recording_id,
-            ArrowMsg::try_from(&*table).unwrap(),
+            table.to_arrow_msg().unwrap(),
         ));
         let log_msg_bytes = live_bytes() - used_bytes_start;
         println!("Arrow payload containing a Pos2 uses {table_bytes} bytes in RAM");

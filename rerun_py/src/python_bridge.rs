@@ -8,12 +8,13 @@ use itertools::izip;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
-    types::PyDict,
+    types::{PyBytes, PyDict},
 };
 
 use re_log_types::{ArrowMsg, DataRow, DataTableError};
 use rerun::{
-    log::{MsgId, PathOp},
+    log::{PathOp, RowId},
+    sink::MemorySinkStorage,
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
 };
@@ -28,6 +29,11 @@ pub use rerun::{
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
+
+#[cfg(feature = "web_viewer")]
+use re_web_viewer_server::WebViewerServerPort;
+#[cfg(feature = "web_viewer")]
+use re_ws_comms::RerunServerPort;
 
 use crate::{arrow::get_registered_component_names, python_session::PythonSession};
 
@@ -59,6 +65,10 @@ impl ThreadInfo {
         Self::with(|ti| ti.set_time(timeline, time_int));
     }
 
+    pub fn reset_thread_time() {
+        Self::with(|ti| ti.reset_time());
+    }
+
     /// Get access to the thread-local [`ThreadInfo`].
     fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
         use std::cell::RefCell;
@@ -85,6 +95,10 @@ impl ThreadInfo {
         } else {
             self.time_point.remove(&timeline);
         }
+    }
+
+    fn reset_time(&mut self) {
+        self.time_point = TimePoint::default();
     }
 }
 
@@ -114,6 +128,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // TODO(jleibs): Refactor import logic so all we need is main
     m.add_function(wrap_pyfunction!(get_registered_component_names, m)?)?;
     m.add_class::<TensorDataMeaning>()?;
+    m.add_class::<PyMemorySinkStorage>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -132,18 +147,23 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
 
-    m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
-    m.add_function(wrap_pyfunction!(serve, m)?)?;
-    m.add_function(wrap_pyfunction!(shutdown, m)?)?;
-    m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
-    m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
+    m.add_function(wrap_pyfunction!(flush, m)?)?;
+    m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
+    m.add_function(wrap_pyfunction!(init, m)?)?;
+    m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
+    m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
+    m.add_function(wrap_pyfunction!(serve, m)?)?;
+    m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
+    m.add_function(wrap_pyfunction!(reset_time, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_rigid3, m)?)?;
@@ -188,7 +208,6 @@ fn default_recording_id(py: Python<'_>) -> RecordingId {
 }
 
 fn authkey(py: Python<'_>) -> Vec<u8> {
-    use pyo3::types::PyBytes;
     let locals = PyDict::new(py);
     py.run(
         r#"
@@ -296,10 +315,19 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     Ok(())
 }
 
+#[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
+#[cfg(feature = "web_viewer")]
+fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
+    use once_cell::sync::Lazy;
+    static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
+        Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
+    TOKIO_RUNTIME.enter()
+}
+
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-fn serve(open_browser: bool) -> PyResult<()> {
+fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
         let mut session = python_session();
@@ -309,17 +337,24 @@ fn serve(open_browser: bool) -> PyResult<()> {
             return Ok(());
         }
 
-        use once_cell::sync::Lazy;
-        static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
-            Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
-        let _guard = TOKIO_RUNTIME.enter();
-        session.set_sink(rerun::web_viewer::new_sink(open_browser));
+        let _guard = enter_tokio_runtime();
+
+        session.set_sink(
+            rerun::web_viewer::new_sink(
+                open_browser,
+                web_port.map(WebViewerServerPort).unwrap_or_default(),
+                ws_port.map(RerunServerPort).unwrap_or_default(),
+            )
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+        );
 
         Ok(())
     }
 
     #[cfg(not(feature = "web_viewer"))]
     {
+        _ = web_port;
+        _ = ws_port;
         _ = open_browser;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
@@ -328,16 +363,38 @@ fn serve(open_browser: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn shutdown(py: Python<'_>) {
-    // Release the GIL in case any flushing behavior needs to
-    // cleanup a python object.
-    py.allow_threads(|| {
-        re_log::debug!("Shutting down the Rerun SDK");
+// TODO(jleibs) expose this as a python type
+fn start_web_viewer_server(port: u16) -> PyResult<()> {
+    #[cfg(feature = "web_viewer")]
+    {
         let mut session = python_session();
-        session.drop_msgs_if_disconnected();
-        session.flush();
-        session.disconnect();
-    });
+        let _guard = enter_tokio_runtime();
+        session
+            .start_web_viewer_server(WebViewerServerPort(port))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+
+    #[cfg(not(feature = "web_viewer"))]
+    {
+        _ = port;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
+        ))
+    }
+}
+
+#[pyfunction]
+fn get_app_url() -> String {
+    let session = python_session();
+    session.get_app_url()
+}
+
+#[pyfunction]
+fn shutdown(py: Python<'_>) {
+    re_log::debug!("Shutting down the Rerun SDK");
+    // Disconnect the current sink which ensures that
+    // it flushes and cleans up.
+    disconnect(py);
 }
 
 /// Is logging enabled in the global session?
@@ -355,13 +412,27 @@ fn set_enabled(enabled: bool) {
     python_session().set_enabled(enabled);
 }
 
+/// Block until outstanding data has been flushed to the sink
+#[pyfunction]
+fn flush(py: Python<'_>) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        python_session().flush();
+    });
+}
+
 /// Disconnect from remote server (if any).
 ///
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
 #[pyfunction]
-fn disconnect() {
-    python_session().disconnect();
+fn disconnect(py: Python<'_>) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        python_session().disconnect();
+    });
 }
 
 #[pyfunction]
@@ -370,6 +441,26 @@ fn save(path: &str) -> PyResult<()> {
     session
         .save(path)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+#[pyclass]
+struct PyMemorySinkStorage(MemorySinkStorage);
+
+#[pymethods]
+impl PyMemorySinkStorage {
+    fn get_rrd_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+        self.0
+            .rrd_as_bytes()
+            .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+/// Create an in-memory rrd file
+#[pyfunction]
+fn memory_recording() -> PyMemorySinkStorage {
+    let mut session = python_session();
+    PyMemorySinkStorage(session.memory_recording())
 }
 
 // ----------------------------------------------------------------------------
@@ -402,6 +493,11 @@ fn set_time_nanos(timeline: &str, ns: Option<i64>) {
         Timeline::new(timeline, TimeType::Time),
         ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
     );
+}
+
+#[pyfunction]
+fn reset_time() {
+    ThreadInfo::reset_thread_time();
 }
 
 fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
@@ -477,20 +573,14 @@ fn log_transform(
     // introducing new numerical issues.
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [transform].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 // ----------------------------------------------------------------------------
@@ -561,20 +651,14 @@ fn log_view_coordinates(
     // conversion errors.
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [coordinates].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 // ----------------------------------------------------------------------------
@@ -695,20 +779,14 @@ fn log_meshes(
     // TODO(jleibs) replace with python-native implementation
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         meshes.len() as _,
         meshes,
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[pyfunction]
@@ -776,20 +854,14 @@ fn log_mesh_file(
     // TODO(jleibs) replace with python-native implementation
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [mesh3d].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 /// Log an image file given its contents or path on disk.
@@ -868,20 +940,14 @@ fn log_image_file(
     };
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [tensor].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[derive(FromPyObject)]
@@ -947,20 +1013,14 @@ fn log_annotation_context(
     // TODO(jleibs) replace with python-native implementation
 
     let row = DataRow::from_cells1(
-        MsgId::random(),
+        RowId::random(),
         entity_path,
         time_point,
         1,
         [annotation_context].as_slice(),
     );
 
-    let msg = (&row.into_table())
-        .try_into()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
-
-    Ok(())
+    session.send_row(row)
 }
 
 #[pyfunction]
@@ -987,8 +1047,8 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
 
     let mut session = python_session();
 
-    let msg: ArrowMsg = (&data_table)
-        .try_into()
+    let msg: ArrowMsg = data_table
+        .to_arrow_msg()
         .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
 
     session.send_arrow_msg(msg);

@@ -63,7 +63,167 @@ jobs:
           just py-requirements
 
   # ---------------------------------------------------------------------------
+  # We need one wheel-build to be special so the other builds (namely mac arm) can use its rrd
+  # This copy-paste is awful, but we'll refactor the build soon.
+  wheels-linux:
+    if: github.event_name == 'push' || github.event.inputs.force_build_wheel
+    name: Build Python Wheels (Linux)
+    runs-on: ubuntu-latest
+    container:
+      image: rerunio/ci_docker:0.6
+    steps:
+      - uses: actions/checkout@v3
 
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - name: Cache APT Packages
+        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
+        with:
+          packages: ${{ env.UBUNTU_REQUIRED_PKGS }}
+          version: 2.0 # Increment this to pull newer packages
+          execute_install_scripts: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: False
+
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - run: pip install -r rerun_py/requirements-build.txt
+
+      # ----------------------------------------------------------------------------------
+
+      - name: Patch Cargo.toml for pre-release
+        if: github.ref == 'refs/heads/main'
+        # After patching the pre-release version, run cargo update.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
+        run: |
+          python3 scripts/version_util.py --patch_prerelease
+          cargo update -w
+
+      - name: Version check for tagged-release
+        if: startsWith(github.ref, 'refs/tags/v')
+        # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
+        run: |
+          python3 scripts/version_util.py --check_version
+
+      - name: Store the expected version
+        # Find the current cargo version and store it in the GITHUB_ENV var: `expected_version`
+        shell: bash
+        run: |
+          echo "expected_version=$(python3 scripts/version_util.py --bare_cargo_version)" >> $GITHUB_ENV
+
+      - name: Build Wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          manylinux: manylinux_2_31
+          container: off
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --target x86_64-unknown-linux-gnu
+            --no-default-features
+            --features pypi
+            --out pre-dist
+
+      - name: Install wheel dependencies
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
+        # TODO(jleibs): pull these deps from pyproject.toml
+        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
+        shell: bash
+        run: |
+          pip install deprecated numpy>=1.23 pyarrow==10.0.1
+
+      - name: Install built wheel
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        shell: bash
+        run: |
+          pip uninstall rerun-sdk
+          pip install rerun-sdk==${{ env.expected_version }} --no-index --find-links pre-dist
+
+      - name: Verify built wheel version
+        shell: bash
+        run: |
+          python3 -m rerun --version
+          which rerun
+          rerun --version
+
+      - name: Run unit tests
+        shell: bash
+        run: cd rerun_py/tests && pytest
+
+      - name: Install requriements for e2e test
+        run: |
+          pip install -r examples/python/api_demo/requirements.txt
+          pip install -r examples/python/car/requirements.txt
+          pip install -r examples/python/multithreading/requirements.txt
+          pip install -r examples/python/plots/requirements.txt
+          pip install -r examples/python/text_logging/requirements.txt
+
+      - name: Run e2e test
+        shell: bash
+        run: scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+
+      - name: Unpack the wheel
+        shell: bash
+        run: |
+          mkdir unpack-dist
+          wheel unpack pre-dist/*.whl --dest unpack-dist
+
+      - name: Get the folder name
+        shell: bash
+        run: |
+          echo "pkg_folder=$(ls unpack-dist)" >> $GITHUB_ENV
+
+      - name: Cache RRD dataset
+        id: dataset
+        uses: actions/cache@v3
+        with:
+          path: examples/python/colmap/dataset/
+          # TODO(jleibs): Derive this key from the invocation below
+          key: colmap-dataset-colmap-fiat-v0
+
+      - name: Generate Embedded RRD file
+        shell: bash
+        # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
+        run: |
+          mkdir rrd
+          pip install -r examples/python/colmap/requirements.txt
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+          cp rrd/colmap_fiat.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap_fiat.rrd
+
+      - name: Repack the wheel
+        shell: bash
+        run: |
+          mkdir dist
+          wheel pack unpack-dist/${{ env.pkg_folder }} --dest dist/
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+      # All platforms are currently creating the same rrd file, upload one of them
+      - name: Save RRD artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: rrd
+          path: rrd
+
+  # ---------------------------------------------------------------------------
   matrix-setup:
     # Building all the wheels is expensive, so we only run this job when we push (to main or release tags),
     # or if the job was manually triggered with `force_build_wheel` set to true.
@@ -85,41 +245,29 @@ jobs:
 
       - id: set-matrix
         shell: bash
+        # TODO(jleibs): figure out why tests are failing to complete on `x86_64-apple-darwin`
+        # See: https://github.com/rerun-io/rerun/pull/1853
         run: |
           matrix=()
-          matrix+=('{"platform": "macos", "target": "x86_64-apple-darwin", "runs_on": "macos-latest"},')
-          matrix+=('{"platform": "macos", "target": "aarch64-apple-darwin", "runs_on": "macos-latest"},')
-          matrix+=('{"platform": "windows", "target": "x86_64-pc-windows-msvc", "runs_on": "windows-latest-8-cores"},')
-          matrix+=('{"platform": "linux", "target": "x86_64-unknown-linux-gnu", "runs_on": "ubuntu-latest-16-cores", container: {"image": "rerunio/ci_docker:0.6"}}')
+          matrix+=('{"platform": "macos",   "target": "x86_64-apple-darwin",    "run_tests": false,  "runs_on": "macos-latest"          },')
+          matrix+=('{"platform": "macos",   "target": "aarch64-apple-darwin",   "run_tests": false, "runs_on": "macos-latest"          },') # NOTE: we can't run tests on arm since our macos runner is x86_64
+          matrix+=('{"platform": "windows", "target": "x86_64-pc-windows-msvc", "run_tests": true,  "runs_on": "windows-latest-8-cores"},')
 
           echo "Matrix values: ${matrix[@]}"
 
           echo "matrix={\"include\":[${matrix[@]}]}" >> $GITHUB_OUTPUT
 
   wheels:
-    name: Build Python Wheels
-    needs: [lint, matrix-setup]
+    name: Build Remaining Python Wheels
+    needs: [lint, matrix-setup, wheels-linux]
 
     strategy:
       matrix: ${{fromJson(needs.matrix-setup.outputs.matrix)}}
 
     runs-on: ${{ matrix.runs_on }}
 
-    container: ${{ matrix.container }}
-
     steps:
       - uses: actions/checkout@v3
-
-      # These should already be in the docker container, but run for good measure. A no-op install
-      # should be fast, and this way things don't break if we add new packages without rebuilding
-      # docker
-      - name: Cache APT Packages
-        if: matrix.platform == 'linux'
-        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
-        with:
-          packages: ${{ env.UBUNTU_REQUIRED_PKGS }}
-          version: 2.0 # Increment this to pull newer packages
-          execute_install_scripts: true
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
@@ -133,7 +281,6 @@ jobs:
       # The pip-cache setup logic doesn't work in the ubuntu docker container
       # That's probably fine since we bake these deps into the container already
       - name: Setup python
-        if: matrix.platform != 'linux'
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -194,6 +341,12 @@ jobs:
         run: |
           python3 scripts/version_util.py --check_version
 
+      - name: Store the expected version
+        # Find the current cargo version and store it in the GITHUB_ENV var: `expected_version`
+        shell: bash
+        run: |
+          echo "expected_version=$(python3 scripts/version_util.py --bare_cargo_version)" >> $GITHUB_ENV
+
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
         with:
@@ -210,11 +363,44 @@ jobs:
             --out pre-dist
 
       - name: Install built wheel
+        if: ${{ matrix.run_tests }}
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # Then install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        # TODO(jleibs): pull these deps from pyproject.toml
+        shell: bash
         run: |
-          pip install rerun-sdk --find-links pre-dist --force-reinstall
+          pip uninstall rerun-sdk
+          pip install deprecated numpy>=1.23 pyarrow==10.0.1
+          pip install rerun-sdk==${{ env.expected_version }} --no-index --find-links pre-dist
 
-      - name: Run tests
+      - name: Verify built wheel version
+        if: ${{ matrix.run_tests }}
+        shell: bash
+        run: |
+          python3 -m rerun --version
+          which rerun
+          rerun --version
+
+      - name: Run unit tests
+        if: ${{ matrix.run_tests }}
+        shell: bash
         run: cd rerun_py/tests && pytest
+
+      - name: Install requriements for e2e test
+        if: ${{ matrix.run_tests }}
+        run: |
+          pip install -r examples/python/api_demo/requirements.txt
+          pip install -r examples/python/car/requirements.txt
+          pip install -r examples/python/multithreading/requirements.txt
+          pip install -r examples/python/plots/requirements.txt
+          pip install -r examples/python/text_logging/requirements.txt
+
+      - name: Run e2e test
+        if: ${{ matrix.run_tests }}
+        shell: bash
+        run: scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Unpack the wheel
         shell: bash
@@ -227,21 +413,16 @@ jobs:
         run: |
           echo "pkg_folder=$(ls unpack-dist)" >> $GITHUB_ENV
 
-      - name: Cache RRD dataset
-        id: dataset
-        uses: actions/cache@v3
+      - name: Download RRD
+        uses: actions/download-artifact@v3
         with:
-          path: examples/python/colmap/dataset/
-          # TODO(jleibs): Derive this key from the invocation below
-          key: colmap-dataset-colmap-fiat-v0
+          name: rrd
+          path: rrd
 
-      - name: Generate Embedded RRD file
+      - name: Insert the rrd
         shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
-          mkdir rrd
-          pip install -r examples/python/colmap/requirements.txt
-          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
           cp rrd/colmap_fiat.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap_fiat.rrd
 
       - name: Repack the wheel
@@ -255,14 +436,6 @@ jobs:
         with:
           name: wheels
           path: dist
-
-      # All platforms are currently creating the same rrd file, upload one of them
-      - name: Save RRD artifact
-        if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v3
-        with:
-          name: rrd
-          path: rrd
 
   # ---------------------------------------------------------------------------
 

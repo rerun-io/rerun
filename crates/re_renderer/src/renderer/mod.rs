@@ -2,7 +2,10 @@ mod generic_skybox;
 pub use generic_skybox::GenericSkyboxDrawData;
 
 mod lines;
-pub use lines::{gpu_data::LineVertex, LineBatchInfo, LineDrawData, LineStripFlags, LineStripInfo};
+pub use lines::{
+    gpu_data::LineVertex, LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
+    LineStripInfo,
+};
 
 mod point_cloud;
 pub use point_cloud::{
@@ -19,7 +22,10 @@ mod test_triangle;
 pub use test_triangle::TestTriangleDrawData;
 
 mod rectangles;
-pub use rectangles::{RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect};
+pub use rectangles::{
+    ColorMapper, ColormappedTexture, RectangleDrawData, TextureFilterMag, TextureFilterMin,
+    TexturedRect,
+};
 
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;

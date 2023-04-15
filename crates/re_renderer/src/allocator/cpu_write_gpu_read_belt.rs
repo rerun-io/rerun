@@ -65,11 +65,15 @@ where
     /// Pushes several elements into the buffer.
     ///
     /// Panics if there are more elements than there is space in the buffer.
+    ///
+    /// Returns number of elements pushed.
     #[inline]
-    pub fn extend(&mut self, elements: impl Iterator<Item = T>) {
+    pub fn extend(&mut self, elements: impl Iterator<Item = T>) -> usize {
+        let num_written_before = self.num_written();
         for element in elements {
             self.push(element);
         }
+        self.num_written() - num_written_before
     }
 
     /// Pushes a single element into the buffer and advances the write pointer.

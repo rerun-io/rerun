@@ -20,8 +20,8 @@ use itertools::Itertools;
 use macaw::IsoTransform;
 use re_renderer::{
     renderer::{
-        DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthClouds, DrawData,
-        GenericSkyboxDrawData, RectangleDrawData, TexturedRect,
+        ColormappedTexture, DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthClouds,
+        DrawData, GenericSkyboxDrawData, RectangleDrawData, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
@@ -98,38 +98,37 @@ impl RenderDepthClouds {
                 })
                 .multiunzip();
 
-            let mut builder = PointCloudBuilder::<()>::new(re_ctx);
-            builder
-                .batch("backprojected point cloud")
-                .add_points(num_points as _, points.into_iter())
-                .colors(colors.into_iter())
-                .radii(radii.into_iter());
+            let mut builder = PointCloudBuilder::new(re_ctx);
+            builder.batch("backprojected point cloud").add_points(
+                num_points as _,
+                points.into_iter(),
+                radii.into_iter(),
+                colors.into_iter(),
+                std::iter::empty::<re_renderer::PickingLayerInstanceId>(),
+            );
 
             builder.to_draw_data(re_ctx).unwrap()
         };
 
-        let mut view_builder = ViewBuilder::default();
-        view_builder
-            .setup_view(
-                re_ctx,
-                view_builder::TargetConfiguration {
-                    name: "Point Cloud".into(),
-                    resolution_in_pixel,
-                    view_from_world: IsoTransform::look_at_rh(
-                        self.camera_position,
-                        Vec3::ZERO,
-                        Vec3::Y,
-                    )
-                    .unwrap(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
-                    pixels_from_point,
-                    ..Default::default()
+        let mut view_builder = ViewBuilder::new(
+            re_ctx,
+            view_builder::TargetConfiguration {
+                name: "Point Cloud".into(),
+                resolution_in_pixel,
+                view_from_world: IsoTransform::look_at_rh(
+                    self.camera_position,
+                    Vec3::ZERO,
+                    Vec3::Y,
+                )
+                .unwrap(),
+                projection_from_view: Projection::Perspective {
+                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                    near_plane_distance: 0.01,
                 },
-            )
-            .unwrap();
+                pixels_from_point,
+                ..Default::default()
+            },
+        );
 
         let command_buffer = view_builder
             .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
@@ -181,7 +180,7 @@ impl RenderDepthClouds {
                     max_depth_in_world: 5.0,
                     depth_dimensions: depth.dimensions,
                     depth_data: depth.data.clone(),
-                    colormap: re_renderer::ColorMap::ColorMapTurbo,
+                    colormap: re_renderer::Colormap::Turbo,
                     outline_mask_id: Default::default(),
                 }],
                 radius_boost_in_ui_points_for_outlines: 2.5,
@@ -189,28 +188,25 @@ impl RenderDepthClouds {
         )
         .unwrap();
 
-        let mut view_builder = ViewBuilder::default();
-        view_builder
-            .setup_view(
-                re_ctx,
-                view_builder::TargetConfiguration {
-                    name: "Depth Cloud".into(),
-                    resolution_in_pixel,
-                    view_from_world: IsoTransform::look_at_rh(
-                        self.camera_position,
-                        Vec3::ZERO,
-                        Vec3::Y,
-                    )
-                    .unwrap(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
-                    pixels_from_point,
-                    ..Default::default()
+        let mut view_builder = ViewBuilder::new(
+            re_ctx,
+            view_builder::TargetConfiguration {
+                name: "Depth Cloud".into(),
+                resolution_in_pixel,
+                view_from_world: IsoTransform::look_at_rh(
+                    self.camera_position,
+                    Vec3::ZERO,
+                    Vec3::Y,
+                )
+                .unwrap(),
+                projection_from_view: Projection::Perspective {
+                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                    near_plane_distance: 0.01,
                 },
-            )
-            .unwrap();
+                pixels_from_point,
+                ..Default::default()
+            },
+        );
 
         let command_buffer = view_builder
             .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
@@ -243,7 +239,7 @@ impl framework::Example for RenderDepthClouds {
             &mut re_ctx.gpu_resources.textures,
             &Texture2DCreationDesc {
                 label: "albedo".into(),
-                data: bytemuck::cast_slice(&albedo.rgba8),
+                data: bytemuck::cast_slice(&albedo.rgba8).into(),
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
                 width: albedo.dimensions.x,
                 height: albedo.dimensions.y,
@@ -310,7 +306,7 @@ impl framework::Example for RenderDepthClouds {
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {
-            let mut builder = LineStripSeriesBuilder::<()>::new(re_ctx);
+            let mut builder = LineStripSeriesBuilder::new(re_ctx);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
                 line_batch.add_box_outline(glam::Affine3A::from_scale_rotation_translation(
@@ -319,7 +315,7 @@ impl framework::Example for RenderDepthClouds {
                     glam::Vec3::ONE * 0.5,
                 ));
             }
-            builder.to_draw_data(re_ctx)
+            builder.to_draw_data(re_ctx).unwrap()
         };
 
         let image_draw_data = RectangleDrawData::new(
@@ -329,7 +325,7 @@ impl framework::Example for RenderDepthClouds {
                     .transform_point3(glam::Vec3::new(1.0, 1.0, 0.0)),
                 extent_u: world_from_model.transform_vector3(-glam::Vec3::X),
                 extent_v: world_from_model.transform_vector3(-glam::Vec3::Y),
-                texture: albedo_handle.clone(),
+                colormapped_texture: ColormappedTexture::from_unorm_srgba(albedo_handle.clone()),
                 texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
                 texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
                 multiplicative_tint: Rgba::from_white_alpha(0.5),

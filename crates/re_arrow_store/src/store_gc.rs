@@ -1,215 +1,287 @@
-use std::collections::HashMap;
+use re_log_types::{RowId, SizeBytes as _, TimeInt, TimeRange};
 
-use arrow2::array::{Array, ListArray};
-
-use re_log::trace;
-use re_log_types::{ComponentName, TimeRange, Timeline};
-
-use crate::{ComponentBucket, DataStore};
+use crate::{
+    store::{IndexedBucketInner, IndexedTable},
+    DataStore, DataStoreStats,
+};
 
 // ---
 
 #[derive(Debug, Clone, Copy)]
 pub enum GarbageCollectionTarget {
-    /// Try to drop _at least_ the given percentage.
+    /// Try to drop _at least_ the given fraction.
     ///
-    /// The percentage must be a float in the range [0.0 : 1.0].
-    DropAtLeastPercentage(f64),
+    /// The fraction must be a float in the range [0.0 : 1.0].
+    DropAtLeastFraction(f64),
 }
 
 impl std::fmt::Display for GarbageCollectionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GarbageCollectionTarget::DropAtLeastPercentage(p) => f.write_fmt(format_args!(
-                "DropAtLeast({}%)",
-                re_format::format_f64(*p * 100.0)
-            )),
+            GarbageCollectionTarget::DropAtLeastFraction(p) => {
+                write!(f, "DropAtLeast({:.3}%)", re_format::format_f64(*p * 100.0))
+            }
         }
     }
 }
 
 impl DataStore {
-    /// Triggers a garbage collection according to the desired `target`, driven by the specified
-    /// `primary_component` and `primary_timeline`.
-    /// Returns all the raw data that was removed from the store for the given `primary_component`.
+    /// Triggers a garbage collection according to the desired `target`.
     ///
-    /// This only affects component tables, indices are left as-is, effectively behaving as
-    /// tombstones.
+    /// Garbage collection's performance is bounded by the number of buckets in each table (for
+    /// each `RowId`, we have to find the corresponding bucket, which is roughly `O(log(n))`) as
+    /// well as the number of rows in each of those buckets (for each `RowId`, we have to sort the
+    /// corresponding bucket (roughly `O(n*log(n))`) and then find the corresponding row (roughly
+    /// `O(log(n))`.
+    /// The size of the data itself has no impact on performance.
     ///
-    /// The garbage collection is based on _insertion order_, which makes it both very efficient
-    /// and very simple from an implementation standpoint.
-    /// The tradeoff is that the given `primary_timeline` is expected to roughly follow insertion
-    /// order, otherwise the behaviour is essentially undefined.
-    pub fn gc(
-        &mut self,
-        target: GarbageCollectionTarget,
-        primary_timeline: Timeline,
-        primary_component: ComponentName,
-    ) -> Vec<Box<dyn Array>> {
+    /// Returns the list of `RowId`s that were purged from the store.
+    ///
+    /// ## Semantics
+    ///
+    /// Garbage collection works on a row-level basis and is driven by [`RowId`] order,
+    /// i.e. the order defined by the clients' wall-clocks, allowing it to drop data across
+    /// the different timelines
+    /// in a fair, deterministic manner.
+    /// Similarly, out-of-order data is supported out of the box.
+    ///
+    /// The garbage collector doesn't deallocate data in and of itself: all it does is drop the
+    /// store's internal references to that data (the `DataCell`s), which will be deallocated once
+    /// their reference count reaches 0.
+    ///
+    /// ## Limitations
+    ///
+    /// The garbage collector is currently unaware of our latest-at semantics, i.e. it will drop
+    /// old data even if doing so would impact the results of recent queries.
+    /// See <https://github.com/rerun-io/rerun/issues/1803>.
+    //
+    // TODO(#1804): There shouldn't be any need to return the purged `RowId`s, all secondary
+    // datastructures should be able to purge themselves based solely off of
+    // [`DataStore::oldest_time_per_timeline`].
+    //
+    // TODO(#1803): The GC should be aware of latest-at semantics and make sure they are upheld
+    // when purging data.
+    //
+    // TODO(#1823): Workload specific optimizations.
+    pub fn gc(&mut self, target: GarbageCollectionTarget) -> (Vec<RowId>, DataStoreStats) {
         crate::profile_function!();
 
         self.gc_id += 1;
 
-        let initial_nb_rows = self.total_temporal_component_rows();
-        let initial_size_bytes = self.total_temporal_component_size_bytes() as f64;
+        // NOTE: only temporal data and row metadata get purged!
+        let stats_before = DataStoreStats::from_store(self);
+        let initial_num_rows =
+            stats_before.temporal.num_rows + stats_before.metadata_registry.num_rows;
+        let initial_num_bytes =
+            (stats_before.temporal.num_bytes + stats_before.metadata_registry.num_bytes) as f64;
 
-        let res = match target {
-            GarbageCollectionTarget::DropAtLeastPercentage(p) => {
+        let row_ids = match target {
+            GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
 
-                let drop_at_least_size_bytes = initial_size_bytes * p;
-                let target_size_bytes = initial_size_bytes - drop_at_least_size_bytes;
+                let num_bytes_to_drop = initial_num_bytes * p;
+                let target_num_bytes = initial_num_bytes - num_bytes_to_drop;
 
                 re_log::debug!(
                     kind = "gc",
                     id = self.gc_id,
                     %target,
-                    timeline = %primary_timeline.name(),
-                    %primary_component,
-                    initial_nb_rows = re_format::format_large_number(initial_nb_rows as _),
-                    initial_size_bytes = re_format::format_bytes(initial_size_bytes),
-                    target_size_bytes = re_format::format_bytes(target_size_bytes),
-                    drop_at_least_size_bytes = re_format::format_bytes(drop_at_least_size_bytes),
+                    initial_num_rows = re_format::format_large_number(initial_num_rows as _),
+                    initial_num_bytes = re_format::format_bytes(initial_num_bytes),
+                    target_num_bytes = re_format::format_bytes(target_num_bytes),
+                    drop_at_least_num_bytes = re_format::format_bytes(num_bytes_to_drop),
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_size_bytes(
-                    primary_timeline,
-                    primary_component,
-                    drop_at_least_size_bytes,
-                )
+                self.gc_drop_at_least_num_bytes(num_bytes_to_drop)
             }
         };
 
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
 
-        let new_nb_rows = self.total_temporal_component_rows();
-        let new_size_bytes = self.total_temporal_component_size_bytes() as f64;
+        // NOTE: only temporal data and row metadata get purged!
+        let stats_after = DataStoreStats::from_store(self);
+        let new_num_rows = stats_after.temporal.num_rows + stats_after.metadata_registry.num_rows;
+        let new_num_bytes =
+            (stats_after.temporal.num_bytes + stats_after.metadata_registry.num_bytes) as f64;
 
         re_log::debug!(
             kind = "gc",
             id = self.gc_id,
             %target,
-            timeline = %primary_timeline.name(),
-            %primary_component,
-            initial_nb_rows = re_format::format_large_number(initial_nb_rows as _),
-            initial_size_bytes = re_format::format_bytes(initial_size_bytes),
-            new_nb_rows = re_format::format_large_number(new_nb_rows as _),
-            new_size_bytes = re_format::format_bytes(new_size_bytes),
+            initial_num_rows = re_format::format_large_number(initial_num_rows as _),
+            initial_num_bytes = re_format::format_bytes(initial_num_bytes),
+            new_num_rows = re_format::format_large_number(new_num_rows as _),
+            new_num_bytes = re_format::format_bytes(new_num_bytes),
             "GC done"
         );
 
-        res
+        let stats_diff = stats_before - stats_after;
+
+        (row_ids, stats_diff)
     }
 
-    fn gc_drop_at_least_size_bytes(
-        &mut self,
-        primary_timeline: Timeline,
-        primary_component: ComponentName,
-        mut drop_at_least_size_bytes: f64,
-    ) -> Vec<Box<dyn Array>> {
-        let mut dropped = Vec::<Box<dyn Array>>::new();
+    /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
+    ///
+    /// Returns the list of `RowId`s that were purged from the store.
+    fn gc_drop_at_least_num_bytes(&mut self, mut num_bytes_to_drop: f64) -> Vec<RowId> {
+        crate::profile_function!();
 
-        let mut i = 0usize;
-        while drop_at_least_size_bytes > 0.0 {
-            // Find and drop the earliest (in terms of _insertion order_) primary component bucket
-            // that we can find.
-            let Some(primary_bucket) = self
-                .components
-                .get_mut(&primary_component)
-                .and_then(|table| (table.buckets.len() > 1).then(|| table.buckets.pop_front()))
-                .flatten()
-            else {
-                trace!(
-                    kind = "gc",
-                    id = self.gc_id,
-                    timeline = %primary_timeline.name(),
-                    %primary_component,
-                    iter = i,
-                    remaining = re_format::format_bytes(drop_at_least_size_bytes),
-                    "no more primary buckets, giving up"
-                );
+        let mut row_ids = Vec::new();
+
+        // The algorithm is straightforward:
+        // 1. Pop the oldest `RowId` available
+        // 2. Find all tables that potentially hold data associated with that `RowId`
+        // 3. Drop the associated row and account for the space we got back
+        while num_bytes_to_drop > 0.0 {
+            // pop next row id
+            let Some((row_id, timepoint)) = self.metadata_registry.pop_first() else {
                 break;
             };
+            let metadata_dropped_size_bytes =
+                row_id.total_size_bytes() + timepoint.total_size_bytes();
+            self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
+            num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
+            row_ids.push(row_id);
 
-            drop_at_least_size_bytes -= primary_bucket.total_size_bytes() as f64;
+            // find all tables that could possibly contain this `RowId`
+            let tables = self.tables.iter_mut().filter_map(|((timeline, _), table)| {
+                timepoint.get(timeline).map(|time| (*time, table))
+            });
 
-            trace!(
-                kind = "gc",
-                id = self.gc_id,
-                timeline = %primary_timeline.name(),
-                %primary_component,
-                iter = i,
-                reclaimed = re_format::format_bytes(primary_bucket.total_size_bytes() as f64),
-                remaining = re_format::format_bytes(drop_at_least_size_bytes),
-                "found & dropped primary component bucket"
-            );
-
-            // From there, find and drop all component buckets (in _insertion order_) that do not
-            // contain any data more recent than the time range covered by the primary
-            // component bucket (for the primary timeline!).
-            for table in self
-                .components
-                .iter_mut()
-                .filter_map(|(component, table)| (*component != primary_component).then_some(table))
-            {
-                while table.buckets.len() > 1 {
-                    let bucket = table.buckets.front().unwrap();
-                    if primary_bucket.encompasses(primary_timeline, &bucket.time_ranges) {
-                        let bucket = table.buckets.pop_front().unwrap();
-                        drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
-                        trace!(
-                            kind = "gc",
-                            id = self.gc_id,
-                            timeline = %primary_timeline.name(),
-                            %primary_component,
-                            iter = i,
-                            reclaimed = re_format::format_bytes(bucket.total_size_bytes() as f64),
-                            remaining = re_format::format_bytes(drop_at_least_size_bytes),
-                            "found & dropped secondary component bucket"
-                        );
-                    } else {
-                        break;
-                    }
-                }
-
-                i += 1;
+            for (time, table) in tables {
+                num_bytes_to_drop -= table.try_drop_row(row_id, time.as_i64()) as f64;
             }
-
-            // We don't collect indices: they behave as tombstones.
-
-            dropped.extend(primary_bucket.chunks.into_iter().map(|chunk| {
-                chunk
-                    .as_any()
-                    .downcast_ref::<ListArray<i32>>()
-                    .unwrap()
-                    .values()
-                    .clone()
-            }));
         }
 
-        dropped
+        row_ids
     }
 }
 
-impl ComponentBucket {
-    /// Does `self` fully encompass `time_ranges` for the given `primary_timeline`?
-    fn encompasses(
-        &self,
-        primary_timeline: Timeline,
-        time_ranges: &HashMap<Timeline, TimeRange>,
-    ) -> bool {
-        if let (Some(time_range1), Some(time_range2)) = (
-            self.time_ranges.get(&primary_timeline),
-            time_ranges.get(&primary_timeline),
-        ) {
-            return time_range1.max >= time_range2.max;
+impl IndexedTable {
+    /// Tries to drop the given `row_id` from the table, which is expected to be found at the
+    /// specified `time`.
+    ///
+    /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
+    fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
+        crate::profile_function!();
+
+        let table_has_more_than_one_bucket = self.buckets.len() > 1;
+
+        let (bucket_key, bucket) = self.find_bucket_mut(time.into());
+        let bucket_num_bytes = bucket.total_size_bytes();
+
+        let mut dropped_num_bytes = {
+            let inner = &mut *bucket.inner.write();
+            inner.try_drop_row(row_id, time)
+        };
+
+        // NOTE: We always need to keep at least one bucket alive, otherwise we have
+        // nowhere to write to.
+        if table_has_more_than_one_bucket && bucket.num_rows() == 0 {
+            // NOTE: We're dropping the bucket itself in this case, rather than just its
+            // contents.
+            debug_assert!(
+                dropped_num_bytes <= bucket_num_bytes,
+                "Bucket contained more bytes than it thought"
+            );
+            dropped_num_bytes = bucket_num_bytes;
+            self.buckets.remove(&bucket_key);
+
+            // NOTE: If this is the first bucket of the table that we've just removed, we need the
+            // next one to become responsible for `-∞`.
+            if bucket_key == TimeInt::MIN {
+                if let Some((_, bucket)) = self.buckets.pop_first() {
+                    self.buckets.insert(TimeInt::MIN, bucket);
+                }
+            }
         }
 
-        // There's only one way this can happen: this is a bucket that only holds the fake row at
-        // offset #0.
-        // Ignore it.
-        true
+        self.buckets_size_bytes -= dropped_num_bytes;
+        self.buckets_num_rows -= (dropped_num_bytes > 0) as u64;
+
+        dropped_num_bytes
+    }
+}
+
+impl IndexedBucketInner {
+    /// Tries to drop the given `row_id` from the table, which is expected to be found at the
+    /// specified `time`.
+    ///
+    /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
+    fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
+        crate::profile_function!();
+
+        self.sort();
+
+        let IndexedBucketInner {
+            is_sorted,
+            time_range,
+            col_time,
+            col_insert_id,
+            col_row_id,
+            col_num_instances,
+            columns,
+            size_bytes,
+        } = self;
+
+        let mut dropped_num_bytes = 0u64;
+
+        let mut row_index = col_time.partition_point(|&time2| time2 < time);
+        while col_time.get(row_index) == Some(&time) {
+            if col_row_id[row_index] != row_id {
+                row_index += 1;
+                continue;
+            }
+
+            // Update the time_range min/max:
+            if col_time.len() == 1 {
+                // We removed the last row
+                *time_range = TimeRange::EMPTY;
+            } else {
+                *is_sorted = false;
+
+                // We have at least two rows, so we can safely [index] here:
+                if row_index == 0 {
+                    // We removed the first row, so the second row holds the new min
+                    time_range.min = col_time[1].into();
+                }
+                if row_index + 1 == col_time.len() {
+                    // We removed the last row, so the penultimate row holds the new max
+                    time_range.max = col_time[row_index - 1].into();
+                }
+            }
+
+            // col_row_id
+            let removed_row_id = col_row_id.swap_remove(row_index);
+            debug_assert_eq!(row_id, removed_row_id);
+            dropped_num_bytes += removed_row_id.total_size_bytes();
+
+            // col_time
+            let row_time = col_time.swap_remove(row_index);
+            dropped_num_bytes += row_time.total_size_bytes();
+
+            // col_insert_id (if present)
+            if !col_insert_id.is_empty() {
+                dropped_num_bytes += col_insert_id.swap_remove(row_index).total_size_bytes();
+            }
+
+            // col_num_instances
+            dropped_num_bytes += col_num_instances.swap_remove(row_index).total_size_bytes();
+
+            // each data column
+            for column in columns.values_mut() {
+                dropped_num_bytes += column.0.swap_remove(row_index).total_size_bytes();
+            }
+
+            // NOTE: A single `RowId` cannot possibly have more than one datapoint for
+            // a single timeline.
+            break;
+        }
+
+        *size_bytes -= dropped_num_bytes;
+
+        dropped_num_bytes
     }
 }

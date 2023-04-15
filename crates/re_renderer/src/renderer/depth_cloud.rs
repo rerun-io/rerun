@@ -24,7 +24,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
         Texture2DBufferInfo, TextureDesc,
     },
-    ColorMap, OutlineMaskPreference, PickingLayerProcessor,
+    Colormap, OutlineMaskPreference, PickingLayerProcessor,
 };
 
 use super::{
@@ -160,7 +160,7 @@ pub struct DepthCloud {
     pub depth_data: DepthCloudDepthData,
 
     /// Configures color mapping mode.
-    pub colormap: ColorMap,
+    pub colormap: Colormap,
 
     /// Option outline mask id preference.
     pub outline_mask_id: OutlineMaskPreference,

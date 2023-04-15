@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
-use re_arrow_store::DataStoreStats;
+use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
@@ -45,6 +45,7 @@ enum TimeControlCommand {
 #[derive(Clone, Copy, Default)]
 pub struct StartupOptions {
     pub memory_limit: re_memory::MemoryLimit,
+    pub persist_state: bool,
 }
 
 // ----------------------------------------------------------------------------
@@ -119,9 +120,13 @@ impl App {
             );
         }
 
-        let state: AppState = storage
-            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
-            .unwrap_or_default();
+        let state: AppState = if startup_options.persist_state {
+            storage
+                .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
+                .unwrap_or_default()
+        } else {
+            AppState::default()
+        };
 
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
@@ -391,6 +396,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
     ) {
         let frame = egui::Frame {
@@ -407,6 +413,7 @@ impl App {
                     ui,
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
+                    store_config,
                     store_stats,
                 );
             });
@@ -419,7 +426,9 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        if self.startup_options.persist_state {
+            eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        }
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
@@ -471,9 +480,11 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
+        let store_config = self.log_db().entity_db.data_store.config().clone();
         let store_stats = DataStoreStats::from_store(&self.log_db().entity_db.data_store);
 
-        self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
+        // do first, before doing too many allocations
+        self.memory_panel.update(&gpu_resource_stats, &store_stats);
 
         self.check_keyboard_shortcuts(egui_ctx);
 
@@ -502,7 +513,7 @@ impl eframe::App for App {
 
                 top_panel(ui, frame, self, &gpu_resource_stats);
 
-                self.memory_panel_ui(ui, &gpu_resource_stats, &store_stats);
+                self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
                 let selected_app_id = log_db
@@ -523,7 +534,7 @@ impl eframe::App for App {
                     log_db,
                 )
                 .selection_state
-                .on_frame_start(log_db, blueprint);
+                .on_frame_start(blueprint);
 
                 {
                     // TODO(andreas): store the re_renderer somewhere else.
@@ -636,6 +647,9 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
             re_smart_channel::Source::RrdHttpStream { url } => {
                 ui.strong(format!("Loading {url}…"));
             }
+            re_smart_channel::Source::RrdWebEventListener => {
+                ready_and_waiting(ui, "Waiting for logging data…");
+            }
             re_smart_channel::Source::Sdk => {
                 ready_and_waiting(ui, "Waiting for logging data from SDK");
             }
@@ -700,7 +714,7 @@ impl App {
                     log_db.data_source = Some(self.rx.source().clone());
                 }
 
-                if let Err(err) = log_db.add(msg) {
+                if let Err(err) = log_db.add(&msg) {
                     re_log::error!("Failed to add incoming msg: {err}");
                 };
 
@@ -912,8 +926,6 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
 enum PanelSelection {
     #[default]
     Viewport,
-
-    EventLog,
 }
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -935,8 +947,6 @@ struct AppState {
 
     /// Which view panel is currently being shown
     panel_selection: PanelSelection,
-
-    event_log_view: crate::event_log_view::EventLogView,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: crate::time_panel::TimePanel,
@@ -965,7 +975,6 @@ impl AppState {
             selected_rec_id,
             recording_configs,
             panel_selection,
-            event_log_view,
             blueprints,
             selection_panel,
             time_panel,
@@ -1010,7 +1019,6 @@ impl AppState {
                     .entry(selected_app_id)
                     .or_insert_with(|| Blueprint::new(ui.ctx()))
                     .blueprint_panel_and_viewport(&mut ctx, ui),
-                PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
             });
 
         // move time last, so we get to see the first data first!
@@ -1519,7 +1527,13 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         .set_title(title)
         .save_file()
     {
-        let f = save_database_to_file(app.log_db(), path, loop_selection);
+        let f = match save_database_to_file(app.log_db(), path, loop_selection) {
+            Ok(f) => f,
+            Err(err) => {
+                re_log::error!("File saving failed: {err}");
+                return;
+            }
+        };
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
             // NOTE: Shouldn't even be possible as the "Save" button is already
             // grayed out at this point... better safe than sorry though.
@@ -1537,16 +1551,6 @@ fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
                     &mut app.state.panel_selection,
                     PanelSelection::Viewport,
                     "Viewport",
-                )
-                .clicked()
-            {
-                ui.close_menu();
-            }
-            if ui
-                .selectable_value(
-                    &mut app.state.panel_selection,
-                    PanelSelection::EventLog,
-                    "Event Log",
                 )
                 .clicked()
             {
@@ -1756,57 +1760,56 @@ fn save_database_to_file(
     log_db: &LogDb,
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
-) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
-    use re_log_types::{EntityPathOpMsg, TimeInt};
+) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
+    use re_arrow_store::TimeRange;
 
-    let msgs = match time_selection {
-        // Fast path: no query, just dump everything.
-        None => log_db
-            .chronological_log_messages()
-            .cloned()
-            .collect::<Vec<_>>(),
+    crate::profile_scope!("dump_messages");
 
-        // Query path: time to filter!
-        Some((timeline, range)) => {
-            use std::ops::RangeInclusive;
-            let range: RangeInclusive<TimeInt> = range.min.floor()..=range.max.ceil();
-            log_db
-                .chronological_log_messages()
-                .filter(|msg| {
-                    match msg {
-                        LogMsg::BeginRecordingMsg(_) | LogMsg::Goodbye(_) => {
-                            true // timeless
-                        }
-                        LogMsg::EntityPathOpMsg(_, EntityPathOpMsg { time_point, .. }) => {
-                            time_point.is_timeless() || {
-                                let is_within_range = time_point
-                                    .get(&timeline)
-                                    .map_or(false, |t| range.contains(t));
-                                is_within_range
-                            }
-                        }
-                        LogMsg::ArrowMsg(_, _) => {
-                            // TODO(john)
-                            false
-                        }
-                    }
-                })
-                .cloned()
-                .collect::<Vec<_>>()
-        }
-    };
+    let begin_rec_msg = log_db
+        .recording_msg()
+        .map(|msg| LogMsg::BeginRecordingMsg(msg.clone()));
 
-    move || {
+    let ent_op_msgs = log_db
+        .iter_entity_op_msgs()
+        .map(|msg| LogMsg::EntityPathOpMsg(log_db.recording_id(), msg.clone()))
+        .collect_vec();
+
+    let time_filter = time_selection.map(|(timeline, range)| {
+        (
+            timeline,
+            TimeRange::new(range.min.floor(), range.max.ceil()),
+        )
+    });
+    let data_msgs: Result<Vec<_>, _> = log_db
+        .entity_db
+        .data_store
+        .to_data_tables(time_filter)
+        .map(|table| {
+            table
+                .to_arrow_msg()
+                .map(|msg| LogMsg::ArrowMsg(log_db.recording_id(), msg))
+        })
+        .collect();
+
+    use anyhow::Context as _;
+    let data_msgs = data_msgs.with_context(|| "Failed to export to data tables")?;
+
+    let msgs = std::iter::once(begin_rec_msg)
+        .flatten() // option
+        .chain(ent_op_msgs)
+        .chain(data_msgs);
+
+    Ok(move || {
         crate::profile_scope!("save_to_file");
 
         use anyhow::Context as _;
         let file = std::fs::File::create(path.as_path())
             .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-        re_log_encoding::encoder::encode(msgs.iter(), file)
+        re_log_encoding::encoder::encode_owned(msgs, file)
             .map(|_| path)
             .context("Message encode")
-    }
+    })
 }
 
 #[allow(unused_mut)]
@@ -1817,7 +1820,7 @@ fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 
     let mut log_db = LogDb::default();
     for msg in decoder {
-        log_db.add(msg?)?;
+        log_db.add(&msg?)?;
     }
     Ok(log_db)
 }
@@ -1892,9 +1895,9 @@ fn new_recording_confg(
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
         // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-        re_smart_channel::Source::File { .. } | re_smart_channel::Source::RrdHttpStream { .. } => {
-            PlayState::Playing
-        }
+        re_smart_channel::Source::File { .. }
+        | re_smart_channel::Source::RrdHttpStream { .. }
+        | re_smart_channel::Source::RrdWebEventListener => PlayState::Playing,
 
         // Live data - follow it!
         re_smart_channel::Source::Sdk

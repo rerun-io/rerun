@@ -5,11 +5,7 @@ use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
     component_types::{self, ClassId, Tensor, TensorData, TensorDataMeaning},
-    MsgId,
-};
-use re_renderer::{
-    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
-    RenderContext,
+    RowId,
 };
 
 use crate::{
@@ -27,9 +23,6 @@ use crate::{
 /// In the case of images that leverage a `ColorMapping` this includes conversion from
 /// the native Tensor type A -> Color32.
 pub struct ColoredTensorView<'store, 'cache> {
-    /// Key used to retrieve this cached view
-    key: ImageCacheKey,
-
     /// Borrowed tensor from the data store
     pub tensor: &'store Tensor,
 
@@ -45,30 +38,6 @@ pub struct ColoredTensorView<'store, 'cache> {
 }
 
 impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
-    /// Try to get a [`GpuTexture2DHandle`] for the cached [`Tensor`].
-    ///
-    /// Will return None if a valid [`ColorImage`] could not be derived from the [`Tensor`].
-    pub fn texture_handle(&self, render_ctx: &mut RenderContext) -> Option<GpuTexture2DHandle> {
-        crate::profile_function!();
-        self.colored_image.map(|i| {
-            let texture_key = self.key.hash64();
-
-            let debug_name = format!("tensor {:?}", self.tensor.shape());
-            // TODO(andreas): The renderer should ingest images with less conversion (e.g. keep luma as 8bit texture, don't flip bits on bgra etc.)
-            render_ctx.texture_manager_2d.get_or_create(
-                texture_key,
-                &mut render_ctx.gpu_resources.textures,
-                &Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: bytemuck::cast_slice(&i.pixels),
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    width: i.width() as u32,
-                    height: i.height() as u32,
-                },
-            )
-        })
-    }
-
     /// Try to get a [`DynamicImage`] for the the cached [`Tensor`].
     ///
     /// Note: this is a `DynamicImage` created from the cached [`ColorImage`], not from the
@@ -90,13 +59,13 @@ impl<'store, 'cache> ColoredTensorView<'store, 'cache> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
     tensor_id: component_types::TensorId,
-    annotation_msg_id: MsgId,
+    annotation_row_id: RowId,
 }
 
 impl ImageCacheKey {
     fn hash64(&self) -> u64 {
         let msg_hash = self.tensor_id.0.as_u128() as u64;
-        let annotation_hash = (self.annotation_msg_id.as_u128() >> 1) as u64;
+        let annotation_hash = (self.annotation_row_id.as_u128() >> 1) as u64;
         msg_hash ^ annotation_hash
     }
 }
@@ -127,7 +96,7 @@ impl ImageCache {
     ) -> ColoredTensorView<'store, 'cache> {
         let key = ImageCacheKey {
             tensor_id: tensor.id(),
-            annotation_msg_id: annotations.msg_id,
+            annotation_row_id: annotations.row_id,
         };
         let ci = self.images.entry(key).or_insert_with(|| {
             let debug_name = format!("tensor {:?}", tensor.shape());
@@ -138,7 +107,6 @@ impl ImageCache {
         ci.last_use_generation = self.generation;
 
         ColoredTensorView::<'store, '_> {
-            key,
             tensor,
             annotations,
             colored_image: ci.colored_image.as_ref(),
@@ -205,7 +173,7 @@ impl CachedImage {
     fn from_tensor(debug_name: &str, tensor: &Tensor, annotations: &Arc<Annotations>) -> Self {
         crate::profile_function!();
 
-        match apply_color_map(tensor, annotations) {
+        match apply_colormap(tensor, annotations) {
             Ok(colored_image) => {
                 let memory_used = colored_image.pixels.len() * std::mem::size_of::<egui::Color32>();
 
@@ -241,7 +209,7 @@ impl CachedImage {
     }
 }
 
-fn apply_color_map(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::Result<ColorImage> {
+fn apply_colormap(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::Result<ColorImage> {
     match tensor.meaning {
         TensorDataMeaning::Unknown => color_tensor_as_color_image(tensor),
         TensorDataMeaning::ClassId => class_id_tensor_as_color_image(tensor, annotations),
@@ -360,8 +328,12 @@ fn color_tensor_as_color_image(tensor: &Tensor) -> anyhow::Result<ColorImage> {
             Ok(ColorImage { size, pixels })
         }
 
-        (_depth, dtype) => {
-            anyhow::bail!("Don't know how to turn a tensor of shape={:?} and dtype={dtype:?} into a color image", tensor.shape)
+        (_depth, _dtype) => {
+            anyhow::bail!(
+                "Don't know how to turn a tensor of shape={:?} and dtype={:?} into a color image",
+                tensor.shape,
+                tensor.dtype()
+            )
         }
     }
 }

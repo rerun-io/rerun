@@ -118,33 +118,29 @@ impl framework::Example for Picking {
             }
         }
 
-        let mut view_builder = ViewBuilder::default();
-
         // TODO(#1426): unify camera logic between examples.
         let camera_position = glam::vec3(1.0, 3.5, 7.0);
 
-        view_builder
-            .setup_view(
-                re_ctx,
-                TargetConfiguration {
-                    name: "OutlinesDemo".into(),
-                    resolution_in_pixel: resolution,
-                    view_from_world: macaw::IsoTransform::look_at_rh(
-                        camera_position,
-                        glam::Vec3::ZERO,
-                        glam::Vec3::Y,
-                    )
-                    .unwrap(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
-                    pixels_from_point,
-                    outline_config: None,
-                    ..Default::default()
+        let mut view_builder = ViewBuilder::new(
+            re_ctx,
+            TargetConfiguration {
+                name: "OutlinesDemo".into(),
+                resolution_in_pixel: resolution,
+                view_from_world: macaw::IsoTransform::look_at_rh(
+                    camera_position,
+                    glam::Vec3::ZERO,
+                    glam::Vec3::Y,
+                )
+                .unwrap(),
+                projection_from_view: Projection::Perspective {
+                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                    near_plane_distance: 0.01,
                 },
-            )
-            .unwrap();
+                pixels_from_point,
+                outline_config: None,
+                ..Default::default()
+            },
+        );
 
         // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
         // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
@@ -157,7 +153,7 @@ impl framework::Example for Picking {
             .schedule_picking_rect(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)
             .unwrap();
 
-        let mut point_builder = PointCloudBuilder::<()>::new(re_ctx);
+        let mut point_builder = PointCloudBuilder::new(re_ctx);
         for (i, point_set) in self.point_sets.iter().enumerate() {
             point_builder
                 .batch(format!("Random Points {i}"))
@@ -165,10 +161,10 @@ impl framework::Example for Picking {
                 .add_points(
                     point_set.positions.len(),
                     point_set.positions.iter().cloned(),
-                )
-                .radii(point_set.radii.iter().cloned())
-                .colors(point_set.colors.iter().cloned())
-                .picking_instance_ids(point_set.picking_ids.iter().cloned());
+                    point_set.radii.iter().cloned(),
+                    point_set.colors.iter().cloned(),
+                    point_set.picking_ids.iter().cloned(),
+                );
         }
         view_builder.queue_draw(&point_builder.to_draw_data(re_ctx).unwrap());
 

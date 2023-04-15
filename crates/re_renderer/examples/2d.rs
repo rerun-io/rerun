@@ -1,7 +1,8 @@
 use ecolor::Hsva;
 use re_renderer::{
     renderer::{
-        LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect,
+        ColormappedTexture, LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin,
+        TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
@@ -39,7 +40,7 @@ impl framework::Example for Render2D {
             &mut re_ctx.gpu_resources.textures,
             &Texture2DCreationDesc {
                 label: "rerun logo".into(),
-                data: &image_data,
+                data: image_data.into(),
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
                 width: rerun_logo.width(),
                 height: rerun_logo.height(),
@@ -67,7 +68,7 @@ impl framework::Example for Render2D {
             splits[0].resolution_in_pixel[1] as f32,
         );
 
-        let mut line_strip_builder = LineStripSeriesBuilder::<()>::new(re_ctx);
+        let mut line_strip_builder = LineStripSeriesBuilder::new(re_ctx);
 
         // Blue rect outline around the bottom right quarter.
         {
@@ -149,29 +150,26 @@ impl framework::Example for Render2D {
         // Moving the windows to a high dpi screen makes the second one bigger.
         // Also, it looks different under perspective projection.
         // The third point is automatic thickness which is determined by the point renderer implementation.
-        let mut point_cloud_builder = PointCloudBuilder::<()>::new(re_ctx);
-        point_cloud_builder
-            .batch("points")
-            .add_points_2d(
-                4,
-                [
-                    glam::vec2(500.0, 120.0),
-                    glam::vec2(520.0, 120.0),
-                    glam::vec2(540.0, 120.0),
-                    glam::vec2(560.0, 120.0),
-                ]
-                .into_iter(),
-            )
-            .radii(
-                [
-                    Size::new_scene(4.0),
-                    Size::new_points(4.0),
-                    Size::AUTO,
-                    Size::AUTO_LARGE,
-                ]
-                .into_iter(),
-            )
-            .colors(std::iter::repeat(Color32::from_rgb(55, 180, 1)).take(4));
+        let mut point_cloud_builder = PointCloudBuilder::new(re_ctx);
+        point_cloud_builder.batch("points").add_points_2d(
+            4,
+            [
+                glam::vec2(500.0, 120.0),
+                glam::vec2(520.0, 120.0),
+                glam::vec2(540.0, 120.0),
+                glam::vec2(560.0, 120.0),
+            ]
+            .into_iter(),
+            [
+                Size::new_scene(4.0),
+                Size::new_points(4.0),
+                Size::AUTO,
+                Size::AUTO_LARGE,
+            ]
+            .into_iter(),
+            std::iter::repeat(Color32::from_rgb(55, 180, 1)),
+            std::iter::repeat(re_renderer::PickingLayerInstanceId::default()),
+        );
 
         // Pile stuff to test for overlap handling
         {
@@ -185,7 +183,7 @@ impl framework::Example for Render2D {
             }
         }
 
-        let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
+        let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx).unwrap();
         let point_draw_data = point_cloud_builder.to_draw_data(re_ctx).unwrap();
 
         let image_scale = 4.0;
@@ -196,7 +194,9 @@ impl framework::Example for Render2D {
                     top_left_corner_position: glam::vec3(500.0, 120.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture.clone(),
+                    colormapped_texture: ColormappedTexture::from_unorm_srgba(
+                        self.rerun_logo_texture.clone(),
+                    ),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
                     ..Default::default()
@@ -210,7 +210,9 @@ impl framework::Example for Render2D {
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture.clone(),
+                    colormapped_texture: ColormappedTexture::from_unorm_srgba(
+                        self.rerun_logo_texture.clone(),
+                    ),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
                     depth_offset: 1,
@@ -223,25 +225,22 @@ impl framework::Example for Render2D {
         vec![
             // 2d view to the left
             {
-                let mut view_builder = ViewBuilder::default();
-                view_builder
-                    .setup_view(
-                        re_ctx,
-                        TargetConfiguration {
-                            name: "2D".into(),
-                            resolution_in_pixel: splits[0].resolution_in_pixel,
-                            view_from_world: macaw::IsoTransform::IDENTITY,
-                            projection_from_view: Projection::Orthographic {
-                                camera_mode:
-                                    view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                                vertical_world_size: splits[0].resolution_in_pixel[1] as f32,
-                                far_plane_distance: 1000.0,
-                            },
-                            pixels_from_point,
-                            ..Default::default()
+                let mut view_builder = ViewBuilder::new(
+                    re_ctx,
+                    TargetConfiguration {
+                        name: "2D".into(),
+                        resolution_in_pixel: splits[0].resolution_in_pixel,
+                        view_from_world: macaw::IsoTransform::IDENTITY,
+                        projection_from_view: Projection::Orthographic {
+                            camera_mode:
+                                view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                            vertical_world_size: splits[0].resolution_in_pixel[1] as f32,
+                            far_plane_distance: 1000.0,
                         },
-                    )
-                    .unwrap();
+                        pixels_from_point,
+                        ..Default::default()
+                    },
+                );
                 view_builder.queue_draw(&line_strip_draw_data);
                 view_builder.queue_draw(&point_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
@@ -256,7 +255,6 @@ impl framework::Example for Render2D {
             },
             // and 3d view of the same scene to the right
             {
-                let mut view_builder = ViewBuilder::default();
                 let seconds_since_startup = time.seconds_since_startup();
                 let camera_rotation_center = screen_size.extend(0.0) * 0.5;
                 let camera_position = glam::vec3(
@@ -265,27 +263,25 @@ impl framework::Example for Render2D {
                     seconds_since_startup.cos(),
                 ) * screen_size.x.max(screen_size.y)
                     + camera_rotation_center;
-                view_builder
-                    .setup_view(
-                        re_ctx,
-                        view_builder::TargetConfiguration {
-                            name: "3D".into(),
-                            resolution_in_pixel: splits[1].resolution_in_pixel,
-                            view_from_world: macaw::IsoTransform::look_at_rh(
-                                camera_position,
-                                camera_rotation_center,
-                                glam::Vec3::Y,
-                            )
-                            .unwrap(),
-                            projection_from_view: Projection::Perspective {
-                                vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                                near_plane_distance: 0.01,
-                            },
-                            pixels_from_point,
-                            ..Default::default()
+                let mut view_builder = ViewBuilder::new(
+                    re_ctx,
+                    view_builder::TargetConfiguration {
+                        name: "3D".into(),
+                        resolution_in_pixel: splits[1].resolution_in_pixel,
+                        view_from_world: macaw::IsoTransform::look_at_rh(
+                            camera_position,
+                            camera_rotation_center,
+                            glam::Vec3::Y,
+                        )
+                        .unwrap(),
+                        projection_from_view: Projection::Perspective {
+                            vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                            near_plane_distance: 0.01,
                         },
-                    )
-                    .unwrap();
+                        pixels_from_point,
+                        ..Default::default()
+                    },
+                );
                 let command_buffer = view_builder
                     .queue_draw(&line_strip_draw_data)
                     .queue_draw(&point_draw_data)

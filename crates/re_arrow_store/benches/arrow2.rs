@@ -241,7 +241,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
 
             {
                 let cells = generate_cells(kind);
-                let arrays = cells.iter().map(|cell| cell.as_arrow()).collect_vec();
+                let arrays = cells.iter().map(|cell| cell.to_arrow()).collect_vec();
                 let total_instances = arrays.iter().map(|array| array.len() as u32).sum::<u32>();
                 assert_eq!(total_instances, (NUM_ROWS * NUM_INSTANCES) as u32);
 

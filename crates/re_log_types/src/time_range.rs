@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::{TimeInt, TimeReal};
+use crate::{SizeBytes, TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
@@ -38,6 +38,7 @@ impl TimeRange {
         self.min.as_i64().abs_diff(self.max.as_i64())
     }
 
+    #[inline]
     pub fn center(&self) -> TimeInt {
         self.min + TimeInt::from((self.abs_length() / 2) as i64)
     }
@@ -48,11 +49,23 @@ impl TimeRange {
     }
 
     #[inline]
+    pub fn intersects(&self, other: Self) -> bool {
+        self.min <= other.max && self.max >= other.min
+    }
+
+    #[inline]
     pub fn union(&self, other: Self) -> Self {
         Self {
             min: self.min.min(other.min),
             max: self.max.max(other.max),
         }
+    }
+}
+
+impl SizeBytes for TimeRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 

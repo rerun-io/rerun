@@ -2,7 +2,7 @@ use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{self, InstanceKey},
-    Component, MsgId,
+    Component, RowId,
 };
 use re_query::{range_entity_with_primary, QueryError};
 
@@ -15,7 +15,7 @@ use super::ui::ViewTextFilters;
 #[derive(Debug, Clone)]
 pub struct TextEntry {
     // props
-    pub msg_id: Option<MsgId>,
+    pub row_id: RowId,
 
     pub entity_path: EntityPath,
 
@@ -63,19 +63,17 @@ impl SceneText {
 
             let components = [
                 InstanceKey::name(),
-                MsgId::name(),
                 component_types::TextEntry::name(),
                 component_types::ColorRGBA::name(),
             ];
-            let ent_views = range_entity_with_primary::<component_types::TextEntry, 4>(
+            let ent_views = range_entity_with_primary::<component_types::TextEntry, 3>(
                 store, &query, ent_path, components,
             );
 
             for (time, ent_view) in ent_views {
-                match ent_view.visit3(
+                match ent_view.visit2(
                     |_instance,
                      text_entry: component_types::TextEntry,
-                     msg_id: Option<MsgId>,
                      color: Option<component_types::ColorRGBA>| {
                         let component_types::TextEntry { body, level } = text_entry;
 
@@ -86,7 +84,7 @@ impl SceneText {
 
                         if is_visible {
                             self.text_entries.push(TextEntry {
-                                msg_id,
+                                row_id: ent_view.row_id(),
                                 entity_path: entity_path.clone(),
                                 time: time.map(|time| time.as_i64()),
                                 color: color.map(|c| c.to_array()),

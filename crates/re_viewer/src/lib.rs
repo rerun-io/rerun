@@ -5,6 +5,7 @@
 
 mod app;
 pub mod env_vars;
+pub(crate) mod gpu_bridge;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
@@ -13,7 +14,7 @@ mod viewer_analytics;
 
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};
 use re_log_types::PythonVersion;
-pub(crate) use ui::{event_log_view, memory_panel, selection_panel, time_panel, UiVerbosity};
+pub(crate) use ui::{memory_panel, selection_panel, time_panel, UiVerbosity};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;

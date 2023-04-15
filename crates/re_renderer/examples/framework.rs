@@ -210,10 +210,10 @@ impl<E: Example + 'static> Application<E> {
                 Event::WindowEvent {
                     event: WindowEvent::CursorMoved { position, .. },
                     ..
-                } => self.example.on_cursor_moved(glam::uvec2(
-                    position.x.round() as u32,
-                    position.y.round() as u32,
-                )),
+                } => self
+                    .example
+                    // Don't round the position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
+                    .on_cursor_moved(glam::uvec2(position.x as u32, position.y as u32)),
                 Event::WindowEvent {
                     event:
                         WindowEvent::ScaleFactorChanged {
@@ -288,14 +288,11 @@ impl<E: Example + 'static> Application<E> {
                             });
 
                         for draw_result in &draw_results {
-                            draw_result
-                                .view_builder
-                                .composite(
-                                    &self.re_ctx,
-                                    &mut composite_pass,
-                                    draw_result.target_location,
-                                )
-                                .expect("Failed to composite view main surface");
+                            draw_result.view_builder.composite(
+                                &self.re_ctx,
+                                &mut composite_pass,
+                                draw_result.target_location,
+                            );
                         }
                     };
 

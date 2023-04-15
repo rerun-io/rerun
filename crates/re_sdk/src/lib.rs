@@ -49,7 +49,9 @@ pub mod demo_util;
 /// This is how you select whether the log stream ends up
 /// sent over TCP, written to file, etc.
 pub mod sink {
-    pub use crate::log_sink::{disabled, BufferedSink, LogSink, TcpSink};
+    pub use crate::log_sink::{
+        disabled, BufferedSink, LogSink, MemorySink, MemorySinkStorage, TcpSink,
+    };
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
@@ -57,7 +59,7 @@ pub mod sink {
 
 /// Things directly related to logging.
 pub mod log {
-    pub use re_log_types::{DataCell, DataRow, DataTable, LogMsg, MsgId, PathOp};
+    pub use re_log_types::{DataCell, DataRow, DataTable, LogMsg, PathOp, RowId, TableId};
 }
 
 /// Time-related types.

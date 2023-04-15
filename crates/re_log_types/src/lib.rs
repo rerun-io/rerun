@@ -17,6 +17,7 @@ mod data_table;
 pub mod hash;
 mod index;
 pub mod path;
+mod size_bytes;
 mod time;
 pub mod time_point;
 mod time_range;
@@ -25,6 +26,7 @@ mod time_real;
 pub mod external {
     pub use arrow2;
     pub use arrow2_convert;
+    pub use re_tuid;
 
     #[cfg(feature = "glam")]
     pub use glam;
@@ -39,15 +41,20 @@ pub use self::component_types::context;
 pub use self::component_types::coordinates;
 pub use self::component_types::AnnotationContext;
 pub use self::component_types::Arrow3D;
-pub use self::component_types::MsgId;
 pub use self::component_types::ViewCoordinates;
 pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::data::*;
-pub use self::data_cell::{DataCell, DataCellError, DataCellResult};
-pub use self::data_row::{DataRow, DataRowError, DataRowResult};
-pub use self::data_table::{DataTable, DataTableError, DataTableResult};
+pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
+pub use self::data_row::{DataRow, DataRowError, DataRowResult, RowId};
+pub use self::data_table::{
+    DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
+    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_ENTITY_PATH,
+    COLUMN_INSERT_ID, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID, COLUMN_TIMEPOINT, METADATA_KIND,
+    METADATA_KIND_CONTROL, METADATA_KIND_DATA,
+};
 pub use self::index::*;
 pub use self::path::*;
+pub use self::size_bytes::SizeBytes;
 pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
@@ -175,19 +182,19 @@ pub enum LogMsg {
     ArrowMsg(RecordingId, ArrowMsg),
 
     /// Sent when the client shuts down the connection.
-    Goodbye(MsgId),
+    Goodbye(RowId),
 }
 
 impl LogMsg {
-    pub fn id(&self) -> MsgId {
+    pub fn id(&self) -> RowId {
         match self {
-            Self::BeginRecordingMsg(msg) => msg.msg_id,
-            Self::EntityPathOpMsg(_, msg) => msg.msg_id,
-            Self::Goodbye(msg_id) => *msg_id,
+            Self::BeginRecordingMsg(msg) => msg.row_id,
+            Self::EntityPathOpMsg(_, msg) => msg.row_id,
+            Self::Goodbye(row_id) => *row_id,
             // TODO(#1619): the following only makes sense because, while we support sending and
             // receiving batches, we don't actually do so yet.
             // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
-            Self::ArrowMsg(_, msg) => msg.table_id,
+            Self::ArrowMsg(_, msg) => msg.table_id.into_row_id(),
         }
     }
 
@@ -210,8 +217,7 @@ impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct BeginRecordingMsg {
-    pub msg_id: MsgId,
-
+    pub row_id: RowId,
     pub info: RecordingInfo,
 }
 
@@ -303,7 +309,7 @@ impl std::fmt::Display for RecordingSource {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPathOpMsg {
     /// A unique id per [`EntityPathOpMsg`].
-    pub msg_id: MsgId,
+    pub row_id: RowId,
 
     /// Time information (when it was logged, when it was received, …).
     ///

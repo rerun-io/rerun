@@ -8,7 +8,7 @@ use re_arrow_store::{DataStore, RangeQuery, TimeRange};
 use re_log_types::{
     component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Component as _, DataRow, EntityPath, MsgId, TimeType,
+    Component as _, DataRow, EntityPath, RowId, TimeType,
 };
 use re_query::range_entity_with_primary;
 
@@ -23,27 +23,27 @@ fn main() {
     let frame4 = [build_frame_nr(4.into())];
 
     let rects = build_some_rects(2);
-    let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), frame1, 2, &rects);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame1, 2, &rects);
     store.insert_row(&row).unwrap();
 
     let points = build_some_point2d(2);
-    let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), frame2, 2, &points);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame2, 2, &points);
     store.insert_row(&row).unwrap();
 
     let points = build_some_point2d(4);
-    let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), frame3, 4, &points);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame3, 4, &points);
     store.insert_row(&row).unwrap();
 
     let rects = build_some_rects(3);
-    let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), frame4, 3, &rects);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &rects);
     store.insert_row(&row).unwrap();
 
     let points = build_some_point2d(3);
-    let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), frame4, 3, &points);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &points);
     store.insert_row(&row).unwrap();
 
     let rects = build_some_rects(3);
-    let row = DataRow::from_cells1(MsgId::random(), ent_path.clone(), frame4, 3, &rects);
+    let row = DataRow::from_cells1(RowId::random(), ent_path.clone(), frame4, 3, &rects);
     store.insert_row(&row).unwrap();
 
     let query = RangeQuery::new(frame2[0].0, TimeRange::new(frame2[0].1, frame4[0].1));

@@ -1,6 +1,6 @@
 use arrow2::datatypes::{DataType, TimeUnit};
 
-use crate::{TimeRange, TimeType};
+use crate::{SizeBytes, TimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
@@ -78,6 +78,7 @@ impl Timeline {
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
+    #[inline]
     pub fn format_time_range(&self, time_range: &TimeRange) -> String {
         format!(
             "    - {}: from {} to {} (all inclusive)",
@@ -98,6 +99,13 @@ impl Timeline {
 }
 
 impl nohash_hasher::IsEnabled for Timeline {}
+
+impl SizeBytes for Timeline {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
 
 // required for [`nohash_hasher`].
 #[allow(clippy::derive_hash_xor_eq)]

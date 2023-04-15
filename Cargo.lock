@@ -3796,6 +3796,7 @@ dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arrow2",
+ "arrow2_convert",
  "criterion",
  "document-features",
  "indent",
@@ -3848,6 +3849,7 @@ dependencies = [
  "puffin",
  "rand",
  "re_arrow_store",
+ "re_format",
  "re_int_histogram",
  "re_log",
  "re_log_encoding",
@@ -4205,6 +4207,7 @@ dependencies = [
  "uuid",
  "vec1",
  "wasm-bindgen-futures",
+ "web-sys",
  "wgpu",
  "winapi",
 ]
@@ -4213,7 +4216,6 @@ dependencies = [
 name = "re_web_viewer_server"
 version = "0.4.0"
 dependencies = [
- "anyhow",
  "cargo_metadata",
  "ctrlc",
  "document-features",
@@ -4223,6 +4225,7 @@ dependencies = [
  "re_analytics",
  "re_build_web_viewer",
  "re_log",
+ "thiserror",
  "tokio",
 ]
 
@@ -4240,6 +4243,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_smart_channel",
+ "thiserror",
  "tokio",
  "tokio-tungstenite",
  "tungstenite",
@@ -4313,6 +4317,7 @@ dependencies = [
  "re_analytics",
  "re_build_build_info",
  "re_build_info",
+ "re_data_store",
  "re_format",
  "re_log",
  "re_log_encoding",
@@ -4349,9 +4354,13 @@ dependencies = [
  "re_build_info",
  "re_error",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_web_viewer_server",
+ "re_ws_comms",
  "rerun",
+ "thiserror",
  "tokio",
  "uuid",
 ]
