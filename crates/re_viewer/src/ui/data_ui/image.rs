@@ -149,7 +149,7 @@ impl EntityDataUi for Tensor {
                             &tensor_view,
                             image_rect,
                             pointer_pos,
-                            None,
+                            tensor_view.tensor.meter,
                         );
                     }
 
