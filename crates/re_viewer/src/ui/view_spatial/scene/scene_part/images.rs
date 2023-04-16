@@ -224,7 +224,7 @@ impl ImagesPart {
         entity_highlight: &SpaceViewOutlineMasks,
         tensor: Tensor,
         color: Option<ColorRGBA>,
-        annotations: &Arc<Annotations>,
+        annotations: &Annotations,
     ) {
         crate::profile_function!();
 

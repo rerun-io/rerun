@@ -346,7 +346,7 @@ fn show_zoomed_image_region_tooltip(
                     ];
                     show_zoomed_image_region_area_outline(
                         parent_ui,
-                        tensor_view,
+                        tensor_view.tensor,
                         center,
                         image_rect,
                     );
@@ -361,13 +361,13 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
-    tensor_view: &ColoredTensorView<'_, '_>,
+    tensor: &Tensor,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
     use egui::{pos2, remap, Color32, Rect};
 
-    let Some([height, width, _]) = tensor_view.tensor.image_height_width_channels() else {return;};
+    let Some([height, width, _]) = tensor.image_height_width_channels() else {return;};
 
     let width = width as f32;
     let height = height as f32;

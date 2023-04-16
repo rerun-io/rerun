@@ -822,7 +822,7 @@ pub fn picking(
                                     );
                                     data_ui::image::show_zoomed_image_region_area_outline(
                                         ui,
-                                        &tensor_view,
+                                        tensor_view.tensor,
                                         [coords[0] as _, coords[1] as _],
                                         space_from_ui.inverse().transform_rect(rect),
                                     );
