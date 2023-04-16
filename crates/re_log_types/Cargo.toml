@@ -30,7 +30,7 @@ ecolor = ["dep:ecolor"]
 glam = ["dep:glam", "dep:macaw"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
-image = ["dep:image"]
+image = ["dep:ecolor", "dep:image"]
 
 ## Enable (de)serialization using serde.
 serde = [
