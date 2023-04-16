@@ -792,7 +792,7 @@ impl Tensor {
                 }
                 (1, TensorData::U16(buf)) => Gray16Image::from_raw(w, h, buf.as_slice().to_vec())
                     .map(DynamicImage::ImageLuma16),
-                // TODO f16
+                // TODO(emilk) f16
                 (1, TensorData::F32(buf)) => {
                     let pixels = buf
                         .iter()
