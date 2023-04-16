@@ -75,7 +75,7 @@ impl EntityDataUi for Tensor {
         };
 
         let tensor_view = match &decoded {
-            Ok(decoded) => ctx.cache.image.get_view(decoded),
+            Ok(decoded) => ctx.cache.image.get_colormapped_view(decoded, &annotations),
             Err(err) => {
                 ui.label(
                     ctx.re_ui

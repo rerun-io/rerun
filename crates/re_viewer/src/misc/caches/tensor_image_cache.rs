@@ -10,7 +10,7 @@ use re_log_types::{
 
 use crate::{
     misc::caches::TensorStats,
-    ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS},
+    ui::{Annotations, DefaultColor},
 };
 
 // ---
@@ -112,13 +112,6 @@ impl ImageCache {
             colored_image: ci.colored_image.as_ref(),
             retained_image: ci.retained_image.as_ref(),
         }
-    }
-
-    pub(crate) fn get_view<'store, 'cache>(
-        &'cache mut self,
-        tensor: &'store Tensor,
-    ) -> ColoredTensorView<'store, 'cache> {
-        self.get_colormapped_view(tensor, &MISSING_ANNOTATIONS)
     }
 
     /// Call once per frame to (potentially) flush the cache.
