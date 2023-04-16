@@ -24,7 +24,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
         Texture2DBufferInfo, TextureDesc,
     },
-    Colormap, OutlineMaskPreference, PickingLayerProcessor,
+    Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
 };
 
 use super::{
@@ -35,7 +35,7 @@ use super::{
 // ---
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
+    use crate::{wgpu_buffer_types, PickingLayerObjectId};
 
     /// Keep in sync with mirror in `depth_cloud.wgsl.`
     #[repr(C, align(256))]
@@ -47,6 +47,7 @@ mod gpu_data {
         pub depth_camera_intrinsics: wgpu_buffer_types::Mat3,
 
         pub outline_mask_id: wgpu_buffer_types::UVec2,
+        pub picking_layer_object_id: PickingLayerObjectId,
 
         /// Multiplier to get world-space depth from whatever is in the texture.
         pub world_depth_from_texture_value: f32,
@@ -57,14 +58,13 @@ mod gpu_data {
         /// The maximum depth value in world-space, for use with the colormap.
         pub max_depth_in_world: f32,
 
+        /// Which colormap should be used.
         pub colormap: u32,
 
         /// Changes over different draw-phases.
-        pub radius_boost_in_ui_points: f32,
+        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
 
-        pub row_pad: f32,
-
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1],
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1 - 1],
     }
 
     impl DepthCloudInfoUBO {
@@ -82,6 +82,7 @@ mod gpu_data {
                 depth_data,
                 colormap,
                 outline_mask_id,
+                picking_object_id,
             } = depth_cloud;
 
             let user_depth_from_texture_value = match depth_data {
@@ -99,8 +100,8 @@ mod gpu_data {
                 point_radius_from_world_depth: *point_radius_from_world_depth,
                 max_depth_in_world: *max_depth_in_world,
                 colormap: *colormap as u32,
-                radius_boost_in_ui_points,
-                row_pad: Default::default(),
+                radius_boost_in_ui_points: radius_boost_in_ui_points.into(),
+                picking_layer_object_id: *picking_object_id,
                 end_padding: Default::default(),
             }
         }
@@ -164,6 +165,9 @@ pub struct DepthCloud {
 
     /// Option outline mask id preference.
     pub outline_mask_id: OutlineMaskPreference,
+
+    /// Picking object id that applies for the entire depth cloud.
+    pub picking_object_id: PickingLayerObjectId,
 }
 
 impl DepthCloud {

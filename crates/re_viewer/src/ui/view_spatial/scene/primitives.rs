@@ -1,5 +1,6 @@
 use egui::Color32;
 use re_data_store::InstancePathHash;
+use re_log_types::EntityPathHash;
 use re_renderer::{
     renderer::{DepthClouds, MeshInstance},
     LineStripSeriesBuilder, PointCloudBuilder,
@@ -21,7 +22,7 @@ pub struct SceneSpatialPrimitives {
 
     // TODO(andreas): Storing extra data like so is unsafe and not future proof either
     //                (see also above comment on the need to separate cpu-readable data)
-    pub textured_rectangles_ids: Vec<InstancePathHash>,
+    pub textured_rectangles_ids: Vec<EntityPathHash>,
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
 
     pub line_strips: LineStripSeriesBuilder,

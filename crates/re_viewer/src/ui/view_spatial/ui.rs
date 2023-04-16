@@ -742,31 +742,45 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
             else { continue; };
-        if !entity_properties
-            .get(&instance_path.entity_path)
-            .interactive
-        {
+
+        let ent_properties = entity_properties.get(&instance_path.entity_path);
+        if !ent_properties.interactive {
             continue;
         }
+
+        // Special hover ui for images.
+        let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
+            || *ent_properties.backproject_depth.get()
+        {
+            // We don't support selecting pixels yet.
+            instance_path.instance_key = re_log_types::component_types::InstanceKey::SPLAT;
+            scene
+                .ui
+                .images
+                .iter()
+                .find(|image| image.ent_path == instance_path.entity_path)
+                .and_then(|image| {
+                    image.tensor.image_height_width_channels().map(|[_, w, _]| {
+                        (
+                            image,
+                            hit.instance_path_hash
+                                .instance_key
+                                .to_2d_image_coordinate(w),
+                        )
+                    })
+                })
+        } else {
+            None
+        };
+
         hovered_items.push(crate::misc::Item::InstancePath(
             Some(space_view_id),
             instance_path.clone(),
         ));
 
-        // Special hover ui for images.
-        let picked_image_with_uv = if let PickingHitType::TexturedRect(uv) = hit.hit_type {
-            scene
-                .ui
-                .images
-                .iter()
-                .find(|image| image.instance_path_hash == hit.instance_path_hash)
-                .map(|image| (image, uv))
-        } else {
-            None
-        };
-        response = if let Some((image, uv)) = picked_image_with_uv {
+        response = if let Some((image, coords)) = picked_image_with_coords {
             if let Some(meter) = image.meter {
                 if let Some(raw_value) = image.tensor.get(&[
                     picking_context.pointer_in_space2d.y.round() as _,
@@ -801,7 +815,6 @@ pub fn picking(
                             ui.separator();
                             ui.horizontal(|ui| {
                                 let (w, h) = (w.size as f32, h.size as f32);
-                                let center = [(uv.x * w) as isize, (uv.y * h) as isize];
                                 if *state.nav_mode.get() == SpatialNavigationMode::TwoD {
                                     let rect = egui::Rect::from_min_size(
                                         egui::Pos2::ZERO,
@@ -810,14 +823,14 @@ pub fn picking(
                                     data_ui::image::show_zoomed_image_region_area_outline(
                                         ui,
                                         &tensor_view,
-                                        center,
+                                        [coords[0] as _, coords[1] as _],
                                         space_from_ui.inverse().transform_rect(rect),
                                     );
                                 }
                                 data_ui::image::show_zoomed_image_region(
                                     ui,
                                     &tensor_view,
-                                    center,
+                                    [coords[0] as _, coords[1] as _],
                                     image.meter,
                                 );
                             });

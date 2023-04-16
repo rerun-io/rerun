@@ -28,6 +28,9 @@ struct DepthCloudInfo {
     /// Outline mask id for the outline mask pass.
     outline_mask_id: UVec2,
 
+    /// Picking object id that applies for the entire depth cloud.
+    picking_layer_object_id: UVec2,
+
     /// Multiplier to get world-space depth from whatever is in the texture.
     world_depth_from_texture_value: f32,
 
@@ -51,11 +54,23 @@ var<uniform> depth_cloud_info: DepthCloudInfo;
 var depth_texture: texture_2d<f32>;
 
 struct VertexOut {
-    @builtin(position) pos_in_clip: Vec4,
-    @location(0) pos_in_world: Vec3,
-    @location(1) point_pos_in_world: Vec3,
-    @location(2) point_color: Vec4,
-    @location(3) point_radius: f32,
+    @builtin(position)
+    pos_in_clip: Vec4,
+
+    @location(0) @interpolate(perspective)
+    pos_in_world: Vec3,
+
+    @location(1) @interpolate(flat)
+    point_pos_in_world: Vec3,
+
+    @location(2) @interpolate(flat)
+    point_color: Vec4,
+
+    @location(3) @interpolate(flat)
+    point_radius: f32,
+
+    @location(4) @interpolate(flat)
+    quad_idx: u32,
 };
 
 // ---
@@ -63,7 +78,7 @@ struct VertexOut {
 struct PointData {
     pos_in_world: Vec3,
     unresolved_radius: f32,
-    color: Vec4
+    color: Vec4,
 }
 
 // Backprojects the depth texture using the intrinsics passed in the uniform buffer.
@@ -75,6 +90,7 @@ fn compute_point_data(quad_idx: i32) -> PointData {
     let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
 
     var data: PointData;
+
     if 0.0 < world_space_depth && world_space_depth < f32max {
         // TODO(cmc): albedo textures
         let color = Vec4(colormap_linear(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth_in_world), 1.0);
@@ -113,6 +129,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.point_pos_in_world = point_data.pos_in_world;
     out.point_color = point_data.color;
+    out.quad_idx = u32(quad_idx);
 
     if 0.0 < point_data.unresolved_radius {
         // Span quad
@@ -145,7 +162,7 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
     if coverage <= 0.5 {
         discard;
     }
-    return UVec4(0u, 0u, 0u, 0u); // TODO(andreas): Implement picking layer id pass-through.
+    return UVec4(depth_cloud_info.picking_layer_object_id, in.quad_idx, 0u);
 }
 
 @fragment

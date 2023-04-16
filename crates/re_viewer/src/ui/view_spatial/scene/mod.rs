@@ -56,7 +56,8 @@ pub struct MeshSource {
 }
 
 pub struct Image {
-    pub instance_path_hash: InstancePathHash,
+    /// Path to the image (note image instance ids would refer to pixels!)
+    pub ent_path: EntityPath,
 
     pub tensor: Tensor,
 
