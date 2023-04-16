@@ -740,6 +740,19 @@ impl Tensor {
         })
     }
 
+    /// Predicts if [`Self::to_dynamic_image`] is likely to succeed, without doing anything expensive
+    pub fn could_be_dynamic_image(&self) -> bool {
+        self.is_shaped_like_an_image()
+            && matches!(
+                self.dtype(),
+                TensorDataType::U8
+                    | TensorDataType::U16
+                    | TensorDataType::F16
+                    | TensorDataType::F32
+                    | TensorDataType::F64
+            )
+    }
+
     /// Try to convert an image-like tensor into an [`image::DynamicImage`].
     pub fn to_dynamic_image(&self) -> Result<image::DynamicImage, TensorImageSaveError> {
         use ecolor::{gamma_u8_from_linear_f32, linear_u8_from_linear_f32};
@@ -809,6 +822,20 @@ impl Tensor {
                             let g = gamma_u8_from_linear_f32(g);
                             let b = gamma_u8_from_linear_f32(b);
                             let a = linear_u8_from_linear_f32(a);
+                            [r, g, b, a]
+                        })
+                        .collect();
+                    RgbaImage::from_raw(w, h, pixels).map(DynamicImage::ImageRgba8)
+                }
+                (4, TensorData::F64(buf)) => {
+                    let rgba: &[[f64; 4]] = bytemuck::cast_slice(buf.as_slice());
+                    let pixels: Vec<u8> = rgba
+                        .iter()
+                        .flat_map(|&[r, g, b, a]| {
+                            let r = gamma_u8_from_linear_f32(r as _);
+                            let g = gamma_u8_from_linear_f32(g as _);
+                            let b = gamma_u8_from_linear_f32(b as _);
+                            let a = linear_u8_from_linear_f32(a as _);
                             [r, g, b, a]
                         })
                         .collect();
