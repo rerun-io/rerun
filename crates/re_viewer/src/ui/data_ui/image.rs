@@ -128,7 +128,7 @@ fn tensor_ui(
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                         let image_rect = response.rect;
-                        show_zoomed_image_region_tooltip_new(
+                        show_zoomed_image_region_tooltip(
                             ctx.render_ctx,
                             ui,
                             response,
@@ -164,39 +164,6 @@ fn tensor_ui(
             });
         }
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &Tensor) {
-    ui.horizontal(|ui| {
-        if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
-            match tensor.to_dynamic_image() {
-                Ok(dynamic_image) => {
-                    let rgba = dynamic_image.to_rgba8();
-                    crate::misc::Clipboard::with(|clipboard| {
-                        clipboard.set_image(
-                            [rgba.width() as _, rgba.height() as _],
-                            bytemuck::cast_slice(rgba.as_raw()),
-                        );
-                    });
-                }
-                Err(err) => {
-                    re_log::error!("Failed to convert tensor to image: {err}");
-                }
-            }
-        }
-
-        if ui.button("Save image…").clicked() {
-            match tensor.to_dynamic_image() {
-                Ok(dynamic_image) => {
-                    save_image(_encoded_tensor, &dynamic_image);
-                }
-                Err(err) => {
-                    re_log::error!("Failed to convert tensor to image: {err}");
-                }
-            }
-        }
-    });
 }
 
 fn annotations(
@@ -370,7 +337,7 @@ pub fn tensor_summary_ui(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn show_zoomed_image_region_tooltip_new(
+fn show_zoomed_image_region_tooltip(
     render_ctx: &mut re_renderer::RenderContext,
     parent_ui: &mut egui::Ui,
     response: egui::Response,
@@ -400,7 +367,7 @@ fn show_zoomed_image_region_tooltip_new(
                         center_texel,
                         image_rect,
                     );
-                    show_zoomed_image_region_new(
+                    show_zoomed_image_region(
                         render_ctx,
                         ui,
                         tensor,
@@ -451,7 +418,7 @@ pub fn show_zoomed_image_region_area_outline(
 
 /// `meter`: iff this is a depth map, how long is one meter?
 #[allow(clippy::too_many_arguments)]
-pub fn show_zoomed_image_region_new(
+pub fn show_zoomed_image_region(
     render_ctx: &mut re_renderer::RenderContext,
     ui: &mut egui::Ui,
     tensor: &Tensor,
@@ -461,7 +428,7 @@ pub fn show_zoomed_image_region_new(
     debug_name: &str,
     center_texel: [isize; 2],
 ) {
-    if let Err(err) = try_show_zoomed_image_region_new(
+    if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
         ui,
         tensor,
@@ -477,7 +444,7 @@ pub fn show_zoomed_image_region_new(
 
 /// `meter`: iff this is a depth map, how long is one meter?
 #[allow(clippy::too_many_arguments)]
-fn try_show_zoomed_image_region_new(
+fn try_show_zoomed_image_region(
     render_ctx: &mut re_renderer::RenderContext,
     ui: &mut egui::Ui,
     tensor: &Tensor,
@@ -717,6 +684,39 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
             }
         })
         .response
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &Tensor) {
+    ui.horizontal(|ui| {
+        if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
+            match tensor.to_dynamic_image() {
+                Ok(dynamic_image) => {
+                    let rgba = dynamic_image.to_rgba8();
+                    crate::misc::Clipboard::with(|clipboard| {
+                        clipboard.set_image(
+                            [rgba.width() as _, rgba.height() as _],
+                            bytemuck::cast_slice(rgba.as_raw()),
+                        );
+                    });
+                }
+                Err(err) => {
+                    re_log::error!("Failed to convert tensor to image: {err}");
+                }
+            }
+        }
+
+        if ui.button("Save image…").clicked() {
+            match tensor.to_dynamic_image() {
+                Ok(dynamic_image) => {
+                    save_image(_encoded_tensor, &dynamic_image);
+                }
+                Err(err) => {
+                    re_log::error!("Failed to convert tensor to image: {err}");
+                }
+            }
+        }
+    });
 }
 
 #[cfg(not(target_arch = "wasm32"))]

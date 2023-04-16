@@ -825,7 +825,7 @@ pub fn picking(
 
                                 let tensor_stats = *ctx.cache.tensor_stats(&image.tensor);
                                 let debug_name = image.ent_path.to_string();
-                                data_ui::image::show_zoomed_image_region_new(
+                                data_ui::image::show_zoomed_image_region(
                                     ctx.render_ctx,
                                     ui,
                                     &image.tensor,
