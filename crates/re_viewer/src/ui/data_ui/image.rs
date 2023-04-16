@@ -449,109 +449,116 @@ pub fn show_zoomed_image_region(
         let (x, y) = (image_position[0] as _, image_position[1] as _);
 
         tooltip_ui.vertical(|ui| {
-            egui::Grid::new("hovered pixel properties").show(ui, |ui| {
-                ui.label("Position:");
-                ui.label(format!("{}, {}", image_position[0], image_position[1]));
-                ui.end_row();
-
-                if tensor_view.tensor.num_dim() == 2 {
-                    if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                        if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
-                            tensor_view.tensor.meaning(),
-                            tensor_view.annotations,
-                            raw_value.try_as_u16(),
-                        ) {
-                            ui.label("Label:");
-                            ui.label(
-                                annotations
-                                    .class_description(Some(ClassId(u16_val)))
-                                    .annotation_info()
-                                    .label(None)
-                                    .unwrap_or_else(|| u16_val.to_string()),
-                            );
-                            ui.end_row();
-                        };
-                    }
-                }
-                if let Some(meter) = meter {
-                    // This is a depth map
-                    if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                        let raw_value = raw_value.as_f64();
-                        let meters = raw_value / meter as f64;
-                        ui.label("Depth:");
-                        if meters < 1.0 {
-                            ui.monospace(format!("{:.1} mm", meters * 1e3));
-                        } else {
-                            ui.monospace(format!("{meters:.3} m"));
-                        }
-                    }
-                }
-            });
-
-            let tensor = tensor_view.tensor;
-
-            let text = match tensor.num_dim() {
-                2 => tensor.get(&[y, x]).map(|v| format!("Val: {v}")),
-                3 => match tensor.shape()[2].size {
-                    0 => Some("Cannot preview 0-size channel".to_owned()),
-                    1 => tensor.get(&[y, x, 0]).map(|v| format!("Val: {v}")),
-                    3 => {
-                        // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
-                        if let (Some(r), Some(g), Some(b)) = (
-                            tensor_view.tensor.get(&[y, x, 0]),
-                            tensor_view.tensor.get(&[y, x, 1]),
-                            tensor_view.tensor.get(&[y, x, 2]),
-                        ) {
-                            match (r, g, b) {
-                                (
-                                    TensorElement::U8(r),
-                                    TensorElement::U8(g),
-                                    TensorElement::U8(b),
-                                ) => {
-                                    Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
-                                }
-                                _ => Some(format!("R: {r}, G: {g}, B: {b}")),
-                            }
-                        } else {
-                            None
-                        }
-                    }
-                    4 => {
-                        // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
-                        if let (Some(r), Some(g), Some(b), Some(a)) = (
-                            tensor_view.tensor.get(&[y, x, 0]),
-                            tensor_view.tensor.get(&[y, x, 1]),
-                            tensor_view.tensor.get(&[y, x, 2]),
-                            tensor_view.tensor.get(&[y, x, 3]),
-                        ) {
-                            match (r, g, b, a) {
-                                (
-                                    TensorElement::U8(r),
-                                    TensorElement::U8(g),
-                                    TensorElement::U8(b),
-                                    TensorElement::U8(a),
-                                ) => Some(format!(
-                                    "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
-                                )),
-                                _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
-                            }
-                        } else {
-                            None
-                        }
-                    }
-                    channels => Some(format!("Cannot preview {channels}-channel image")),
-                },
-                dims => Some(format!("Cannot preview {dims}-dimensional image")),
-            };
-
-            if let Some(text) = text {
-                ui.label(text);
-            } else {
-                ui.label("No Value");
-            }
-
+            tensor_pixel_value_ui(
+                ui,
+                tensor_view.tensor,
+                tensor_view.annotations,
+                [x, y],
+                meter,
+            );
             color_picker::show_color(ui, color, Vec2::splat(ui.available_height()));
         });
+    }
+}
+
+fn tensor_pixel_value_ui(
+    ui: &mut egui::Ui,
+    tensor: &Tensor,
+    annotations: &crate::ui::Annotations,
+    [x, y]: [u64; 2],
+    meter: Option<f32>,
+) {
+    egui::Grid::new("hovered pixel properties").show(ui, |ui| {
+        ui.label("Position:");
+        ui.label(format!("{x}, {y}"));
+        ui.end_row();
+
+        if tensor.num_dim() == 2 {
+            if let Some(raw_value) = tensor.get(&[y, x]) {
+                if let (TensorDataMeaning::ClassId, Some(u16_val)) =
+                    (tensor.meaning(), raw_value.try_as_u16())
+                {
+                    ui.label("Label:");
+                    ui.label(
+                        annotations
+                            .class_description(Some(ClassId(u16_val)))
+                            .annotation_info()
+                            .label(None)
+                            .unwrap_or_else(|| u16_val.to_string()),
+                    );
+                    ui.end_row();
+                };
+            }
+        }
+        if let Some(meter) = meter {
+            // This is a depth map
+            if let Some(raw_value) = tensor.get(&[y, x]) {
+                let raw_value = raw_value.as_f64();
+                let meters = raw_value / meter as f64;
+                ui.label("Depth:");
+                if meters < 1.0 {
+                    ui.monospace(format!("{:.1} mm", meters * 1e3));
+                } else {
+                    ui.monospace(format!("{meters:.3} m"));
+                }
+            }
+        }
+    });
+
+    let text = match tensor.num_dim() {
+        2 => tensor.get(&[y, x]).map(|v| format!("Val: {v}")),
+        3 => match tensor.shape()[2].size {
+            0 => Some("Cannot preview 0-size channel".to_owned()),
+            1 => tensor.get(&[y, x, 0]).map(|v| format!("Val: {v}")),
+            3 => {
+                // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                if let (Some(r), Some(g), Some(b)) = (
+                    tensor.get(&[y, x, 0]),
+                    tensor.get(&[y, x, 1]),
+                    tensor.get(&[y, x, 2]),
+                ) {
+                    match (r, g, b) {
+                        (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
+                            Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
+                        }
+                        _ => Some(format!("R: {r}, G: {g}, B: {b}")),
+                    }
+                } else {
+                    None
+                }
+            }
+            4 => {
+                // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                if let (Some(r), Some(g), Some(b), Some(a)) = (
+                    tensor.get(&[y, x, 0]),
+                    tensor.get(&[y, x, 1]),
+                    tensor.get(&[y, x, 2]),
+                    tensor.get(&[y, x, 3]),
+                ) {
+                    match (r, g, b, a) {
+                        (
+                            TensorElement::U8(r),
+                            TensorElement::U8(g),
+                            TensorElement::U8(b),
+                            TensorElement::U8(a),
+                        ) => Some(format!(
+                            "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                        )),
+                        _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+                    }
+                } else {
+                    None
+                }
+            }
+            channels => Some(format!("Cannot preview {channels}-channel image")),
+        },
+        dims => Some(format!("Cannot preview {dims}-dimensional image")),
+    };
+
+    if let Some(text) = text {
+        ui.label(text);
+    } else {
+        ui.label("No Value");
     }
 }
 
