@@ -197,15 +197,13 @@ fn tensor_ui(
                     });
                 }
 
-                let tensor_view = ctx.cache.image.get_colormapped_view(tensor, &annotations);
-
-                #[allow(clippy::collapsible_match)] // false positive on wasm32
-                if let Some(dynamic_img) = tensor_view.dynamic_img() {
-                    // TODO(emilk): support histograms of non-RGB images too
-                    if let image::DynamicImage::ImageRgba8(rgba_image) = dynamic_img {
-                        ui.collapsing("Histogram", |ui| {
-                            histogram_ui(ui, &rgba_image);
-                        });
+                if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
+                    if channels == 3 {
+                        if let re_log_types::component_types::TensorData::U8(data) = &tensor.data {
+                            ui.collapsing("Histogram", |ui| {
+                                rgb8_histogram_ui(ui, data.as_slice());
+                            });
+                        }
                     }
                 }
             });
@@ -659,14 +657,14 @@ fn tensor_pixel_value_ui(
     }
 }
 
-fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Response {
+fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
     crate::profile_function!();
 
     let mut histograms = [[0_u64; 256]; 3];
     {
         // TODO(emilk): this is slow, so cache the results!
         crate::profile_scope!("build");
-        for pixel in rgba_image.pixels() {
+        for pixel in rgb.chunks_exact(3) {
             for c in 0..3 {
                 histograms[c][pixel[c] as usize] += 1;
             }
