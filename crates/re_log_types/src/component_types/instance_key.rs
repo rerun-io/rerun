@@ -65,7 +65,7 @@ impl InstanceKey {
     }
 
     /// Creates a new [`InstanceKey`] that identifies a 2d coordinate.
-    pub fn from_2d_image_coordinate(x: u32, y: u32, image_width: u64) -> Self {
+    pub fn from_2d_image_coordinate([x, y]: [u32; 2], image_width: u64) -> Self {
         Self((x as u64) + (y as u64) * image_width)
     }
 

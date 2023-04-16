@@ -253,8 +253,10 @@ fn picking_textured_rects(
                 instance_path_hash: InstancePathHash {
                     entity_path_hash: *id,
                     instance_key: InstanceKey::from_2d_image_coordinate(
-                        (u * rect.colormapped_texture.texture.width() as f32) as u32,
-                        (v * rect.colormapped_texture.texture.height() as f32) as u32,
+                        [
+                            (u * rect.colormapped_texture.texture.width() as f32) as u32,
+                            (v * rect.colormapped_texture.texture.height() as f32) as u32,
+                        ],
                         rect.colormapped_texture.texture.width() as u64,
                     ),
                 },
