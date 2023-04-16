@@ -44,23 +44,6 @@ def camera_intrinsics(image: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
     return np.array(((focal_length, 0, u_center), (0, focal_length, v_center), (0, 0, 1)))
 
 
-def back_project(depth_image: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
-    """Given a depth image, generate a matching point cloud."""
-    (h, w) = depth_image.shape
-    (u_center, v_center, focal_length) = camera_for_image(h, w)
-
-    # Pre-generate image containing the x and y coordinates per pixel
-    u_coords, v_coords = np.meshgrid(np.arange(0, w), np.arange(0, h))
-
-    # Apply inverse of the intrinsics matrix:
-    z = depth_image.reshape(-1)
-    x = (u_coords.reshape(-1).astype(float) - u_center) * z / focal_length
-    y = (v_coords.reshape(-1).astype(float) - v_center) * z / focal_length
-
-    back_projected = np.vstack((x, y, z)).T
-    return back_projected
-
-
 def read_image_rgb(buf: bytes) -> npt.NDArray[np.uint8]:
     """Decode an image provided in `buf`, and interpret it as RGB data."""
     np_buf: npt.NDArray[np.uint8] = np.ndarray(shape=(1, len(buf)), dtype=np.uint8, buffer=buf)
@@ -77,9 +60,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
     return img
 
 
-def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interval: int = 1) -> None:
-    depth_images_counter = 0
-
+def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
     rr.log_view_coordinates("world", up="-Y", timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
@@ -105,32 +86,26 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interva
                 rr.log_image("world/camera/image/rgb", img_rgb)
 
             elif f.filename.endswith(".pgm"):
-                if depth_images_counter % depth_image_interval == 0:
-                    buf = archive.read(f)
-                    img_depth = read_image(buf)
+                buf = archive.read(f)
+                img_depth = read_image(buf)
 
-                    point_cloud = back_project(depth_image=img_depth / DEPTH_IMAGE_SCALING)
-                    rr.log_points("world/points", point_cloud, colors=np.array([255, 255, 255, 255]))
+                # Log the camera transforms:
+                translation = [0, 0, 0]
+                rotation_q = [0, 0, 0, 1]
+                rr.log_rigid3(
+                    "world/camera",
+                    parent_from_child=(translation, rotation_q),
+                    xyz="RDF",  # X=Right, Y=Down, Z=Forward
+                )
+                rr.log_pinhole(
+                    "world/camera/image",
+                    child_from_parent=camera_intrinsics(img_depth),
+                    width=img_depth.shape[1],
+                    height=img_depth.shape[0],
+                )
 
-                    # Log the camera transforms:
-                    translation = [0, 0, 0]
-                    rotation_q = [0, 0, 0, 1]
-                    rr.log_rigid3(
-                        "world/camera",
-                        parent_from_child=(translation, rotation_q),
-                        xyz="RDF",  # X=Right, Y=Down, Z=Forward
-                    )
-                    rr.log_pinhole(
-                        "world/camera/image",
-                        child_from_parent=camera_intrinsics(img_depth),
-                        width=img_depth.shape[1],
-                        height=img_depth.shape[0],
-                    )
-
-                    # Log the depth image to the cameras image-space:
-                    rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
-
-                depth_images_counter += 1
+                # Log the depth image to the cameras image-space:
+                rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
 
 
 def ensure_recording_downloaded(name: str) -> Path:
@@ -184,23 +159,15 @@ if __name__ == "__main__":
         help="Name of the NYU Depth Dataset V2 recording",
     )
     parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
-    parser.add_argument(
-        "--depth-image-interval",
-        type=int,
-        default=8,
-        help="The number of rgb images logged for each depth image. (min value 1)",
-    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     rr.script_setup(args, "nyud")
     recording_path = ensure_recording_downloaded(args.recording)
 
-    depth_image_interval = max(args.depth_image_interval, 1)
     log_nyud_data(
         recording_path=recording_path,
         subset_idx=args.subset_idx,
-        depth_image_interval=depth_image_interval,
     )
 
     rr.script_teardown(args)

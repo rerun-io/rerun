@@ -23,9 +23,6 @@ def log_car_data() -> None:
         # In the viewer you can select how to view entities - by frame_nr or the built-in `log_time`.
         rr.set_time_sequence("frame_nr", sample.frame_idx)
 
-        # We log the projected points in the "world" space:
-        rr.log_points("world/points", sample.point_cloud)
-
         # Log the camera pose:
         rr.log_rigid3(
             "world/camera",
@@ -159,7 +156,6 @@ class SampleFrame:
     frame_idx: int
     camera: CameraParameters
     depth_image_mm: npt.NDArray[np.float32]
-    point_cloud: npt.NDArray[np.float32]
     rgb_image: npt.NDArray[np.float32]
     car_bbox: Tuple[npt.NDArray[np.int32], npt.NDArray[np.int32]]
 
@@ -176,28 +172,6 @@ class SimpleDepthCamera:
 
         # Pre-generate image containing the x and y coordinates per pixel
         self.u_coords, self.v_coords = np.meshgrid(np.arange(0, self.w), np.arange(0, self.h))
-
-    def back_project(
-        self,
-        depth_image_mm: npt.NDArray[np.float32],
-    ) -> npt.NDArray[np.float32]:
-        """
-        Given a depth image, generate a matching point cloud.
-
-        Parameters
-        ----------
-        depth_image_mm
-            Depth image expressed in millimeters
-
-        """
-
-        # Apply inverse of the `intrinsics` matrix:
-        z = depth_image_mm.reshape(-1) / 1000.0
-        x = (self.u_coords.reshape(-1).astype(float) - self.u_center) * z / self.focal_length
-        y = (self.v_coords.reshape(-1).astype(float) - self.v_center) * z / self.focal_length
-
-        back_projected = np.vstack((x, y, z)).T
-        return back_projected
 
     def render_dummy_slanted_plane_mm(self) -> npt.NDArray[np.float32]:
         """Renders a depth image of a slanted plane in millimeters."""
@@ -266,12 +240,10 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
         depth_image_mm = depth_background_mm.copy()
         rgb = rgb_background.copy()
         car.draw(depth_image_mm=depth_image_mm, rgb=rgb)
-        point_cloud = camera.back_project(depth_image_mm=depth_image_mm)
         sample = SampleFrame(
             frame_idx=i,
             camera=camera.parameters,
             depth_image_mm=depth_image_mm,
-            point_cloud=point_cloud,
             rgb_image=rgb,
             car_bbox=(car.min, car.size),
         )
