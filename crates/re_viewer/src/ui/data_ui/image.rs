@@ -115,7 +115,7 @@ fn tensor_ui(
                 if let Some(texture) = &texture_result {
                     let max_size = ui
                         .available_size()
-                        .min(texture_size(ctx.render_ctx, texture).unwrap_or(Vec2::INFINITY))
+                        .min(texture_size(texture))
                         .min(egui::vec2(150.0, 300.0));
                     let response = show_image_at_max_size(
                         ctx.render_ctx,
@@ -184,20 +184,9 @@ fn annotations(
     annotation_map.find(entity_path)
 }
 
-fn texture_size(
-    render_ctx: &mut re_renderer::RenderContext,
-    colormapped_texture: &ColormappedTexture,
-) -> Option<Vec2> {
-    // TODO(emilk): it would be so nice if this couldn't fail, if `GpuTexture2DHandle` was never invalid,
-    // https://github.com/rerun-io/rerun/issues/1864
-    render_ctx
-        .texture_manager_2d
-        .get(&colormapped_texture.texture)
-        .ok()
-        .map(|texture| {
-            let tex_size = texture.creation_desc.size;
-            egui::vec2(tex_size.width as f32, tex_size.height as f32)
-        })
+fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
+    let [w, h] = colormapped_texture.texture.width_height();
+    egui::vec2(w as f32, h as f32)
 }
 
 fn show_image_at_max_size(
@@ -208,13 +197,11 @@ fn show_image_at_max_size(
     debug_name: &str,
     max_size: Vec2,
 ) -> egui::Response {
-    let desired_size = if let Some(tex_size) = texture_size(render_ctx, &colormapped_texture) {
-        let mut desired_size = tex_size;
+    let desired_size = {
+        let mut desired_size = texture_size(&colormapped_texture);
         desired_size *= (max_size.x / desired_size.x).min(1.0);
         desired_size *= (max_size.y / desired_size.y).min(1.0);
         desired_size
-    } else {
-        max_size
     };
 
     let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
