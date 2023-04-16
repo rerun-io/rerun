@@ -26,6 +26,7 @@ impl GpuTexture2DHandle {
         self.0.texture.height()
     }
 }
+
 /// Data required to create a texture 2d resource.
 ///
 /// It is *not* stored along side the resulting texture resource!
