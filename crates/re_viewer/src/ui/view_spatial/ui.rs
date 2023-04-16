@@ -806,11 +806,6 @@ pub fn picking(
                             &ctx.current_query(),
                         );
 
-                        let tensor_view = ctx
-                            .cache
-                            .image
-                            .get_colormapped_view(&image.tensor, &image.annotations);
-
                         if let [h, w, ..] = image.tensor.shape() {
                             ui.separator();
                             ui.horizontal(|ui| {
@@ -822,16 +817,23 @@ pub fn picking(
                                     );
                                     data_ui::image::show_zoomed_image_region_area_outline(
                                         ui,
-                                        tensor_view.tensor,
+                                        &image.tensor,
                                         [coords[0] as _, coords[1] as _],
                                         space_from_ui.inverse().transform_rect(rect),
                                     );
                                 }
-                                data_ui::image::show_zoomed_image_region(
+
+                                let tensor_stats = *ctx.cache.tensor_stats(&image.tensor);
+                                let debug_name = image.ent_path.to_string();
+                                data_ui::image::show_zoomed_image_region_new(
+                                    ctx.render_ctx,
                                     ui,
-                                    &tensor_view,
-                                    [coords[0] as _, coords[1] as _],
+                                    &image.tensor,
+                                    &tensor_stats,
+                                    &image.annotations,
                                     image.meter,
+                                    &debug_name,
+                                    [coords[0] as _, coords[1] as _],
                                 );
                             });
                         }

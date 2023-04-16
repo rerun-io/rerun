@@ -428,7 +428,7 @@ fn pad_to_four_elements<T: Copy>(data: &[T], pad: T) -> Vec<T> {
         // fastest version in optimized builds
         data.chunks_exact(3)
             .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], pad])
-            .collect::<Vec<T>>()
+            .collect()
     }
 }
 

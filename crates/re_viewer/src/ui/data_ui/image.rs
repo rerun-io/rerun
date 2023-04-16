@@ -1,4 +1,4 @@
-use egui::{ColorImage, Vec2};
+use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
 use re_log_types::{
@@ -9,10 +9,7 @@ use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
 
 use crate::{
-    misc::{
-        caches::{ColoredTensorView, TensorStats},
-        ViewerContext,
-    },
+    misc::{caches::TensorStats, ViewerContext},
     ui::annotations::AnnotationMap,
 };
 
@@ -74,17 +71,6 @@ impl EntityDataUi for Tensor {
             }
         };
 
-        let tensor_view = match &decoded {
-            Ok(decoded) => ctx.cache.image.get_colormapped_view(decoded, &annotations),
-            Err(err) => {
-                ui.label(
-                    ctx.re_ui
-                        .error_text(format!("Error Decoding Tensor: {err}")),
-                );
-                return;
-            }
-        };
-
         match verbosity {
             UiVerbosity::Small => {
                 ui.horizontal_centered(|ui| {
@@ -129,29 +115,44 @@ impl EntityDataUi for Tensor {
                         .available_size()
                         .min(
                             texture_size(ctx.render_ctx, &colormapped_texture)
-                                .unwrap_or(egui::Vec2::INFINITY),
+                                .unwrap_or(Vec2::INFINITY),
                         )
                         .min(egui::vec2(150.0, 300.0));
                     let response = show_image_at_max_size(
                         ctx.render_ctx,
                         ctx.re_ui,
                         ui,
-                        colormapped_texture,
+                        colormapped_texture.clone(),
                         &debug_name,
                         max_size,
                     );
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                         let image_rect = response.rect;
-                        show_zoomed_image_region_tooltip(
+                        show_zoomed_image_region_tooltip_new(
+                            ctx.render_ctx,
                             ui,
                             response,
-                            &tensor_view,
+                            self,
+                            &tensor_stats,
+                            &annotations,
+                            self.meter,
+                            &debug_name,
                             image_rect,
                             pointer_pos,
-                            tensor_view.tensor.meter,
                         );
                     }
+
+                    let tensor_view = match &decoded {
+                        Ok(decoded) => ctx.cache.image.get_colormapped_view(decoded, &annotations),
+                        Err(err) => {
+                            ui.label(
+                                ctx.re_ui
+                                    .error_text(format!("Error Decoding Tensor: {err}")),
+                            );
+                            return;
+                        }
+                    };
 
                     #[allow(clippy::collapsible_match)] // false positive on wasm32
                     if let Some(dynamic_img) = tensor_view.dynamic_img() {
@@ -324,33 +325,47 @@ pub fn tensor_summary_ui(
         });
 }
 
-fn show_zoomed_image_region_tooltip(
+#[allow(clippy::too_many_arguments)]
+fn show_zoomed_image_region_tooltip_new(
+    render_ctx: &mut re_renderer::RenderContext,
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &ColoredTensorView<'_, '_>,
+    tensor: &Tensor,
+    tensor_stats: &TensorStats,
+    annotations: &crate::ui::Annotations,
+    meter: Option<f32>,
+    debug_name: &str,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
-    meter: Option<f32>,
 ) -> egui::Response {
     response
         .on_hover_cursor(egui::CursorIcon::Crosshair)
         .on_hover_ui_at_pointer(|ui| {
             ui.set_max_width(320.0);
             ui.horizontal(|ui| {
-                if let Some([h, w, _]) = tensor_view.tensor.image_height_width_channels() {
+                if let Some([h, w, _]) = tensor.image_height_width_channels() {
                     use egui::remap_clamp;
 
-                    let center = [
+                    let center_texel = [
                         (remap_clamp(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize),
                         (remap_clamp(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize),
                     ];
                     show_zoomed_image_region_area_outline(
                         parent_ui,
-                        tensor_view.tensor,
-                        center,
+                        tensor,
+                        center_texel,
                         image_rect,
                     );
-                    show_zoomed_image_region(ui, tensor_view, center, meter);
+                    show_zoomed_image_region_new(
+                        render_ctx,
+                        ui,
+                        tensor,
+                        tensor_stats,
+                        annotations,
+                        meter,
+                        debug_name,
+                        center_texel,
+                    );
                 }
             });
         })
@@ -365,7 +380,7 @@ pub fn show_zoomed_image_region_area_outline(
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
-    use egui::{pos2, remap, Color32, Rect};
+    use egui::{pos2, remap, Rect};
 
     let Some([height, width, _]) = tensor.image_height_width_channels() else {return;};
 
@@ -391,74 +406,116 @@ pub fn show_zoomed_image_region_area_outline(
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-pub fn show_zoomed_image_region(
-    tooltip_ui: &mut egui::Ui,
-    tensor_view: &ColoredTensorView<'_, '_>,
-    image_position: [isize; 2],
+#[allow(clippy::too_many_arguments)]
+pub fn show_zoomed_image_region_new(
+    render_ctx: &mut re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    tensor: &Tensor,
+    tensor_stats: &TensorStats,
+    annotations: &crate::ui::Annotations,
     meter: Option<f32>,
+    debug_name: &str,
+    center_texel: [isize; 2],
 ) {
-    use egui::{color_picker, pos2, remap, Color32, Mesh, Rect};
+    if let Err(err) = try_show_zoomed_image_region_new(
+        render_ctx,
+        ui,
+        tensor,
+        tensor_stats,
+        annotations,
+        meter,
+        debug_name,
+        center_texel,
+    ) {
+        ui.label(format!("Error: {err}"));
+    }
+}
 
-    let Some(colored_image) = tensor_view.colored_image else { return };
+/// `meter`: iff this is a depth map, how long is one meter?
+#[allow(clippy::too_many_arguments)]
+fn try_show_zoomed_image_region_new(
+    render_ctx: &mut re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    tensor: &Tensor,
+    tensor_stats: &TensorStats,
+    annotations: &crate::ui::Annotations,
+    meter: Option<f32>,
+    debug_name: &str,
+    center_texel: [isize; 2],
+) -> anyhow::Result<()> {
+    let texture = crate::gpu_bridge::tensor_to_gpu(
+        render_ctx,
+        debug_name,
+        tensor,
+        tensor_stats,
+        annotations,
+    )?;
+
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
 
     const POINTS_PER_TEXEL: f32 = 5.0;
     let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
 
-    let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
-    let painter = tooltip_ui.painter();
+    let (_id, zoom_rect) = ui.allocate_space(size);
+    let painter = ui.painter();
 
-    painter.rect_filled(zoom_rect, 0.0, tooltip_ui.visuals().extreme_bg_color);
+    painter.rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
 
-    let mut mesh = Mesh::default();
-    let mut center_texel_rect = None;
-    for dx in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
-        for dy in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
-            let x = image_position[0] + dx;
-            let y = image_position[1] + dy;
-            let color = get_pixel(colored_image, [x, y]);
-            if let Some(color) = color {
-                if color != Color32::TRANSPARENT {
-                    let tr = ZOOMED_IMAGE_TEXEL_RADIUS as f32;
-                    let left = remap(dx as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
-                    let right = remap((dx + 1) as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
-                    let top = remap(dy as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
-                    let bottom = remap((dy + 1) as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
-                    let rect = Rect {
-                        min: pos2(left, top),
-                        max: pos2(right, bottom),
-                    };
-                    mesh.add_colored_rect(rect, color);
+    {
+        let image_rect_on_screen = egui::Rect::from_min_size(
+            zoom_rect.center()
+                - POINTS_PER_TEXEL
+                    * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
+            POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
+        );
 
-                    if dx == 0 && dy == 0 {
-                        center_texel_rect = Some(rect);
-                    }
-                }
-            }
-        }
+        crate::gpu_bridge::render_image(
+            render_ctx,
+            &painter.with_clip_rect(zoom_rect),
+            image_rect_on_screen,
+            texture.clone(),
+            egui::TextureOptions::NEAREST,
+            debug_name,
+        )?;
     }
 
-    painter.add(mesh);
-
-    if let Some(center_texel_rect) = center_texel_rect {
-        painter.rect_stroke(center_texel_rect, 0.0, (2.0, Color32::BLACK));
+    // Show the center text, to indicate which texel we're printing the values of:
+    {
+        let center_texel_rect =
+            egui::Rect::from_center_size(zoom_rect.center(), Vec2::splat(POINTS_PER_TEXEL));
+        painter.rect_stroke(center_texel_rect.expand(1.0), 0.0, (1.0, Color32::BLACK));
         painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
     }
 
-    if let Some(color) = get_pixel(colored_image, image_position) {
-        tooltip_ui.separator();
-        let (x, y) = (image_position[0] as _, image_position[1] as _);
+    let [x, y] = center_texel;
+    if 0 <= x && (x as u64) < width && 0 <= y && (y as u64) < height {
+        ui.separator();
 
-        tooltip_ui.vertical(|ui| {
-            tensor_pixel_value_ui(
-                ui,
-                tensor_view.tensor,
-                tensor_view.annotations,
-                [x, y],
-                meter,
+        ui.vertical(|ui| {
+            tensor_pixel_value_ui(ui, tensor, annotations, [x as _, y as _], meter);
+
+            // Show a big sample of the color of the middle texel:
+            let (rect, _) =
+                ui.allocate_exact_size(Vec2::splat(ui.available_height()), egui::Sense::hover());
+            // Position texture so that the center texel is at the center of the rect:
+            let zoom = rect.width();
+            let image_rect_on_screen = egui::Rect::from_min_size(
+                rect.center()
+                    - zoom * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
+                zoom * egui::vec2(width as f32, height as f32),
             );
-            color_picker::show_color(ui, color, Vec2::splat(ui.available_height()));
-        });
+            crate::gpu_bridge::render_image(
+                render_ctx,
+                &ui.painter().with_clip_rect(rect),
+                image_rect_on_screen,
+                texture,
+                egui::TextureOptions::NEAREST,
+                debug_name,
+            )
+        })
+        .inner?;
     }
+    Ok(())
 }
 
 fn tensor_pixel_value_ui(
@@ -562,14 +619,6 @@ fn tensor_pixel_value_ui(
     }
 }
 
-fn get_pixel(image: &ColorImage, [x, y]: [isize; 2]) -> Option<egui::Color32> {
-    if x < 0 || y < 0 || image.width() as isize <= x || image.height() as isize <= y {
-        None
-    } else {
-        Some(image[(x as _, y as _)])
-    }
-}
-
 fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Response {
     crate::profile_function!();
 
@@ -585,7 +634,6 @@ fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Respo
     }
 
     use egui::plot::{Bar, BarChart, Legend, Plot};
-    use egui::Color32;
 
     let names = ["R", "G", "B"];
     let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
