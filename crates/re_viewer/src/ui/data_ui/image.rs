@@ -56,64 +56,47 @@ fn tensor_ui(
     _encoded_tensor: &Tensor,
     tensor: &Tensor,
 ) {
+    // See if we can convert the tensor to a GPU texture.
+    // Even if not, we will show info about the tensor.
     let tensor_stats = *ctx.cache.tensor_stats(tensor);
-    let annotations = {
-        let mut annotation_map = AnnotationMap::default();
-        let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
-        let entity_props_map = re_data_store::EntityPropertyMap::default();
-        let scene_query = crate::ui::scene::SceneQuery {
-            entity_paths: &entity_paths,
-            timeline: query.timeline,
-            latest_at: query.at,
-            entity_props_map: &entity_props_map,
-        };
-        annotation_map.load(ctx, &scene_query);
-        annotation_map.find(entity_path)
-    };
+    let annotations = annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
-    let colormapped_texture = crate::gpu_bridge::tensor_to_gpu(
+    let texture_result = crate::gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
         &tensor_stats,
         &annotations,
-    );
-    let colormapped_texture = match colormapped_texture {
-        Ok(colormapped_texture) => colormapped_texture,
-        Err(err) => {
-            ui.label(
-                ctx.re_ui
-                    .error_text(format!("Error Decoding Tensor: {err}")),
-            );
-            return;
-        }
-    };
+    )
+    .ok();
 
     match verbosity {
         UiVerbosity::Small => {
             ui.horizontal_centered(|ui| {
-                let max_height = 24.0;
-                let max_size = Vec2::new(4.0 * max_height, max_height);
-                show_image_at_max_size(
-                    ctx.render_ctx,
-                    ctx.re_ui,
-                    ui,
-                    colormapped_texture.clone(),
-                    &debug_name,
-                    max_size,
-                )
-                .on_hover_ui(|ui| {
-                    // Show larger image on hover
-                    let max_size = Vec2::splat(400.0);
+                if let Some(texture) = &texture_result {
+                    let max_height = 24.0;
+                    let max_size = Vec2::new(4.0 * max_height, max_height);
                     show_image_at_max_size(
                         ctx.render_ctx,
                         ctx.re_ui,
                         ui,
-                        colormapped_texture,
+                        texture.clone(),
                         &debug_name,
                         max_size,
-                    );
-                });
+                    )
+                    .on_hover_ui(|ui| {
+                        // Show larger image on hover
+                        let max_size = Vec2::splat(400.0);
+                        show_image_at_max_size(
+                            ctx.render_ctx,
+                            ctx.re_ui,
+                            ui,
+                            texture.clone(),
+                            &debug_name,
+                            max_size,
+                        );
+                    });
+                }
 
                 ui.label(format!(
                     "{} x {}",
@@ -129,86 +112,109 @@ fn tensor_ui(
                 ui.set_min_width(100.0);
                 tensor_summary_ui(ctx.re_ui, ui, tensor, &tensor_stats);
 
-                let max_size = ui
-                    .available_size()
-                    .min(
-                        texture_size(ctx.render_ctx, &colormapped_texture)
-                            .unwrap_or(Vec2::INFINITY),
-                    )
-                    .min(egui::vec2(150.0, 300.0));
-                let response = show_image_at_max_size(
-                    ctx.render_ctx,
-                    ctx.re_ui,
-                    ui,
-                    colormapped_texture.clone(),
-                    &debug_name,
-                    max_size,
-                );
-
-                if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-                    let image_rect = response.rect;
-                    show_zoomed_image_region_tooltip_new(
+                if let Some(texture) = &texture_result {
+                    let max_size = ui
+                        .available_size()
+                        .min(texture_size(ctx.render_ctx, texture).unwrap_or(Vec2::INFINITY))
+                        .min(egui::vec2(150.0, 300.0));
+                    let response = show_image_at_max_size(
                         ctx.render_ctx,
+                        ctx.re_ui,
                         ui,
-                        response,
-                        tensor,
-                        &tensor_stats,
-                        &annotations,
-                        tensor.meter,
+                        texture.clone(),
                         &debug_name,
-                        image_rect,
-                        pointer_pos,
+                        max_size,
                     );
-                }
 
-                // TODO(emilk): support copying and saving images on web
-                #[cfg(not(target_arch = "wasm32"))]
-                if _encoded_tensor.data.is_compressed_image() || tensor.could_be_dynamic_image() {
-                    ui.horizontal(|ui| {
-                        if tensor.could_be_dynamic_image()
-                            && ui.button("Click to copy image").clicked()
-                        {
-                            match tensor.to_dynamic_image() {
-                                Ok(dynamic_image) => {
-                                    let rgba = dynamic_image.to_rgba8();
-                                    crate::misc::Clipboard::with(|clipboard| {
-                                        clipboard.set_image(
-                                            [rgba.width() as _, rgba.height() as _],
-                                            bytemuck::cast_slice(rgba.as_raw()),
-                                        );
-                                    });
-                                }
-                                Err(err) => {
-                                    re_log::error!("Failed to convert tensor to image: {err}");
-                                }
+                    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+                        let image_rect = response.rect;
+                        show_zoomed_image_region_tooltip_new(
+                            ctx.render_ctx,
+                            ui,
+                            response,
+                            tensor,
+                            &tensor_stats,
+                            &annotations,
+                            tensor.meter,
+                            &debug_name,
+                            image_rect,
+                            pointer_pos,
+                        );
+                    }
+
+                    // TODO(emilk): support copying and saving images on web
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if _encoded_tensor.data.is_compressed_image() || tensor.could_be_dynamic_image()
+                    {
+                        copy_and_save_image_ui(ui, tensor, _encoded_tensor);
+                    }
+
+                    if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
+                        if channels == 3 {
+                            if let re_log_types::component_types::TensorData::U8(data) =
+                                &tensor.data
+                            {
+                                ui.collapsing("Histogram", |ui| {
+                                    rgb8_histogram_ui(ui, data.as_slice());
+                                });
                             }
-                        }
-
-                        if ui.button("Save image…").clicked() {
-                            match tensor.to_dynamic_image() {
-                                Ok(dynamic_image) => {
-                                    save_image(_encoded_tensor, &dynamic_image);
-                                }
-                                Err(err) => {
-                                    re_log::error!("Failed to convert tensor to image: {err}");
-                                }
-                            }
-                        }
-                    });
-                }
-
-                if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
-                    if channels == 3 {
-                        if let re_log_types::component_types::TensorData::U8(data) = &tensor.data {
-                            ui.collapsing("Histogram", |ui| {
-                                rgb8_histogram_ui(ui, data.as_slice());
-                            });
                         }
                     }
                 }
             });
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &Tensor) {
+    ui.horizontal(|ui| {
+        if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
+            match tensor.to_dynamic_image() {
+                Ok(dynamic_image) => {
+                    let rgba = dynamic_image.to_rgba8();
+                    crate::misc::Clipboard::with(|clipboard| {
+                        clipboard.set_image(
+                            [rgba.width() as _, rgba.height() as _],
+                            bytemuck::cast_slice(rgba.as_raw()),
+                        );
+                    });
+                }
+                Err(err) => {
+                    re_log::error!("Failed to convert tensor to image: {err}");
+                }
+            }
+        }
+
+        if ui.button("Save image…").clicked() {
+            match tensor.to_dynamic_image() {
+                Ok(dynamic_image) => {
+                    save_image(_encoded_tensor, &dynamic_image);
+                }
+                Err(err) => {
+                    re_log::error!("Failed to convert tensor to image: {err}");
+                }
+            }
+        }
+    });
+}
+
+fn annotations(
+    ctx: &mut ViewerContext<'_>,
+    query: &re_arrow_store::LatestAtQuery,
+    entity_path: &re_data_store::EntityPath,
+) -> std::sync::Arc<crate::ui::Annotations> {
+    let mut annotation_map = AnnotationMap::default();
+    let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
+    let entity_props_map = re_data_store::EntityPropertyMap::default();
+    let scene_query = crate::ui::scene::SceneQuery {
+        entity_paths: &entity_paths,
+        timeline: query.timeline,
+        latest_at: query.at,
+        entity_props_map: &entity_props_map,
+    };
+    annotation_map.load(ctx, &scene_query);
+    annotation_map.find(entity_path)
 }
 
 fn texture_size(

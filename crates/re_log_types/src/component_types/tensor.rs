@@ -796,14 +796,14 @@ impl Tensor {
                 (1, TensorData::F32(buf)) => {
                     let pixels = buf
                         .iter()
-                        .map(|pixel| linear_u8_from_linear_f32(*pixel))
+                        .map(|pixel| gamma_u8_from_linear_f32(*pixel))
                         .collect();
                     GrayImage::from_raw(w, h, pixels).map(DynamicImage::ImageLuma8)
                 }
                 (1, TensorData::F64(buf)) => {
                     let pixels = buf
                         .iter()
-                        .map(|&pixel| linear_u8_from_linear_f32(pixel as f32))
+                        .map(|&pixel| gamma_u8_from_linear_f32(pixel as f32))
                         .collect();
                     GrayImage::from_raw(w, h, pixels).map(DynamicImage::ImageLuma8)
                 }
