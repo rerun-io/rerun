@@ -414,9 +414,22 @@ fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
 
 fn pad_to_four_elements<T: Copy>(data: &[T], pad: T) -> Vec<T> {
     crate::profile_function!();
-    data.chunks_exact(3)
-        .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], pad])
-        .collect::<Vec<T>>()
+    if cfg!(debug_assertions) {
+        // fastest version in debug builds.
+        // 5x faster in debug builds, but 2x slower in release
+        let mut padded = vec![pad; data.len() / 3 * 4];
+        for i in 0..(data.len() / 3) {
+            padded[4 * i] = data[3 * i];
+            padded[4 * i + 1] = data[3 * i + 1];
+            padded[4 * i + 2] = data[3 * i + 2];
+        }
+        padded
+    } else {
+        // fastest version in optimized builds
+        data.chunks_exact(3)
+            .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], pad])
+            .collect::<Vec<T>>()
+    }
 }
 
 fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
