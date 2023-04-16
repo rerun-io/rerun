@@ -7,25 +7,23 @@ use crate::{
     DebugLabel,
 };
 
-use super::ResourceManagerError;
-
 /// Handle to a 2D resource.
 ///
 /// Currently, this is solely a more strongly typed regular gpu texture handle.
 /// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
 /// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 #[derive(Clone)]
-pub struct GpuTexture2DHandle(Option<GpuTexture>);
+pub struct GpuTexture2DHandle(GpuTexture);
 
 impl GpuTexture2DHandle {
-    /// Width of the texture, defaults to 1 if invalid since fallback textures are typically one pixel.
+    /// Width of the texture.
     pub fn width(&self) -> u32 {
-        self.0.as_ref().map_or(1, |t| t.texture.width())
+        self.0.texture.width()
     }
 
-    /// Height of the texture, defaults to 1 if invalid since fallback textures are typically one pixel.
+    /// Height of the texture.
     pub fn height(&self) -> u32 {
-        self.0.as_ref().map_or(1, |t| t.texture.height())
+        self.0.texture.height()
     }
 }
 /// Data required to create a texture 2d resource.
@@ -208,27 +206,27 @@ impl TextureManager2D {
 
     /// Returns a single pixel white pixel with an rgba8unorm format.
     pub fn white_texture_unorm(&self) -> &GpuTexture {
-        self.white_texture_unorm.0.as_ref().unwrap()
+        &self.white_texture_unorm.0
     }
 
     /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Unorm`].
     pub fn zeroed_texture_float(&self) -> &GpuTexture {
-        self.zeroed_texture_float.0.as_ref().unwrap()
+        &self.zeroed_texture_float.0
     }
 
     /// Returns a single zero pixel with format [`wgpu::TextureFormat::Depth16Unorm`].
     pub fn zeroed_texture_depth(&self) -> &GpuTexture {
-        self.zeroed_texture_depth.0.as_ref().unwrap()
+        &self.zeroed_texture_depth.0
     }
 
     /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Sint`].
     pub fn zeroed_texture_sint(&self) -> &GpuTexture {
-        self.zeroed_texture_sint.0.as_ref().unwrap()
+        &self.zeroed_texture_sint.0
     }
 
     /// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Uint`].
     pub fn zeroed_texture_uint(&self) -> &GpuTexture {
-        self.zeroed_texture_uint.0.as_ref().unwrap()
+        &self.zeroed_texture_uint.0
     }
 
     fn create_and_upload_texture(
@@ -287,17 +285,13 @@ impl TextureManager2D {
 
         // TODO(andreas): mipmap generation
 
-        GpuTexture2DHandle(Some(texture))
+        GpuTexture2DHandle(texture)
     }
 
     /// Retrieves gpu handle.
     #[allow(clippy::unused_self)]
-    pub fn get(&self, handle: &GpuTexture2DHandle) -> Result<GpuTexture, ResourceManagerError> {
-        handle
-            .0
-            .as_ref()
-            .ok_or(ResourceManagerError::NullHandle)
-            .map(|h| h.clone())
+    pub fn get(&self, handle: &GpuTexture2DHandle) -> GpuTexture {
+        handle.0.clone()
     }
 
     pub(crate) fn begin_frame(&mut self, _frame_index: u64) {
@@ -314,7 +308,7 @@ fn create_zero_texture(
     format: wgpu::TextureFormat,
 ) -> GpuTexture2DHandle {
     // Wgpu zeros out new textures automatically
-    GpuTexture2DHandle(Some(texture_pool.alloc(
+    GpuTexture2DHandle(texture_pool.alloc(
         device,
         &TextureDesc {
             label: format!("zeroed pixel {format:?}").into(),
@@ -329,5 +323,5 @@ fn create_zero_texture(
             dimension: wgpu::TextureDimension::D2,
             usage: wgpu::TextureUsages::TEXTURE_BINDING,
         },
-    )))
+    ))
 }

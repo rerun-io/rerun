@@ -189,7 +189,7 @@ fn paint_tensor_slice(
     let texture = ctx
         .render_ctx
         .texture_manager_2d
-        .get(&colormapped_texture.texture)?;
+        .get(&colormapped_texture.texture);
     let size = texture.creation_desc.size;
     let width = size.width;
     let height = size.height;

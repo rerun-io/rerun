@@ -335,15 +335,15 @@ impl RectangleDrawData {
             });
         }
 
-        // TODO(emilk): continue on error (skipping just that rectangle)?
         let textures: Vec<_> = rectangles
             .iter()
             .map(|rectangle| {
                 ctx.texture_manager_2d
                     .get(&rectangle.colormapped_texture.texture)
             })
-            .try_collect()?;
+            .collect();
 
+        // TODO(emilk): continue on error (skipping just that rectangle)?
         let uniform_buffers: Vec<_> = izip!(rectangles, &textures)
             .map(|(rect, texture)| {
                 gpu_data::UniformBuffer::from_textured_rect(rect, &texture.creation_desc.format)
@@ -419,7 +419,7 @@ impl RectangleDrawData {
             let colormap_texture = if let Some(ColorMapper::Texture(handle)) =
                 &rectangle.colormapped_texture.color_mapper
             {
-                let colormap_texture = ctx.texture_manager_2d.get(handle)?;
+                let colormap_texture = ctx.texture_manager_2d.get(handle);
                 if colormap_texture.creation_desc.format != wgpu::TextureFormat::Rgba8UnormSrgb {
                     return Err(RectangleError::UnsupportedColormapTextureFormat(
                         colormap_texture.creation_desc.format,
