@@ -1,4 +1,4 @@
-use std::{hash::Hash, sync::Arc};
+use std::hash::Hash;
 
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
@@ -27,7 +27,7 @@ pub struct ColoredTensorView<'store, 'cache> {
     pub tensor: &'store Tensor,
 
     /// Annotations used to create the view
-    pub annotations: &'store Arc<Annotations>,
+    pub annotations: &'store Annotations,
 
     /// Image with annotations applied and converted to Srgb
     pub colored_image: Option<&'cache ColorImage>,
@@ -92,7 +92,7 @@ impl ImageCache {
     pub(crate) fn get_colormapped_view<'store, 'cache>(
         &'cache mut self,
         tensor: &'store Tensor,
-        annotations: &'store Arc<Annotations>,
+        annotations: &'store Annotations,
     ) -> ColoredTensorView<'store, 'cache> {
         let key = ImageCacheKey {
             tensor_id: tensor.id(),
@@ -170,7 +170,7 @@ struct CachedImage {
 }
 
 impl CachedImage {
-    fn from_tensor(debug_name: &str, tensor: &Tensor, annotations: &Arc<Annotations>) -> Self {
+    fn from_tensor(debug_name: &str, tensor: &Tensor, annotations: &Annotations) -> Self {
         crate::profile_function!();
 
         match apply_colormap(tensor, annotations) {
@@ -209,7 +209,7 @@ impl CachedImage {
     }
 }
 
-fn apply_colormap(tensor: &Tensor, annotations: &Arc<Annotations>) -> anyhow::Result<ColorImage> {
+fn apply_colormap(tensor: &Tensor, annotations: &Annotations) -> anyhow::Result<ColorImage> {
     match tensor.meaning {
         TensorDataMeaning::Unknown => color_tensor_as_color_image(tensor),
         TensorDataMeaning::ClassId => class_id_tensor_as_color_image(tensor, annotations),
