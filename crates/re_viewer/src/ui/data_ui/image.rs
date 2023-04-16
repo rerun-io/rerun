@@ -161,17 +161,46 @@ fn tensor_ui(
                     );
                 }
 
+                // TODO(emilk): support copying and saving images on web
+                #[cfg(not(target_arch = "wasm32"))]
+                if _encoded_tensor.data.is_compressed_image() || tensor.could_be_dynamic_image() {
+                    ui.horizontal(|ui| {
+                        if tensor.could_be_dynamic_image()
+                            && ui.button("Click to copy image").clicked()
+                        {
+                            match tensor.to_dynamic_image() {
+                                Ok(dynamic_image) => {
+                                    let rgba = dynamic_image.to_rgba8();
+                                    crate::misc::Clipboard::with(|clipboard| {
+                                        clipboard.set_image(
+                                            [rgba.width() as _, rgba.height() as _],
+                                            bytemuck::cast_slice(rgba.as_raw()),
+                                        );
+                                    });
+                                }
+                                Err(err) => {
+                                    re_log::error!("Failed to convert tensor to image: {err}");
+                                }
+                            }
+                        }
+
+                        if ui.button("Save image…").clicked() {
+                            match tensor.to_dynamic_image() {
+                                Ok(dynamic_image) => {
+                                    save_image(_encoded_tensor, &dynamic_image);
+                                }
+                                Err(err) => {
+                                    re_log::error!("Failed to convert tensor to image: {err}");
+                                }
+                            }
+                        }
+                    });
+                }
+
                 let tensor_view = ctx.cache.image.get_colormapped_view(tensor, &annotations);
 
                 #[allow(clippy::collapsible_match)] // false positive on wasm32
                 if let Some(dynamic_img) = tensor_view.dynamic_img() {
-                    // TODO(emilk): support copying and saving images on web
-                    #[cfg(not(target_arch = "wasm32"))]
-                    ui.horizontal(|ui| {
-                        click_to_copy_image_button_ui(ui, &dynamic_img);
-                        save_image_button_ui(ui, _encoded_tensor, &dynamic_img);
-                    });
-
                     // TODO(emilk): support histograms of non-RGB images too
                     if let image::DynamicImage::ImageRgba8(rgba_image) = dynamic_img {
                         ui.collapsing("Histogram", |ui| {
@@ -687,63 +716,40 @@ fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Respo
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn click_to_copy_image_button_ui(ui: &mut egui::Ui, dynamic_image: &image::DynamicImage) {
-    // TODO(emilk): support copying images on web
-
-    #[cfg(not(target_arch = "wasm32"))]
-    if ui.button("Click to copy image").clicked() {
-        let rgba = dynamic_image.to_rgba8();
-        crate::misc::Clipboard::with(|clipboard| {
-            clipboard.set_image(
-                [rgba.width() as _, rgba.height() as _],
-                bytemuck::cast_slice(rgba.as_raw()),
-            );
-        });
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn save_image_button_ui(
-    ui: &mut egui::Ui,
-    tensor: &re_log_types::component_types::Tensor,
-    dynamic_image: &image::DynamicImage,
-) {
+fn save_image(tensor: &re_log_types::component_types::Tensor, dynamic_image: &image::DynamicImage) {
     use re_log_types::component_types::TensorData;
 
-    // TODO(emilk): support saving images on web
-    if ui.button("Save image…").clicked() {
-        match &tensor.data {
-            TensorData::JPEG(bytes) => {
-                if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.jpg")
-                    .save_file()
-                {
-                    match write_binary(&path, bytes.as_slice()) {
-                        Ok(()) => {
-                            re_log::info!("Image saved to {path:?}");
-                        }
-                        Err(err) => {
-                            re_log::error!(
-                                "Failed saving image to {path:?}: {}",
-                                re_error::format(&err)
-                            );
-                        }
+    match &tensor.data {
+        TensorData::JPEG(bytes) => {
+            if let Some(path) = rfd::FileDialog::new()
+                .set_file_name("image.jpg")
+                .save_file()
+            {
+                match write_binary(&path, bytes.as_slice()) {
+                    Ok(()) => {
+                        re_log::info!("Image saved to {path:?}");
+                    }
+                    Err(err) => {
+                        re_log::error!(
+                            "Failed saving image to {path:?}: {}",
+                            re_error::format(&err)
+                        );
                     }
                 }
             }
-            _ => {
-                if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.png")
-                    .save_file()
-                {
-                    match dynamic_image.save(&path) {
-                        // TODO(emilk): show a popup instead of logging result
-                        Ok(()) => {
-                            re_log::info!("Image saved to {path:?}");
-                        }
-                        Err(err) => {
-                            re_log::error!("Failed saving image to {path:?}: {err}");
-                        }
+        }
+        _ => {
+            if let Some(path) = rfd::FileDialog::new()
+                .set_file_name("image.png")
+                .save_file()
+            {
+                match dynamic_image.save(&path) {
+                    // TODO(emilk): show a popup instead of logging result
+                    Ok(()) => {
+                        re_log::info!("Image saved to {path:?}");
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed saving image to {path:?}: {err}");
                     }
                 }
             }

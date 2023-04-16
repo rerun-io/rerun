@@ -196,6 +196,23 @@ impl TensorData {
     pub fn is_empty(&self) -> bool {
         self.size_in_bytes() == 0
     }
+
+    pub fn is_compressed_image(&self) -> bool {
+        match self {
+            Self::U8(_)
+            | Self::U16(_)
+            | Self::U32(_)
+            | Self::U64(_)
+            | Self::I8(_)
+            | Self::I16(_)
+            | Self::I32(_)
+            | Self::I64(_)
+            | Self::F32(_)
+            | Self::F64(_) => false,
+
+            Self::JPEG(_) => true,
+        }
+    }
 }
 
 impl std::fmt::Debug for TensorData {
