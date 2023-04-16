@@ -53,7 +53,7 @@ fn tensor_ui(
     verbosity: UiVerbosity,
     entity_path: &re_data_store::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
-    encoded_tensor: &Tensor,
+    _encoded_tensor: &Tensor,
     tensor: &Tensor,
 ) {
     let tensor_stats = *ctx.cache.tensor_stats(tensor);
@@ -169,7 +169,7 @@ fn tensor_ui(
                     #[cfg(not(target_arch = "wasm32"))]
                     ui.horizontal(|ui| {
                         click_to_copy_image_button_ui(ui, &dynamic_img);
-                        save_image_button_ui(ui, encoded_tensor, &dynamic_img);
+                        save_image_button_ui(ui, _encoded_tensor, &dynamic_img);
                     });
 
                     // TODO(emilk): support histograms of non-RGB images too
