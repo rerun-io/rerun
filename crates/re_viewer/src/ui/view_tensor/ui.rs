@@ -8,7 +8,7 @@ use re_log_types::component_types::{self, Tensor};
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
-use crate::ui::data_ui::image::tensor_summary_ui_grid_contents;
+use crate::{ui::data_ui::image::tensor_summary_ui_grid_contents, DecodedTensor};
 
 use super::dimension_mapping_ui;
 
@@ -24,7 +24,7 @@ pub struct SliceSelection {
     pub selector_values: BTreeMap<usize, u64>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewTensorState {
     /// What slice are we vieiwing?
     slice: SliceSelection,
@@ -38,11 +38,11 @@ pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
     #[serde(skip)]
-    tensor: Option<Tensor>,
+    tensor: Option<DecodedTensor>,
 }
 
 impl ViewTensorState {
-    pub fn create(tensor: &Tensor) -> ViewTensorState {
+    pub fn create(tensor: &DecodedTensor) -> ViewTensorState {
         Self {
             slice: SliceSelection {
                 dim_mapping: DimensionMapping::create(tensor.shape()),
@@ -103,7 +103,7 @@ pub(crate) fn view_tensor(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
 ) {
     crate::profile_function!();
 
@@ -158,7 +158,7 @@ fn tensor_slice_ui(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     dimension_labels: [(String, bool); 2],
 ) -> anyhow::Result<()> {
     let (response, painter, image_rect) = paint_tensor_slice(ctx, ui, state, tensor)?;
@@ -175,7 +175,7 @@ fn paint_tensor_slice(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     crate::profile_function!();
 

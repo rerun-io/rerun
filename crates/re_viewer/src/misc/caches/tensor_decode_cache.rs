@@ -8,6 +8,13 @@ use re_log_types::component_types::{Tensor, TensorDimension, TensorId};
 #[derive(Clone)]
 pub struct DecodedTensor(Tensor);
 
+impl DecodedTensor {
+    #[inline(always)]
+    pub fn inner(&self) -> &Tensor {
+        &self.0
+    }
+}
+
 impl AsRef<Tensor> for DecodedTensor {
     #[inline(always)]
     fn as_ref(&self) -> &Tensor {

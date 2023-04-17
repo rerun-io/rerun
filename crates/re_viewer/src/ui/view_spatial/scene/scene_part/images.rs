@@ -164,9 +164,7 @@ impl ImagesPart {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {}: {}",
-                        ent_path,
-                        err
+                        "Encountered problem decoding tensor at path {ent_path}: {err}"
                     );
                     continue;
                 }
