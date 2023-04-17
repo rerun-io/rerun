@@ -38,6 +38,7 @@ permissions:
   contents: write
 
 jobs:
+  # See the benchmarks at https://ref.rerun.io/dev/bench/
   rs-benchmarks:
     name: Rust Criterion benchmarks
 
@@ -76,6 +77,7 @@ jobs:
             -- --output-format=bencher | tee output.txt
 
       - name: Store benchmark result
+        # https://github.com/benchmark-action/github-action-benchmark
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Rust Benchmark
@@ -87,7 +89,7 @@ jobs:
           comment-on-alert: true
           alert-threshold: "150%"
           fail-on-alert: true
-          comment-always: true
+          comment-always: false # Generates too much GitHub notification spam
 
           # Save, results and push to GitHub only on main
           save-data-file: ${{ github.ref == 'refs/heads/main' }}
