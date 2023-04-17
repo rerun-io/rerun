@@ -20,7 +20,7 @@ pub struct TransformCache {
     reference_path: EntityPath,
 
     /// All reachable entities.
-    reference_from_entity_per_entity: IntMap<EntityPath, glam::Mat4>,
+    reference_from_entity_per_entity: IntMap<EntityPath, glam::Affine3A>,
 
     /// All unreachable descendant paths of `reference_path`.
     unreachable_descendants: Vec<(EntityPath, UnreachableTransform)>,
@@ -61,6 +61,13 @@ impl std::fmt::Display for UnreachableTransform {
     }
 }
 
+fn transform_affine3(a: glam::Affine3A, b: glam::Affine3A) -> glam::Affine3A {
+    glam::Affine3A {
+        matrix3: a.matrix3.mul_mat3(&b.matrix3),
+        translation: a.matrix3.mul_vec3a(b.translation) + a.translation,
+    }
+}
+
 impl TransformCache {
     /// Determines transforms for all entities relative to a space path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
@@ -98,13 +105,13 @@ impl TransformCache {
             entity_db,
             &query,
             entity_prop_map,
-            glam::Mat4::IDENTITY,
+            glam::Affine3A::IDENTITY,
             false,
         );
 
         // Walk up from the reference to the highest reachable parent.
         let mut encountered_pinhole = false;
-        let mut reference_from_ancestor = glam::Mat4::IDENTITY;
+        let mut reference_from_ancestor = glam::Affine3A::IDENTITY;
         while let Some(parent_path) = current_tree.path.parent() {
             let Some(parent_tree) = &entity_db.tree.subtree(&parent_path) else {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
@@ -117,9 +124,10 @@ impl TransformCache {
 
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
-            match inverse_transform_at(
+            match transform_at(
                 &current_tree.path,
                 entity_db,
+                entity_prop_map,
                 &query,
                 &mut encountered_pinhole,
             ) {
@@ -129,8 +137,9 @@ impl TransformCache {
                     break;
                 }
                 Ok(None) => {}
-                Ok(Some(child_from_parent)) => {
-                    reference_from_ancestor *= child_from_parent;
+                Ok(Some(parent_from_child)) => {
+                    reference_from_ancestor =
+                        transform_affine3(reference_from_ancestor, parent_from_child.inverse());
                 }
             }
 
@@ -156,7 +165,7 @@ impl TransformCache {
         entity_db: &EntityDb,
         query: &LatestAtQuery,
         entity_properties: &EntityPropertyMap,
-        reference_from_entity: glam::Mat4,
+        reference_from_entity: glam::Affine3A,
         encountered_pinhole: bool,
     ) {
         match self
@@ -186,7 +195,9 @@ impl TransformCache {
                     continue;
                 }
                 Ok(None) => reference_from_entity,
-                Ok(Some(child_from_parent)) => reference_from_entity * child_from_parent,
+                Ok(Some(child_from_parent)) => {
+                    transform_affine3(reference_from_entity, child_from_parent)
+                }
             };
             self.gather_descendants_transforms(
                 child_tree,
@@ -202,7 +213,7 @@ impl TransformCache {
     /// Retrieves the transform of on entity from its local system to the space of the reference.
     ///
     /// Returns None if the path is not reachable.
-    pub fn reference_from_entity(&self, entity_path: &EntityPath) -> Option<macaw::Mat4> {
+    pub fn reference_from_entity(&self, entity_path: &EntityPath) -> Option<macaw::Affine3A> {
         self.reference_from_entity_per_entity
             .get(entity_path)
             .cloned()
@@ -223,10 +234,10 @@ fn transform_at(
     entity_properties: &EntityPropertyMap,
     query: &LatestAtQuery,
     encountered_pinhole: &mut bool,
-) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
+) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
     if let Some(transform) = query_latest_single(entity_db, entity_path, query) {
         match transform {
-            re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().to_mat4())),
+            re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().into())),
             // If we're connected via 'unknown' it's not reachable
             re_log_types::Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
 
@@ -246,7 +257,7 @@ fn transform_at(
                     let focal_length = glam::vec2(focal_length.x(), focal_length.y());
                     let scale = distance / focal_length;
                     let translation = (-pinhole.principal_point() * scale).extend(distance);
-                    let parent_from_child = glam::Mat4::from_scale_rotation_translation(
+                    let parent_from_child = glam::Affine3A::from_scale_rotation_translation(
                         // We want to preserve any depth that might be on the pinhole image.
                         // Use harmonic mean of x/y scale for those.
                         scale.extend(1.0 / (1.0 / scale.x + 1.0 / scale.y)),
@@ -255,50 +266,6 @@ fn transform_at(
                     );
 
                     Ok(Some(parent_from_child))
-                }
-            }
-        }
-    } else {
-        Ok(None)
-    }
-}
-
-fn inverse_transform_at(
-    entity_path: &EntityPath,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
-    encountered_pinhole: &mut bool,
-) -> Result<Option<macaw::Mat4>, UnreachableTransform> {
-    if let Some(parent_transform) = query_latest_single(entity_db, entity_path, query) {
-        match parent_transform {
-            re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.child_from_parent().to_mat4())),
-            // If we're connected via 'unknown', everything except whats under `parent_tree` is unreachable
-            re_log_types::Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
-
-            re_log_types::Transform::Pinhole(pinhole) => {
-                if *encountered_pinhole {
-                    Err(UnreachableTransform::NestedPinholeCameras)
-                } else {
-                    *encountered_pinhole = true;
-
-                    // TODO(andreas): If we don't have a resolution we don't know the FOV ergo we don't know how to project. Unclear what to do.
-                    if let Some(resolution) = pinhole.resolution() {
-                        let translation = pinhole.principal_point().extend(-100.0); // Large Y offset so this is in front of all 2d that came so far. TODO(andreas): Find better solution
-                        Ok(Some(
-                            glam::Mat4::from_scale_rotation_translation(
-                                // Scaled with 0.5 since perspective_infinite_lh uses NDC, i.e. [-1; 1] range.
-                                (resolution * 0.5).extend(1.0),
-                                glam::Quat::IDENTITY,
-                                translation,
-                            ) * glam::Mat4::perspective_infinite_lh(
-                                pinhole.fov_y().unwrap(),
-                                pinhole.aspect_ratio().unwrap_or(1.0),
-                                0.0,
-                            ),
-                        ))
-                    } else {
-                        Err(UnreachableTransform::InversePinholeCameraWithoutResolution)
-                    }
                 }
             }
         }

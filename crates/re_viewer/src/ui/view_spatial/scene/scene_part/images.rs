@@ -29,7 +29,7 @@ fn push_tensor_texture(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
     annotations: &Annotations,
-    world_from_obj: glam::Mat4,
+    world_from_obj: glam::Affine3A,
     ent_path: &EntityPath,
     tensor: &Tensor,
     multiplicative_tint: egui::Rgba,
@@ -144,7 +144,7 @@ impl ImagesPart {
         transforms: &TransformCache,
         properties: &EntityProperties,
         ent_path: &EntityPath,
-        world_from_obj: glam::Mat4,
+        world_from_obj: glam::Affine3A,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
@@ -180,6 +180,7 @@ impl ImagesPart {
                         crate::misc::queries::closest_pinhole_transform(ctx, ent_path, &query);
 
                     if let Some(pinhole_ent_path) = pinhole_ent_path {
+                        // TODO: is this still true??
                         // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                         // transform of the projection plane, which is of no use to us here.
                         // What we want are the extrinsics of the depth camera!
@@ -222,7 +223,7 @@ impl ImagesPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Mat4,
+        world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
         tensor: Tensor,
         color: Option<ColorRGBA>,
@@ -339,7 +340,7 @@ impl ImagesPart {
         };
 
         scene.primitives.depth_clouds.clouds.push(DepthCloud {
-            world_from_obj,
+            world_from_obj: world_from_obj.into(),
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_data_depth,
             point_radius_from_world_depth,

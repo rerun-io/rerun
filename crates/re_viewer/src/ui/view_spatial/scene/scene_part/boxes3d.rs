@@ -1,5 +1,3 @@
-use glam::Mat4;
-
 use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{Box3D, ClassId, ColorRGBA, InstanceKey, Label, Quaternion, Radius, Vec3D},
@@ -26,7 +24,7 @@ impl Boxes3DPart {
         scene: &mut SceneSpatial,
         entity_view: &EntityView<Box3D>,
         ent_path: &EntityPath,
-        world_from_obj: Mat4,
+        world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
@@ -37,7 +35,7 @@ impl Boxes3DPart {
             .primitives
             .line_strips
             .batch("box 3d")
-            .world_from_obj(world_from_obj)
+            .world_from_obj(world_from_obj.into())
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 

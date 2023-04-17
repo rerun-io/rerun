@@ -1,5 +1,3 @@
-use glam::Mat4;
-
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point2D, Radius},
@@ -64,7 +62,7 @@ impl Points2DPart {
         query: &SceneQuery<'_>,
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
-        world_from_obj: Mat4,
+        world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
@@ -112,7 +110,7 @@ impl Points2DPart {
                 .primitives
                 .points
                 .batch("2d points")
-                .world_from_obj(world_from_obj)
+                .world_from_obj(world_from_obj.into())
                 .outline_mask_ids(entity_highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 

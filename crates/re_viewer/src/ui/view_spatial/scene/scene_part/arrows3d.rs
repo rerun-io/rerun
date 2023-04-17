@@ -1,4 +1,3 @@
-use glam::Mat4;
 use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Label, Radius},
@@ -21,7 +20,7 @@ impl Arrows3DPart {
         scene: &mut SceneSpatial,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
-        world_from_obj: Mat4,
+        world_from_obj: glam::Affine3A,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
@@ -35,7 +34,7 @@ impl Arrows3DPart {
             .primitives
             .line_strips
             .batch("arrows")
-            .world_from_obj(world_from_obj)
+            .world_from_obj(world_from_obj.into())
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 

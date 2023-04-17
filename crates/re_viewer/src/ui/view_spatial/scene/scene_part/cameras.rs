@@ -83,7 +83,7 @@ impl CamerasPart {
 
         // If this transform is not representable as rigid transform, the camera is probably under another camera transform,
         // in which case we don't (yet) know how to deal with this!
-        let Some(world_from_camera) = macaw::IsoTransform::from_mat4(&world_from_parent) else {
+        let Some(world_from_camera) = macaw::IsoTransform::from_mat4(&world_from_parent.into()) else {
             return;
         };
 
@@ -155,7 +155,7 @@ impl CamerasPart {
             .primitives
             .line_strips
             .batch("camera frustum")
-            .world_from_obj(world_from_parent)
+            .world_from_obj(world_from_parent.into())
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
         let lines = batch
