@@ -344,7 +344,7 @@ jobs:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
 
-    # TODO: remove this matrix when https://github.com/EmbarkStudios/cargo-deny/issues/324 is resolved
+    # TODO(emilk): remove this matrix when https://github.com/EmbarkStudios/cargo-deny/issues/324 is resolved
     strategy:
       fail-fast: false
       matrix:
