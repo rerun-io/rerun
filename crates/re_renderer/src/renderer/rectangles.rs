@@ -192,6 +192,9 @@ mod gpu_data {
     const COLOR_MAPPER_FUNCTION: u32 = 2;
     const COLOR_MAPPER_TEXTURE: u32 = 3;
 
+    const FILTER_NEAREST: u32 = 1;
+    const FILTER_BILINEAR: u32 = 2;
+
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
@@ -213,7 +216,8 @@ mod gpu_data {
 
         color_mapper: u32,
         gamma: f32,
-        _row_padding: [u32; 2],
+        minification_filter: u32,
+        magnification_filter: u32,
 
         _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
@@ -275,6 +279,15 @@ mod gpu_data {
                 }
             }
 
+            let minification_filter = match rectangle.texture_filter_minification {
+                super::TextureFilterMin::Linear => FILTER_BILINEAR,
+                super::TextureFilterMin::Nearest => FILTER_NEAREST,
+            };
+            let magnification_filter = match rectangle.texture_filter_magnification {
+                super::TextureFilterMag::Linear => FILTER_BILINEAR,
+                super::TextureFilterMag::Nearest => FILTER_NEAREST,
+            };
+
             Ok(Self {
                 top_left_corner_position: rectangle.top_left_corner_position.into(),
                 colormap_function,
@@ -287,7 +300,8 @@ mod gpu_data {
                 range_min_max: (*range).into(),
                 color_mapper: color_mapper_int,
                 gamma: *gamma,
-                _row_padding: Default::default(),
+                minification_filter,
+                magnification_filter,
                 _end_padding: Default::default(),
             })
         }
@@ -564,19 +578,24 @@ impl Renderer for RectangleRenderer {
             &pools.bind_group_layouts,
         );
 
-        let shader_module = pools.shader_modules.get_or_create(
+        let shader_module_vs = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &include_shader_module!("../../shader/rectangle.wgsl"),
+            &include_shader_module!("../../shader/rectangle_vs.wgsl"),
+        );
+        let shader_module_fs = pools.shader_modules.get_or_create(
+            device,
+            resolver,
+            &include_shader_module!("../../shader/rectangle_fs.wgsl"),
         );
 
         let render_pipeline_desc_color = RenderPipelineDesc {
             label: "RectangleRenderer::render_pipeline_color".into(),
             pipeline_layout,
             vertex_entrypoint: "vs_main".into(),
-            vertex_handle: shader_module,
+            vertex_handle: shader_module_vs,
             fragment_entrypoint: "fs_main".into(),
-            fragment_handle: shader_module,
+            fragment_handle: shader_module_fs,
             vertex_buffers: smallvec![],
             render_targets: smallvec![Some(wgpu::ColorTargetState {
                 format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,

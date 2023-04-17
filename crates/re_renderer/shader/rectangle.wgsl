@@ -16,6 +16,9 @@ const COLOR_MAPPER_OFF      = 1u;
 const COLOR_MAPPER_FUNCTION = 2u;
 const COLOR_MAPPER_TEXTURE  = 3u;
 
+const FILTER_NEAREST = 1u;
+const FILTER_BILINEAR = 2u;
+
 struct UniformBuffer {
     /// Top left corner position in world space.
     top_left_corner_position: Vec3,
@@ -48,6 +51,9 @@ struct UniformBuffer {
     /// Exponent to raise the normalized texture value.
     /// Inverse brightness.
     gamma: f32,
+
+    minification_filter: u32,
+    magnification_filter: u32,
 };
 
 @group(1) @binding(0)
@@ -71,80 +77,10 @@ var colormap_texture: texture_2d<f32>;
 @group(1) @binding(6)
 var texture_float_filterable: texture_2d<f32>;
 
-
 struct VertexOut {
     @builtin(position) position: Vec4,
     @location(0) texcoord: Vec2,
 };
 
-@vertex
-fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
-    let texcoord = Vec2(f32(v_idx / 2u), f32(v_idx % 2u));
-    let pos = texcoord.x * rect_info.extent_u + texcoord.y * rect_info.extent_v +
-                rect_info.top_left_corner_position;
-
-    var out: VertexOut;
-    out.position = apply_depth_offset(frame.projection_from_world * Vec4(pos, 1.0), rect_info.depth_offset);
-    out.texcoord = texcoord;
-
-    return out;
-}
-
-@fragment
-fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // Sample the main texture:
-    var sampled_value: Vec4;
-    if rect_info.sample_type == SAMPLE_TYPE_FLOAT_FILTER {
-        // TODO(emilk): support mipmaps
-        sampled_value = textureSampleLevel(texture_float_filterable, texture_sampler, in.texcoord, 0.0);
-    } else if rect_info.sample_type == SAMPLE_TYPE_FLOAT_NOFILTER {
-        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_float).xy));
-        sampled_value = Vec4(textureLoad(texture_float, icoords, 0));
-    } else if rect_info.sample_type == SAMPLE_TYPE_SINT_NOFILTER {
-        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_sint).xy));
-        sampled_value = Vec4(textureLoad(texture_sint, icoords, 0));
-    } else if rect_info.sample_type == SAMPLE_TYPE_UINT_NOFILTER {
-        let icoords = IVec2(in.texcoord * Vec2(textureDimensions(texture_uint).xy));
-        sampled_value = Vec4(textureLoad(texture_uint, icoords, 0));
-    } else {
-        return ERROR_RGBA; // unknown sample type
-    }
-
-    // Normalize the sample:
-    let range = rect_info.range_min_max;
-    var normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
-
-    // Apply gamma:
-    normalized_value = vec4(pow(normalized_value.rgb, vec3(rect_info.gamma)), normalized_value.a); // TODO(emilk): handle premultiplied alpha
-
-    // Apply colormap, if any:
-    var texture_color: Vec4;
-    if rect_info.color_mapper == COLOR_MAPPER_OFF {
-        texture_color = normalized_value;
-    } else if rect_info.color_mapper == COLOR_MAPPER_FUNCTION {
-        let rgb = colormap_linear(rect_info.colormap_function, normalized_value.r);
-        texture_color = Vec4(rgb, 1.0);
-    } else if rect_info.color_mapper == COLOR_MAPPER_TEXTURE {
-        let colormap_size = textureDimensions(colormap_texture).xy;
-        let color_index = normalized_value.r * f32(colormap_size.x * colormap_size.y);
-        // TODO(emilk): interpolate between neighboring colors for non-integral color indices
-        let color_index_i32 = i32(color_index);
-        let x = color_index_i32 % colormap_size.x;
-        let y = color_index_i32 / colormap_size.x;
-        texture_color = textureLoad(colormap_texture, IVec2(x, y), 0);
-    } else {
-        return ERROR_RGBA; // unknown color mapper
-    }
-
-    return texture_color * rect_info.multiplicative_tint;
-}
-
-@fragment
-fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
-    return UVec4(0u, 0u, 0u, 0u); // TODO(andreas): Implement picking layer id pass-through.
-}
-
-@fragment
-fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
-    return rect_info.outline_mask;
-}
+// The fragment and vertex shaders are in two separate files in order
+// to work around this bug: https://github.com/gfx-rs/naga/issues/1743
