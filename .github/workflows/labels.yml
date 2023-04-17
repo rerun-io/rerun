@@ -29,4 +29,4 @@ jobs:
         with:
           mode: minimum
           count: 1
-          labels: "📊 analytics, 🪳 bug, 🧑‍💻 dev experience, 📖 documentation, 💬 discussion, examples, 📉 performance, 🐍 python API, ⛃ re_datastore, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🦀 rust SDK, 🔨 testing, ui, 🕸️ web"
+          labels: "📊 analytics, 🪳 bug, 🧑‍💻 dev experience, dependencies, 📖 documentation, 💬 discussion, examples, 📉 performance, 🐍 python API, ⛃ re_datastore, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🦀 rust SDK, 🔨 testing, ui, 🕸️ web"
