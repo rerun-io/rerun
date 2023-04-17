@@ -32,7 +32,7 @@ re_smart_channel.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bincode = "1.3"
-crossbeam = "0.8"
+crossbeam.workspace = true
 document-features = "0.2"
 rand = { version = "0.8.5", features = ["small_rng"] }
 tokio.workspace = true
