@@ -256,14 +256,10 @@ fn transform_at(
                     let props = entity_properties.get(entity_path);
                     let distance = *props.pinhole_image_plane_distance.get();
 
-                    let focal_length = pinhole.focal_length_in_pixels();
-                    let focal_length = glam::vec2(focal_length.x(), focal_length.y());
-                    let scale = distance / focal_length;
+                    let scale = distance / pinhole.focal_length_in_pixels();
                     let translation = (-pinhole.principal_point() * scale).extend(distance);
                     let parent_from_child = glam::Affine3A::from_scale_rotation_translation(
-                        // We want to preserve any depth that might be on the pinhole image.
-                        // Use harmonic mean of x/y scale for those.
-                        scale.extend(1.0 / (1.0 / scale.x + 1.0 / scale.y)),
+                        glam::Vec3::splat(scale),
                         glam::Quat::IDENTITY,
                         translation,
                     );

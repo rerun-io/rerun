@@ -156,13 +156,15 @@ impl Pinhole {
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[inline]
-    pub fn focal_length_in_pixels(&self) -> Vec2D {
-        [self.image_from_cam[0][0], self.image_from_cam[1][1]].into()
+    pub fn focal_length_in_pixels(&self) -> f32 {
+        // Use only the first element of the focal length vector, as we don't support non-square pixels.
+        self.image_from_cam[0][0]
     }
 
     /// Focal length.
     #[inline]
     pub fn focal_length(&self) -> Option<f32> {
+        // Use only the first element of the focal length vector, as we don't support non-square pixels.
         self.resolution.map(|r| self.image_from_cam[0][0] / r[0])
     }
 

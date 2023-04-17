@@ -422,16 +422,17 @@ fn setup_target_config(
     let (projection_from_view, view_from_world) = if let Some(space_camera) = space_camera {
         let pinhole = space_camera.pinhole.unwrap(); // TODO:
 
-        // Put the camera at the position where it sees the entire image plane as defined
-        // by the pinhole camera.
-        let camera_distance = pinhole.focal_length_in_pixels()[0]; // We don't support non-square pixels, pick 0.
         (
             re_renderer::view_builder::Projection::Perspective {
                 vertical_fov: pinhole.fov_y().unwrap(), // TODO: no unwrap
                 near_plane_distance: 0.01,              // TODO:
             },
+            // Put the camera at the position where it sees the entire image plane as defined
+            // by the pinhole camera.
             macaw::IsoTransform::look_at_rh(
-                pinhole.principal_point().extend(-camera_distance),
+                pinhole
+                    .principal_point()
+                    .extend(-pinhole.focal_length_in_pixels()),
                 pinhole.principal_point().extend(0.0),
                 -glam::Vec3::Y,
             )
