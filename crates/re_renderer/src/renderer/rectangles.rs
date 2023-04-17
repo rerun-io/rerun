@@ -87,17 +87,6 @@ pub enum ColorMapper {
     Texture(GpuTexture2DHandle),
 }
 
-impl Default for ColormappedTexture {
-    fn default() -> Self {
-        Self {
-            texture: GpuTexture2DHandle::invalid(),
-            range: [0.0, 1.0],
-            gamma: 1.0,
-            color_mapper: None,
-        }
-    }
-}
-
 impl ColormappedTexture {
     pub fn from_unorm_srgba(texture: GpuTexture2DHandle) -> Self {
         Self {
@@ -122,6 +111,10 @@ pub struct TexturedRect {
     /// Texture that fills the rectangle
     pub colormapped_texture: ColormappedTexture,
 
+    pub options: RectangleOptions,
+}
+
+pub struct RectangleOptions {
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
 
@@ -134,13 +127,9 @@ pub struct TexturedRect {
     pub outline_mask: OutlineMaskPreference,
 }
 
-impl Default for TexturedRect {
+impl Default for RectangleOptions {
     fn default() -> Self {
         Self {
-            top_left_corner_position: glam::Vec3::ZERO,
-            extent_u: glam::Vec3::ZERO,
-            extent_v: glam::Vec3::ZERO,
-            colormapped_texture: Default::default(),
             texture_filter_magnification: TextureFilterMag::Nearest,
             texture_filter_minification: TextureFilterMin::Linear,
             multiplicative_tint: Rgba::WHITE,
@@ -179,7 +168,7 @@ pub enum RectangleError {
 mod gpu_data {
     use crate::wgpu_buffer_types;
 
-    use super::{ColorMapper, RectangleError};
+    use super::{ColorMapper, RectangleError, TexturedRect};
 
     // Keep in sync with mirror in rectangle.wgsl
 
@@ -231,12 +220,28 @@ mod gpu_data {
         ) -> Result<Self, RectangleError> {
             let texture_info = texture_format.describe();
 
+            let TexturedRect {
+                top_left_corner_position,
+                extent_u,
+                extent_v,
+                colormapped_texture,
+                options,
+            } = rectangle;
+
             let super::ColormappedTexture {
                 texture: _,
                 range,
                 gamma,
                 color_mapper,
-            } = &rectangle.colormapped_texture;
+            } = colormapped_texture;
+
+            let super::RectangleOptions {
+                texture_filter_magnification: _,
+                texture_filter_minification: _,
+                multiplicative_tint,
+                depth_offset,
+                outline_mask,
+            } = options;
 
             let sample_type = match texture_info.sample_type {
                 wgpu::TextureSampleType::Float { .. } => {
@@ -281,24 +286,24 @@ mod gpu_data {
                 }
             }
 
-            let minification_filter = match rectangle.texture_filter_minification {
+            let minification_filter = match rectangle.options.texture_filter_minification {
                 super::TextureFilterMin::Linear => FILTER_BILINEAR,
                 super::TextureFilterMin::Nearest => FILTER_NEAREST,
             };
-            let magnification_filter = match rectangle.texture_filter_magnification {
+            let magnification_filter = match rectangle.options.texture_filter_magnification {
                 super::TextureFilterMag::Linear => FILTER_BILINEAR,
                 super::TextureFilterMag::Nearest => FILTER_NEAREST,
             };
 
             Ok(Self {
-                top_left_corner_position: rectangle.top_left_corner_position.into(),
+                top_left_corner_position: (*top_left_corner_position).into(),
                 colormap_function,
-                extent_u: rectangle.extent_u.into(),
+                extent_u: (*extent_u).into(),
                 sample_type,
-                extent_v: rectangle.extent_v.into(),
-                depth_offset: rectangle.depth_offset as f32,
-                multiplicative_tint: rectangle.multiplicative_tint,
-                outline_mask: rectangle.outline_mask.0.unwrap_or_default().into(),
+                extent_v: (*extent_v).into(),
+                depth_offset: *depth_offset as f32,
+                multiplicative_tint: *multiplicative_tint,
+                outline_mask: outline_mask.0.unwrap_or_default().into(),
                 range_min_max: (*range).into(),
                 color_mapper: color_mapper_int,
                 gamma: *gamma,
@@ -346,15 +351,15 @@ impl RectangleDrawData {
             });
         }
 
-        // TODO(emilk): continue on error (skipping just that rectangle)?
         let textures: Vec<_> = rectangles
             .iter()
             .map(|rectangle| {
                 ctx.texture_manager_2d
                     .get(&rectangle.colormapped_texture.texture)
             })
-            .try_collect()?;
+            .collect();
 
+        // TODO(emilk): continue on error (skipping just that rectangle)?
         let uniform_buffers: Vec<_> = izip!(rectangles, &textures)
             .map(|(rect, texture)| {
                 gpu_data::UniformBuffer::from_textured_rect(rect, &texture.creation_desc.format)
@@ -371,20 +376,20 @@ impl RectangleDrawData {
         for (rectangle, uniform_buffer, texture) in
             izip!(rectangles, uniform_buffer_bindings, textures)
         {
+            let options = &rectangle.options;
             let sampler = ctx.gpu_resources.samplers.get_or_create(
                 &ctx.device,
                 &SamplerDesc {
                     label: format!(
                         "rectangle sampler mag {:?} min {:?}",
-                        rectangle.texture_filter_magnification,
-                        rectangle.texture_filter_minification
+                        options.texture_filter_magnification, options.texture_filter_minification
                     )
                     .into(),
-                    mag_filter: match rectangle.texture_filter_magnification {
+                    mag_filter: match options.texture_filter_magnification {
                         TextureFilterMag::Linear => wgpu::FilterMode::Linear,
                         TextureFilterMag::Nearest => wgpu::FilterMode::Nearest,
                     },
-                    min_filter: match rectangle.texture_filter_minification {
+                    min_filter: match options.texture_filter_minification {
                         TextureFilterMin::Linear => wgpu::FilterMode::Linear,
                         TextureFilterMin::Nearest => wgpu::FilterMode::Nearest,
                     },
@@ -430,7 +435,7 @@ impl RectangleDrawData {
             let colormap_texture = if let Some(ColorMapper::Texture(handle)) =
                 &rectangle.colormapped_texture.color_mapper
             {
-                let colormap_texture = ctx.texture_manager_2d.get(handle)?;
+                let colormap_texture = ctx.texture_manager_2d.get(handle);
                 if colormap_texture.creation_desc.format != wgpu::TextureFormat::Rgba8UnormSrgb {
                     return Err(RectangleError::UnsupportedColormapTextureFormat(
                         colormap_texture.creation_desc.format,
@@ -459,7 +464,7 @@ impl RectangleDrawData {
                         layout: rectangle_renderer.bind_group_layout,
                     },
                 ),
-                draw_outline_mask: rectangle.outline_mask.is_some(),
+                draw_outline_mask: rectangle.options.outline_mask.is_some(),
             });
         }
 

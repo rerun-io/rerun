@@ -1,8 +1,8 @@
 use ecolor::Hsva;
 use re_renderer::{
     renderer::{
-        ColormappedTexture, LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin,
-        TexturedRect,
+        ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
+        TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
@@ -197,9 +197,11 @@ impl framework::Example for Render2D {
                     colormapped_texture: ColormappedTexture::from_unorm_srgba(
                         self.rerun_logo_texture.clone(),
                     ),
-                    texture_filter_magnification: TextureFilterMag::Nearest,
-                    texture_filter_minification: TextureFilterMin::Linear,
-                    ..Default::default()
+                    options: RectangleOptions {
+                        texture_filter_magnification: TextureFilterMag::Nearest,
+                        texture_filter_minification: TextureFilterMin::Linear,
+                        ..Default::default()
+                    },
                 },
                 TexturedRect {
                     top_left_corner_position: glam::vec3(
@@ -213,10 +215,12 @@ impl framework::Example for Render2D {
                     colormapped_texture: ColormappedTexture::from_unorm_srgba(
                         self.rerun_logo_texture.clone(),
                     ),
-                    texture_filter_magnification: TextureFilterMag::Linear,
-                    texture_filter_minification: TextureFilterMin::Linear,
-                    depth_offset: 1,
-                    ..Default::default()
+                    options: RectangleOptions {
+                        texture_filter_magnification: TextureFilterMag::Linear,
+                        texture_filter_minification: TextureFilterMin::Linear,
+                        depth_offset: 1,
+                        ..Default::default()
+                    },
                 },
             ],
         )
