@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use smallvec::SmallVec;
@@ -879,7 +879,8 @@ impl DataTable {
     pub fn deserialize(
         table_id: TableId,
         schema: &Schema,
-        chunk: &Chunk<Box<dyn Array>>,
+        chunk: Chunk<Box<dyn Array>>,
+        datatypes: Option<&HashSet<DataType>>,
     ) -> DataTableResult<Self> {
         crate::profile_function!();
 
@@ -933,22 +934,25 @@ impl DataTable {
 
         // --- Components ---
 
+        let mut columns = chunk.into_arrays();
+
         let columns: DataTableResult<_> = schema
             .fields
             .iter()
             .enumerate()
             .filter_map(|(i, field)| {
-                field.metadata.get(METADATA_KIND).and_then(|kind| {
-                    (kind == METADATA_KIND_DATA).then_some((field.name.as_str(), i))
-                })
+                field
+                    .metadata
+                    .get(METADATA_KIND)
+                    .and_then(|kind| (kind == METADATA_KIND_DATA).then_some((field, i)))
             })
-            .map(|(name, index)| {
-                let component: ComponentName = name.into();
-                chunk
-                    .get(index)
-                    .ok_or(DataTableError::MissingColumn(name.to_owned()))
+            .map(|(field, index)| {
+                let component: ComponentName = field.name.as_str().into();
+                columns
+                    .get_mut(index)
+                    .ok_or(DataTableError::MissingColumn(field.name.clone()))
                     .and_then(|column| {
-                        Self::deserialize_data_column(component, &**column)
+                        Self::deserialize_data_column(component, &**column, datatypes)
                             .map(|data| (component, data))
                     })
             })
@@ -998,17 +1002,43 @@ impl DataTable {
     fn deserialize_data_column(
         component: ComponentName,
         column: &dyn Array,
+        datatypes: Option<&HashSet<DataType>>,
     ) -> DataTableResult<DataCellColumn> {
         crate::profile_function!();
+
+        let column = column
+            .as_any()
+            .downcast_ref::<ListArray<i32>>()
+            .ok_or(DataTableError::NotAColumn(component.to_string()))?;
+
+        // let datatype = datatypes.and_then(|datatypes| {
+        //     datatypes.get(ListArray::<i32>::get_child_type(column.data_type()))
+        // });
+
+        // let chunk = {
+        //     crate::profile_scope!("dedupe_datatypes");
+        //     let mut columns = chunk.into_arrays();
+        //     for column in &mut columns {
+        //         *column = dedupe_datatypes(&mut self.datatypes, column.as_ref());
+        //     }
+        //     Chunk::new(columns)
+        // };
+
         Ok(DataCellColumn(
             column
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .ok_or(DataTableError::NotAColumn(component.to_string()))?
                 .iter()
                 // TODO(#1805): Schema metadata gets cloned in every single array.
                 // This'll become a problem as soon as we enable batching.
-                .map(|array| array.map(|values| DataCell::from_arrow(component, values)))
+                .map(|array| {
+                    array.map(|values| {
+                        if let Some(datatypes) = datatypes {
+                            let values = swap_datatypes(datatypes, values);
+                            DataCell::from_arrow(component, values)
+                        } else {
+                            DataCell::from_arrow(component, values)
+                        }
+                    })
+                })
                 .collect(),
         ))
     }
@@ -1019,7 +1049,10 @@ impl DataTable {
 impl DataTable {
     /// Deserializes the contents of an [`ArrowMsg`] into a `DataTable`.
     #[inline]
-    pub fn from_arrow_msg(msg: &ArrowMsg) -> DataTableResult<Self> {
+    pub fn from_arrow_msg(
+        msg: ArrowMsg,
+        datatypes: Option<&HashSet<DataType>>,
+    ) -> DataTableResult<Self> {
         let ArrowMsg {
             table_id,
             timepoint_max: _,
@@ -1027,7 +1060,7 @@ impl DataTable {
             chunk,
         } = msg;
 
-        Self::deserialize(*table_id, schema, chunk)
+        Self::deserialize(table_id, &schema, chunk, datatypes)
     }
 
     /// Serializes the contents of a `DataTable` into an [`ArrowMsg`].
@@ -1129,4 +1162,84 @@ impl DataTable {
 
         table
     }
+}
+
+// --- Deduplication ---
+
+use arrow2::array::{FixedSizeListArray, StructArray, UnionArray};
+use itertools::Itertools;
+
+// TODO
+// - we shouldnt have to pay for crazy expensive virtual clones... datatype should be overridable
+fn swap_datatypes(datatypes: &HashSet<DataType>, array: Box<dyn Array>) -> Box<dyn Array> {
+    crate::profile_function!();
+
+    fn fill(datatypes: &HashSet<DataType>, array: &Box<dyn Array>) -> Box<dyn Array> {
+        let datatype = datatypes
+            .get(array.data_type())
+            .cloned()
+            .unwrap_or(array.data_type().clone());
+
+        match array.data_type() {
+            DataType::List(_) => {
+                let array = array.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+                ListArray::<i32>::new(
+                    datatype,
+                    array.offsets().clone(),
+                    fill(datatypes, array.values()),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::LargeList(_) => {
+                let array = array.as_any().downcast_ref::<ListArray<i64>>().unwrap();
+                ListArray::<i64>::new(
+                    datatype,
+                    array.offsets().clone(),
+                    fill(datatypes, array.values()),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::FixedSizeList(_, _) => {
+                let array = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
+                FixedSizeListArray::new(
+                    datatype,
+                    fill(datatypes, array.values()),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::Struct(_) => {
+                let array = array.as_any().downcast_ref::<StructArray>().unwrap();
+                StructArray::new(
+                    datatype,
+                    array
+                        .values()
+                        .iter()
+                        .map(|v| fill(datatypes, v))
+                        .collect_vec(),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::Union(_, _, _) => {
+                let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
+                UnionArray::new(
+                    datatype,
+                    array.types().clone(),
+                    array
+                        .fields()
+                        .iter()
+                        .map(|v| fill(datatypes, v))
+                        .collect_vec(),
+                    array.offsets().cloned(),
+                )
+                .boxed()
+            }
+            _ => array.to_boxed(),
+        }
+    }
+
+    fill(datatypes, &array)
 }

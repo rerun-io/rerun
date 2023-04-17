@@ -54,7 +54,7 @@ fn decode_tables(messages: &[LogMsg]) -> Vec<DataTable> {
         .iter()
         .map(|log_msg| {
             if let LogMsg::ArrowMsg(_, arrow_msg) = log_msg {
-                DataTable::from_arrow_msg(arrow_msg).unwrap()
+                DataTable::from_arrow_msg(arrow_msg.clone(), None).unwrap() // TODO
             } else {
                 unreachable!()
             }

@@ -1,12 +1,15 @@
 use std::collections::BTreeMap;
 
+use ahash::HashSet;
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
-    component_types::InstanceKey, ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath,
-    DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp,
-    RecordingId, RecordingInfo, RowId, TimePoint, Timeline,
+    component_types::InstanceKey,
+    external::arrow2::{chunk::Chunk, datatypes::DataType},
+    ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable,
+    EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RecordingId, RecordingInfo, RowId,
+    TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -26,6 +29,8 @@ pub struct EntityDb {
 
     /// Stores all components for all entities for all timelines.
     pub data_store: re_arrow_store::DataStore,
+
+    pub datatypes: HashSet<DataType>,
 }
 
 impl Default for EntityDb {
@@ -38,6 +43,7 @@ impl Default for EntityDb {
                 InstanceKey::name(),
                 DataStoreConfig::default(),
             ),
+            datatypes: Default::default(),
         }
     }
 }
@@ -54,11 +60,34 @@ impl EntityDb {
             .or_insert_with(|| entity_path.clone());
     }
 
-    fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
+    fn try_add_arrow_msg(&mut self, msg: ArrowMsg) -> Result<(), Error> {
         crate::profile_function!();
 
+        let ArrowMsg {
+            table_id,
+            timepoint_max,
+            schema,
+            chunk,
+        } = msg;
+
+        // TODO: move everything in datatable?
+        // TODO: this obviously cannot be doing all these crazy clones
+        {
+            crate::profile_scope!("collect_datatypes");
+            for column in chunk.arrays() {
+                collect_datatypes(&mut self.datatypes, &**column);
+            }
+        }
+
+        let msg = ArrowMsg {
+            table_id,
+            timepoint_max,
+            schema,
+            chunk,
+        };
+
         // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
-        let mut table = DataTable::from_arrow_msg(msg)?;
+        let mut table = DataTable::from_arrow_msg(msg, Some(&self.datatypes))?;
         table.compute_all_size_bytes();
 
         // TODO(#1619): batch all of this
@@ -142,6 +171,7 @@ impl EntityDb {
             times_per_timeline,
             tree,
             data_store: _, // purged before this function is called
+            datatypes: _,
         } = self;
 
         {
@@ -212,17 +242,17 @@ impl LogDb {
         self.num_rows() == 0
     }
 
-    pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
+    pub fn add(&mut self, msg: LogMsg) -> Result<(), Error> {
         crate::profile_function!();
 
-        match &msg {
+        match msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
             LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
                     row_id,
                     time_point,
                     path_op,
-                } = msg;
+                } = &msg;
                 self.entity_op_msgs.insert(*row_id, msg.clone());
                 self.entity_db.add_path_op(*row_id, time_point, path_op);
             }
@@ -233,8 +263,8 @@ impl LogDb {
         Ok(())
     }
 
-    fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
-        self.recording_msg = Some(msg.clone());
+    fn add_begin_recording_msg(&mut self, msg: BeginRecordingMsg) {
+        self.recording_msg = Some(msg);
     }
 
     /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `LogDb`.
@@ -277,4 +307,141 @@ impl LogDb {
 
         entity_db.purge(&cutoff_times, &drop_row_ids);
     }
+}
+
+// ---
+
+use itertools::Itertools;
+use re_log_types::external::arrow2::{
+    array::{
+        growable::make_growable, Array, FixedSizeListArray, ListArray, StructArray, UnionArray,
+    },
+    bitmap::Bitmap,
+    datatypes::{Field, UnionMode},
+    offset::Offsets,
+};
+use std::sync::Arc;
+
+pub fn collect_datatypes(datatypes: &mut HashSet<DataType>, array: &dyn Array) {
+    crate::profile_function!();
+
+    fn fill(datatypes: &mut HashSet<DataType>, array: &dyn Array) {
+        let datatype = array.data_type().clone();
+
+        if !datatypes.insert(datatype.clone()) {
+            return;
+        }
+
+        match &datatype {
+            DataType::List(_) => {
+                let array = array.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+                fill(datatypes, array.values().as_ref());
+            }
+            DataType::LargeList(_) => {
+                let array = array.as_any().downcast_ref::<ListArray<i64>>().unwrap();
+                fill(datatypes, array.values().as_ref());
+            }
+            DataType::FixedSizeList(_, _) => {
+                let array = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
+                fill(datatypes, array.values().as_ref());
+            }
+            DataType::Struct(_) => {
+                let array = array.as_any().downcast_ref::<StructArray>().unwrap();
+                array
+                    .values()
+                    .iter()
+                    .map(|v| fill(datatypes, v.as_ref()))
+                    .for_each(|_| {});
+            }
+            DataType::Union(_, _, _) => {
+                let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
+                array
+                    .fields()
+                    .iter()
+                    .map(|v| fill(datatypes, v.as_ref()))
+                    .for_each(|_| {});
+            }
+            _ => {}
+        }
+    }
+
+    fill(datatypes, array);
+}
+
+// TODO
+// - we shouldnt have to pay for crazy expensive virtual clones... datatype should be overridable
+fn dedupe_datatypes(datatypes: &mut HashSet<DataType>, array: &dyn Array) -> Box<dyn Array> {
+    crate::profile_function!();
+
+    fn fill(datatypes: &mut HashSet<DataType>, mut array: &dyn Array) -> Box<dyn Array> {
+        let datatype = if let Some(datatype) = datatypes.get(array.data_type()) {
+            datatype.clone()
+        } else {
+            let datatype = array.data_type().clone();
+            datatypes.insert(datatype.clone());
+            datatype
+        };
+
+        match array.data_type() {
+            DataType::List(_) => {
+                let array = array.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+                ListArray::<i32>::new(
+                    datatype,
+                    array.offsets().clone(),
+                    fill(datatypes, array.values().as_ref()),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::LargeList(_) => {
+                let array = array.as_any().downcast_ref::<ListArray<i64>>().unwrap();
+                ListArray::<i64>::new(
+                    datatype,
+                    array.offsets().clone(),
+                    fill(datatypes, array.values().as_ref()),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::FixedSizeList(_, _) => {
+                let array = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
+                FixedSizeListArray::new(
+                    datatype,
+                    fill(datatypes, array.values().as_ref()),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::Struct(_) => {
+                let array = array.as_any().downcast_ref::<StructArray>().unwrap();
+                StructArray::new(
+                    datatype,
+                    array
+                        .values()
+                        .iter()
+                        .map(|v| fill(datatypes, v.as_ref()))
+                        .collect_vec(),
+                    array.validity().cloned(),
+                )
+                .boxed()
+            }
+            DataType::Union(_, _, _) => {
+                let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
+                UnionArray::new(
+                    datatype,
+                    array.types().clone(),
+                    array
+                        .fields()
+                        .iter()
+                        .map(|v| fill(datatypes, v.as_ref()))
+                        .collect_vec(),
+                    array.offsets().cloned(),
+                )
+                .boxed()
+            }
+            _ => array.to_boxed(),
+        }
+    }
+
+    fill(datatypes, array)
 }

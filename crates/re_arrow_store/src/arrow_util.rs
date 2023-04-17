@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use ahash::HashSet;
 use arrow2::{
     array::{
         growable::make_growable, Array, FixedSizeListArray, ListArray, StructArray, UnionArray,

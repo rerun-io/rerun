@@ -192,7 +192,7 @@ dependencies = [
 [[package]]
 name = "arrow2"
 version = "0.17.0"
-source = "git+https://github.com/rerun-io/arrow2?branch=cmc/arc_datatype#d2742752b8766349409904fd2067de2d41128915"
+source = "git+https://github.com/rerun-io/arrow2?branch=cmc/arc_datatype#3c3c6ed183fb7c1f625ed2bcae6b00265141b727"
 dependencies = [
  "ahash 0.8.2",
  "arrow-format",
@@ -3735,8 +3735,7 @@ version = "0.4.0"
 dependencies = [
  "arrow2",
  "arrow2_convert",
- "comfy-table 6.1.4",
- "parking_lot 0.12.1",
+ "comfy-table",
  "re_tuid",
 ]
 

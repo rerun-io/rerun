@@ -155,7 +155,7 @@ mod tests {
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
         let table_out = {
-            let mut table = DataTable::from_arrow_msg(&msg_out).unwrap();
+            let mut table = DataTable::from_arrow_msg(msg_out.clone(), None).unwrap();
             table.compute_all_size_bytes();
             table
         };

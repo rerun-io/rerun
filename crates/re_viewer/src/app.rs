@@ -714,7 +714,7 @@ impl App {
                     log_db.data_source = Some(self.rx.source().clone());
                 }
 
-                if let Err(err) = log_db.add(&msg) {
+                if let Err(err) = log_db.add(msg) {
                     re_log::error!("Failed to add incoming msg: {err}");
                 };
 
@@ -1820,7 +1820,7 @@ fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 
     let mut log_db = LogDb::default();
     for msg in decoder {
-        log_db.add(&msg?)?;
+        log_db.add(msg?)?;
     }
     Ok(log_db)
 }
