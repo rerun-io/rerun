@@ -13,7 +13,7 @@ use re_renderer::{
     RenderContext,
 };
 
-use crate::{gpu_bridge::get_or_create_texture, misc::caches::TensorStats};
+use crate::{gpu_bridge::get_or_create_texture, misc::caches::TensorStats, DecodedTensor};
 
 use super::try_get_or_create_texture;
 
@@ -28,7 +28,7 @@ use super::try_get_or_create_texture;
 pub fn tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &crate::ui::Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
@@ -60,7 +60,7 @@ pub fn tensor_to_gpu(
 fn color_tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
     let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
@@ -132,7 +132,7 @@ fn color_tensor_to_gpu(
 fn class_id_tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &crate::ui::Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
@@ -200,7 +200,7 @@ fn class_id_tensor_to_gpu(
 fn depth_tensor_to_gpu(
     render_ctx: &mut RenderContext,
     debug_name: &str,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
     let [_height, _width, depth] = height_width_depth(tensor)?;
@@ -223,7 +223,10 @@ fn depth_tensor_to_gpu(
     })
 }
 
-fn depth_tensor_range(tensor: &Tensor, tensor_stats: &TensorStats) -> anyhow::Result<(f64, f64)> {
+fn depth_tensor_range(
+    tensor: &DecodedTensor,
+    tensor_stats: &TensorStats,
+) -> anyhow::Result<(f64, f64)> {
     let range = tensor_stats.range.ok_or(anyhow::anyhow!(
         "Tensor has no range!? Was this compressed?"
     ))?;
@@ -255,7 +258,7 @@ fn depth_tensor_range(tensor: &Tensor, tensor_stats: &TensorStats) -> anyhow::Re
 /// Uses no `Unorm/Snorm` formats.
 fn general_texture_creation_desc_from_tensor<'a>(
     debug_name: &str,
-    tensor: &'a Tensor,
+    tensor: &'a DecodedTensor,
 ) -> anyhow::Result<Texture2DCreationDesc<'a>> {
     let [height, width, depth] = height_width_depth(tensor)?;
 
@@ -277,7 +280,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
                 TensorData::JPEG(_) => {
-                    anyhow::bail!("JPEGs should have been decoded at this point")
+                    unreachable!("DecodedTensor cannot contain a JPEG")
                 }
             }
         }
@@ -299,7 +302,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
                 TensorData::JPEG(_) => {
-                    anyhow::bail!("JPEGs should have been decoded at this point")
+                    unreachable!("DecodedTensor cannot contain a JPEG")
                 }
             }
         }
@@ -336,7 +339,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 ),
 
                 TensorData::JPEG(_) => {
-                    anyhow::bail!("JPEGs should have been decoded at this point")
+                    unreachable!("DecodedTensor cannot contain a JPEG")
                 }
             }
         }
@@ -360,7 +363,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 
                 TensorData::JPEG(_) => {
-                    anyhow::bail!("JPEGs should have been decoded at this point")
+                    unreachable!("DecodedTensor cannot contain a JPEG")
                 }
             }
         }

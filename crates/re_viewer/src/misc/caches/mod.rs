@@ -3,6 +3,8 @@ mod tensor_decode_cache;
 
 use re_log_types::component_types::{self};
 
+pub use tensor_decode_cache::DecodedTensor;
+
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
 pub struct Caches {

@@ -1,5 +1,38 @@
 use re_log_types::component_types::{Tensor, TensorDimension, TensorId};
 
+// ----------------------------------------------------------------------------
+
+/// A thin wrapper around a [`Tensor`] that is guaranteed to not be compressed (never a jpeg).
+///
+/// All clones are shallow, like for [`Tensor`].
+#[derive(Clone)]
+pub struct DecodedTensor(Tensor);
+
+impl AsRef<Tensor> for DecodedTensor {
+    #[inline(always)]
+    fn as_ref(&self) -> &Tensor {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for DecodedTensor {
+    type Target = Tensor;
+
+    #[inline(always)]
+    fn deref(&self) -> &Tensor {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<Tensor> for DecodedTensor {
+    #[inline(always)]
+    fn borrow(&self) -> &Tensor {
+        &self.0
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum TensorDecodeError {
     // TODO(jleibs): It would be nice to just transparently wrap
@@ -18,10 +51,9 @@ pub enum TensorDecodeError {
     },
 }
 
-#[derive(Clone)]
-struct DecodedTensor {
+struct DecodedTensorResult {
     /// Cached `Result` from decoding the `Tensor`
-    tensor: Result<Tensor, TensorDecodeError>,
+    tensor: Result<DecodedTensor, TensorDecodeError>,
 
     /// Total memory used by this `Tensor`.
     memory_used: u64,
@@ -33,7 +65,7 @@ struct DecodedTensor {
 /// A cache of decoded [`Tensor`] entities, indexed by `TensorId`.
 #[derive(Default)]
 pub struct DecodeCache {
-    images: nohash_hasher::IntMap<TensorId, DecodedTensor>,
+    images: nohash_hasher::IntMap<TensorId, DecodedTensorResult>,
     memory_used: u64,
     generation: u64,
 }
@@ -48,7 +80,7 @@ impl DecodeCache {
     pub fn try_decode_tensor_if_necessary(
         &mut self,
         maybe_encoded_tensor: Tensor,
-    ) -> Result<Tensor, TensorDecodeError> {
+    ) -> Result<DecodedTensor, TensorDecodeError> {
         crate::profile_function!();
         match &maybe_encoded_tensor.data {
             re_log_types::component_types::TensorData::JPEG(buf) => {
@@ -67,7 +99,7 @@ impl DecodeCache {
                             Ok(img) => match Tensor::from_image(img) {
                                 Ok(tensor) => {
                                     if tensor.shape() == maybe_encoded_tensor.shape() {
-                                        Ok(tensor)
+                                        Ok(DecodedTensor(tensor))
                                     } else {
                                         Err(TensorDecodeError::InvalidMetaData {
                                             expected: maybe_encoded_tensor.shape().into(),
@@ -86,7 +118,7 @@ impl DecodeCache {
                         };
                         self.memory_used += memory_used;
                         let last_use_generation = 0;
-                        DecodedTensor {
+                        DecodedTensorResult {
                             tensor,
                             memory_used,
                             last_use_generation,
@@ -96,7 +128,7 @@ impl DecodeCache {
 
                 lookup.tensor.clone()
             }
-            _ => Ok(maybe_encoded_tensor),
+            _ => Ok(DecodedTensor(maybe_encoded_tensor)),
         }
     }
 

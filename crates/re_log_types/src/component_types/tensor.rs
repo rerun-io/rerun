@@ -330,7 +330,9 @@ pub enum TensorDataMeaning {
     Depth,
 }
 
-/// A Multi-dimensional Tensor
+/// A Multi-dimensional Tensor.
+///
+/// All clones are shallow.
 ///
 /// ## Examples
 ///
