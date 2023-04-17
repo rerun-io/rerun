@@ -8,7 +8,7 @@ pub use tensor_to_gpu::tensor_to_gpu;
 use egui::mutex::Mutex;
 
 use re_renderer::{
-    renderer::ColormappedTexture,
+    renderer::{ColormappedTexture, RectangleOptions},
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     RenderContext, ViewBuilder,
 };
@@ -162,17 +162,18 @@ pub fn render_image(
         extent_u: glam::Vec3::X * space_rect.width(),
         extent_v: glam::Vec3::Y * space_rect.height(),
         colormapped_texture,
-        texture_filter_magnification: match texture_options.magnification {
-            egui::TextureFilter::Nearest => TextureFilterMag::Nearest,
-            egui::TextureFilter::Linear => TextureFilterMag::Linear,
+        options: RectangleOptions {
+            texture_filter_magnification: match texture_options.magnification {
+                egui::TextureFilter::Nearest => TextureFilterMag::Nearest,
+                egui::TextureFilter::Linear => TextureFilterMag::Linear,
+            },
+            texture_filter_minification: match texture_options.minification {
+                egui::TextureFilter::Nearest => TextureFilterMin::Nearest,
+                egui::TextureFilter::Linear => TextureFilterMin::Linear,
+            },
+            multiplicative_tint: egui::Rgba::WHITE,
+            ..Default::default()
         },
-        texture_filter_minification: match texture_options.minification {
-            egui::TextureFilter::Nearest => TextureFilterMin::Nearest,
-            egui::TextureFilter::Linear => TextureFilterMin::Linear,
-        },
-        multiplicative_tint: egui::Rgba::WHITE,
-        depth_offset: 0,
-        outline_mask: Default::default(),
     };
 
     // ------------------------------------------------------------------------

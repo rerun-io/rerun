@@ -9,7 +9,7 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, DepthCloudDepthData},
+    renderer::{DepthCloud, DepthCloudDepthData, RectangleOptions},
     Colormap, OutlineMaskPreference,
 };
 
@@ -55,11 +55,13 @@ fn push_tensor_texture(
                 extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
                 extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
                 colormapped_texture,
-                texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
-                texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-                multiplicative_tint,
-                depth_offset: -1, // Push to background. Mostly important for mouse picking order!
-                outline_mask,
+                options: RectangleOptions {
+                    texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
+                    texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+                    multiplicative_tint,
+                    depth_offset: -1, // Push to background. Mostly important for mouse picking order!
+                    outline_mask,
+                },
             };
             scene.primitives.textured_rectangles.push(textured_rect);
             scene
@@ -117,7 +119,7 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
         for (idx, rect) in grouped_rects.iter_mut().enumerate() {
             // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
             // Keep behind depth offset 0 for correct picking order.
-            rect.depth_offset =
+            rect.options.depth_offset =
                 (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
 
             // make top images transparent
@@ -126,7 +128,7 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
             } else {
                 1.0 / total_num_images.at_most(20) as f32
             }; // avoid precision problems in framebuffer
-            rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
+            rect.options.multiplicative_tint = rect.options.multiplicative_tint.multiply(opacity);
         }
     }
 }

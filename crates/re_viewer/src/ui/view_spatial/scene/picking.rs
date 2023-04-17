@@ -262,7 +262,7 @@ fn picking_textured_rects(
                 },
                 space_position: intersection_world,
                 hit_type: PickingHitType::TexturedRect,
-                depth_offset: rect.depth_offset,
+                depth_offset: rect.options.depth_offset,
             });
         }
     }

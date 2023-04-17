@@ -21,7 +21,7 @@ use macaw::IsoTransform;
 use re_renderer::{
     renderer::{
         ColormappedTexture, DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthClouds,
-        DrawData, GenericSkyboxDrawData, RectangleDrawData, TexturedRect,
+        DrawData, GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
@@ -327,11 +327,13 @@ impl framework::Example for RenderDepthClouds {
                 extent_u: world_from_model.transform_vector3(-glam::Vec3::X),
                 extent_v: world_from_model.transform_vector3(-glam::Vec3::Y),
                 colormapped_texture: ColormappedTexture::from_unorm_srgba(albedo_handle.clone()),
-                texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
-                texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-                multiplicative_tint: Rgba::from_white_alpha(0.5),
-                depth_offset: -1,
-                ..Default::default()
+                options: RectangleOptions {
+                    texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
+                    texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+                    multiplicative_tint: Rgba::from_white_alpha(0.5),
+                    depth_offset: -1,
+                    ..Default::default()
+                },
             }],
         )
         .unwrap();
