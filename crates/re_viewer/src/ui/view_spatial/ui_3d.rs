@@ -533,7 +533,7 @@ fn show_projections_from_2d_space(
                     // Render a thick line to the actual z value if any and a weaker one as an extension
                     // If we don't have a z value, we only render the thick one.
                     let thick_ray_length = if pos.z.is_finite() && pos.z > 0.0 {
-                        Some(pos.z)
+                        pos.z
                     } else {
                         cam.picture_plane_distance
                     };
@@ -564,7 +564,7 @@ fn show_projections_from_2d_space(
                     let cam_to_pos = *pos - cam.position();
                     let distance = cam_to_pos.length();
                     let ray = macaw::Ray3::from_origin_dir(cam.position(), cam_to_pos / distance);
-                    add_picking_ray(&mut scene.primitives, ray, scene_bbox_accum, Some(distance));
+                    add_picking_ray(&mut scene.primitives, ray, scene_bbox_accum, distance);
                 }
             }
         }
@@ -576,34 +576,26 @@ fn add_picking_ray(
     primitives: &mut SceneSpatialPrimitives,
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
-    thick_ray_length: Option<f32>,
+    thick_ray_length: f32,
 ) {
     let mut line_batch = primitives.line_strips.batch("picking ray");
 
     let origin = ray.point_along(0.0);
     // No harm in making this ray _very_ long. (Infinite messes with things though!)
     let fallback_ray_end = ray.point_along(scene_bbox_accum.size().length() * 10.0);
+    let main_ray_end = ray.point_along(thick_ray_length);
 
-    if let Some(line_length) = thick_ray_length {
-        let main_ray_end = ray.point_along(line_length);
-        line_batch
-            .add_segment(origin, main_ray_end)
-            .color(egui::Color32::WHITE)
-            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
-            .radius(Size::new_points(1.0));
-        line_batch
-            .add_segment(main_ray_end, fallback_ray_end)
-            .color(egui::Color32::DARK_GRAY)
-            // TODO(andreas): Make this dashed.
-            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
-            .radius(Size::new_points(0.5));
-    } else {
-        line_batch
-            .add_segment(origin, fallback_ray_end)
-            .color(egui::Color32::WHITE)
-            .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
-            .radius(Size::new_points(1.0));
-    }
+    line_batch
+        .add_segment(origin, main_ray_end)
+        .color(egui::Color32::WHITE)
+        .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+        .radius(Size::new_points(1.0));
+    line_batch
+        .add_segment(main_ray_end, fallback_ray_end)
+        .color(egui::Color32::DARK_GRAY)
+        // TODO(andreas): Make this dashed.
+        .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+        .radius(Size::new_points(0.5));
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {

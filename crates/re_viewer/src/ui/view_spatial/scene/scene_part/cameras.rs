@@ -82,9 +82,17 @@ impl CamerasPart {
             };
 
         // If this transform is not representable as rigid transform, the camera is probably under another camera transform,
-        // in which case we don't (yet) know how to deal with this!
-        let Some(world_from_camera) = macaw::IsoTransform::from_mat4(&world_from_parent.into()) else {
-            return;
+        // in which case we don't (yet) know how to deal with this!]
+        // TODO: what is this special case
+        let world_from_camera = if transforms.reference_path() == entity_path {
+            macaw::IsoTransform::IDENTITY
+        } else {
+            match macaw::IsoTransform::from_mat4(&world_from_parent.into()) {
+                Some(world_from_camera) => world_from_camera,
+                None => {
+                    return;
+                }
+            }
         };
 
         let frustum_length = *props.pinhole_image_plane_distance.get();
@@ -94,7 +102,7 @@ impl CamerasPart {
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
-            picture_plane_distance: Some(frustum_length),
+            picture_plane_distance: frustum_length,
         });
 
         // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?

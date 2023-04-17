@@ -16,7 +16,6 @@ use crate::misc::TimeControl;
 #[derive(Clone)]
 pub struct TransformCache {
     /// All transforms provided are relative to this reference path.
-    #[allow(dead_code)]
     reference_path: EntityPath,
 
     /// All reachable entities.
@@ -208,6 +207,10 @@ impl TransformCache {
                 encountered_pinhole,
             );
         }
+    }
+
+    pub fn reference_path(&self) -> &EntityPath {
+        &self.reference_path
     }
 
     /// Retrieves the transform of on entity from its local system to the space of the reference.

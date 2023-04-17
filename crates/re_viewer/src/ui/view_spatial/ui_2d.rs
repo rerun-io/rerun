@@ -7,7 +7,7 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use super::{
     eye::Eye,
     ui::{create_labels, picking, screenshot_context_menu},
-    SpatialNavigationMode, ViewSpatialState,
+    SpaceCamera3D, SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
     gpu_bridge,
@@ -308,6 +308,11 @@ fn view_2d_scrollable(
         fov_y: None,
     };
 
+    let space_camera = scene
+        .space_cameras
+        .iter()
+        .find(|c| c.instance_path_hash.entity_path_hash == space.hash());
+
     let Ok(target_config) = setup_target_config(
         &painter,
         space_from_ui,
@@ -317,6 +322,7 @@ fn view_2d_scrollable(
         scene
             .primitives
             .any_outlines,
+        space_camera,
     ) else {
         return response;
     };
@@ -404,27 +410,57 @@ fn setup_target_config(
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
+    space_camera: Option<&SpaceCamera3D>,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
-    let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
+    // TODO: This should be in the eye?
 
-    Ok({
-        let name = space_name.into();
-        let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
-        TargetConfiguration {
-            name,
-            resolution_in_pixel,
-            view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
-            projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+    let (projection_from_view, view_from_world) = if let Some(space_camera) = space_camera {
+        let pinhole = space_camera.pinhole.unwrap(); // TODO:
+
+        // Put the camera at the position where it sees the entire image plane as defined
+        // by the pinhole camera.
+        let camera_distance = pinhole.focal_length_in_pixels()[0]; // We don't support non-square pixels, pick 0.
+        (
+            re_renderer::view_builder::Projection::Perspective {
+                vertical_fov: pinhole.fov_y().unwrap(), // TODO: no unwrap
+                near_plane_distance: 0.01,              // TODO:
+            },
+            macaw::IsoTransform::look_at_rh(
+                pinhole.principal_point().extend(-camera_distance),
+                pinhole.principal_point().extend(0.0),
+                -glam::Vec3::Y,
+            )
+            .unwrap_or(macaw::IsoTransform::IDENTITY),
+        )
+    } else {
+        let top_left_pos = space_from_ui.transform_pos(painter.clip_rect().min);
+        (
+            re_renderer::view_builder::Projection::Orthographic {
                 camera_mode:
                     re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
                 vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,
                 far_plane_distance: 1000.0,
             },
+            macaw::IsoTransform::from_translation(glam::vec3(
+                -top_left_pos.x,
+                -top_left_pos.y,
+                0.0,
+            )),
+        )
+    };
+
+    Ok({
+        let name = space_name.into();
+        TargetConfiguration {
+            name,
+            resolution_in_pixel,
+            view_from_world,
+            projection_from_view,
             pixels_from_point: pixels_from_points,
             auto_size_config,
             outline_config: any_outlines.then(|| outline_config(painter.ctx())),
