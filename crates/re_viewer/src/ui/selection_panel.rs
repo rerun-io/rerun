@@ -7,12 +7,9 @@ use re_log_types::{
     TimeType, Transform,
 };
 
-use crate::{
-    ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Item, UiVerbosity, ViewerContext,
-};
+use crate::{ui::Blueprint, Item, UiVerbosity, ViewerContext};
 
-use super::{data_ui::DataUi, space_view::ViewState};
+use super::data_ui::DataUi;
 
 // ---
 
@@ -293,13 +290,7 @@ fn blueprint_ui(
                     // splat - the whole entity
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                     let mut props = data_blueprint.get(&instance_path.entity_path);
-                    entity_props_ui(
-                        ctx,
-                        ui,
-                        Some(&instance_path.entity_path),
-                        &mut props,
-                        &space_view.view_state,
-                    );
+                    entity_props_ui(ctx, ui, Some(&instance_path.entity_path), &mut props);
                     data_blueprint.set(instance_path.entity_path.clone(), props);
                 }
             } else {
@@ -313,13 +304,7 @@ fn blueprint_ui(
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
                 {
-                    entity_props_ui(
-                        ctx,
-                        ui,
-                        None,
-                        &mut group.properties_individual,
-                        &space_view.view_state,
-                    );
+                    entity_props_ui(ctx, ui, None, &mut group.properties_individual);
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }
@@ -364,7 +349,6 @@ fn entity_props_ui(
     ui: &mut egui::Ui,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
-    view_state: &ViewState,
 ) {
     ui.checkbox(&mut entity_props.visible, "Visible");
     ui.checkbox(&mut entity_props.interactive, "Interactive")
@@ -400,11 +384,9 @@ fn entity_props_ui(
             }
             ui.end_row();
 
-            if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-                if let Some(entity_path) = entity_path {
-                    pinhole_props_ui(ctx, ui, entity_path, entity_props);
-                    depth_props_ui(ctx, ui, entity_path, entity_props);
-                }
+            if let Some(entity_path) = entity_path {
+                pinhole_props_ui(ctx, ui, entity_path, entity_props);
+                depth_props_ui(ctx, ui, entity_path, entity_props);
             }
         });
 }

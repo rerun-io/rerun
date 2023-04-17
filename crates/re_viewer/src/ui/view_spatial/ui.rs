@@ -152,29 +152,21 @@ impl ViewSpatialState {
     ) {
         crate::profile_function!();
 
-        let scene_size = self.scene_bbox_accum.size().length();
-
         let query = ctx.current_query();
 
         let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
         for entity_path in entity_paths {
-            Self::update_pinhole_property_heuristics(
-                ctx,
-                data_blueprint,
-                &query,
-                &entity_path,
-                scene_size,
-            );
+            self.update_pinhole_property_heuristics(ctx, data_blueprint, &query, &entity_path);
             self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
         }
     }
 
     fn update_pinhole_property_heuristics(
+        &self,
         ctx: &mut ViewerContext<'_>,
         data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
-        scene_size: f32,
     ) {
         if let Some(re_log_types::Transform::Pinhole(_)) =
             query_latest_single::<re_log_types::Transform>(
@@ -183,11 +175,17 @@ impl ViewSpatialState {
                 query,
             )
         {
-            let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-                scene_size * 0.05
-            } else {
-                1.0
-            };
+            let scene_size = self.scene_bbox_accum.size().length();
+            let default_image_plane_distance =
+                if *self.nav_mode.get() == SpatialNavigationMode::TwoD {
+                    // TODO(andreas): For 2D views, the extent of the scene _without_ everything under the camera would be a better heuristic.
+                    // Use the diagonal of the entire scene, so everything is visible, making the actual 2D scene the "backdrop"
+                    scene_size
+                } else if scene_size.is_finite() && scene_size > 0.0 {
+                    scene_size * 0.05
+                } else {
+                    1.0
+                };
 
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {
