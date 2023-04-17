@@ -71,7 +71,8 @@ class MemoryRecording:
                 return buff;
             }}()));
         </script>
-        <iframe id="{presentation_id}_iframe" width="{width}" height="{height}" src="{app_location}?url=web_event://&persist=0"
+        <iframe id="{presentation_id}_iframe" width="{width}" height="{height}"
+            src="{app_location}?url=web_event://&persist=0"
             frameborder="0" style="display: none;" allowfullscreen=""></iframe>
         """
 
