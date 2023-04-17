@@ -41,8 +41,15 @@ cargo run -p re_build_web_viewer -- --debug
 ./scripts/lint.py
 
 cargo deny --all-features --log-level error --target aarch64-apple-darwin check
+cargo deny --all-features --log-level error --target i686-pc-windows-gnu check
+cargo deny --all-features --log-level error --target i686-pc-windows-msvc check
+cargo deny --all-features --log-level error --target i686-unknown-linux-gnu check
 cargo deny --all-features --log-level error --target wasm32-unknown-unknown check
+cargo deny --all-features --log-level error --target x86_64-apple-darwin check
+cargo deny --all-features --log-level error --target x86_64-pc-windows-gnu check
 cargo deny --all-features --log-level error --target x86_64-pc-windows-msvc check
+cargo deny --all-features --log-level error --target x86_64-unknown-linux-gnu check
 cargo deny --all-features --log-level error --target x86_64-unknown-linux-musl check
+cargo deny --all-features --log-level error --target x86_64-unknown-redox check
 
 echo "All checks passed!"
