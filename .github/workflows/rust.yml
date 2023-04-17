@@ -343,29 +343,26 @@ jobs:
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
+
+    # TODO: remove this matrix when https://github.com/EmbarkStudios/cargo-deny/issues/324 is resolved
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - i686-pc-windows-gnu
+          - i686-pc-windows-msvc
+          - i686-unknown-linux-gnu
+          - wasm32-unknown-unknown
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-gnu
+          - x86_64-pc-windows-msvc
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-redox
+
     steps:
-      - uses: actions/checkout@v2
-
-      - name: cargo deny aarch64-apple-darwin check
-        uses: actions-rs/cargo@v1
+      - uses: actions/checkout@v3
+      - uses: EmbarkStudios/cargo-deny-action@v1
         with:
-          command: deny
-          args: --log-level=error --all-features --target aarch64-apple-darwin check
-
-      - name: cargo deny wasm32-unknown-unknown check
-        uses: actions-rs/cargo@v1
-        with:
-          command: deny
-          args: --log-level=error --all-features --target wasm32-unknown-unknown check
-
-      - name: cargo deny x86_64-pc-windows-msvc
-        uses: actions-rs/cargo@v1
-        with:
-          command: deny
-          args: --log-level=error --all-features --target x86_64-pc-windows-msvc check
-
-      - name: cargo deny x86_64-unknown-linux-musl check
-        uses: actions-rs/cargo@v1
-        with:
-          command: deny
-          args: --log-level=error --all-features --target x86_64-unknown-linux-musl check
+          command: check
+          log-level: error
+          arguments: --all-features --target ${{ matrix.platform }}
