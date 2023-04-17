@@ -50,14 +50,31 @@ fn push_tensor_texture(
         annotations,
     ) {
         Ok(colormapped_texture) => {
+            // TODO(emilk): let users pick texture filtering.
+            // Always use nearest for magnification: let users see crisp individual pixels when they zoom
+            let texture_filter_magnification = re_renderer::renderer::TextureFilterMag::Nearest;
+
+            // For minimization: we want a smooth linear (ideally mipmapped) filter for color images.
+            // Note that this filtering is done BEFORE applying the color map!
+            // For labeled/annotated/class_Id images we want nearest, because interpolating classes makes no sense.
+            // Interpolating depth images _can_ make sense, but can also produce weird artifacts when there are big jumps (0.1m -> 100m),
+            // so it's usually safer to turn off.
+            // The best heuristic is this: if there is a color map being applied, use nearest.
+            // TODO(emilk): apply filtering _after_ the color map?
+            let texture_filter_minification = if colormapped_texture.color_mapper.is_some() {
+                re_renderer::renderer::TextureFilterMin::Nearest
+            } else {
+                re_renderer::renderer::TextureFilterMin::Linear
+            };
+
             let textured_rect = re_renderer::renderer::TexturedRect {
                 top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
                 extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
                 extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
                 colormapped_texture,
                 options: RectangleOptions {
-                    texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
-                    texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+                    texture_filter_magnification,
+                    texture_filter_minification,
                     multiplicative_tint,
                     depth_offset: -1, // Push to background. Mostly important for mouse picking order!
                     outline_mask,
