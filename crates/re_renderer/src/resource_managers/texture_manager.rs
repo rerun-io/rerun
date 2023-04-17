@@ -31,6 +31,11 @@ impl GpuTexture2DHandle {
     pub fn height(&self) -> u32 {
         self.0.as_ref().map_or(1, |t| t.texture.height())
     }
+
+    /// Width and height of the texture.
+    pub fn width_height(&self) -> [u32; 2] {
+        [self.width(), self.height()]
+    }
 }
 
 /// Data required to create a texture 2d resource.

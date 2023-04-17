@@ -93,19 +93,19 @@ impl SelectionPanel {
 
         let num_selections = ctx.selection().len();
         let selection = ctx.selection().to_vec();
-        for (i, selection) in selection.iter().enumerate() {
+        for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
-                what_is_selected_ui(ui, ctx, blueprint, selection);
+                what_is_selected_ui(ui, ctx, blueprint, item);
 
-                if has_data_section(selection) {
+                if has_data_section(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                        selection.data_ui(ctx, ui, UiVerbosity::All, &query);
+                        item.data_ui(ctx, ui, UiVerbosity::All, &query);
                     });
                 }
 
                 ctx.re_ui
                     .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                        blueprint_ui(ui, ctx, blueprint, selection);
+                        blueprint_ui(ui, ctx, blueprint, item);
                     });
 
                 if i + 1 < num_selections {

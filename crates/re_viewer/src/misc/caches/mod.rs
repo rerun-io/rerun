@@ -1,46 +1,38 @@
 mod mesh_cache;
 mod tensor_decode_cache;
-mod tensor_image_cache;
 
 use re_log_types::component_types::{self};
-pub use tensor_image_cache::ColoredTensorView;
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
 pub struct Caches {
     /// For displaying images efficiently in immediate mode.
-    pub image: tensor_image_cache::ImageCache,
     pub decode: tensor_decode_cache::DecodeCache,
 
     /// For displaying meshes efficiently in immediate mode.
     pub mesh: mesh_cache::MeshCache,
 
-    pub tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
+    tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
 }
 
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&mut self) {
-        let max_image_cache_use = 1_000_000_000;
-
         #[cfg(not(target_arch = "wasm32"))]
         let max_decode_cache_use = 4_000_000_000;
 
         #[cfg(target_arch = "wasm32")]
         let max_decode_cache_use = 1_000_000_000;
 
-        self.image.begin_frame(max_image_cache_use);
         self.decode.begin_frame(max_decode_cache_use);
     }
 
     pub fn purge_memory(&mut self) {
         let Self {
-            image,
             decode,
             tensor_stats,
             mesh: _, // TODO(emilk)
         } = self;
-        image.purge_memory();
         decode.purge_memory();
         tensor_stats.clear();
     }
@@ -52,6 +44,7 @@ impl Caches {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct TensorStats {
     /// This will currently only be `None` for jpeg-encoded tensors.
     pub range: Option<(f64, f64)>,

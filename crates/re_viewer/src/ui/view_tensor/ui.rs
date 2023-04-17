@@ -75,7 +75,7 @@ impl ViewTensorState {
                     ctx.re_ui,
                     ui,
                     tensor,
-                    Some(ctx.cache.tensor_stats(tensor)),
+                    ctx.cache.tensor_stats(tensor),
                 );
                 self.texture_settings.ui(ctx.re_ui, ui);
                 self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
@@ -186,13 +186,7 @@ fn paint_tensor_slice(
         tensor_stats,
         state,
     )?;
-    let texture = ctx
-        .render_ctx
-        .texture_manager_2d
-        .get(&colormapped_texture.texture)?;
-    let size = texture.creation_desc.size;
-    let width = size.width;
-    let height = size.height;
+    let [width, height] = colormapped_texture.texture.width_height();
 
     let img_size = egui::vec2(width as _, height as _);
     let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry

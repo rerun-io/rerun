@@ -69,6 +69,22 @@ pub struct EntityProperties {
 }
 
 #[cfg(feature = "serde")]
+impl Default for EntityProperties {
+    fn default() -> Self {
+        Self {
+            visible: true,
+            visible_history: ExtraQueryHistory::default(),
+            interactive: true,
+            color_mapper: EditableAutoValue::default(),
+            pinhole_image_plane_distance: EditableAutoValue::default(),
+            backproject_depth: EditableAutoValue::Auto(true),
+            depth_from_world_scale: EditableAutoValue::default(),
+            backproject_radius_scale: EditableAutoValue::Auto(1.0),
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
 impl EntityProperties {
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
@@ -93,22 +109,6 @@ impl EntityProperties {
                 .backproject_radius_scale
                 .or(&child.backproject_radius_scale)
                 .clone(),
-        }
-    }
-}
-
-#[cfg(feature = "serde")]
-impl Default for EntityProperties {
-    fn default() -> Self {
-        Self {
-            visible: true,
-            visible_history: ExtraQueryHistory::default(),
-            interactive: true,
-            color_mapper: EditableAutoValue::default(),
-            pinhole_image_plane_distance: EditableAutoValue::default(),
-            backproject_depth: EditableAutoValue::Auto(true),
-            depth_from_world_scale: EditableAutoValue::default(),
-            backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }
     }
 }

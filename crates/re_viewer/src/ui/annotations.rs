@@ -189,15 +189,15 @@ impl AnnotationMap {
     }
 
     // Search through the all prefixes of this entity path until we find a
-    // matching annotation. If we find nothing return the default `MISSING_ANNOTATIONS`.
-    pub fn find<'a>(&self, entity_path: impl Into<&'a EntityPath>) -> Arc<Annotations> {
-        let mut next_parent = Some(entity_path.into().clone());
+    // matching annotation. If we find nothing return the default [`MISSING_ANNOTATIONS`].
+    pub fn find(&self, entity_path: &EntityPath) -> Arc<Annotations> {
+        let mut next_parent = Some(entity_path.clone());
         while let Some(parent) = next_parent {
             if let Some(legend) = self.0.get(&parent) {
                 return legend.clone();
             }
 
-            next_parent = parent.parent().clone();
+            next_parent = parent.parent();
         }
 
         // Otherwise return the missing legend

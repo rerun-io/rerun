@@ -49,6 +49,7 @@ pub enum TextureFilterMin {
 }
 
 /// Describes a texture and how to map it to a color.
+#[derive(Clone)]
 pub struct ColormappedTexture {
     pub texture: GpuTexture2DHandle,
 
@@ -71,6 +72,7 @@ pub struct ColormappedTexture {
 }
 
 /// How to map the normalized `.r` component to a color.
+#[derive(Clone)]
 pub enum ColorMapper {
     /// Apply the given function.
     Function(Colormap),
