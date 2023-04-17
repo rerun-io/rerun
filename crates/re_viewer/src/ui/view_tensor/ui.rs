@@ -75,7 +75,7 @@ impl ViewTensorState {
                     ctx.re_ui,
                     ui,
                     tensor,
-                    Some(ctx.cache.tensor_stats(tensor)),
+                    ctx.cache.tensor_stats(tensor),
                 );
                 self.texture_settings.ui(ctx.re_ui, ui);
                 self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
@@ -186,13 +186,7 @@ fn paint_tensor_slice(
         tensor_stats,
         state,
     )?;
-    let texture = ctx
-        .render_ctx
-        .texture_manager_2d
-        .get(&colormapped_texture.texture);
-    let size = texture.creation_desc.size;
-    let width = size.width;
-    let height = size.height;
+    let [width, height] = colormapped_texture.texture.width_height();
 
     let img_size = egui::vec2(width as _, height as _);
     let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
@@ -426,32 +420,29 @@ impl TextureSettings {
         });
         ui.end_row();
 
-        // TODO(#1612): support texture filtering again
-        if false {
-            re_ui
-                .grid_left_hand_label(ui, "Filtering")
-                .on_hover_text("Filtering to use when magnifying");
+        re_ui
+            .grid_left_hand_label(ui, "Filtering")
+            .on_hover_text("Filtering to use when magnifying");
 
-            fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
-                match tf {
-                    egui::TextureFilter::Nearest => "Nearest",
-                    egui::TextureFilter::Linear => "Linear",
-                }
+        fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
+            match tf {
+                egui::TextureFilter::Nearest => "Nearest",
+                egui::TextureFilter::Linear => "Linear",
             }
-            egui::ComboBox::from_id_source("texture_filter")
-                .selected_text(tf_to_string(options.magnification))
-                .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
-
-                    let mut selectable_value = |ui: &mut egui::Ui, e| {
-                        ui.selectable_value(&mut options.magnification, e, tf_to_string(e))
-                    };
-                    selectable_value(ui, egui::TextureFilter::Linear);
-                    selectable_value(ui, egui::TextureFilter::Nearest);
-                });
-            ui.end_row();
         }
+        egui::ComboBox::from_id_source("texture_filter")
+            .selected_text(tf_to_string(options.magnification))
+            .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.set_min_width(64.0);
+
+                let mut selectable_value = |ui: &mut egui::Ui, e| {
+                    ui.selectable_value(&mut options.magnification, e, tf_to_string(e))
+                };
+                selectable_value(ui, egui::TextureFilter::Nearest);
+                selectable_value(ui, egui::TextureFilter::Linear);
+            });
+        ui.end_row();
     }
 }
 

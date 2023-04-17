@@ -1,17 +1,19 @@
-use egui::{ColorImage, Vec2};
+use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
 use re_log_types::{
     component_types::{ClassId, Tensor, TensorDataMeaning},
     TensorElement,
 };
+use re_renderer::renderer::ColormappedTexture;
+use re_ui::ReUi;
 
-use crate::misc::{
-    caches::{ColoredTensorView, TensorStats},
-    ViewerContext,
+use crate::{
+    misc::{caches::TensorStats, ViewerContext},
+    ui::annotations::AnnotationMap,
 };
 
-use super::{DataUi, UiVerbosity};
+use super::{EntityDataUi, UiVerbosity};
 
 pub fn format_tensor_shape_single_line(
     shape: &[re_log_types::component_types::TensorDimension],
@@ -19,98 +21,202 @@ pub fn format_tensor_shape_single_line(
     format!("[{}]", shape.iter().join(", "))
 }
 
-impl DataUi for Tensor {
-    fn data_ui(
+impl EntityDataUi for Tensor {
+    fn entity_data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: crate::ui::UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        entity_path: &re_log_types::EntityPath,
+        query: &re_arrow_store::LatestAtQuery,
     ) {
-        let decoded = ctx
+        crate::profile_function!();
+
+        match ctx
             .cache
             .decode
-            .try_decode_tensor_if_necessary(self.clone());
-
-        let tensor_view = match &decoded {
-            Ok(decoded) => ctx.cache.image.get_view(decoded),
+            .try_decode_tensor_if_necessary(self.clone())
+        {
+            Ok(decoded) => {
+                tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
+            }
             Err(err) => {
-                ui.label(
-                    ctx.re_ui
-                        .error_text(format!("Error Decoding Tensor: {err}")),
-                );
-                return;
-            }
-        };
-
-        let tensor_stats = ctx.cache.tensor_stats.get(&self.id());
-
-        match verbosity {
-            UiVerbosity::Small => {
-                ui.horizontal_centered(|ui| {
-                    if let Some(retained_img) = tensor_view.retained_image {
-                        let max_height = match verbosity {
-                            UiVerbosity::Small => 24.0,
-                            UiVerbosity::All | UiVerbosity::Reduced => 128.0,
-                        };
-                        retained_img
-                            .show_max_size(ui, Vec2::new(4.0 * max_height, max_height))
-                            .on_hover_ui(|ui| {
-                                retained_img.show_max_size(ui, Vec2::splat(400.0));
-                            });
-                    }
-
-                    ui.label(format!(
-                        "{} x {}",
-                        self.dtype(),
-                        format_tensor_shape_single_line(self.shape())
-                    ))
-                    .on_hover_ui(|ui| tensor_summary_ui(ctx.re_ui, ui, self, tensor_stats));
-                });
-            }
-
-            UiVerbosity::All | UiVerbosity::Reduced => {
-                ui.vertical(|ui| {
-                    ui.set_min_width(100.0);
-                    tensor_summary_ui(ctx.re_ui, ui, self, tensor_stats);
-
-                    if let Some(retained_img) = tensor_view.retained_image {
-                        let max_size = ui
-                            .available_size()
-                            .min(retained_img.size_vec2())
-                            .min(egui::vec2(150.0, 300.0));
-                        let response = retained_img.show_max_size(ui, max_size);
-
-                        let image_rect = response.rect;
-
-                        if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-                            show_zoomed_image_region_tooltip(
-                                ui,
-                                response,
-                                &tensor_view,
-                                image_rect,
-                                pointer_pos,
-                                None,
-                            );
-                        }
-                    }
-
-                    #[allow(clippy::collapsible_match)] // false positive on wasm32
-                    if let Some(dynamic_img) = tensor_view.dynamic_img() {
-                        // TODO(emilk): support copying and saving images on web
-                        #[cfg(not(target_arch = "wasm32"))]
-                        ui.horizontal(|ui| image_options(ui, self, &dynamic_img));
-
-                        // TODO(emilk): support histograms of non-RGB images too
-                        if let image::DynamicImage::ImageRgba8(rgba_image) = dynamic_img {
-                            ui.collapsing("Histogram", |ui| {
-                                histogram_ui(ui, &rgba_image);
-                            });
-                        }
-                    }
-                });
+                ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         }
+    }
+}
+
+fn tensor_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    verbosity: UiVerbosity,
+    entity_path: &re_data_store::EntityPath,
+    query: &re_arrow_store::LatestAtQuery,
+    _encoded_tensor: &Tensor,
+    tensor: &Tensor,
+) {
+    // See if we can convert the tensor to a GPU texture.
+    // Even if not, we will show info about the tensor.
+    let tensor_stats = *ctx.cache.tensor_stats(tensor);
+    let annotations = annotations(ctx, query, entity_path);
+    let debug_name = entity_path.to_string();
+    let texture_result = crate::gpu_bridge::tensor_to_gpu(
+        ctx.render_ctx,
+        &debug_name,
+        tensor,
+        &tensor_stats,
+        &annotations,
+    )
+    .ok();
+
+    match verbosity {
+        UiVerbosity::Small => {
+            ui.horizontal_centered(|ui| {
+                if let Some(texture) = &texture_result {
+                    let max_height = 24.0;
+                    let max_size = Vec2::new(4.0 * max_height, max_height);
+                    show_image_at_max_size(
+                        ctx.render_ctx,
+                        ctx.re_ui,
+                        ui,
+                        texture.clone(),
+                        &debug_name,
+                        max_size,
+                    )
+                    .on_hover_ui(|ui| {
+                        // Show larger image on hover
+                        let max_size = Vec2::splat(400.0);
+                        show_image_at_max_size(
+                            ctx.render_ctx,
+                            ctx.re_ui,
+                            ui,
+                            texture.clone(),
+                            &debug_name,
+                            max_size,
+                        );
+                    });
+                }
+
+                ui.label(format!(
+                    "{} x {}",
+                    tensor.dtype(),
+                    format_tensor_shape_single_line(tensor.shape())
+                ))
+                .on_hover_ui(|ui| tensor_summary_ui(ctx.re_ui, ui, tensor, &tensor_stats));
+            });
+        }
+
+        UiVerbosity::All | UiVerbosity::Reduced => {
+            ui.vertical(|ui| {
+                ui.set_min_width(100.0);
+                tensor_summary_ui(ctx.re_ui, ui, tensor, &tensor_stats);
+
+                if let Some(texture) = &texture_result {
+                    let max_size = ui
+                        .available_size()
+                        .min(texture_size(texture))
+                        .min(egui::vec2(150.0, 300.0));
+                    let response = show_image_at_max_size(
+                        ctx.render_ctx,
+                        ctx.re_ui,
+                        ui,
+                        texture.clone(),
+                        &debug_name,
+                        max_size,
+                    );
+
+                    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+                        let image_rect = response.rect;
+                        show_zoomed_image_region_tooltip(
+                            ctx.render_ctx,
+                            ui,
+                            response,
+                            tensor,
+                            &tensor_stats,
+                            &annotations,
+                            tensor.meter,
+                            &debug_name,
+                            image_rect,
+                            pointer_pos,
+                        );
+                    }
+
+                    // TODO(emilk): support copying and saving images on web
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if _encoded_tensor.data.is_compressed_image() || tensor.could_be_dynamic_image()
+                    {
+                        copy_and_save_image_ui(ui, tensor, _encoded_tensor);
+                    }
+
+                    if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
+                        if channels == 3 {
+                            if let re_log_types::component_types::TensorData::U8(data) =
+                                &tensor.data
+                            {
+                                ui.collapsing("Histogram", |ui| {
+                                    rgb8_histogram_ui(ui, data.as_slice());
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+}
+
+fn annotations(
+    ctx: &mut ViewerContext<'_>,
+    query: &re_arrow_store::LatestAtQuery,
+    entity_path: &re_data_store::EntityPath,
+) -> std::sync::Arc<crate::ui::Annotations> {
+    let mut annotation_map = AnnotationMap::default();
+    let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
+    let entity_props_map = re_data_store::EntityPropertyMap::default();
+    let scene_query = crate::ui::scene::SceneQuery {
+        entity_paths: &entity_paths,
+        timeline: query.timeline,
+        latest_at: query.at,
+        entity_props_map: &entity_props_map,
+    };
+    annotation_map.load(ctx, &scene_query);
+    annotation_map.find(entity_path)
+}
+
+fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
+    let [w, h] = colormapped_texture.texture.width_height();
+    egui::vec2(w as f32, h as f32)
+}
+
+fn show_image_at_max_size(
+    render_ctx: &mut re_renderer::RenderContext,
+    re_ui: &ReUi,
+    ui: &mut egui::Ui,
+    colormapped_texture: ColormappedTexture,
+    debug_name: &str,
+    max_size: Vec2,
+) -> egui::Response {
+    let desired_size = {
+        let mut desired_size = texture_size(&colormapped_texture);
+        desired_size *= (max_size.x / desired_size.x).min(1.0);
+        desired_size *= (max_size.y / desired_size.y).min(1.0);
+        desired_size
+    };
+
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    if let Err(err) = crate::gpu_bridge::render_image(
+        render_ctx,
+        &painter,
+        response.rect,
+        colormapped_texture,
+        egui::TextureOptions::LINEAR,
+        debug_name,
+    ) {
+        let label_response = ui.label(re_ui.error_text(err.to_string()));
+        response.union(label_response)
+    } else {
+        response
     }
 }
 
@@ -118,7 +224,7 @@ pub fn tensor_summary_ui_grid_contents(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     tensor: &Tensor,
-    tensor_stats: Option<&TensorStats>,
+    tensor_stats: &TensorStats,
 ) {
     let Tensor {
         tensor_id: _,
@@ -190,10 +296,9 @@ pub fn tensor_summary_ui_grid_contents(
         }
     }
 
-    if let Some(TensorStats {
-        range: Some((min, max)),
-    }) = tensor_stats
-    {
+    let TensorStats { range } = tensor_stats;
+
+    if let Some((min, max)) = range {
         ui.label("Data range")
             .on_hover_text("All values of the tensor range within these bounds.");
         ui.monospace(format!(
@@ -209,7 +314,7 @@ pub fn tensor_summary_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     tensor: &Tensor,
-    tensor_stats: Option<&TensorStats>,
+    tensor_stats: &TensorStats,
 ) {
     egui::Grid::new("tensor_summary_ui")
         .num_columns(2)
@@ -218,33 +323,47 @@ pub fn tensor_summary_ui(
         });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn show_zoomed_image_region_tooltip(
+    render_ctx: &mut re_renderer::RenderContext,
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &ColoredTensorView<'_, '_>,
+    tensor: &Tensor,
+    tensor_stats: &TensorStats,
+    annotations: &crate::ui::Annotations,
+    meter: Option<f32>,
+    debug_name: &str,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
-    meter: Option<f32>,
 ) -> egui::Response {
     response
         .on_hover_cursor(egui::CursorIcon::Crosshair)
         .on_hover_ui_at_pointer(|ui| {
             ui.set_max_width(320.0);
             ui.horizontal(|ui| {
-                if let Some([h, w, _]) = tensor_view.tensor.image_height_width_channels() {
+                if let Some([h, w, _]) = tensor.image_height_width_channels() {
                     use egui::remap_clamp;
 
-                    let center = [
+                    let center_texel = [
                         (remap_clamp(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize),
                         (remap_clamp(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize),
                     ];
                     show_zoomed_image_region_area_outline(
                         parent_ui,
-                        tensor_view,
-                        center,
+                        tensor,
+                        center_texel,
                         image_rect,
                     );
-                    show_zoomed_image_region(ui, tensor_view, center, meter);
+                    show_zoomed_image_region(
+                        render_ctx,
+                        ui,
+                        tensor,
+                        tensor_stats,
+                        annotations,
+                        meter,
+                        debug_name,
+                        center_texel,
+                    );
                 }
             });
         })
@@ -255,224 +374,257 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
-    tensor_view: &ColoredTensorView<'_, '_>,
+    tensor: &Tensor,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
-    if let Some([height, width, _]) = tensor_view.tensor.image_height_width_channels() {
-        use egui::{pos2, remap, Color32, Rect};
+    use egui::{pos2, remap, Rect};
 
-        let width = width as f32;
-        let height = height as f32;
+    let Some([height, width, _]) = tensor.image_height_width_channels() else {return;};
 
-        // Show where on the original image the zoomed-in region is at:
-        let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-        let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-        let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-        let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let width = width as f32;
+    let height = height as f32;
 
-        let left = remap(left, 0.0..=width, image_rect.x_range());
-        let right = remap(right, 0.0..=width, image_rect.x_range());
-        let top = remap(top, 0.0..=height, image_rect.y_range());
-        let bottom = remap(bottom, 0.0..=height, image_rect.y_range());
+    // Show where on the original image the zoomed-in region is at:
+    let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
 
-        let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
-        // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
-        let painter = ui.ctx().debug_painter();
-        painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
-        painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
+    let left = remap(left, 0.0..=width, image_rect.x_range());
+    let right = remap(right, 0.0..=width, image_rect.x_range());
+    let top = remap(top, 0.0..=height, image_rect.y_range());
+    let bottom = remap(bottom, 0.0..=height, image_rect.y_range());
+
+    let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
+    // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
+    let painter = ui.ctx().debug_painter();
+    painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
+    painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
+}
+
+/// `meter`: iff this is a depth map, how long is one meter?
+#[allow(clippy::too_many_arguments)]
+pub fn show_zoomed_image_region(
+    render_ctx: &mut re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    tensor: &Tensor,
+    tensor_stats: &TensorStats,
+    annotations: &crate::ui::Annotations,
+    meter: Option<f32>,
+    debug_name: &str,
+    center_texel: [isize; 2],
+) {
+    if let Err(err) = try_show_zoomed_image_region(
+        render_ctx,
+        ui,
+        tensor,
+        tensor_stats,
+        annotations,
+        meter,
+        debug_name,
+        center_texel,
+    ) {
+        ui.label(format!("Error: {err}"));
     }
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-pub fn show_zoomed_image_region(
-    tooltip_ui: &mut egui::Ui,
-    tensor_view: &ColoredTensorView<'_, '_>,
-    image_position: [isize; 2],
+#[allow(clippy::too_many_arguments)]
+fn try_show_zoomed_image_region(
+    render_ctx: &mut re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    tensor: &Tensor,
+    tensor_stats: &TensorStats,
+    annotations: &crate::ui::Annotations,
+    meter: Option<f32>,
+    debug_name: &str,
+    center_texel: [isize; 2],
+) -> anyhow::Result<()> {
+    let texture = crate::gpu_bridge::tensor_to_gpu(
+        render_ctx,
+        debug_name,
+        tensor,
+        tensor_stats,
+        annotations,
+    )?;
+
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
+
+    const POINTS_PER_TEXEL: f32 = 5.0;
+    let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
+
+    let (_id, zoom_rect) = ui.allocate_space(size);
+    let painter = ui.painter();
+
+    painter.rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
+
+    {
+        let image_rect_on_screen = egui::Rect::from_min_size(
+            zoom_rect.center()
+                - POINTS_PER_TEXEL
+                    * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
+            POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
+        );
+
+        crate::gpu_bridge::render_image(
+            render_ctx,
+            &painter.with_clip_rect(zoom_rect),
+            image_rect_on_screen,
+            texture.clone(),
+            egui::TextureOptions::NEAREST,
+            debug_name,
+        )?;
+    }
+
+    // Show the center text, to indicate which texel we're printing the values of:
+    {
+        let center_texel_rect =
+            egui::Rect::from_center_size(zoom_rect.center(), Vec2::splat(POINTS_PER_TEXEL));
+        painter.rect_stroke(center_texel_rect.expand(1.0), 0.0, (1.0, Color32::BLACK));
+        painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
+    }
+
+    let [x, y] = center_texel;
+    if 0 <= x && (x as u64) < width && 0 <= y && (y as u64) < height {
+        ui.separator();
+
+        ui.vertical(|ui| {
+            tensor_pixel_value_ui(ui, tensor, annotations, [x as _, y as _], meter);
+
+            // Show a big sample of the color of the middle texel:
+            let (rect, _) =
+                ui.allocate_exact_size(Vec2::splat(ui.available_height()), egui::Sense::hover());
+            // Position texture so that the center texel is at the center of the rect:
+            let zoom = rect.width();
+            let image_rect_on_screen = egui::Rect::from_min_size(
+                rect.center()
+                    - zoom * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
+                zoom * egui::vec2(width as f32, height as f32),
+            );
+            crate::gpu_bridge::render_image(
+                render_ctx,
+                &ui.painter().with_clip_rect(rect),
+                image_rect_on_screen,
+                texture,
+                egui::TextureOptions::NEAREST,
+                debug_name,
+            )
+        })
+        .inner?;
+    }
+    Ok(())
+}
+
+fn tensor_pixel_value_ui(
+    ui: &mut egui::Ui,
+    tensor: &Tensor,
+    annotations: &crate::ui::Annotations,
+    [x, y]: [u64; 2],
     meter: Option<f32>,
 ) {
-    if let Some(colored_image) = tensor_view.colored_image {
-        use egui::{color_picker, pos2, remap, Color32, Mesh, Rect};
+    egui::Grid::new("hovered pixel properties").show(ui, |ui| {
+        ui.label("Position:");
+        ui.label(format!("{x}, {y}"));
+        ui.end_row();
 
-        const POINTS_PER_TEXEL: f32 = 5.0;
-        let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
-
-        let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
-        let painter = tooltip_ui.painter();
-
-        painter.rect_filled(zoom_rect, 0.0, tooltip_ui.visuals().extreme_bg_color);
-
-        let mut mesh = Mesh::default();
-        let mut center_texel_rect = None;
-        for dx in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
-            for dy in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
-                let x = image_position[0] + dx;
-                let y = image_position[1] + dy;
-                let color = get_pixel(colored_image, [x, y]);
-                if let Some(color) = color {
-                    if color != Color32::TRANSPARENT {
-                        let tr = ZOOMED_IMAGE_TEXEL_RADIUS as f32;
-                        let left = remap(dx as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
-                        let right = remap((dx + 1) as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
-                        let top = remap(dy as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
-                        let bottom = remap((dy + 1) as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
-                        let rect = Rect {
-                            min: pos2(left, top),
-                            max: pos2(right, bottom),
-                        };
-                        mesh.add_colored_rect(rect, color);
-
-                        if dx == 0 && dy == 0 {
-                            center_texel_rect = Some(rect);
-                        }
-                    }
+        if tensor.num_dim() == 2 {
+            if let Some(raw_value) = tensor.get(&[y, x]) {
+                if let (TensorDataMeaning::ClassId, Some(u16_val)) =
+                    (tensor.meaning(), raw_value.try_as_u16())
+                {
+                    ui.label("Label:");
+                    ui.label(
+                        annotations
+                            .class_description(Some(ClassId(u16_val)))
+                            .annotation_info()
+                            .label(None)
+                            .unwrap_or_else(|| u16_val.to_string()),
+                    );
+                    ui.end_row();
+                };
+            }
+        }
+        if let Some(meter) = meter {
+            // This is a depth map
+            if let Some(raw_value) = tensor.get(&[y, x]) {
+                let raw_value = raw_value.as_f64();
+                let meters = raw_value / meter as f64;
+                ui.label("Depth:");
+                if meters < 1.0 {
+                    ui.monospace(format!("{:.1} mm", meters * 1e3));
+                } else {
+                    ui.monospace(format!("{meters:.3} m"));
                 }
             }
         }
+    });
 
-        painter.add(mesh);
-
-        if let Some(center_texel_rect) = center_texel_rect {
-            painter.rect_stroke(center_texel_rect, 0.0, (2.0, Color32::BLACK));
-            painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
-        }
-
-        if let Some(color) = get_pixel(colored_image, image_position) {
-            tooltip_ui.separator();
-            let (x, y) = (image_position[0] as _, image_position[1] as _);
-
-            tooltip_ui.vertical(|ui| {
-                egui::Grid::new("hovered pixel properties").show(ui, |ui| {
-                    ui.label("Position:");
-                    ui.label(format!("{}, {}", image_position[0], image_position[1]));
-                    ui.end_row();
-
-                    if tensor_view.tensor.num_dim() == 2 {
-                        if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                            if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
-                                tensor_view.tensor.meaning(),
-                                tensor_view.annotations,
-                                raw_value.try_as_u16(),
-                            ) {
-                                ui.label("Label:");
-                                ui.label(
-                                    annotations
-                                        .class_description(Some(ClassId(u16_val)))
-                                        .annotation_info()
-                                        .label(None)
-                                        .unwrap_or_else(|| u16_val.to_string())
-                                );
-                                ui.end_row();
-                            };
+    let text = match tensor.num_dim() {
+        2 => tensor.get(&[y, x]).map(|v| format!("Val: {v}")),
+        3 => match tensor.shape()[2].size {
+            0 => Some("Cannot preview 0-size channel".to_owned()),
+            1 => tensor.get(&[y, x, 0]).map(|v| format!("Val: {v}")),
+            3 => {
+                // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                if let (Some(r), Some(g), Some(b)) = (
+                    tensor.get(&[y, x, 0]),
+                    tensor.get(&[y, x, 1]),
+                    tensor.get(&[y, x, 2]),
+                ) {
+                    match (r, g, b) {
+                        (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
+                            Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
                         }
+                        _ => Some(format!("R: {r}, G: {g}, B: {b}")),
                     }
-                    if let Some(meter) = meter {
-                        // This is a depth map
-                        if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                            let raw_value = raw_value.as_f64();
-                            let meters = raw_value / meter as f64;
-                            ui.label("Depth:");
-                            if meters < 1.0 {
-                                ui.monospace(format!("{:.1} mm", meters * 1e3));
-                            } else {
-                                ui.monospace(format!("{meters:.3} m"));
-                            }
-                        }
-                    }
-                });
-
-                let tensor = tensor_view.tensor;
-
-                let text = match tensor.num_dim() {
-                    2 => tensor.get(&[y, x]).map(|v| format!("Val: {v}")),
-                    3 => match tensor.shape()[2].size {
-                        0 => Some("Cannot preview 0-size channel".to_owned()),
-                        1 => tensor.get(&[y, x, 0]).map(|v| format!("Val: {v}")),
-                        3 => {
-                            // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
-                            if let (Some(r), Some(g), Some(b)) = (
-                                tensor_view.tensor.get(&[y, x, 0]),
-                                tensor_view.tensor.get(&[y, x, 1]),
-                                tensor_view.tensor.get(&[y, x, 2]),
-                            ) {
-                                match (r, g, b) {
-                                    (
-                                        TensorElement::U8(r),
-                                        TensorElement::U8(g),
-                                        TensorElement::U8(b),
-                                    ) => {
-                                        Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
-                                    }
-                                    _ => {
-                                        Some(format!("R: {r}, G: {g}, B: {b}"))
-                                    }
-                                }
-                            } else {
-                                None
-                            }
-                        },
-                        4 => {
-                            // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
-                            if let (Some(r), Some(g), Some(b), Some(a)) = (
-                                tensor_view.tensor.get(&[y, x, 0]),
-                                tensor_view.tensor.get(&[y, x, 1]),
-                                tensor_view.tensor.get(&[y, x, 2]),
-                                tensor_view.tensor.get(&[y, x, 3]),
-                            ) {
-                                match (r, g, b, a) {
-                                    (
-                                        TensorElement::U8(r),
-                                        TensorElement::U8(g),
-                                        TensorElement::U8(b),
-                                        TensorElement::U8(a),
-                                    ) => {
-                                        Some(format!("R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"))
-                                    }
-                                    _ => {
-                                        Some(format!("R: {r}, G: {g}, B: {b}, A: {a}"))
-                                    }
-                                }
-                            } else {
-                                None
-                            }
-                        },
-                        channels => {
-                            Some(format!("Cannot preview {channels}-channel image"))
-                        }
-                    },
-                    dims => {
-                        Some(format!("Cannot preview {dims}-dimensional image"))
-                    }
-                };
-
-                if let Some(text) = text {
-                    ui.label(text);
                 } else {
-                    ui.label("No Value");
+                    None
                 }
+            }
+            4 => {
+                // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
+                if let (Some(r), Some(g), Some(b), Some(a)) = (
+                    tensor.get(&[y, x, 0]),
+                    tensor.get(&[y, x, 1]),
+                    tensor.get(&[y, x, 2]),
+                    tensor.get(&[y, x, 3]),
+                ) {
+                    match (r, g, b, a) {
+                        (
+                            TensorElement::U8(r),
+                            TensorElement::U8(g),
+                            TensorElement::U8(b),
+                            TensorElement::U8(a),
+                        ) => Some(format!(
+                            "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                        )),
+                        _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+                    }
+                } else {
+                    None
+                }
+            }
+            channels => Some(format!("Cannot preview {channels}-channel image")),
+        },
+        dims => Some(format!("Cannot preview {dims}-dimensional image")),
+    };
 
-                color_picker::show_color(ui, color, Vec2::splat(ui.available_height()));
-            });
-        }
-    }
-}
-
-fn get_pixel(image: &ColorImage, [x, y]: [isize; 2]) -> Option<egui::Color32> {
-    if x < 0 || y < 0 || image.width() as isize <= x || image.height() as isize <= y {
-        None
+    if let Some(text) = text {
+        ui.label(text);
     } else {
-        Some(image[(x as _, y as _)])
+        ui.label("No Value");
     }
 }
 
-fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Response {
+fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
     crate::profile_function!();
 
     let mut histograms = [[0_u64; 256]; 3];
     {
         // TODO(emilk): this is slow, so cache the results!
         crate::profile_scope!("build");
-        for pixel in rgba_image.pixels() {
+        for pixel in rgb.chunks_exact(3) {
             for c in 0..3 {
                 histograms[c][pixel[c] as usize] += 1;
             }
@@ -480,7 +632,6 @@ fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Respo
     }
 
     use egui::plot::{Bar, BarChart, Legend, Plot};
-    use egui::Color32;
 
     let names = ["R", "G", "B"];
     let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
@@ -523,61 +674,73 @@ fn histogram_ui(ui: &mut egui::Ui, rgba_image: &image::RgbaImage) -> egui::Respo
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn image_options(
-    ui: &mut egui::Ui,
-    tensor: &re_log_types::component_types::Tensor,
-    dynamic_image: &image::DynamicImage,
-) {
-    // TODO(emilk): support copying images on web
+fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &Tensor) {
+    ui.horizontal(|ui| {
+        if tensor.could_be_dynamic_image() && ui.button("Click to copy image").clicked() {
+            match tensor.to_dynamic_image() {
+                Ok(dynamic_image) => {
+                    let rgba = dynamic_image.to_rgba8();
+                    crate::misc::Clipboard::with(|clipboard| {
+                        clipboard.set_image(
+                            [rgba.width() as _, rgba.height() as _],
+                            bytemuck::cast_slice(rgba.as_raw()),
+                        );
+                    });
+                }
+                Err(err) => {
+                    re_log::error!("Failed to convert tensor to image: {err}");
+                }
+            }
+        }
 
+        if ui.button("Save image…").clicked() {
+            match tensor.to_dynamic_image() {
+                Ok(dynamic_image) => {
+                    save_image(_encoded_tensor, &dynamic_image);
+                }
+                Err(err) => {
+                    re_log::error!("Failed to convert tensor to image: {err}");
+                }
+            }
+        }
+    });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_image(tensor: &re_log_types::component_types::Tensor, dynamic_image: &image::DynamicImage) {
     use re_log_types::component_types::TensorData;
 
-    #[cfg(not(target_arch = "wasm32"))]
-    if ui.button("Click to copy image").clicked() {
-        let rgba = dynamic_image.to_rgba8();
-        crate::misc::Clipboard::with(|clipboard| {
-            clipboard.set_image(
-                [rgba.width() as _, rgba.height() as _],
-                bytemuck::cast_slice(rgba.as_raw()),
-            );
-        });
-    }
-
-    // TODO(emilk): support saving images on web
-    #[cfg(not(target_arch = "wasm32"))]
-    if ui.button("Save image…").clicked() {
-        match &tensor.data {
-            TensorData::JPEG(bytes) => {
-                if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.jpg")
-                    .save_file()
-                {
-                    match write_binary(&path, bytes.as_slice()) {
-                        Ok(()) => {
-                            re_log::info!("Image saved to {path:?}");
-                        }
-                        Err(err) => {
-                            re_log::error!(
-                                "Failed saving image to {path:?}: {}",
-                                re_error::format(&err)
-                            );
-                        }
+    match &tensor.data {
+        TensorData::JPEG(bytes) => {
+            if let Some(path) = rfd::FileDialog::new()
+                .set_file_name("image.jpg")
+                .save_file()
+            {
+                match write_binary(&path, bytes.as_slice()) {
+                    Ok(()) => {
+                        re_log::info!("Image saved to {path:?}");
+                    }
+                    Err(err) => {
+                        re_log::error!(
+                            "Failed saving image to {path:?}: {}",
+                            re_error::format(&err)
+                        );
                     }
                 }
             }
-            _ => {
-                if let Some(path) = rfd::FileDialog::new()
-                    .set_file_name("image.png")
-                    .save_file()
-                {
-                    match dynamic_image.save(&path) {
-                        // TODO(emilk): show a popup instead of logging result
-                        Ok(()) => {
-                            re_log::info!("Image saved to {path:?}");
-                        }
-                        Err(err) => {
-                            re_log::error!("Failed saving image to {path:?}: {err}");
-                        }
+        }
+        _ => {
+            if let Some(path) = rfd::FileDialog::new()
+                .set_file_name("image.png")
+                .save_file()
+            {
+                match dynamic_image.save(&path) {
+                    // TODO(emilk): show a popup instead of logging result
+                    Ok(()) => {
+                        re_log::info!("Image saved to {path:?}");
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed saving image to {path:?}: {err}");
                     }
                 }
             }

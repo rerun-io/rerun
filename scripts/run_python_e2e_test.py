@@ -22,6 +22,7 @@ from typing import List
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
+    parser.add_argument("--no-pip-reqs", action="store_true", help="Skip installing pip requirements")
 
     if parser.parse_args().no_build:
         print("Skipping building rerun-sdk - assuming it is already built and up-to-date!")
@@ -36,6 +37,23 @@ def main() -> None:
         subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
         elapsed = time.time() - start_time
         print(f"rerun-sdk built in {elapsed:.1f} seconds")
+        print("")
+
+    if parser.parse_args().no_pip_reqs:
+        requirements = [
+            "examples/python/api_demo/requirements.txt",
+            "examples/python/car/requirements.txt",
+            "examples/python/multithreading/requirements.txt",
+            "examples/python/plots/requirements.txt",
+            "examples/python/text_logging/requirements.txt",
+        ]
+
+        print("----------------------------------------------------------")
+        print("Installing pip dependencies…")
+        start_time = time.time()
+        for requirement in requirements:
+            subprocess.run(["pip", "install", "--quiet", "-r", requirement], check=True)
+        print(f"pip install in {elapsed:.1f} seconds")
         print("")
 
     examples = [

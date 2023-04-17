@@ -10,7 +10,7 @@ use crate::{
     },
     global_bindings::FrameUniformBuffer,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
-    wgpu_resources::{GpuBindGroup, GpuTexture, TextureDesc},
+    wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
     DebugLabel, IntRect, Rgba, Size,
 };
 
@@ -498,7 +498,7 @@ impl ViewBuilder {
         &mut self,
         ctx: &RenderContext,
         clear_color: Rgba,
-    ) -> anyhow::Result<wgpu::CommandBuffer> {
+    ) -> Result<wgpu::CommandBuffer, PoolError> {
         crate::profile_function!();
 
         let setup = &self.setup;

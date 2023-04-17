@@ -83,6 +83,7 @@ impl DataUi for InstancePath {
                                     ui,
                                     UiVerbosity::Small,
                                     query,
+                                    &self.entity_path,
                                     &component_data,
                                     &self.instance_key,
                                 );
