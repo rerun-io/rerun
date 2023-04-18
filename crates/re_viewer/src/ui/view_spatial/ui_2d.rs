@@ -447,7 +447,7 @@ fn show_projections_from_3d_space(
     } = ctx.selection_state().hovered_space()
     {
         for (space_2d, pos_2d) in target_spaces {
-            if space_2d.entity_path_hash == space.hash() {
+            if space_2d == space {
                 if let Some(pos_2d) = pos_2d {
                     // User is hovering a 2D point inside a 3D view.
                     let pos_in_ui = ui_from_space.transform_pos(pos2(pos_2d.x, pos_2d.y));

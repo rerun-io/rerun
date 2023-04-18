@@ -3,7 +3,7 @@ use egui::NumExt;
 use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
 
-use re_data_store::{EntityPath, InstancePath, InstancePathHash};
+use re_data_store::EntityPath;
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::OutlineMaskPreference;
 
@@ -34,10 +34,10 @@ pub enum HoveredSpace {
 
         /// Path of a space camera, this 3D space is viewed through.
         /// (None for a free floating Eye)
-        tracked_space_camera: Option<InstancePath>,
+        tracked_space_camera: Option<EntityPath>,
 
         /// Corresponding 2D spaces and pixel coordinates (with Z=depth)
-        point_in_space_cameras: Vec<(InstancePathHash, Option<glam::Vec3>)>,
+        point_in_space_cameras: Vec<(EntityPath, Option<glam::Vec3>)>,
     },
 }
 

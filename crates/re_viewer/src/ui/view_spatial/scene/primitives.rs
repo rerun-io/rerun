@@ -1,6 +1,6 @@
 use egui::Color32;
-use re_data_store::InstancePathHash;
-use re_log_types::EntityPathHash;
+use re_data_store::EntityPath;
+use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::{
     renderer::{DepthClouds, MeshInstance},
     LineStripSeriesBuilder, PointCloudBuilder,
@@ -169,7 +169,7 @@ impl SceneSpatialPrimitives {
     pub fn add_axis_lines(
         &mut self,
         transform: macaw::IsoTransform,
-        instance_path_hash: InstancePathHash,
+        ent_path: Option<&EntityPath>,
         axis_length: f32,
     ) {
         use re_renderer::renderer::LineStripFlags;
@@ -178,12 +178,10 @@ impl SceneSpatialPrimitives {
         let line_radius = re_renderer::Size::new_scene(axis_length * 0.05);
         let origin = transform.translation();
 
-        let picking_layer_id = picking_layer_id_from_instance_path_hash(instance_path_hash);
-
-        let mut line_batch = self
-            .line_strips
-            .batch("origin axis")
-            .picking_object_id(picking_layer_id.object);
+        let mut line_batch = self.line_strips.batch("origin axis").picking_object_id(
+            re_renderer::PickingLayerObjectId(ent_path.map_or(0, |p| p.hash64())),
+        );
+        let picking_instance_id = re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0);
 
         line_batch
             .add_segment(
@@ -193,7 +191,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_X)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .picking_instance_id(picking_layer_id.instance);
+            .picking_instance_id(picking_instance_id);
         line_batch
             .add_segment(
                 origin,
@@ -202,7 +200,7 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Y)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .picking_instance_id(picking_layer_id.instance);
+            .picking_instance_id(picking_instance_id);
         line_batch
             .add_segment(
                 origin,
@@ -211,6 +209,6 @@ impl SceneSpatialPrimitives {
             .radius(line_radius)
             .color(AXIS_COLOR_Z)
             .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
-            .picking_instance_id(picking_layer_id.instance);
+            .picking_instance_id(picking_instance_id);
     }
 }
