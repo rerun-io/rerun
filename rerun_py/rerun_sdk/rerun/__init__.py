@@ -423,6 +423,9 @@ def memory_recording() -> MemoryRecording:
     """
     Streams all log-data to a memory buffer.
 
+    This can be used to display the RRD to alternative formats such as html.
+    See: [rerun.MemoryRecording.as_html][].
+
     Returns
     -------
     MemoryRecording
