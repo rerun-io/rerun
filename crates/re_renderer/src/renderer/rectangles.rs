@@ -385,7 +385,7 @@ impl RectangleDrawData {
                 },
             );
 
-            let texture = rectangle.colormapped_texture.texture.texture();
+            let texture = &rectangle.colormapped_texture.texture;
             let texture_format = texture.creation_desc.format;
             let texture_description = texture_format.describe();
             if texture_description.required_features != Default::default() {

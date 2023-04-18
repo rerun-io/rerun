@@ -17,11 +17,6 @@ pub struct GpuTexture2D(GpuTexture);
 
 impl GpuTexture2D {
     #[inline]
-    pub fn texture(&self) -> &GpuTexture {
-        &self.0
-    }
-
-    #[inline]
     pub fn handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
         self.0.handle
     }
@@ -47,6 +42,29 @@ impl GpuTexture2D {
     #[inline]
     pub fn format(&self) -> wgpu::TextureFormat {
         self.0.texture.format()
+    }
+}
+
+impl AsRef<GpuTexture> for GpuTexture2D {
+    #[inline(always)]
+    fn as_ref(&self) -> &GpuTexture {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for GpuTexture2D {
+    type Target = GpuTexture;
+
+    #[inline(always)]
+    fn deref(&self) -> &GpuTexture {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<GpuTexture> for GpuTexture2D {
+    #[inline(always)]
+    fn borrow(&self) -> &GpuTexture {
+        &self.0
     }
 }
 
