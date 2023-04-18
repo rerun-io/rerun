@@ -427,7 +427,7 @@ impl RectangleDrawData {
                 if format != wgpu::TextureFormat::Rgba8UnormSrgb {
                     return Err(RectangleError::UnsupportedColormapTextureFormat(format));
                 }
-                handle.wgpu_handle()
+                handle.handle()
             } else {
                 ctx.texture_manager_2d.zeroed_texture_float().handle
             };

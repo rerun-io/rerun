@@ -22,7 +22,7 @@ impl GpuTexture2DHandle {
     }
 
     #[inline]
-    pub fn wgpu_handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
+    pub fn handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
         self.0.handle
     }
 

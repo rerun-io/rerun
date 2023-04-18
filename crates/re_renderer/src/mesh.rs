@@ -292,7 +292,7 @@ impl GpuMesh {
                     &BindGroupDesc {
                         label: material.label.clone(),
                         entries: smallvec![
-                            BindGroupEntry::DefaultTextureView(material.albedo.wgpu_handle()),
+                            BindGroupEntry::DefaultTextureView(material.albedo.handle()),
                             uniform_buffer_binding
                         ],
                         layout: mesh_bind_group_layout,
