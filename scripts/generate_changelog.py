@@ -6,10 +6,11 @@ Summarizes recent PRs based on their GitHub labels.
 The result can be copy-pasted into CHANGELOG.md, though it often needs some manual editing too.
 """
 
+import multiprocessing
 import re
 import sys
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
 import requests
 from git import Repo  # pip install GitPython
@@ -35,6 +36,13 @@ class PrInfo:
     labels: List[str]
 
 
+@dataclass
+class CommitInfo:
+    hexsha: str
+    title: str
+    pr_number: Optional[int]
+
+
 def get_github_token() -> str:
     import os
 
@@ -57,6 +65,14 @@ def get_github_token() -> str:
 
 
 # Slow
+def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> Optional[PrInfo]:
+    if commit_info.pr_number is None:
+        return None
+    else:
+        return fetch_pr_info(commit_info.pr_number)
+
+
+# Slow
 def fetch_pr_info(pr_number: int) -> Optional[PrInfo]:
     url = f"https://api.github.com/repos/{OWNER}/{REPO}/pulls/{pr_number}"
     gh_access_token = get_github_token()
@@ -70,16 +86,16 @@ def fetch_pr_info(pr_number: int) -> Optional[PrInfo]:
         gh_user_name = json["user"]["login"]
         return PrInfo(gh_user_name=gh_user_name, pr_title=json["title"], labels=labels)
     else:
-        print(f"ERROR: {response.status_code} - {json['message']}")
+        print(f"ERROR {url}: {response.status_code} - {json['message']}")
         return None
 
 
-def commit_title_pr_number(commit: Any) -> Tuple[str, Optional[int]]:
+def get_commit_info(commit: Any) -> CommitInfo:
     match = re.match(r"(.*) \(#(\d+)\)", commit.summary)
     if match:
-        return (str(match.group(1)), int(match.group(2)))
+        return CommitInfo(hexsha=commit.hexsha, title=str(match.group(1)), pr_number=int(match.group(2)))
     else:
-        return (commit.summary, None)
+        return CommitInfo(hexsha=commit.hexsha, title=commit.summary, pr_number=None)
 
 
 def print_section(title: str, items: List[str]) -> None:
@@ -94,6 +110,16 @@ def main() -> None:
     repo = Repo(".")
     commits = list(repo.iter_commits(COMMIT_RANGE))
     commits.reverse()  # Most recent last
+    commit_infos = list(map(get_commit_info, commits))
+
+    pool = multiprocessing.Pool()
+    pr_infos = list(
+        tqdm(
+            pool.imap(fetch_pr_info_from_commit_info, commit_infos),
+            total=len(commit_infos),
+            desc="Fetch PR info commits",
+        )
+    )
 
     # Sections:
     analytics = []
@@ -112,14 +138,16 @@ def main() -> None:
     viewer = []
     web = []
 
-    for commit in tqdm(commits, desc="Processing commits"):
-        (title, pr_number) = commit_title_pr_number(commit)
+    for commit_info, pr_info in zip(commit_infos, pr_infos):
+        hexsha = commit_info.hexsha
+        title = commit_info.title
+        pr_number = commit_info.pr_number
+
         if pr_number is None:
             # Someone committed straight to main:
-            summary = f"{title} [{commit.hexsha}](https://github.com/{OWNER}/{REPO}/commit/{commit.hexsha})"
+            summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
             misc.append(summary)
         else:
-            pr_info = fetch_pr_info(pr_number)
             title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
             labels = pr_info.labels if pr_info else []
 
