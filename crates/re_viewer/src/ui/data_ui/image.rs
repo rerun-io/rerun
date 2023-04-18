@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 
 use re_log_types::{
     component_types::{ClassId, Tensor, TensorDataMeaning},
-    TensorElement,
+    DecodedTensor, TensorElement,
 };
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
@@ -54,7 +54,7 @@ fn tensor_ui(
     entity_path: &re_data_store::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
     _encoded_tensor: &Tensor,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
@@ -328,7 +328,7 @@ fn show_zoomed_image_region_tooltip(
     render_ctx: &mut re_renderer::RenderContext,
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &crate::ui::Annotations,
     meter: Option<f32>,
@@ -408,7 +408,7 @@ pub fn show_zoomed_image_region_area_outline(
 pub fn show_zoomed_image_region(
     render_ctx: &mut re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &crate::ui::Annotations,
     meter: Option<f32>,
@@ -434,7 +434,7 @@ pub fn show_zoomed_image_region(
 fn try_show_zoomed_image_region(
     render_ctx: &mut re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &crate::ui::Annotations,
     meter: Option<f32>,

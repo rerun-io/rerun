@@ -752,8 +752,6 @@ pub fn picking(
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
             || *ent_properties.backproject_depth.get()
         {
-            // We don't support selecting pixels yet.
-            instance_path.instance_key = re_log_types::component_types::InstanceKey::SPLAT;
             scene
                 .ui
                 .images
@@ -772,6 +770,10 @@ pub fn picking(
         } else {
             None
         };
+        if picked_image_with_coords.is_some() {
+            // We don't support selecting pixels yet.
+            instance_path.instance_key = re_log_types::component_types::InstanceKey::SPLAT;
+        }
 
         hovered_items.push(crate::misc::Item::InstancePath(
             Some(space_view_id),
