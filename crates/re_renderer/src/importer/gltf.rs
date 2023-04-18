@@ -9,8 +9,7 @@ use crate::{
     mesh::{Material, Mesh},
     renderer::MeshInstance,
     resource_managers::{
-        GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
-        TextureManager2D,
+        GpuMeshHandle, GpuTexture2D, ResourceLifeTime, Texture2DCreationDesc, TextureManager2D,
     },
     RenderContext, Rgba32Unmul,
 };
@@ -126,7 +125,7 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
 fn import_mesh(
     mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
-    gpu_image_handles: &[GpuTexture2DHandle],
+    gpu_image_handles: &[GpuTexture2D],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
     crate::profile_function!();

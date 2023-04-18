@@ -23,7 +23,7 @@ use re_renderer::{
         ColormappedTexture, DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthClouds,
         DrawData, GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
     },
-    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Rgba, Size,
 };
@@ -44,7 +44,7 @@ enum CameraControl {
 struct RenderDepthClouds {
     depth: DepthTexture,
     albedo: AlbedoTexture,
-    albedo_handle: GpuTexture2DHandle,
+    albedo_handle: GpuTexture2D,
 
     scale: f32,
     point_radius_from_world_depth: f32,

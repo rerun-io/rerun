@@ -6,7 +6,7 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     debug_label::DebugLabel,
-    resource_managers::{GpuTexture2DHandle, ResourceManagerError},
+    resource_managers::{GpuTexture2D, ResourceManagerError},
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuBuffer,
@@ -140,7 +140,7 @@ pub struct Material {
 
     /// Base color texture, also known as albedo.
     /// (not optional, needs to be at least a 1pix texture with a color!)
-    pub albedo: GpuTexture2DHandle,
+    pub albedo: GpuTexture2D,
 
     /// Factor applied to the decoded albedo color.
     pub albedo_multiplier: Rgba,
@@ -286,14 +286,13 @@ impl GpuMesh {
                 .iter()
                 .zip(uniform_buffer_bindings.into_iter())
             {
-                let texture = ctx.texture_manager_2d.get(&material.albedo);
                 let bind_group = pools.bind_groups.alloc(
                     device,
                     pools,
                     &BindGroupDesc {
                         label: material.label.clone(),
                         entries: smallvec![
-                            BindGroupEntry::DefaultTextureView(texture.handle),
+                            BindGroupEntry::DefaultTextureView(material.albedo.handle()),
                             uniform_buffer_binding
                         ],
                         layout: mesh_bind_group_layout,

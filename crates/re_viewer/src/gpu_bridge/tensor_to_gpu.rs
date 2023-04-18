@@ -96,8 +96,7 @@ fn color_tensor_to_gpu(
         })
     })?;
 
-    let gpu_texture = render_ctx.texture_manager_2d.get(&texture_handle);
-    let texture_format = gpu_texture.creation_desc.format;
+    let texture_format = texture_handle.format();
 
     // Special casing for normalized textures used above:
     let range = if matches!(
