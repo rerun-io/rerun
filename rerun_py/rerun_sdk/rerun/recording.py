@@ -1,4 +1,4 @@
-"""Helper functions for displaying Rerun in a Jupyter notebook."""
+"""Helper functions for directly working with recordings."""
 
 import base64
 import logging
@@ -14,10 +14,12 @@ class MemoryRecording:
         self.storage = storage
 
     def as_html(
-        self, width: int = 950, height: int = 712, app_location: Optional[str] = None, timeout_ms: int = 2000
+        self, width: int = 950, height: int = 712, app_url: Optional[str] = None, timeout_ms: int = 2000
     ) -> str:
         """
-        Show the Rerun viewer in a Jupyter notebook.
+        Generate an HTML snippet that displays the recording in an IFrame.
+
+        For use in contexts such as Jupyter notebooks.
 
         Parameters
         ----------
@@ -25,14 +27,15 @@ class MemoryRecording:
             The width of the viewer in pixels.
         height : int
             The height of the viewer in pixels.
-        app_location : str
-            The location of the Rerun web viewer.
+        app_url : str
+            Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
+            or localhost if [rerun.start_web_viewer_server][] has been called.
         timeout_ms : int
             The number of milliseconds to wait for the Rerun web viewer to load.
         """
 
-        if app_location is None:
-            app_location = bindings.get_app_url()
+        if app_url is None:
+            app_url = bindings.get_app_url()
 
         # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
         presentation_id = "".join(random.choice(string.ascii_letters) for i in range(6))
@@ -41,7 +44,7 @@ class MemoryRecording:
 
         html_template = f"""
         <div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
-        <div id="{presentation_id}_error" style="display: none;"><p>Timed out waiting for {app_location} to load.</p>
+        <div id="{presentation_id}_error" style="display: none;"><p>Timed out waiting for {app_url} to load.</p>
         <p>Consider using <code>rr.self_host_assets()</code></p></div>
         <script>
             {presentation_id}_timeout = setTimeout(() => {{
@@ -72,13 +75,14 @@ class MemoryRecording:
             }}()));
         </script>
         <iframe id="{presentation_id}_iframe" width="{width}" height="{height}"
-            src="{app_location}?url=web_event://&persist=0"
+            src="{app_url}?url=web_event://&persist=0"
             frameborder="0" style="display: none;" allowfullscreen=""></iframe>
         """
 
         return html_template
 
     def show(self, **kwargs: Any) -> Any:
+        """Output the Rerun viewer using IPython [IPython.core.display.HTML][]."""
         html = self.as_html(**kwargs)
         try:
             from IPython.core.display import HTML
