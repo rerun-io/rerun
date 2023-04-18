@@ -250,6 +250,8 @@ fn transform_at(
                 } else {
                     *encountered_pinhole = true;
 
+                    // TODO: update this comment a bit.
+                    TODO: fix the heuristic for distance on 2d scenes!!
                     // A pinhole camera means that we're looking at an image.
                     // Images are spanned in their local x/y space.
                     // Center it and move it along z, scaling the further we move.
@@ -263,6 +265,14 @@ fn transform_at(
                         glam::Quat::IDENTITY,
                         translation,
                     );
+
+                    // Let's think the inverse of this through, in the context of a 2D view that sits at a pinhole camera:
+                    // In this situation, we have a camera that is `focal_length_in_pixels` away from the XY image plane
+                    // and peering down on it from the `principal_point`.
+                    //
+                    // In this case, any 3D object that is up to `pinhole_image_plane_distance` away from the camera should be visible!
+                    // This means we need to apply the scaling factor of `pinhole.focal_length_in_pixels() / distance`,
+                    // as well as undo the translation of the principal point.
 
                     Ok(Some(parent_from_child))
                 }
