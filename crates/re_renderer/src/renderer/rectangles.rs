@@ -18,7 +18,7 @@ use crate::{
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    resource_managers::{GpuTexture2DHandle, ResourceManagerError},
+    resource_managers::{GpuTexture2D, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -51,7 +51,7 @@ pub enum TextureFilterMin {
 /// Describes a texture and how to map it to a color.
 #[derive(Clone)]
 pub struct ColormappedTexture {
-    pub texture: GpuTexture2DHandle,
+    pub texture: GpuTexture2D,
 
     /// Min/max range of the values in the texture.
     /// Used to normalize the input values (squash them to the 0-1 range).
@@ -84,11 +84,11 @@ pub enum ColorMapper {
     /// bottom right pixel is 1.0.
     ///
     /// The texture must have the format [`wgpu::TextureFormat::Rgba8UnormSrgb`].
-    Texture(GpuTexture2DHandle),
+    Texture(GpuTexture2D),
 }
 
 impl ColormappedTexture {
-    pub fn from_unorm_srgba(texture: GpuTexture2DHandle) -> Self {
+    pub fn from_unorm_srgba(texture: GpuTexture2D) -> Self {
         Self {
             texture,
             range: [0.0, 1.0],

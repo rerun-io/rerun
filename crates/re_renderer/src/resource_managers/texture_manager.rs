@@ -13,9 +13,9 @@ use crate::{
 /// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
 /// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 #[derive(Clone)]
-pub struct GpuTexture2DHandle(GpuTexture);
+pub struct GpuTexture2D(GpuTexture);
 
-impl GpuTexture2DHandle {
+impl GpuTexture2D {
     #[inline]
     pub fn texture(&self) -> &GpuTexture {
         &self.0
@@ -86,11 +86,11 @@ pub struct TextureManager2D {
     // Long lived/short lived doesn't make sense for textures since we don't yet know a way to
     // optimize for short lived textures as we do with buffer data.
     //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
-    white_texture_unorm: GpuTexture2DHandle,
-    zeroed_texture_float: GpuTexture2DHandle,
-    zeroed_texture_depth: GpuTexture2DHandle,
-    zeroed_texture_sint: GpuTexture2DHandle,
-    zeroed_texture_uint: GpuTexture2DHandle,
+    white_texture_unorm: GpuTexture2D,
+    zeroed_texture_float: GpuTexture2D,
+    zeroed_texture_depth: GpuTexture2D,
+    zeroed_texture_sint: GpuTexture2D,
+    zeroed_texture_uint: GpuTexture2D,
 
     // For convenience to reduce amount of times we need to pass them around
     device: Arc<wgpu::Device>,
@@ -103,7 +103,7 @@ pub struct TextureManager2D {
     //
     // Any texture which wasn't accessed on the previous frame
     // is ejected from the cache during [`begin_frame`].
-    texture_cache: HashMap<u64, GpuTexture2DHandle>,
+    texture_cache: HashMap<u64, GpuTexture2D>,
     accessed_textures: HashSet<u64>,
 }
 
@@ -156,7 +156,7 @@ impl TextureManager2D {
         &mut self,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-    ) -> GpuTexture2DHandle {
+    ) -> GpuTexture2D {
         // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
         // However, it's still very much a concern especially once we add mipmapping. Something we need to keep in mind.
         //
@@ -183,7 +183,7 @@ impl TextureManager2D {
         key: u64,
         texture_pool: &mut GpuTexturePool,
         texture_desc: Texture2DCreationDesc<'_>,
-    ) -> GpuTexture2DHandle {
+    ) -> GpuTexture2D {
         enum Never {}
         match self.get_or_create_with(key, texture_pool, || -> Result<_, Never> {
             Ok(texture_desc)
@@ -200,7 +200,7 @@ impl TextureManager2D {
         key: u64,
         texture_pool: &mut GpuTexturePool,
         try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
-    ) -> Result<GpuTexture2DHandle, Err> {
+    ) -> Result<GpuTexture2D, Err> {
         let texture_handle = match self.texture_cache.entry(key) {
             std::collections::hash_map::Entry::Occupied(texture_handle) => {
                 texture_handle.get().clone() // already inserted
@@ -224,7 +224,7 @@ impl TextureManager2D {
     }
 
     /// Returns a single pixel white pixel with an rgba8unorm format.
-    pub fn white_texture_unorm_handle(&self) -> &GpuTexture2DHandle {
+    pub fn white_texture_unorm_handle(&self) -> &GpuTexture2D {
         &self.white_texture_unorm
     }
 
@@ -258,7 +258,7 @@ impl TextureManager2D {
         queue: &wgpu::Queue,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-    ) -> GpuTexture2DHandle {
+    ) -> GpuTexture2D {
         crate::profile_function!();
         let size = wgpu::Extent3d {
             width: creation_desc.width,
@@ -309,7 +309,7 @@ impl TextureManager2D {
 
         // TODO(andreas): mipmap generation
 
-        GpuTexture2DHandle(texture)
+        GpuTexture2D(texture)
     }
 
     pub(crate) fn begin_frame(&mut self, _frame_index: u64) {
@@ -324,9 +324,9 @@ fn create_zero_texture(
     texture_pool: &mut GpuTexturePool,
     device: &Arc<wgpu::Device>,
     format: wgpu::TextureFormat,
-) -> GpuTexture2DHandle {
+) -> GpuTexture2D {
     // Wgpu zeros out new textures automatically
-    GpuTexture2DHandle(texture_pool.alloc(
+    GpuTexture2D(texture_pool.alloc(
         device,
         &TextureDesc {
             label: format!("zeroed pixel {format:?}").into(),

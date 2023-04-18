@@ -4,7 +4,7 @@ use re_renderer::{
         ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
         TextureFilterMin, TexturedRect,
     },
-    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
 };
@@ -12,7 +12,7 @@ use re_renderer::{
 mod framework;
 
 struct Render2D {
-    rerun_logo_texture: GpuTexture2DHandle,
+    rerun_logo_texture: GpuTexture2D,
     rerun_logo_texture_width: u32,
     rerun_logo_texture_height: u32,
 }

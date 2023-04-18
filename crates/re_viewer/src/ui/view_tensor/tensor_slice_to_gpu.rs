@@ -50,7 +50,7 @@ fn upload_texture_slice_to_gpu(
     render_ctx: &mut re_renderer::RenderContext,
     tensor: &DecodedTensor,
     slice_selection: &SliceSelection,
-) -> Result<re_renderer::resource_managers::GpuTexture2DHandle, TensorUploadError> {
+) -> Result<re_renderer::resource_managers::GpuTexture2D, TensorUploadError> {
     let id = egui::util::hash((tensor.id(), slice_selection));
 
     crate::gpu_bridge::try_get_or_create_texture(render_ctx, id, || {

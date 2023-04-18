@@ -9,7 +9,7 @@ use egui::mutex::Mutex;
 
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleOptions},
-    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     RenderContext, ViewBuilder,
 };
 
@@ -56,7 +56,7 @@ pub fn try_get_or_create_texture<'a, Err>(
     render_ctx: &mut RenderContext,
     texture_key: u64,
     try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
-) -> Result<GpuTexture2DHandle, Err> {
+) -> Result<GpuTexture2D, Err> {
     render_ctx.texture_manager_2d.get_or_create_with(
         texture_key,
         &mut render_ctx.gpu_resources.textures,
@@ -68,13 +68,13 @@ pub fn get_or_create_texture<'a>(
     render_ctx: &mut RenderContext,
     texture_key: u64,
     create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
-) -> GpuTexture2DHandle {
+) -> GpuTexture2D {
     enum Never {}
-    let result: Result<GpuTexture2DHandle, Never> = render_ctx
-        .texture_manager_2d
-        .get_or_create_with(texture_key, &mut render_ctx.gpu_resources.textures, || {
-            Ok(create_texture_desc())
-        });
+    let result: Result<GpuTexture2D, Never> = render_ctx.texture_manager_2d.get_or_create_with(
+        texture_key,
+        &mut render_ctx.gpu_resources.textures,
+        || Ok(create_texture_desc()),
+    );
     match result {
         Ok(handle) => handle,
         Err(never) => match never {},
