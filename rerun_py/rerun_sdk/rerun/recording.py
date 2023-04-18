@@ -8,13 +8,21 @@ from typing import Any, Optional
 
 from rerun import bindings
 
+DEFAULT_WIDTH = 950
+DEFAULT_HEIGHT = 712
+DEFAULT_TIMEOUT = 2000
+
 
 class MemoryRecording:
     def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
 
     def as_html(
-        self, width: int = 950, height: int = 712, app_url: Optional[str] = None, timeout_ms: int = 2000
+        self,
+        width: int = DEFAULT_WIDTH,
+        height: int = DEFAULT_HEIGHT,
+        app_url: Optional[str] = None,
+        timeout_ms: int = DEFAULT_TIMEOUT,
     ) -> str:
         """
         Generate an HTML snippet that displays the recording in an IFrame.
@@ -45,7 +53,7 @@ class MemoryRecording:
         html_template = f"""
         <div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
         <div id="{presentation_id}_error" style="display: none;"><p>Timed out waiting for {app_url} to load.</p>
-        <p>Consider using <code>rr.self_host_assets()</code></p></div>
+        <p>Consider using <code>rr.start_web_viewer_server()</code></p></div>
         <script>
             {presentation_id}_timeout = setTimeout(() => {{
                 document.getElementById("{presentation_id}_error").style.display = 'block';
@@ -81,9 +89,29 @@ class MemoryRecording:
 
         return html_template
 
-    def show(self, **kwargs: Any) -> Any:
-        """Output the Rerun viewer using IPython [IPython.core.display.HTML][]."""
-        html = self.as_html(**kwargs)
+    def show(
+        self,
+        width: int = DEFAULT_WIDTH,
+        height: int = DEFAULT_HEIGHT,
+        app_url: Optional[str] = None,
+        timeout_ms: int = DEFAULT_TIMEOUT,
+    ) -> Any:
+        """
+        Output the Rerun viewer using IPython [IPython.core.display.HTML][].
+
+        Parameters
+        ----------
+        width : int
+            The width of the viewer in pixels.
+        height : int
+            The height of the viewer in pixels.
+        app_url : str
+            Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
+            or localhost if [rerun.start_web_viewer_server][] has been called.
+        timeout_ms : int
+            The number of milliseconds to wait for the Rerun web viewer to load.
+        """
+        html = self.as_html(width=width, height=height, app_url=app_url, timeout_ms=timeout_ms)
         try:
             from IPython.core.display import HTML
 
