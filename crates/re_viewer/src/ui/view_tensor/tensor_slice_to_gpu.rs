@@ -1,10 +1,9 @@
-use re_log_types::{component_types::TensorCastError, TensorDataType};
+use re_log_types::{component_types::TensorCastError, DecodedTensor, TensorDataType};
 use re_renderer::{renderer::ColormappedTexture, resource_managers::Texture2DCreationDesc};
 
 use crate::{
     gpu_bridge::{range, RangeError},
     misc::caches::TensorStats,
-    DecodedTensor,
 };
 
 use super::{

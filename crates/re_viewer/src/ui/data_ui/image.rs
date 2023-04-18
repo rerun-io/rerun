@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 
 use re_log_types::{
     component_types::{ClassId, Tensor, TensorDataMeaning},
-    TensorElement,
+    DecodedTensor, TensorElement,
 };
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
@@ -11,7 +11,6 @@ use re_ui::ReUi;
 use crate::{
     misc::{caches::TensorStats, ViewerContext},
     ui::annotations::AnnotationMap,
-    DecodedTensor,
 };
 
 use super::{EntityDataUi, UiVerbosity};

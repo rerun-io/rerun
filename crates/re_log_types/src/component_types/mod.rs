@@ -59,7 +59,8 @@ pub use rect::Rect2D;
 pub use scalar::{Scalar, ScalarPlotProps};
 pub use size::Size3D;
 pub use tensor::{
-    Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId,
+    DecodedTensor, Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension,
+    TensorId,
 };
 #[cfg(feature = "image")]
 pub use tensor::{TensorImageLoadError, TensorImageSaveError};

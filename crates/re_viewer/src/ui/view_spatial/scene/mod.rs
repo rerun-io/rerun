@@ -5,7 +5,7 @@ use ahash::HashMap;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, InstanceKey, KeypointId},
-    MeshId,
+    DecodedTensor, MeshId,
 };
 use re_renderer::{Color32, OutlineMaskPreference, Size};
 
@@ -15,7 +15,6 @@ use crate::{
         annotations::{auto_color, AnnotationMap},
         Annotations, SceneQuery,
     },
-    DecodedTensor,
 };
 
 use super::{SpaceCamera3D, SpatialNavigationMode};

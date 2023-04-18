@@ -1,9 +1,12 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
-use re_log_types::component_types::{InstanceKey, Tensor};
+use re_log_types::{
+    component_types::{InstanceKey, Tensor},
+    DecodedTensor,
+};
 use re_query::{query_entity_with_primary, EntityView, QueryError};
 
-use crate::{misc::ViewerContext, ui::SceneQuery, DecodedTensor};
+use crate::{misc::ViewerContext, ui::SceneQuery};
 
 // ---
 

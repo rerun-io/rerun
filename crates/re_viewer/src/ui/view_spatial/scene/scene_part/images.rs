@@ -5,7 +5,7 @@ use itertools::Itertools;
 use re_data_store::{query_latest_single, EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning},
-    Component, Transform,
+    Component, DecodedTensor, Transform,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
@@ -20,7 +20,6 @@ use crate::{
         view_spatial::{Image, SceneSpatial},
         Annotations, DefaultColor,
     },
-    DecodedTensor,
 };
 
 use super::ScenePart;

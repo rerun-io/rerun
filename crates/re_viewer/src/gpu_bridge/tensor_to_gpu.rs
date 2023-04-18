@@ -6,14 +6,14 @@ use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use egui::util::hash;
 use wgpu::TextureFormat;
 
-use re_log_types::component_types::{Tensor, TensorData};
+use re_log_types::component_types::{DecodedTensor, Tensor, TensorData};
 use re_renderer::{
     renderer::{ColorMapper, ColormappedTexture},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
 
-use crate::{gpu_bridge::get_or_create_texture, misc::caches::TensorStats, DecodedTensor};
+use crate::{gpu_bridge::get_or_create_texture, misc::caches::TensorStats};
 
 use super::try_get_or_create_texture;
 

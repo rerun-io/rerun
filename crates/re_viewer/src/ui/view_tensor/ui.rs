@@ -4,11 +4,14 @@ use eframe::emath::Align2;
 use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
-use re_log_types::component_types::{self, Tensor};
+use re_log_types::{
+    component_types::{self, Tensor},
+    DecodedTensor,
+};
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
-use crate::{ui::data_ui::image::tensor_summary_ui_grid_contents, DecodedTensor};
+use crate::ui::data_ui::image::tensor_summary_ui_grid_contents;
 
 use super::dimension_mapping_ui;
 
