@@ -53,6 +53,7 @@ def main() -> None:
         start_time = time.time()
         for requirement in requirements:
             subprocess.run(["pip", "install", "--quiet", "-r", requirement], check=True)
+        elapsed = time.time() - start_time
         print(f"pip install in {elapsed:.1f} seconds")
         print("")
 
