@@ -20,8 +20,8 @@ use itertools::Itertools;
 use macaw::IsoTransform;
 use re_renderer::{
     renderer::{
-        ColormappedTexture, DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthClouds,
-        DrawData, GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
+        ColormappedTexture, DepthCloud, DepthCloudDrawData, DepthClouds, DrawData,
+        GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
     },
     resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
@@ -44,7 +44,6 @@ enum CameraControl {
 struct RenderDepthClouds {
     depth: DepthTexture,
     albedo: AlbedoTexture,
-    albedo_handle: GpuTexture2D,
 
     scale: f32,
     point_radius_from_world_depth: f32,
@@ -175,11 +174,11 @@ impl RenderDepthClouds {
                 clouds: vec![DepthCloud {
                     world_from_obj,
                     depth_camera_intrinsics: *intrinsics,
-                    world_depth_from_data_depth: 1.0,
+                    world_depth_from_texture_depth: 1.0,
                     point_radius_from_world_depth: *point_radius_from_world_depth,
                     max_depth_in_world: 5.0,
                     depth_dimensions: depth.dimensions,
-                    depth_data: depth.data.clone(),
+                    depth_texture: depth.texture.clone(),
                     colormap: re_renderer::Colormap::Turbo,
                     outline_mask_id: Default::default(),
                     picking_object_id: Default::default(),
@@ -233,19 +232,8 @@ impl framework::Example for RenderDepthClouds {
     fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         re_log::info!("Stop camera movement by pressing 'Space'");
 
-        let depth = DepthTexture::spiral((640, 480).into());
-        let albedo = AlbedoTexture::spiral(depth.dimensions);
-
-        let albedo_handle = re_ctx.texture_manager_2d.create(
-            &mut re_ctx.gpu_resources.textures,
-            &Texture2DCreationDesc {
-                label: "albedo".into(),
-                data: bytemuck::cast_slice(&albedo.rgba8).into(),
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                width: albedo.dimensions.x,
-                height: albedo.dimensions.y,
-            },
-        );
+        let depth = DepthTexture::spiral(re_ctx, glam::uvec2(640, 480));
+        let albedo = AlbedoTexture::spiral(re_ctx, depth.dimensions);
 
         let scale = 50.0;
         let point_radius_from_world_depth = 0.1;
@@ -263,7 +251,6 @@ impl framework::Example for RenderDepthClouds {
         RenderDepthClouds {
             depth,
             albedo,
-            albedo_handle,
 
             scale,
             point_radius_from_world_depth,
@@ -283,7 +270,6 @@ impl framework::Example for RenderDepthClouds {
     ) -> Vec<framework::ViewDrawResult> {
         let Self {
             albedo,
-            albedo_handle,
             camera_control,
             camera_position,
             ..
@@ -326,7 +312,7 @@ impl framework::Example for RenderDepthClouds {
                     .transform_point3(glam::Vec3::new(1.0, 1.0, 0.0)),
                 extent_u: world_from_model.transform_vector3(-glam::Vec3::X),
                 extent_v: world_from_model.transform_vector3(-glam::Vec3::Y),
-                colormapped_texture: ColormappedTexture::from_unorm_srgba(albedo_handle.clone()),
+                colormapped_texture: ColormappedTexture::from_unorm_srgba(albedo.texture.clone()),
                 options: RectangleOptions {
                     texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
                     texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
@@ -403,40 +389,57 @@ fn spiral(dimensions: glam::UVec2) -> impl Iterator<Item = (glam::UVec2, f32)> {
     })
 }
 
+pub fn hash(value: &impl std::hash::Hash) -> u64 {
+    ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(value)
+}
+
 struct DepthTexture {
     dimensions: glam::UVec2,
-    data: DepthCloudDepthData,
+    data: Vec<f32>,
+    texture: GpuTexture2D,
 }
 
 impl DepthTexture {
-    pub fn spiral(dimensions: glam::UVec2) -> Self {
+    pub fn spiral(re_ctx: &mut re_renderer::RenderContext, dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;
         let mut data = std::iter::repeat(0f32).take(size).collect_vec();
         spiral(dimensions).for_each(|(texcoords, d)| {
             data[(texcoords.x + texcoords.y * dimensions.x) as usize] = d;
         });
-        let data = DepthCloudDepthData::F32(data.into());
 
-        Self { dimensions, data }
+        let label = format!("depth texture spiral {dimensions}");
+        let texture = re_ctx.texture_manager_2d.get_or_create(
+            hash(&label),
+            &mut re_ctx.gpu_resources.textures,
+            Texture2DCreationDesc {
+                label: label.into(),
+                data: bytemuck::cast_slice(&data).into(),
+                format: wgpu::TextureFormat::R32Float,
+                width: dimensions.x,
+                height: dimensions.y,
+            },
+        );
+
+        Self {
+            dimensions,
+            data,
+            texture,
+        }
     }
 
     pub fn get_linear(&self, x: u32, y: u32) -> f32 {
-        match &self.data {
-            DepthCloudDepthData::U16(data) => {
-                data[(x + y * self.dimensions.x) as usize] as f32 / u16::MAX as f32
-            }
-            DepthCloudDepthData::F32(data) => data[(x + y * self.dimensions.x) as usize],
-        }
+        self.data[(x + y * self.dimensions.x) as usize]
     }
 }
 
 struct AlbedoTexture {
     dimensions: glam::UVec2,
     rgba8: Vec<u8>,
+    texture: GpuTexture2D,
 }
 
 impl AlbedoTexture {
-    pub fn spiral(dimensions: glam::UVec2) -> Self {
+    pub fn spiral(re_ctx: &mut re_renderer::RenderContext, dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;
         let mut rgba8 = std::iter::repeat(0).take(size * 4).collect_vec();
         spiral(dimensions).for_each(|(texcoords, d)| {
@@ -444,7 +447,24 @@ impl AlbedoTexture {
             rgba8[idx..idx + 4].copy_from_slice(re_renderer::colormap_turbo_srgb(d).as_slice());
         });
 
-        Self { dimensions, rgba8 }
+        let label = format!("albedo texture spiral {dimensions}");
+        let texture = re_ctx.texture_manager_2d.get_or_create(
+            hash(&label),
+            &mut re_ctx.gpu_resources.textures,
+            Texture2DCreationDesc {
+                label: label.into(),
+                data: bytemuck::cast_slice(&rgba8).into(),
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: dimensions.x,
+                height: dimensions.y,
+            },
+        );
+
+        Self {
+            dimensions,
+            rgba8,
+            texture,
+        }
     }
 
     #[allow(dead_code)]
