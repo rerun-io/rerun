@@ -111,12 +111,12 @@ impl PickingContext {
         let mut hits = Vec::new();
 
         // Start with gpu based picking as baseline. This is our prime source of picking information.
-        hits.extend(picking_gpu(
+        let gpu_pick = picking_gpu(
             render_ctx,
             gpu_readback_identifier,
             self,
             previous_picking_result,
-        ));
+        );
 
         // We also never throw away any textured rects, even if they're behind other objects.
         let mut rect_hits = picking_textured_rects(
@@ -124,6 +124,19 @@ impl PickingContext {
             &primitives.textured_rectangles,
             &primitives.textured_rectangles_ids,
         );
+        // But the gpu pick comes first in the list, unless it got picked as part of a textured rect.
+        // Textured rect picks also know where on the rect, making this the better source!
+        // Note that whenever this happens, it means that the same object path has a textured rect and something else
+        // e.g. a camera.
+        if let Some(gpu_pick) = gpu_pick {
+            if rect_hits.iter().all(|rect_hit| {
+                rect_hit.instance_path_hash.entity_path_hash
+                    != gpu_pick.instance_path_hash.entity_path_hash
+            }) {
+                hits.push(gpu_pick);
+            }
+        }
+
         rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
         hits.extend(rect_hits);
 
