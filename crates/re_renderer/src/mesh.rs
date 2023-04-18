@@ -286,14 +286,13 @@ impl GpuMesh {
                 .iter()
                 .zip(uniform_buffer_bindings.into_iter())
             {
-                let texture = ctx.texture_manager_2d.get(&material.albedo);
                 let bind_group = pools.bind_groups.alloc(
                     device,
                     pools,
                     &BindGroupDesc {
                         label: material.label.clone(),
                         entries: smallvec![
-                            BindGroupEntry::DefaultTextureView(texture.handle),
+                            BindGroupEntry::DefaultTextureView(material.albedo.wgpu_handle()),
                             uniform_buffer_binding
                         ],
                         layout: mesh_bind_group_layout,

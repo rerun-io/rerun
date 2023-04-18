@@ -16,19 +16,37 @@ use crate::{
 pub struct GpuTexture2DHandle(GpuTexture);
 
 impl GpuTexture2DHandle {
+    #[inline]
+    pub fn texture(&self) -> &GpuTexture {
+        &self.0
+    }
+
+    #[inline]
+    pub fn wgpu_handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
+        self.0.handle
+    }
+
     /// Width of the texture.
+    #[inline]
     pub fn width(&self) -> u32 {
         self.0.texture.width()
     }
 
     /// Height of the texture.
+    #[inline]
     pub fn height(&self) -> u32 {
         self.0.texture.height()
     }
 
     /// Width and height of the texture.
+    #[inline]
     pub fn width_height(&self) -> [u32; 2] {
         [self.width(), self.height()]
+    }
+
+    #[inline]
+    pub fn format(&self) -> wgpu::TextureFormat {
+        self.0.texture.format()
     }
 }
 
@@ -292,12 +310,6 @@ impl TextureManager2D {
         // TODO(andreas): mipmap generation
 
         GpuTexture2DHandle(texture)
-    }
-
-    /// Retrieves gpu handle.
-    #[allow(clippy::unused_self)]
-    pub fn get(&self, handle: &GpuTexture2DHandle) -> GpuTexture {
-        handle.0.clone()
     }
 
     pub(crate) fn begin_frame(&mut self, _frame_index: u64) {
