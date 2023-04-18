@@ -39,7 +39,7 @@ def main() -> None:
         print(f"rerun-sdk built in {elapsed:.1f} seconds")
         print("")
 
-    if parser.parse_args().no_pip_reqs:
+    if not parser.parse_args().no_pip_reqs:
         requirements = [
             "examples/python/api_demo/requirements.txt",
             "examples/python/car/requirements.txt",
