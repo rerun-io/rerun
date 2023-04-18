@@ -1,7 +1,7 @@
 mod mesh_cache;
 mod tensor_decode_cache;
 
-use re_log_types::component_types::{self};
+use re_log_types::component_types;
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]

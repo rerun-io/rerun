@@ -5,7 +5,7 @@ use itertools::Itertools;
 use re_data_store::{query_latest_single, EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning},
-    Component, Transform,
+    Component, DecodedTensor, Transform,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
@@ -31,7 +31,7 @@ fn push_tensor_texture(
     annotations: &Annotations,
     world_from_obj: glam::Mat4,
     ent_path: &EntityPath,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     multiplicative_tint: egui::Rgba,
     outline_mask: OutlineMaskPreference,
 ) {
@@ -172,108 +172,80 @@ impl ImagesPart {
             entity_view.iter_component::<ColorRGBA>()?
         ) {
             crate::profile_scope!("loop_iter");
-            if let Some(tensor) = tensor {
-                if !tensor.is_shaped_like_an_image() {
-                    return Ok(());
-                }
+            let Some(tensor) = tensor else { continue; };
 
-                let annotations = scene.annotation_map.find(ent_path);
-
-                // TODO(jleibs): Meter should really be its own component
-                let meter = tensor.meter;
-                scene.ui.images.push(Image {
-                    ent_path: ent_path.clone(),
-                    tensor: tensor.clone(),
-                    meter,
-                    annotations: annotations.clone(),
-                });
-
-                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-
-                if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth
-                {
-                    let query = ctx.current_query();
-                    let pinhole_ent_path =
-                        crate::misc::queries::closest_pinhole_transform(ctx, ent_path, &query);
-
-                    if let Some(pinhole_ent_path) = pinhole_ent_path {
-                        // NOTE: we don't pass in `world_from_obj` because this corresponds to the
-                        // transform of the projection plane, which is of no use to us here.
-                        // What we want are the extrinsics of the depth camera!
-                        match Self::process_entity_view_as_depth_cloud(
-                            scene,
-                            ctx,
-                            transforms,
-                            properties,
-                            &tensor,
-                            ent_path,
-                            &pinhole_ent_path,
-                            entity_highlight,
-                        ) {
-                            Ok(()) => return Ok(()),
-                            Err(err) => {
-                                re_log::warn_once!("{err}");
-                            }
-                        }
-                    };
-                }
-
-                Self::process_entity_view_as_image(
-                    scene,
-                    ctx,
-                    ent_path,
-                    world_from_obj,
-                    entity_highlight,
-                    tensor,
-                    color,
-                    &annotations,
-                );
+            if !tensor.is_shaped_like_an_image() {
+                return Ok(());
             }
+
+            let tensor = match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+                Ok(tensor) => tensor,
+                Err(err) => {
+                    re_log::warn_once!(
+                        "Encountered problem decoding tensor at path {ent_path}: {err}"
+                    );
+                    continue;
+                }
+            };
+
+            let annotations = scene.annotation_map.find(ent_path);
+
+            // TODO(jleibs): Meter should really be its own component
+            let meter = tensor.meter;
+            scene.ui.images.push(Image {
+                ent_path: ent_path.clone(),
+                tensor: tensor.clone(),
+                meter,
+                annotations: annotations.clone(),
+            });
+
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+
+            if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth {
+                let query = ctx.current_query();
+                let pinhole_ent_path =
+                    crate::misc::queries::closest_pinhole_transform(ctx, ent_path, &query);
+
+                if let Some(pinhole_ent_path) = pinhole_ent_path {
+                    // NOTE: we don't pass in `world_from_obj` because this corresponds to the
+                    // transform of the projection plane, which is of no use to us here.
+                    // What we want are the extrinsics of the depth camera!
+                    match Self::process_entity_view_as_depth_cloud(
+                        scene,
+                        ctx,
+                        transforms,
+                        properties,
+                        &tensor,
+                        ent_path,
+                        &pinhole_ent_path,
+                        entity_highlight,
+                    ) {
+                        Ok(()) => return Ok(()),
+                        Err(err) => {
+                            re_log::warn_once!("{err}");
+                        }
+                    }
+                };
+            }
+
+            let color = annotations.class_description(None).annotation_info().color(
+                color.map(|c| c.to_array()).as_ref(),
+                DefaultColor::OpaqueWhite,
+            );
+
+            push_tensor_texture(
+                scene,
+                ctx,
+                &annotations,
+                world_from_obj,
+                ent_path,
+                &tensor,
+                color.into(),
+                entity_highlight.overall,
+            );
         }
 
         Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn process_entity_view_as_image(
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        ent_path: &EntityPath,
-        world_from_obj: glam::Mat4,
-        entity_highlight: &SpaceViewOutlineMasks,
-        tensor: Tensor,
-        color: Option<ColorRGBA>,
-        annotations: &Annotations,
-    ) {
-        crate::profile_function!();
-
-        let color = annotations.class_description(None).annotation_info().color(
-            color.map(|c| c.to_array()).as_ref(),
-            DefaultColor::OpaqueWhite,
-        );
-
-        match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
-            Ok(tensor) => {
-                push_tensor_texture(
-                    scene,
-                    ctx,
-                    annotations,
-                    world_from_obj,
-                    ent_path,
-                    &tensor,
-                    color.into(),
-                    entity_highlight.overall,
-                );
-            }
-            Err(err) => {
-                // TODO(jleibs): Would be nice to surface these through the UI instead
-                re_log::warn_once!(
-                    "Encountered problem decoding tensor at path {}: {}",
-                    ent_path,
-                    err
-                );
-            }
-        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -282,7 +254,7 @@ impl ImagesPart {
         ctx: &mut ViewerContext<'_>,
         transforms: &TransformCache,
         properties: &EntityProperties,
-        tensor: &Tensor,
+        tensor: &DecodedTensor,
         ent_path: &EntityPath,
         pinhole_ent_path: &EntityPath,
         entity_highlight: &SpaceViewOutlineMasks,

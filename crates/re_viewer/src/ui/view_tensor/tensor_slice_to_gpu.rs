@@ -1,7 +1,4 @@
-use re_log_types::{
-    component_types::{Tensor, TensorCastError},
-    TensorDataType,
-};
+use re_log_types::{component_types::TensorCastError, DecodedTensor, TensorDataType};
 use re_renderer::{renderer::ColormappedTexture, resource_managers::Texture2DCreationDesc};
 
 use crate::{
@@ -28,7 +25,7 @@ pub enum TensorUploadError {
 
 pub fn colormapped_texture(
     render_ctx: &mut re_renderer::RenderContext,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     state: &ViewTensorState,
 ) -> Result<ColormappedTexture, TensorUploadError> {
@@ -51,7 +48,7 @@ pub fn colormapped_texture(
 
 fn upload_texture_slice_to_gpu(
     render_ctx: &mut re_renderer::RenderContext,
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     slice_selection: &SliceSelection,
 ) -> Result<re_renderer::resource_managers::GpuTexture2DHandle, TensorUploadError> {
     let id = egui::util::hash((tensor.id(), slice_selection));
@@ -62,11 +59,13 @@ fn upload_texture_slice_to_gpu(
 }
 
 fn texture_desc_from_tensor(
-    tensor: &Tensor,
+    tensor: &DecodedTensor,
     slice_selection: &SliceSelection,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
     use wgpu::TextureFormat;
     crate::profile_function!();
+
+    let tensor = tensor.inner();
 
     match tensor.dtype() {
         TensorDataType::U8 => {

@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
+
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
-    component_types::{ClassId, InstanceKey, KeypointId, Tensor},
-    MeshId,
+    component_types::{ClassId, InstanceKey, KeypointId},
+    DecodedTensor, MeshId,
 };
 use re_renderer::{Color32, OutlineMaskPreference, Size};
 
-use super::{SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
@@ -16,6 +16,8 @@ use crate::{
         Annotations, SceneQuery,
     },
 };
+
+use super::{SpaceCamera3D, SpatialNavigationMode};
 
 mod picking;
 mod primitives;
@@ -59,7 +61,7 @@ pub struct Image {
     /// Path to the image (note image instance ids would refer to pixels!)
     pub ent_path: EntityPath,
 
-    pub tensor: Tensor,
+    pub tensor: DecodedTensor,
 
     /// If this is a depth map, how long is a meter?
     ///
