@@ -630,6 +630,7 @@ pub enum TensorImageLoadError {
     },
 }
 
+#[cfg(feature = "image")]
 impl From<image::ImageError> for TensorImageLoadError {
     #[inline]
     fn from(err: image::ImageError) -> Self {
@@ -637,6 +638,7 @@ impl From<image::ImageError> for TensorImageLoadError {
     }
 }
 
+#[cfg(feature = "image")]
 impl From<std::io::Error> for TensorImageLoadError {
     #[inline]
     fn from(err: std::io::Error) -> Self {
