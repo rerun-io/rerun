@@ -2,7 +2,7 @@
 import argparse
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PosixPath
 from typing import Any, Dict, List, Tuple
 
 import cv2
@@ -251,7 +251,7 @@ def log_camera(
 
     rr.log_rigid3(
         # pathlib makes it easy to get the parent, but log_rigid requires a string
-        str(Path(entity_id).parent).replace("\\", "/"),
+        str(PosixPath(entity_id).parent),
         child_from_parent=camera_from_world,
         xyz="RDF",  # X=Right, Y=Down, Z=Forward
     )
