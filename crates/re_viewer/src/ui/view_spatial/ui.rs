@@ -876,7 +876,7 @@ pub fn picking(
                     .iter()
                     .map(|cam| {
                         (
-                            cam.instance_path_hash,
+                            cam.ent_path.clone(),
                             hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
                         )
                     })

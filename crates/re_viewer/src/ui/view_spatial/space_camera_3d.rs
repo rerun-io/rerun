@@ -1,16 +1,15 @@
 use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
-use re_data_store::InstancePathHash;
-use re_log_types::ViewCoordinates;
+use re_log_types::{EntityPath, ViewCoordinates};
 
 /// A logged camera that connects spaces.
 #[derive(Clone)]
 pub struct SpaceCamera3D {
-    /// Path to the instance which has the projection (pinhole, ortho or otherwise) transforms.
+    /// Path to the entity which has the projection (pinhole, ortho or otherwise) transforms.
     ///
     /// We expect the camera transform to apply to this instance and every path below it.
-    pub instance_path_hash: InstancePathHash,
+    pub ent_path: EntityPath,
 
     /// The coordinate system of the camera ("view-space").
     pub view_coordinates: ViewCoordinates,
@@ -46,7 +45,7 @@ impl SpaceCamera3D {
         match from_rub_quat(self.view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
-                re_log::warn_once!("Camera {:?}: {err}", self.instance_path_hash);
+                re_log::warn_once!("Camera {:?}: {err}", self.ent_path);
                 None
             }
         }

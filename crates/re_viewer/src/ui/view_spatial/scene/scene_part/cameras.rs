@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     component_types::InstanceKey,
     coordinates::{Handedness, SignedAxis3},
@@ -60,7 +60,7 @@ impl CamerasPart {
     fn visit_instance(
         scene: &mut SceneSpatial,
         entity_view: &EntityView<Transform>,
-        entity_path: &EntityPath,
+        ent_path: &EntityPath,
         instance_key: InstanceKey,
         props: &EntityProperties,
         transforms: &TransformCache,
@@ -74,7 +74,7 @@ impl CamerasPart {
         //
         // Note that currently a transform on an object can't have both a pinhole AND a rigid transform,
         // which makes this rather well defined here.
-        let parent_path = entity_path
+        let parent_path = ent_path
             .parent()
             .expect("root path can't be part of scene query");
         let Some(world_from_parent) = transforms.reference_from_entity(&parent_path) else {
@@ -90,7 +90,7 @@ impl CamerasPart {
         let frustum_length = *props.pinhole_image_plane_distance.get();
 
         scene.space_cameras.push(SpaceCamera3D {
-            instance_path_hash: InstancePathHash::instance(entity_path, instance_key),
+            ent_path: ent_path.clone(),
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
@@ -144,7 +144,7 @@ impl CamerasPart {
         let radius = re_renderer::Size::new_points(1.0);
         let color = SceneSpatial::CAMERA_COLOR;
         let instance_path_for_picking = instance_path_hash_for_picking(
-            entity_path,
+            ent_path,
             instance_key,
             entity_view,
             entity_highlight.any_selection_highlight,

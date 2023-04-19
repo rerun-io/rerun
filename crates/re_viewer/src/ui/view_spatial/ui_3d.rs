@@ -3,7 +3,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{EntityPropertyMap, InstancePath, InstancePathHash};
+use re_data_store::EntityPropertyMap;
 use re_log_types::{EntityPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
@@ -38,7 +38,7 @@ pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
 
     /// Currently tracked camera.
-    pub tracked_camera: Option<InstancePath>,
+    pub tracked_camera: Option<EntityPath>,
 
     /// Camera pose just before we took over another camera via [Self::tracked_camera].
     camera_before_tracked_camera: Option<Eye>,
@@ -99,7 +99,7 @@ impl View3DState {
         let tracking_camera = self
             .tracked_camera
             .as_ref()
-            .and_then(|c| find_camera(space_cameras, &c.hash()));
+            .and_then(|c| find_camera(space_cameras, c));
 
         if let Some(tracking_camera) = tracking_camera {
             if let Some(cam_interpolation) = &mut self.eye_interpolation {
@@ -224,11 +224,11 @@ impl SpaceSpecs {
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstancePathHash) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if &camera.instance_path_hash == needle {
+        if &camera.ent_path == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
@@ -309,7 +309,7 @@ pub fn view_3d(
                 eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
             scene
                 .primitives
-                .add_axis_lines(transform, camera.instance_path_hash, axis_length);
+                .add_axis_lines(transform, Some(&camera.ent_path), axis_length);
         }
     }
 
@@ -377,11 +377,11 @@ pub fn view_3d(
 
         // While hovering an entity, focuses the camera on it.
         if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
-            if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.hash()) {
+            if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.entity_path) {
                 state.state_3d.camera_before_tracked_camera =
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
-                state.state_3d.tracked_camera = Some(instance_path.clone());
+                state.state_3d.tracked_camera = Some(instance_path.entity_path.clone());
             } else if let Some(clicked_point) = state.state_3d.hovered_point {
                 if let Some(mut new_orbit_eye) = state.state_3d.orbit_eye {
                     // TODO(andreas): It would be nice if we could focus on the center of the entity rather than the clicked point.
@@ -428,11 +428,9 @@ pub fn view_3d(
 
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
-        scene.primitives.add_axis_lines(
-            macaw::IsoTransform::IDENTITY,
-            InstancePathHash::NONE,
-            axis_length,
-        );
+        scene
+            .primitives
+            .add_axis_lines(macaw::IsoTransform::IDENTITY, None, axis_length);
     }
 
     if state.state_3d.show_bbox {
@@ -519,7 +517,7 @@ pub fn view_3d(
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     scene: &mut SceneSpatial,
-    tracked_space_camera: &Option<InstancePath>,
+    tracked_space_camera: &Option<EntityPath>,
     scene_bbox_accum: &BoundingBox,
 ) {
     match ctx.selection_state().hovered_space() {
@@ -527,7 +525,7 @@ fn show_projections_from_2d_space(
             if let Some(cam) = scene
                 .space_cameras
                 .iter()
-                .find(|cam| cam.instance_path_hash.entity_path_hash == space_2d.hash())
+                .find(|cam| &cam.ent_path == space_2d)
             {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
@@ -559,7 +557,7 @@ fn show_projections_from_2d_space(
                 if let Some(cam) = scene
                     .space_cameras
                     .iter()
-                    .find(|cam| cam.instance_path_hash == camera_path.hash())
+                    .find(|cam| &cam.ent_path == camera_path)
                 {
                     let cam_to_pos = *pos - cam.position();
                     let distance = cam_to_pos.length();
