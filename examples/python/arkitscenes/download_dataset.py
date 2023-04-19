@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Final, List, Optional
 
 import pandas as pd
+import zipfile
 
 ARkitscense_url = "https://docs-assets.developer.apple.com/ml-research/datasets/arkitscenes/v1"
 TRAINING: Final = "Training"
@@ -121,9 +122,9 @@ def download_file(url: str, file_name: str, dst: Path) -> bool:
 def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
     filepath = os.path.join(dst, file_name)
     print(f"Unzipping zip file {filepath}")
-    command = f"unzip -oq {filepath} -d {dst}"
     try:
-        subprocess.check_call(command, shell=True)
+        with zipfile.ZipFile(filepath, "r") as zip_ref:
+            zip_ref.extractall(dst)
     except Exception as error:
         print(f"Error unzipping {filepath}, error: {error}")
         return False
