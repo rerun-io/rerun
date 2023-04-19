@@ -30,8 +30,8 @@ egui_dock = ["dep:egui_dock"]
 
 
 [dependencies]
-egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { workspace = true, features = ["tracing"] }
+egui.workspace = true
+egui_extras.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 parking_lot.workspace = true
 serde = { version = "1", features = ["derive"] }
