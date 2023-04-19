@@ -92,6 +92,7 @@ def script_teardown(args: Namespace) -> None:
     """
     if args.serve:
         import time
+
         try:
             while True:
                 time.sleep(1)
