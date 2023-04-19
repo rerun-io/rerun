@@ -393,7 +393,8 @@ def main() -> None:
     parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
     rr.script_add_args(parser)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "tracking_hf_opencv")
 

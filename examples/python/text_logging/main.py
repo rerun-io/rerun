@@ -74,7 +74,8 @@ def main() -> None:
     )
     parser.add_argument("--repeat", type=int, default=1, help="How many times do we want to run the log function?")
     rr.script_add_args(parser)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "text_logging")
 
