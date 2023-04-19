@@ -32,6 +32,11 @@ def main() -> None:
 
     task("main_task")
 
+    # Using multiprocessing with "fork" results in a hang on shutdown so
+    # always use "spawn"
+    # TODO(https://github.com/rerun-io/rerun/issues/1921)
+    multiprocessing.set_start_method("spawn")
+
     p = multiprocessing.Process(target=task, args=("child_task",))
     p.start()
     p.join()
