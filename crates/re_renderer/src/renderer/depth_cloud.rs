@@ -49,7 +49,7 @@ mod gpu_data {
         pub picking_layer_object_id: PickingLayerObjectId,
 
         /// Multiplier to get world-space depth from whatever is in the texture.
-        pub world_depth_from_texture_value: f32,
+        pub world_depth_from_texture_depth: f32,
 
         /// Point radius is calculated as world-space depth times this value.
         pub point_radius_from_world_depth: f32,
@@ -88,7 +88,7 @@ mod gpu_data {
                 world_from_obj: (*world_from_obj).into(),
                 depth_camera_intrinsics: (*depth_camera_intrinsics).into(),
                 outline_mask_id: outline_mask_id.0.unwrap_or_default().into(),
-                world_depth_from_texture_value: *world_depth_from_texture_depth,
+                world_depth_from_texture_depth: *world_depth_from_texture_depth,
                 point_radius_from_world_depth: *point_radius_from_world_depth,
                 max_depth_in_world: *max_depth_in_world,
                 colormap: *colormap as u32,
@@ -189,11 +189,20 @@ impl DrawData for DepthCloudDrawData {
     type Renderer = DepthCloudRenderer;
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum DepthCloudDrawDataError {
+    #[error("Depth texture format was {0:?}, only F32 is supported")]
+    InvalidDepthTextureFormat(wgpu::TextureFormat),
+
+    #[error(transparent)]
+    ResourceManagerError(#[from] ResourceManagerError),
+}
+
 impl DepthCloudDrawData {
     pub fn new(
         ctx: &mut RenderContext,
         depth_clouds: &DepthClouds,
-    ) -> Result<Self, ResourceManagerError> {
+    ) -> Result<Self, DepthCloudDrawDataError> {
         crate::profile_function!();
 
         let DepthClouds {
@@ -242,6 +251,12 @@ impl DepthCloudDrawData {
             depth_cloud_ubo_binding_outlines,
             depth_cloud_ubo_binding_opaque
         ) {
+            if depth_cloud.depth_texture.format() != wgpu::TextureFormat::R32Float {
+                return Err(DepthCloudDrawDataError::InvalidDepthTextureFormat(
+                    depth_cloud.depth_texture.format(),
+                ));
+            }
+
             let mk_bind_group = |label, ubo: BindGroupEntry| {
                 ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,

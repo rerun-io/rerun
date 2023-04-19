@@ -278,12 +278,14 @@ impl ImagesPart {
             return Err(format!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}"));
         };
 
-        let (height, width) = (tensor.shape()[0].size, tensor.shape()[1].size);
+        let Some([height, width, _]) = tensor.image_height_width_channels() else {
+            return Err(format!("Tensor at {ent_path:?} is not an image"));
+        };
         let dimensions = glam::UVec2::new(width as _, height as _);
 
-        // Ideally, we'd use the same key as for displaying the texture, but we might make other compromises regarding formats etc.!
-        // So to not couple this, we use a different key here
         let depth_texture = {
+            // Ideally, we'd use the same key as for displaying the texture, but we might make other compromises regarding formats etc.!
+            // So to not couple this, we use a different key here
             let texture_key = egui::util::hash((tensor.id(), "depth_cloud"));
             let mut data_f32 = Vec::new();
             ctx.render_ctx.texture_manager_2d.get_or_create_with(
@@ -294,9 +296,7 @@ impl ImagesPart {
                     // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
                     let data = match &tensor.data {
                         TensorData::U16(data) => {
-                            data_f32.extend(
-                                data.as_slice().iter().map(|d| *d as f32 / u16::MAX as f32),
-                            );
+                            data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
                             bytemuck::cast_slice(&data_f32).into()
                         }
                         TensorData::F32(data) => bytemuck::cast_slice(data).into(),
@@ -321,10 +321,7 @@ impl ImagesPart {
 
         let depth_from_world_scale = *properties.depth_from_world_scale.get();
 
-        let world_depth_from_data_depth = match &tensor.data {
-            TensorData::U16(_) => 65535.0,
-            _ => 1.0,
-        } / depth_from_world_scale;
+        let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
 
         let colormap = match *properties.color_mapper.get() {
             re_data_store::ColorMapper::Colormap(colormap) => match colormap {
@@ -360,7 +357,7 @@ impl ImagesPart {
         scene.primitives.depth_clouds.clouds.push(DepthCloud {
             world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
-            world_depth_from_texture_depth: world_depth_from_data_depth,
+            world_depth_from_texture_depth,
             point_radius_from_world_depth,
             max_depth_in_world: max_data_value / depth_from_world_scale,
             depth_dimensions: dimensions,
