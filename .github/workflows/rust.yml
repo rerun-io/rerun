@@ -217,13 +217,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: default
-          toolchain: 1.67.1
-          target: wasm32-unknown-unknown
-          override: true
-
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -263,13 +256,6 @@ jobs:
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
     steps:
       - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.67.0
-          target: wasm32-unknown-unknown
-          override: true
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
