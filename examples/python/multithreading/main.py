@@ -27,11 +27,16 @@ def main() -> None:
 
     rr.script_setup(args, "multithreading")
 
+    threads = []
     for i in range(10):
         t = threading.Thread(
             target=rect_logger, args=("thread/{}".format(i), [random.randrange(255) for _ in range(3)])
         )
         t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
 
     rr.script_teardown(args)
 
