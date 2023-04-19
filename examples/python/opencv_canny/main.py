@@ -22,18 +22,22 @@ python examples/python/opencv_canny/main.py --connect
 """
 
 import argparse
+from typing import Optional
 
 import cv2
 import rerun as rr
 
 
-def run_canny() -> None:
+def run_canny(num_frames: Optional[int]) -> None:
     # Create a new video capture
     cap = cv2.VideoCapture(0)
 
     frame_nr = 0
 
     while cap.isOpened():
+        if num_frames and frame_nr >= num_frames:
+            break
+
         # Read the frame
         ret, img = cap.read()
         if not ret:
@@ -66,6 +70,7 @@ def main() -> None:
     parser.add_argument(
         "--device", type=int, default=0, help="Which camera device to use. (Passed to `cv2.VideoCapture()`)"
     )
+    parser.add_argument("--num-frames", type=int, default=None, help="The number of frames to log")
 
     rr.script_add_args(parser)
     args = parser.parse_args()
@@ -93,7 +98,7 @@ python examples/python/opencv_canny/main.py --connect
         """
         )
 
-    run_canny()
+    run_canny(args.num_frames)
 
     rr.script_teardown(args)
 
