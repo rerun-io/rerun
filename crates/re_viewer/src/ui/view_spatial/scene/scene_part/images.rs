@@ -9,7 +9,8 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, DepthCloudDepthData, RectangleOptions},
+    renderer::{DepthCloud, RectangleOptions},
+    resource_managers::Texture2DCreationDesc,
     Colormap, OutlineMaskPreference,
 };
 
@@ -277,24 +278,50 @@ impl ImagesPart {
             return Err(format!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}"));
         };
 
-        // TODO(cmc): automagically convert as needed for non-natively supported datatypes?
-        let data = match &tensor.data {
-            // NOTE: Shallow clone if feature `arrow` is enabled, full alloc + memcpy otherwise.
-            TensorData::U16(data) => DepthCloudDepthData::U16(data.clone()),
-            TensorData::F32(data) => DepthCloudDepthData::F32(data.clone()),
-            _ => {
-                return Err(format!(
-                    "Tensor datatype {} is not supported for backprojection",
-                    tensor.dtype()
-                ));
-            }
+        let Some([height, width, _]) = tensor.image_height_width_channels() else {
+            return Err(format!("Tensor at {ent_path:?} is not an image"));
+        };
+        let dimensions = glam::UVec2::new(width as _, height as _);
+
+        let depth_texture = {
+            // Ideally, we'd use the same key as for displaying the texture, but we might make other compromises regarding formats etc.!
+            // So to not couple this, we use a different key here
+            let texture_key = egui::util::hash((tensor.id(), "depth_cloud"));
+            let mut data_f32 = Vec::new();
+            ctx.render_ctx.texture_manager_2d.get_or_create_with(
+                texture_key,
+                &mut ctx.render_ctx.gpu_resources.textures,
+                || {
+                    // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
+                    // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
+                    let data = match &tensor.data {
+                        TensorData::U16(data) => {
+                            data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
+                            bytemuck::cast_slice(&data_f32).into()
+                        }
+                        TensorData::F32(data) => bytemuck::cast_slice(data).into(),
+                        _ => {
+                            return Err(format!(
+                                "Tensor datatype {} is not supported for back-projection",
+                                tensor.dtype()
+                            ));
+                        }
+                    };
+
+                    Ok(Texture2DCreationDesc {
+                        label: format!("Depth cloud for {ent_path:?}").into(),
+                        data,
+                        format: wgpu::TextureFormat::R32Float,
+                        width: width as _,
+                        height: height as _,
+                    })
+                },
+            )?
         };
 
         let depth_from_world_scale = *properties.depth_from_world_scale.get();
-        let world_depth_from_data_depth = 1.0 / depth_from_world_scale;
 
-        let (h, w) = (tensor.shape()[0].size, tensor.shape()[1].size);
-        let dimensions = glam::UVec2::new(w as _, h as _);
+        let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
 
         let colormap = match *properties.color_mapper.get() {
             re_data_store::ColorMapper::Colormap(colormap) => match colormap {
@@ -311,7 +338,7 @@ impl ImagesPart {
         // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
         // at that distance.
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
-        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * h as f32);
+        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * height as f32);
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
@@ -321,20 +348,20 @@ impl ImagesPart {
             // This could only happen for Jpegs, and we should never get here.
             // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
             re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
-            match data {
-                DepthCloudDepthData::U16(_) => u16::MAX as f32,
-                DepthCloudDepthData::F32(_) => 10.0,
+            match tensor.data {
+                TensorData::U16(_) => u16::MAX as f32,
+                _ => 10.0,
             }
         };
 
         scene.primitives.depth_clouds.clouds.push(DepthCloud {
             world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
-            world_depth_from_data_depth,
+            world_depth_from_texture_depth,
             point_radius_from_world_depth,
-            max_depth_in_world: world_depth_from_data_depth * max_data_value,
+            max_depth_in_world: max_data_value / depth_from_world_scale,
             depth_dimensions: dimensions,
-            depth_data: data,
+            depth_texture,
             colormap,
             outline_mask_id: entity_highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),

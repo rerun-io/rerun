@@ -75,7 +75,9 @@ pub struct Texture2DCreationDesc<'a> {
     pub label: DebugLabel,
 
     /// Data for the highest mipmap level.
-    /// Must be padded according to wgpu rules and ready for upload.
+    ///
+    /// Data is expected to be tightly packed.
+    /// I.e. it is *not* padded according to wgpu buffer->texture transfer rules, padding will happen on the fly if necessary.
     /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
     pub data: std::borrow::Cow<'a, [u8]>,
     pub format: wgpu::TextureFormat,
