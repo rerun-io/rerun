@@ -100,6 +100,12 @@ rs-lint:
     cargo doc --quiet --document-private-items --no-deps --all-features
     cargo test --quiet --doc --all-features # runs all doc-tests
 
+# Run all examples with the specified args
+rs-run-all *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    find examples/rust/ -name main.rs | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && cargo r'
+
 
 ### TOML
 
