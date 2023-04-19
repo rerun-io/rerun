@@ -3,11 +3,11 @@
 import math
 import os
 import subprocess
+import zipfile
 from pathlib import Path
 from typing import Final, List, Optional
 
 import pandas as pd
-import zipfile
 
 ARkitscense_url = "https://docs-assets.developer.apple.com/ml-research/datasets/arkitscenes/v1"
 TRAINING: Final = "Training"
