@@ -283,7 +283,8 @@ def main() -> None:
     )
 
     rr.script_add_args(parser)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "objectron")
 

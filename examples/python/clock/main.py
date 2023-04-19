@@ -70,7 +70,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--steps", type=int, default=10_000, help="The number of time steps to log")
     rr.script_add_args(parser)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "clock")
     log_clock(args.steps)

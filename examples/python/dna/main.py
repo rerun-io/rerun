@@ -6,7 +6,6 @@ The example from our Getting Started page.
 `examples/python/dna/main.py`
 """
 
-import sys
 from math import tau
 
 import numpy as np
@@ -15,8 +14,8 @@ from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp, interleave
 from scipy.spatial.transform import Rotation
 
-# sanity-check since all other example scripts take arguments:
-assert len(sys.argv) == 1, f"{sys.argv[0]} does not take any arguments"
+_, unknown = __import__("argparse").ArgumentParser().parse_known_args()
+[__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
 rr.init("DNA Abacus")
 
