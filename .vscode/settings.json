@@ -43,6 +43,7 @@
         "texcoords",
         "Tonemapper",
         "tonemapping",
+        "unsmoothed",
         "voronoi",
         "vram",
         "Wgsl"

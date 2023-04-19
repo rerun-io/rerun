@@ -289,7 +289,7 @@ pub fn view_3d(
         state
             .state_3d
             .update_eye(&response, &state.scene_bbox_accum, &scene.space_cameras);
-    let did_interact_with_eye = orbit_eye.interact(&response, orbit_eye_drag_threshold);
+    let did_interact_with_eye = orbit_eye.update(&response, orbit_eye_drag_threshold);
 
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
@@ -635,14 +635,10 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
 
     let eye_pos = center - radius * look_dir;
 
-    OrbitEye {
-        orbit_center: center,
-        orbit_radius: radius,
-        world_from_view_rot: Quat::from_affine3(
-            &Affine3A::look_at_rh(eye_pos, center, look_up).inverse(),
-        ),
-        fov_y: Eye::DEFAULT_FOV_Y,
-        up: space_specs.up.unwrap_or(Vec3::ZERO),
-        velocity: Vec3::ZERO,
-    }
+    OrbitEye::new(
+        center,
+        radius,
+        Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
+        space_specs.up.unwrap_or(Vec3::ZERO),
+    )
 }
