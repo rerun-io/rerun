@@ -251,7 +251,7 @@ def log_camera(
 
     rr.log_rigid3(
         # pathlib makes it easy to get the parent, but log_rigid requires a string
-        str(Path(entity_id).parent),
+        str(Path(entity_id).parent).replace("\\", "/"),
         child_from_parent=camera_from_world,
         xyz="RDF",  # X=Right, Y=Down, Z=Forward
     )
