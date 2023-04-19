@@ -31,11 +31,35 @@ py-dev-env:
     venv/bin/pip install -r rerun_py/requirements-lint.txt
     echo "Do 'source venv/bin/activate' to use the virtual environment!"
 
-# Run all examples
-py-run-all: py-build
+# Run all examples with the specified args
+py-run-all *ARGS: py-build
     #!/usr/bin/env bash
     set -euo pipefail
-    fd main.py | xargs -I _ sh -c "echo _ && python3 _"
+    find examples/python/ -name main.py | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && python3 main.py {{ARGS}} --num-frames=30 --steps=200'
+
+# Run all examples in the native viewer
+py-run-all-native: py-run-all
+
+# Run all examples in the web viewer
+py-run-all-web:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    function cleanup {
+        kill $(jobs -p)
+    }
+    trap cleanup EXIT
+
+    cargo r -p rerun --all-features -- --web-viewer &
+    just py-run-all --connect
+
+# Run all examples, save them to disk as rrd, then view them natively
+py-run-all-rrd *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just py-run-all --save out.rrd
+    cargo r -p rerun --all-features --
+    find examples/python/ -name main.py | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && cargo r -p rerun --all-features -- out.rrd'
 
 # Build and install the package into the venv
 py-build *ARGS:
