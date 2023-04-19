@@ -4,12 +4,172 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 …
 
+## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore!
+
+### Overview & Highlights
+
+This new release adds MVP support for embedding Rerun in Jupyter notebooks, and brings significant performance improvements across all layers of the stack.
+
+* Rerun can now be embedded in Jupyter notebooks
+    * Tested with Jupyter Notebook Classic, Jupyter Lab, VSCode & Google Colab; checkout our [How-to guide](https://www.rerun.io/docs/howto/notebook)
+    * Try it out live on [Google Colab](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_?usp=sharing)
+* All colormapping tasks are now done directly on the GPU
+    * This yields _very significant_ performance improvements for colormapping heavy workload (e.g. segmentation)
+    * Try it out in our new [`segment_anything` example](https://www.rerun.io/docs/getting-started/examples#segment-anything) that shows off the latest models from Meta AI
+* GPU picking & hovering now works with all of our primitives, including meshes & depth clouds
+    * This fixes all the shortcomings of the previous CPU-based system
+    * Rerun's automatic backprojection of depth textures ("depth clouds") is now feature complete
+    * Try it out in our updated [`nyud` example](https://www.rerun.io/docs/getting-started/examples#nyud)
+* Our datastore has been completely revamped to more closely match our latest data model
+    * This yields _very significant_ performance improvements for workloads with many events
+    * Checkout [this post](https://github.com/rerun-io/rerun/issues/1619#issuecomment-1511046649) for a detailed walkthrough of the changes
+
+### In Detail
+
+#### 🐍 Python SDK
+- Document that we also accept colors in 0-1 floats [#1740](https://github.com/rerun-io/rerun/pull/1740)
+- Don't initialize an SDK session if we are only going to be launching the app [#1768](https://github.com/rerun-io/rerun/pull/1768)
+- Allow torch tensors for `log_rigid3` [#1769](https://github.com/rerun-io/rerun/pull/1769)
+- Always send `recording_id` as part of `LogMsg` [#1778](https://github.com/rerun-io/rerun/pull/1778)
+- New `reset_time` API [#1826](https://github.com/rerun-io/rerun/pull/1826) [#1854](https://github.com/rerun-io/rerun/pull/1854)
+- Always flush when we remove a sink [#1830](https://github.com/rerun-io/rerun/pull/1830)
+
+#### 🪳 Bug Fixes
+- Fix broken outlines (hover/select effect) for lines [#1724](https://github.com/rerun-io/rerun/pull/1724)
+- Fix logged obb being displayed with half of the requested size [#1749](https://github.com/rerun-io/rerun/pull/1749) (thanks [@BenjaminDev](https://github.com/BenjaminDev)!)
+- Fix `log_obb` usage [#1761](https://github.com/rerun-io/rerun/pull/1761)
+- Always create the `log_time` timeline [#1763](https://github.com/rerun-io/rerun/pull/1763)
+- Fix undo/redo selection shortcut/action changing selection history without changing selection [#1765](https://github.com/rerun-io/rerun/pull/1765)
+- Fix various crashes [#1780](https://github.com/rerun-io/rerun/pull/1780)
+- Fix crash when trying to do picking on depth clouds [d94ca3dd35e73e1984ccb969d0c7abd0d3e0faa9](https://github.com/rerun-io/rerun/commit/d94ca3dd35e73e1984ccb969d0c7abd0d3e0faa9)
+- ci: fix benchmarks [#1799](https://github.com/rerun-io/rerun/pull/1799)
+- ci: fix `cargo deny` [#1806](https://github.com/rerun-io/rerun/pull/1806)
+- Fix "too many points" crash [#1822](https://github.com/rerun-io/rerun/pull/1822)
+- Allow re-use of `RowId`s if no conflict is possible [#1832](https://github.com/rerun-io/rerun/pull/1832)
+- Reduce memory used by staging belts on Web [#1836](https://github.com/rerun-io/rerun/pull/1836)
+- Test and handle all tensor dtypes as images [#1840](https://github.com/rerun-io/rerun/pull/1840)
+- Fix the python build when running without `web_viewer` enabled [#1856](https://github.com/rerun-io/rerun/pull/1856)
+- Error instead of `expect` inside `msg_encode` [#1857](https://github.com/rerun-io/rerun/pull/1857)
+- Fix shutdown race condition in `re_sdk_comms` client [#1861](https://github.com/rerun-io/rerun/pull/1861)
+- Fix broken instance picking in presence of images [#1876](https://github.com/rerun-io/rerun/pull/1876)
+- Make sure JPEGs are always decoded [#1884](https://github.com/rerun-io/rerun/pull/1884)
+- Fix crash when saving store to file [#1909](https://github.com/rerun-io/rerun/pull/1909)
+- Don't clean up `LogDb`s that only contain a `BeginRecordingMsg` [#1914](https://github.com/rerun-io/rerun/pull/1914)
+- Fix picking entities with image + another object (or label) twice [#1908](https://github.com/rerun-io/rerun/pull/1908)
+- Fix double clicking camera no longer focusing on said camera [#1911](https://github.com/rerun-io/rerun/pull/1911)
+
+#### 🚀 Performance Improvements
+- batching 4: retire `MsgBundle` + batching support in transport layer [#1679](https://github.com/rerun-io/rerun/pull/1679)
+- Optimize the depth-cloud shader when `depth=0` [#1729](https://github.com/rerun-io/rerun/pull/1729)
+- `arrow2_convert` primitive (de)serialization benchmarks [#1742](https://github.com/rerun-io/rerun/pull/1742)
+- `arrow2` `estimated_bytes_size` benchmarks [#1743](https://github.com/rerun-io/rerun/pull/1743)
+- `arrow2` erased refcounted clones benchmarks [#1745](https://github.com/rerun-io/rerun/pull/1745)
+- benchmarks for common vector ops across `smallvec`/`tinyvec`/std [#1747](https://github.com/rerun-io/rerun/pull/1747)
+- Columnar `TimePoint`s in data tables and during transport [#1767](https://github.com/rerun-io/rerun/pull/1767)
+- Compile with `panic = "abort"` [#1813](https://github.com/rerun-io/rerun/pull/1813)
+- Process 2D points per entities like 3D points [#1820](https://github.com/rerun-io/rerun/pull/1820)
+- re_query: use latest data types (`DataRow`/`DataCell`) [#1828](https://github.com/rerun-io/rerun/pull/1828)
+- Depth cloud textures are now cached frame-to-frame [#1913](https://github.com/rerun-io/rerun/pull/1913)
+
+#### 🧑‍🏫 Examples
+- Add new `ARKitScenes` example [#1538](https://github.com/rerun-io/rerun/pull/1538) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- New example code for Facebook research's `segment-anything` [#1788](https://github.com/rerun-io/rerun/pull/1788)
+- Add `minimal_options` example for Rust SDK [#1773](https://github.com/rerun-io/rerun/pull/1773) (thanks [@h3mosphere](https://github.com/h3mosphere)!)
+- Remove manual depth projection from `car` and `nyud` examples [#1869](https://github.com/rerun-io/rerun/pull/1869)
+- Always spawn instead of fork in multiprocessing example [#1922](https://github.com/rerun-io/rerun/pull/1922)
+- Add `--num-frames` arg to canny (webcam) example [#1923](https://github.com/rerun-io/rerun/pull/1923)
+
+#### 📚 Docs
+- Add `typing_extensions` to `requirements-doc.txt` [#1786](https://github.com/rerun-io/rerun/pull/1786)
+- Fix typos in notebook readme [#1852](https://github.com/rerun-io/rerun/pull/1852)
+- Update docs related to notebook [#1915](https://github.com/rerun-io/rerun/pull/1915)
+
+#### 🖼 UI Improvements
+- Hover rays for tracked 3D cameras [#1751](https://github.com/rerun-io/rerun/pull/1751)
+- Collapse space-view by default if there is only one child [#1762](https://github.com/rerun-io/rerun/pull/1762)
+- Option to show scene bounding box [#1770](https://github.com/rerun-io/rerun/pull/1770)
+- Assign default colors to class-ids when annotation context is missing [#1783](https://github.com/rerun-io/rerun/pull/1783)
+- Add Restart command and keyboard shortcut for moving time to start of timeline [#1802](https://github.com/rerun-io/rerun/pull/1802) (thanks [@h3mosphere](https://github.com/h3mosphere)!)
+- New option to disable persistant storage [#1825](https://github.com/rerun-io/rerun/pull/1825)
+- Show previews of colormaps when selecting them [#1846](https://github.com/rerun-io/rerun/pull/1846)
+- Smooth out scroll wheel input for camera zooming [#1920](https://github.com/rerun-io/rerun/pull/1920)
+
+#### 🤷‍♂️ Other Viewer Improvements
+- Change `EntityPathHash` to be 64 bit [#1723](https://github.com/rerun-io/rerun/pull/1723)
+- Central `GpuReadback` handling for re_viewer, experimental space view screenshots [#1717](https://github.com/rerun-io/rerun/pull/1717)
+- Readback depth from GPU picking [#1752](https://github.com/rerun-io/rerun/pull/1752)
+- Use GPU picking for points, streamline/share picking code some more [#1814](https://github.com/rerun-io/rerun/pull/1814)
+- Use GPU picking for line(like) primitives, fix `interactive` flags [#1829](https://github.com/rerun-io/rerun/pull/1829)
+- Use GPU colormapping when showing images in the GUI [#1865](https://github.com/rerun-io/rerun/pull/1865)
+
+#### 🕸️ Web
+- Make CI publish `latest` tagged web-viewer to `app.rerun.io` [#1725](https://github.com/rerun-io/rerun/pull/1725)
+- Implement `re_tuid::Tuid::random()` on web [#1796](https://github.com/rerun-io/rerun/pull/1796)
+- Refactor the relationship between the assorted web / websocket servers [#1844](https://github.com/rerun-io/rerun/pull/1844)
+- Notebooks: make `presentation_id` consistent and use data-attribute for rrd [#1881](https://github.com/rerun-io/rerun/pull/1881)
+
+#### 🎨 Renderer Improvements
+- GPU based picking with points [#1721](https://github.com/rerun-io/rerun/pull/1721)
+- improved renderer label handling [#1731](https://github.com/rerun-io/rerun/pull/1731)
+- Improved readback data handling [#1734](https://github.com/rerun-io/rerun/pull/1734)
+- GPU based mesh picking [#1737](https://github.com/rerun-io/rerun/pull/1737)
+- Improve dealing with raw buffers for texture read/write [#1744](https://github.com/rerun-io/rerun/pull/1744)
+- GPU colormapping, first step [#1835](https://github.com/rerun-io/rerun/pull/1835)
+- GPU tensor colormapping [#1841](https://github.com/rerun-io/rerun/pull/1841)
+- GPU picking for depth clouds [#1849](https://github.com/rerun-io/rerun/pull/1849)
+- Implement billinear filtering of textures [#1850](https://github.com/rerun-io/rerun/pull/1850) [#1859](https://github.com/rerun-io/rerun/pull/1859) [#1860](https://github.com/rerun-io/rerun/pull/1860)
+- Refactor: remove `GpuTexture2DHandle::invalid` [#1866](https://github.com/rerun-io/rerun/pull/1866)
+- Fix filtering artifact for non-color images [#1886](https://github.com/rerun-io/rerun/pull/1886)
+- Refactor: Add helper functions to `GpuTexture2DHandle` [#1900](https://github.com/rerun-io/rerun/pull/1900)
+
+#### 🛢 Datastore Improvements
+- Datastore: revamp bench suite [#1733](https://github.com/rerun-io/rerun/pull/1733)
+- Datastore revamp 1: new indexing model & core datastructures [#1727](https://github.com/rerun-io/rerun/pull/1727)
+- Datastore revamp 2: serialization & formatting [#1735](https://github.com/rerun-io/rerun/pull/1735)
+- Datastore revamp 3: efficient incremental stats [#1739](https://github.com/rerun-io/rerun/pull/1739)
+- Datastore revamp 4: sunset `MsgId` [#1785](https://github.com/rerun-io/rerun/pull/1785)
+- Datastore revamp 5: `DataStore::to_data_tables()` [#1791](https://github.com/rerun-io/rerun/pull/1791)
+- Datastore revamp 6: sunset `LogMsg` storage + save store to disk [#1795](https://github.com/rerun-io/rerun/pull/1795)
+- Datastore revamp 7: garbage collection [#1801](https://github.com/rerun-io/rerun/pull/1801)
+- Incremental metadata registry stats [#1833](https://github.com/rerun-io/rerun/pull/1833)
+
+#### ✨ Other Enhancement
+- Don't run 3rd party bench suites on CI [#1787](https://github.com/rerun-io/rerun/pull/1787)
+
+#### 🗣 Merged RFCs
+- RFC: datastore state of the union & end-to-end batching  [#1610](https://github.com/rerun-io/rerun/pull/1610)
+
+#### 🧑‍💻 Dev-experience
+- Post-release cleanup [#1726](https://github.com/rerun-io/rerun/pull/1726)
+- Remove unnecessary dependencies [#1711](https://github.com/rerun-io/rerun/pull/1711) (thanks [@vsuryamurthy](https://github.com/vsuryamurthy)!)
+- Use copilot markers in PR template [#1784](https://github.com/rerun-io/rerun/pull/1784)
+- re_format: barebone support for custom formatting [#1776](https://github.com/rerun-io/rerun/pull/1776)
+- Refactor: Add new helper crate `re_log_encoding` [#1772](https://github.com/rerun-io/rerun/pull/1772)
+- `setup_web.sh` supports pacman package manager [#1797](https://github.com/rerun-io/rerun/pull/1797) (thanks [@urholaukkarinen](https://github.com/urholaukkarinen)!)
+- Add `rerun --strict`: crash if any warning or error is logged [#1812](https://github.com/rerun-io/rerun/pull/1812)
+- End-to-end testing of python logging -> store ingestion [#1817](https://github.com/rerun-io/rerun/pull/1817)
+- Fix e2e test on CI: Don't try to re-build `rerun-sdk` [#1821](https://github.com/rerun-io/rerun/pull/1821)
+- Install the rerun-sdk in CI using `--no-index` and split out linux wheel build to run first [#1838](https://github.com/rerun-io/rerun/pull/1838)
+- Remove more unused dependencies [#1863](https://github.com/rerun-io/rerun/pull/1863)
+- Improve end-to-end testing slightly [#1862](https://github.com/rerun-io/rerun/pull/1862)
+- Turn off benchmarks comment in each PR [#1872](https://github.com/rerun-io/rerun/pull/1872)
+- Fix double-negation in `scripts/run_python_e2e_test.py` [#1896](https://github.com/rerun-io/rerun/pull/1896)
+- Improve PR template with better comment, and no copilot by default [#1901](https://github.com/rerun-io/rerun/pull/1901)
+- Optimize `generate_changelog.py` [#1912](https://github.com/rerun-io/rerun/pull/1912)
+
+#### 🤷‍♂️ Other
+- Fix videos for GitHub in `CHANGELOG.md` [af7d3b192157f942e35f64d3561a9a8dbcc18bfa](https://github.com/rerun-io/rerun/commit/af7d3b192157f942e35f64d3561a9a8dbcc18bfa)
+- Remove `TensorTrait` [#1819](https://github.com/rerun-io/rerun/pull/1819)
+- Disable wheel tests for `x86_64-apple-darwin` [#1853](https://github.com/rerun-io/rerun/pull/1853)
+- Update `enumflags2` to non-yanked version [#1874](https://github.com/rerun-io/rerun/pull/1874)
+
+
 ## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements
 
 https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
 
 
-## Overview & Highlights
+### Overview & Highlights
 * Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
 * Lower memory use [#1535](https://github.com/rerun-io/rerun/pull/1535)
 * Improve garbage collection [#1560](https://github.com/rerun-io/rerun/pull/1560)
