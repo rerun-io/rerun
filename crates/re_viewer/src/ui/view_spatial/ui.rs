@@ -755,7 +755,7 @@ pub fn picking(
             || *ent_properties.backproject_depth.get()
         {
             scene
-                .ui
+                .primitives
                 .images
                 .iter()
                 .find(|image| image.ent_path == instance_path.entity_path)
@@ -790,7 +790,7 @@ pub fn picking(
         ));
 
         response = if let Some((image, coords)) = picked_image_with_coords {
-            if let Some(meter) = image.meter {
+            if let Some(meter) = image.tensor.meter {
                 if let Some(raw_value) = image.tensor.get(&[
                     picking_context.pointer_in_space2d.y.round() as _,
                     picking_context.pointer_in_space2d.x.round() as _,
@@ -840,7 +840,7 @@ pub fn picking(
                                     &image.tensor,
                                     &tensor_stats,
                                     &image.annotations,
-                                    image.meter,
+                                    image.tensor.meter,
                                     &debug_name,
                                     [coords[0] as _, coords[1] as _],
                                 );
