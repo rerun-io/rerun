@@ -760,13 +760,20 @@ pub fn picking(
                 .iter()
                 .find(|image| image.ent_path == instance_path.entity_path)
                 .and_then(|image| {
+                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                    // (the back-projection property may be true despite this not being a depth image!)
+                    if hit.hit_type != PickingHitType::TexturedRect
+                        && *ent_properties.backproject_depth.get()
+                        && image.tensor.meaning != TensorDataMeaning::Depth
+                    {
+                        return None;
+                    }
                     image.tensor.image_height_width_channels().map(|[_, w, _]| {
-                        (
-                            image,
-                            hit.instance_path_hash
-                                .instance_key
-                                .to_2d_image_coordinate(w),
-                        )
+                        let coordinates = hit
+                            .instance_path_hash
+                            .instance_key
+                            .to_2d_image_coordinate(w);
+                        (image, coordinates)
                     })
                 })
         } else {
