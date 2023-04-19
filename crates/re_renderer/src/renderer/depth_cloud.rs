@@ -123,7 +123,7 @@ pub struct DepthCloud {
 
     /// The actual data from the depth texture.
     ///
-    /// Only F32 data is supported right now.
+    /// Only textures with sample type `Float` are supported.
     pub depth_texture: GpuTexture2D,
 
     /// Configures color mapping mode.
@@ -191,7 +191,7 @@ impl DrawData for DepthCloudDrawData {
 
 #[derive(thiserror::Error, Debug)]
 pub enum DepthCloudDrawDataError {
-    #[error("Depth texture format was {0:?}, only F32 is supported")]
+    #[error("Depth texture format was {0:?}, only formats with sample type float are supported")]
     InvalidDepthTextureFormat(wgpu::TextureFormat),
 
     #[error(transparent)]
@@ -251,7 +251,10 @@ impl DepthCloudDrawData {
             depth_cloud_ubo_binding_outlines,
             depth_cloud_ubo_binding_opaque
         ) {
-            if depth_cloud.depth_texture.format() != wgpu::TextureFormat::R32Float {
+            if !matches!(
+                depth_cloud.depth_texture.format().describe().sample_type,
+                wgpu::TextureSampleType::Float { filterable: _ }
+            ) {
                 return Err(DepthCloudDrawDataError::InvalidDepthTextureFormat(
                     depth_cloud.depth_texture.format(),
                 ));
