@@ -66,9 +66,9 @@ eframe = { workspace = true, default-features = false, features = [
   "puffin",
   "wgpu",
 ] }
-egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
+egui.workspace = true
 egui_dock = { workspace = true, features = ["serde"] }
-egui_extras = { workspace = true, features = ["tracing"] }
+egui_extras.workspace = true
 egui-wgpu.workspace = true
 enumset.workspace = true
 glam = { workspace = true, features = [

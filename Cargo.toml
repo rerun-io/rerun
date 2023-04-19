@@ -59,10 +59,10 @@ comfy-table = { version = "6.1", default-features = false }
 ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
-egui = "0.21.0"
+egui = { version = "0.21.0", features = ["extra_debug_asserts", "tracing"] }
 egui-wgpu = "0.21.0"
 egui_dock = "0.4"
-egui_extras = "0.21.0"
+egui_extras = { version = "0.21.0", features = ["tracing"] }
 emath = "0.21.0"
 enumset = "1.0.12"
 epaint = "0.21.0"
@@ -112,3 +112,10 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+
+# ecolor = { path = "../../egui/crates/ecolor" }
+# eframe = { path = "../../egui/crates/eframe" }
+# egui = { path = "../../egui/crates/egui" }
+# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
+# egui_extras = { path = "../../egui/crates/egui_extras" }
+# emath = { path = "../../egui/crates/emath" }
