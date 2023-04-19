@@ -408,10 +408,21 @@ impl Tensor {
 
     /// If this tensor is shaped as an image, return the height, width, and channels/depth of it.
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
-        if self.shape.len() == 2 {
-            Some([self.shape[0].size, self.shape[1].size, 1])
-        } else if self.shape.len() == 3 {
-            let channels = self.shape[2].size;
+        let mut shape = self.shape.clone();
+
+        // Remove trailing unit dimensions
+        while let Some(&d) = shape.last() {
+            if d.size == 1 {
+                shape.pop();
+            } else {
+                break;
+            }
+        }
+
+        if shape.len() == 2 {
+            Some([shape[0].size, shape[1].size, 1])
+        } else if shape.len() == 3 {
+            let channels = shape[2].size;
             // gray, rgb, rgba
             if matches!(channels, 1 | 3 | 4) {
                 Some([self.shape[0].size, self.shape[1].size, channels])
@@ -424,20 +435,33 @@ impl Tensor {
     }
 
     pub fn is_shaped_like_an_image(&self) -> bool {
-        self.num_dim() == 2
-            || self.num_dim() == 3 && {
-                matches!(
-                    self.shape.last().unwrap().size,
-                    // gray, rgb, rgba
-                    1 | 3 | 4
-                )
+        let mut shape = self.shape.clone();
+        while let Some(d) = shape.last() {
+            if d.size == 1 {
+                shape.pop();
+            } else {
+                break;
             }
+        }
+
+        shape.len() == 2 || (shape.len() == 3 && {
+            matches!(
+                shape.last().unwrap().size,
+                // gray, rgb, rgba
+                1 | 3 | 4
+            )
+        })
     }
 
     #[inline]
     pub fn is_vector(&self) -> bool {
         let shape = &self.shape;
-        shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
+        let mut last_dim = shape.last().unwrap().size;
+        while last_dim == 1 && shape.len() > 1 {
+            // Ignore trailing unit-dimensions
+            last_dim = shape[shape.len() - 2].size;
+        }
+        shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || last_dim == 1) }
     }
 
     #[inline]
