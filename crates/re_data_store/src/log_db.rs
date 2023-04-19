@@ -208,8 +208,8 @@ impl LogDb {
             + self.entity_db.data_store.num_temporal_rows() as usize
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.num_rows() == 0
+    pub fn is_default(&self) -> bool {
+        self.recording_msg.is_none() && self.num_rows() == 0
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
