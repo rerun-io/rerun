@@ -90,7 +90,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Option to show scene bounding box [#1770](https://github.com/rerun-io/rerun/pull/1770)
 - Assign default colors to class-ids when annotation context is missing [#1783](https://github.com/rerun-io/rerun/pull/1783)
 - Add Restart command and keyboard shortcut for moving time to start of timeline [#1802](https://github.com/rerun-io/rerun/pull/1802) (thanks [@h3mosphere](https://github.com/h3mosphere)!)
-- New option to disable persistant storage [#1825](https://github.com/rerun-io/rerun/pull/1825)
+- New option to disable persistent storage [#1825](https://github.com/rerun-io/rerun/pull/1825)
 - Show previews of colormaps when selecting them [#1846](https://github.com/rerun-io/rerun/pull/1846)
 - Smooth out scroll wheel input for camera zooming [#1920](https://github.com/rerun-io/rerun/pull/1920)
 
@@ -134,7 +134,6 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Incremental metadata registry stats [#1833](https://github.com/rerun-io/rerun/pull/1833)
 
 #### ✨ Other Enhancement
-- Don't run 3rd party bench suites on CI [#1787](https://github.com/rerun-io/rerun/pull/1787)
 
 #### 🗣 Merged RFCs
 - RFC: datastore state of the union & end-to-end batching  [#1610](https://github.com/rerun-io/rerun/pull/1610)
@@ -159,10 +158,13 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 
 #### 🤷‍♂️ Other
 - Fix videos for GitHub in `CHANGELOG.md` [af7d3b192157f942e35f64d3561a9a8dbcc18bfa](https://github.com/rerun-io/rerun/commit/af7d3b192157f942e35f64d3561a9a8dbcc18bfa)
+- Don't run 3rd party bench suites on CI [#1787](https://github.com/rerun-io/rerun/pull/1787)
 - Remove `TensorTrait` [#1819](https://github.com/rerun-io/rerun/pull/1819)
 - Disable wheel tests for `x86_64-apple-darwin` [#1853](https://github.com/rerun-io/rerun/pull/1853)
 - Update `enumflags2` to non-yanked version [#1874](https://github.com/rerun-io/rerun/pull/1874)
-
+- Collect extra egui features into the main `Cargo.toml` [#1926](https://github.com/rerun-io/rerun/pull/1926)
+- `just rs-run-all` [b14087b40bd805c95f030a4c7d3fb7a0482e13f4](https://github.com/rerun-io/rerun/commit/b14087b40bd805c95f030a4c7d3fb7a0482e13f4)
+- `just py-run-all-{native|web|rrd}` [#1927](https://github.com/rerun-io/rerun/pull/1927)
 
 ## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements
 
