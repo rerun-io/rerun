@@ -158,7 +158,7 @@ fn class_id_tensor_to_gpu(
 
     // We pack the colormap into a 2D texture so we don't go over the max texture size.
     // We only support u8 and u16 class ids, so 256^2 is the biggest texture we need.
-    // Note that if max is 0, we still need to generate a row to accomodate the 0 class id
+    // Note that if max is 0, we still need to generate a row to accommodate the 0 class id
     // (also zero sized textures are not allowed)
     let colormap_width = 256;
     let colormap_height = (max.at_least(1.0) as usize + colormap_width - 1) / colormap_width;
