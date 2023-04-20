@@ -210,6 +210,7 @@ where
 
 pub struct FastFixedSizeListArray<T, const SIZE: usize>(std::marker::PhantomData<T>);
 
+#[cfg(not(target_os = "windows"))]
 extern "C" {
     fn do_not_call_into_iter(); // we never define this function, so the linker will fail
 }
