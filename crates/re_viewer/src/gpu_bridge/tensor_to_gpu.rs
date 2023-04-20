@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
-use egui::util::hash;
+use egui::{util::hash, NumExt};
 use wgpu::TextureFormat;
 
 use re_log_types::component_types::{DecodedTensor, Tensor, TensorData};
@@ -94,7 +94,8 @@ fn color_tensor_to_gpu(
             width,
             height,
         })
-    })?;
+    })
+    .map_err(|e| anyhow::anyhow!("Failed to create texture for color tensor: {e:?}"))?;
 
     let texture_format = texture_handle.format();
 
@@ -157,8 +158,10 @@ fn class_id_tensor_to_gpu(
 
     // We pack the colormap into a 2D texture so we don't go over the max texture size.
     // We only support u8 and u16 class ids, so 256^2 is the biggest texture we need.
+    // Note that if max is 0, we still need to generate a row to accomodate the 0 class id
+    // (also zero sized textures are not allowed)
     let colormap_width = 256;
-    let colormap_height = (max as usize + colormap_width - 1) / colormap_width;
+    let colormap_height = (max.at_least(1.0) as usize + colormap_width - 1) / colormap_width;
 
     let colormap_texture_handle =
         get_or_create_texture(render_ctx, hash(annotations.row_id), || {
@@ -179,11 +182,13 @@ fn class_id_tensor_to_gpu(
                 width: colormap_width as u32,
                 height: colormap_height as u32,
             }
-        });
+        })
+        .map_err(|e| anyhow::anyhow!("Failed to create class_id_colormap: {e:?}"))?;
 
     let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
-    })?;
+    })
+    .map_err(|e| anyhow::anyhow!("Failed to create texture for class id tensor: {e:?}"))?;
 
     Ok(ColormappedTexture {
         texture: main_texture_handle,
@@ -212,7 +217,8 @@ fn depth_tensor_to_gpu(
 
     let texture = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
-    })?;
+    })
+    .map_err(|e| anyhow::anyhow!("Failed to create depth tensor texture: {e:?}"))?;
 
     Ok(ColormappedTexture {
         texture,

@@ -1,5 +1,8 @@
 use re_log_types::{component_types::TensorCastError, DecodedTensor, TensorDataType};
-use re_renderer::{renderer::ColormappedTexture, resource_managers::Texture2DCreationDesc};
+use re_renderer::{
+    renderer::ColormappedTexture,
+    resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
+};
 
 use crate::{
     gpu_bridge::{range, RangeError},
@@ -28,10 +31,11 @@ pub fn colormapped_texture(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     state: &ViewTensorState,
-) -> Result<ColormappedTexture, TensorUploadError> {
+) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     crate::profile_function!();
 
-    let range = range(tensor_stats)?;
+    let range =
+        range(tensor_stats).map_err(|e| TextureManager2DError::DataCreationError(e.into()))?;
     let texture = upload_texture_slice_to_gpu(render_ctx, tensor, state.slice())?;
 
     let color_mapping = state.color_mapping();
@@ -50,7 +54,7 @@ fn upload_texture_slice_to_gpu(
     render_ctx: &mut re_renderer::RenderContext,
     tensor: &DecodedTensor,
     slice_selection: &SliceSelection,
-) -> Result<re_renderer::resource_managers::GpuTexture2D, TensorUploadError> {
+) -> Result<GpuTexture2D, TextureManager2DError<TensorUploadError>> {
     let id = egui::util::hash((tensor.id(), slice_selection));
 
     crate::gpu_bridge::try_get_or_create_texture(render_ctx, id, || {

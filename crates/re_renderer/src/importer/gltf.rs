@@ -68,8 +68,16 @@ pub fn load_gltf_from_buffer(
         };
 
         images_as_textures.push(
-            ctx.texture_manager_2d
-                .create(&mut ctx.gpu_resources.textures, &texture),
+            match ctx
+                .texture_manager_2d
+                .create(&mut ctx.gpu_resources.textures, &texture)
+            {
+                Ok(texture) => texture,
+                Err(err) => {
+                    re_log::error!("Failed to create texture: {err:?}");
+                    ctx.texture_manager_2d.white_texture_unorm_handle().clone()
+                }
+            },
         );
     }
 

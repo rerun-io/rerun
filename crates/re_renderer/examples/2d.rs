@@ -36,16 +36,19 @@ impl framework::Example for Render2D {
             );
         }
 
-        let rerun_logo_texture = re_ctx.texture_manager_2d.create(
-            &mut re_ctx.gpu_resources.textures,
-            &Texture2DCreationDesc {
-                label: "rerun logo".into(),
-                data: image_data.into(),
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                width: rerun_logo.width(),
-                height: rerun_logo.height(),
-            },
-        );
+        let rerun_logo_texture = re_ctx
+            .texture_manager_2d
+            .create(
+                &mut re_ctx.gpu_resources.textures,
+                &Texture2DCreationDesc {
+                    label: "rerun logo".into(),
+                    data: image_data.into(),
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    width: rerun_logo.width(),
+                    height: rerun_logo.height(),
+                },
+            )
+            .expect("Failed to create texture for rerun logo");
         Render2D {
             rerun_logo_texture,
 

@@ -408,17 +408,20 @@ impl DepthTexture {
         });
 
         let label = format!("depth texture spiral {dimensions}");
-        let texture = re_ctx.texture_manager_2d.get_or_create(
-            hash(&label),
-            &mut re_ctx.gpu_resources.textures,
-            Texture2DCreationDesc {
-                label: label.into(),
-                data: bytemuck::cast_slice(&data).into(),
-                format: wgpu::TextureFormat::R32Float,
-                width: dimensions.x,
-                height: dimensions.y,
-            },
-        );
+        let texture = re_ctx
+            .texture_manager_2d
+            .get_or_create(
+                hash(&label),
+                &mut re_ctx.gpu_resources.textures,
+                Texture2DCreationDesc {
+                    label: label.into(),
+                    data: bytemuck::cast_slice(&data).into(),
+                    format: wgpu::TextureFormat::R32Float,
+                    width: dimensions.x,
+                    height: dimensions.y,
+                },
+            )
+            .expect("Failed to create depth texture.");
 
         Self {
             dimensions,
@@ -448,17 +451,20 @@ impl AlbedoTexture {
         });
 
         let label = format!("albedo texture spiral {dimensions}");
-        let texture = re_ctx.texture_manager_2d.get_or_create(
-            hash(&label),
-            &mut re_ctx.gpu_resources.textures,
-            Texture2DCreationDesc {
-                label: label.into(),
-                data: bytemuck::cast_slice(&rgba8).into(),
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                width: dimensions.x,
-                height: dimensions.y,
-            },
-        );
+        let texture = re_ctx
+            .texture_manager_2d
+            .get_or_create(
+                hash(&label),
+                &mut re_ctx.gpu_resources.textures,
+                Texture2DCreationDesc {
+                    label: label.into(),
+                    data: bytemuck::cast_slice(&rgba8).into(),
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    width: dimensions.x,
+                    height: dimensions.y,
+                },
+            )
+            .expect("Failed to create albedo texture.");
 
         Self {
             dimensions,

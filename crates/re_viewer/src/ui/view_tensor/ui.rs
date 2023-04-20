@@ -321,7 +321,8 @@ fn paint_colormap_gradient(
                 width,
                 height,
             }
-        });
+        })
+        .map_err(|e| anyhow::anyhow!("Failed to create horizontal gradient texture: {e:?}"))?;
 
     let colormapped_texture = re_renderer::renderer::ColormappedTexture {
         texture: horizontal_gradient,
