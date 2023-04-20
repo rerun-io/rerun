@@ -29,6 +29,9 @@ env:
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 jobs:
+
+################################################################################
+
   set_config:
     name: Set Config
     runs-on: ubuntu-latest
@@ -73,6 +76,8 @@ jobs:
           echo "name=run_tests::$run_tests" >> $GITHUB_OUTPUT
           echo "name=container::$container" >> $GITHUB_OUTPUT
 
+################################################################################
+
   build_wheels:
     name: Build Wheels
 
@@ -82,7 +87,7 @@ jobs:
     container: ${{ fromJson(needs.set_config.outputs.CONTAINER) }}
 
     outputs:
-      expected_version: ${{ steps.expected_version.outputs.expected_version }}
+      EXPECTED_VERSION: ${{ steps.expected_version.outputs.expected_version }}
 
     steps:
       - uses: actions/checkout@v3
@@ -185,6 +190,8 @@ jobs:
           name: ${{inputs.PLATFORM}}-wheels
           path: dist
 
+################################################################################
+
   run_tests:
     name: Test Wheels
 
@@ -197,6 +204,20 @@ jobs:
     if: needs.set_config.outputs.RUN_TESTS == 'true'
 
     steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+          echo "EXPECTED_VERSION": $EXPECTED_VERSION
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+          EXPECTED_VERSION: ${{ needs.build_wheels.outputs.EXPECTED_VERSION }}
+
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
@@ -219,7 +240,7 @@ jobs:
         shell: bash
         run: |
           pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ needs.build_wheels.outputs.expected_version }} --no-index --find-links dist
+          pip install rerun-sdk==${{ needs.build_wheels.outputs.EXPECTED_VERSION }} --no-index --find-links dist
 
       - name: Verify built wheel version
         shell: bash
