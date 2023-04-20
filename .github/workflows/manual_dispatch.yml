@@ -1,0 +1,45 @@
+name: Manually Dispatch Workflows
+
+on:
+  workflow_dispatch:
+    inputs:
+      lints:
+        description: 'Run Lints'
+        type: boolean
+        required: true
+        default: true
+      build_linux:
+        description: 'Build/Test Linux'
+        type: boolean
+        required: true
+        default: true
+      build_macos:
+        description: 'Build/Test Mac'
+        type: boolean
+        required: true
+        default: false
+      build_windows:
+        description: 'Build/Test Win'
+        type: boolean
+        required: true
+        default: false
+
+jobs:
+  lint_all:
+    name: Lint All
+    if: ${{ github.event.inputs.lints }}
+    uses: ./.github/workflows/reusable_lint.yml
+    with:
+      SAVE_CACHE: false
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build_linux:
+    name: Build/Test Linux
+    if: ${{ github.event.inputs.build_linux }}
+    needs: [lint_all]
+    uses: ./.github/workflows/reusable_build_and_test.yml
+    with:
+      SAVE_CACHE: false
+      PLATFORM: linux
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
