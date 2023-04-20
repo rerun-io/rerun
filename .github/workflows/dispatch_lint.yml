@@ -1,0 +1,12 @@
+name: Manually dispatch linting
+
+on:
+  workflow_dispatch:
+
+jobs:
+  lint_all:
+    uses: ./.github/workflows/reusable_lint.yml
+    with:
+      SAVE_CACHE: false
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
