@@ -11,8 +11,8 @@ pub use mesh_manager::{GpuMeshHandle, MeshManager};
 
 mod texture_manager;
 pub use texture_manager::{
-    GpuTexture2D, Texture2DCreationDesc, TextureManager2D, TextureManager2DError,
-    ZeroSizeTextureError,
+    GpuTexture2D, Texture2DCreationDesc, TextureCreationError, TextureManager2D,
+    TextureManager2DError,
 };
 
 mod resource_manager;

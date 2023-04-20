@@ -96,19 +96,21 @@ impl<'a> Texture2DCreationDesc<'a> {
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error("Texture with debug label {0:?} has zero width or height!")]
-pub struct ZeroSizeTextureError(DebugLabel);
+pub enum TextureCreationError {
+    #[error("Texture with debug label {0:?} has zero width or height!")]
+    ZeroSize(DebugLabel),
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum TextureManager2DError<DataCreationError> {
     #[error(transparent)]
-    ZeroSize(ZeroSizeTextureError),
+    ZeroSize(TextureCreationError),
 
     #[error(transparent)]
     DataCreationError(#[from] DataCreationError),
 }
 
-impl From<TextureManager2DError<never::Never>> for ZeroSizeTextureError {
+impl From<TextureManager2DError<never::Never>> for TextureCreationError {
     fn from(err: TextureManager2DError<never::Never>) -> Self {
         match err {
             TextureManager2DError::ZeroSize(zero_size) => zero_size,
@@ -199,7 +201,7 @@ impl TextureManager2D {
         &mut self,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-    ) -> Result<GpuTexture2D, ZeroSizeTextureError> {
+    ) -> Result<GpuTexture2D, TextureCreationError> {
         // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
         // However, it's still very much a concern especially once we add mipmapping. Something we need to keep in mind.
         //
@@ -226,7 +228,7 @@ impl TextureManager2D {
         key: u64,
         texture_pool: &mut GpuTexturePool,
         texture_desc: Texture2DCreationDesc<'_>,
-    ) -> Result<GpuTexture2D, ZeroSizeTextureError> {
+    ) -> Result<GpuTexture2D, TextureCreationError> {
         self.get_or_create_with(key, texture_pool, || texture_desc)
     }
 
@@ -237,7 +239,7 @@ impl TextureManager2D {
         key: u64,
         texture_pool: &mut GpuTexturePool,
         create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
-    ) -> Result<GpuTexture2D, ZeroSizeTextureError> {
+    ) -> Result<GpuTexture2D, TextureCreationError> {
         self.get_or_try_create_with(key, texture_pool, || -> Result<_, never::Never> {
             Ok(create_texture_desc())
         })
@@ -309,11 +311,11 @@ impl TextureManager2D {
         queue: &wgpu::Queue,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-    ) -> Result<GpuTexture2D, ZeroSizeTextureError> {
+    ) -> Result<GpuTexture2D, TextureCreationError> {
         crate::profile_function!();
 
         if creation_desc.width == 0 || creation_desc.height == 0 {
-            return Err(ZeroSizeTextureError(creation_desc.label.clone()));
+            return Err(TextureCreationError::ZeroSize(creation_desc.label.clone()));
         }
 
         let size = wgpu::Extent3d {

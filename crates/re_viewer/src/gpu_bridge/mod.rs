@@ -10,7 +10,7 @@ use egui::mutex::Mutex;
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleOptions},
     resource_managers::{
-        GpuTexture2D, Texture2DCreationDesc, TextureManager2DError, ZeroSizeTextureError,
+        GpuTexture2D, Texture2DCreationDesc, TextureCreationError, TextureManager2DError,
     },
     RenderContext, ViewBuilder,
 };
@@ -70,7 +70,7 @@ pub fn get_or_create_texture<'a>(
     render_ctx: &mut RenderContext,
     texture_key: u64,
     create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
-) -> Result<GpuTexture2D, ZeroSizeTextureError> {
+) -> Result<GpuTexture2D, TextureCreationError> {
     render_ctx.texture_manager_2d.get_or_create_with(
         texture_key,
         &mut render_ctx.gpu_resources.textures,
