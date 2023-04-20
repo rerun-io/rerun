@@ -2,6 +2,8 @@ name: Manually Dispatch Workflows
 
 on:
   workflow_dispatch:
+    # NOTE: boolean inputs are still actually strings
+    # See: https://github.com/actions/runner/issues/1483
     inputs:
       lints:
         description: 'Run Lints'
@@ -32,7 +34,7 @@ on:
 jobs:
   lint_all:
     name: Lint All
-    if: ${{ github.event.inputs.lints }}
+    if: ${{ github.event.inputs.lints == 'true' }}
     uses: ./.github/workflows/reusable_lint.yml
     with:
       SAVE_CACHE: false
@@ -41,7 +43,7 @@ jobs:
 
   build_linux:
     name: Build/Test Linux
-    if: ${{ github.event.inputs.build_linux }}
+    if: ${{ github.event.inputs.build_linux == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
       SAVE_CACHE: false
@@ -51,7 +53,7 @@ jobs:
 
   build_windows:
     name: Build/Test Windows
-    if: ${{ github.event.inputs.build_windows }}
+    if: ${{ github.event.inputs.build_windows == 'true'}}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
       SAVE_CACHE: false
@@ -61,7 +63,7 @@ jobs:
 
   build_mac_arm:
     name: Build/Test Mac (Arm)
-    if: ${{ github.event.inputs.build_macos_arm }}
+    if: ${{ github.event.inputs.build_macos_arm == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
       SAVE_CACHE: false
@@ -71,7 +73,7 @@ jobs:
 
   build_mac_intel:
     name: Build/Test Mac (Intel)
-    if: ${{ github.event.inputs.build_macos_intel }}
+    if: ${{ github.event.inputs.build_macos_intel == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
       SAVE_CACHE: false
