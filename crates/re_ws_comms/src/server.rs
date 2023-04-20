@@ -110,8 +110,7 @@ impl RerunServerHandle {
         let rt = tokio::runtime::Handle::current();
 
         let ws_server = rt.block_on(tokio::spawn(async move {
-            let ws_server = RerunServer::new(requested_port).await;
-            ws_server
+            RerunServer::new(requested_port).await
         }))??;
 
         let port = ws_server.port;
