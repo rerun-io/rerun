@@ -243,7 +243,6 @@ impl ImagesPart {
                 scene.primitives.images.push(Image {
                     ent_path: ent_path.clone(),
                     tensor,
-                    annotations,
                     textured_rect,
                 });
             }
