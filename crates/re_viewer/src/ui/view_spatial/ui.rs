@@ -754,28 +754,29 @@ pub fn picking(
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
             || *ent_properties.backproject_depth.get()
         {
-            scene
-                .primitives
-                .images
-                .iter()
-                .find(|image| image.ent_path == instance_path.entity_path)
-                .and_then(|image| {
-                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                    // (the back-projection property may be true despite this not being a depth image!)
-                    if hit.hit_type != PickingHitType::TexturedRect
-                        && *ent_properties.backproject_depth.get()
-                        && image.tensor.meaning != TensorDataMeaning::Depth
-                    {
-                        return None;
-                    }
-                    image.tensor.image_height_width_channels().map(|[_, w, _]| {
+            query_latest_single::<Tensor>(
+                &ctx.log_db.entity_db,
+                &instance_path.entity_path,
+                &ctx.current_query(),
+            )
+            .and_then(|tensor| {
+                // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                // (the back-projection property may be true despite this not being a depth image!)
+                if hit.hit_type != PickingHitType::TexturedRect
+                    && *ent_properties.backproject_depth.get()
+                    && tensor.meaning != TensorDataMeaning::Depth
+                {
+                    None
+                } else {
+                    tensor.image_height_width_channels().map(|[_, w, _]| {
                         let coordinates = hit
                             .instance_path_hash
                             .instance_key
                             .to_2d_image_coordinate(w);
-                        (image, coordinates)
+                        (tensor, coordinates)
                     })
-                })
+                }
+            })
         } else {
             None
         };
@@ -789,9 +790,9 @@ pub fn picking(
             instance_path.clone(),
         ));
 
-        response = if let Some((image, coords)) = picked_image_with_coords {
-            if let Some(meter) = image.tensor.meter {
-                if let Some(raw_value) = image.tensor.get(&[
+        response = if let Some((tensor, coords)) = picked_image_with_coords {
+            if let Some(meter) = tensor.meter {
+                if let Some(raw_value) = tensor.get(&[
                     picking_context.pointer_in_space2d.y.round() as _,
                     picking_context.pointer_in_space2d.x.round() as _,
                 ]) {
@@ -815,10 +816,10 @@ pub fn picking(
                             &ctx.current_query(),
                         );
 
-                        if let [h, w, ..] = image.tensor.shape() {
+                        if let Some([h, w, ..]) = tensor.image_height_width_channels() {
                             ui.separator();
                             ui.horizontal(|ui| {
-                                let (w, h) = (w.size as f32, h.size as f32);
+                                let (w, h) = (w as f32, h as f32);
                                 if *state.nav_mode.get() == SpatialNavigationMode::TwoD {
                                     let rect = egui::Rect::from_min_size(
                                         egui::Pos2::ZERO,
@@ -826,24 +827,30 @@ pub fn picking(
                                     );
                                     data_ui::image::show_zoomed_image_region_area_outline(
                                         ui,
-                                        &image.tensor,
+                                        &tensor,
                                         [coords[0] as _, coords[1] as _],
                                         space_from_ui.inverse().transform_rect(rect),
                                     );
                                 }
 
-                                let tensor_stats = *ctx.cache.tensor_stats(&image.tensor);
-                                let debug_name = image.ent_path.to_string();
-                                data_ui::image::show_zoomed_image_region(
-                                    ctx.render_ctx,
-                                    ui,
-                                    &image.tensor,
-                                    &tensor_stats,
-                                    &image.annotations,
-                                    image.tensor.meter,
-                                    &debug_name,
-                                    [coords[0] as _, coords[1] as _],
-                                );
+                                let tensor_name = instance_path.to_string();
+                                match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+                                    Ok(decoded_tensor) =>
+                                    data_ui::image::show_zoomed_image_region(
+                                        ctx.render_ctx,
+                                        ui,
+                                        &decoded_tensor,
+                                        ctx.cache.tensor_stats(&decoded_tensor),
+                                        &scene.annotation_map.find(&instance_path.entity_path),
+                                        decoded_tensor.meter,
+                                        &tensor_name,
+                                        [coords[0] as _, coords[1] as _],
+                                    ),
+                                Err(err) =>
+                                    re_log::warn_once!(
+                                        "Encountered problem decoding tensor at path {tensor_name}: {err}"
+                                    ),
+                                }
                             });
                         }
                     });
