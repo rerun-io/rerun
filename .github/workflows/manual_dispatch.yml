@@ -13,8 +13,13 @@ on:
         type: boolean
         required: true
         default: true
-      build_macos:
-        description: 'Build/Test Mac'
+      build_macos_intel:
+        description: 'Build/Test Mac (Intel)'
+        type: boolean
+        required: true
+        default: false
+      build_macos_arm:
+        description: 'Build/Test Mac (Arm)'
         type: boolean
         required: true
         default: false
@@ -33,13 +38,43 @@ jobs:
       SAVE_CACHE: false
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build_linux:
     name: Build/Test Linux
     if: ${{ github.event.inputs.build_linux }}
-    needs: [lint_all]
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
       SAVE_CACHE: false
       PLATFORM: linux
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build_windows:
+    name: Build/Test Windows
+    if: ${{ github.event.inputs.build_windows }}
+    uses: ./.github/workflows/reusable_build_and_test.yml
+    with:
+      SAVE_CACHE: false
+      PLATFORM: windows
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build_mac_arm:
+    name: Build/Test Mac (Arm)
+    if: ${{ github.event.inputs.build_macos_arm }}
+    uses: ./.github/workflows/reusable_build_and_test.yml
+    with:
+      SAVE_CACHE: false
+      PLATFORM: macos-arm
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build_mac_intel:
+    name: Build/Test Mac (Intel)
+    if: ${{ github.event.inputs.build_macos_intel }}
+    uses: ./.github/workflows/reusable_build_and_test.yml
+    with:
+      SAVE_CACHE: false
+      PLATFORM: macos-intel
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
