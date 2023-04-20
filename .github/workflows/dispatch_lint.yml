@@ -9,4 +9,4 @@ jobs:
     with:
       SAVE_CACHE: false
     secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
