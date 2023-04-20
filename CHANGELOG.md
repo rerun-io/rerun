@@ -115,6 +115,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Implement `re_tuid::Tuid::random()` on web [#1796](https://github.com/rerun-io/rerun/pull/1796)
 - Refactor the relationship between the assorted web / websocket servers [#1844](https://github.com/rerun-io/rerun/pull/1844)
 - Notebooks: make `presentation_id` consistent and use data-attribute for rrd [#1881](https://github.com/rerun-io/rerun/pull/1881)
+- 2.5GB before GC kick in on web [#1944](https://github.com/rerun-io/rerun/pull/1944)
 
 #### 🎨 Renderer Improvements
 - GPU based picking with points [#1721](https://github.com/rerun-io/rerun/pull/1721)
