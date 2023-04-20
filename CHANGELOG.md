@@ -33,6 +33,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Always send `recording_id` as part of `LogMsg` [#1778](https://github.com/rerun-io/rerun/pull/1778)
 - New `reset_time` API [#1826](https://github.com/rerun-io/rerun/pull/1826) [#1854](https://github.com/rerun-io/rerun/pull/1854)
 - Always flush when we remove a sink [#1830](https://github.com/rerun-io/rerun/pull/1830)
+- More robust wait for exit condition during .serve() [#1939](https://github.com/rerun-io/rerun/pull/1939)
 
 #### 🪳 Bug Fixes
 - Fix broken outlines (hover/select effect) for lines [#1724](https://github.com/rerun-io/rerun/pull/1724)
@@ -57,6 +58,9 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Don't clean up `LogDb`s that only contain a `BeginRecordingMsg` [#1914](https://github.com/rerun-io/rerun/pull/1914)
 - Fix picking entities with image + another object (or label) twice [#1908](https://github.com/rerun-io/rerun/pull/1908)
 - Fix double clicking camera no longer focusing on said camera [#1911](https://github.com/rerun-io/rerun/pull/1911)
+- Fix annotation images sometimes drawn in the background [#1933](https://github.com/rerun-io/rerun/pull/1933)
+- Use `zipfile` python library instead of `unzip` command in `arkitscene` demo [#1936](https://github.com/rerun-io/rerun/pull/1936)
+- Fix backslashes in `arkitscene` rigid transformation path [#1938](https://github.com/rerun-io/rerun/pull/1938)
 
 #### 🚀 Performance Improvements
 - batching 4: retire `MsgBundle` + batching support in transport layer [#1679](https://github.com/rerun-io/rerun/pull/1679)
@@ -78,6 +82,8 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Remove manual depth projection from `car` and `nyud` examples [#1869](https://github.com/rerun-io/rerun/pull/1869)
 - Always spawn instead of fork in multiprocessing example [#1922](https://github.com/rerun-io/rerun/pull/1922)
 - Add `--num-frames` arg to canny (webcam) example [#1923](https://github.com/rerun-io/rerun/pull/1923)
+- Add argument parsing to `rerun_demo` [#1925](https://github.com/rerun-io/rerun/pull/1925)
+- Join threads at end of `multithreading` example [#1934](https://github.com/rerun-io/rerun/pull/1934)
 
 #### 📚 Docs
 - Add `typing_extensions` to `requirements-doc.txt` [#1786](https://github.com/rerun-io/rerun/pull/1786)
