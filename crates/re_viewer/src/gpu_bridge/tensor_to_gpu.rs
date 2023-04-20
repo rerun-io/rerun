@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
-use egui::{util::hash, NumExt};
+use egui::util::hash;
 use wgpu::TextureFormat;
 
 use re_log_types::component_types::{DecodedTensor, Tensor, TensorData};
@@ -152,16 +152,13 @@ fn class_id_tensor_to_gpu(
         .ok_or_else(|| anyhow::anyhow!("compressed_tensor!?"))?;
     anyhow::ensure!(0.0 <= min, "Negative class id");
 
-    // create a lookup texture for the colors that's 256 wide,
-    // and as many rows as needed to fit all the classes.
-    anyhow::ensure!(max <= 65535.0, "Too many class ids");
+    anyhow::ensure!(max <= 65535.0, "Too many class ids"); // we only support u8 and u16 tensors
 
     // We pack the colormap into a 2D texture so we don't go over the max texture size.
     // We only support u8 and u16 class ids, so 256^2 is the biggest texture we need.
-    // Note that if max is 0, we still need to generate a row to accommodate the 0 class id
-    // (also zero sized textures are not allowed)
+    let num_colors = (max + 1.0) as usize;
     let colormap_width = 256;
-    let colormap_height = (max.at_least(1.0) as usize + colormap_width - 1) / colormap_width;
+    let colormap_height = (num_colors + colormap_width - 1) / colormap_width;
 
     let colormap_texture_handle =
         get_or_create_texture(render_ctx, hash(annotations.row_id), || {
