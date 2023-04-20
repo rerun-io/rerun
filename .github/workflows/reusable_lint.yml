@@ -224,25 +224,10 @@ jobs:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
 
-    # TODO(emilk): remove this matrix when https://github.com/EmbarkStudios/cargo-deny/issues/324 is resolved
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - i686-pc-windows-gnu
-          - i686-pc-windows-msvc
-          - i686-unknown-linux-gnu
-          - wasm32-unknown-unknown
-          - x86_64-apple-darwin
-          - x86_64-pc-windows-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-unknown-linux-gnu
-          - x86_64-unknown-redox
-
     steps:
       - uses: actions/checkout@v3
-      - uses: EmbarkStudios/cargo-deny-action@v1
-        with:
-          command: check
-          log-level: error
-          arguments: --all-features --target ${{ matrix.platform }}
+
+      - name: Cargo Deny
+        shell: bash
+        id: expected_version
+        run: ./scripts/cargo_deny.sh
