@@ -17,6 +17,7 @@ from typing import Any, List, Optional, Tuple
 todo_pattern = re.compile(r"TODO([^(]|$)")
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
+error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
 wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 
@@ -52,7 +53,8 @@ def lint_line(line: str) -> Optional[str]:
     if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 
-    if m := re.search(error_match_name, line):
+    m = re.search(error_map_err_name, line) or re.search(error_match_name, line)
+    if m:
         name = m.group(1)
         # if name not in ("err", "_err", "_"):
         if name in ("e", "error"):
@@ -82,6 +84,9 @@ def test_lint_line() -> None:
         "if let Err(err) = foo",
         "if let Err(_err) = foo",
         "if let Err(_) = foo",
+        "map_err(|err| …)",
+        "map_err(|_err| …)",
+        "map_err(|_| …)",
         "WASM_FOO env var",
         "Wasm",
         "num_instances",
@@ -100,6 +105,7 @@ def test_lint_line() -> None:
         'eprintln!("{:?}", err)',
         'eprintln!("{:#?}", err)',
         "if let Err(error) = foo",
+        "map_err(|e| …)",
         "We use WASM in Rerun",
         "nb_instances",
         "inner_nb_instances",
