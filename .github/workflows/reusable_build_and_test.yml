@@ -177,7 +177,7 @@ jobs:
             --target ${{ needs.set_config.outputs.TARGET }}
             --no-default-features
             --features pypi
-            --out pre-dist
+            --out dist
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -197,6 +197,12 @@ jobs:
     if: needs.set_config.outputs.RUN_TESTS == 'true'
 
     steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{inputs.PLATFORM}}-wheels
+          path: dist
+
       - name: Install wheel dependencies
         # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
         # This needs to be a separate step for some reason or the following step fails
@@ -213,7 +219,7 @@ jobs:
         shell: bash
         run: |
           pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ needs.build_wheels.outputs.expected_version }} --no-index --find-links pre-dist
+          pip install rerun-sdk==${{ needs.build_wheels.outputs.expected_version }} --no-index --find-links dist
 
       - name: Verify built wheel version
         shell: bash
