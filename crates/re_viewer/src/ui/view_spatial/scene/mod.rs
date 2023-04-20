@@ -7,7 +7,7 @@ use re_log_types::{
     component_types::{ClassId, InstanceKey, KeypointId},
     DecodedTensor, MeshId,
 };
-use re_renderer::{Color32, OutlineMaskPreference, Size};
+use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 
 use crate::{
     misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
@@ -63,15 +63,11 @@ pub struct Image {
 
     pub tensor: DecodedTensor,
 
-    /// If this is a depth map, how long is a meter?
-    ///
-    /// For example, with a `u16` dtype one might have
-    /// `meter == 1000.0` for millimeter precision
-    /// up to a ~65m range.
-    pub meter: Option<f32>,
-
     /// A thing that provides additional semantic context for your dtype.
     pub annotations: Arc<Annotations>,
+
+    /// Textured rectangle for the renderer.
+    pub textured_rect: TexturedRect,
 }
 
 pub enum UiLabelTarget {
@@ -104,9 +100,6 @@ pub struct SceneSpatialUiData {
     /// Picking any any of these rects cause the referred instance to be hovered.
     /// Only use this for 2d overlays!
     pub pickable_ui_rects: Vec<(egui::Rect, InstancePathHash)>,
-
-    /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
-    pub images: Vec<Image>,
 }
 
 pub struct SceneSpatial {
@@ -231,7 +224,7 @@ impl SceneSpatial {
             return SpatialNavigationMode::ThreeD;
         }
 
-        if !self.ui.images.is_empty() {
+        if !self.primitives.images.is_empty() {
             return SpatialNavigationMode::TwoD;
         }
         if self.num_logged_3d_objects == 0 {

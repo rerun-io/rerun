@@ -33,7 +33,7 @@ use super::{
 };
 
 /// Texture filter setting for magnification (a texel covers several pixels).
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TextureFilterMag {
     Linear,
     Nearest,
@@ -41,7 +41,7 @@ pub enum TextureFilterMag {
 }
 
 /// Texture filter setting for minification (several texels fall to one pixel).
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TextureFilterMin {
     Linear,
     Nearest,
@@ -98,6 +98,7 @@ impl ColormappedTexture {
     }
 }
 
+#[derive(Clone)]
 pub struct TexturedRect {
     /// Top left corner position in world space.
     pub top_left_corner_position: glam::Vec3,
@@ -114,6 +115,7 @@ pub struct TexturedRect {
     pub options: RectangleOptions,
 }
 
+#[derive(Clone)]
 pub struct RectangleOptions {
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,

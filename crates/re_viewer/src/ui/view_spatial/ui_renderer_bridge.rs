@@ -32,7 +32,11 @@ pub fn fill_view_builder(
         .queue_draw(&primitives.points.to_draw_data(render_ctx)?)
         .queue_draw(&RectangleDrawData::new(
             render_ctx,
-            &primitives.textured_rectangles,
+            &primitives
+                .images
+                .iter()
+                .map(|image| image.textured_rect.clone())
+                .collect::<Vec<_>>(),
         )?);
 
     if matches!(background, ScreenBackground::GenericSkybox) {

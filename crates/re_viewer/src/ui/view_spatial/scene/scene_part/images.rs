@@ -25,9 +25,7 @@ use crate::{
 
 use super::ScenePart;
 
-#[allow(clippy::too_many_arguments)]
-fn push_tensor_texture(
-    scene: &mut SceneSpatial,
+fn to_textured_rect(
     ctx: &mut ViewerContext<'_>,
     annotations: &Annotations,
     world_from_obj: glam::Mat4,
@@ -35,10 +33,10 @@ fn push_tensor_texture(
     tensor: &DecodedTensor,
     multiplicative_tint: egui::Rgba,
     outline_mask: OutlineMaskPreference,
-) {
+) -> Option<re_renderer::renderer::TexturedRect> {
     crate::profile_function!();
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else { return; };
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx.cache.tensor_stats(tensor);
@@ -68,7 +66,7 @@ fn push_tensor_texture(
                 re_renderer::renderer::TextureFilterMin::Linear
             };
 
-            let textured_rect = re_renderer::renderer::TexturedRect {
+            Some(re_renderer::renderer::TexturedRect {
                 top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
                 extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
                 extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
@@ -80,15 +78,11 @@ fn push_tensor_texture(
                     depth_offset: -1, // Push to background. Mostly important for mouse picking order!
                     outline_mask,
                 },
-            };
-            scene.primitives.textured_rectangles.push(textured_rect);
-            scene
-                .primitives
-                .textured_rectangles_ids
-                .push(ent_path.hash());
+            })
         }
         Err(err) => {
             re_log::error_once!("Failed to create texture from tensor for {debug_name:?}: {err}");
+            None
         }
     }
 }
@@ -99,15 +93,17 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
     // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
     // First, group by similar plane.
     // TODO(andreas): Need planes later for picking as well!
-    let rects_grouped_by_plane = {
+    let images_grouped_by_plane = {
         let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
         let mut rectangle_group = Vec::new();
         scene
             .primitives
-            .textured_rectangles
-            .iter_mut()
+            .images
+            .drain(..) // We rebuild the list as we might reorder as well!
             .batching(move |it| {
-                for rect in it.by_ref() {
+                for image in it {
+                    let rect = &image.textured_rect;
+
                     let prev_plane = cur_plane;
                     cur_plane = macaw::Plane3::from_normal_point(
                         rect.extent_u.cross(rect.extent_v).normalize(),
@@ -119,10 +115,10 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
                         && prev_plane.normal.dot(cur_plane.normal) < 0.99
                         && (prev_plane.d - cur_plane.d) < 0.01
                     {
-                        let previous_group = std::mem::replace(&mut rectangle_group, vec![rect]);
+                        let previous_group = std::mem::replace(&mut rectangle_group, vec![image]);
                         return Some(previous_group);
                     }
-                    rectangle_group.push(rect);
+                    rectangle_group.push(image);
                 }
                 if !rectangle_group.is_empty() {
                     Some(rectangle_group.drain(..).collect())
@@ -130,14 +126,19 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
                     None
                 }
             })
-    };
-    // Then, change opacity & transformation for planes within group except the base plane.
-    for mut grouped_rects in rects_grouped_by_plane {
-        let total_num_images = grouped_rects.len();
-        for (idx, rect) in grouped_rects.iter_mut().enumerate() {
+    }
+    .collect_vec();
+
+    // Then, for each planar group do resorting and change transparency.
+    for mut grouped_images in images_grouped_by_plane {
+        // Class id images should generally come last as they typically have large areas being zeroed out (which maps to fully transparent).
+        grouped_images.sort_by_key(|image| image.tensor.meaning == TensorDataMeaning::ClassId);
+
+        let total_num_images = grouped_images.len();
+        for (idx, image) in grouped_images.iter_mut().enumerate() {
             // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
             // Keep behind depth offset 0 for correct picking order.
-            rect.options.depth_offset =
+            image.textured_rect.options.depth_offset =
                 (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
 
             // make top images transparent
@@ -146,8 +147,14 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
             } else {
                 1.0 / total_num_images.at_most(20) as f32
             }; // avoid precision problems in framebuffer
-            rect.options.multiplicative_tint = rect.options.multiplicative_tint.multiply(opacity);
+            image.textured_rect.options.multiplicative_tint = image
+                .textured_rect
+                .options
+                .multiplicative_tint
+                .multiply(opacity);
         }
+
+        scene.primitives.images.extend(grouped_images);
     }
 }
 
@@ -190,16 +197,6 @@ impl ImagesPart {
             };
 
             let annotations = scene.annotation_map.find(ent_path);
-
-            // TODO(jleibs): Meter should really be its own component
-            let meter = tensor.meter;
-            scene.ui.images.push(Image {
-                ent_path: ent_path.clone(),
-                tensor: tensor.clone(),
-                meter,
-                annotations: annotations.clone(),
-            });
-
             let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth {
@@ -234,8 +231,7 @@ impl ImagesPart {
                 DefaultColor::OpaqueWhite,
             );
 
-            push_tensor_texture(
-                scene,
+            if let Some(textured_rect) = to_textured_rect(
                 ctx,
                 &annotations,
                 world_from_obj,
@@ -243,7 +239,14 @@ impl ImagesPart {
                 &tensor,
                 color.into(),
                 entity_highlight.overall,
-            );
+            ) {
+                scene.primitives.images.push(Image {
+                    ent_path: ent_path.clone(),
+                    tensor,
+                    annotations,
+                    textured_rect,
+                });
+            }
         }
 
         Ok(())
