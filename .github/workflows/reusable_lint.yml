@@ -84,6 +84,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
+          shared-key: "build-linux"
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ inputs.SAVE_CACHE }}
