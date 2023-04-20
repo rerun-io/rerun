@@ -1,6 +1,6 @@
 # There is also a clippy_wasm/clippy.toml which forbids some mthods that are not available in wasm.
 
-msrv = "1.67"
+msrv = "1.69"
 
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_macros
