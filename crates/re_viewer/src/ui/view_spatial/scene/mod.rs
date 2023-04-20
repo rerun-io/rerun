@@ -63,9 +63,6 @@ pub struct Image {
 
     pub tensor: DecodedTensor,
 
-    /// A thing that provides additional semantic context for your dtype.
-    pub annotations: Arc<Annotations>,
-
     /// Textured rectangle for the renderer.
     pub textured_rect: TexturedRect,
 }
