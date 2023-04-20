@@ -68,10 +68,10 @@ jobs:
               ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
-          echo "::set-output name=runner::$runner"
-          echo "::set-output name=target::$target"
-          echo "::set-output name=run_tests::$run_tests"
-          echo "::set-output name=container::$container"
+          echo "name=runner::$runner" >> $GITHUB_OUTPUT
+          echo "name=target::$target" >> $GITHUB_OUTPUT
+          echo "name=run_tests::$run_tests" >> $GITHUB_OUTPUT
+          echo "name=container::$container" >> $GITHUB_OUTPUT
 
   build_wheels:
     name: Build Wheels
@@ -158,11 +158,11 @@ jobs:
           python3 scripts/version_util.py --check_version
 
       - name: Store the expected version
-        # Find the current cargo version and store it in the GITHUB_ENV var: `expected_version`
+        # Find the current cargo version and store it in the output: `expected_version`
         shell: bash
         id: expected_version
         run: |
-          echo "::set-output  expected_version=$(python3 scripts/version_util.py --bare_cargo_version)"
+          echo "expected_version=$(python3 scripts/version_util.py --bare_cargo_version)" >> $GITHUB_OUTPUT
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
