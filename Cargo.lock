@@ -124,7 +124,7 @@ checksum = "216261ddc8289130e551ddcd5ce8a064710c0d064a4d2895c67151c92b5443f6"
 
 [[package]]
 name = "api_demo"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -1278,7 +1278,7 @@ dependencies = [
 
 [[package]]
 name = "dna"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "itertools",
  "rand",
@@ -2003,9 +2003,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.15"
+version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f9f29bc9dda355256b2916cf526ab02ce0aeaaaf2bad60d65ef3f12f11dd0f4"
+checksum = "17f8a914c2987b688368b5138aa05321db91f4090cf26118185672ad588bce21"
 dependencies = [
  "bytes",
  "fnv",
@@ -2164,9 +2164,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.23"
+version = "0.14.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "034711faac9d2166cb1baf1a2fb0b60b1f277f8492fd72176c17f3515e1abd3c"
+checksum = "ab302d72a6f11a3b910431ff93aae7e773078c769f0a3ef15fb9ec692ed147d4"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2708,7 +2708,7 @@ dependencies = [
 
 [[package]]
 name = "minimal"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "rerun",
 ]
@@ -2721,7 +2721,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "minimal_options"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -3134,7 +3134,7 @@ dependencies = [
 
 [[package]]
 name = "objectron"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -3730,7 +3730,7 @@ dependencies = [
 
 [[package]]
 name = "raw_mesh"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "bytes",
@@ -3770,7 +3770,7 @@ dependencies = [
 
 [[package]]
 name = "re_analytics"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "crossbeam",
@@ -3791,7 +3791,7 @@ dependencies = [
 
 [[package]]
 name = "re_arrow_store"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -3818,7 +3818,7 @@ dependencies = [
 
 [[package]]
 name = "re_build_build_info"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "time 0.3.20",
@@ -3826,18 +3826,18 @@ dependencies = [
 
 [[package]]
 name = "re_build_info"
-version = "0.4.0"
+version = "0.5.0"
 
 [[package]]
 name = "re_build_web_viewer"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "cargo_metadata",
 ]
 
 [[package]]
 name = "re_data_store"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "criterion",
@@ -3860,14 +3860,14 @@ dependencies = [
 
 [[package]]
 name = "re_error"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
 ]
 
 [[package]]
 name = "re_format"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arrow2",
  "arrow2_convert",
@@ -3877,7 +3877,7 @@ dependencies = [
 
 [[package]]
 name = "re_int_histogram"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "criterion",
  "insta",
@@ -3888,7 +3888,7 @@ dependencies = [
 
 [[package]]
 name = "re_log"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "env_logger",
  "js-sys",
@@ -3901,7 +3901,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_encoding"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "criterion",
  "ehttp",
@@ -3926,7 +3926,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_types"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "array-init",
@@ -3964,7 +3964,7 @@ dependencies = [
 
 [[package]]
 name = "re_memory"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "backtrace",
@@ -3984,7 +3984,7 @@ dependencies = [
 
 [[package]]
 name = "re_query"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arrow2",
  "criterion",
@@ -4002,7 +4002,7 @@ dependencies = [
 
 [[package]]
 name = "re_renderer"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -4055,7 +4055,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arrow2_convert",
  "document-features",
@@ -4075,7 +4075,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk_comms"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -4091,7 +4091,7 @@ dependencies = [
 
 [[package]]
 name = "re_smart_channel"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "crossbeam",
  "instant",
@@ -4099,7 +4099,7 @@ dependencies = [
 
 [[package]]
 name = "re_string_interner"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "nohash-hasher",
@@ -4110,7 +4110,7 @@ dependencies = [
 
 [[package]]
 name = "re_tensor_ops"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "ndarray",
@@ -4120,7 +4120,7 @@ dependencies = [
 
 [[package]]
 name = "re_tuid"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arrow2",
  "arrow2_convert",
@@ -4134,7 +4134,7 @@ dependencies = [
 
 [[package]]
 name = "re_ui"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "eframe",
  "egui",
@@ -4152,7 +4152,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -4212,7 +4212,7 @@ dependencies = [
 
 [[package]]
 name = "re_web_viewer_server"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "cargo_metadata",
  "ctrlc",
@@ -4229,7 +4229,7 @@ dependencies = [
 
 [[package]]
 name = "re_ws_comms"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -4301,7 +4301,7 @@ checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
 
 [[package]]
 name = "rerun"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "backtrace",
@@ -4333,7 +4333,7 @@ dependencies = [
 
 [[package]]
 name = "rerun_py"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arrow2",
  "document-features",
@@ -4437,7 +4437,7 @@ dependencies = [
 
 [[package]]
 name = "run_wasm"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "cargo-run-wasm",
  "pico-args",
@@ -4991,7 +4991,7 @@ dependencies = [
 
 [[package]]
 name = "test_image_memory"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "mimalloc",
  "re_format",
