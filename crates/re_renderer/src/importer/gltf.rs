@@ -74,7 +74,7 @@ pub fn load_gltf_from_buffer(
             {
                 Ok(texture) => texture,
                 Err(err) => {
-                    re_log::error!("Failed to create texture: {err:?}");
+                    re_log::error!("Failed to create texture: {err}");
                     ctx.texture_manager_2d.white_texture_unorm_handle().clone()
                 }
             },

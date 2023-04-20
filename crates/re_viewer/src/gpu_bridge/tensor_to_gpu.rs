@@ -95,7 +95,7 @@ fn color_tensor_to_gpu(
             height,
         })
     })
-    .map_err(|e| anyhow::anyhow!("Failed to create texture for color tensor: {e:?}"))?;
+    .map_err(|err| anyhow::anyhow!("Failed to create texture for color tensor: {err}"))?;
 
     let texture_format = texture_handle.format();
 
@@ -183,12 +183,12 @@ fn class_id_tensor_to_gpu(
                 height: colormap_height as u32,
             }
         })
-        .map_err(|e| anyhow::anyhow!("Failed to create class_id_colormap: {e:?}"))?;
+        .map_err(|err| anyhow::anyhow!("Failed to create class_id_colormap: {err}"))?;
 
     let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })
-    .map_err(|e| anyhow::anyhow!("Failed to create texture for class id tensor: {e:?}"))?;
+    .map_err(|err| anyhow::anyhow!("Failed to create texture for class id tensor: {err}"))?;
 
     Ok(ColormappedTexture {
         texture: main_texture_handle,
@@ -218,7 +218,7 @@ fn depth_tensor_to_gpu(
     let texture = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })
-    .map_err(|e| anyhow::anyhow!("Failed to create depth tensor texture: {e:?}"))?;
+    .map_err(|err| anyhow::anyhow!("Failed to create depth tensor texture: {err}"))?;
 
     Ok(ColormappedTexture {
         texture,

@@ -292,7 +292,7 @@ impl ImagesPart {
             let mut data_f32 = Vec::new();
             ctx.render_ctx
                 .texture_manager_2d
-                .get_or_create_with(
+                .get_or_try_create_with(
                     texture_key,
                     &mut ctx.render_ctx.gpu_resources.textures,
                     || {
@@ -321,7 +321,7 @@ impl ImagesPart {
                         })
                     },
                 )
-                .map_err(|e| format!("Failed to create depth cloud texture: {e:?}"))?
+                .map_err(|err| format!("Failed to create depth cloud texture: {err}"))?
         };
 
         let depth_from_world_scale = *properties.depth_from_world_scale.get();

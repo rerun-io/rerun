@@ -35,7 +35,7 @@ pub fn colormapped_texture(
     crate::profile_function!();
 
     let range =
-        range(tensor_stats).map_err(|e| TextureManager2DError::DataCreationError(e.into()))?;
+        range(tensor_stats).map_err(|err| TextureManager2DError::DataCreationError(err.into()))?;
     let texture = upload_texture_slice_to_gpu(render_ctx, tensor, state.slice())?;
 
     let color_mapping = state.color_mapping();
