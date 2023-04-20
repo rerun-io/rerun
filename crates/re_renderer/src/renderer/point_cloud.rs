@@ -130,7 +130,7 @@ pub struct PointCloudBatchInfo {
 
     /// Defines an outline mask for an individual vertex ranges.
     ///
-    /// Vertex ranges are *not* relative within the current batch, but relates to the draw data vertex buffer.
+    /// Vertex ranges are relative within the current batch.
     ///
     /// Having many of these individual outline masks can be slow as they require each their own uniform buffer & draw call.
     /// This feature is meant for a limited number of "extra selections"
@@ -455,6 +455,8 @@ impl PointCloudDrawData {
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
+                    let range = (range.start + start_point_for_next_batch)
+                        ..(range.end + start_point_for_next_batch);
                     batches_internal.push(point_renderer.create_point_cloud_batch(
                         ctx,
                         format!("{:?} strip-only {:?}", batch_info.label, range).into(),
