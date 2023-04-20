@@ -103,18 +103,20 @@ pub enum TextureCreationError {
 
 #[derive(thiserror::Error, Debug)]
 pub enum TextureManager2DError<DataCreationError> {
+    /// Something went wrong when creating the GPU texture.
     #[error(transparent)]
-    ZeroSize(TextureCreationError),
+    TextureCreation(TextureCreationError),
 
+    /// Something went wrong in a user-callback.
     #[error(transparent)]
-    DataCreationError(#[from] DataCreationError),
+    DataCreation(#[from] DataCreationError),
 }
 
 impl From<TextureManager2DError<never::Never>> for TextureCreationError {
     fn from(err: TextureManager2DError<never::Never>) -> Self {
         match err {
-            TextureManager2DError::ZeroSize(zero_size) => zero_size,
-            TextureManager2DError::DataCreationError(never) => match never {},
+            TextureManager2DError::TextureCreation(texture_creation) => texture_creation,
+            TextureManager2DError::DataCreation(never) => match never {},
         }
     }
 }
@@ -267,7 +269,7 @@ impl TextureManager2D {
                     texture_pool,
                     &tex_creation_desc,
                 )
-                .map_err(TextureManager2DError::ZeroSize)?;
+                .map_err(TextureManager2DError::TextureCreation)?;
                 entry.insert(texture).clone()
             }
         };
