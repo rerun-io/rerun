@@ -5,16 +5,16 @@ on:
     # NOTE: boolean inputs are still actually strings
     # See: https://github.com/actions/runner/issues/1483
     inputs:
-      LINTS:
-        description: 'Run Lints'
+      CHECKS:
+        description: 'Run All Checks'
         type: boolean
         required: false
         default: true
       BENCHES:
-          description: 'Run Benches'
-          type: boolean
-          required: false
-          default: false
+        description: 'Run Benches'
+        type: boolean
+        required: false
+        default: false
       BUILD_LINUX:
         description: 'Build/Test Linux'
         type: boolean
@@ -58,8 +58,8 @@ on:
 
 jobs:
   checks:
-    name: Lint All
-    if: ${{ github.event.inputs.LINTS == 'true' }}
+    name: Run All Checks
+    if: ${{ github.event.inputs.CHECKS == 'true' }}
     uses: ./.github/workflows/reusable_checks.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
