@@ -95,6 +95,7 @@ impl<'a> Texture2DCreationDesc<'a> {
     }
 }
 
+// TODO(andreas): Move this to texture pool.
 #[derive(thiserror::Error, Debug)]
 pub enum TextureCreationError {
     #[error("Texture with debug label {0:?} has zero width or height!")]
@@ -105,11 +106,11 @@ pub enum TextureCreationError {
 pub enum TextureManager2DError<DataCreationError> {
     /// Something went wrong when creating the GPU texture.
     #[error(transparent)]
-    TextureCreation(TextureCreationError),
+    TextureCreation(#[from] TextureCreationError),
 
     /// Something went wrong in a user-callback.
     #[error(transparent)]
-    DataCreation(#[from] DataCreationError),
+    DataCreation(DataCreationError),
 }
 
 impl From<TextureManager2DError<never::Never>> for TextureCreationError {
@@ -262,14 +263,14 @@ impl TextureManager2D {
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
                 // Run potentially expensive texture creation code:
-                let tex_creation_desc = try_create_texture_desc()?;
+                let tex_creation_desc = try_create_texture_desc()
+                    .map_err(|err| TextureManager2DError::DataCreation(err))?;
                 let texture = Self::create_and_upload_texture(
                     &self.device,
                     &self.queue,
                     texture_pool,
                     &tex_creation_desc,
-                )
-                .map_err(TextureManager2DError::TextureCreation)?;
+                )?;
                 entry.insert(texture).clone()
             }
         };

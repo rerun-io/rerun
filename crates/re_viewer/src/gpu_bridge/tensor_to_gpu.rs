@@ -1,5 +1,6 @@
 //! Upload [`Tensor`] to [`re_renderer`].
 
+use anyhow::Context;
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
@@ -180,7 +181,7 @@ fn class_id_tensor_to_gpu(
                 height: colormap_height as u32,
             }
         })
-        .map_err(|err| anyhow::anyhow!("Failed to create class_id_colormap: {err}"))?;
+        .context("Failed to create class_id_colormap.")?;
 
     let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
