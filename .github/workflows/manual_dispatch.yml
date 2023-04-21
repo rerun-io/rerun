@@ -40,8 +40,8 @@ on:
         type: boolean
         required: false
         default: false
-      PACKAGE:
-        description: 'Package'
+      UPLOAD_GCLOUD:
+        description: 'Upload to gcloud'
         type: boolean
         required: false
         default: false
@@ -75,11 +75,11 @@ jobs:
   build_linux:
     name: 'Linux: Build/Test Wheels'
 
-    # If we are packaging any build target, we also need the linux job to run since it produces the RRD
+    # If we are uploading any build target, we also need the linux job to run since it produces the RRD
     # TODO(jleibs): Debug why multi-line if statements don't work here
-    if: ${{ (github.event.inputs.BUILD_LINUX == 'true') || ((github.event.inputs.PACKAGE == 'true') && ( (github.event.inputs.BUILD_MACOS_INTEL == 'true') || (github.event.inputs.BUILD_MACOS_ARM == 'true') || (github.event.inputs.BUILD_WINDOWS == 'true'))) }}
+    if: ${{ (github.event.inputs.BUILD_LINUX == 'true') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( (github.event.inputs.BUILD_MACOS_INTEL == 'true') || (github.event.inputs.BUILD_MACOS_ARM == 'true') || (github.event.inputs.BUILD_WINDOWS == 'true') || (github.event.inputs.BUILD_WEB == 'true'))) }}
 
-    uses: ./.github/workflows/reusable_build_and_test.yml
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
@@ -88,7 +88,7 @@ jobs:
   build_windows:
     name: 'Windows: Build/Test Wheels'
     if: ${{ github.event.inputs.BUILD_WINDOWS == 'true'}}
-    uses: ./.github/workflows/reusable_build_and_test.yml
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: windows
@@ -97,7 +97,7 @@ jobs:
   build_macos_arm:
     name: 'Macos-Arm: Build/Test Wheels'
     if: ${{ github.event.inputs.BUILD_MACOS_ARM == 'true' }}
-    uses: ./.github/workflows/reusable_build_and_test.yml
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-arm
@@ -106,46 +106,46 @@ jobs:
   build_macos_intel:
     name: 'Macos-Intel: Build/Test Wheels'
     if: ${{ github.event.inputs.BUILD_MACOS_INTEL == 'true' }}
-    uses: ./.github/workflows/reusable_build_and_test.yml
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
     secrets: inherit
 
-  package_and_upload_linux:
+  upload_wheels_linux:
     name: 'Linux: Upload Wheels'
     needs: [build_linux]
-    if: ${{ (github.event.inputs.BUILD_LINUX) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
+    if: ${{ (github.event.inputs.BUILD_LINUX) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: linux
       EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
-  package_and_upload_windows:
+  upload_wheels_windows:
     name: 'Windows: Upload Wheels'
     needs: [build_linux, build_windows]
-    if: ${{ (github.event.inputs.BUILD_WINDOWS) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
+    if: ${{ (github.event.inputs.BUILD_WINDOWS) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: windows
       EXPECTED_VERSION: ${{ needs.build_windows.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
-  package_and_upload_macos_arm:
+  upload_wheels_macos_arm:
     name: 'Macos-Arm: Upload Wheels'
     needs: [build_linux, build_macos_arm]
-    if: ${{ (github.event.inputs.BUILD_MACOS_ARM) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
+    if: ${{ (github.event.inputs.BUILD_MACOS_ARM) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: macos-arm
       EXPECTED_VERSION: ${{ needs.build_macos_arm.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
-  package_and_upload_macos_intel:
+  upload_wheels_macos_intel:
     name: 'Macos-Intel: Upload Wheels'
     needs: [build_linux, build_macos_intel]
-    if: ${{ (github.event.inputs.BUILD_MACOS_INTEL) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
+    if: ${{ (github.event.inputs.BUILD_MACOS_INTEL) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: macos-intel
@@ -166,7 +166,7 @@ jobs:
     #   build_linux: rrd
     #   build_web: web_viewer
     needs: [build_linux, build_web]
-    if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
+    if: ${{ (github.event.inputs.BUILD_WEB == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       RELEASE: ${{ github.event.inputs.RELEASE }}

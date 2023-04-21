@@ -1,4 +1,4 @@
-name: All lints, checks, and tests
+name: 'Checks: Lints, Tests, Docs'
 
 on:
   workflow_call:
