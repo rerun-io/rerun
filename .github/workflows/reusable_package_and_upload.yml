@@ -5,6 +5,10 @@ on:
     secrets:
       CALLER_GITHUB_TOKEN:
         required: true
+      GOOGLE_WORKLOAD_IDENTITY_PROVIDER:
+        required: true
+      GOOGLE_SERVICE_ACCOUNT:
+        required: true
     inputs:
       EXPECTED_VERSION:
         required: true
@@ -86,8 +90,18 @@ jobs:
           mkdir dist
           wheel pack unpack-dist/${{ steps.get_folder_name.outputs.PKG_FOLDER }} --dest dist/
 
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
+      - id: "auth"
+        uses: google-github-actions/auth@v1
         with:
-          name: wheels
-          path: dist
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: "Upload Wheel"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "dist"
+          destination: "rerun-packages/commit/${{env.SHORT_SHA}}/wheels"
+          parent: false
