@@ -9,7 +9,9 @@ use egui::mutex::Mutex;
 
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleOptions},
-    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
+    resource_managers::{
+        GpuTexture2D, Texture2DCreationDesc, TextureCreationError, TextureManager2DError,
+    },
     RenderContext, ViewBuilder,
 };
 
@@ -52,12 +54,12 @@ pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_from_point: f
     [resolution.x as u32, resolution.y as u32]
 }
 
-pub fn try_get_or_create_texture<'a, Err>(
+pub fn try_get_or_create_texture<'a, Err: std::fmt::Display>(
     render_ctx: &mut RenderContext,
     texture_key: u64,
     try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
-) -> Result<GpuTexture2D, Err> {
-    render_ctx.texture_manager_2d.get_or_create_with(
+) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
+    render_ctx.texture_manager_2d.get_or_try_create_with(
         texture_key,
         &mut render_ctx.gpu_resources.textures,
         try_create_texture_desc,
@@ -68,17 +70,12 @@ pub fn get_or_create_texture<'a>(
     render_ctx: &mut RenderContext,
     texture_key: u64,
     create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
-) -> GpuTexture2D {
-    enum Never {}
-    let result: Result<GpuTexture2D, Never> = render_ctx.texture_manager_2d.get_or_create_with(
+) -> Result<GpuTexture2D, TextureCreationError> {
+    render_ctx.texture_manager_2d.get_or_create_with(
         texture_key,
         &mut render_ctx.gpu_resources.textures,
-        || Ok(create_texture_desc()),
-    );
-    match result {
-        Ok(handle) => handle,
-        Err(never) => match never {},
-    }
+        create_texture_desc,
+    )
 }
 
 /// Render a `re_render` view using the given clip rectangle.

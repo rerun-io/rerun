@@ -1,5 +1,6 @@
 //! Upload [`Tensor`] to [`re_renderer`].
 
+use anyhow::Context;
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
@@ -94,7 +95,8 @@ fn color_tensor_to_gpu(
             width,
             height,
         })
-    })?;
+    })
+    .map_err(|err| anyhow::anyhow!("Failed to create texture for color tensor: {err}"))?;
 
     let texture_format = texture_handle.format();
 
@@ -151,14 +153,13 @@ fn class_id_tensor_to_gpu(
         .ok_or_else(|| anyhow::anyhow!("compressed_tensor!?"))?;
     anyhow::ensure!(0.0 <= min, "Negative class id");
 
-    // create a lookup texture for the colors that's 256 wide,
-    // and as many rows as needed to fit all the classes.
-    anyhow::ensure!(max <= 65535.0, "Too many class ids");
+    anyhow::ensure!(max <= 65535.0, "Too many class ids"); // we only support u8 and u16 tensors
 
     // We pack the colormap into a 2D texture so we don't go over the max texture size.
     // We only support u8 and u16 class ids, so 256^2 is the biggest texture we need.
+    let num_colors = (max + 1.0) as usize;
     let colormap_width = 256;
-    let colormap_height = (max as usize + colormap_width - 1) / colormap_width;
+    let colormap_height = (num_colors + colormap_width - 1) / colormap_width;
 
     let colormap_texture_handle =
         get_or_create_texture(render_ctx, hash(annotations.row_id), || {
@@ -179,11 +180,13 @@ fn class_id_tensor_to_gpu(
                 width: colormap_width as u32,
                 height: colormap_height as u32,
             }
-        });
+        })
+        .context("Failed to create class_id_colormap.")?;
 
     let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
-    })?;
+    })
+    .map_err(|err| anyhow::anyhow!("Failed to create texture for class id tensor: {err}"))?;
 
     Ok(ColormappedTexture {
         texture: main_texture_handle,
@@ -212,7 +215,8 @@ fn depth_tensor_to_gpu(
 
     let texture = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
-    })?;
+    })
+    .map_err(|err| anyhow::anyhow!("Failed to create depth tensor texture: {err}"))?;
 
     Ok(ColormappedTexture {
         texture,

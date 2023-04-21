@@ -55,6 +55,7 @@ glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools = { workspace = true }
 macaw.workspace = true
+never = '0.1'
 ordered-float = "3.2"
 parking_lot.workspace = true
 slotmap = "1.0.6"
