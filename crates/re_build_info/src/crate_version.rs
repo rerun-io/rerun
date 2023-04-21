@@ -55,7 +55,7 @@ impl CrateVersion {
     pub fn from_bytes([major, minor, patch, suffix_byte]: [u8; 4]) -> Self {
         let is_alpha = (suffix_byte & IS_ALPHA_BIT) != 0;
         let is_prerelease = (suffix_byte & IS_PRERELEASE_BIT) != 0;
-        let alpha_version = suffix_byte & 0b0111_1111;
+        let alpha_version = suffix_byte & !(IS_ALPHA_BIT | IS_PRERELEASE_BIT);
 
         Self {
             major,
@@ -270,6 +270,22 @@ fn test_format_parse_roundtrip() {
         // "12.23.24-alpha.31+foobar",
     ] {
         assert_eq!(parse(version).to_string(), version);
+    }
+}
+
+#[test]
+fn test_format_parse_roundtrip_bytes() {
+    let parse = CrateVersion::parse;
+    for version in [
+        "0.2.0",
+        "1.2.3",
+        "12.23.24",
+        "12.23.24-alpha.31",
+        "12.23.24-alpha.31+foo",
+    ] {
+        let version = parse(version);
+        let bytes = version.to_bytes();
+        assert_eq!(CrateVersion::from_bytes(bytes), version);
     }
 }
 
