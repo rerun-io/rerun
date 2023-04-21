@@ -16,22 +16,22 @@ on:
         required: false
         default: false
       BUILD_LINUX:
-        description: 'Build/Test Linux'
+        description: 'Build/Test Wheels Linux'
         type: boolean
         required: false
         default: true
       BUILD_MACOS_INTEL:
-        description: 'Build/Test Mac (Intel)'
+        description: 'Build/Test Wheels Mac (Intel)'
         type: boolean
         required: false
         default: false
       BUILD_MACOS_ARM:
-        description: 'Build/Test Mac (Arm)'
+        description: 'Build/Test Wheels Mac (Arm)'
         type: boolean
         required: false
         default: false
       BUILD_WINDOWS:
-        description: 'Build/Test Win'
+        description: 'Build/Test Wheels Win'
         type: boolean
         required: false
         default: false
@@ -73,7 +73,7 @@ jobs:
     secrets: inherit
 
   build_linux:
-    name: 'Linux: Build/Test'
+    name: 'Linux: Build/Test Wheels'
 
     # If we are packaging any build target, we also need the linux job to run since it produces the RRD
     # TODO(jleibs): Debug why multi-line if statements don't work here
@@ -86,7 +86,7 @@ jobs:
     secrets: inherit
 
   build_windows:
-    name: 'Windows: Build/Test'
+    name: 'Windows: Build/Test Wheels'
     if: ${{ github.event.inputs.BUILD_WINDOWS == 'true'}}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
@@ -95,7 +95,7 @@ jobs:
     secrets: inherit
 
   build_macos_arm:
-    name: 'Macos-Arm: Build/Test'
+    name: 'Macos-Arm: Build/Test Wheels'
     if: ${{ github.event.inputs.BUILD_MACOS_ARM == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
@@ -104,7 +104,7 @@ jobs:
     secrets: inherit
 
   build_macos_intel:
-    name: 'Macos-Intel: Build/Test'
+    name: 'Macos-Intel: Build/Test Wheels'
     if: ${{ github.event.inputs.BUILD_MACOS_INTEL == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
@@ -113,40 +113,40 @@ jobs:
     secrets: inherit
 
   package_and_upload_linux:
-    name: 'Linux: Package Wheels'
+    name: 'Linux: Upload Wheels'
     needs: [build_linux]
     if: ${{ (github.event.inputs.BUILD_LINUX) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_wheels.yml
+    uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: linux
       EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
   package_and_upload_windows:
-    name: 'Windows: Package Wheels'
+    name: 'Windows: Upload Wheels'
     needs: [build_linux, build_windows]
     if: ${{ (github.event.inputs.BUILD_WINDOWS) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_wheels.yml
+    uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: windows
       EXPECTED_VERSION: ${{ needs.build_windows.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
   package_and_upload_macos_arm:
-    name: 'Macos-Arm: Package Wheels'
+    name: 'Macos-Arm: Upload Wheels'
     needs: [build_linux, build_macos_arm]
     if: ${{ (github.event.inputs.BUILD_MACOS_ARM) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_wheels.yml
+    uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: macos-arm
       EXPECTED_VERSION: ${{ needs.build_macos_arm.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
   package_and_upload_macos_intel:
-    name: 'Macos-Intel: Package Wheels'
+    name: 'Macos-Intel: Upload Wheels'
     needs: [build_linux, build_macos_intel]
     if: ${{ (github.event.inputs.BUILD_MACOS_INTEL) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_wheels.yml
+    uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: macos-intel
       EXPECTED_VERSION: ${{ needs.build_macos_intel.outputs.EXPECTED_VERSION }}

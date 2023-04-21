@@ -1,4 +1,4 @@
-name: Reusable Package Wheels
+name: Reusable Upload Wheels
 
 on:
   workflow_call:
@@ -16,8 +16,8 @@ on:
 
 jobs:
 
-  package_wheels:
-    name: Package Wheels
+  upload_wheels:
+    name: Upload Wheels to google cloud
 
     runs-on: ubuntu-latest
 
