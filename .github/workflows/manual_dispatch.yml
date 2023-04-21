@@ -50,6 +50,11 @@ on:
         type: boolean
         required: false
         default: false
+      SAVE_DOCS_AS:
+        description: 'Save Docs'
+        type: string
+        required: false
+        default: ''
 
 jobs:
   lint_all:
@@ -58,6 +63,7 @@ jobs:
     uses: ./.github/workflows/reusable_lint.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
+      SAVE_DOCS_AS: ${{ github.event.inputs.SAVE_DOCS_AS }}
     secrets: inherit
 
   benches:

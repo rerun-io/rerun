@@ -1,4 +1,4 @@
-name: Reusable Lint
+name: Reusable Lint & Docs
 
 on:
   workflow_call:
@@ -7,6 +7,10 @@ on:
         required: false
         type: boolean
         default: false
+      SAVE_DOCS_AS:
+        required: false
+        type: string
+        default: ""
 
 env:
   PYTHON_VERSION: "3.8"
@@ -56,6 +60,85 @@ jobs:
       - name: Check requirements
         run: |
           just py-requirements
+
+  py-test-docs:
+    name: Test Python Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
+
+      - name: Build via mkdocs
+        run: |
+          mkdocs build -f rerun_py/mkdocs.yml
+
+  py-docs:
+    needs: [py-test-docs]
+    name: Build and deploy docs
+    if: ${{ inputs.SAVE_DOCS_AS != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Don't do a shallow clone
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
+
+      - name: Set up git author
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
+      - name: Deploy via mike # https://github.com/jimporter/mike
+        if: ${{ inputs.SAVE_DOCS_AS != 'HEAD' }}
+        run: |
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.SAVE_DOCS_AS}} latest
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
+
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
+      - name: Deploy tag via mike # https://github.com/jimporter/mike
+        if: ${{ inputs.SAVE_DOCS_AS == 'HEAD' }}
+        run: |
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python HEAD
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
+
 
 ################################################################################
 
@@ -156,6 +239,34 @@ jobs:
         with:
           command: test
           args: --all-targets --all-features
+
+      # TODO(jleibs): Maybe we should run this on a separate job?
+      - name: Set up git author
+        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up ghp-import
+        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        run: pip install ghp-import
+
+      - name: Patch in a redirect page
+        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
+        env:
+          REDIRECT_CRATE: rerun
+
+      # See: https://github.com/c-w/ghp-import
+      - name: Deploy the docs
+        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        run: |
+          git fetch
+          python3 -m ghp_import -n -p -x docs/rust/head target/doc/ -m "Update the rust docs"
+
 
 ################################################################################
 
