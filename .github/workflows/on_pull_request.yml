@@ -1,0 +1,57 @@
+name: Run Checks on Pull-Request
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  checks:
+    name: Run All Checks
+    uses: ./.github/workflows/reusable_checks.yml
+    secrets: inherit
+
+  benches:
+    name: Benchmarks
+    uses: ./.github/workflows/reusable_bench.yml
+    secrets: inherit
+
+  build_linux_fast:
+    name: 'Minimum Wheel Test'
+
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    with:
+      SAVE_CACHE: false
+      PLATFORM: linux
+      MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
+      WHEEL_ARTIFACT_NAME: ''
+      RRD_ARTIFACT_NAME: linux-rrd-fast
+    secrets: inherit
+
+  build_web:
+    name: 'Build Web'
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      RELEASE: ''
+    secrets: inherit
+
+  upload_web:
+    name: 'Upload Web'
+    # Uses Assets:
+    #   build_linux: rrd
+    #   build_web: web_viewer
+    needs: [build_linux_fast, build_web]
+    uses: ./.github/workflows/reusable_upload_web.yml
+    with:
+      RELEASE: ''
+      RRD_ARTIFACT_NAME: linux-rrd-fast
+    secrets: inherit
+
+  save_pr_summary:
+    name: 'Save PR Summary'
+    needs: [upload_web]
+    uses: ./.github/workflows/reusable_pr_summary.yml
+    with:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
