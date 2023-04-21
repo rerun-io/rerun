@@ -57,10 +57,10 @@ on:
         default: false
 
 jobs:
-  lint_all:
+  checks:
     name: Lint All
     if: ${{ github.event.inputs.LINTS == 'true' }}
-    uses: ./.github/workflows/reusable_lint.yml
+    uses: ./.github/workflows/reusable_checks.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       SAVE_DOCS_AS: ${{ github.event.inputs.SAVE_DOCS_AS }}

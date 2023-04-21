@@ -1,4 +1,4 @@
-name: Reusable Lint & Docs
+name: All lints, checks, and tests
 
 on:
   workflow_call:
@@ -294,6 +294,10 @@ jobs:
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ inputs.SAVE_CACHE }}
+
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: clippy check re_viewer wasm32
         run: ./scripts/clippy_wasm.sh
