@@ -91,10 +91,12 @@ jobs:
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  package_and_uplaod:
+  package_and_upload:
     name: Package and Upload
     needs: [build_linux, build_windows]
     if: ${{ github.event.inputs.PACKAGE == 'true' }}
     uses: ./.github/workflows/reusable_package_and_upload.yml
+    with:
+      EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
