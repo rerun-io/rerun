@@ -35,6 +35,11 @@ on:
         type: boolean
         required: true
         default: false
+      PACKAGE:
+        description: 'Package'
+        type: boolean
+        required: true
+        default: false
 
 jobs:
   lint_all:
@@ -83,5 +88,13 @@ jobs:
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  package_and_uplaod:
+    name: Package and Upload
+    needs: [build_linux, build_windows]
+    if: ${{ github.event.inputs.PACKAGE == 'true' }}
+    uses: ./.github/workflows/reusable_package_and_upload.yml
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
