@@ -16,13 +16,17 @@ on:
 
 jobs:
 
-
   package_wheels:
     name: Package Wheels
 
     runs-on: ubuntu-latest
+
     container:
       image: rerunio/ci_docker:0.6
+
+    permissions:
+      contents: "read"
+      id-token: "write"
 
     steps:
       - name: Show context
