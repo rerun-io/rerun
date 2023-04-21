@@ -35,8 +35,41 @@ on:
         default: false
 
 jobs:
+
+  matrix-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          matrix_data='['
+
+          if [ "${{ inputs.BUILD_LINUX }}" = "true" ]; then
+            matrix_data+='{"platform": "linux"},'
+          fi
+
+          if [ "${{ inputs.BUILD_MACOS_INTEL }}" = "true" ]; then
+            matrix_data+='{"platform": "macos-intel"},'
+          fi
+
+          if [ "${{ inputs.BUILD_MACOS_ARM }}" = "true" ]; then
+            matrix_data+='{"platform": "macos-arm"},'
+          fi
+
+          if [ "${{ inputs.BUILD_WINDOWS }}" = "true" ]; then
+            matrix_data+='{"platform": "windows"},'
+          fi
+
+          matrix_data="${matrix_data%,}]"
+          echo "Matrix data: $matrix_data"
+          echo "matrix=$matrix_data" >> "$GITHUB_OUTPUT"
+
   package_wheels:
     name: Package Wheels
+
+    needs: matrix-setup
 
     runs-on: ubuntu-latest
     container:
@@ -44,18 +77,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
-        platform:
-          - linux
-          - macos-arm
-          - macos-intel
-          - windows
-
-    if: |
-      ((matrix.platform == 'linux' && inputs.BUILD_LINUX) ||
-       (matrix.platform == 'macos-intel' && inputs.BUILD_MACOS_INTEL) ||
-       (matrix.platform == 'macos-arm' && inputs.BUILD_MACOS_ARM) ||
-       (matrix.platform == 'windows' && inputs.BUILD_WINDOWS))
+      matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
 
     steps:
       - name: Show context
