@@ -2,9 +2,6 @@ name: Reusable Build and Test
 
 on:
   workflow_call:
-    secrets:
-      CALLER_GITHUB_TOKEN:
-        required: true
     inputs:
       PLATFORM:
         required: true

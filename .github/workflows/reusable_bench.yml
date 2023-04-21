@@ -2,9 +2,6 @@ name: Reusable Bench
 
 on:
   workflow_call:
-    secrets:
-      CALLER_GITHUB_TOKEN:
-        required: true
     inputs:
       SAVE_BENCHES:
         required: false
@@ -73,7 +70,7 @@ jobs:
           name: Rust Benchmark
           tool: "cargo"
           output-file-path: output.txt
-          github-token: ${{ secrets.CALLER_GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit comment on detecting possible performance regression
           comment-on-alert: true

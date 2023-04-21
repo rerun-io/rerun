@@ -58,15 +58,13 @@ jobs:
     uses: ./.github/workflows/reusable_lint.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   benches:
     name: Benchmarks
     if: ${{ github.event.inputs.BENCHES == 'true' }}
     uses: ./.github/workflows/reusable_bench.yml
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   build_linux:
     name: 'Linux: Build/Test'
@@ -83,8 +81,7 @@ jobs:
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   build_windows:
     name: 'Windows: Build/Test'
@@ -93,8 +90,7 @@ jobs:
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: windows
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   build_macos_arm:
     name: 'Macos-Arm: Build/Test'
@@ -103,8 +99,7 @@ jobs:
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-arm
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   build_macos_intel:
     name: 'Macos-Intel: Build/Test'
@@ -113,8 +108,7 @@ jobs:
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    secrets: inherit
 
   package_and_upload_linux:
     name: 'Linux: Package and Upload'
@@ -124,10 +118,7 @@ jobs:
     with:
       PLATFORM: linux
       EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GOOGLE_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-      GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+    secrets: inherit
 
   package_and_upload_windows:
     name: 'Windows: Package and Upload'
@@ -137,10 +128,7 @@ jobs:
     with:
       PLATFORM: windows
       EXPECTED_VERSION: ${{ needs.build_windows.outputs.EXPECTED_VERSION }}
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GOOGLE_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-      GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+    secrets: inherit
 
   package_and_upload_macos_arm:
     name: 'Macos-Arm: Package and Upload'
@@ -150,10 +138,7 @@ jobs:
     with:
       PLATFORM: macos-arm
       EXPECTED_VERSION: ${{ needs.build_macos_arm.outputs.EXPECTED_VERSION }}
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GOOGLE_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-      GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+    secrets: inherit
 
   package_and_upload_macos_intel:
     name: 'Macos-Intel: Package and Upload'
@@ -163,7 +148,4 @@ jobs:
     with:
       PLATFORM: macos-intel
       EXPECTED_VERSION: ${{ needs.build_macos_intel.outputs.EXPECTED_VERSION }}
-    secrets:
-      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GOOGLE_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-      GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+    secrets: inherit

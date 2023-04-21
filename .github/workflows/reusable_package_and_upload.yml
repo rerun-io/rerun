@@ -2,13 +2,6 @@ name: Reusable Package Wheels
 
 on:
   workflow_call:
-    secrets:
-      CALLER_GITHUB_TOKEN:
-        required: true
-      GOOGLE_WORKLOAD_IDENTITY_PROVIDER:
-        required: true
-      GOOGLE_SERVICE_ACCOUNT:
-        required: true
     inputs:
       EXPECTED_VERSION:
         required: true
