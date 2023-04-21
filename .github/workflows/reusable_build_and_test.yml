@@ -253,11 +253,13 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
+      - name: Setup python
+        if: ${{ inputs.PLATFORM != 'linux' }}
+        uses: actions/setup-python@v4
         with:
-          name: ${{inputs.PLATFORM}}-wheel
-          path: dist
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-build.txt"
 
       - name: Install wheel dependencies
         # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
@@ -266,7 +268,13 @@ jobs:
         # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
         shell: bash
         run: |
-          pip install deprecated numpy>=1.23 pyarrow==10.0.1
+          pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{inputs.PLATFORM}}-wheel
+          path: dist
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
