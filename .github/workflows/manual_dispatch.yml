@@ -76,12 +76,8 @@ jobs:
     name: 'Linux: Build/Test'
 
     # If we are packaging any build target, we also need the linux job to run since it produces the RRD
-    if: |
-      ${{ (github.event.inputs.BUILD_LINUX == 'true') ||
-            ((github.event.inputs.PACKAGE == 'true') && (
-              (github.event.inputs.BUILD_MACOS_INTEL == 'true') ||
-              (github.event.inputs.BUILD_MACOS_ARM == 'true') ||
-              (github.event.inputs.BUILD_WINDOWS == 'true'))) }}
+    # TODO(jleibs): Debug why multi-line if statements don't work here
+    if: ${{ (github.event.inputs.BUILD_LINUX == 'true') || ((github.event.inputs.PACKAGE == 'true') && ( (github.event.inputs.BUILD_MACOS_INTEL == 'true') || (github.event.inputs.BUILD_MACOS_ARM == 'true') || (github.event.inputs.BUILD_WINDOWS == 'true'))) }}
 
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
