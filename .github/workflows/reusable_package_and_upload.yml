@@ -6,9 +6,6 @@ on:
       CALLER_GITHUB_TOKEN:
         required: true
     inputs:
-      PLATFORM:
-        required: true
-        type: string
       PRERELEASE:
         required: false
         type: boolean
