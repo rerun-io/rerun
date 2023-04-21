@@ -5,32 +5,32 @@ on:
     # NOTE: boolean inputs are still actually strings
     # See: https://github.com/actions/runner/issues/1483
     inputs:
-      lints:
+      LINTS:
         description: 'Run Lints'
         type: boolean
         required: true
         default: true
-      build_linux:
+      BUILD_LINUX:
         description: 'Build/Test Linux'
         type: boolean
         required: true
         default: true
-      build_macos_intel:
+      BUILD_MACOS_INTEL:
         description: 'Build/Test Mac (Intel)'
         type: boolean
         required: true
         default: false
-      build_macos_arm:
+      BUILD_MACOS_ARM:
         description: 'Build/Test Mac (Arm)'
         type: boolean
         required: true
         default: false
-      build_windows:
+      BUILD_WINDOWS:
         description: 'Build/Test Win'
         type: boolean
         required: true
         default: false
-      save_cache:
+      SAVE_CACHE:
         description: 'Save Cache'
         type: boolean
         required: true
@@ -39,49 +39,49 @@ on:
 jobs:
   lint_all:
     name: Lint All
-    if: ${{ github.event.inputs.lints == 'true' }}
+    if: ${{ github.event.inputs.LINTS == 'true' }}
     uses: ./.github/workflows/reusable_lint.yml
     with:
-      SAVE_CACHE: ${{ github.event.inputs.save_cache == 'true' }}
+      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_linux:
     name: Build/Test Linux
-    if: ${{ github.event.inputs.build_linux == 'true' }}
+    if: ${{ github.event.inputs.BUILD_LINUX == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
-      SAVE_CACHE: ${{ github.event.inputs.save_cache == 'true' }}
+      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_windows:
     name: Build/Test Windows
-    if: ${{ github.event.inputs.build_windows == 'true'}}
+    if: ${{ github.event.inputs.BUILD_WINDOWS == 'true'}}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
-      SAVE_CACHE: ${{ github.event.inputs.save_cache == 'true' }}
+      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: windows
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build_mac_arm:
+  build_macos_arm:
     name: Build/Test Mac (Arm)
-    if: ${{ github.event.inputs.build_macos_arm == 'true' }}
+    if: ${{ github.event.inputs.BUILD_MACOS_ARM == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
-      SAVE_CACHE: ${{ github.event.inputs.save_cache == 'true' }}
+      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-arm
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build_mac_intel:
+  build_macos_intel:
     name: Build/Test Mac (Intel)
-    if: ${{ github.event.inputs.build_macos_intel == 'true' }}
+    if: ${{ github.event.inputs.BUILD_MACOS_INTEL == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
-      SAVE_CACHE: ${{ github.event.inputs.save_cache == 'true' }}
+      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
