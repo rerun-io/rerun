@@ -6,6 +6,9 @@ on:
       CALLER_GITHUB_TOKEN:
         required: true
     inputs:
+      PLATFORM:
+        required: true
+        type: string
       PRERELEASE:
         required: false
         type: boolean
@@ -13,71 +16,16 @@ on:
       EXPECTED_VERSION:
         required: true
         type: string
-      BUILD_LINUX:
-        description: 'Build/Test Linux'
-        type: boolean
-        required: true
-        default: true
-      BUILD_MACOS_INTEL:
-        description: 'Build/Test Mac (Intel)'
-        type: boolean
-        required: true
-        default: false
-      BUILD_MACOS_ARM:
-        description: 'Build/Test Mac (Arm)'
-        type: boolean
-        required: true
-        default: false
-      BUILD_WINDOWS:
-        description: 'Build/Test Win'
-        type: boolean
-        required: true
-        default: false
 
 jobs:
 
-  matrix-setup:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Set matrix
-        id: set-matrix
-        run: |
-          matrix_data='['
-
-          if [ "${{ inputs.BUILD_LINUX }}" = "true" ]; then
-            matrix_data+='{"platform": "linux"},'
-          fi
-
-          if [ "${{ inputs.BUILD_MACOS_INTEL }}" = "true" ]; then
-            matrix_data+='{"platform": "macos-intel"},'
-          fi
-
-          if [ "${{ inputs.BUILD_MACOS_ARM }}" = "true" ]; then
-            matrix_data+='{"platform": "macos-arm"},'
-          fi
-
-          if [ "${{ inputs.BUILD_WINDOWS }}" = "true" ]; then
-            matrix_data+='{"platform": "windows"},'
-          fi
-
-          matrix_data="${matrix_data%,}]"
-          echo "Matrix data: $matrix_data"
-          echo "matrix=$matrix_data" >> "$GITHUB_OUTPUT"
 
   package_wheels:
     name: Package Wheels
 
-    needs: matrix-setup
-
     runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.6
-
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
 
     steps:
       - name: Show context
@@ -92,7 +40,6 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
-          MATRIX_CONTEXT: ${{ toJson(matrix) }}
 
       - uses: actions/checkout@v3
 
@@ -105,7 +52,7 @@ jobs:
       - name: Download Wheel
         uses: actions/download-artifact@v3
         with:
-          name: ${{ matrix.platform }}-wheel
+          name: ${{inputs.PLATFORM}}-wheel
           path: pre-dist
 
       - name: Unpack the wheel

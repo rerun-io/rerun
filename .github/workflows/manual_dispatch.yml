@@ -53,7 +53,15 @@ jobs:
 
   build_linux:
     name: Build/Test Linux
-    if: ${{ github.event.inputs.BUILD_LINUX == 'true' }}
+
+    # If we are packaging any build target, we also need the linux job to run since it produces the RRD
+    if: |
+      ${{ (github.event.inputs.BUILD_LINUX == 'true') ||
+            ((github.event.inputs.PACKAGE == 'true') && (
+              (github.event.inputs.BUILD_MACOS_INTEL == 'true') ||
+              (github.event.inputs.BUILD_MACOS_ARM == 'true') ||
+              (github.event.inputs.BUILD_WINDOWS == 'true'))) }}
+
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
@@ -91,16 +99,24 @@ jobs:
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  package_and_upload:
+  package_and_upload_linux:
     name: Package and Upload
-    needs: [build_linux, build_windows]
-    if: ${{ github.event.inputs.PACKAGE == 'true' }}
+    needs: [build_linux]
+    if: ${{ (github.event.inputs.BUILD_LINUX) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
     uses: ./.github/workflows/reusable_package_and_upload.yml
     with:
-      BUILD_LINUX: ${{ github.event.inputs.BUILD_LINUX == 'true' }}
-      BUILD_MACOS_ARM: ${{ github.event.inputs.BUILD_MACOS_ARM == 'true' }}
-      BUILD_MACOS_INTEL: ${{ github.event.inputs.BUILD_MACOS_INTEL == 'true' }}
-      BUILD_WINDOWS: ${{ github.event.inputs.BUILD_WINDOWS == 'true' }}
+      PLATFORM: linux
+      EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  package_and_upload_windows:
+    name: Package and Upload
+    needs: [build_linux, build_windows]
+    if: ${{ (github.event.inputs.BUILD_WINDOWS) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
+    uses: ./.github/workflows/reusable_package_and_upload.yml
+    with:
+      PLATFORM: linux
       EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
