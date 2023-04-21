@@ -28,6 +28,10 @@ env:
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
 jobs:
 
 ################################################################################
@@ -105,6 +109,23 @@ jobs:
 
       - uses: actions/checkout@v3
 
+      # Rust-cache will cache our dependencies, which is a large chunk of the build
+      # See: https://github.com/Swatinem/rust-cache
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build-${{ inputs.PLATFORM }}"
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: ${{ inputs.SAVE_CACHE }}
+
+      # Sccache will cache everything else
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
       # The pip-cache setup logic doesn't work in the ubuntu docker container
       # That's probably fine since we bake these deps into the container already
       - name: Setup python
@@ -119,16 +140,6 @@ jobs:
       # should be fast, and this way things don't break if we add new packages without rebuilding
       # docker
       - run: pip install -r rerun_py/requirements-build.txt
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "build-${{ inputs.PLATFORM }}"
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # Don't update the cache -- it will be updated by the lint job
-          # TODO(jleibs): this job will likely run before rust.yml updates
-          # the cache. Better cross-job sequencing would be nice here
-          save-if: ${{ inputs.SAVE_CACHE }}
 
       # We have a nice script for that: ./scripts/setup_web.sh
       # Unfortunately, we can't run that on Windows, because Windows doesn't come with
@@ -190,6 +201,7 @@ jobs:
           manylinux: manylinux_2_31
           container: off
           command: build
+          sccache: 'true'
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release

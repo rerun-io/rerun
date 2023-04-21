@@ -20,6 +20,10 @@ env:
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
 jobs:
 
 ################################################################################
@@ -62,9 +66,6 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     container:
       image: rerunio/ci_docker:0.6
-      env:
-        RUSTFLAGS: ${{env.RUSTFLAGS}}
-        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
     steps:
       - name: Show context
         run: |
@@ -77,17 +78,28 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
 
+      # Rust-cache will cache our dependencies, which is a large chunk of the build
+      # See: https://github.com/Swatinem/rust-cache
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build-linux"
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # See: https://github.com/rerun-io/rerun/pull/497
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
           save-if: ${{ inputs.SAVE_CACHE }}
+
+      # Sccache will cache everything else
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
 
       # First do our check with --locked to make sure `Cargo.lock` is up to date
       - name: Check all features
@@ -221,12 +233,13 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.6
-      env:
-        RUSTFLAGS: ${{env.RUSTFLAGS}}
-        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
 
     steps:
       - uses: actions/checkout@v3
+
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Cargo Deny
         shell: bash
