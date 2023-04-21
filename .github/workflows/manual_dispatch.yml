@@ -52,7 +52,7 @@ jobs:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_linux:
-    name: Build/Test Linux
+    name: 'Linux: Build/Test'
 
     # If we are packaging any build target, we also need the linux job to run since it produces the RRD
     if: |
@@ -70,7 +70,7 @@ jobs:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_windows:
-    name: Build/Test Windows
+    name: 'Windows: Build/Test'
     if: ${{ github.event.inputs.BUILD_WINDOWS == 'true'}}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
@@ -80,7 +80,7 @@ jobs:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_macos_arm:
-    name: Build/Test Mac (Arm)
+    name: 'Macos-Arm: Build/Test'
     if: ${{ github.event.inputs.BUILD_MACOS_ARM == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
@@ -90,7 +90,7 @@ jobs:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_macos_intel:
-    name: Build/Test Mac (Intel)
+    name: 'Macos-Intel: Build/Test'
     if: ${{ github.event.inputs.BUILD_MACOS_INTEL == 'true' }}
     uses: ./.github/workflows/reusable_build_and_test.yml
     with:
@@ -100,7 +100,7 @@ jobs:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   package_and_upload_linux:
-    name: Package and Upload
+    name: 'Linux: Package and Upload'
     needs: [build_linux]
     if: ${{ (github.event.inputs.BUILD_LINUX) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
     uses: ./.github/workflows/reusable_package_and_upload.yml
@@ -111,12 +111,34 @@ jobs:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   package_and_upload_windows:
-    name: Package and Upload
+    name: 'Windows: Package and Upload'
     needs: [build_linux, build_windows]
     if: ${{ (github.event.inputs.BUILD_WINDOWS) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
     uses: ./.github/workflows/reusable_package_and_upload.yml
     with:
-      PLATFORM: linux
-      EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
+      PLATFORM: windows
+      EXPECTED_VERSION: ${{ needs.build_windows.outputs.EXPECTED_VERSION }}
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  package_and_upload_macos_arm:
+    name: 'Macos-Arm: Package and Upload'
+    needs: [build_linux, build_macos_arm]
+    if: ${{ (github.event.inputs.BUILD_MACOS_ARM) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
+    uses: ./.github/workflows/reusable_package_and_upload.yml
+    with:
+      PLATFORM: macos-arm
+      EXPECTED_VERSION: ${{ needs.build_macos_arm.outputs.EXPECTED_VERSION }}
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  package_and_upload_macos_intel:
+    name: 'Macos-Intel: Package and Upload'
+    needs: [build_linux, build_macos_intel]
+    if: ${{ (github.event.inputs.BUILD_MACOS_INTEL) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
+    uses: ./.github/workflows/reusable_package_and_upload.yml
+    with:
+      PLATFORM: macos-intel
+      EXPECTED_VERSION: ${{ needs.build_macos_intel.outputs.EXPECTED_VERSION }}
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
