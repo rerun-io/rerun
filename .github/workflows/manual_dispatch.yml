@@ -35,6 +35,11 @@ on:
         type: boolean
         required: false
         default: false
+      BUILD_WEB:
+        description: 'Build Web'
+        type: boolean
+        required: false
+        default: false
       PACKAGE:
         description: 'Package'
         type: boolean
@@ -42,19 +47,14 @@ on:
         default: false
       RELEASE:
         description: 'Release'
-        type: boolean
+        type: string
         required: false
-        default: false
+        default: ''
       SAVE_CACHE:
         description: 'Save Cache'
         type: boolean
         required: false
         default: false
-      SAVE_DOCS_AS:
-        description: 'Save Docs'
-        type: string
-        required: false
-        default: ''
 
 jobs:
   lint_all:
@@ -113,41 +113,61 @@ jobs:
     secrets: inherit
 
   package_and_upload_linux:
-    name: 'Linux: Package and Upload'
+    name: 'Linux: Package Wheels'
     needs: [build_linux]
     if: ${{ (github.event.inputs.BUILD_LINUX) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_and_upload.yml
+    uses: ./.github/workflows/reusable_package_wheels.yml
     with:
       PLATFORM: linux
       EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
   package_and_upload_windows:
-    name: 'Windows: Package and Upload'
+    name: 'Windows: Package Wheels'
     needs: [build_linux, build_windows]
     if: ${{ (github.event.inputs.BUILD_WINDOWS) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_and_upload.yml
+    uses: ./.github/workflows/reusable_package_wheels.yml
     with:
       PLATFORM: windows
       EXPECTED_VERSION: ${{ needs.build_windows.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
   package_and_upload_macos_arm:
-    name: 'Macos-Arm: Package and Upload'
+    name: 'Macos-Arm: Package Wheels'
     needs: [build_linux, build_macos_arm]
     if: ${{ (github.event.inputs.BUILD_MACOS_ARM) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_and_upload.yml
+    uses: ./.github/workflows/reusable_package_wheels.yml
     with:
       PLATFORM: macos-arm
       EXPECTED_VERSION: ${{ needs.build_macos_arm.outputs.EXPECTED_VERSION }}
     secrets: inherit
 
   package_and_upload_macos_intel:
-    name: 'Macos-Intel: Package and Upload'
+    name: 'Macos-Intel: Package Wheels'
     needs: [build_linux, build_macos_intel]
     if: ${{ (github.event.inputs.BUILD_MACOS_INTEL) == 'true' && (github.event.inputs.PACKAGE == 'true') }}
-    uses: ./.github/workflows/reusable_package_and_upload.yml
+    uses: ./.github/workflows/reusable_package_wheels.yml
     with:
       PLATFORM: macos-intel
       EXPECTED_VERSION: ${{ needs.build_macos_intel.outputs.EXPECTED_VERSION }}
+    secrets: inherit
+
+  build_web:
+    name: 'Build Web'
+    if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      RELEASE: ${{ github.event.inputs.RELEASE }}
+    secrets: inherit
+
+  upload_web:
+    name: 'Upload Web'
+    # Uses Assets:
+    #   build_linux: rrd
+    #   build_web: web_viewer
+    needs: [build_linux, build_web]
+    if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      RELEASE: ${{ github.event.inputs.RELEASE }}
     secrets: inherit

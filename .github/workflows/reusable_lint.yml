@@ -61,6 +61,8 @@ jobs:
         run: |
           just py-requirements
 
+# ---------------------------------------------------------------------------
+
   py-test-docs:
     name: Test Python Docs
     runs-on: ubuntu-latest
@@ -83,9 +85,12 @@ jobs:
         run: |
           mkdocs build -f rerun_py/mkdocs.yml
 
-  py-docs:
+
+# ---------------------------------------------------------------------------
+
+  py-deploy-docs:
     needs: [py-test-docs]
-    name: Build and deploy docs
+    name: Deploy Python Docs
     if: ${{ inputs.SAVE_DOCS_AS != '' }}
     runs-on: ubuntu-latest
     steps:
@@ -201,7 +206,6 @@ jobs:
           command: cranky
           args: --all-targets --all-features -- --deny warnings
 
-      # --------------------------------------------------------------------------------
       # Check a few important permutations of the feature flags for our `rerun` library:
       - name: Check rerun with `--no-default-features``
         uses: actions-rs/cargo@v1
@@ -214,7 +218,6 @@ jobs:
         with:
           command: cranky
           args: --locked -p rerun --no-default-features --features sdk
-      # --------------------------------------------------------------------------------
 
       - name: Test doc-tests
         uses: actions-rs/cargo@v1
@@ -267,6 +270,45 @@ jobs:
           git fetch
           python3 -m ghp_import -n -p -x docs/rust/head target/doc/ -m "Update the rust docs"
 
+# ---------------------------------------------------------------------------
+
+  rs-check-wasm:
+    name: Check Rust web build (wasm32 + wasm-bindgen)
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.6
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: default
+          toolchain: 1.67.1
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build-wasm"
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ inputs.SAVE_CACHE }}
+
+      - name: clippy check re_viewer wasm32
+        run: ./scripts/clippy_wasm.sh
+
+      - name: Check re_renderer examples wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
+
+      - name: Build web-viewer (debug)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --debug
 
 # ---------------------------------------------------------------------------
 

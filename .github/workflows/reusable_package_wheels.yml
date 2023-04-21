@@ -11,8 +11,8 @@ on:
         type: string
       RELEASE:
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: ''
 
 jobs:
 

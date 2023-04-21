@@ -1,0 +1,68 @@
+name: Reusable Build Web
+
+on:
+  workflow_call:
+    inputs:
+      RELEASE:
+        required: false
+        type: boolean
+        default: false
+
+env:
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+
+jobs:
+
+  rs-build-web-viewer:
+    name: Build Web (wasm32 + wasm-bindgen)
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    runs-on: ubuntu-latest-16-cores
+
+    container:
+      image: rerunio/ci_docker:0.6
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.67.0
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ github.event_name == 'push'}}
+
+      - name: Patch Cargo.toml for pre-release
+        if: ${{ (inputs.RELEASE == '') || (inputs.RELEASE == 'prerelease') }}
+        # After patching the pre-release version, run cargo update.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
+        run: |
+          python3 scripts/version_util.py --patch_prerelease
+          cargo update -w
+
+      - name: Build web-viewer (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --release
+
+      - name: Upload web assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: web_viewer
+          path: web_viewer
