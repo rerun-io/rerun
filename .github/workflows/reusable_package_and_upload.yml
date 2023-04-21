@@ -52,10 +52,10 @@ jobs:
           - windows
 
     if: |
-      ((inputs.PLATFORM == 'linux' && inputs.BUILD_LINUX) ||
-       (inputs.PLATFORM == 'macos-intel' && inputs.BUILD_MACOS_INTEL) ||
-       (inputs.PLATFORM == 'macos-arm' && inputs.BUILD_MACOS_ARM) ||
-       (inputs.PLATFORM == 'windows' && inputs.BUILD_WINDOWS))
+      ((matrix.platform == 'linux' && inputs.BUILD_LINUX) ||
+       (matrix.platform == 'macos-intel' && inputs.BUILD_MACOS_INTEL) ||
+       (matrix.platform == 'macos-arm' && inputs.BUILD_MACOS_ARM) ||
+       (matrix.platform == 'windows' && inputs.BUILD_WINDOWS))
 
     steps:
       - name: Show context

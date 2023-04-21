@@ -97,6 +97,10 @@ jobs:
     if: ${{ github.event.inputs.PACKAGE == 'true' }}
     uses: ./.github/workflows/reusable_package_and_upload.yml
     with:
+      BUILD_LINUX: ${{ github.event.inputs.BUILD_LINUX == 'true' }}
+      BUILD_MACOS_ARM: ${{ github.event.inputs.BUILD_MACOS_ARM == 'true' }}
+      BUILD_MACOS_INTEL: ${{ github.event.inputs.BUILD_MACOS_INTEL == 'true' }}
+      BUILD_WINDOWS: ${{ github.event.inputs.BUILD_WINDOWS == 'true' }}
       EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
