@@ -8,37 +8,42 @@ on:
       LINTS:
         description: 'Run Lints'
         type: boolean
-        required: true
+        required: false
         default: true
       BUILD_LINUX:
         description: 'Build/Test Linux'
         type: boolean
-        required: true
+        required: false
         default: true
       BUILD_MACOS_INTEL:
         description: 'Build/Test Mac (Intel)'
         type: boolean
-        required: true
+        required: false
         default: false
       BUILD_MACOS_ARM:
         description: 'Build/Test Mac (Arm)'
         type: boolean
-        required: true
+        required: false
         default: false
       BUILD_WINDOWS:
         description: 'Build/Test Win'
         type: boolean
-        required: true
-        default: false
-      SAVE_CACHE:
-        description: 'Save Cache'
-        type: boolean
-        required: true
+        required: false
         default: false
       PACKAGE:
         description: 'Package'
         type: boolean
-        required: true
+        required: false
+        default: false
+      RELEASE:
+        description: 'Release'
+        type: boolean
+        required: false
+        default: false
+      SAVE_CACHE:
+        description: 'Save Cache'
+        type: boolean
+        required: false
         default: false
 
 jobs:

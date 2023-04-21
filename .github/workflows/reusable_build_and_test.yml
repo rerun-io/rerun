@@ -6,14 +6,14 @@ on:
       CALLER_GITHUB_TOKEN:
         required: true
     inputs:
-      SAVE_CACHE:
-        required: false
-        type: boolean
-        default: false
       PLATFORM:
         required: true
         type: string
-      PRERELEASE:
+      RELEASE:
+        required: false
+        type: boolean
+        default: false
+      SAVE_CACHE:
         required: false
         type: boolean
         default: false
@@ -179,7 +179,7 @@ jobs:
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
 
       - name: Patch Cargo.toml for pre-release
-        if: inputs.PRERELEASE
+        if: inputs.RELEASE != 'true'
         # After patching the pre-release version, run cargo update.
         # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |

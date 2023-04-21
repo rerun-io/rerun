@@ -6,16 +6,16 @@ on:
       CALLER_GITHUB_TOKEN:
         required: true
     inputs:
-      PLATFORM:
-        required: true
-        type: string
-      PRERELEASE:
-        required: false
-        type: boolean
-        default: false
       EXPECTED_VERSION:
         required: true
         type: string
+      PLATFORM:
+        required: true
+        type: string
+      RELEASE:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
 
