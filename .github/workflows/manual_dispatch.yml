@@ -167,7 +167,7 @@ jobs:
     #   build_web: web_viewer
     needs: [build_linux, build_web]
     if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
-    uses: ./.github/workflows/reusable_build_web.yml
+    uses: ./.github/workflows/reusable_upload_web.yml
     with:
       RELEASE: ${{ github.event.inputs.RELEASE }}
     secrets: inherit
