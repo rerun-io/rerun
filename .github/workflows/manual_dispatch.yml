@@ -10,6 +10,11 @@ on:
         type: boolean
         required: false
         default: true
+      BENCHES:
+          description: 'Run Benches'
+          type: boolean
+          required: false
+          default: false
       BUILD_LINUX:
         description: 'Build/Test Linux'
         type: boolean
@@ -53,6 +58,13 @@ jobs:
     uses: ./.github/workflows/reusable_lint.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
+    secrets:
+      CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  benches:
+    name: Benchmarks
+    if: ${{ github.event.inputs.BENCHES == 'true' }}
+    uses: ./.github/workflows/reusable_bench.yml
     secrets:
       CALLER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
