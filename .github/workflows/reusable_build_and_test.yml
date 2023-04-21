@@ -17,6 +17,10 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      EXPECTED_VERSION:
+        description: "The expected version of the package"
+        value: ${{ jobs.build_wheels.outputs.EXPECTED_VERSION }}
 
 env:
   PYTHON_VERSION: "3.8"
@@ -94,7 +98,7 @@ jobs:
     container: ${{ fromJson(needs.set_config.outputs.CONTAINER) }}
 
     outputs:
-      EXPECTED_VERSION: ${{ steps.expected_version.outputs.expected_version }}
+      EXPECTED_VERSION: ${{ steps.expected_version.outputs.EXPECTED_VERSION }}
 
     steps:
       - name: Show context
@@ -195,7 +199,7 @@ jobs:
         shell: bash
         id: expected_version
         run: |
-          echo "expected_version=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
+          echo "EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
@@ -216,7 +220,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
-          name: ${{inputs.PLATFORM}}-wheels
+          name: ${{inputs.PLATFORM}}-wheel
           path: dist
 
 ################################################################################
@@ -252,7 +256,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{inputs.PLATFORM}}-wheels
+          name: ${{inputs.PLATFORM}}-wheel
           path: dist
 
       - name: Install wheel dependencies
@@ -287,3 +291,29 @@ jobs:
       - name: Run e2e test
         shell: bash
         run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+
+      - name: Cache RRD dataset
+        if: inputs.PLATFORM == 'linux'
+        id: dataset
+        uses: actions/cache@v3
+        with:
+          path: examples/python/colmap/dataset/
+          # TODO(jleibs): Derive this key from the invocation below
+          key: colmap-dataset-colmap-fiat-v0
+
+      - name: Generate Embedded RRD file
+        if: inputs.PLATFORM == 'linux'
+        shell: bash
+        # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
+        run: |
+          mkdir rrd
+          pip install -r examples/python/colmap/requirements.txt
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+
+      # All platforms are currently creating the same rrd file, upload one of them
+      - name: Save RRD artifact
+        if: inputs.PLATFORM == 'linux'
+        uses: actions/upload-artifact@v3
+        with:
+          name: rrd
+          path: rrd

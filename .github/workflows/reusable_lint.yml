@@ -10,6 +10,7 @@ on:
         required: false
         type: boolean
         default: false
+
 env:
   PYTHON_VERSION: "3.8"
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
