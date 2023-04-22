@@ -24,7 +24,7 @@ jobs:
             exit 1
           else
             echo "Commit is associated with PR: $pr_number"
-            echo "PR_NUMBER=$pr_number" >> "$GITHUB_OUTPUTS"
+            echo "PR_NUMBER=$pr_number" >> "$GITHUB_OUTPUT"
           fi
 
   build_linux:
