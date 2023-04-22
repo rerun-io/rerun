@@ -6,14 +6,15 @@ on:
       EXPECTED_VERSION:
         required: true
         type: string
-      PLATFORM:
-        required: true
-        type: string
       RELEASE:
         required: false
         type: string
         default: ''
       RRD_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
+      WHEEL_ARTIFACT_NAME:
         required: false
         type: string
         default: ''
@@ -57,7 +58,7 @@ jobs:
       - name: Download Wheel
         uses: actions/download-artifact@v3
         with:
-          name: ${{inputs.PLATFORM}}-wheel
+          name: ${{inputs.WHEEL_ARTIFACT_NAME}}
           path: pre-dist
 
       - name: Unpack the wheel

@@ -18,6 +18,10 @@ on:
         required: false
         type: string
         default: ''
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
       SAVE_CACHE:
         required: false
         type: boolean
@@ -283,7 +287,8 @@ jobs:
           path: rrd
 
       - name: Save wheel artifact
+        if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
         uses: actions/upload-artifact@v3
         with:
-          name: ${{inputs.PLATFORM}}-wheel
+          name: ${{inputs.WHEEL_ARTIFACT_NAME}}
           path: dist
