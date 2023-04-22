@@ -225,6 +225,13 @@ jobs:
             ${{ inputs.MATURIN_FEATURE_FLAGS }}
             --out dist
 
+      - name: Save wheel artifact
+        if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{inputs.WHEEL_ARTIFACT_NAME}}
+          path: dist
+
       # ---------------------------------------------------------------------------
       # Test the wheel
 
@@ -292,9 +299,3 @@ jobs:
           name: ${{ inputs.RRD_ARTIFACT_NAME }}
           path: rrd
 
-      - name: Save wheel artifact
-        if: ${{ (needs.set_config.outputs.RUN_TESTS == 'true') && (inputs.WHEEL_ARTIFACT_NAME != '') }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{inputs.WHEEL_ARTIFACT_NAME}}
-          path: dist
