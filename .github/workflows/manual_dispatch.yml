@@ -70,7 +70,7 @@ jobs:
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
-      MATURIN_FEATURE_FLAGS: '--no-default-features'
+      MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
       WHEEL_ARTIFACT_NAME: ''
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
