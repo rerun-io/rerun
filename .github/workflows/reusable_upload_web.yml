@@ -11,16 +11,23 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      HOSTED_APP_URL:
+        description: "The URL where the app will be hosted"
+        value: ${{ jobs.upload_web.outputs.HOSTED_APP_URL }}
 
 jobs:
 
-  package_web:
+  upload_web:
     name: Upload web build to google cloud (wasm32 + wasm-bindgen)
     permissions:
       contents: "read"
       id-token: "write"
 
     runs-on: ubuntu-latest
+
+    outputs:
+      HOSTED_APP_URL: ${{ steps.expected_url.outputs.HOSTED_APP_URL }}
 
     steps:
       - uses: actions/checkout@v3
@@ -61,6 +68,11 @@ jobs:
           path: "rrd"
           destination: "rerun-example-rrd/commit/${{env.SHORT_SHA}}"
           parent: false
+
+      - name: "Expected URL"
+        id: expected_url
+        run: |
+          echo "HOSTED_APP_URL=https://storage.googleapis.com/rerun-web-viewer/commit/${{env.SHORT_SHA}}/index.html" >> "$GITHUB_OUTPUT"
 
       - name: "Upload web-viewer (prerelease)"
         if: inputs.RELEASE == 'prerelease'

@@ -1,0 +1,69 @@
+name: Reusable PR Summary
+
+on:
+  workflow_call:
+    inputs:
+      PR_NUMBER:
+        required: true
+        type: string
+      HOSTED_APP_URL:
+        required: false
+        type: string
+        default: ''
+      LINUX_WHEEL_URL:
+        required: false
+        type: string
+        default: ''
+      WINDOWS_WHEEL_URL:
+        required: false
+        type: string
+        default: ''
+      MACOS_ARM_WHEEL_URL:
+        required: false
+        type: string
+        default: ''
+      MACOS_INTEL_WHEEL_URL:
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  create_html_summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install jinja-cli
+        run: pip install jinja2-cli
+
+      - name: Render HTML template
+        run: |
+          jinja2 \
+            --format=json \
+            --var="pr_number=${{ inputs.PR_NUMBER }}" \
+            --var="commit=${{ github.sha }}" \
+            --var="hosted_app_url=${{ inputs.HOSTED_APP_URL }}" \
+            --var="linux_wheel_url=${{ inputs.LINUX_WHEEL_URL }}" \
+            --var="windows_wheel_url=${{ inputs.WINDOWS_WHEEL_URL }}" \
+            --var="macos_arm_wheel_url=${{ inputs.MACOS_ARM_WHEEL_URL }}" \
+            --var="macos_intel_wheel_url=${{ inputs.MACOS_INTEL_WHEEL_URL }}" \
+            html_template.html \
+            > build_summary.html
+
+      # Replace the following with your actual artifact upload implementation.
+      - name: Upload HTML summary
+        run: |
+          echo "Uploading build_summary.html to rerun-builds/commit/${{ github.sha }}/wheels"
+          # Implement the upload logic here
+
+      - name: "Upload Wheel"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "build_summary.html"
+          destination: "rerun-builds/pull_request/${{inputs.PR_NUMBER}}/"

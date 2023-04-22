@@ -5,6 +5,16 @@ on:
     # NOTE: boolean inputs are still actually strings
     # See: https://github.com/actions/runner/issues/1483
     inputs:
+      BENCHES:
+        description: 'Run Benches'
+        type: boolean
+        required: false
+        default: false
+      BUILD_WEB:
+        description: 'Build Web'
+        type: boolean
+        required: false
+        default: false
       CHECKS:
         description: 'Run All Checks'
         type: boolean
@@ -14,27 +24,6 @@ on:
         description: 'Test Minimum Wheel'
         type: boolean
         required: false
-        default: true
-      BENCHES:
-        description: 'Run Benches'
-        type: boolean
-        required: false
-        default: false
-      WHEEL_PLATFORMS:
-        description: 'Platforms to build wheels for'
-        type: string
-        required: false
-        default: ''
-      BUILD_WEB:
-        description: 'Build Web'
-        type: boolean
-        required: false
-        default: false
-      UPLOAD_GCLOUD:
-        description: 'Upload to gcloud'
-        type: boolean
-        required: false
-        default: false
       RELEASE:
         description: 'Release'
         type: string
@@ -50,6 +39,21 @@ on:
         type: boolean
         required: false
         default: false
+      SAVE_PR:
+        description: 'Save PR Summary'
+        type: string
+        required: false
+        default: ''
+      UPLOAD_GCLOUD:
+        description: 'Upload to gcloud'
+        type: boolean
+        required: false
+        default: false
+      WHEEL_PLATFORMS:
+        description: 'Platforms to build wheels for'
+        type: string
+        required: false
+        default: ''
 
 jobs:
   checks:
@@ -193,4 +197,14 @@ jobs:
     with:
       RELEASE: ${{ github.event.inputs.RELEASE }}
       RRD_ARTIFACT_NAME: linux-rrd-fast
+    secrets: inherit
+
+  save_pr_summary:
+    name: 'Save PR Summary'
+    needs: [upload_web]
+    if: ${{ github.event.inputs.SAVE_PR != '' }}
+    uses: ./.github/workflows/reusable_pr_summary.yml
+    with:
+      PR_NUMBER: ${{ github.event.inputs.SAVE_PR }}
+      HOSTED_APP_URL: ${{ needs.upload_web.outputs.HOSTED_APP_URL }}
     secrets: inherit

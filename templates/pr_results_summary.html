@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Summary</title>
+</head>
+
+<body>
+    <h1>Build Summary for PR #{{ pr_number }}</h1>
+    {% if hosted_app_url %}
+    <p>Hosted App: <a href="{{ hosted_app_url }}">{{ hosted_app_url }}</a></p>
+    {% endif %}
+    <p>Wheels:</p>
+    <ul>
+        {% if linux_wheel_url %}<li><a href="{{ linux_wheel_url }}">Linux</a></li>{% endif %}
+        {% if windows_wheel_url %}<li><a href="{{ windows_wheel_url }}">Windows</a></li>{% endif %}
+        {% if macos_arm_wheel_url %}<li><a href="{{ macos_arm_wheel_url }}">macOS (ARM)</a></li>{% endif %}
+        {% if macos_intel_wheel_url %}<li><a href="{{ macos_intel_wheel_url }}">macOS (Intel)</a></li>{% endif %}
+    </ul>
+</body>
+
+</html>
