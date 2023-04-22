@@ -13,6 +13,10 @@ on:
         required: false
         type: string
         default: ''
+      RRD_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
 
 jobs:
 
@@ -71,7 +75,7 @@ jobs:
       - name: Download RRD
         uses: actions/download-artifact@v3
         with:
-          name: rrd
+          name: ${{inputs.RRD_ARTIFACT_NAME}}
           path: rrd
 
       - name: Insert the rrd

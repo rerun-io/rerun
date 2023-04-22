@@ -1,4 +1,4 @@
-name: Reusable Build and Test Wheels
+name: Build and Test a Minimum Wheel
 
 on:
   workflow_call:
@@ -14,10 +14,6 @@ on:
         required: false
         type: boolean
         default: false
-    outputs:
-      EXPECTED_VERSION:
-        description: "The expected version of the package"
-        value: ${{ jobs.build_wheels.outputs.EXPECTED_VERSION }}
 
 env:
   PYTHON_VERSION: "3.8"
@@ -86,16 +82,13 @@ jobs:
 
 # ---------------------------------------------------------------------------
 
-  build_wheels:
-    name: Build Wheels
+  build_and_test:
+    name: Build and Test Minimum Wheel
 
     needs: [set_config]
 
     runs-on: ${{ needs.set_config.outputs.RUNNER }}
     container: ${{ fromJson(needs.set_config.outputs.CONTAINER) }}
-
-    outputs:
-      EXPECTED_VERSION: ${{ steps.expected_version.outputs.EXPECTED_VERSION }}
 
     steps:
       - name: Show context
@@ -104,7 +97,6 @@ jobs:
           echo "JOB_CONTEXT": $JOB_CONTEXT
           echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
           echo "ENV_CONTEXT": $ENV_CONTEXT
-          echo "EXPECTED_VERSION": $EXPECTED_VERSION
         env:
           ENV_CONTEXT: ${{ toJson(env) }}
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -198,96 +190,20 @@ jobs:
         run: |
           echo "EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
 
-      - name: Build Wheel
+      # Build and install a stripped down wheel -- no native or web viewer
+      - name: Build and Install Wheel
         uses: PyO3/maturin-action@v1
         with:
           maturin-version: "0.14.10"
           manylinux: manylinux_2_31
           container: off
-          command: build
+          command: develop
           sccache: 'true'
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
             --target ${{ needs.set_config.outputs.TARGET }}
             --no-default-features
-            --features pypi
-            --out dist
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{inputs.PLATFORM}}-wheel
-          path: dist
-
-# ---------------------------------------------------------------------------
-
-  run_tests:
-    name: Test Wheels
-
-    needs: [set_config, build_wheels]
-
-    runs-on: ${{ needs.set_config.outputs.RUNNER }}
-    container: ${{ fromJson(needs.set_config.outputs.CONTAINER) }}
-
-    # Note string instead of boolean since it's a job output
-    if: needs.set_config.outputs.RUN_TESTS == 'true'
-
-    steps:
-      - name: Show context
-        run: |
-          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
-          echo "JOB_CONTEXT": $JOB_CONTEXT
-          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
-          echo "ENV_CONTEXT": $ENV_CONTEXT
-          echo "EXPECTED_VERSION": $EXPECTED_VERSION
-        env:
-          ENV_CONTEXT: ${{ toJson(env) }}
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-          JOB_CONTEXT: ${{ toJson(job) }}
-          INPUTS_CONTEXT: ${{ toJson(inputs) }}
-          EXPECTED_VERSION: ${{ needs.build_wheels.outputs.EXPECTED_VERSION }}
-
-      - uses: actions/checkout@v3
-
-      - name: Setup python
-        if: ${{ inputs.PLATFORM != 'linux' }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-build.txt"
-
-      - name: Install wheel dependencies
-        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-        # This needs to be a separate step for some reason or the following step fails
-        # TODO(jleibs): pull these deps from pyproject.toml
-        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
-        shell: bash
-        run: |
-          pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
-
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{inputs.PLATFORM}}-wheel
-          path: dist
-
-      - name: Install built wheel
-        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
-        # find the dependencies to reinstall them.
-        shell: bash
-        run: |
-          pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ needs.build_wheels.outputs.EXPECTED_VERSION }} --no-index --find-links dist
-
-      - name: Verify built wheel version
-        shell: bash
-        run: |
-          python3 -m rerun --version
-          which rerun
-          rerun --version
 
       - name: Run unit tests
         shell: bash
@@ -298,6 +214,7 @@ jobs:
         run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Cache RRD dataset
+        if: inputs.PLATFORM == 'linux'
         id: dataset
         uses: actions/cache@v3
         with:
@@ -305,7 +222,7 @@ jobs:
           # TODO(jleibs): Derive this key from the invocation below
           key: colmap-dataset-colmap-fiat-v0
 
-      - name: Generate Embedded RRD file
+      - name: Generate the RRD file
         shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
@@ -317,5 +234,5 @@ jobs:
       - name: Save RRD artifact
         uses: actions/upload-artifact@v3
         with:
-          name: rrd-wheels-${{ inputs.PLATFORM }}
+          name: rrd-fast-${{ inputs.PLATFORM }}
           path: rrd

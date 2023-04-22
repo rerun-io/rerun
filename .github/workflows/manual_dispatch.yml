@@ -10,6 +10,11 @@ on:
         type: boolean
         required: false
         default: true
+      MIN_TEST_WHEEL:
+        description: 'Test Minimum Wheel'
+        type: boolean
+        required: false
+        default: true
       BENCHES:
         description: 'Run Benches'
         type: boolean
@@ -66,6 +71,14 @@ jobs:
       SAVE_DOCS_AS: ${{ github.event.inputs.SAVE_DOCS_AS }}
     secrets: inherit
 
+  min_test_wheel:
+    if: ${{ github.event.inputs.CHECKS == 'true' }}
+    uses: ./.github/workflows/reusable_min_test_wheel.yml
+    with:
+      SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
+      PLATFORM: linux
+    secrets: inherit
+
   benches:
     name: Benchmarks
     if: ${{ github.event.inputs.BENCHES == 'true' }}
@@ -120,6 +133,7 @@ jobs:
     with:
       PLATFORM: linux
       EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
+      RRD_ARTIFACT_NAME: "rrd-wheel-linux"
     secrets: inherit
 
   upload_wheels_windows:
@@ -130,6 +144,7 @@ jobs:
     with:
       PLATFORM: windows
       EXPECTED_VERSION: ${{ needs.build_windows.outputs.EXPECTED_VERSION }}
+      RRD_ARTIFACT_NAME: "rrd-wheel-linux"
     secrets: inherit
 
   upload_wheels_macos_arm:
@@ -140,6 +155,7 @@ jobs:
     with:
       PLATFORM: macos-arm
       EXPECTED_VERSION: ${{ needs.build_macos_arm.outputs.EXPECTED_VERSION }}
+      RRD_ARTIFACT_NAME: "rrd-wheel-linux"
     secrets: inherit
 
   upload_wheels_macos_intel:
@@ -150,6 +166,7 @@ jobs:
     with:
       PLATFORM: macos-intel
       EXPECTED_VERSION: ${{ needs.build_macos_intel.outputs.EXPECTED_VERSION }}
+      RRD_ARTIFACT_NAME: "rrd-wheel-linux"
     secrets: inherit
 
   build_web:
@@ -165,9 +182,10 @@ jobs:
     # Uses Assets:
     #   build_linux: rrd
     #   build_web: web_viewer
-    needs: [build_linux, build_web]
+    needs: [min_test_wheel, build_web]
     if: ${{ (github.event.inputs.BUILD_WEB == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       RELEASE: ${{ github.event.inputs.RELEASE }}
+      RRD_ARTIFACT_NAME: "rrd-fast-linux"
     secrets: inherit
