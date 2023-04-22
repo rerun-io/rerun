@@ -239,6 +239,7 @@ jobs:
           pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
 
       - name: Install built wheel
+        if: needs.set_config.outputs.RUN_TESTS == 'true'
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
@@ -248,6 +249,7 @@ jobs:
           pip install rerun-sdk==${{ steps.expected_version.outputs.EXPECTED_VERSION }} --no-index --find-links dist
 
       - name: Verify built wheel version
+        if: needs.set_config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: |
           python3 -m rerun --version
@@ -255,14 +257,17 @@ jobs:
           rerun --version
 
       - name: Run unit tests
+        if: needs.set_config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: cd rerun_py/tests && pytest
 
       - name: Run e2e test
+        if: needs.set_config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Cache RRD dataset
+        if: needs.set_config.outputs.RUN_TESTS == 'true'
         id: dataset
         uses: actions/cache@v3
         with:
@@ -271,6 +276,7 @@ jobs:
           key: colmap-dataset-colmap-fiat-v0
 
       - name: Generate Embedded RRD file
+        if: needs.set_config.outputs.RUN_TESTS == 'true'
         shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
@@ -280,14 +286,14 @@ jobs:
 
       # All platforms are currently creating the same rrd file, upload one of them
       - name: Save RRD artifact
-        if: ${{ inputs.RRD_ARTIFACT_NAME != '' }}
+        if: ${{ (needs.set_config.outputs.RUN_TESTS == 'true') && (inputs.RRD_ARTIFACT_NAME != '') }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.RRD_ARTIFACT_NAME }}
           path: rrd
 
       - name: Save wheel artifact
-        if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
+        if: ${{ (needs.set_config.outputs.RUN_TESTS == 'true') && (inputs.WHEEL_ARTIFACT_NAME != '') }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{inputs.WHEEL_ARTIFACT_NAME}}
