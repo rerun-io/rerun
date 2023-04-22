@@ -197,13 +197,31 @@ jobs:
           maturin-version: "0.14.10"
           manylinux: manylinux_2_31
           container: off
-          command: develop
+          command: build
           sccache: 'true'
           args: |
             --manifest-path rerun_py/Cargo.toml
-            --release
             --target ${{ needs.set_config.outputs.TARGET }}
             --no-default-features
+            --out dist
+
+      - name: Install wheel dependencies
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
+        # TODO(jleibs): pull these deps from pyproject.toml
+        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
+        shell: bash
+        run: |
+          pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+
+      - name: Install built wheel
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        shell: bash
+        run: |
+          pip uninstall rerun-sdk
+          pip install rerun-sdk==${{ steps.expected_version.outputs.EXPECTED_VERSION }} --no-index --find-links dist
 
       - name: Run unit tests
         shell: bash
