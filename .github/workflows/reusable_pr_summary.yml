@@ -45,16 +45,15 @@ jobs:
       - name: Render HTML template
         run: |
           jinja2 \
-            --format=json \
-            --var="pr_number=${{ inputs.PR_NUMBER }}" \
-            --var="commit=${{ github.sha }}" \
-            --var="hosted_app_url=${{ inputs.HOSTED_APP_URL }}" \
-            --var="linux_wheel_url=${{ inputs.LINUX_WHEEL_URL }}" \
-            --var="windows_wheel_url=${{ inputs.WINDOWS_WHEEL_URL }}" \
-            --var="macos_arm_wheel_url=${{ inputs.MACOS_ARM_WHEEL_URL }}" \
-            --var="macos_intel_wheel_url=${{ inputs.MACOS_INTEL_WHEEL_URL }}" \
-            html_template.html \
-            > build_summary.html
+            -D "pr_number=${{ inputs.PR_NUMBER }}" \
+            -D "commit=${{ github.sha }}" \
+            -D "hosted_app_url=${{ inputs.HOSTED_APP_URL }}" \
+            -D "linux_wheel_url=${{ inputs.LINUX_WHEEL_URL }}" \
+            -D "windows_wheel_url=${{ inputs.WINDOWS_WHEEL_URL }}" \
+            -D "macos_arm_wheel_url=${{ inputs.MACOS_ARM_WHEEL_URL }}" \
+            -D "macos_intel_wheel_url=${{ inputs.MACOS_INTEL_WHEEL_URL }}" \
+            templates/pr_results_summary.html \
+            -o build_summary.html
 
       # Replace the following with your actual artifact upload implementation.
       - name: Upload HTML summary
