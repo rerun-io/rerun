@@ -26,6 +26,12 @@ jobs:
         with:
           python-version: 3.x
 
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v1'
         with:
@@ -40,7 +46,6 @@ jobs:
           GIT_SHA: ${{ github.sha }}
           PR_NUMBER: ${{ inputs.PR_NUMBER }}
 
-      # Replace the following with your actual artifact upload implementation.
       - name: Upload HTML summary
         uses: google-github-actions/upload-cloud-storage@v1
         with:
