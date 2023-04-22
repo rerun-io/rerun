@@ -192,5 +192,5 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       RELEASE: ${{ github.event.inputs.RELEASE }}
-      RRD_ARTIFACT_NAME: rlinux-rrd-fast
+      RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
