@@ -11,7 +11,9 @@
 //! Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
 
 use crate::{
-    wgpu_resources::{GpuTexture, Texture2DBufferInfo, TextureDesc},
+    allocator::GpuReadbackError,
+    texture_info::Texture2DBufferInfo,
+    wgpu_resources::{GpuTexture, TextureDesc},
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
 };
 
@@ -95,7 +97,10 @@ impl ScreenshotProcessor {
         pass
     }
 
-    pub fn end_render_pass(self, encoder: &mut wgpu::CommandEncoder) {
+    pub fn end_render_pass(
+        self,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), GpuReadbackError> {
         self.screenshot_readback_buffer.read_texture2d(
             encoder,
             wgpu::ImageCopyTexture {
@@ -108,7 +113,7 @@ impl ScreenshotProcessor {
                 self.screenshot_texture.texture.width(),
                 self.screenshot_texture.texture.height(),
             ),
-        );
+        )
     }
 
     /// Returns the oldest received screenshot results for a given identifier and user data type.

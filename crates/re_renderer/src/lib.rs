@@ -12,6 +12,7 @@ pub mod importer;
 pub mod mesh;
 pub mod renderer;
 pub mod resource_managers;
+pub mod texture_info;
 pub mod view_builder;
 
 mod allocator;

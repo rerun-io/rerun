@@ -82,9 +82,10 @@ pub(crate) fn view_time_series(
         plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
     }
 
-    let egui::InnerResponse {
+    let egui::plot::PlotResponse {
         inner: time_x,
         response,
+        transform: _,
     } = plot.show(ui, |plot_ui| {
         if plot_ui.plot_secondary_clicked() {
             let timeline = ctx.rec_cfg.time_ctrl.timeline();

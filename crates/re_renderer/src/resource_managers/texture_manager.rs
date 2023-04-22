@@ -1,4 +1,4 @@
-use std::{num::NonZeroU32, sync::Arc};
+use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 
@@ -100,6 +100,14 @@ impl<'a> Texture2DCreationDesc<'a> {
 pub enum TextureCreationError {
     #[error("Texture with debug label {0:?} has zero width or height!")]
     ZeroSize(DebugLabel),
+
+    #[error(
+        "Texture with debug label {label:?} has a format {format:?} that data can't be transferred to!"
+    )]
+    UnsupportedFormatForTransfer {
+        label: DebugLabel,
+        format: wgpu::TextureFormat,
+    },
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -339,9 +347,15 @@ impl TextureManager2D {
             },
         );
 
-        let format_info = creation_desc.format.describe();
-        let width_blocks = creation_desc.width / format_info.block_dimensions.0 as u32;
-        let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+        let width_blocks = creation_desc.width / creation_desc.format.block_dimensions().0;
+        let block_size = creation_desc
+            .format
+            .block_size(Some(wgpu::TextureAspect::All))
+            .ok_or_else(|| TextureCreationError::UnsupportedFormatForTransfer {
+                label: creation_desc.label.clone(),
+                format: creation_desc.format,
+            })?;
+        let bytes_per_row_unaligned = width_blocks * block_size;
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuisance!
@@ -360,9 +374,7 @@ impl TextureManager2D {
             data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(
-                    NonZeroU32::new(bytes_per_row_unaligned).expect("invalid bytes per row"),
-                ),
+                bytes_per_row: Some(bytes_per_row_unaligned),
                 rows_per_image: None,
             },
             size,
