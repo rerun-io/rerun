@@ -18,11 +18,15 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      WHEEL_URL:
+        description: "The gcloud URL where the wheel will be hosted"
+        value: ${{ jobs.upload_wheel.outputs.HOSTED_APP_URL }}
 
 jobs:
 
-  upload_wheels:
-    name: Upload Wheels to google cloud
+  upload_wheel:
+    name: Upload Wheel to google cloud
 
     runs-on: ubuntu-latest
 
@@ -32,6 +36,9 @@ jobs:
     permissions:
       contents: "read"
       id-token: "write"
+
+    outputs:
+      WHEEL_URL: ${{ steps.expected_url.outputs.WHEEL_URL }}
 
     steps:
       - name: Show context
@@ -101,9 +108,20 @@ jobs:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
+      - name: Get the file name
+        shell: bash
+        id: get_file_name
+        run: |
+          echo "WHL_FILE=$(ls dist)" >> "$GITHUB_OUTPUT"
+
       - name: "Upload Wheel"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "dist"
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/wheels"
           parent: false
+
+      - name: "Expected URL"
+        id: expected_url
+        run: |
+          echo "WHEEL_URL=https://storage.googleapis.com/rerun-builds/commit/${{env.SHORT_SHA}}/wheels/${{steps.get_folder_name.outputs.PKG_FOLDER}} " >> "$GITHUB_OUTPUT"
