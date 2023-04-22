@@ -1,17 +1,19 @@
 """
 Script to generate a PR summary page.
 
-This script combines the github and google cloud storage APIs
+This script combines the GitHub and google cloud storage APIs
 to find and link to the builds associated with a given PR.
 
-This is expected to be run by the `reusable_pr_summary.yml` github workflow.
+This is expected to be run by the `reusable_pr_summary.yml` GitHub workflow.
 
 Requires the following packages:
-  pip install google-cloud-storage Jinja2 PyGithub
+  pip install google-cloud-storage Jinja2 PyGithub # NOLINT
 """
 
 import os
-from github import Github
+from typing import Any, Dict
+
+from github import Github  # NOLINT
 from google.cloud import storage
 from jinja2 import Template
 
@@ -20,8 +22,8 @@ GITHUB_REPOSITORY = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = int(os.environ["PR_NUMBER"])
 
 
-# Initialize the Github and GCS clients
-gh = Github(GITHUB_TOKEN)
+# Initialize the GitHub and GCS clients
+gh = Github(GITHUB_TOKEN)  # NOLINT
 gcs_client = storage.Client()
 
 # Get the list of commits associated with the PR
@@ -39,7 +41,7 @@ for commit in all_commits:
     commit_short = commit[:7]
     print("Checking commit: {}...".format(commit_short))
 
-    found = {}
+    found: Dict[str, Any] = {}
 
     # Check if there is a hosted app for the current commit
     commit_blob = viewer_bucket.blob(f"commit/{commit_short}/index.html")
