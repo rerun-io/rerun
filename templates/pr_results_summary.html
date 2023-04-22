@@ -2,25 +2,47 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Build Summary</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .hosted-app {
+            margin-left: 20px;
+        }
+
+        .wheel-list {
+            margin-left: 20px;
+        }
+
+    </style>
 </head>
 
 <body>
-    <h1>Build Summary for PR #{{ PR_NUMBER }}</h1>
-    {% if HOSTED_APP_URL %}
-    <p>Hosted App: <a href="{{ HOSTED_APP_URL }}">{{ HOSTED_APP_URL }}</a></p>
-    {% endif %}
-    {% if WHEELS %}
-    <h1>List of Wheels</h1>
-    <ul>
-        {% for wheel in WHEELS.split() %}
-        <li><a href="{{ WHEEL_BASE_URL }}/{{ wheel }}">{{ wheel }}</a>
-        </li>
-        {% endfor %}
-    </ul>
-    {% endif %}
+    <h1>Build Summary for <a href="https://github.com/rerun-io/rerun/pull/{{pr_number}}">#{{pr_number}}</a></h1>
+
+    {% for build in found_builds %}
+    <div class=" commit-section">
+        <h2>Commit: {{ build.commit }}</h2>
+        {% if build.hosted_app %}
+        <div class="hosted-app">
+            <h3>Hosted App:</h3>
+            <a href="{{ build.hosted_app }}" target="_blank">{{ build.hosted_app }}</a>
+        </div>
+        {% endif %}
+        {% if build.wheels %}
+        <div class="wheel-list">
+            <h3>Wheels:</h3>
+            <ul>
+                {% for wheel in build.wheels %}
+                <li><a href="{{ wheel }}" target="_blank">{{ wheel.split('/')[-1] }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
 </body>
 
 </html>

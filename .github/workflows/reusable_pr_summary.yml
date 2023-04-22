@@ -37,13 +37,12 @@ jobs:
         with:
           version: '>= 363.0.0'
 
-      - name: Install j2cli
-        run: pip install j2cli
+      - name: Install deps
+        run: pip install google-cloud-storage Jinja2 PyGithub
 
       - name: Render HTML template
-        run: scripts/generate_pr_summary.sh
+        run: python scripts/generate_pr_summary.py
         env:
-          GIT_SHA: ${{ github.sha }}
           PR_NUMBER: ${{ inputs.PR_NUMBER }}
 
       - name: Upload HTML summary
