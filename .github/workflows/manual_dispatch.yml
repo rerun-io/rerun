@@ -206,6 +206,4 @@ jobs:
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
       PR_NUMBER: ${{ github.event.inputs.SAVE_PR }}
-      HOSTED_APP_URL: ${{ needs.upload_web.outputs.HOSTED_APP_URL }}
-      LINUX_WHEEL_URL: ${{ needs.upload_wheels_linux.outputs.WHEEL_URL }}
     secrets: inherit

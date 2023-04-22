@@ -8,17 +8,18 @@
 </head>
 
 <body>
-    <h1>Build Summary for PR #{{ pr_number }}</h1>
-    {% if hosted_app_url %}
-    <p>Hosted App: <a href="{{ hosted_app_url }}">{{ hosted_app_url }}</a></p>
+    <h1>Build Summary for PR #{{ PR_NUMBER }}</h1>
+    {% if HOSTED_APP_URL %}
+    <p>Hosted App: <a href="{{ HOSTED_APP_URL }}">{{ HOSTED_APP_URL }}</a></p>
     {% endif %}
-    <p>Wheels:</p>
+    {% if WHEELS %}
+    <h1>List of Wheels</h1>
     <ul>
-        {% if linux_wheel_url %}<li><a href="{{ linux_wheel_url }}">Linux</a></li>{% endif %}
-        {% if windows_wheel_url %}<li><a href="{{ windows_wheel_url }}">Windows</a></li>{% endif %}
-        {% if macos_arm_wheel_url %}<li><a href="{{ macos_arm_wheel_url }}">macOS (ARM)</a></li>{% endif %}
-        {% if macos_intel_wheel_url %}<li><a href="{{ macos_intel_wheel_url }}">macOS (Intel)</a></li>{% endif %}
+        {% for wheel in WHEELS.split() %}
+        <li><a href="https://storage.googleapis.com/rerun-builds/commit/{{ wheel }}">{{ wheel }}</a></li>
+        {% endfor %}
     </ul>
+    {% endif %}
 </body>
 
 </html>

@@ -11,10 +11,6 @@ on:
         required: false
         type: string
         default: ''
-    outputs:
-      HOSTED_APP_URL:
-        description: "The URL where the app will be hosted"
-        value: ${{ jobs.upload_web.outputs.HOSTED_APP_URL }}
 
 jobs:
 
@@ -25,9 +21,6 @@ jobs:
       id-token: "write"
 
     runs-on: ubuntu-latest
-
-    outputs:
-      HOSTED_APP_URL: ${{ steps.expected_url.outputs.HOSTED_APP_URL }}
 
     steps:
       - uses: actions/checkout@v3
@@ -68,11 +61,6 @@ jobs:
           path: "rrd"
           destination: "rerun-example-rrd/commit/${{env.SHORT_SHA}}"
           parent: false
-
-      - name: "Expected URL"
-        id: expected_url
-        run: |
-          echo "HOSTED_APP_URL=https://app.rerun.io/commit/${{env.SHORT_SHA}}/index.html" >> "$GITHUB_OUTPUT"
 
       - name: "Upload web-viewer (prerelease)"
         if: inputs.RELEASE == 'prerelease'

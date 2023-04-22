@@ -46,21 +46,14 @@ jobs:
         with:
           python-version: 3.x
 
-      - name: Install jinja-cli
-        run: pip install jinja2-cli
+      - name: Install j2cli
+        run: pip install j2cli
 
       - name: Render HTML template
-        run: |
-          jinja2 \
-            -D "pr_number=${{ inputs.PR_NUMBER }}" \
-            -D "commit=${{ github.sha }}" \
-            -D "hosted_app_url=${{ inputs.HOSTED_APP_URL }}" \
-            -D "linux_wheel_url=${{ inputs.LINUX_WHEEL_URL }}" \
-            -D "windows_wheel_url=${{ inputs.WINDOWS_WHEEL_URL }}" \
-            -D "macos_arm_wheel_url=${{ inputs.MACOS_ARM_WHEEL_URL }}" \
-            -D "macos_intel_wheel_url=${{ inputs.MACOS_INTEL_WHEEL_URL }}" \
-            templates/pr_results_summary.html \
-            -o build_summary.html
+        run: scripts/generate_pr_summary.sh
+        env:
+          GIT_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ inputs.PR_NUMBER }}
 
       # Replace the following with your actual artifact upload implementation.
       - name: Upload HTML summary
