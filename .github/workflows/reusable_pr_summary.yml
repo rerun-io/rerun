@@ -6,26 +6,6 @@ on:
       PR_NUMBER:
         required: true
         type: string
-      HOSTED_APP_URL:
-        required: false
-        type: string
-        default: ''
-      LINUX_WHEEL_URL:
-        required: false
-        type: string
-        default: ''
-      WINDOWS_WHEEL_URL:
-        required: false
-        type: string
-        default: ''
-      MACOS_ARM_WHEEL_URL:
-        required: false
-        type: string
-        default: ''
-      MACOS_INTEL_WHEEL_URL:
-        required: false
-        type: string
-        default: ''
 
 jobs:
   create_html_summary:
@@ -45,6 +25,11 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.x
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          version: '>= 363.0.0'
 
       - name: Install j2cli
         run: pip install j2cli
