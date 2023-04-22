@@ -3,10 +3,10 @@ name: Reusable Build and Test Wheels
 on:
   workflow_call:
     inputs:
-      MATURIN_BUILD_ARGS:
+      MATURIN_FEATURE_FLAGS:
         required: false
         type: string
-        default: '--release --no-default-features --features pypi'
+        default: '--no-default-features --features pypi'
       PLATFORM:
         required: true
         type: string
@@ -222,7 +222,7 @@ jobs:
             --manifest-path rerun_py/Cargo.toml
             --release
             --target ${{ needs.set_config.outputs.TARGET }}
-            ${{ inputs.MATURIN_BUILD_ARGS }}
+            ${{ inputs.MATURIN_FEATURE_FLAGS }}
             --out dist
 
       # ---------------------------------------------------------------------------
