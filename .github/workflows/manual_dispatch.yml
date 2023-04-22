@@ -20,26 +20,11 @@ on:
         type: boolean
         required: false
         default: false
-      BUILD_LINUX:
-        description: 'Build/Test Wheels Linux'
-        type: boolean
+      WHEEL_PLATFORMS:
+        description: 'Platforms to build wheels for'
+        type: string
         required: false
-        default: true
-      BUILD_MACOS_INTEL:
-        description: 'Build/Test Wheels Mac (Intel)'
-        type: boolean
-        required: false
-        default: false
-      BUILD_MACOS_ARM:
-        description: 'Build/Test Wheels Mac (Arm)'
-        type: boolean
-        required: false
-        default: false
-      BUILD_WINDOWS:
-        description: 'Build/Test Wheels Win'
-        type: boolean
-        required: false
-        default: false
+        default: 'linux'
       BUILD_WEB:
         description: 'Build Web'
         type: boolean
@@ -60,6 +45,11 @@ on:
         type: boolean
         required: false
         default: false
+      SAVE_DOCS:
+        description: 'Save Docs to refs.rerun.io'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   checks:
@@ -68,11 +58,14 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
-      SAVE_DOCS_AS: ${{ github.event.inputs.SAVE_DOCS_AS }}
+      SAVE_PY_DOCS: ${{ github.event.inputs.SAVE_DOCS == 'true' }}
+      SAVE_RUST_DOCS: ${{ github.event.inputs.SAVE_DOCS == 'true' }}
+      SAVE_PY_DOCS_AS: ${{ github.event.inputs.RELEASE }}
     secrets: inherit
 
   min_test_wheel:
-    if: ${{ github.event.inputs.CHECKS == 'true' }}
+    # The upload-web job uses the min-test-wheel to get the RRD in manual mode
+    if: ${{ (github.event.inputs.MIN_TEST_WHEEL == 'true') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.BUILD_WEB == 'true') ) }}
     uses: ./.github/workflows/reusable_min_test_wheel.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
@@ -90,7 +83,7 @@ jobs:
 
     # If we are uploading any build target, we also need the linux job to run since it produces the RRD
     # TODO(jleibs): Debug why multi-line if statements don't work here
-    if: ${{ (github.event.inputs.BUILD_LINUX == 'true') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( (github.event.inputs.BUILD_MACOS_INTEL == 'true') || (github.event.inputs.BUILD_MACOS_ARM == 'true') || (github.event.inputs.BUILD_WINDOWS == 'true') || (github.event.inputs.BUILD_WEB == 'true'))) }}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.WHEEL_PLATFORMS != '') ) }}
 
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -100,7 +93,7 @@ jobs:
 
   build_windows:
     name: 'Windows: Build/Test Wheels'
-    if: ${{ github.event.inputs.BUILD_WINDOWS == 'true'}}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
@@ -109,7 +102,7 @@ jobs:
 
   build_macos_arm:
     name: 'Macos-Arm: Build/Test Wheels'
-    if: ${{ github.event.inputs.BUILD_MACOS_ARM == 'true' }}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
@@ -118,7 +111,7 @@ jobs:
 
   build_macos_intel:
     name: 'Macos-Intel: Build/Test Wheels'
-    if: ${{ github.event.inputs.BUILD_MACOS_INTEL == 'true' }}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
@@ -128,7 +121,7 @@ jobs:
   upload_wheels_linux:
     name: 'Linux: Upload Wheels'
     needs: [build_linux]
-    if: ${{ (github.event.inputs.BUILD_LINUX) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: linux
@@ -139,7 +132,7 @@ jobs:
   upload_wheels_windows:
     name: 'Windows: Upload Wheels'
     needs: [build_linux, build_windows]
-    if: ${{ (github.event.inputs.BUILD_WINDOWS) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: windows
@@ -150,7 +143,7 @@ jobs:
   upload_wheels_macos_arm:
     name: 'Macos-Arm: Upload Wheels'
     needs: [build_linux, build_macos_arm]
-    if: ${{ (github.event.inputs.BUILD_MACOS_ARM) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: macos-arm
@@ -161,7 +154,7 @@ jobs:
   upload_wheels_macos_intel:
     name: 'Macos-Intel: Upload Wheels'
     needs: [build_linux, build_macos_intel]
-    if: ${{ (github.event.inputs.BUILD_MACOS_INTEL) == 'true' && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
+    if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       PLATFORM: macos-intel

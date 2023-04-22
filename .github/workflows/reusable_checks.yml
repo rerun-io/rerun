@@ -7,10 +7,18 @@ on:
         required: false
         type: boolean
         default: false
-      SAVE_DOCS_AS:
+      SAVE_PY_DOCS:
+        required: false
+        type: boolean
+        default: false
+      SAVE_PY_DOCS_AS:
         required: false
         type: string
         default: ""
+      SAVE_RUST_DOCS:
+        required: false
+        type: boolean
+        default: false
 
 env:
   PYTHON_VERSION: "3.8"
@@ -91,7 +99,7 @@ jobs:
   py-deploy-docs:
     needs: [py-test-docs]
     name: Deploy Python Docs
-    if: ${{ inputs.SAVE_DOCS_AS != '' }}
+    if: ${{ inputs.SAVE_PY_DOCS }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -122,10 +130,10 @@ jobs:
       # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
       # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy via mike # https://github.com/jimporter/mike
-        if: ${{ inputs.SAVE_DOCS_AS != 'HEAD' }}
+        if: ${{ inputs.SAVE_PY_DOCS_AS != 'HEAD' }}
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.SAVE_DOCS_AS}} latest
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.SAVE_PY_DOCS_AS}} latest
           git checkout gh-pages
           git checkout --orphan gh-pages-orphan
           git commit -m "Update docs for ${GITHUB_SHA}"
@@ -135,7 +143,7 @@ jobs:
       # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
       # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy tag via mike # https://github.com/jimporter/mike
-        if: ${{ inputs.SAVE_DOCS_AS == 'HEAD' }}
+        if: ${{ inputs.SAVE_PY_DOCS_AS == 'HEAD' }}
         run: |
           git fetch
           mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python HEAD
@@ -245,7 +253,7 @@ jobs:
 
       # TODO(jleibs): Maybe we should run this on a separate job?
       - name: Set up git author
-        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        if: ${{ inputs.SAVE_RUST_DOCS }}
         run: |
           remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config --global user.name "${GITHUB_ACTOR}"
@@ -254,18 +262,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up ghp-import
-        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        if: ${{ inputs.SAVE_RUST_DOCS }}
         run: pip install ghp-import
 
       - name: Patch in a redirect page
-        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        if: ${{ inputs.SAVE_RUST_DOCS }}
         run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
         env:
           REDIRECT_CRATE: rerun
 
       # See: https://github.com/c-w/ghp-import
       - name: Deploy the docs
-        if: ${{ inputs.SAVE_DOCS_AS != '' }}
+        if: ${{ inputs.SAVE_RUST_DOCS }}
         run: |
           git fetch
           python3 -m ghp_import -n -p -x docs/rust/head target/doc/ -m "Update the rust docs"
