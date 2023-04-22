@@ -16,7 +16,8 @@
     <h1>List of Wheels</h1>
     <ul>
         {% for wheel in WHEELS.split() %}
-        <li><a href="https://storage.googleapis.com/rerun-builds/commit/{{ wheel }}">{{ wheel }}</a></li>
+        <li><a href="{{ WHEEL_BASE_URL }}/{{ wheel }}">{{ wheel }}</a>
+        </li>
         {% endfor %}
     </ul>
     {% endif %}
