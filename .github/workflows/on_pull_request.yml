@@ -50,6 +50,7 @@ jobs:
     with:
       RELEASE: ''
       RRD_ARTIFACT_NAME: linux-rrd-fast
+      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   save_pr_summary:
