@@ -72,7 +72,15 @@ impl DynamicResourcesDesc for TextureDesc {
         let block_size = self
             .format
             .block_size(Some(wgpu::TextureAspect::All))
-            .unwrap_or(1);
+            .unwrap_or_else(|| {
+                self.format
+                    .block_size(Some(wgpu::TextureAspect::DepthOnly))
+                    .unwrap_or(0)
+                    + self
+                        .format
+                        .block_size(Some(wgpu::TextureAspect::StencilOnly))
+                        .unwrap_or(0)
+            });
         let block_dimension = self.format.block_dimensions();
         let pixels_per_block = block_dimension.0 as u64 * block_dimension.1 as u64;
 
