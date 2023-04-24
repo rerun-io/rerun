@@ -29,11 +29,11 @@ on:
         description: 'Test Minimum Wheel'
         type: boolean
         required: false
-      RELEASE:
+      RELEASE_VERSION:
         description: 'Release'
         type: string
         required: false
-        default: ''
+        default: 'prerelease'
       SAVE_CACHE:
         description: 'Save Cache'
         type: boolean
@@ -107,6 +107,7 @@ jobs:
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build_windows:
@@ -118,6 +119,7 @@ jobs:
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ''
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build_macos_arm:
@@ -129,6 +131,7 @@ jobs:
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ''
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build_macos_intel:
@@ -140,6 +143,8 @@ jobs:
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
       RRD_ARTIFACT_NAME: ''
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
+
     secrets: inherit
 
   upload_wheels_linux:
@@ -191,7 +196,7 @@ jobs:
     if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
     uses: ./.github/workflows/reusable_build_web.yml
     with:
-      RELEASE: ${{ github.event.inputs.RELEASE }}
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   upload_web:
@@ -203,7 +208,8 @@ jobs:
     if: ${{ (github.event.inputs.BUILD_WEB == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
-      RELEASE: ${{ github.event.inputs.RELEASE }}
+      MARK_PRERELEASE_FOR_MAINLINE: false
+      MARK_TAGGED_VERSION: false
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 

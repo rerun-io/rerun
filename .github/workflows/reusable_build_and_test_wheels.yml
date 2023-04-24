@@ -10,15 +10,11 @@ on:
       PLATFORM:
         required: true
         type: string
-      RELEASE:
+      RELEASE_VERSION:
         required: false
         type: string
-        default: ''
+        default: 'prerelease'
       RRD_ARTIFACT_NAME:
-        required: false
-        type: string
-        default: ''
-      WHEEL_ARTIFACT_NAME:
         required: false
         type: string
         default: ''
@@ -26,6 +22,10 @@ on:
         required: false
         type: boolean
         default: false
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
     outputs:
       EXPECTED_VERSION:
         description: "The expected version of the package"
@@ -188,17 +188,14 @@ jobs:
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
 
       - name: Patch Cargo.toml for pre-release
-        if: ${{ (inputs.RELEASE == '') || (inputs.RELEASE == 'prerelease') }}
+        if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
         # After patching the pre-release version, run cargo update.
         # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |
           python3 scripts/version_util.py --patch_prerelease
           cargo update -w
 
-      # TODO(jleibs): Figure out what this check should be doing now
       - name: Version check for tagged-release
-        if: false
-        #if: startsWith(github.ref, 'refs/tags/v')
         # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
         run: |
           python3 scripts/version_util.py --check_version
@@ -209,6 +206,16 @@ jobs:
         id: expected_version
         run: |
           echo "EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the expected version
+        if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
+        # After patching the pre-release version, run cargo update.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
+        run: |
+          if [ "${{steps.expected_version.outputs.EXPECTED_VERSION}}" != "${{inputs.RELEASE_VERSION}}" ]; then
+            echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
+            exit 1
+          fi
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1

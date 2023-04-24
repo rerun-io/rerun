@@ -3,10 +3,18 @@ name: Reusable Upload Web
 on:
   workflow_call:
     inputs:
-      RELEASE:
+      MARK_PRERELEASE_FOR_MAINLINE:
+        required: false
+        type: boolean
+        default: false
+      MARK_TAGGED_VERSION:
+        required: false
+        type: boolean
+        default: false
+      RELEASE_VERSION:
         required: false
         type: string
-        default: ''
+        default: 'prerelease'
       RRD_ARTIFACT_NAME:
         required: false
         type: string
@@ -75,7 +83,7 @@ jobs:
           parent: false
 
       - name: "Upload web-viewer (prerelease)"
-        if: inputs.RELEASE == 'prerelease'
+        if: inputs.MARK_PRERELEASE_FOR_MAINLINE
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_viewer"
@@ -84,7 +92,7 @@ jobs:
 
 
       - name: "Upload RRD (prerelease)"
-        if: inputs.RELEASE == 'prerelease'
+        if: inputs.MARK_PRERELEASE_FOR_MAINLINE
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "rrd"
@@ -92,17 +100,17 @@ jobs:
           parent: false
 
       - name: "Upload web-viewer (tagged)"
-        if: ${{ (inputs.RELEASE != '') && (inputs.RELEASE != 'prerelease') }}
+        if: inputs.MARK_TAGGED_VERSION
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_viewer"
-          destination: "rerun-web-viewer/version/${{inputs.RELEASE}}"
+          destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
           parent: false
 
       - name: "Upload RRD (tagged)"
-        if: ${{ (inputs.RELEASE != '') && (inputs.RELEASE != 'prerelease') }}
+        if: inputs.MARK_TAGGED_VERSION
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "rrd"
-          destination: "rerun-example-rrd/version/${{inputs.RELEASE}}"
+          destination: "rerun-example-rrd/version/${{inputs.RELEASE_VERSION}}"
           parent: false
