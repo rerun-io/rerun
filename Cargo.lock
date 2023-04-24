@@ -572,12 +572,13 @@ dependencies = [
 
 [[package]]
 name = "cargo-run-wasm"
-version = "0.2.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "611b811fad83eebfcdcf47ae1e425c82d1249608bc571d537448d706be08cf27"
+checksum = "cc1e37cf14ef470ed74ec2a8b95e51b8623bcf6f76d24f233ebaeb209f766230"
 dependencies = [
  "devserver_lib",
  "pico-args",
+ "serde_json",
  "wasm-bindgen-cli-support",
 ]
 
