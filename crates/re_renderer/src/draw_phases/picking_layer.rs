@@ -385,7 +385,11 @@ impl PickingLayerProcessor {
                         texture: &readable_depth_texture.texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::DepthOnly,
+                        aspect: if self.depth_readback_workaround.is_some() {
+                            wgpu::TextureAspect::All
+                        } else {
+                            wgpu::TextureAspect::DepthOnly
+                        },
                     },
                     extent,
                 ),
