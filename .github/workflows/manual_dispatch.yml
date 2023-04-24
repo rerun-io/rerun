@@ -20,6 +20,11 @@ on:
         type: boolean
         required: false
         default: true
+      DEPLOY_DOCS:
+        description: 'Deploy the docs to refs.rerun.io'
+        type: boolean
+        required: false
+        default: false
       MIN_TEST_WHEEL:
         description: 'Test Minimum Wheel'
         type: boolean
@@ -31,11 +36,6 @@ on:
         default: ''
       SAVE_CACHE:
         description: 'Save Cache'
-        type: boolean
-        required: false
-        default: false
-      SAVE_DOCS:
-        description: 'Save Docs to refs.rerun.io'
         type: boolean
         required: false
         default: false
@@ -62,9 +62,15 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
-      SAVE_PY_DOCS: ${{ github.event.inputs.SAVE_DOCS == 'true' }}
-      SAVE_RUST_DOCS: ${{ github.event.inputs.SAVE_DOCS == 'true' }}
-      SAVE_PY_DOCS_AS: ${{ github.event.inputs.RELEASE }}
+    secrets: inherit
+
+  deploy_docs:
+    name: Deploy Docs
+    if: ${{ github.event.inputs.DEPLOY_DOCS == 'true' }}
+    uses: ./.github/workflows/reusable_deploy_docs.yml
+    with:
+      PY_DOCS_VERSION_NAME: "test"
+      UPDATE_LATEST: false
     secrets: inherit
 
   min_test_wheel:
