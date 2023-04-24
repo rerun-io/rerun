@@ -153,7 +153,6 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      EXPECTED_VERSION: ${{ needs.build_linux.outputs.EXPECTED_VERSION }}
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -164,7 +163,6 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      EXPECTED_VERSION: ${{ needs.build_windows.outputs.EXPECTED_VERSION }}
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -175,7 +173,6 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      EXPECTED_VERSION: ${{ needs.build_macos_arm.outputs.EXPECTED_VERSION }}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -186,7 +183,6 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      EXPECTED_VERSION: ${{ needs.build_macos_intel.outputs.EXPECTED_VERSION }}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
