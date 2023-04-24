@@ -36,7 +36,7 @@ var<uniform> batch: BatchUniformBuffer;
 // Flags
 // See point_cloud.rs#PointCloudBatchFlags
 const ENABLE_SHADING: u32 = 1u;
-var<private> TEXTURE_SIZE: u32 = 2048;
+const TEXTURE_SIZE: u32 = 2048u;
 
 struct VertexOut {
     @builtin(position)
