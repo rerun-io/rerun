@@ -14,7 +14,7 @@ on:
         description: 'Build Web'
         type: boolean
         required: false
-        default: false
+        default: true
       CHECKS:
         description: 'Run All Checks'
         type: boolean
@@ -53,7 +53,7 @@ on:
         description: 'Platforms to build wheels for'
         type: string
         required: false
-        default: ''
+        default: 'linux'
 
 jobs:
   checks:
