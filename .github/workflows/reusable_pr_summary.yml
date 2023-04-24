@@ -49,5 +49,5 @@ jobs:
       - name: Upload HTML summary
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "build_summary.html"
+          path: "index.html"
           destination: "rerun-builds/pull_request/${{inputs.PR_NUMBER}}/"
