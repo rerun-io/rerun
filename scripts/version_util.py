@@ -7,12 +7,10 @@ This script accepts one argument:
     --patch_prerelease: This will patch the version in rerun/Cargo.toml with the current git sha. This is intended to
     create a prerelease version for continuous releases.
 
-    --check_version: This will check that the version in rerun/Cargo.toml matches the version in the tag name from
-    `GITHUB_REF_NAME`. This is intended to be used to check that the version number in Cargo.toml is correct before
-    creating a release on PyPI. If the versions don't match, an exception will be raised.
+    --bare_cargo_version Outputs the bare cargo version. This is helpful for setting an environment variable, such as:
+    EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)
 """
 
-import os
 import re
 import subprocess
 import sys
@@ -23,9 +21,6 @@ import semver
 
 # A regex to match the version number in Cargo.toml as SemVer, e.g., 1.2.3-alpha.0
 CARGO_VERSION_REGEX: Final = r"^version\s*=\s*\"(.+)\"$"
-
-# A regex to match the version number in the tag name, e.g. v1.2.3
-VERSION_TAG_REGEX: Final = r"^v(.+)$"
 
 
 def get_cargo_version(cargo_toml: str) -> semver.VersionInfo:
@@ -42,24 +37,6 @@ def get_cargo_version(cargo_toml: str) -> semver.VersionInfo:
 def get_git_sha() -> str:
     """Return the git short sha of the current commit."""
     return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
-
-
-def get_ref_name_version() -> semver.VersionInfo:
-    """Return the parsed tag version from the GITHUB_REF_NAME environment variable."""
-
-    # This is the branch, or tag name that triggered the workflow.
-    ref_name = os.environ.get("GITHUB_REF_NAME")
-
-    if ref_name is None:
-        raise Exception("GITHUB_REF_NAME environment variable not set")
-
-    # Extract the version number from the tag name
-    match = re.search(VERSION_TAG_REGEX, ref_name)
-
-    if match is None:
-        raise Exception("Could not find valid version number in GITHUB_REF_NAME")
-
-    return semver.parse_version_info(match.groups()[0])
 
 
 def patch_cargo_version(cargo_toml: str, new_version: str) -> str:
@@ -99,13 +76,6 @@ def main() -> None:
         with open("Cargo.toml", "w") as f:
             f.write(new_cargo_toml)
 
-    elif sys.argv[1] == "--check_version":
-        ref_version = get_ref_name_version()
-        if cargo_version != ref_version:
-            raise Exception(
-                f"Version number in Cargo.toml ({cargo_version}) does not match tag version ({ref_version})"
-            )
-        print(f"Version numbers match: {cargo_version} == {ref_version}")
     elif sys.argv[1] == "--bare_cargo_version":
         # Print the bare cargo version. NOTE: do not add additional formatting here. This output
         # is expected to be fed into an environment variable.

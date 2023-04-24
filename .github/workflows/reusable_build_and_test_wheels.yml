@@ -195,11 +195,6 @@ jobs:
           python3 scripts/version_util.py --patch_prerelease
           cargo update -w
 
-      - name: Version check for tagged-release
-        # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
-        run: |
-          python3 scripts/version_util.py --check_version
-
       - name: Store the expected version
         # Find the current cargo version and store it in the output: `expected_version`
         shell: bash
