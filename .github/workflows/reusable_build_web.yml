@@ -45,7 +45,7 @@ jobs:
         with:
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
           # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
+          save-if: false
 
       - name: Patch Cargo.toml for pre-release
         if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
@@ -54,11 +54,6 @@ jobs:
         run: |
           python3 scripts/version_util.py --patch_prerelease
           cargo update -w
-
-          - name: Version check for tagged-release
-          # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
-          run: |
-            python3 scripts/version_util.py --check_version
 
       - name: Store the expected version
         # Find the current cargo version and store it in the output: `expected_version`
