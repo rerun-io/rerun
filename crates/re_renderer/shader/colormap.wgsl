@@ -12,7 +12,8 @@ const COLORMAP_VIRIDIS:   u32 = 6u;
 /// Returns a gamma-space sRGB in 0-1 range.
 ///
 /// The input will be saturated to [0, 1] range.
-fn colormap_srgb(which: u32, t: f32) -> Vec3 {
+fn colormap_srgb(which: u32, t_unsaturated: f32) -> Vec3 {
+    let t = saturate(t_unsaturated);
     if which == COLORMAP_GRAYSCALE {
         return linear_from_srgb(Vec3(t));
     } else if which == COLORMAP_INFERNO {
@@ -61,7 +62,6 @@ fn colormap_turbo_srgb(t: f32) -> Vec3 {
     let g2 = Vec2(4.27729857, 2.82956604);
     let b2 = Vec2(-89.90310912, 27.34824973);
 
-    let t = saturate(t);
     let v4 = vec4(1.0, t, t * t, t * t * t);
     let v2 = v4.zw * v4.z;
 
@@ -97,7 +97,6 @@ fn colormap_viridis_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(6.228269936347081, 14.17993336680509, 56.69055260068105);
     let c5 = Vec3(4.776384997670288, -13.74514537774601, -65.35303263337234);
     let c6 = Vec3(-5.435455855934631, 4.645852612178535, 26.3124352495832);
-    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
@@ -112,7 +111,6 @@ fn colormap_plasma_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(-11.10743619062271, -82.66631109428045, 60.13984767418263);
     let c5 = Vec3(10.02306557647065, 71.41361770095349, -54.07218655560067);
     let c6 = Vec3(-3.658713842777788, -22.93153465461149, 18.19190778539828);
-    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
@@ -127,7 +125,6 @@ fn colormap_magma_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(52.17613981234068, -27.94360607168351, 12.94416944238394);
     let c5 = Vec3(-50.76852536473588, 29.04658282127291, 4.23415299384598);
     let c6 = Vec3(18.65570506591883, -11.48977351997711, -5.601961508734096);
-    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }
 
@@ -142,6 +139,5 @@ fn colormap_inferno_srgb(t: f32) -> Vec3 {
     let c4 = Vec3(77.162935699427, -33.40235894210092, -81.80730925738993);
     let c5 = Vec3(-71.31942824499214, 32.62606426397723, 73.20951985803202);
     let c6 = Vec3(25.13112622477341, -12.24266895238567, -23.07032500287172);
-    let t = saturate(t);
     return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }

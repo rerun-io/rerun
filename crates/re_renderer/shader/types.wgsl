@@ -22,7 +22,7 @@ const f32min_normal = 0x1p-126f;  // Smallest positive normal float value.
 //const f16max = 0x1.ffcp+15h;  // Largest positive float value.
 //const f16min_normal = 0x1p-14h;   // Smallest positive normal float value.
 // https://www.w3.org/TR/WGSL/#integer-types
-const i32min = -0x80000000i;
+const i32min = -2147483648; // Tint can't handle this being represented as `-0x80000000i`, see https://bugs.chromium.org/p/chromium/issues/detail?id=1439274
 const i32max = 0x7fffffffi;
 const u32min = 0u;
 const u32max = 0xffffffffu;
