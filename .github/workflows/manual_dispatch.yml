@@ -65,6 +65,8 @@ jobs:
     secrets: inherit
 
   deploy_docs:
+    # Never deploy docs if checks haven't passed
+    needs: [checks]
     name: Deploy Docs
     if: ${{ github.event.inputs.DEPLOY_DOCS == 'true' }}
     uses: ./.github/workflows/reusable_deploy_docs.yml
@@ -75,7 +77,7 @@ jobs:
 
   min_test_wheel:
     name: 'Minimum Test Wheel'
-    # The upload-web job uses the min-test-wheel to get the RRD in manual mode
+    # The upload-web job uses the min-test-wheel to get the RRD
     if: ${{ (github.event.inputs.MIN_TEST_WHEEL == 'true') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.BUILD_WEB == 'true') ) }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:

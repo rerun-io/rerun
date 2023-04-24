@@ -115,9 +115,6 @@ jobs:
         with:
           shared-key: "build-linux"
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # Don't update the cache -- it will be updated by the lint job
-          # TODO(jleibs): this job will likely run before rust.yml updates
-          # the cache. Better cross-job sequencing would be nice here
           save-if: false
 
       # Sccache will cache everything else
