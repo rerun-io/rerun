@@ -132,20 +132,23 @@ pub fn num_texture_components(format: wgpu::TextureFormat) -> u8 {
         | wgpu::TextureFormat::R16Sint
         | wgpu::TextureFormat::R16Unorm
         | wgpu::TextureFormat::R16Snorm
-        | wgpu::TextureFormat::R16Float => 1,
+        | wgpu::TextureFormat::R16Float
+        | wgpu::TextureFormat::R32Uint
+        | wgpu::TextureFormat::R32Sint
+        | wgpu::TextureFormat::R32Float => 1,
 
         wgpu::TextureFormat::Rg8Unorm
         | wgpu::TextureFormat::Rg8Snorm
         | wgpu::TextureFormat::Rg8Uint
         | wgpu::TextureFormat::Rg8Sint
-        | wgpu::TextureFormat::R32Uint
-        | wgpu::TextureFormat::R32Sint
-        | wgpu::TextureFormat::R32Float
         | wgpu::TextureFormat::Rg16Uint
         | wgpu::TextureFormat::Rg16Sint
         | wgpu::TextureFormat::Rg16Unorm
         | wgpu::TextureFormat::Rg16Snorm
-        | wgpu::TextureFormat::Rg16Float => 2,
+        | wgpu::TextureFormat::Rg16Float
+        | wgpu::TextureFormat::Rg32Uint
+        | wgpu::TextureFormat::Rg32Sint
+        | wgpu::TextureFormat::Rg32Float => 2,
 
         wgpu::TextureFormat::Rgba8Unorm
         | wgpu::TextureFormat::Rgba8UnormSrgb
@@ -153,17 +156,8 @@ pub fn num_texture_components(format: wgpu::TextureFormat) -> u8 {
         | wgpu::TextureFormat::Rgba8Uint
         | wgpu::TextureFormat::Rgba8Sint
         | wgpu::TextureFormat::Bgra8Unorm
-        | wgpu::TextureFormat::Bgra8UnormSrgb => 4,
-
-        wgpu::TextureFormat::Rgb9e5Ufloat => 3,
-        wgpu::TextureFormat::Rgb10a2Unorm => 4,
-        wgpu::TextureFormat::Rg11b10Float => 3,
-
-        wgpu::TextureFormat::Rg32Uint
-        | wgpu::TextureFormat::Rg32Sint
-        | wgpu::TextureFormat::Rg32Float => 2,
-
-        wgpu::TextureFormat::Rgba16Uint
+        | wgpu::TextureFormat::Bgra8UnormSrgb
+        | wgpu::TextureFormat::Rgba16Uint
         | wgpu::TextureFormat::Rgba16Sint
         | wgpu::TextureFormat::Rgba16Unorm
         | wgpu::TextureFormat::Rgba16Snorm
@@ -171,6 +165,9 @@ pub fn num_texture_components(format: wgpu::TextureFormat) -> u8 {
         | wgpu::TextureFormat::Rgba32Uint
         | wgpu::TextureFormat::Rgba32Sint
         | wgpu::TextureFormat::Rgba32Float => 4,
+
+        wgpu::TextureFormat::Rgb9e5Ufloat | wgpu::TextureFormat::Rg11b10Float => 3,
+        wgpu::TextureFormat::Rgb10a2Unorm => 4,
 
         wgpu::TextureFormat::Stencil8
         | wgpu::TextureFormat::Depth16Unorm
