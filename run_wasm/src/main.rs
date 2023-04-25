@@ -2,7 +2,7 @@
 //!
 //! This is a temporary solution while we're in the process of building our own xtask tools.
 
-use std::{net::ToSocketAddrs, time::Duration};
+use std::time::Duration;
 
 fn main() {
     // TODO(cmc): Why is this not taking the full screen?
@@ -106,20 +106,9 @@ fn main() {
         })
         .expect("Failed to spawn thread");
 
-    // Wait for the server to be up before opening a browser tab.
-    let addr = format!("{host}:{port}")
-        .to_socket_addrs()
-        .unwrap()
-        .next()
-        .unwrap();
-    loop {
-        // TODO(cmc): this will make the webserver embedded within cargo-run-wasm complain
-        // a bit but eh... that's only temporary.
-        if std::net::TcpStream::connect(addr).is_ok() {
-            break;
-        }
-        std::thread::sleep(Duration::from_millis(200));
-    }
+    // It would be nice to start a webbrowser, but we can't really know when the server is ready.
+    // So we just sleep for a while and hope it works.
+    std::thread::sleep(Duration::from_millis(500));
 
     // Open browser tab.
     let viewer_url = format!("http://{host}:{port}",);

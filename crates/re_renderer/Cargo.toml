@@ -77,7 +77,6 @@ notify = "5.0"
 puffin.workspace = true
 wgpu = { workspace = true, default-features = false, features = ["wgsl"] }
 wgpu-core.workspace = true
-wgpu-hal.workspace = true
 
 # wasm
 [target.'cfg(target_arch = "wasm32")'.dependencies]

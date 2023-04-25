@@ -148,6 +148,13 @@ where
         self.current_frame_index = frame_index;
         let state = self.state.get_mut();
 
+        let update_stats = |creation_desc: &Desc| {
+            self.total_resource_size_in_bytes.fetch_sub(
+                creation_desc.resource_size_in_bytes(),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+        };
+
         // Throw out any resources that we haven't reclaimed last frame.
         for (desc, resources) in state.last_frame_deallocated.drain() {
             re_log::trace!(
@@ -160,11 +167,8 @@ where
                     debug_assert!(false, "a resource was marked as destroyed last frame that we no longer kept track of");
                     continue;
                 };
+                update_stats(&desc);
                 on_destroy_resource(&removed_resource);
-                self.total_resource_size_in_bytes.fetch_sub(
-                    desc.resource_size_in_bytes(),
-                    std::sync::atomic::Ordering::Relaxed,
-                );
             }
         }
 
@@ -184,6 +188,7 @@ where
                         .push(resource.handle);
                     true
                 } else {
+                    update_stats(&resource.creation_desc);
                     on_destroy_resource(&resource.inner);
                     false
                 }

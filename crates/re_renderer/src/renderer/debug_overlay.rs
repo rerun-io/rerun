@@ -49,6 +49,12 @@ pub struct DebugOverlayRenderer {
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum DebugOverlayError {
+    #[error("Can't display texture with format: {0:?}")]
+    UnsupportedTextureFormat(wgpu::TextureFormat),
+}
+
 /// Debug overlay for quick & dirty display of texture contents.
 ///
 /// Executed as part of the composition draw phase in order to allow "direct" output to the screen.
@@ -70,7 +76,7 @@ impl DebugOverlayDrawData {
         debug_texture: &GpuTexture,
         screen_resolution: glam::UVec2,
         overlay_rect: IntRect,
-    ) -> Self {
+    ) -> Result<Self, DebugOverlayError> {
         let mut renderers = ctx.renderers.write();
         let debug_overlay = renderers.get_or_create::<_, DebugOverlayRenderer>(
             &ctx.shared_renderer_data,
@@ -79,12 +85,21 @@ impl DebugOverlayDrawData {
             &mut ctx.resolver,
         );
 
-        let mode = match debug_texture.texture.format().describe().sample_type {
-            wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { .. } => {
+        let mode = match debug_texture
+            .texture
+            .format()
+            .sample_type(Some(wgpu::TextureAspect::All))
+        {
+            Some(wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { .. }) => {
                 gpu_data::DebugOverlayMode::ShowFloatTexture
             }
-            wgpu::TextureSampleType::Sint | wgpu::TextureSampleType::Uint => {
+            Some(wgpu::TextureSampleType::Sint | wgpu::TextureSampleType::Uint) => {
                 gpu_data::DebugOverlayMode::ShowUintTexture
+            }
+            None => {
+                return Err(DebugOverlayError::UnsupportedTextureFormat(
+                    debug_texture.texture.format(),
+                ))
             }
         };
 
@@ -112,7 +127,7 @@ impl DebugOverlayDrawData {
             ),
         };
 
-        DebugOverlayDrawData {
+        Ok(DebugOverlayDrawData {
             bind_group: ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &ctx.gpu_resources,
@@ -126,7 +141,7 @@ impl DebugOverlayDrawData {
                     layout: debug_overlay.bind_group_layout,
                 },
             ),
-        }
+        })
     }
 }
 

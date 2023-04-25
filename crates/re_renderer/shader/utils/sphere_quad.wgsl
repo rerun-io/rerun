@@ -56,8 +56,8 @@ fn sphere_quad_span_orthographic(point_pos: Vec3, point_radius: f32, top_bottom:
 }
 
 /// Returns the index of the current quad.
-fn sphere_quad_index(vertex_idx: u32) -> i32 {
-    return i32(vertex_idx) / 6;
+fn sphere_quad_index(vertex_idx: u32) -> u32 {
+    return vertex_idx / 6u;
 }
 
 struct SphereQuadData {
