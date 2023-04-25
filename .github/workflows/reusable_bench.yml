@@ -64,15 +64,8 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - name: Add BENCH_NAME env property with commit short sha
-        run: |
-          if [ -z "${{ inputs.BENCH_NAME }}" ]; then
-            BENCH_NAME=${{ inputs.BENCH_NAME }}
-          else
-            BENCH_NAME=$(echo "${{ github.sha }}" | cut -c1-7)"
-          fi
-          echo "BENCH_NAME=$(echo $BENCH_NAME)" >> $GITHUB_ENV
-
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee
@@ -85,7 +78,7 @@ jobs:
             -p re_log_encoding \
             -p re_query \
             -p re_tuid \
-            -- --output-format=bencher | tee ${{ runner.temp }}/${{ env.BENCH_NAME }}
+            -- --output-format=bencher | tee ${{ runner.temp }}/${{ env.SHORT_SHA }}.txt
 
       - name: Store benchmark result
         # https://github.com/benchmark-action/github-action-benchmark
@@ -93,7 +86,7 @@ jobs:
         with:
           name: Rust Benchmark
           tool: "cargo"
-          output-file-path: ${{ runner.temp }}/${{ env.BENCH_NAME }}
+          output-file-path: ${{ runner.temp }}/${{ env.SHORT_SHA }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit comment on detecting possible performance regression
@@ -123,6 +116,13 @@ jobs:
       - name: "Upload bench to GCS"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
+          path: ${{ runner.temp }}/${{ env.SHORT_SHA }}
+          destination: "rerun-builds/benches/${{ env.SHORT_SHA }}"
+
+      - name: "Upload named bench to GCS"
+        if: ${{ inputs.BENCH_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
           path: ${{ runner.temp }}/${{ env.BENCH_NAME }}
           destination: "rerun-builds/benches/"
 
@@ -137,10 +137,7 @@ jobs:
 
       - name: Install benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
-        run: cargo run ${{ runner.temp }}/${{ inputs.COMPARE_TO }} ${{ runner.temp }}/${{ env.BENCH_NAME }} > ${{ runner.temp }}/bench_results.txt
-
-      - name: Add SHORT_SHA env property with commit short sha
-        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+        run: cargo run ${{ runner.temp }}/${{ inputs.COMPARE_TO }} ${{ runner.temp }}/${{ env.SHORT_SHA }} > ${{ runner.temp }}/bench_results.txt
 
       - name: "Upload bench-results to GCS"
         uses: google-github-actions/upload-cloud-storage@v1
