@@ -104,10 +104,7 @@
 //!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
 //!
 
-use std::{
-    num::{NonZeroU32, NonZeroU64},
-    ops::Range,
-};
+use std::{num::NonZeroU64, ops::Range};
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
@@ -479,7 +476,7 @@ impl LineDrawData {
                 bytemuck::cast_slice(&position_data_staging),
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: NonZeroU32::new(
+                    bytes_per_row: Some(
                         POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32,
                     ),
                     rows_per_image: None,
@@ -529,7 +526,7 @@ impl LineDrawData {
                 bytemuck::cast_slice(&line_strip_info_staging),
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: NonZeroU32::new(
+                    bytes_per_row: Some(
                         LINE_STRIP_TEXTURE_SIZE
                             * std::mem::size_of::<gpu_data::LineStripInfo>() as u32,
                     ),

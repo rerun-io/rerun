@@ -6,7 +6,8 @@ use crate::{
     allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier},
     context::RenderContext,
     draw_phases::{
-        DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerProcessor, ScreenshotProcessor,
+        DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
+        ScreenshotProcessor,
     },
     global_bindings::FrameUniformBuffer,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
@@ -37,6 +38,9 @@ pub enum ViewBuilderError {
 
     #[error("Picking rectangle readback was already scheduled.")]
     PickingRectAlreadyScheduled,
+
+    #[error(transparent)]
+    InvalidDebugOverlay(#[from] crate::renderer::DebugOverlayError),
 }
 
 /// The highest level rendering block in `re_renderer`.
@@ -562,7 +566,15 @@ impl ViewBuilder {
                 //pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::PickingLayer, &mut pass);
             }
-            picking_processor.end_render_pass(&mut encoder, &ctx.gpu_resources)?;
+            match picking_processor.end_render_pass(&mut encoder, &ctx.gpu_resources) {
+                Err(PickingLayerError::ResourcePoolError(err)) => {
+                    return Err(err);
+                }
+                Err(PickingLayerError::ReadbackError(err)) => {
+                    re_log::warn_once!("Failed to schedule picking data readback: {err}");
+                }
+                Ok(()) => {}
+            }
         }
 
         if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
@@ -582,7 +594,12 @@ impl ViewBuilder {
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::CompositingScreenshot, &mut pass);
             }
-            screenshot_processor.end_render_pass(&mut encoder);
+            match screenshot_processor.end_render_pass(&mut encoder) {
+                Ok(()) => {}
+                Err(err) => {
+                    re_log::warn_once!("Failed to schedule screenshot data readback: {err}");
+                }
+            }
         }
 
         Ok(encoder.finish())
@@ -692,7 +709,7 @@ impl ViewBuilder {
                 &picking_processor.picking_target,
                 self.setup.resolution_in_pixel.into(),
                 picking_rect,
-            ));
+            )?);
         }
 
         self.picking_processor = Some(picking_processor);

@@ -59,10 +59,10 @@ comfy-table = { version = "6.1", default-features = false }
 ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
-egui = { version = "0.21.0", features = ["extra_debug_asserts", "tracing"] }
+egui = { version = "0.21.0", features = ["extra_debug_asserts", "log"] }
 egui-wgpu = "0.21.0"
 egui_dock = "0.4"
-egui_extras = { version = "0.21.0", features = ["tracing"] }
+egui_extras = { version = "0.21.0", features = ["log"] }
 emath = "0.21.0"
 enumset = "1.0.12"
 epaint = "0.21.0"
@@ -85,9 +85,8 @@ thiserror = "1.0"
 time = { version = "0.3", features = ["wasm-bindgen"] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = "1.24"
-wgpu = { version = "0.15.1", default-features = false }
-wgpu-core = { version = "0.15.1", default-features = false }
-wgpu-hal = { version = "0.15.4", default-features = false }
+wgpu = { version = "0.16", default-features = false }
+wgpu-core = { version = "0.16", default-features = false }
 
 
 [profile.dev]
@@ -113,9 +112,16 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { path = "../../egui/crates/ecolor" }
-# eframe = { path = "../../egui/crates/eframe" }
-# egui = { path = "../../egui/crates/egui" }
-# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
-# egui_extras = { path = "../../egui/crates/egui_extras" }
-# emath = { path = "../../egui/crates/emath" }
+# TODO(andreas/emilk): Update to a stable egui version
+# wgpu 0.16 support.
+ecolor = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
+eframe = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
+egui = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
+emath = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
+
+# TODO(andreas): Either work around this issue in wgpu-egui (never discard command buffers) or wait for wgpu patch release.
+# Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726
+wgpu = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
+wgpu-core = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
