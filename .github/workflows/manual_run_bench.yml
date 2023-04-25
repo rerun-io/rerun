@@ -1,0 +1,14 @@
+name: Manually run the benchmarks
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  run-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if commit belongs to a PR
+        run: |
+          echo "TODO(jleibs): Run benches"
+
