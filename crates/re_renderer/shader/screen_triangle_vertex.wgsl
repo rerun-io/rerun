@@ -4,11 +4,7 @@ struct VertexOutput {
     // Mark output position as invariant so it's safe to use it with depth test Equal.
     // Without @invariant, different usages in different render pipelines might optimize differently,
     // causing slightly different results.
-    //
-    // TODO(andreas): Chrome/Tint does not support `@invariant`
-    // https://bugs.chromium.org/p/chromium/issues/detail?id=1439273
-    //@invariant
-    @builtin(position)
+    @invariant @builtin(position)
     position: Vec4,
     @location(0)
     texcoord: Vec2,

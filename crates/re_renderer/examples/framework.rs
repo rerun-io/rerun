@@ -159,6 +159,7 @@ impl<E: Example + 'static> Application<E> {
         surface.configure(&device, &surface_config);
 
         let mut re_ctx = RenderContext::new(
+            &adapter,
             device,
             queue,
             RenderContextConfig {

@@ -2,6 +2,11 @@
 ///
 /// To reduce complexity, we don't do fine-grained feature checks,
 /// but instead support set of features, each a superset of the next.
+///
+/// Tiers are sorted from lowest to highest. Certain tiers may not be possible on a given machine/setup,
+/// but choosing lower tiers is always possible.
+/// Tiers may loosely relate to quality settings, but their primary function is an easier way to
+/// do bundle feature *support* checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HardwareTier {
     /// Limited feature support as provided by WebGL and native GLES2/OpenGL3(ish).
@@ -35,6 +40,9 @@ impl HardwareTier {
 }
 
 impl HardwareTier {
+    /// Picks the highest possible tier for a given adapter.
+    ///
+    /// Note that it is always possible to pick a lower tier!
     pub fn from_adapter(adapter: &wgpu::Adapter) -> Self {
         match adapter.get_info().backend {
             wgpu::Backend::Vulkan

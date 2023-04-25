@@ -151,6 +151,7 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 
         paint_callback_resources.insert(RenderContext::new(
+            &render_state.adapter,
             render_state.device.clone(),
             render_state.queue.clone(),
             RenderContextConfig {
