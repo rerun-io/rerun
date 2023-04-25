@@ -1,0 +1,86 @@
+name: Reusable Bench
+
+on:
+  workflow_call:
+    inputs:
+      SAVE_BENCHES:
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+
+# ---------------------------------------------------------------------------
+
+  rs-benchmarks:
+    name: Rust Criterion benchmarks
+
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.6
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build-linux"
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: false
+
+      # Sccache will cache everything else
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Run benchmark
+        # Use bash shell so we get pipefail behavior with tee
+        shell: bash
+        run: |
+          cargo bench \
+            --all-features \
+            -p re_arrow_store \
+            -p re_data_store \
+            -p re_log_encoding \
+            -p re_query \
+            -p re_tuid \
+            -- --output-format=bencher | tee output.txt
+
+      - name: Store benchmark result
+        # https://github.com/benchmark-action/github-action-benchmark
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Rust Benchmark
+          tool: "cargo"
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Show alert with commit comment on detecting possible performance regression
+          comment-on-alert: true
+          alert-threshold: "125%"
+          fail-on-alert: true
+          comment-always: false # Generates too much GitHub notification spam
+
+          # Save, results and push to GitHub only on main
+          save-data-file: ${{ inputs.SAVE_BENCHES }}
+          auto-push: ${{ inputs.SAVE_BENCHES }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          max-items-in-chart: 30

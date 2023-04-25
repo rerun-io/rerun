@@ -1,0 +1,293 @@
+name: Reusable Build and Test Wheels
+
+on:
+  workflow_call:
+    inputs:
+      MATURIN_FEATURE_FLAGS:
+        required: false
+        type: string
+        default: '--no-default-features --features pypi'
+      PLATFORM:
+        required: true
+        type: string
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: 'prerelease'
+      RRD_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
+      SAVE_CACHE:
+        required: false
+        type: boolean
+        default: false
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
+
+env:
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+
+  # TODO(jleibs) --deny warnings causes installation of wasm-bindgen to fail on mac
+  # RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  RUSTFLAGS: --cfg=web_sys_unstable_apis
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+
+# ---------------------------------------------------------------------------
+
+  set-config:
+    name: Set Config
+    runs-on: ubuntu-latest
+    outputs:
+      RUNNER: ${{ steps.set-config.outputs.runner }}
+      TARGET: ${{ steps.set-config.outputs.target }}
+      RUN_TESTS: ${{ steps.set-config.outputs.run_tests }}
+      CONTAINER: ${{ steps.set-config.outputs.container }}
+    steps:
+      - name: Set runner and target based on platform
+        id: set-config
+        run: |
+          case "${{ inputs.platform }}" in
+            linux)
+              runner="ubuntu-latest"
+              target="x86_64-unknown-linux-gnu"
+              run_tests="true"
+              container="{'image': 'rerunio/ci_docker:0.6'}"
+              ;;
+            windows)
+              runner="windows-latest"
+              target="x86_64-pc-windows-msvc"
+              run_tests="true"
+              container="null"
+              ;;
+            macos-arm)
+              runner="macos-latest"
+              target="aarch64-apple-darwin"
+              run_tests="false"
+              container="null"
+              ;;
+            macos-intel)
+              runner="macos-latest"
+              target="x86_64-apple-darwin"
+              run_tests="false"
+              container="null"
+              ;;
+            *) echo "Invalid platform" && exit 1 ;;
+          esac
+          echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "run_tests=$run_tests" >> "$GITHUB_OUTPUT"
+          echo "container=$container" >> "$GITHUB_OUTPUT"
+
+# ---------------------------------------------------------------------------
+
+  build-wheels:
+    name: Build Wheels
+
+    needs: [set-config]
+
+    runs-on: ${{ needs.set-config.outputs.RUNNER }}
+    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+
+    steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
+      - uses: actions/checkout@v3
+
+      # Rust-cache will cache our dependencies, which is a large chunk of the build
+      # See: https://github.com/Swatinem/rust-cache
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build-${{ inputs.PLATFORM }}"
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: ${{ inputs.SAVE_CACHE }}
+
+      # Sccache will cache everything else
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      # The pip-cache setup logic doesn't work in the ubuntu docker container
+      # That's probably fine since we bake these deps into the container already
+      - name: Setup python
+        if: ${{ inputs.PLATFORM != 'linux' }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-build.txt"
+
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - run: pip install -r rerun_py/requirements-build.txt
+
+      # We have a nice script for that: ./scripts/setup_web.sh
+      # Unfortunately, we can't run that on Windows, because Windows doesn't come with
+      # a package manager like grown-up OSes do (at least not the CI version of Windows).
+      # Also we can't run it on linux because the 20.04 Docker container will install
+      # an old version of binaryen/wasm-opt that barfs on the `--fast-math` flag
+      # So we only run the script on macos, and then on Windows we do the parts of the script manually.
+      # On ubuntu, the correct packages are pre-installed in our docker container.
+
+      - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
+        if: (inputs.PLATFORM == 'macos-intel') || (inputs.PLATFORM == 'macos-arm')
+        shell: bash
+        run: ./scripts/setup_web.sh
+
+      # The first steps of setup_web.sh, for Windows:
+      - name: Install wasm32 and wasm-bindgen-cli for building the web-viewer Wasm on windows
+        if: inputs.platform == 'windows'
+        shell: bash
+        run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.84
+
+      # The last step of setup_web.sh, for Windows.
+      # Since 'winget' is not available within the GitHub runner, we download the package directly:
+      # See: https://github.com/marketplace/actions/engineerd-configurator
+      - name: Install binaryen for building the web-viewer Wasm on windows
+        if: inputs.platform == 'windows'
+        uses: engineerd/configurator@v0.0.9
+        with:
+          name: "wasm-opt.exe"
+          url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
+          pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
+
+      - name: Patch Cargo.toml for pre-release
+        if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
+        # After patching the pre-release version, run cargo update.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
+        run: |
+          python3 scripts/version_util.py --patch_prerelease
+          cargo update -w
+
+      - name: Store the expected version
+        # Find the current cargo version and store it in the output: `expected_version`
+        shell: bash
+        id: expected_version
+        run: |
+          echo "EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the expected version
+        if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
+        run: |
+          if [ "${{steps.expected_version.outputs.EXPECTED_VERSION}}" != "${{inputs.RELEASE_VERSION}}" ]; then
+            echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
+            exit 1
+          fi
+
+      - name: Build Wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          manylinux: manylinux_2_31
+          container: off
+          command: build
+          sccache: 'true'
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --target ${{ needs.set-config.outputs.TARGET }}
+            ${{ inputs.MATURIN_FEATURE_FLAGS }}
+            --out dist
+
+      - name: Save wheel artifact
+        if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{inputs.WHEEL_ARTIFACT_NAME}}
+          path: dist
+
+      # ---------------------------------------------------------------------------
+      # Test the wheel
+
+      - name: Install wheel dependencies
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
+        # TODO(jleibs): pull these deps from pyproject.toml
+        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
+        shell: bash
+        run: |
+          pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+
+      - name: Install built wheel
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        shell: bash
+        run: |
+          pip uninstall rerun-sdk
+          pip install rerun-sdk==${{ steps.expected_version.outputs.EXPECTED_VERSION }} --no-index --find-links dist
+
+      - name: Verify built wheel version
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        shell: bash
+        run: |
+          python3 -m rerun --version
+          which rerun
+          rerun --version
+
+      - name: Run unit tests
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        shell: bash
+        run: cd rerun_py/tests && pytest
+
+      - name: Run e2e test
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        shell: bash
+        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+
+      - name: Cache RRD dataset
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        id: dataset
+        uses: actions/cache@v3
+        with:
+          path: examples/python/colmap/dataset/
+          # TODO(jleibs): Derive this key from the invocation below
+          key: colmap-dataset-colmap-fiat-v0
+
+      - name: Generate Embedded RRD file
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
+        shell: bash
+        # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
+        run: |
+          mkdir rrd
+          pip install -r examples/python/colmap/requirements.txt
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+
+      # All platforms are currently creating the same rrd file, upload one of them
+      - name: Save RRD artifact
+        if: ${{ (needs.set-config.outputs.RUN_TESTS == 'true') && (inputs.RRD_ARTIFACT_NAME != '') }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.RRD_ARTIFACT_NAME }}
+          path: rrd
+

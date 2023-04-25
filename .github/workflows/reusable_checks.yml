@@ -1,0 +1,321 @@
+name: 'Checks: Lints, Tests, Docs'
+
+on:
+  workflow_call:
+    inputs:
+      SAVE_CACHE:
+        required: false
+        type: boolean
+        default: false
+      SAVE_PY_DOCS:
+        required: false
+        type: boolean
+        default: false
+      SAVE_PY_DOCS_AS:
+        required: false
+        type: string
+        default: ""
+      SAVE_RUST_DOCS:
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+
+# ---------------------------------------------------------------------------
+
+  py-lints:
+    name: Python lints (black, mypy, flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          just-version: 1.5
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-lint.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-lint.txt
+
+      - name: Lint Python
+        run: |
+          just py-lint
+
+      - name: Check requirements
+        run: |
+          just py-requirements
+
+# ---------------------------------------------------------------------------
+
+  py-test-docs:
+    name: Test Python Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
+
+      - name: Build via mkdocs
+        run: |
+          mkdocs build -f rerun_py/mkdocs.yml
+
+# ---------------------------------------------------------------------------
+
+  rs-lints:
+    name: Rust lints (fmt, check, cranky, tests, doc)
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.6
+    steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
+      - uses: actions/checkout@v3
+
+      # Rust-cache will cache our dependencies, which is a large chunk of the build
+      # See: https://github.com/Swatinem/rust-cache
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build-linux"
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: ${{ inputs.SAVE_CACHE }}
+
+      # Sccache will cache everything else
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+
+      # First do our check with --locked to make sure `Cargo.lock` is up to date
+      - name: Check all features
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --all-features
+
+      - name: Rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Cranky
+        uses: actions-rs/cargo@v1
+        with:
+          command: cranky
+          args: --all-targets --all-features -- --deny warnings
+
+      # Check a few important permutations of the feature flags for our `rerun` library:
+      - name: Check rerun with `--no-default-features``
+        uses: actions-rs/cargo@v1
+        with:
+          command: cranky
+          args: --locked -p rerun --no-default-features
+
+      - name: Check rerun with `--features sdk`
+        uses: actions-rs/cargo@v1
+        with:
+          command: cranky
+          args: --locked -p rerun --no-default-features --features sdk
+
+      - name: Test doc-tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --doc --all-features
+
+      - name: cargo doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps --all-features
+
+      - name: cargo doc --document-private-items
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --document-private-items --no-deps --all-features
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-targets --all-features
+
+# ---------------------------------------------------------------------------
+
+  rs-check-wasm:
+    name: Check Rust web build (wasm32 + wasm-bindgen)
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.6
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: default
+          toolchain: 1.67.1
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build-wasm"
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ inputs.SAVE_CACHE }}
+
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: clippy check re_viewer wasm32
+        run: ./scripts/clippy_wasm.sh
+
+      - name: Check re_renderer examples wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
+
+      - name: Build web-viewer (debug)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --debug
+
+# ---------------------------------------------------------------------------
+
+  toml-lints:
+    name: Lint TOML files
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.67.1
+          override: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          # See: https://github.com/rerun-io/rerun/pull/497
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: false
+
+      - name: Install taplo-cli
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: taplo-cli
+
+      - name: Taplo check
+        run: |
+          taplo fmt --check
+
+# ---------------------------------------------------------------------------
+
+  misc-rerun-lints:
+    name: Rerun lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+
+      - name: Rerun lints
+        run: |
+          ./scripts/lint.py
+
+      - name: Check for too large files
+        run: |
+          ./scripts/check_large_files.sh
+
+# ---------------------------------------------------------------------------
+
+  spell-check:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v3
+
+      - name: Check spelling of entire workspace
+        uses: crate-ci/typos@master
+
+# ---------------------------------------------------------------------------
+
+  rs-cargo-deny:
+    name: Cargo Deny ${{ matrix.platform }}
+    runs-on: ubuntu-latest
+    container:
+      image: rerunio/ci_docker:0.6
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Cargo Deny
+        shell: bash
+        id: expected_version
+        run: ./scripts/cargo_deny.sh

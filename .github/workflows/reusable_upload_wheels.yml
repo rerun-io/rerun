@@ -1,0 +1,96 @@
+name: Reusable Upload Wheels
+
+on:
+  workflow_call:
+    inputs:
+      RRD_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
+
+jobs:
+
+  upload-wheel:
+    name: Upload Wheel to google cloud
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: rerunio/ci_docker:0.6
+
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+          echo "MATRIX_CONTEXT": $MATRIX_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
+      - uses: actions/checkout@v3
+
+      - name: Download RRD
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{inputs.RRD_ARTIFACT_NAME}}
+          path: rrd
+
+      - name: Download Wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{inputs.WHEEL_ARTIFACT_NAME}}
+          path: pre-dist
+
+      - name: Unpack the wheel
+        shell: bash
+        run: |
+          mkdir unpack-dist
+          wheel unpack pre-dist/*.whl --dest unpack-dist
+
+      - name: Get the folder name
+        shell: bash
+        id: get_folder_name
+        run: |
+          echo "PKG_FOLDER=$(ls unpack-dist)" >> "$GITHUB_OUTPUT"
+
+      - name: Insert the rrd
+        shell: bash
+        # If you change the line below you should almost definitely change the `key:` line
+        # in 'Cache RRD dataset'reusable_build_and_test.yml
+        run: |
+          cp rrd/colmap_fiat.rrd unpack-dist/${{ steps.get_folder_name.outputs.PKG_FOLDER }}/rerun_sdk/rerun_demo/colmap_fiat.rrd
+
+      - name: Repack the wheel
+        shell: bash
+        run: |
+          mkdir dist
+          wheel pack unpack-dist/${{ steps.get_folder_name.outputs.PKG_FOLDER }} --dest dist/
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: "Upload Wheel"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "dist"
+          destination: "rerun-builds/commit/${{env.SHORT_SHA}}/wheels"
+          parent: false

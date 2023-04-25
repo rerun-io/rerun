@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Build Summary</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .hosted-app {
+            margin-left: 20px;
+        }
+
+        .wheel-list {
+            margin-left: 20px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <h1>Build Summary for <a href="https://github.com/rerun-io/rerun/pull/{{pr_number}}">#{{pr_number}}</a></h1>
+
+    {% for build in found_builds %}
+    <div class=" commit-section">
+        <h2>Commit: <a href="https://github.com/rerun-io/rerun/commit/{{ build.commit }}">{{ build.commit }}</a></h2>
+        {% if build.hosted_app %}
+        <div class="hosted-app">
+            <h3>Hosted App:</h3>
+            <a href="{{ build.hosted_app }}" target="_blank">{{ build.hosted_app }}</a>
+        </div>
+        {% endif %}
+        {% if build.wheels %}
+        <div class="wheel-list">
+            <h3>Wheels:</h3>
+            <ul>
+                {% for wheel in build.wheels %}
+                <li><a href="{{ wheel }}" target="_blank">{{ wheel.split('/')[-1] }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</body>
+
+</html>
