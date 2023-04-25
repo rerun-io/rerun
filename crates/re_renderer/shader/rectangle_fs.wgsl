@@ -86,10 +86,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         let colormap_size = textureDimensions(colormap_texture).xy;
         let color_index = normalized_value.r * f32(colormap_size.x * colormap_size.y);
         // TODO(emilk): interpolate between neighboring colors for non-integral color indices
-        let color_index_i32 = i32(color_index);
-        let x = color_index_i32 % colormap_size.x;
-        let y = color_index_i32 / colormap_size.x;
-        texture_color = textureLoad(colormap_texture, IVec2(x, y), 0);
+        let color_index_u32 = u32(color_index);
+        let x = color_index_u32 % colormap_size.x;
+        let y = color_index_u32 / colormap_size.x;
+        texture_color = textureLoad(colormap_texture, UVec2(x, y), 0);
     } else {
         return ERROR_RGBA; // unknown color mapper
     }

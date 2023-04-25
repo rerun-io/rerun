@@ -69,9 +69,20 @@ impl DynamicResourcesDesc for TextureDesc {
     /// The actual number might be both bigger (padding) and lower (gpu sided compression).
     fn resource_size_in_bytes(&self) -> u64 {
         let mut size_in_bytes = 0;
-        let format_desc = self.format.describe();
-        let pixels_per_block =
-            format_desc.block_dimensions.0 as u64 * format_desc.block_dimensions.1 as u64;
+        let block_size = self
+            .format
+            .block_size(Some(wgpu::TextureAspect::All))
+            .unwrap_or_else(|| {
+                self.format
+                    .block_size(Some(wgpu::TextureAspect::DepthOnly))
+                    .unwrap_or(0)
+                    + self
+                        .format
+                        .block_size(Some(wgpu::TextureAspect::StencilOnly))
+                        .unwrap_or(0)
+            });
+        let block_dimension = self.format.block_dimensions();
+        let pixels_per_block = block_dimension.0 as u64 * block_dimension.1 as u64;
 
         for mip in 0..self.size.max_mips(self.dimension) {
             let mip_size = self
@@ -80,7 +91,7 @@ impl DynamicResourcesDesc for TextureDesc {
                 .physical_size(self.format);
             let num_pixels = mip_size.width * mip_size.height * mip_size.depth_or_array_layers;
             let num_blocks = num_pixels as u64 / pixels_per_block;
-            size_in_bytes += num_blocks * format_desc.block_size as u64;
+            size_in_bytes += num_blocks * block_size as u64;
         }
 
         size_in_bytes

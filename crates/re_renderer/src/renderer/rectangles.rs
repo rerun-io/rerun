@@ -19,6 +19,7 @@ use crate::{
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     resource_managers::{GpuTexture2D, ResourceManagerError},
+    texture_info,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -168,7 +169,7 @@ pub enum RectangleError {
 }
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
+    use crate::{texture_info, wgpu_buffer_types};
 
     use super::{ColorMapper, RectangleError, TexturedRect};
 
@@ -216,9 +217,11 @@ mod gpu_data {
     }
 
     impl UniformBuffer {
-        pub fn from_textured_rect(rectangle: &super::TexturedRect) -> Result<Self, RectangleError> {
+        pub fn from_textured_rect(
+            rectangle: &super::TexturedRect,
+            device_features: wgpu::Features,
+        ) -> Result<Self, RectangleError> {
             let texture_format = rectangle.colormapped_texture.texture.format();
-            let texture_info = texture_format.describe();
 
             let TexturedRect {
                 top_left_corner_position,
@@ -243,25 +246,25 @@ mod gpu_data {
                 outline_mask,
             } = options;
 
-            let sample_type = match texture_info.sample_type {
-                wgpu::TextureSampleType::Float { .. } => {
-                    if super::is_float_filterable(&texture_format) {
+            let sample_type = match texture_format.sample_type(None) {
+                Some(wgpu::TextureSampleType::Float { .. }) => {
+                    if texture_info::is_float_filterable(texture_format, device_features) {
                         SAMPLE_TYPE_FLOAT_FILTER
                     } else {
                         SAMPLE_TYPE_FLOAT_NOFILTER
                     }
                 }
-                wgpu::TextureSampleType::Depth => {
+                Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT_NOFILTER,
+                Some(wgpu::TextureSampleType::Uint) => SAMPLE_TYPE_UINT_NOFILTER,
+                _ => {
                     return Err(RectangleError::DepthTexturesNotSupported);
                 }
-                wgpu::TextureSampleType::Sint => SAMPLE_TYPE_SINT_NOFILTER,
-                wgpu::TextureSampleType::Uint => SAMPLE_TYPE_UINT_NOFILTER,
             };
 
             let mut colormap_function = 0;
             let color_mapper_int;
 
-            match texture_info.components {
+            match texture_info::num_texture_components(texture_format) {
                 1 => match color_mapper {
                     Some(ColorMapper::Function(colormap)) => {
                         color_mapper_int = COLOR_MAPPER_FUNCTION;
@@ -354,7 +357,7 @@ impl RectangleDrawData {
         // TODO(emilk): continue on error (skipping just that rectangle)?
         let uniform_buffers: Vec<_> = rectangles
             .iter()
-            .map(gpu_data::UniformBuffer::from_textured_rect)
+            .map(|rect| gpu_data::UniformBuffer::from_textured_rect(rect, ctx.device.features()))
             .try_collect()?;
 
         let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
@@ -389,10 +392,9 @@ impl RectangleDrawData {
 
             let texture = &rectangle.colormapped_texture.texture;
             let texture_format = texture.creation_desc.format;
-            let texture_description = texture_format.describe();
-            if texture_description.required_features != Default::default() {
+            if texture_format.required_features() != Default::default() {
                 return Err(RectangleError::SpecialFeatures(
-                    texture_description.required_features,
+                    texture_format.required_features(),
                 ));
             }
 
@@ -402,22 +404,22 @@ impl RectangleDrawData {
             let mut texture_sint = ctx.texture_manager_2d.zeroed_texture_sint().handle;
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
-            match texture_description.sample_type {
-                wgpu::TextureSampleType::Float { .. } => {
-                    if is_float_filterable(&texture_format) {
+            match texture_format.sample_type(None) {
+                Some(wgpu::TextureSampleType::Float { .. }) => {
+                    if texture_info::is_float_filterable(texture_format, ctx.device.features()) {
                         texture_float_filterable = texture.handle;
                     } else {
                         texture_float_nofilter = texture.handle;
                     }
                 }
-                wgpu::TextureSampleType::Depth => {
-                    return Err(RectangleError::DepthTexturesNotSupported);
-                }
-                wgpu::TextureSampleType::Sint => {
+                Some(wgpu::TextureSampleType::Sint) => {
                     texture_sint = texture.handle;
                 }
-                wgpu::TextureSampleType::Uint => {
+                Some(wgpu::TextureSampleType::Uint) => {
                     texture_uint = texture.handle;
+                }
+                _ => {
+                    return Err(RectangleError::DepthTexturesNotSupported);
                 }
             }
 
@@ -690,12 +692,4 @@ impl Renderer for RectangleRenderer {
             DrawPhase::PickingLayer,
         ]
     }
-}
-
-fn is_float_filterable(format: &wgpu::TextureFormat) -> bool {
-    format
-        .describe()
-        .guaranteed_format_features
-        .flags
-        .contains(wgpu::TextureFormatFeatureFlags::FILTERABLE)
 }
