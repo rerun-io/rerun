@@ -217,7 +217,11 @@ jobs:
 
   save-pr-summary:
     name: 'Save PR Summary'
-    needs: [upload-web, upload-wheels-linux]
+    # TODO(jleibs): There's no good way to have an optional needs.
+    # If we leave this here the job fails if we don't build all the wheels + web.
+    # Since this just just for testing, leave this out. We can manually run it to update
+    # a PR if we want to see changes.
+    #needs: [upload-web, upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
     if: ${{ github.event.inputs.UPDATE_PR_SUMMARY != '' }}
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
