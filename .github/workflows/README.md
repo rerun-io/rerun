@@ -10,6 +10,10 @@ By convention:
   - `on_pull_request` is triggered on pull requests.
   - `on_main` is triggered on pushes to the main branch.
 
+If you are going to be doing any editing of workflows, the
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=cschleiden.vscode-github-actions)
+for GitHub Actions is highly recommended.
+
 ## Reusable Workflows
 - [reusable_checks.yml](reusable_checks.yml) - These are all the checks that run to ensure the code is formatted,
   linted, and tested. This job produces no artifacts other than a pass/fail criteria for the build.
