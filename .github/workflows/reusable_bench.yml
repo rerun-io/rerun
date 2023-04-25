@@ -78,7 +78,7 @@ jobs:
             -p re_log_encoding \
             -p re_query \
             -p re_tuid \
-            -- --output-format=bencher | tee ${{ runner.temp }}/${{ env.SHORT_SHA }}.txt
+            -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
 
       - name: Store benchmark result
         # https://github.com/benchmark-action/github-action-benchmark
@@ -86,7 +86,7 @@ jobs:
         with:
           name: Rust Benchmark
           tool: "cargo"
-          output-file-path: ${{ runner.temp }}/${{ env.SHORT_SHA }}
+          output-file-path: /tmp/${{ env.SHORT_SHA }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit comment on detecting possible performance regression
@@ -116,20 +116,20 @@ jobs:
       - name: "Upload bench to GCS"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: ${{ runner.temp }}/${{ env.SHORT_SHA }}
+          path: /tmp/${{ env.SHORT_SHA }}
           destination: "rerun-builds/benches/${{ env.SHORT_SHA }}"
 
       - name: "Upload named bench to GCS"
         if: ${{ inputs.BENCH_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: ${{ runner.temp }}/${{ env.BENCH_NAME }}
+          path: /tmp/${{ env.BENCH_NAME }}
           destination: "rerun-builds/benches/"
 
       - name: Download file from GCS
         if: ${{ inputs.COMPARE_TO != '' }}
         run: |
-          gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} ${{ runner.temp }}/${{ inputs.COMPARE_TO }}
+          gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/${{ inputs.COMPARE_TO }}
 
       - name: Install benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
@@ -137,10 +137,10 @@ jobs:
 
       - name: Install benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
-        run: cargo run ${{ runner.temp }}/${{ inputs.COMPARE_TO }} ${{ runner.temp }}/${{ env.SHORT_SHA }} > ${{ runner.temp }}/bench_results.txt
+        run: cargo run /tmp/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
 
       - name: "Upload bench-results to GCS"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: ${{ runner.temp }}/bench_results.txt
+          path: /tmp/bench_results.txt
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/bench_results.txt"
