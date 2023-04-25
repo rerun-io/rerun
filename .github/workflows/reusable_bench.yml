@@ -122,11 +122,7 @@ jobs:
         run: |
           gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/${{ inputs.COMPARE_TO }}
 
-      - name: Install benchcmp
-        if: ${{ inputs.COMPARE_TO != '' }}
-        run: cargo install cargo-benchcmp
-
-      - name: Install benchcmp
+      - name: Compare results with benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
         run: cargo benchcmp /tmp/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
 
