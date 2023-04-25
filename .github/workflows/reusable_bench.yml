@@ -130,7 +130,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: /tmp/bench_results.txt
-          destination: "rerun-builds/commit/${{env.SHORT_SHA}}/bench_results.txt"
+          destination: "rerun-builds/commit/${{env.SHORT_SHA}}/
 
       - name: Store benchmark result
         # https://github.com/benchmark-action/github-action-benchmark
