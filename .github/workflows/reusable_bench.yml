@@ -15,6 +15,10 @@ on:
         required: false
         type: string
         default: ''
+      FAIL_ON_ALERT:
+        required: false
+        type: boolean
+        default: false
 
 env:
   PYTHON_VERSION: "3.8"
@@ -38,8 +42,11 @@ jobs:
     name: Rust Criterion benchmarks
 
     permissions:
-      contents: "read"
+      # contents permission to update benchmark contents in gh-pages branch
+      contents: write
       id-token: "write"
+      # deployments permission to deploy GitHub pages website
+      deployments: write
 
     runs-on: ubuntu-latest-16-cores
 
@@ -79,28 +86,6 @@ jobs:
             -p re_query \
             -p re_tuid \
             -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
-
-      - name: Store benchmark result
-        # https://github.com/benchmark-action/github-action-benchmark
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Rust Benchmark
-          tool: "cargo"
-          output-file-path: /tmp/${{ env.SHORT_SHA }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Show alert with commit comment on detecting possible performance regression
-          comment-on-alert: true
-          alert-threshold: "125%"
-          fail-on-alert: true
-          comment-always: false # Generates too much GitHub notification spam
-
-          # Save, results and push to GitHub only on main
-          save-data-file: ${{ inputs.SAVE_BENCHES }}
-          auto-push: ${{ inputs.SAVE_BENCHES }}
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench
-          max-items-in-chart: 30
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -150,3 +135,25 @@ jobs:
         with:
           path: /tmp/bench_results.txt
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/bench_results.txt"
+
+      - name: Store benchmark result
+        # https://github.com/benchmark-action/github-action-benchmark
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Rust Benchmark
+          tool: "cargo"
+          output-file-path: /tmp/${{ env.SHORT_SHA }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Show alert with commit comment on detecting possible performance regression
+          comment-on-alert: true
+          alert-threshold: "125%"
+          fail-on-alert: ${{ inputs.FAIL_ON_ALERT }}
+          comment-always: false # Generates too much GitHub notification spam
+
+          # Save, results and push to GitHub only on main
+          save-data-file: ${{ inputs.SAVE_BENCHES }}
+          auto-push: ${{ inputs.SAVE_BENCHES }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          max-items-in-chart: 30
