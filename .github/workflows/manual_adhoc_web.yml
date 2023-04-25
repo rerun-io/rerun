@@ -40,6 +40,6 @@ jobs:
     with:
       MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: false
-      ADHOCS: ${{ github.event.inputs.ADHOC_NAME }}
+      ADHOC_NAME: ${{ github.event.inputs.ADHOC_NAME }}
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
