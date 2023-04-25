@@ -8,7 +8,7 @@ By convention:
 - All workflows that are triggered via `workflow_dispatch` start with the `manual_` prefix.
 - All workflows that are triggered via an event start with the `on_` prefix.
   - `on_pull_request` is triggered on pull requests.
-  - `on_main` is triggered on pushes to the main branch.
+  - `on_push_main` is triggered on pushes to the main branch.
 
 If you are going to be doing any editing of workflows, the
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=cschleiden.vscode-github-actions)
@@ -51,7 +51,7 @@ uploaded anywhere.
   request builds associated with their originating commit, even if the web-build happens on an ephemeral merge-commit.
 - [reusable_pr_summary.yml](reusable_pr_summary.yml) - This job updates the PR summary with the results of the CI run.
   - This summary can be found at:
-  `https://storage.googleapis.com/rerun-builds/pull_request/<PR_NUMBER>/index.html`
+  `https://build.rerun.io/pr/<PR_NUMBER>/`
   - `PR_NUMBER` - The PR number to update. This will generally be set by the `on_pull_request.yml` workflow using:
   `${{github.event.pull_request.number}}`
 
