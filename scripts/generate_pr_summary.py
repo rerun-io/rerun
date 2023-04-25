@@ -70,7 +70,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
 
     if upload:
         upload_blob = wheels_bucket.blob(f"pull_request/{pr_number}/index.html")
-        print("Uploading results to {}".format(upload_blob))
+        print("Uploading results to {}".format(upload_blob.name))
         upload_blob.upload_from_file(buffer, content_type="text/html")
 
 
