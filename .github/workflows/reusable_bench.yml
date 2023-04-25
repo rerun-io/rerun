@@ -121,7 +121,7 @@ jobs:
 
       # Gcloud upload action depends on local filename for destination filename
       # TODO(jleibs) make this whole thing a python script
-      - name: "Upload named bench to GCS"
+      - name: "Copy bench to named file"
         if: ${{ inputs.BENCH_NAME != '' }}
         run: cp /tmp/${{ env.SHORT_SHA }} /tmp/${{ inputs.BENCH_NAME }}
 
@@ -132,7 +132,7 @@ jobs:
           path: /tmp/${{ inputs.BENCH_NAME }}
           destination: "rerun-builds/benches/"
 
-      - name: Download file from GCS
+      - name: Download comparison bench from GCS
         if: ${{ inputs.COMPARE_TO != '' }}
         run: |
           gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/${{ inputs.COMPARE_TO }}
