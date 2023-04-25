@@ -37,7 +37,7 @@ re_log_encoding = { path = "crates/re_log_encoding", version = "=0.6.0-alpha.0" 
 re_log_types = { path = "crates/re_log_types", version = "=0.6.0-alpha.0" }
 re_memory = { path = "crates/re_memory", version = "=0.6.0-alpha.0" }
 re_query = { path = "crates/re_query", version = "=0.6.0-alpha.0" }
-re_renderer = { path = "crates/re_renderer", version = "=0.6.0-alpha.0" }
+re_renderer = { path = "crates/re_renderer", version = "=0.6.0-alpha.0", default-features = false }
 re_sdk = { path = "crates/re_sdk", version = "=0.6.0-alpha.0" }
 re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.6.0-alpha.0" }
 re_smart_channel = { path = "crates/re_smart_channel", version = "=0.6.0-alpha.0" }
@@ -45,7 +45,7 @@ re_string_interner = { path = "crates/re_string_interner", version = "=0.6.0-alp
 re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.6.0-alpha.0" }
 re_tuid = { path = "crates/re_tuid", version = "=0.6.0-alpha.0" }
 re_ui = { path = "crates/re_ui", version = "=0.6.0-alpha.0" }
-re_viewer = { path = "crates/re_viewer", version = "=0.6.0-alpha.0" }
+re_viewer = { path = "crates/re_viewer", version = "=0.6.0-alpha.0", default-features = false }
 re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.6.0-alpha.0" }
 re_ws_comms = { path = "crates/re_ws_comms", version = "=0.6.0-alpha.0" }
 rerun = { path = "crates/rerun", version = "=0.6.0-alpha.0" }
