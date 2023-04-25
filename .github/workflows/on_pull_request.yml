@@ -1,4 +1,4 @@
-name: Run Checks on Pull-Request
+name: Pull-Request
 
 on:
   pull_request:
@@ -10,9 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
   checks:
-    name: Run All Checks
+    name: Checks
     uses: ./.github/workflows/reusable_checks.yml
     secrets: inherit
 
@@ -21,8 +22,8 @@ jobs:
     uses: ./.github/workflows/reusable_bench.yml
     secrets: inherit
 
-  build_linux_fast:
-    name: 'Minimum Wheel Test'
+  min-test-wheel:
+    name: 'Minimum Wheel'
 
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -33,19 +34,16 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
-  build_web:
+  build-web:
     name: 'Build Web'
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       RELEASE: ''
     secrets: inherit
 
-  upload_web:
+  upload-web:
     name: 'Upload Web'
-    # Uses Assets:
-    #   build_linux: rrd
-    #   build_web: web_viewer
-    needs: [build_linux_fast, build_web]
+    needs: [min-test-wheel, build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       RELEASE: ''
@@ -53,9 +51,9 @@ jobs:
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
-  save_pr_summary:
+  save-pr-summary:
     name: 'Save PR Summary'
-    needs: [upload_web]
+    needs: [upload-web]
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
       PR_NUMBER: ${{ github.event.pull_request.number }}
