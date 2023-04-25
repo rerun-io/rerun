@@ -24,21 +24,18 @@ jobs:
 
   min-test-wheel:
     name: 'Minimum Wheel'
-
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
       SAVE_CACHE: false
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
-      WHEEL_ARTIFACT_NAME: ''
+      WHEEL_ARTIFACT_NAME: '' # the min-test wheel isn't used for anything
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
   build-web:
     name: 'Build Web'
     uses: ./.github/workflows/reusable_build_web.yml
-    with:
-      RELEASE: ''
     secrets: inherit
 
   upload-web:
@@ -46,7 +43,6 @@ jobs:
     needs: [min-test-wheel, build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
-      RELEASE: ''
       RRD_ARTIFACT_NAME: linux-rrd-fast
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
