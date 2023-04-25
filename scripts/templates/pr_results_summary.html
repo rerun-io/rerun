@@ -24,7 +24,7 @@
 
     {% for build in found_builds %}
     <div class=" commit-section">
-        <h2>Commit: {{ build.commit }}</h2>
+        <h2>Commit: <a href="https://github.com/rerun-io/rerun/commit/{{ build.commit }}">{{ build.commit }}</a></h2>
         {% if build.hosted_app %}
         <div class="hosted-app">
             <h3>Hosted App:</h3>

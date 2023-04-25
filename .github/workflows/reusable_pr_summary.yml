@@ -41,13 +41,12 @@ jobs:
         run: pip install google-cloud-storage Jinja2 PyGithub # NOLINT
 
       - name: Render HTML template
-        run: python scripts/generate_pr_summary.py
+        run: |
+          python scripts/generate_pr_summary.py \
+          --github-token ${{secrets.GITHUB_TOKEN}} \
+          --github-repository ${GITHUB_REPOSITORY} \
+          --pr-number ${{ inputs.PR_NUMBER }} \
+          --upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ inputs.PR_NUMBER }}
-
-      - name: Upload HTML summary
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "index.html"
-          destination: "rerun-builds/pull_request/${{inputs.PR_NUMBER}}/"
