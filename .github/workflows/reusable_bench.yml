@@ -98,35 +98,25 @@ jobs:
         with:
           version: '>= 363.0.0'
 
-      - name: "Upload bench to GCS"
+      # TODO(jleibs) make this whole thing a python script
+      - name: "Upload bench to GCS based on SHA"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: /tmp/${{ env.SHORT_SHA }}
           destination: "rerun-builds/benches/"
 
-      # Gcloud upload action depends on local filename for destination filename
-      # TODO(jleibs) make this whole thing a python script
-      - name: "Copy bench to named file"
-        if: ${{ inputs.BENCH_NAME != '' }}
-        run: cp /tmp/${{ env.SHORT_SHA }} /tmp/${{ inputs.BENCH_NAME }}
-
-      - name: "Upload named bench to GCS"
-        if: ${{ inputs.BENCH_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: /tmp/${{ inputs.BENCH_NAME }}
-          destination: "rerun-builds/benches/"
-
       - name: Download comparison bench from GCS
         if: ${{ inputs.COMPARE_TO != '' }}
         run: |
-          gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/${{ inputs.COMPARE_TO }}
+          mkdir /tmp/compare/
+          gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/compare/${{ inputs.COMPARE_TO }}
 
       - name: Compare results with benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
-        run: cargo benchcmp /tmp/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
+        run: cargo benchcmp /tmp/compare/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
 
       - name: "Upload bench-results to GCS"
+        if: ${{ inputs.COMPARE_TO != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: /tmp/bench_results.txt
@@ -153,3 +143,15 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           max-items-in-chart: 30
+
+      - name: "Copy bench to named file"
+        if: ${{ inputs.BENCH_NAME != '' }}
+        run: cp /tmp/${{ env.SHORT_SHA }} /tmp/${{ inputs.BENCH_NAME }}
+
+      # Don't upload the new named bench until the end in case the names are the same
+      - name: "Upload named bench to GCS"
+        if: ${{ inputs.BENCH_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: /tmp/${{ inputs.BENCH_NAME }}
+          destination: "rerun-builds/benches/"

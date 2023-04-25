@@ -18,6 +18,10 @@ jobs:
   benches:
     name: Benchmarks
     uses: ./.github/workflows/reusable_bench.yml
+    with:
+      SAVE_BENCHES: true
+      BENCH_NAME: main
+      COMPARE_TO: main
     secrets: inherit
 
   deploy-docs:
