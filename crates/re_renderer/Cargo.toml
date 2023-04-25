@@ -24,7 +24,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["arrow", "import-obj", "import-gltf"]
+default = ["import-obj", "import-gltf"]
 
 ## Support for Arrow datatypes for end-to-end zero-copy.
 arrow = ["dep:arrow2"]
@@ -38,6 +38,8 @@ import-gltf = ["dep:gltf"]
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
 
+## Render using webgl instead of webgpu on wasm builds.
+webgl = ["wgpu/webgl"]
 
 [dependencies]
 re_error.workspace = true
@@ -63,6 +65,7 @@ smallvec.workspace = true
 static_assertions = "1.1"
 thiserror.workspace = true
 type-map = "0.5"
+wgpu.workspace = true
 
 # optional
 arrow2 = { workspace = true, optional = true }
@@ -75,16 +78,7 @@ tobj = { version = "3.2", optional = true }
 crossbeam = "0.8"
 notify = "5.0"
 puffin.workspace = true
-wgpu = { workspace = true, default-features = false, features = ["wgsl"] }
 wgpu-core.workspace = true
-
-# wasm
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { workspace = true, default-features = false, features = [
-  "webgl",
-  "wgsl",
-] }
-
 
 # For examples:
 [dev-dependencies]
@@ -109,7 +103,7 @@ console_error_panic_hook = "0.1.6"
 # required to make rand work on wasm, see https://github.com/rust-random/rand#wasm-support
 getrandom = { version = "0.2", features = ["js"] }
 wasm-bindgen-futures = "0.4.33"
-web-sys = { version = "0.3.60", features = [
+web-sys = { version = "0.3.61", features = [
   "Location",
   "Blob",
   "RequestInit",
