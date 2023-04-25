@@ -3,13 +3,6 @@ name: Reusable Upload Wheels
 on:
   workflow_call:
     inputs:
-      EXPECTED_VERSION:
-        required: true
-        type: string
-      RELEASE:
-        required: false
-        type: string
-        default: ''
       RRD_ARTIFACT_NAME:
         required: false
         type: string
@@ -21,7 +14,7 @@ on:
 
 jobs:
 
-  upload_wheel:
+  upload-wheel:
     name: Upload Wheel to google cloud
 
     runs-on: ubuntu-latest
@@ -94,12 +87,6 @@ jobs:
 
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
-
-      - name: Get the file name
-        shell: bash
-        id: get_file_name
-        run: |
-          echo "WHL_FILE=$(ls dist)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload Wheel"
         uses: google-github-actions/upload-cloud-storage@v1

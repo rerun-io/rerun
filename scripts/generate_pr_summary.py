@@ -64,5 +64,5 @@ for commit in all_commits:
 with open("templates/pr_results_summary.html") as f:
     template = Template(f.read())
 
-with open("build_summary.html", "w") as f:
+with open("index.html", "w") as f:
     f.write(template.render(found_builds=found_builds, pr_number=PR_NUMBER))

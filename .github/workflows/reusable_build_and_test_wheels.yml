@@ -10,15 +10,11 @@ on:
       PLATFORM:
         required: true
         type: string
-      RELEASE:
+      RELEASE_VERSION:
         required: false
         type: string
-        default: ''
+        default: 'prerelease'
       RRD_ARTIFACT_NAME:
-        required: false
-        type: string
-        default: ''
-      WHEEL_ARTIFACT_NAME:
         required: false
         type: string
         default: ''
@@ -26,10 +22,10 @@ on:
         required: false
         type: boolean
         default: false
-    outputs:
-      EXPECTED_VERSION:
-        description: "The expected version of the package"
-        value: ${{ jobs.build_wheels.outputs.EXPECTED_VERSION }}
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ''
 
 env:
   PYTHON_VERSION: "3.8"
@@ -52,17 +48,17 @@ jobs:
 
 # ---------------------------------------------------------------------------
 
-  set_config:
+  set-config:
     name: Set Config
     runs-on: ubuntu-latest
     outputs:
-      RUNNER: ${{ steps.set_config.outputs.runner }}
-      TARGET: ${{ steps.set_config.outputs.target }}
-      RUN_TESTS: ${{ steps.set_config.outputs.run_tests }}
-      CONTAINER: ${{ steps.set_config.outputs.container }}
+      RUNNER: ${{ steps.set-config.outputs.runner }}
+      TARGET: ${{ steps.set-config.outputs.target }}
+      RUN_TESTS: ${{ steps.set-config.outputs.run_tests }}
+      CONTAINER: ${{ steps.set-config.outputs.container }}
     steps:
       - name: Set runner and target based on platform
-        id: set_config
+        id: set-config
         run: |
           case "${{ inputs.platform }}" in
             linux)
@@ -98,16 +94,13 @@ jobs:
 
 # ---------------------------------------------------------------------------
 
-  build_wheels:
+  build-wheels:
     name: Build Wheels
 
-    needs: [set_config]
+    needs: [set-config]
 
-    runs-on: ${{ needs.set_config.outputs.RUNNER }}
-    container: ${{ fromJson(needs.set_config.outputs.CONTAINER) }}
-
-    outputs:
-      EXPECTED_VERSION: ${{ steps.expected_version.outputs.EXPECTED_VERSION }}
+    runs-on: ${{ needs.set-config.outputs.RUNNER }}
+    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
 
     steps:
       - name: Show context
@@ -116,7 +109,6 @@ jobs:
           echo "JOB_CONTEXT": $JOB_CONTEXT
           echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
           echo "ENV_CONTEXT": $ENV_CONTEXT
-          echo "EXPECTED_VERSION": $EXPECTED_VERSION
         env:
           ENV_CONTEXT: ${{ toJson(env) }}
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -188,20 +180,12 @@ jobs:
           pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
 
       - name: Patch Cargo.toml for pre-release
-        if: ${{ (inputs.RELEASE == '') || (inputs.RELEASE == 'prerelease') }}
+        if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
         # After patching the pre-release version, run cargo update.
         # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |
           python3 scripts/version_util.py --patch_prerelease
           cargo update -w
-
-      # TODO(jleibs): Figure out what this check should be doing now
-      - name: Version check for tagged-release
-        if: false
-        #if: startsWith(github.ref, 'refs/tags/v')
-        # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
-        run: |
-          python3 scripts/version_util.py --check_version
 
       - name: Store the expected version
         # Find the current cargo version and store it in the output: `expected_version`
@@ -209,6 +193,16 @@ jobs:
         id: expected_version
         run: |
           echo "EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the expected version
+        if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
+        # After patching the pre-release version, run cargo update.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
+        run: |
+          if [ "${{steps.expected_version.outputs.EXPECTED_VERSION}}" != "${{inputs.RELEASE_VERSION}}" ]; then
+            echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
+            exit 1
+          fi
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
@@ -221,7 +215,7 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
-            --target ${{ needs.set_config.outputs.TARGET }}
+            --target ${{ needs.set-config.outputs.TARGET }}
             ${{ inputs.MATURIN_FEATURE_FLAGS }}
             --out dist
 
@@ -236,7 +230,7 @@ jobs:
       # Test the wheel
 
       - name: Install wheel dependencies
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
         # This needs to be a separate step for some reason or the following step fails
         # TODO(jleibs): pull these deps from pyproject.toml
@@ -246,7 +240,7 @@ jobs:
           pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
 
       - name: Install built wheel
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
@@ -256,7 +250,7 @@ jobs:
           pip install rerun-sdk==${{ steps.expected_version.outputs.EXPECTED_VERSION }} --no-index --find-links dist
 
       - name: Verify built wheel version
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: |
           python3 -m rerun --version
@@ -264,17 +258,17 @@ jobs:
           rerun --version
 
       - name: Run unit tests
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: cd rerun_py/tests && pytest
 
       - name: Run e2e test
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Cache RRD dataset
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         id: dataset
         uses: actions/cache@v3
         with:
@@ -283,7 +277,7 @@ jobs:
           key: colmap-dataset-colmap-fiat-v0
 
       - name: Generate Embedded RRD file
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
@@ -293,7 +287,7 @@ jobs:
 
       # All platforms are currently creating the same rrd file, upload one of them
       - name: Save RRD artifact
-        if: ${{ (needs.set_config.outputs.RUN_TESTS == 'true') && (inputs.RRD_ARTIFACT_NAME != '') }}
+        if: ${{ (needs.set-config.outputs.RUN_TESTS == 'true') && (inputs.RRD_ARTIFACT_NAME != '') }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.RRD_ARTIFACT_NAME }}
