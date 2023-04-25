@@ -8,7 +8,7 @@ By convention:
 - All workflows that are triggered via `workflow_dispatch` start with the `manual_` prefix.
 - All workflows that are triggered via an event start with the `on_` prefix.
   - `on_pull_request` is triggered on pull requests.
-  - `on_main` is triggered on pushes to the main branch.
+  - `on_push_main` is triggered on pushes to the main branch.
 
 ## Reusable Workflows
 - [reusable_checks.yml](reusable_checks.yml) - These are all the checks that run to ensure the code is formatted,
