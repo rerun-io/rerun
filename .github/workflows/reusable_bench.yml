@@ -117,13 +117,19 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: /tmp/${{ env.SHORT_SHA }}
-          destination: "rerun-builds/benches/${{ env.SHORT_SHA }}"
+          destination: "rerun-builds/benches/"
+
+      # Gcloud upload action depends on local filename for destination filename
+      # TODO(jleibs) make this whole thing a python script
+      - name: "Upload named bench to GCS"
+        if: ${{ inputs.BENCH_NAME != '' }}
+        run: cp /tmp/${{ env.SHORT_SHA }} /tmp/${{ inputs.BENCH_NAME }}
 
       - name: "Upload named bench to GCS"
         if: ${{ inputs.BENCH_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: /tmp/${{ env.BENCH_NAME }}
+          path: /tmp/${{ inputs.BENCH_NAME }}
           destination: "rerun-builds/benches/"
 
       - name: Download file from GCS
