@@ -66,27 +66,6 @@ on:
         default: false
 
 jobs:
-  check-for-pr:
-    runs-on: ubuntu-latest
-    outputs:
-      PR_NUMBER: ${{ steps.get_pr.outputs.PR_NUMBER }}
-    steps:
-      - name: Check if commit belongs to a PR
-        id: get_pr
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          pr_number=$(curl --silent --header "Authorization: Bearer ${GITHUB_TOKEN}" \
-            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
-            | jq '.[] | .number')
-
-          if [ -z "$pr_number" ]; then
-            echo "No PR associated with this commit"
-            exit 1
-          else
-            echo "Commit is associated with PR: $pr_number"
-            echo "PR_NUMBER=$pr_number" >> "$GITHUB_OUTPUT"
-          fi
 
   checks:
     name: Run All Checks
@@ -236,6 +215,29 @@ jobs:
       MARK_TAGGED_VERSION: false
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
+
+  check-for-pr:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.UPDATE_PR_SUMMARY == 'true' }}
+    outputs:
+      PR_NUMBER: ${{ steps.get_pr.outputs.PR_NUMBER }}
+    steps:
+      - name: Check if commit belongs to a PR
+        id: get_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number=$(curl --silent --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            | jq '.[] | .number')
+
+          if [ -z "$pr_number" ]; then
+            echo "No PR associated with this commit"
+            exit 1
+          else
+            echo "Commit is associated with PR: $pr_number"
+            echo "PR_NUMBER=$pr_number" >> "$GITHUB_OUTPUT"
+          fi
 
   update-pr-summary:
     name: 'Update PR Summary'
