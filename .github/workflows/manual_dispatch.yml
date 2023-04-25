@@ -75,7 +75,7 @@ jobs:
       UPDATE_LATEST: false
     secrets: inherit
 
-  min_test_wheel:
+  min-test-wheel:
     name: 'Minimum Test Wheel'
     # The upload-web job uses the min-test-wheel to get the RRD
     if: ${{ (github.event.inputs.MIN_TEST_WHEEL == 'true') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.BUILD_WEB == 'true') ) }}
@@ -94,7 +94,7 @@ jobs:
     uses: ./.github/workflows/reusable_bench.yml
     secrets: inherit
 
-  build_linux:
+  build-linux:
     name: 'Linux: Build/Test Wheels'
 
     # If we are uploading any build target, we also need the linux job to run since it produces the RRD
@@ -110,7 +110,7 @@ jobs:
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
-  build_windows:
+  build-windows:
     name: 'Windows: Build/Test Wheels'
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
@@ -122,7 +122,7 @@ jobs:
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
-  build_macos_arm:
+  build-macos-arm:
     name: 'Macos-Arm: Build/Test Wheels'
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
@@ -134,7 +134,7 @@ jobs:
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
-  build_macos_intel:
+  build-macos-intel:
     name: 'Macos-Intel: Build/Test Wheels'
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
@@ -147,9 +147,9 @@ jobs:
 
     secrets: inherit
 
-  upload_wheels_linux:
+  upload-wheels-linux:
     name: 'Linux: Upload Wheels'
-    needs: [build_linux]
+    needs: [build-linux]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
@@ -157,9 +157,9 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
-  upload_wheels_windows:
+  upload-wheels-windows:
     name: 'Windows: Upload Wheels'
-    needs: [build_linux, build_windows]
+    needs: [build-linux, build-windows]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
@@ -167,9 +167,9 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
-  upload_wheels_macos_arm:
+  upload-wheels-macos-arm:
     name: 'Macos-Arm: Upload Wheels'
-    needs: [build_linux, build_macos_arm]
+    needs: [build-linux, build-macos-arm]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
@@ -177,9 +177,9 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
-  upload_wheels_macos_intel:
+  upload-wheels-macos-intel:
     name: 'Macos-Intel: Upload Wheels'
-    needs: [build_linux, build_macos_intel]
+    needs: [build-linux, build-macos-intel]
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
@@ -187,7 +187,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
-  build_web:
+  build-web:
     name: 'Build Web'
     if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
     uses: ./.github/workflows/reusable_build_web.yml
@@ -195,12 +195,12 @@ jobs:
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
-  upload_web:
+  upload-web:
     name: 'Upload Web'
     # Uses Assets:
-    #   build_linux: rrd
-    #   build_web: web_viewer
-    needs: [min_test_wheel, build_web]
+    #   build-linux: rrd
+    #   build-web: web_viewer
+    needs: [min-test-wheel, build-web]
     if: ${{ (github.event.inputs.BUILD_WEB == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
@@ -209,9 +209,9 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
-  save_pr_summary:
+  save-pr-summary:
     name: 'Save PR Summary'
-    needs: [upload_web, upload_wheels_linux]
+    needs: [upload-web, upload-wheels-linux]
     if: ${{ github.event.inputs.SAVE_PR != '' }}
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:

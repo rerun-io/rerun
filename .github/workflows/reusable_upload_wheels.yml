@@ -14,7 +14,7 @@ on:
 
 jobs:
 
-  upload_wheel:
+  upload-wheel:
     name: Upload Wheel to google cloud
 
     runs-on: ubuntu-latest

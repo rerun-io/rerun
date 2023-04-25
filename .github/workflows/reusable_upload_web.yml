@@ -28,7 +28,7 @@ on:
 
 jobs:
 
-  upload_web:
+  upload-web:
     name: Upload web build to google cloud (wasm32 + wasm-bindgen)
     permissions:
       contents: "read"

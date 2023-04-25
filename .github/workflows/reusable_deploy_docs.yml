@@ -29,7 +29,7 @@ jobs:
 
 # ---------------------------------------------------------------------------
 
-  deploy-docs-py:
+  py-deploy-docs:
     name: Python
     runs-on: ubuntu-latest
     steps:
@@ -86,7 +86,7 @@ jobs:
 
 # ---------------------------------------------------------------------------
 
-  deploy-docs-rs:
+  rs-deploy-docs:
     name: Rust
     runs-on: ubuntu-latest-16-cores
     container:

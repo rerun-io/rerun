@@ -48,17 +48,17 @@ jobs:
 
 # ---------------------------------------------------------------------------
 
-  set_config:
+  set-config:
     name: Set Config
     runs-on: ubuntu-latest
     outputs:
-      RUNNER: ${{ steps.set_config.outputs.runner }}
-      TARGET: ${{ steps.set_config.outputs.target }}
-      RUN_TESTS: ${{ steps.set_config.outputs.run_tests }}
-      CONTAINER: ${{ steps.set_config.outputs.container }}
+      RUNNER: ${{ steps.set-config.outputs.runner }}
+      TARGET: ${{ steps.set-config.outputs.target }}
+      RUN_TESTS: ${{ steps.set-config.outputs.run_tests }}
+      CONTAINER: ${{ steps.set-config.outputs.container }}
     steps:
       - name: Set runner and target based on platform
-        id: set_config
+        id: set-config
         run: |
           case "${{ inputs.platform }}" in
             linux)
@@ -94,13 +94,13 @@ jobs:
 
 # ---------------------------------------------------------------------------
 
-  build_wheels:
+  build-wheels:
     name: Build Wheels
 
-    needs: [set_config]
+    needs: [set-config]
 
-    runs-on: ${{ needs.set_config.outputs.RUNNER }}
-    container: ${{ fromJson(needs.set_config.outputs.CONTAINER) }}
+    runs-on: ${{ needs.set-config.outputs.RUNNER }}
+    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
 
     steps:
       - name: Show context
@@ -215,7 +215,7 @@ jobs:
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
-            --target ${{ needs.set_config.outputs.TARGET }}
+            --target ${{ needs.set-config.outputs.TARGET }}
             ${{ inputs.MATURIN_FEATURE_FLAGS }}
             --out dist
 
@@ -230,7 +230,7 @@ jobs:
       # Test the wheel
 
       - name: Install wheel dependencies
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
         # This needs to be a separate step for some reason or the following step fails
         # TODO(jleibs): pull these deps from pyproject.toml
@@ -240,7 +240,7 @@ jobs:
           pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
 
       - name: Install built wheel
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
@@ -250,7 +250,7 @@ jobs:
           pip install rerun-sdk==${{ steps.expected_version.outputs.EXPECTED_VERSION }} --no-index --find-links dist
 
       - name: Verify built wheel version
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: |
           python3 -m rerun --version
@@ -258,17 +258,17 @@ jobs:
           rerun --version
 
       - name: Run unit tests
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: cd rerun_py/tests && pytest
 
       - name: Run e2e test
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Cache RRD dataset
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         id: dataset
         uses: actions/cache@v3
         with:
@@ -277,7 +277,7 @@ jobs:
           key: colmap-dataset-colmap-fiat-v0
 
       - name: Generate Embedded RRD file
-        if: needs.set_config.outputs.RUN_TESTS == 'true'
+        if: needs.set-config.outputs.RUN_TESTS == 'true'
         shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
@@ -287,7 +287,7 @@ jobs:
 
       # All platforms are currently creating the same rrd file, upload one of them
       - name: Save RRD artifact
-        if: ${{ (needs.set_config.outputs.RUN_TESTS == 'true') && (inputs.RRD_ARTIFACT_NAME != '') }}
+        if: ${{ (needs.set-config.outputs.RUN_TESTS == 'true') && (inputs.RRD_ARTIFACT_NAME != '') }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.RRD_ARTIFACT_NAME }}

@@ -8,7 +8,7 @@ on:
         type: string
 
 jobs:
-  create_html_summary:
+  pr-summary:
     name: Create HTML summary for PR
 
     permissions:
