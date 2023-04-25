@@ -128,7 +128,7 @@ jobs:
 
       - name: Install benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
-        run: cargo run /tmp/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
+        run: cargo benchcmp /tmp/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
 
       - name: "Upload bench-results to GCS"
         uses: google-github-actions/upload-cloud-storage@v1
