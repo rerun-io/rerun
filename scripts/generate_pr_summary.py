@@ -43,14 +43,20 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
         found: Dict[str, Any] = {}
 
         # Check if there is a hosted app for the current commit
-        commit_blob = viewer_bucket.blob(f"commit/{commit_short}/index.html")
-        if commit_blob.exists():
+        app_blob = viewer_bucket.blob(f"commit/{commit_short}/index.html")
+        if app_blob.exists():
             print("Found web assets commit: {}".format(commit_short))
             found["hosted_app"] = f"https://app.rerun.io/commit/{commit_short}"
 
+        # Check if there are benchmark results
+        bench_blob = viewer_bucket.blob(f"commit/{commit_short}/bench_results.txt")
+        if bench_blob.exists():
+            print("Found benchmark results: {}".format(commit_short))
+            found["bench_results"] = f"https://build.rerun.io/{bench_blob.name}"
+
         # Get the wheel files for the commit
         wheel_blobs = list(wheels_bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
-        wheels = [f"https://storage.googleapis.com/{blob.bucket.name}/{blob.name}" for blob in wheel_blobs]
+        wheels = [f"https://build.rerun.io/{blob.name}" for blob in wheel_blobs if blob.name.endswith(".whl")]
         if wheels:
             print("Found wheels for commit: {}".format(commit_short))
             found["wheels"] = wheels

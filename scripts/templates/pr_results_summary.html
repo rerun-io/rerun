@@ -31,6 +31,9 @@
             <a href="{{ build.hosted_app }}" target="_blank">{{ build.hosted_app }}</a>
         </div>
         {% endif %}
+        {% if build.bench_results %}
+        <h3><a href="{{ build.bench_results }}" target="_blank">{{ build.bench_results }}</a></h3>
+        {% endif %}
         {% if build.wheels %}
         <div class="wheel-list">
             <h3>Wheels:</h3>
