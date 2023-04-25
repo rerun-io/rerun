@@ -34,7 +34,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
     # Prepare the found_builds list
     found_builds = []
     viewer_bucket = gcs_client.bucket("rerun-web-viewer")
-    wheels_bucket = gcs_client.bucket("rerun-builds")
+    builds_bucket = gcs_client.bucket("rerun-builds")
 
     for commit in all_commits:
         commit_short = commit[:7]
@@ -49,13 +49,13 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
             found["hosted_app"] = f"https://app.rerun.io/commit/{commit_short}"
 
         # Check if there are benchmark results
-        bench_blob = viewer_bucket.blob(f"commit/{commit_short}/bench_results.txt")
+        bench_blob = builds_bucket.blob(f"commit/{commit_short}/bench_results.txt")
         if bench_blob.exists():
             print("Found benchmark results: {}".format(commit_short))
             found["bench_results"] = f"https://build.rerun.io/{bench_blob.name}"
 
         # Get the wheel files for the commit
-        wheel_blobs = list(wheels_bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
+        wheel_blobs = list(builds_bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
         wheels = [f"https://build.rerun.io/{blob.name}" for blob in wheel_blobs if blob.name.endswith(".whl")]
         if wheels:
             print("Found wheels for commit: {}".format(commit_short))
@@ -75,7 +75,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
     buffer.seek(0)
 
     if upload:
-        upload_blob = wheels_bucket.blob(f"pull_request/{pr_number}/index.html")
+        upload_blob = builds_bucket.blob(f"pull_request/{pr_number}/index.html")
         print("Uploading results to {}".format(upload_blob.name))
         upload_blob.upload_from_file(buffer, content_type="text/html")
 
