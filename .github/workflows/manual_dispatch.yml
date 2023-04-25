@@ -54,10 +54,10 @@ on:
         default: false
 
       UPDATE_PR_SUMMARY:
-        description: 'Update the PR Summary for PR#'
-        type: string
+        description: 'Update the PR Summary'
+        type: boolean
         required: false
-        default: ''
+        default: false
 
       SAVE_CACHE:
         description: 'Save the rust-cache where relevant'
@@ -66,6 +66,7 @@ on:
         default: false
 
 jobs:
+
   checks:
     name: Run All Checks
     if: ${{ github.event.inputs.CHECKS == 'true' }}
@@ -215,15 +216,39 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
-  save-pr-summary:
-    name: 'Save PR Summary'
+  check-for-pr:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.UPDATE_PR_SUMMARY == 'true' }}
+    outputs:
+      PR_NUMBER: ${{ steps.get_pr.outputs.PR_NUMBER }}
+    steps:
+      - name: Check if commit belongs to a PR
+        id: get_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number=$(curl --silent --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            | jq '.[] | .number')
+
+          if [ -z "$pr_number" ]; then
+            echo "No PR associated with this commit"
+            exit 1
+          else
+            echo "Commit is associated with PR: $pr_number"
+            echo "PR_NUMBER=$pr_number" >> "$GITHUB_OUTPUT"
+          fi
+
+  update-pr-summary:
+    name: 'Update PR Summary'
     # TODO(jleibs): There's no good way to have an optional needs.
     # If we leave this here the job fails if we don't build all the wheels + web.
     # Since this just just for testing, leave this out. We can manually run it to update
     # a PR if we want to see changes.
-    #needs: [upload-web, upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
-    if: ${{ github.event.inputs.UPDATE_PR_SUMMARY != '' }}
+    #needs: [check-for-pr, upload-web, upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
+    needs: [check-for-pr]
+    if: ${{ github.event.inputs.UPDATE_PR_SUMMARY == 'true' }}
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
-      PR_NUMBER: ${{ github.event.inputs.UPDATE_PR_SUMMARY }}
+      PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER }}
     secrets: inherit
