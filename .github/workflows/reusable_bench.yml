@@ -69,7 +69,7 @@ jobs:
           if [ -z "${{ inputs.BENCH_NAME }}" ]; then
             BENCH_NAME=${{ inputs.BENCH_NAME }}
           else
-            BENCH_NAME=$(echo "${{ github.sha }}"" | cut -c1-7)"
+            BENCH_NAME=$(echo "${{ github.sha }}" | cut -c1-7)"
           fi
           echo "BENCH_NAME=$(echo $BENCH_NAME)" >> $GITHUB_ENV
 
