@@ -1,4 +1,4 @@
-name: Run on adhoc web build
+name: Run an adhoc web build
 
 on:
   workflow_dispatch:
