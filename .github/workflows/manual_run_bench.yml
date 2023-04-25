@@ -2,13 +2,24 @@ name: Manually run the benchmarks
 
 on:
   workflow_dispatch:
+    inputs:
+      BENCH_NAME:
+        description: 'Name of the benchmark to save'
+        type: string
+        required: false
+        default: ''
+      COMPARE_TO:
+        description: 'Saved Benchmark to compare to'
+        type: string
+        required: false
+        default: 'main'
 
 jobs:
 
-  run-benchmarks:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if commit belongs to a PR
-        run: |
-          echo "TODO(jleibs): Run benches"
-
+  run_benches:
+    name: Benchmarks
+    uses: ./.github/workflows/reusable_bench.yml
+    with:
+      BENCH_NAME: ${{ github.event.inputs.BENCH_NAME }}
+      COMPARE_TO: ${{ github.event.inputs.COMPARE_TO }}
+    secrets: inherit

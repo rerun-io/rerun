@@ -17,10 +17,6 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     secrets: inherit
 
-  benches:
-    name: Benchmarks
-    uses: ./.github/workflows/reusable_bench.yml
-    secrets: inherit
 
   min-test-wheel:
     name: 'Minimum Wheel'
