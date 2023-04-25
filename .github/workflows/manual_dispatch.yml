@@ -5,55 +5,65 @@ on:
     # NOTE: boolean inputs are still actually strings
     # See: https://github.com/actions/runner/issues/1483
     inputs:
-      BENCHES:
-        description: 'Run Benches'
-        type: boolean
-        required: false
-        default: false
-      BUILD_WEB:
-        description: 'Build Web'
-        type: boolean
-        required: false
-        default: true
+      # Sorted based on job workflow logic rather than alphabetical
       CHECKS:
-        description: 'Run All Checks'
+        description: 'Run reuseable_checks'
         type: boolean
         required: false
         default: true
-      DEPLOY_DOCS:
-        description: 'Deploy the docs to refs.rerun.io'
+
+      BENCHES:
+        description: 'Run reusable_bench.yml'
         type: boolean
         required: false
         default: false
+
       MIN_TEST_WHEEL:
-        description: 'Test Minimum Wheel'
+        description: 'Run reuseable_build_and_test_wheels (Minimal Wheel Linux Only)'
         type: boolean
         required: false
-      RELEASE_VERSION:
-        description: 'Release'
-        type: string
-        required: false
-        default: 'prerelease'
-      SAVE_CACHE:
-        description: 'Save Cache'
-        type: boolean
-        required: false
-        default: false
-      SAVE_PR:
-        description: 'Save PR Summary'
-        type: string
-        required: false
-        default: ''
-      UPLOAD_GCLOUD:
-        description: 'Upload to gcloud'
-        type: boolean
-        required: false
-        default: false
+
       WHEEL_PLATFORMS:
-        description: 'Platforms to build wheels for'
+        description: 'Run reusable_build_and_test_wheels (Full build: linux,windows,macos-arm,macos-intel)'
         type: string
         required: false
         default: 'linux'
+
+      BUILD_WEB:
+        description: 'Run reusable_build_web'
+        type: boolean
+        required: false
+        default: true
+
+      DEPLOY_DOCS:
+        description: 'Run reusable_deploy_docs'
+        type: boolean
+        required: false
+        default: false
+
+      RELEASE_VERSION:
+        description: 'Release Version Number (Must match Cargo.toml)'
+        type: string
+        required: false
+        default: 'prerelease'
+
+      UPLOAD_GCLOUD:
+        description: 'Upload wheels and wasm to gcloud'
+        type: boolean
+        required: false
+        default: false
+
+      UPDATE_PR_SUMMARY:
+        description: 'Update the PR Summary for PR#'
+        type: string
+        required: false
+        default: ''
+
+      SAVE_CACHE:
+        description: 'Save the rust-cache where relevant'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   checks:
@@ -212,8 +222,8 @@ jobs:
   save-pr-summary:
     name: 'Save PR Summary'
     needs: [upload-web, upload-wheels-linux]
-    if: ${{ github.event.inputs.SAVE_PR != '' }}
+    if: ${{ github.event.inputs.UPDATE_PR_SUMMARY != '' }}
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
-      PR_NUMBER: ${{ github.event.inputs.SAVE_PR }}
+      PR_NUMBER: ${{ github.event.inputs.UPDATE_PR_SUMMARY }}
     secrets: inherit
