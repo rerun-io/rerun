@@ -7,6 +7,10 @@ on:
         required: false
         type: string
         default: 'prerelease'
+      EXTRA_FLAGS:
+        required: false
+        type: string
+        default: ''
 
 env:
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
@@ -74,7 +78,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --locked -p re_build_web_viewer -- --release
+          args: --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
 
       - name: Upload web assets
         uses: actions/upload-artifact@v3
