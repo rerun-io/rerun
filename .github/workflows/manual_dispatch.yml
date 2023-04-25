@@ -12,6 +12,12 @@ on:
         required: false
         default: true
 
+      DEPLOY_DOCS:
+        description: 'Run reusable_deploy_docs'
+        type: boolean
+        required: false
+        default: false
+
       BENCHES:
         description: 'Run reusable_bench.yml'
         type: boolean
@@ -34,12 +40,6 @@ on:
         type: boolean
         required: false
         default: true
-
-      DEPLOY_DOCS:
-        description: 'Run reusable_deploy_docs'
-        type: boolean
-        required: false
-        default: false
 
       RELEASE_VERSION:
         description: 'Release Version Number (Must match Cargo.toml)'
@@ -74,7 +74,7 @@ jobs:
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
     secrets: inherit
 
-  deploy_docs:
+  deploy-docs:
     # Never deploy docs if checks haven't passed
     needs: [checks]
     name: Deploy Docs
@@ -83,6 +83,12 @@ jobs:
     with:
       PY_DOCS_VERSION_NAME: "test"
       UPDATE_LATEST: false
+    secrets: inherit
+
+  benches:
+    name: Benchmarks
+    if: ${{ github.event.inputs.BENCHES == 'true' }}
+    uses: ./.github/workflows/reusable_bench.yml
     secrets: inherit
 
   min-test-wheel:
@@ -98,16 +104,9 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
-  benches:
-    name: Benchmarks
-    if: ${{ github.event.inputs.BENCHES == 'true' }}
-    uses: ./.github/workflows/reusable_bench.yml
-    secrets: inherit
-
   build-linux:
     name: 'Linux: Build/Test Wheels'
-
-    # If we are uploading any build target, we also need the linux job to run since it produces the RRD
+    # The upload-wheels jobs all use the linux build to get the RRD
     # TODO(jleibs): Debug why multi-line if statements don't work here
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.WHEEL_PLATFORMS != '') ) }}
 
@@ -207,9 +206,6 @@ jobs:
 
   upload-web:
     name: 'Upload Web'
-    # Uses Assets:
-    #   build-linux: rrd
-    #   build-web: web_viewer
     needs: [min-test-wheel, build-web]
     if: ${{ (github.event.inputs.BUILD_WEB == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
