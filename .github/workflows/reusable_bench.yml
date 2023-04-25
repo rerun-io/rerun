@@ -7,6 +7,14 @@ on:
         required: false
         type: boolean
         default: false
+      BENCH_NAME:
+        required: false
+        type: string
+        default: ''
+      COMPARE_TO:
+        required: false
+        type: string
+        default: ''
 
 env:
   PYTHON_VERSION: "3.8"
@@ -29,9 +37,15 @@ jobs:
   rs-benchmarks:
     name: Rust Criterion benchmarks
 
+    permissions:
+      contents: "read"
+      id-token: "write"
+
     runs-on: ubuntu-latest-16-cores
+
     container:
       image: rerunio/ci_docker:0.6
+
     steps:
       - uses: actions/checkout@v3
 
@@ -50,6 +64,16 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
+      - name: Add BENCH_NAME env property with commit short sha
+        run: |
+          if [ -z "${{ inputs.BENCH_NAME }}" ]; then
+            BENCH_NAME=${{ inputs.BENCH_NAME }}
+          else
+            BENCH_NAME=$(echo "${{ github.sha }}"" | cut -c1-7)"
+          fi
+          echo "BENCH_NAME=$(echo $BENCH_NAME)" >> $GITHUB_ENV
+
+
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee
         shell: bash
@@ -61,7 +85,7 @@ jobs:
             -p re_log_encoding \
             -p re_query \
             -p re_tuid \
-            -- --output-format=bencher | tee output.txt
+            -- --output-format=bencher | tee ${{ runner.temp }}/${{ env.BENCH_NAME }}
 
       - name: Store benchmark result
         # https://github.com/benchmark-action/github-action-benchmark
@@ -69,7 +93,7 @@ jobs:
         with:
           name: Rust Benchmark
           tool: "cargo"
-          output-file-path: output.txt
+          output-file-path: ${{ runner.temp }}/${{ env.BENCH_NAME }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit comment on detecting possible performance regression
@@ -84,3 +108,42 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           max-items-in-chart: 30
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          version: '>= 363.0.0'
+
+      - name: "Upload bench to GCS"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: ${{ runner.temp }}/${{ env.BENCH_NAME }}
+          destination: "rerun-builds/benches/"
+
+      - name: Download file from GCS
+        if: ${{ inputs.COMPARE_TO != '' }}
+        run: |
+          gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} ${{ runner.temp }}/${{ inputs.COMPARE_TO }}
+
+      - name: Install benchcmp
+        if: ${{ inputs.COMPARE_TO != '' }}
+        run: cargo install cargo-benchcmp
+
+      - name: Install benchcmp
+        if: ${{ inputs.COMPARE_TO != '' }}
+        run: cargo run ${{ runner.temp }}/${{ inputs.COMPARE_TO }} ${{ runner.temp }}/${{ env.BENCH_NAME }} > ${{ runner.temp }}/bench_results.txt
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: "Upload bench-results to GCS"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: ${{ runner.temp }}/bench_results.txt
+          destination: "rerun-builds/commit/${{env.SHORT_SHA}}/bench_results.txt"
