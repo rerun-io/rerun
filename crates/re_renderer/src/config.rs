@@ -34,18 +34,19 @@ impl HardwareTier {
     }
 }
 
-impl Default for HardwareTier {
-    fn default() -> Self {
-        // Use "Basic" tier for actual web but also if someone forces the GL backend!
-        if supported_backends() == wgpu::Backends::GL {
-            HardwareTier::Gles
-        } else {
-            HardwareTier::FullWebGpuSupport
+impl HardwareTier {
+    pub fn from_adapter(adapter: &wgpu::Adapter) -> Self {
+        match adapter.get_info().backend {
+            wgpu::Backend::Vulkan
+            | wgpu::Backend::Metal
+            | wgpu::Backend::Dx12
+            | wgpu::Backend::BrowserWebGpu => HardwareTier::FullWebGpuSupport,
+
+            // Dx11 support in wgpu is sporadic, treat it like GLES to be on the safe side.
+            wgpu::Backend::Dx11 | wgpu::Backend::Gl | wgpu::Backend::Empty => HardwareTier::Gles,
         }
     }
-}
 
-impl HardwareTier {
     /// Wgpu limits required by the given hardware tier.
     pub fn limits(self) -> wgpu::Limits {
         wgpu::Limits {
@@ -140,9 +141,9 @@ pub fn supported_backends() -> wgpu::Backends {
         wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
     }
-    // Web - we support only WebGL right now, WebGPU should work but hasn't been tested.
+    // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
     #[cfg(target_arch = "wasm32")]
     {
-        wgpu::Backends::GL
+        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
     }
 }
