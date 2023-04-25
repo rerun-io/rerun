@@ -103,6 +103,12 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
+  generate-wheel-index:
+    name: 'Generate Pip Index'
+    needs: [check-for-pr, upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
+    uses: ./.github/workflows/reusable_pip_index.yml
+    secrets: inherit
+
   update-pr-summary:
     name: 'Update PR Summary'
     needs: [check-for-pr, upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
