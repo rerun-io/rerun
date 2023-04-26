@@ -1,16 +1,3 @@
-// TODO: debouncing is probably another PR?
-
-// TODO: logs
-
-// TODO: why at the table level rather than the chunk level you ask?
-
-// TODO: we're still inserting row by row on the other end though
-
-// TODO: we have to be quite specific about per-process/per-thread/per-recording?
-
-// TODO: strong guarantees for the thread that flushes/shutdowns/drops, weak guarantees for the
-// other ones
-
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -413,6 +400,7 @@ fn batching_thread(
         pending_num_rows: u64,
         pending_num_bytes: u64,
     }
+
     impl Accumulator {
         fn reset(&mut self) {
             self.latest = Instant::now();
@@ -434,8 +422,8 @@ fn batching_thread(
         acc: &mut Accumulator,
         mut row: DataRow,
     ) -> bool {
-        // TODO(cmc): now that we're re doing this here, it really is a massive waste not to send
-        // it over the wire... link issue
+        // TODO(#1760): now that we're re doing this here, it really is a massive waste not to send
+        // it over the wire...
         row.compute_all_size_bytes();
 
         acc.pending_num_rows += 1;
@@ -456,7 +444,7 @@ fn batching_thread(
         re_log::trace!(reason, "flushing tables");
 
         let table = DataTable::from_rows(TableId::random(), rows.drain(..));
-        // TODO(cmc): efficient table sorting here, following the same rules as the store's.
+        // TODO(#1981): efficient table sorting here, following the same rules as the store's.
         // table.sort();
 
         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
