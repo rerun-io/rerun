@@ -29,6 +29,8 @@ jobs:
       image: rerunio/ci_docker:0.6
 
     steps:
+      - uses: actions/checkout@v3
+
       - name: Download Wheel
         uses: actions/download-artifact@v3
         with:
