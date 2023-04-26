@@ -32,7 +32,7 @@ jobs:
     name: 'Linux: Build/Test Wheels'
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels-linux-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
@@ -43,7 +43,7 @@ jobs:
     name: 'Windows: Build/Test Wheels'
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels-windows-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ''
@@ -54,7 +54,7 @@ jobs:
     name: 'Macos-Arm: Build/Test Wheels'
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels-macos-arm-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ''
@@ -65,7 +65,7 @@ jobs:
     name: 'Macos-Intel: Build/Test Wheels'
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels-macos-intel-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
       RRD_ARTIFACT_NAME: ''
@@ -76,7 +76,7 @@ jobs:
     needs: [build-linux]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels-linux-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -86,7 +86,7 @@ jobs:
     needs: [build-linux, build-windows]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels-windows-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -96,7 +96,7 @@ jobs:
     needs: [build-linux, build-macos-arm]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels--macos-arm-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -106,7 +106,7 @@ jobs:
     needs: [build-linux, build-macos-intel]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      CONCURRENCY: manual-wheels-macos-intel-${{ needs.check-for-pr.outputs.PR_NUMBER }}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit

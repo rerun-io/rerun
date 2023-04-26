@@ -54,6 +54,13 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
             print("Found benchmark results: {}".format(commit_short))
             found["bench_results"] = f"https://build.rerun.io/{bench_blob.name}"
 
+        # Check if there are notebook results
+        notebook_blobs = list(builds_bucket.list_blobs(prefix=f"commit/{commit_short}/notebooks"))
+        notebooks = [f"https://build.rerun.io/{blob.name}" for blob in notebook_blobs if blob.name.endswith(".html")]
+        if notebooks:
+            print("Found notebooks for commit: {}".format(commit_short))
+            found["notebooks"] = notebooks
+
         # Get the wheel files for the commit
         wheel_blobs = list(builds_bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
         wheels = [f"https://build.rerun.io/{blob.name}" for blob in wheel_blobs if blob.name.endswith(".whl")]
@@ -78,6 +85,11 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
         upload_blob = builds_bucket.blob(f"pull_request/{pr_number}/index.html")
         print("Uploading results to {}".format(upload_blob.name))
         upload_blob.upload_from_file(buffer, content_type="text/html")
+
+        # If there's a {{ pr-build-summary }} string in the PR description, replace it with a link to the summary page.
+        pr_description = pull.body
+        new_description = pr_description.replace("{{ pr-build-summary }}", f"https://build.rerun.io/pr/{pr_number}")
+        pull.edit(body=new_description)
 
 
 def main() -> None:

@@ -26,6 +26,7 @@ pub async fn start(
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
         wgpu_options: crate::wgpu_options(),
+        depth_buffer: 0,
     };
 
     eframe::start_web(

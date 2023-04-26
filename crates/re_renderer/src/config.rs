@@ -2,6 +2,11 @@
 ///
 /// To reduce complexity, we don't do fine-grained feature checks,
 /// but instead support set of features, each a superset of the next.
+///
+/// Tiers are sorted from lowest to highest. Certain tiers may not be possible on a given machine/setup,
+/// but choosing lower tiers is always possible.
+/// Tiers may loosely relate to quality settings, but their primary function is an easier way to
+/// do bundle feature *support* checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HardwareTier {
     /// Limited feature support as provided by WebGL and native GLES2/OpenGL3(ish).
@@ -34,18 +39,22 @@ impl HardwareTier {
     }
 }
 
-impl Default for HardwareTier {
-    fn default() -> Self {
-        // Use "Basic" tier for actual web but also if someone forces the GL backend!
-        if supported_backends() == wgpu::Backends::GL {
-            HardwareTier::Gles
-        } else {
-            HardwareTier::FullWebGpuSupport
+impl HardwareTier {
+    /// Picks the highest possible tier for a given adapter.
+    ///
+    /// Note that it is always possible to pick a lower tier!
+    pub fn from_adapter(adapter: &wgpu::Adapter) -> Self {
+        match adapter.get_info().backend {
+            wgpu::Backend::Vulkan
+            | wgpu::Backend::Metal
+            | wgpu::Backend::Dx12
+            | wgpu::Backend::BrowserWebGpu => HardwareTier::FullWebGpuSupport,
+
+            // Dx11 support in wgpu is sporadic, treat it like GLES to be on the safe side.
+            wgpu::Backend::Dx11 | wgpu::Backend::Gl | wgpu::Backend::Empty => HardwareTier::Gles,
         }
     }
-}
 
-impl HardwareTier {
     /// Wgpu limits required by the given hardware tier.
     pub fn limits(self) -> wgpu::Limits {
         wgpu::Limits {
@@ -127,22 +136,19 @@ pub struct RenderContextConfig {
 ///
 /// Other backend might work as well, but lack of support isn't regarded as a bug.
 pub fn supported_backends() -> wgpu::Backends {
-    // Native.
-    // Only use Vulkan & Metal unless explicitly told so since this reduces surfaces and thus surprises.
-    //
-    // Bunch of cases where it's still useful to switch though:
-    // * Some Windows VMs only provide DX12 drivers, observed with Parallels on Apple Silicon
-    // * May run into Linux issues that warrant trying out the GL backend.
-    //
-    // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
-    #[cfg(not(target_arch = "wasm32"))]
-    {
+    if cfg!(target_arch = "wasm32") {
+        // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
+        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+    } else {
+        // Native.
+        // Only use Vulkan & Metal unless explicitly told so since this reduces surfaces and thus surprises.
+        //
+        // Bunch of cases where it's still useful to switch though:
+        // * Some Windows VMs only provide DX12 drivers, observed with Parallels on Apple Silicon
+        // * May run into Linux issues that warrant trying out the GL backend.
+        //
+        // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
-    }
-    // Web - we support only WebGL right now, WebGPU should work but hasn't been tested.
-    #[cfg(target_arch = "wasm32")]
-    {
-        wgpu::Backends::GL
     }
 }

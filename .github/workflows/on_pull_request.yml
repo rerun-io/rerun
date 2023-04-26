@@ -23,7 +23,7 @@ jobs:
       SAVE_CACHE: false
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
-      WHEEL_ARTIFACT_NAME: '' # the min-test wheel isn't used for anything
+      WHEEL_ARTIFACT_NAME: 'linux-wheel-fast'
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
@@ -44,9 +44,19 @@ jobs:
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
+  run-notebook:
+    name: 'Run Notebook'
+    needs: [min-test-wheel]
+    uses: ./.github/workflows/reusable_run_notebook.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      WHEEL_ARTIFACT_NAME: linux-wheel-fast
+      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit
+
   save-pr-summary:
     name: 'Save PR Summary'
-    needs: [upload-web]
+    needs: [upload-web, run-notebook]
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}

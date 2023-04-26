@@ -106,6 +106,7 @@ impl RenderContext {
     const MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS: usize = 4;
 
     pub fn new(
+        adapter: &wgpu::Adapter,
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
@@ -138,7 +139,16 @@ impl RenderContext {
             config.hardware_tier.features(),
             device.features(),
         );
-        // Can't check downlevel feature flags since they sit on the adapter, not on the device.
+        assert!(adapter.get_downlevel_capabilities().flags.contains(config.hardware_tier.required_downlevel_capabilities().flags),
+            "The given device doesn't support the required downlevel capabilities for the given hardware tier {:?}.
+            Required:
+            {:?}
+            Actual:
+            {:?}",
+            config.hardware_tier,
+            config.hardware_tier.required_downlevel_capabilities(),
+            adapter.get_downlevel_capabilities(),
+        );
 
         // In debug builds, make sure to catch all errors, never crash, and try to
         // always let the user find a way to return a poisoned pipeline back into a
@@ -177,6 +187,21 @@ impl RenderContext {
             per_frame_data_helper: TypeMap::new(),
             frame_index: 0,
         };
+
+        // Register shader workarounds for the current device.
+        if adapter.get_info().backend == wgpu::Backend::BrowserWebGpu {
+            // Chrome/Tint does not support `@invariant` when targeting Metal.
+            // https://bugs.chromium.org/p/chromium/issues/detail?id=1439273
+            // (bug is fixed as of writing, but hasn't hit any public released version yet)
+            // Ignoring it is fine in the cases we use it, it's mostly there to avoid a (correct!) warning in wgpu.
+            gpu_resources
+                .shader_modules
+                .shader_text_workaround_replacements
+                .push((
+                    "@invariant @builtin(position)".to_owned(),
+                    "@builtin(position)".to_owned(),
+                ));
+        }
 
         RenderContext {
             device,

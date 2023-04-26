@@ -12,6 +12,10 @@
             margin-left: 20px;
         }
 
+        .notebook-list {
+            margin-left: 20px;
+        }
+
         .wheel-list {
             margin-left: 20px;
         }
@@ -33,6 +37,16 @@
         {% endif %}
         {% if build.bench_results %}
         <h3><a href="{{ build.bench_results }}" target="_blank">Benchmark Results</a></h3>
+        {% endif %}
+        {% if build.notebooks %}
+        <div class="notebook-list">
+            <h3>Notebooks:</h3>
+            <ul>
+                {% for notebook in build.notebooks %}
+                <li><a href="{{ notebook }}" target="_blank">{{ notebook.split('/')[-1] }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
         {% endif %}
         {% if build.wheels %}
         <div class="wheel-list">

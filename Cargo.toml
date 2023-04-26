@@ -23,6 +23,7 @@ version = "0.6.0-alpha.0"
 # This is because we treat alpha-releases as incompatible, but semver doesn't.
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
+re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.6.0-alpha.0" }
 re_analytics = { path = "crates/re_analytics", version = "=0.6.0-alpha.0" }
 re_arrow_store = { path = "crates/re_arrow_store", version = "=0.6.0-alpha.0" }
 re_build_build_info = { path = "crates/re_build_build_info", version = "=0.6.0-alpha.0" }
@@ -37,15 +38,14 @@ re_log_encoding = { path = "crates/re_log_encoding", version = "=0.6.0-alpha.0" 
 re_log_types = { path = "crates/re_log_types", version = "=0.6.0-alpha.0" }
 re_memory = { path = "crates/re_memory", version = "=0.6.0-alpha.0" }
 re_query = { path = "crates/re_query", version = "=0.6.0-alpha.0" }
-re_renderer = { path = "crates/re_renderer", version = "=0.6.0-alpha.0" }
+re_renderer = { path = "crates/re_renderer", version = "=0.6.0-alpha.0", default-features = false }
 re_sdk = { path = "crates/re_sdk", version = "=0.6.0-alpha.0" }
-re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.6.0-alpha.0" }
 re_smart_channel = { path = "crates/re_smart_channel", version = "=0.6.0-alpha.0" }
 re_string_interner = { path = "crates/re_string_interner", version = "=0.6.0-alpha.0" }
 re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.6.0-alpha.0" }
 re_tuid = { path = "crates/re_tuid", version = "=0.6.0-alpha.0" }
 re_ui = { path = "crates/re_ui", version = "=0.6.0-alpha.0" }
-re_viewer = { path = "crates/re_viewer", version = "=0.6.0-alpha.0" }
+re_viewer = { path = "crates/re_viewer", version = "=0.6.0-alpha.0", default-features = false }
 re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.6.0-alpha.0" }
 re_ws_comms = { path = "crates/re_ws_comms", version = "=0.6.0-alpha.0" }
 rerun = { path = "crates/rerun", version = "=0.6.0-alpha.0" }
@@ -85,8 +85,8 @@ thiserror = "1.0"
 time = { version = "0.3", features = ["wasm-bindgen"] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = "1.24"
-wgpu = { version = "0.16", default-features = false }
-wgpu-core = { version = "0.16", default-features = false }
+wgpu = { version = "0.16" }
+wgpu-core = { version = "0.16" }
 
 
 [profile.dev]
@@ -113,13 +113,13 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # TODO(andreas/emilk): Update to a stable egui version
-# wgpu 0.16 support.
-ecolor = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
-eframe = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
-egui = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
-emath = { git = "https://github.com/emilk/egui", rev = "0e6d69d" }
+# wgpu 0.16 support, device configuration dependent on adapter
+ecolor = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+eframe = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+egui = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+emath = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
 
 # TODO(andreas): Either work around this issue in wgpu-egui (never discard command buffers) or wait for wgpu patch release.
 # Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726
