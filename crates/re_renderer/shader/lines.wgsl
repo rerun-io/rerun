@@ -191,7 +191,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         quad_dir = pos_data_quad_after.pos - pos_data_quad_end.pos; // Go one pos data forward.
     } else if is_cap_triangle {
         // Discard vertex.
-        center_position = Vec3(0.0/0.0, 0.0/0.0, 0.0/0.0);
+        center_position = Vec3(f32max);
     } else {
         quad_dir = pos_data_quad_end.pos - pos_data_quad_begin.pos;
     }
