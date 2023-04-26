@@ -3,6 +3,9 @@ name: Reusable Upload Web
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       MARK_PRERELEASE_FOR_MAINLINE:
         required: false
         type: boolean
@@ -25,6 +28,10 @@ on:
         required: false
         type: string
         default: ''
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-upload-web
+  cancel-in-progress: true
 
 jobs:
 

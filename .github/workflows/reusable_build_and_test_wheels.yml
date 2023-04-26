@@ -3,6 +3,9 @@ name: Reusable Build and Test Wheels
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       MATURIN_FEATURE_FLAGS:
         required: false
         type: string
@@ -26,6 +29,10 @@ on:
         required: false
         type: string
         default: ''
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-build-wheels
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.8"
