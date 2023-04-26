@@ -5,7 +5,7 @@ on:
     inputs:
       EXTRA_FLAGS:
         type: string
-        description: 'Extra flags to pass to the build'
+        description: 'Extra flags to pass to `re_build_web_viewer`'
         required: false
         default: ''
       ADHOC_NAME:
