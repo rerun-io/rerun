@@ -308,10 +308,7 @@ fn view_2d_scrollable(
         fov_y: None,
     };
 
-    let space_camera = scene
-        .space_cameras
-        .iter()
-        .find(|c| c.instance_path_hash.entity_path_hash == space.hash());
+    let space_camera = scene.space_cameras.iter().find(|c| &c.ent_path == space);
 
     let Ok(target_config) = setup_target_config(
         &painter,

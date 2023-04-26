@@ -84,7 +84,7 @@ impl CamerasPart {
         // If this transform is not representable as rigid transform, the camera is probably under another camera transform,
         // in which case we don't (yet) know how to deal with this!]
         // TODO: what is this special case
-        let world_from_camera = if transforms.reference_path() == entity_path {
+        let world_from_camera = if transforms.reference_path() == ent_path {
             macaw::IsoTransform::IDENTITY
         } else {
             match macaw::IsoTransform::from_mat4(&world_from_parent.into()) {
