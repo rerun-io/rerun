@@ -145,6 +145,11 @@ impl WebHandle {
     }
 }
 
+#[wasm_bindgen]
+pub fn is_webgpu_build() -> bool {
+    !cfg!(feature = "webgl")
+}
+
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
     HttpRrd(String),
