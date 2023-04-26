@@ -59,9 +59,9 @@ def log_clock(steps: int) -> None:
 
         scaled_h = (t_secs % 43200) / 43200.0
         point_h = np.array(rotate(math.tau * scaled_h, LENGTH_H))
-        color_h = (int(255 - (scaled_h * 255)), int(scaled_h * 255), 255, 255)
+        color_h = (int(255 - (scaled_h * 255)), int(scaled_h * 255), 255, 128)
         rr.log_point("world/hours_pt", position=point_h, color=color_h)
-        rr.log_arrow("world/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_M)
+        rr.log_arrow("world/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_H)
 
 
 if __name__ == "__main__":

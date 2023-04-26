@@ -157,6 +157,7 @@ impl TableId {
         Self(re_tuid::Tuid::random())
     }
 
+    // TODO
     /// Temporary utility while we transition to batching. See #1619.
     #[doc(hidden)]
     pub fn into_row_id(self) -> RowId {

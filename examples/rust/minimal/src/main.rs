@@ -4,11 +4,11 @@ use rerun::{
     components::{ColorRGBA, Point3D},
     demo_util::grid,
     external::glam,
-    MsgSender, SessionBuilder,
+    MsgSender, RecordingContextBuilder,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let session = SessionBuilder::new("minimal_rs").buffered();
+    let (rec_ctx, storage) = RecordingContextBuilder::new("minimal_rs").memory_recording();
 
     let points = grid(glam::Vec3::splat(-5.0), glam::Vec3::splat(5.0), 10)
         .map(Point3D::from)
@@ -20,9 +20,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?
-        .send(&session)?;
+        .send(&rec_ctx)?;
 
-    rerun::native_viewer::show(&session)?;
+    rec_ctx.flush_blocking()?;
+
+    rerun::native_viewer::show(&storage)?;
 
     Ok(())
 }

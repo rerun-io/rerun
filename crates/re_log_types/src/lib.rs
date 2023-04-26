@@ -23,6 +23,10 @@ pub mod time_point;
 mod time_range;
 mod time_real;
 
+// TODO: is it? add it if we need to
+#[cfg(not(target_arch = "wasm32"))]
+mod data_table_batcher;
+
 pub mod external {
     pub use arrow2;
     pub use arrow2_convert;
@@ -60,6 +64,10 @@ pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
+
+// TODO: is it? add it if we need to
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::data_table_batcher::{DataTableBatcher, DataTableBatcherConfig};
 
 #[macro_export]
 macro_rules! impl_into_enum {
@@ -192,6 +200,7 @@ impl LogMsg {
             Self::BeginRecordingMsg(msg) => msg.row_id,
             Self::EntityPathOpMsg(_, msg) => msg.row_id,
             Self::Goodbye(row_id) => *row_id,
+            // TODO
             // TODO(#1619): the following only makes sense because, while we support sending and
             // receiving batches, we don't actually do so yet.
             // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
@@ -214,6 +223,7 @@ impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 
 // ----------------------------------------------------------------------------
 
+// TODO: it's more of a SetRecordingInfo
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

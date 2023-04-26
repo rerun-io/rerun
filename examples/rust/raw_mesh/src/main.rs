@@ -16,7 +16,7 @@ use rerun::components::{ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, 
 use rerun::time::{TimeType, Timeline};
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
-    EntityPath, MsgSender, Session,
+    EntityPath, MsgSender, RecordingContext,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -67,7 +67,7 @@ impl From<GltfTransform> for Transform {
 }
 
 /// Log a glTF node with Rerun.
-fn log_node(session: &Session, node: GltfNode) -> anyhow::Result<()> {
+fn log_node(rec_ctx: &RecordingContext, node: GltfNode) -> anyhow::Result<()> {
     let ent_path = EntityPath::from(node.name.as_str());
 
     // Convert glTF objects into Rerun components.
@@ -83,19 +83,19 @@ fn log_node(session: &Session, node: GltfNode) -> anyhow::Result<()> {
         .with_time(timeline_keyframe, 0)
         .with_component(&primitives)?
         .with_component(transform.as_ref())?
-        .send(session)?;
+        .send(rec_ctx)?;
 
     // Recurse through all of the node's children!
     for mut child in node.children {
         child.name = [node.name.as_str(), child.name.as_str()].join("/");
-        log_node(session, child)?;
+        log_node(rec_ctx, child)?;
     }
 
     Ok(())
 }
 
 fn log_coordinate_space(
-    session: &Session,
+    rec_ctx: &RecordingContext,
     ent_path: impl Into<EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
@@ -106,7 +106,7 @@ fn log_coordinate_space(
     MsgSender::new(ent_path)
         .with_timeless(true)
         .with_component(&[view_coords])?
-        .send(session)
+        .send(rec_ctx)
         .map_err(Into::into)
 }
 
@@ -171,7 +171,7 @@ impl Args {
     }
 }
 
-fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
+fn run(rec_ctx: &RecordingContext, args: &Args) -> anyhow::Result<()> {
     // Read glTF scene
     let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
     let nodes = load_gltf(&doc, &buffers);
@@ -179,8 +179,8 @@ fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        log_coordinate_space(session, root.name.as_str(), "RUB")?;
-        log_node(session, root)?;
+        log_coordinate_space(rec_ctx, root.name.as_str(), "RUB")?;
+        log_node(rec_ctx, root)?;
     }
 
     Ok(())
@@ -195,8 +195,8 @@ fn main() -> anyhow::Result<()> {
     let default_enabled = true;
     args.rerun
         .clone()
-        .run("raw_mesh_rs", default_enabled, move |session| {
-            run(&session, &args).unwrap();
+        .run("raw_mesh_rs", default_enabled, move |rec_ctx| {
+            run(&rec_ctx, &args).unwrap();
         })
 }
 

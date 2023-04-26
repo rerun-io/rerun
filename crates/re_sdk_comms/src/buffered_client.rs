@@ -107,6 +107,7 @@ impl Client {
     }
 
     pub fn send(&self, log_msg: LogMsg) {
+        eprintln!("adding tcp msg: {log_msg:?}");
         self.send_msg_msg(MsgMsg::LogMsg(log_msg));
     }
 
@@ -202,6 +203,12 @@ fn msg_encode(
                         re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
                         return;
                     }
+                    // drop(msg_msg);
+                    // eprintln!("dropping msg");
+                    // std::mem::forget(msg_msg); // TODO
+                // TODO: this is incorrect and dangerous: flush() can return before this thread is
+                // done with its workload, which means the python process might be dead before this
+                // thread is dead, which means we call a C callback that has been dunload()
                     if msg_drop_tx.send(msg_msg).is_err() {
                         re_log::error!("Failed to send message to msg_drop thread. Likely a shutdown race-condition");
                         return;

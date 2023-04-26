@@ -9,21 +9,15 @@
 // ----------------
 // Private modules:
 
-#[cfg(feature = "global_session")]
-mod global;
-
 mod log_sink;
 mod msg_sender;
-mod session;
+mod recording_context;
 
 // -------------
 // Public items:
 
-#[cfg(feature = "global_session")]
-pub use self::global::global_session;
-
 pub use self::msg_sender::{MsgSender, MsgSenderError};
-pub use self::session::{Session, SessionBuilder};
+pub use self::recording_context::{RecordingContext, RecordingContextBuilder};
 
 pub use re_sdk_comms::default_server_addr;
 

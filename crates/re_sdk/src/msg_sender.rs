@@ -1,18 +1,18 @@
-use std::borrow::Borrow;
-
-use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId, RowId};
+use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RowId};
 
 use crate::{
     components::Transform,
-    log::{DataCell, LogMsg},
-    sink::LogSink,
+    log::DataCell,
     time::{Time, TimeInt, TimePoint, Timeline},
-    Component, EntityPath, SerializableComponent, Session,
+    Component, EntityPath, RecordingContext, SerializableComponent,
 };
 
 // TODO(#1619): Rust SDK batching
 
 // ---
+
+// TODO: effectively this is nothing but a rowbuilder? except sometimes it creates table due to
+// limitations..
 
 /// Errors that can occur when constructing or sending messages
 /// using [`MsgSender`].
@@ -52,6 +52,7 @@ pub enum MsgSenderError {
 /// ```
 // TODO(#1619): this whole thing needs to be rethought to incorporate batching and datatables.
 pub struct MsgSender {
+    // TODO
     // TODO(cmc): At the moment, a `MsgBundle` can only contain data for a single entity, so
     // this must be known as soon as we spawn the builder.
     // This won't be true anymore once batch insertions land.
@@ -231,42 +232,24 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    pub fn send(self, session: &Session) -> Result<(), DataTableError> {
-        self.send_to_sink(session.recording_id(), session.borrow())
-    }
-
-    /// Consumes, packs, sanity checks and finally sends the message to the currently configured
-    /// target of the SDK.
-    fn send_to_sink(
-        self,
-        recording_id: RecordingId,
-        sink: &dyn LogSink,
-    ) -> Result<(), DataTableError> {
-        if !sink.is_enabled() {
+    // TODO: wtf is this a DataTableError?
+    pub fn send(self, rec_ctx: &RecordingContext) -> Result<(), DataTableError> {
+        if !rec_ctx.is_enabled() {
             return Ok(()); // silently drop the message
         }
 
         let [row_standard, row_transforms, row_splats] = self.into_rows();
 
         if let Some(row_transforms) = row_transforms {
-            sink.send(LogMsg::ArrowMsg(
-                recording_id,
-                row_transforms.into_table().to_arrow_msg()?,
-            ));
+            rec_ctx.record_row(row_transforms);
         }
         if let Some(row_splats) = row_splats {
-            sink.send(LogMsg::ArrowMsg(
-                recording_id,
-                row_splats.into_table().to_arrow_msg()?,
-            ));
+            rec_ctx.record_row(row_splats);
         }
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in msg_standard, see(#1215).
         if let Some(row_standard) = row_standard {
-            sink.send(LogMsg::ArrowMsg(
-                recording_id,
-                row_standard.into_table().to_arrow_msg()?,
-            ));
+            rec_ctx.record_row(row_standard);
         }
 
         Ok(())

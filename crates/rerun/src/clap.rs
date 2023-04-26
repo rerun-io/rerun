@@ -2,12 +2,11 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
+use re_sdk::RecordingContext;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
-
-use crate::Session;
 
 // ---
 
@@ -67,7 +66,7 @@ pub struct RerunArgs {
 }
 
 impl RerunArgs {
-    /// Set up Rerun, and run the given code with a [`Session`] object
+    /// Set up Rerun, and run the given code with a [`RecordingContext`] object
     /// that can be used to log data.
     ///
     /// Logging will be controlled by the `RERUN` environment variable,
@@ -77,7 +76,7 @@ impl RerunArgs {
         &self,
         application_id: &str,
         default_enabled: bool,
-        run: impl FnOnce(Session) + Send + 'static,
+        run: impl FnOnce(RecordingContext) + Send + 'static,
     ) -> anyhow::Result<()> {
         // Ensure we have a running tokio runtime.
         #[allow(unused_assignments)]
@@ -91,12 +90,12 @@ impl RerunArgs {
         };
         let _tokio_runtime_guard = tokio_runtime_handle.enter();
 
-        let (rerun_enabled, recording_info) = crate::SessionBuilder::new(application_id)
+        let (rerun_enabled, recording_info) = crate::RecordingContextBuilder::new(application_id)
             .default_enabled(default_enabled)
             .finalize();
 
         if !rerun_enabled {
-            run(Session::disabled());
+            run(RecordingContext::disabled());
             return Ok(());
         }
 
@@ -122,9 +121,10 @@ impl RerunArgs {
             }
         };
 
-        let session = Session::new(recording_info, sink);
-        let _sink = session.sink().clone(); // Keep sink (and potential associated servers) alive until the end of this function scope.
-        run(session);
+        let rec_ctx = RecordingContext::new(recording_info, Some(sink));
+        // TODO: I don't get what this is for
+        // let _sink = session.sink().clone(); // Keep sink (and potential associated servers) alive until the end of this function scope.
+        run(rec_ctx);
 
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {

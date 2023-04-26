@@ -14,13 +14,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let recording_info = rerun::new_recording_info("test_image_memory_rs");
-    rerun::native_viewer::spawn(recording_info, |session| {
-        log_images(&session).unwrap();
+    rerun::native_viewer::spawn(recording_info, |rec_ctx| {
+        log_images(&rec_ctx).unwrap();
     })?;
     Ok(())
 }
 
-fn log_images(session: &rerun::Session) -> Result<(), Box<dyn std::error::Error>> {
+fn log_images(rec_ctx: &rerun::RecordingContext) -> Result<(), Box<dyn std::error::Error>> {
     let (w, h) = (2048, 1024);
     let n = 100;
 
@@ -36,8 +36,10 @@ fn log_images(session: &rerun::Session) -> Result<(), Box<dyn std::error::Error>
     for _ in 0..n {
         rerun::MsgSender::new("image")
             .with_component(&[tensor.clone()])?
-            .send(session)?;
+            .send(rec_ctx)?;
     }
+
+    rec_ctx.flush_blocking()?;
 
     eprintln!(
         "Logged {n} {w}x{h} RGBA images = {}",
