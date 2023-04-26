@@ -1,4 +1,4 @@
-name: Reusable PR Summary
+name: Reusable Pip Index
 
 on:
   workflow_call:
@@ -6,17 +6,14 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      PR_NUMBER:
-        required: true
-        type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-pr-summary
+  group: ${{ inputs.CONCURRENCY }}-pip-index
   cancel-in-progress: true
 
 jobs:
   pr-summary:
-    name: Create HTML summary for PR
+    name: Create a Pip Index file
 
     permissions:
       contents: "read"
@@ -45,15 +42,11 @@ jobs:
           version: '>= 363.0.0'
 
       - name: Install deps
-        run: pip install google-cloud-storage Jinja2 PyGithub # NOLINT
+        run: pip install google-cloud-storage Jinja2
 
-      - name: Render HTML template
+      - name: Render pip index and upload to gcloud
         run: |
-          python scripts/generate_pr_summary.py \
-          --github-token ${{secrets.GITHUB_TOKEN}} \
-          --github-repository ${GITHUB_REPOSITORY} \
-          --pr-number ${{ inputs.PR_NUMBER }} \
+          python scripts/generate_prerelease_pip_index.py \
+          --commit ${{ github.sha }} \
           --upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ inputs.PR_NUMBER }}
+

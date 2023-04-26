@@ -3,6 +3,9 @@ name: Reusable Upload Wheels
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       RRD_ARTIFACT_NAME:
         required: false
         type: string
@@ -11,6 +14,10 @@ on:
         required: false
         type: string
         default: ''
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-upload-wheels
+  cancel-in-progress: true
 
 jobs:
 

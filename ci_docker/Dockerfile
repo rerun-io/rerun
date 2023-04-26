@@ -58,7 +58,8 @@ RUN set -eux; \
 # Install some cargo tools we know we'll always need
 # We can't do this until after we've installed rust / cargo above
 RUN cargo install cargo-deny && \
-    cargo install cargo-cranky
+    cargo install cargo-cranky && \
+    cargo install cargo-benchcmp
 
 # Install the python build dependencies
 ADD rerun_py/requirements-build.txt requirements-build.txt

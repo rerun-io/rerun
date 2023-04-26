@@ -3,6 +3,9 @@ name: Reusable Build Web
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       RELEASE_VERSION:
         required: false
         type: string
@@ -11,6 +14,10 @@ on:
         required: false
         type: string
         default: ''
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-build-web
+  cancel-in-progress: true
 
 env:
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
