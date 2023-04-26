@@ -239,7 +239,7 @@ pub struct LineBatchInfo {
     ///
     /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
     /// `let scale = Mat3::from(world_from_obj).determinant().abs().cbrt()`
-    pub world_from_obj: glam::Mat4,
+    pub world_from_obj: glam::Affine3A,
 
     /// Number of vertices covered by this batch.
     ///
@@ -351,7 +351,7 @@ impl LineDrawData {
 
         let batches = if batches.is_empty() {
             vec![LineBatchInfo {
-                world_from_obj: glam::Mat4::IDENTITY,
+                world_from_obj: glam::Affine3A::IDENTITY,
                 label: "LineDrawData::fallback_batch".into(),
                 line_vertex_count: vertices.len() as _,
                 overall_outline_mask_ids: OutlineMaskPreference::NONE,
@@ -602,7 +602,7 @@ impl LineDrawData {
                 batches
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
-                        world_from_obj: batch_info.world_from_obj.into(),
+                        world_from_obj: glam::Mat4::from(batch_info.world_from_obj).into(),
                         outline_mask_ids: batch_info
                             .overall_outline_mask_ids
                             .0
@@ -626,7 +626,8 @@ impl LineDrawData {
                                 .additional_outline_mask_ids_vertex_ranges
                                 .iter()
                                 .map(|(_, mask)| gpu_data::BatchUniformBuffer {
-                                    world_from_obj: batch_info.world_from_obj.into(),
+                                    world_from_obj: glam::Mat4::from(batch_info.world_from_obj)
+                                        .into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     picking_object_id: batch_info.picking_object_id,
                                     end_padding: Default::default(),

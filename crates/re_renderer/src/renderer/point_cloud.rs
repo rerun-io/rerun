@@ -112,10 +112,9 @@ pub struct PointCloudBatchInfo {
 
     /// Transformation applies to point positions
     ///
-    /// TODO(andreas): Since we blindly apply this to positions only there is no restriction on this matrix.
     /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
     /// `let scale = Mat3::from(world_from_obj).determinant().abs().cbrt()`
-    pub world_from_obj: glam::Mat4,
+    pub world_from_obj: glam::Affine3A,
 
     /// Additional properties of this point cloud batch.
     pub flags: PointCloudBatchFlags,
@@ -201,7 +200,7 @@ impl PointCloudDrawData {
 
         let fallback_batches = [PointCloudBatchInfo {
             label: "fallback_batches".into(),
-            world_from_obj: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::empty(),
             point_count: vertices.len() as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
@@ -397,7 +396,7 @@ impl PointCloudDrawData {
                 batches
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
-                        world_from_obj: batch_info.world_from_obj.into(),
+                        world_from_obj: glam::Mat4::from(batch_info.world_from_obj).into(),
                         flags: batch_info.flags.bits.into(),
                         outline_mask_ids: batch_info
                             .overall_outline_mask_ids
@@ -422,7 +421,8 @@ impl PointCloudDrawData {
                                 .additional_outline_mask_ids_vertex_ranges
                                 .iter()
                                 .map(|(_, mask)| gpu_data::BatchUniformBuffer {
-                                    world_from_obj: batch_info.world_from_obj.into(),
+                                    world_from_obj: glam::Mat4::from(batch_info.world_from_obj)
+                                        .into(),
                                     flags: batch_info.flags.bits.into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     end_padding: Default::default(),

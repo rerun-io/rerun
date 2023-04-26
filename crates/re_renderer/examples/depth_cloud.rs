@@ -287,9 +287,10 @@ impl framework::Example for RenderDepthClouds {
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
         let frame_size = albedo.dimensions.as_vec2().extend(0.0) / 15.0;
-        let scale = glam::Mat4::from_scale(frame_size);
-        let rotation = glam::Mat4::IDENTITY;
-        let translation_center = glam::Mat4::from_translation(-glam::Vec3::splat(0.5) * frame_size);
+        let scale = glam::Affine3A::from_scale(frame_size);
+        let rotation = glam::Affine3A::IDENTITY;
+        let translation_center =
+            glam::Affine3A::from_translation(-glam::Vec3::splat(0.5) * frame_size);
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {

@@ -31,7 +31,7 @@ impl Lines3DPart {
             .primitives
             .line_strips
             .batch("lines 3d")
-            .world_from_obj(world_from_obj.into())
+            .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 

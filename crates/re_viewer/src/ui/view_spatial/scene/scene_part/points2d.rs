@@ -110,7 +110,7 @@ impl Points2DPart {
                 .primitives
                 .points
                 .batch("2d points")
-                .world_from_obj(world_from_obj.into())
+                .world_from_obj(world_from_obj)
                 .outline_mask_ids(entity_highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 

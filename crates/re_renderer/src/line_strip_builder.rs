@@ -65,7 +65,7 @@ impl LineStripSeriesBuilder {
     pub fn batch(&mut self, label: impl Into<DebugLabel>) -> LineBatchBuilder<'_> {
         self.batches.push(LineBatchInfo {
             label: label.into(),
-            world_from_obj: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Affine3A::IDENTITY,
             line_vertex_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
@@ -138,7 +138,7 @@ impl<'a> LineBatchBuilder<'a> {
 
     /// Sets the `world_from_obj` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
+    pub fn world_from_obj(mut self, world_from_obj: glam::Affine3A) -> Self {
         self.batch_mut().world_from_obj = world_from_obj;
         self
     }

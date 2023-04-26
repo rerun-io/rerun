@@ -163,7 +163,7 @@ impl CamerasPart {
             .primitives
             .line_strips
             .batch("camera frustum")
-            .world_from_obj(world_from_parent.into())
+            .world_from_obj(world_from_parent)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
         let lines = batch
