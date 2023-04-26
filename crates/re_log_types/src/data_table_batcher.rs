@@ -195,12 +195,8 @@ fn data_table_batcher_config() {
 ///
 /// ## Shutdown
 ///
-/// The batcher can be shutdown either by dropping all instances of it, or simply by calling
-/// [`Self::shutdown`].
-///
-/// The pipeline will first atomically close input channels, then flush, then finally shutdown.
-/// Threads other than the caller that might be in the process of sending data will be greeted with
-/// a `SendError` and an opportunity to retrieve the data before it gets lost.
+/// The batcher can only be shutdown dropping all instances of it, at which point it will
+/// automatically take care of flushing any pending data that might remain in the pipeline.
 ///
 /// Shutting down cannot ever block, unless the output channel is bounded and happens to be full
 /// (see [`DataTableBatcherConfig::max_tables_in_flight`]).
