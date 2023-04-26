@@ -175,14 +175,15 @@ impl ViewSpatialState {
                 query,
             )
         {
-            let scene_size = self.scene_bbox_accum.size().length();
+            let scene_size = self.scene_bbox_accum.size();
+            let scene_diagonal = scene_size.length();
             let default_image_plane_distance =
                 if *self.nav_mode.get() == SpatialNavigationMode::TwoD {
-                    // TODO(andreas): For 2D views, the extent of the scene _without_ everything under the camera would be a better heuristic.
-                    // Use the diagonal of the entire scene, so everything is visible, making the actual 2D scene the "backdrop"
-                    scene_size
-                } else if scene_size.is_finite() && scene_size > 0.0 {
-                    scene_size * 0.05
+                    // If we're in 2D mode things get tricky!
+                    // TODO: describe why
+                    1000.0
+                } else if scene_diagonal.is_finite() && scene_diagonal > 0.0 {
+                    scene_diagonal * 0.05
                 } else {
                     1.0
                 };

@@ -414,15 +414,21 @@ fn setup_target_config(
         gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
-    // TODO: This should be in the eye?
+    // TODO: Determine earlier and
 
     let (projection_from_view, view_from_world) = if let Some(space_camera) = space_camera {
-        let pinhole = space_camera.pinhole.unwrap(); // TODO:
+        // Looking through a space camera at the space root in a 2D view is *similar* than
+        // looking through that same camera in a 3D view.
+        //
+        // There is once crucial difference though: the XY coordinates are supposed to be "pixels"
+        // I.e. if I place an image without any scaling (!), I expect the XY coordinates to be
+        // in pixels of that image.
 
+        let pinhole = space_camera.pinhole.unwrap(); // TODO:
         (
             re_renderer::view_builder::Projection::Perspective {
-                vertical_fov: pinhole.fov_y().unwrap(), // TODO: no unwrap
-                near_plane_distance: 0.01,              // TODO:
+                vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
+                near_plane_distance: 0.01,
             },
             // Put the camera at the position where it sees the entire image plane as defined
             // by the pinhole camera.

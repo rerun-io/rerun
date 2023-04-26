@@ -81,21 +81,25 @@ impl CamerasPart {
                 return;
             };
 
-        // If this transform is not representable as rigid transform, the camera is probably under another camera transform,
-        // in which case we don't (yet) know how to deal with this!]
-        // TODO: what is this special case
-        let world_from_camera = if transforms.reference_path() == ent_path {
-            macaw::IsoTransform::IDENTITY
-        } else {
-            match macaw::IsoTransform::from_mat4(&world_from_parent.into()) {
-                Some(world_from_camera) => world_from_camera,
-                None => {
-                    return;
-                }
-            }
-        };
-
         let frustum_length = *props.pinhole_image_plane_distance.get();
+
+        // If the camera is our reference, there is nothing for us to display.
+        if transforms.reference_path() == ent_path {
+            scene.space_cameras.push(SpaceCamera3D {
+                ent_path: ent_path.clone(),
+                view_coordinates,
+                world_from_camera: macaw::IsoTransform::IDENTITY,
+                pinhole: Some(pinhole),
+                picture_plane_distance: frustum_length,
+            });
+            return;
+        }
+
+        // If this transform is not representable an iso transform transform we can't display it yet.
+        // This would happen if the camera is under another camera or under a transform with non-uniform scale.
+        let Some(world_from_camera) = macaw::IsoTransform::from_mat4(&world_from_parent.into()) else {
+            return;
+        };
 
         scene.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
