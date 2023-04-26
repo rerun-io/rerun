@@ -264,15 +264,15 @@
 
             let render_backend_name = wasm_bindgen.is_webgpu_build() ? "WebGPU" : "WebGL";
             document.getElementById("center_text").innerHTML = `
-            <p>
-                An error occurred during loading:
-            </p>
-            <p style="font-family:Courier New">
-                ${error}
-            </p>
-            <p style="font-size:14px">
-                    Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
-            </p>`;
+                <p>
+                    An error occurred during loading:
+                </p>
+                <p style="font-family:Courier New">
+                    ${error}
+                </p>
+                <p style="font-size:14px">
+                        Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
+                </p>`;
         }
     </script>
 </body>
