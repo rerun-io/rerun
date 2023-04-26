@@ -118,7 +118,7 @@ jobs:
 
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-linux-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
@@ -131,7 +131,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-windows-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
@@ -144,7 +144,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-macos-arm-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
@@ -157,7 +157,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-macos-intel-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
@@ -172,7 +172,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-linux-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -183,7 +183,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-windows-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -194,7 +194,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-macos-arm-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -205,7 +205,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
-      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      CONCURRENCY: manual-dispatch-macos-intel-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
