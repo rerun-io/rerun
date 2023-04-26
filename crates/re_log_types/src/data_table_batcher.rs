@@ -17,14 +17,14 @@ pub enum DataTableBatcherError {
     ParseConfig {
         name: &'static str,
         value: String,
-        err: Box<dyn std::error::Error>,
+        err: Box<dyn std::error::Error + Send + Sync>,
     },
 
     /// Error spawning one of the background threads.
     #[error("Failed to spawn background thread '{name}': {err}")]
     SpawnThread {
         name: &'static str,
-        err: Box<dyn std::error::Error>,
+        err: Box<dyn std::error::Error + Send + Sync>,
     },
 }
 
