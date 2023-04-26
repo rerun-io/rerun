@@ -327,7 +327,7 @@ impl DataTableBatcher {
         self.inner.flush_blocking()
     }
 
-    /// Shutdowns the batcher.
+    /// Initiates an asynchronous shutdown of the batcher.
     ///
     /// See `DataTableBatcher` docs for ordering semantics and multithreading guarantees.
     ///
@@ -335,7 +335,7 @@ impl DataTableBatcher {
     ///
     /// This can only fail if called on a `DataTableBatcher` that has already shutdown.
     #[inline]
-    pub fn shutdown(&self) -> Result<(), SendError<()>> {
+    pub fn shutdown_async(&self) -> Result<(), SendError<()>> {
         self.inner.shutdown()
     }
 
@@ -458,7 +458,6 @@ fn batching_thread(
                 let Ok(cmd) = cmd else {
                     // All command senders are gone, which can only happen if the
                     // `DataTableBatcher` itself has been dropped.
-                    do_flush_all(&mut acc, &tx_table, "all_dropped");
                     break;
                 };
 
