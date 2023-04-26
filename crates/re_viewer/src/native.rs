@@ -11,6 +11,8 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
         initial_window_size: Some([1600.0, 1200.0].into()),
         min_window_size: Some([320.0, 450.0].into()), // Should be high enough to fit the rerun menu
 
+        icon_data: icon_data(),
+
         #[cfg(target_os = "macos")]
         fullsize_content: re_ui::FULLSIZE_CONTENT,
 
@@ -38,6 +40,24 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
             app_creator(cc, re_ui)
         }),
     )
+}
+
+#[allow(clippy::unnecessary_wraps)]
+fn icon_data() -> Option<eframe::IconData> {
+    // We include the .png with `include_bytes`. If that fails, things are extremely broken.
+    match eframe::IconData::try_from_png_bytes(re_ui::icons::APP_ICON.png_bytes) {
+        Ok(icon_data) => Some(icon_data),
+        Err(err) => {
+            #[cfg(debug_assertions)]
+            panic!("Failed to load app icon: {err}");
+
+            #[cfg(not(debug_assertions))]
+            {
+                re_log::warn!("Failed to load app icon: {err}");
+                None
+            }
+        }
+    }
 }
 
 pub fn run_native_viewer_with_messages(

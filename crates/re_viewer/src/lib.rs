@@ -33,8 +33,6 @@ mod native;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::{run_native_app, run_native_viewer_with_messages};
 
-mod app_icon;
-
 #[cfg(not(target_arch = "wasm32"))]
 pub use misc::profiler::Profiler;
 
