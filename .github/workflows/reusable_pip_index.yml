@@ -8,7 +8,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-pip-index
   cancel-in-progress: true
 
 jobs:

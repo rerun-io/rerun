@@ -15,7 +15,7 @@ on:
         default: false
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-deploy-docs
   cancel-in-progress: true
 
 env:

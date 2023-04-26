@@ -30,7 +30,7 @@ on:
         default: ''
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-upload-web
   cancel-in-progress: true
 
 jobs:

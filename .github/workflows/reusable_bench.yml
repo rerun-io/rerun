@@ -24,7 +24,7 @@ on:
         default: false
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-bench
   cancel-in-progress: true
 
 env:

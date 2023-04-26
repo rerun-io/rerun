@@ -16,7 +16,7 @@ on:
         default: ''
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-upload-wheels
   cancel-in-progress: true
 
 jobs:

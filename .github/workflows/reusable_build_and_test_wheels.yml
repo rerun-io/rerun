@@ -31,7 +31,7 @@ on:
         default: ''
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-build-wheels
   cancel-in-progress: true
 
 env:

@@ -12,7 +12,7 @@ on:
         default: 'prerelease'
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-build-web
   cancel-in-progress: true
 
 env:

@@ -11,7 +11,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  group: ${{ inputs.CONCURRENCY }}-pr-summary
   cancel-in-progress: true
 
 jobs:
