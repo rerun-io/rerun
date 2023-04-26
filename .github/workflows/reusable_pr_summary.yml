@@ -3,9 +3,16 @@ name: Reusable PR Summary
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       PR_NUMBER:
         required: true
         type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  cancel-in-progress: true
 
 jobs:
   pr-summary:

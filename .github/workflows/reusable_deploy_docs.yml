@@ -3,6 +3,9 @@ name: 'Reusable Deploy Docs'
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       PY_DOCS_VERSION_NAME:
         required: true
         type: string
@@ -10,6 +13,10 @@ on:
         required: false
         type: boolean
         default: false
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-${{ github.workflow }}
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.8"
