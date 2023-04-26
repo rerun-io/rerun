@@ -10,6 +10,10 @@ on:
         required: false
         type: string
         default: 'prerelease'
+      EXTRA_FLAGS:
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-web
@@ -81,7 +85,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --locked -p re_build_web_viewer -- --release
+          args: --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
 
       - name: Upload web assets
         uses: actions/upload-artifact@v3

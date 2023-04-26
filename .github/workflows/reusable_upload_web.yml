@@ -6,6 +6,10 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      ADHOC_NAME:
+        type: string
+        required: false
+        default: ''
       MARK_PRERELEASE_FOR_MAINLINE:
         required: false
         type: boolean
@@ -120,4 +124,20 @@ jobs:
         with:
           path: "rrd"
           destination: "rerun-example-rrd/version/${{inputs.RELEASE_VERSION}}"
+          parent: false
+
+      - name: "Upload web-viewer (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
+          parent: false
+
+      - name: "Upload RRD (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "rrd"
+          destination: "rerun-example-rrd/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
