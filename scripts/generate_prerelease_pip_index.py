@@ -53,7 +53,7 @@ def generate_pip_index(commit: str, upload: bool) -> None:
     buffer.seek(0)
 
     if upload:
-        upload_blob = wheels_bucket.blob(f"commit/{commit}/wheels/index.html")
+        upload_blob = wheels_bucket.blob(f"commit/{commit_short}/wheels/index.html")
         print("Uploading results to {}".format(upload_blob.name))
         upload_blob.upload_from_file(buffer, content_type="text/html")
 
