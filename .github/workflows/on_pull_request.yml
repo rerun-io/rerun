@@ -6,10 +6,6 @@ on:
       - opened
       - synchronize
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
   checks:
@@ -28,11 +24,17 @@ jobs:
       WHEEL_ARTIFACT_NAME: '' # the min-test wheel isn't used for anything
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
 
   build-web:
     name: 'Build Web'
     uses: ./.github/workflows/reusable_build_web.yml
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
 
   upload-web:
     name: 'Upload Web'
@@ -42,6 +44,9 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd-fast
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
 
   save-pr-summary:
     name: 'Save PR Summary'
@@ -50,3 +55,6 @@ jobs:
     with:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
