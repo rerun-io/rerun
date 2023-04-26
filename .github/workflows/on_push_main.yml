@@ -5,15 +5,14 @@ on:
     branches:
       - "main"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   benches:
     name: Benchmarks
@@ -23,6 +22,9 @@ jobs:
       BENCH_NAME: main
       COMPARE_TO: main
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   deploy-docs:
     needs: [checks, benches]
@@ -32,11 +34,17 @@ jobs:
       PY_DOCS_VERSION_NAME: "HEAD"
       UPDATE_LATEST: false
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   build-web:
     name: 'Build Web'
     uses: ./.github/workflows/reusable_build_web.yml
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   upload-web:
     name: 'Upload Web'
@@ -46,6 +54,9 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
       MARK_PRERELEASE_FOR_MAINLINE: true
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   build-linux:
     needs: [checks]
@@ -56,6 +67,9 @@ jobs:
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   build-windows:
     needs: [checks]
@@ -66,6 +80,9 @@ jobs:
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ''
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   build-macos-arm:
     needs: [checks]
@@ -76,6 +93,9 @@ jobs:
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ''
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   build-macos-intel:
     needs: [checks]
@@ -86,6 +106,9 @@ jobs:
       WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
       RRD_ARTIFACT_NAME: ''
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   upload-wheels-linux:
     name: 'Linux: Upload Wheels'
@@ -95,6 +118,9 @@ jobs:
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   upload-wheels-windows:
     name: 'Windows: Upload Wheels'
@@ -104,6 +130,9 @@ jobs:
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   upload-wheels-macos-arm:
     name: 'Macos-Arm: Upload Wheels'
@@ -113,6 +142,9 @@ jobs:
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   upload-wheels-macos-intel:
     name: 'Macos-Intel: Upload Wheels'
@@ -122,15 +154,24 @@ jobs:
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   generate-pip-index:
     name: 'Generate Pip Index'
     needs: [upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
     uses: ./.github/workflows/reusable_pip_index.yml
     secrets: inherit
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
 
   pre-release:
     name: Pre Release
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true
     needs: [upload-web, generate-pip-index]
     runs-on: "ubuntu-latest"
     steps:
