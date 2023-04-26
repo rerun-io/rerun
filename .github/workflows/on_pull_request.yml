@@ -13,7 +13,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      group: pr-checks-${{ github.event.pull_request.number }}
       cancel-in-progress: true
 
   min-test-wheel:
@@ -27,7 +27,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      group: pr-min-test-wheel-${{ github.event.pull_request.number }}
       cancel-in-progress: true
 
   build-web:
@@ -35,7 +35,7 @@ jobs:
     uses: ./.github/workflows/reusable_build_web.yml
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      group: pr-build-web-${{ github.event.pull_request.number }}
       cancel-in-progress: true
 
   upload-web:
@@ -47,7 +47,7 @@ jobs:
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      group: pr-upload-web-${{ github.event.pull_request.number }}
       cancel-in-progress: true
 
   save-pr-summary:
@@ -58,5 +58,5 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+      group: pr-save-pr-${{ github.event.pull_request.number }}
       cancel-in-progress: true

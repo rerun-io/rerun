@@ -11,7 +11,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-checks-${{ github.ref_name }}
       cancel-in-progress: true
 
   benches:
@@ -23,7 +23,7 @@ jobs:
       COMPARE_TO: main
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-benches-${{ github.ref_name }}
       cancel-in-progress: true
 
   deploy-docs:
@@ -35,7 +35,7 @@ jobs:
       UPDATE_LATEST: false
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-deploy-docs-${{ github.ref_name }}
       cancel-in-progress: true
 
   build-web:
@@ -43,7 +43,7 @@ jobs:
     uses: ./.github/workflows/reusable_build_web.yml
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-build-web-${{ github.ref_name }}
       cancel-in-progress: true
 
   upload-web:
@@ -55,7 +55,7 @@ jobs:
       MARK_PRERELEASE_FOR_MAINLINE: true
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-upload-web-${{ github.ref_name }}
       cancel-in-progress: true
 
   build-linux:
@@ -68,7 +68,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-build-linux-${{ github.ref_name }}
       cancel-in-progress: true
 
   build-windows:
@@ -81,7 +81,7 @@ jobs:
       RRD_ARTIFACT_NAME: ''
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-build-windows-${{ github.ref_name }}
       cancel-in-progress: true
 
   build-macos-arm:
@@ -94,7 +94,7 @@ jobs:
       RRD_ARTIFACT_NAME: ''
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-build-macos-arm-${{ github.ref_name }}
       cancel-in-progress: true
 
   build-macos-intel:
@@ -107,7 +107,7 @@ jobs:
       RRD_ARTIFACT_NAME: ''
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-build-macos-intel-${{ github.ref_name }}
       cancel-in-progress: true
 
   upload-wheels-linux:
@@ -119,7 +119,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-upload-wheels-linux-${{ github.ref_name }}
       cancel-in-progress: true
 
   upload-wheels-windows:
@@ -131,7 +131,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-upload-wheels-windows-${{ github.ref_name }}
       cancel-in-progress: true
 
   upload-wheels-macos-arm:
@@ -143,7 +143,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-upload-wheels-macos-arm-${{ github.ref_name }}
       cancel-in-progress: true
 
   upload-wheels-macos-intel:
@@ -155,7 +155,7 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-upload-wheels-macos-intel-${{ github.ref_name }}
       cancel-in-progress: true
 
   generate-pip-index:
@@ -164,13 +164,13 @@ jobs:
     uses: ./.github/workflows/reusable_pip_index.yml
     secrets: inherit
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-generate-pip-index-${{ github.ref_name }}
       cancel-in-progress: true
 
   pre-release:
     name: Pre Release
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref_name }}
+      group: push-prerelease-${{ github.ref_name }}
       cancel-in-progress: true
     needs: [upload-web, generate-pip-index]
     runs-on: "ubuntu-latest"
