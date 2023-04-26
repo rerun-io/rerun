@@ -4,9 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-#[cfg(feature = "arrow_datagen")]
-pub mod datagen;
-
 pub mod arrow_msg;
 mod component;
 pub mod component_types;
@@ -23,17 +20,11 @@ pub mod time_point;
 mod time_range;
 mod time_real;
 
-pub mod external {
-    pub use arrow2;
-    pub use arrow2_convert;
-    pub use re_tuid;
+#[cfg(feature = "arrow_datagen")]
+pub mod datagen;
 
-    #[cfg(feature = "glam")]
-    pub use glam;
-
-    #[cfg(feature = "image")]
-    pub use image;
-}
+#[cfg(not(target_arch = "wasm32"))]
+mod data_table_batcher;
 
 pub use self::arrow_msg::ArrowMsg;
 pub use self::component::{Component, DeserializableComponent, SerializableComponent};
@@ -60,6 +51,21 @@ pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::data_table_batcher::{DataTableBatcher, DataTableBatcherConfig};
+
+pub mod external {
+    pub use arrow2;
+    pub use arrow2_convert;
+    pub use re_tuid;
+
+    #[cfg(feature = "glam")]
+    pub use glam;
+
+    #[cfg(feature = "image")]
+    pub use image;
+}
 
 #[macro_export]
 macro_rules! impl_into_enum {
