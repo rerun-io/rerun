@@ -79,6 +79,11 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
         print("Uploading results to {}".format(upload_blob.name))
         upload_blob.upload_from_file(buffer, content_type="text/html")
 
+        # If there's a {{ pr-build-summary }} string in the PR description, replace it with a link to the summary page.
+        pr_description = pull.body
+        new_description = pr_description.replace("{{ pr-build-summary }}", f"https://build.rerun.io/pr/{pr_number}")
+        pull.edit(body=new_description)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
