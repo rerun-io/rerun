@@ -3,6 +3,9 @@ name: Reusable Bench
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       SAVE_BENCHES:
         required: false
         type: boolean
@@ -19,6 +22,10 @@ on:
         required: false
         type: boolean
         default: false
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-bench
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.8"
