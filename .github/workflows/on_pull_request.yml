@@ -11,9 +11,11 @@ jobs:
   checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
+    with:
+      CONCURRENCY: ${{ github.event.pull_request.number }}
     secrets: inherit
     concurrency:
-      group: pr-checks-${{ github.event.pull_request.number }}
+      group: pr-checks-${{ inputs.CONCURRENCY }}
       cancel-in-progress: true
 
   min-test-wheel:

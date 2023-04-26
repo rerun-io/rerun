@@ -3,6 +3,9 @@ name: 'Checks: Lints, Tests, Docs'
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       SAVE_CACHE:
         required: false
         type: boolean
