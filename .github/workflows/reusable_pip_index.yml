@@ -1,0 +1,52 @@
+name: Reusable Pip Index
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-pip-index
+  cancel-in-progress: true
+
+jobs:
+  pr-summary:
+    name: Create a Pip Index file
+
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          version: '>= 363.0.0'
+
+      - name: Install deps
+        run: pip install google-cloud-storage Jinja2
+
+      - name: Render pip index and upload to gcloud
+        run: |
+          python scripts/generate_prerelease_pip_index.py \
+          --commit ${{ github.sha }} \
+          --upload
+

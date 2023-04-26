@@ -1,0 +1,14 @@
+name: Run on adhoc web build
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  run-adhoc-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Adhoc web
+        run: |
+          echo "TODO(jleibs): Run adhoc web"
+

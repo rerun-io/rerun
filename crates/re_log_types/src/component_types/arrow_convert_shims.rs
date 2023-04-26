@@ -79,6 +79,7 @@ impl<'a> Iterator for BufferBinaryArrayIter<'a> {
 /// Internal `ArrowArray` helper to iterate over a `BinaryArray` while exposing Buffer slices
 pub struct BufferBinaryArray;
 
+#[cfg(not(target_os = "windows"))]
 extern "C" {
     fn do_not_call_into_iter(); // we never define this function, so the linker will fail
 }
