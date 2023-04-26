@@ -78,13 +78,13 @@ pip install ./rerun_py
 
 ## Building for the Web
 
-Python builds come with the web-viewer by default. If you however want to build a standalone rerun executable
-that contains the web-viewer and a websocket server, you need to ensure the `web_viewer` feature flag is set:
+If you want to build a standalone rerun executable that contains the web-viewer and a websocket server,
+you need to ensure the `web_viewer` feature flag is set:
 ```
 cargo build -p rerun --features web_viewer
 ```
 
-Rerun uses a standalone tool to build the web-viewer without a server. You can invoke it directly as well:
+Rerun uses a standalone tool to build the web-viewer. You can invoke it directly as well:
 ```
 cargo run -p re_build_web_viewer -- --release
 ```

@@ -136,22 +136,19 @@ pub struct RenderContextConfig {
 ///
 /// Other backend might work as well, but lack of support isn't regarded as a bug.
 pub fn supported_backends() -> wgpu::Backends {
-    // Native.
-    // Only use Vulkan & Metal unless explicitly told so since this reduces surfaces and thus surprises.
-    //
-    // Bunch of cases where it's still useful to switch though:
-    // * Some Windows VMs only provide DX12 drivers, observed with Parallels on Apple Silicon
-    // * May run into Linux issues that warrant trying out the GL backend.
-    //
-    // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
-    #[cfg(not(target_arch = "wasm32"))]
-    {
+    if cfg!(target_arch = "wasm32") {
+        // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
+        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+    } else {
+        // Native.
+        // Only use Vulkan & Metal unless explicitly told so since this reduces surfaces and thus surprises.
+        //
+        // Bunch of cases where it's still useful to switch though:
+        // * Some Windows VMs only provide DX12 drivers, observed with Parallels on Apple Silicon
+        // * May run into Linux issues that warrant trying out the GL backend.
+        //
+        // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
-    }
-    // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
-    #[cfg(target_arch = "wasm32")]
-    {
-        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
     }
 }
