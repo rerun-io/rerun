@@ -11,52 +11,44 @@ jobs:
   checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit
-    concurrency:
-      group: pr-checks-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
 
   min-test-wheel:
     name: 'Minimum Wheel'
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
       SAVE_CACHE: false
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
       WHEEL_ARTIFACT_NAME: '' # the min-test wheel isn't used for anything
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
-    concurrency:
-      group: pr-min-test-wheel-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
 
   build-web:
     name: 'Build Web'
     uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit
-    concurrency:
-      group: pr-build-web-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
 
   upload-web:
     name: 'Upload Web'
     needs: [min-test-wheel, build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
       RRD_ARTIFACT_NAME: linux-rrd-fast
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
-    concurrency:
-      group: pr-upload-web-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
 
   save-pr-summary:
     name: 'Save PR Summary'
     needs: [upload-web]
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
-    concurrency:
-      group: pr-save-pr-${{ github.event.pull_request.number }}
-      cancel-in-progress: true

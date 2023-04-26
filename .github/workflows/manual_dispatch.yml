@@ -72,6 +72,7 @@ jobs:
     if: ${{ github.event.inputs.CHECKS == 'true' }}
     uses: ./.github/workflows/reusable_checks.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
     secrets: inherit
 
@@ -82,6 +83,7 @@ jobs:
     if: ${{ github.event.inputs.DEPLOY_DOCS == 'true' }}
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       PY_DOCS_VERSION_NAME: "test"
       UPDATE_LATEST: false
     secrets: inherit
@@ -90,6 +92,8 @@ jobs:
     name: Benchmarks
     if: ${{ github.event.inputs.BENCHES == 'true' }}
     uses: ./.github/workflows/reusable_bench.yml
+    with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
     secrets: inherit
 
   min-test-wheel:
@@ -98,6 +102,7 @@ jobs:
     if: ${{ (github.event.inputs.MIN_TEST_WHEEL == 'true') || ((github.event.inputs.UPLOAD_GCLOUD == 'true') && ( github.event.inputs.BUILD_WEB == 'true') ) }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
@@ -113,6 +118,7 @@ jobs:
 
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
@@ -125,6 +131,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
@@ -137,6 +144,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
@@ -149,6 +157,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') }}
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
@@ -163,6 +172,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'linux') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -173,6 +183,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'windows') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -183,6 +194,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-arm') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -193,6 +205,7 @@ jobs:
     if: ${{ contains(github.event.inputs.WHEEL_PLATFORMS, 'macos-intel') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
       RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
@@ -202,6 +215,7 @@ jobs:
     if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
     uses: ./.github/workflows/reusable_build_web.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
@@ -211,6 +225,7 @@ jobs:
     if: ${{ (github.event.inputs.BUILD_WEB == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: false
       RRD_ARTIFACT_NAME: linux-rrd-fast
@@ -250,5 +265,6 @@ jobs:
     if: ${{ github.event.inputs.UPDATE_PR_SUMMARY == 'true' }}
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
       PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER }}
     secrets: inherit

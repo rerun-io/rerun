@@ -2,6 +2,14 @@ name: Reusable Pip Index
 
 on:
   workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-pip-index
+  cancel-in-progress: true
 
 jobs:
   pr-summary:
