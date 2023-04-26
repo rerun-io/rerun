@@ -12,11 +12,8 @@ jobs:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
     with:
-      CONCURRENCY: ${{ github.event.pull_request.number }}
+      CONCURRENCY: pr-checks-${{ github.event.pull_request.number }}
     secrets: inherit
-    concurrency:
-      group: pr-checks-${{ inputs.CONCURRENCY }}
-      cancel-in-progress: true
 
   min-test-wheel:
     name: 'Minimum Wheel'

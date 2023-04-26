@@ -23,6 +23,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: "3.8"
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
