@@ -3,6 +3,9 @@ name: Reusable Buld and Upload Notebook
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       WHEEL_ARTIFACT_NAME:
         required: false
         type: string
@@ -13,6 +16,10 @@ on:
         required: false
         type: string
         default: ''
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-run-notebook
+  cancel-in-progress: true
 
 jobs:
 
