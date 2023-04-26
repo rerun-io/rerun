@@ -51,7 +51,7 @@ pub struct DataTableBatcherConfig {
     /// Flush if the accumulated payload has a number of rows equal or greater than this.
     pub flush_num_rows: u64,
 
-    /// Size of the internal channel of [`DataTableBatcherCmd`]s.
+    /// Size of the internal channel of commands.
     ///
     /// Unbounded if left unspecified.
     pub max_commands_in_flight: Option<u64>,
@@ -96,7 +96,7 @@ impl DataTableBatcherConfig {
         max_tables_in_flight: None,
     };
 
-    /// Environment variable to configure [`Self::flush_duration`].
+    /// Environment variable to configure [`Self::flush_tick`].
     pub const ENV_FLUSH_TICK: &str = "RERUN_FLUSH_TICK_SECS";
 
     /// Environment variable to configure [`Self::flush_num_bytes`].
@@ -117,8 +117,7 @@ impl DataTableBatcherConfig {
     /// Returns a copy of `self`, overriding existing fields with values from the environment if
     /// they are present.
     ///
-    /// See [`Self::ENV_FLUSH_DURATION`], [`Self::ENV_FLUSH_NUM_BYTES`],
-    /// [`Self::ENV_FLUSH_NUM_BYTES`].
+    /// See [`Self::ENV_FLUSH_TICK`], [`Self::ENV_FLUSH_NUM_BYTES`], [`Self::ENV_FLUSH_NUM_BYTES`].
     pub fn apply_env(&self) -> DataTableBatcherResult<Self> {
         let mut new = self.clone();
 
@@ -342,7 +341,7 @@ impl DataTableBatcher {
 
     // --- Subscribe to tables ---
 
-    /// Returns a _shared_ channel in which are sent the batched [`DataTables`].
+    /// Returns a _shared_ channel in which are sent the batched [`DataTable`]s.
     ///
     /// Shutting down the batcher will close this channel.
     ///
