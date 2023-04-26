@@ -6,7 +6,8 @@ pub use outlines::{OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor};
 
 mod picking_layer;
 pub use picking_layer::{
-    PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor,
+    PickingLayerError, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,
+    PickingLayerProcessor,
 };
 
 mod screenshot;

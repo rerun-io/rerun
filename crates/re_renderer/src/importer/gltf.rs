@@ -9,8 +9,7 @@ use crate::{
     mesh::{Material, Mesh},
     renderer::MeshInstance,
     resource_managers::{
-        GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
-        TextureManager2D,
+        GpuMeshHandle, GpuTexture2D, ResourceLifeTime, Texture2DCreationDesc, TextureManager2D,
     },
     RenderContext, Rgba32Unmul,
 };
@@ -69,8 +68,16 @@ pub fn load_gltf_from_buffer(
         };
 
         images_as_textures.push(
-            ctx.texture_manager_2d
-                .create(&mut ctx.gpu_resources.textures, &texture),
+            match ctx
+                .texture_manager_2d
+                .create(&mut ctx.gpu_resources.textures, &texture)
+            {
+                Ok(texture) => texture,
+                Err(err) => {
+                    re_log::error!("Failed to create texture: {err}");
+                    ctx.texture_manager_2d.white_texture_unorm_handle().clone()
+                }
+            },
         );
     }
 
@@ -126,7 +133,7 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
 fn import_mesh(
     mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
-    gpu_image_handles: &[GpuTexture2DHandle],
+    gpu_image_handles: &[GpuTexture2D],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
     crate::profile_function!();

@@ -35,7 +35,7 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
     // Following pattern from: https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
     unsafe {
         let mut field = ffi::import_field_from_c(schema.as_ref())
-            .map_err(|e| PyValueError::new_err(format!("Error importing Field: {e}")))?;
+            .map_err(|err| PyValueError::new_err(format!("Error importing Field: {err}")))?;
 
         // There is a bad incompatibility between pyarrow and arrow2-convert
         // Force the type to be correct.
@@ -49,7 +49,7 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         }
 
         let array = ffi::import_array_from_c(*array, field.data_type.clone())
-            .map_err(|e| PyValueError::new_err(format!("Error importing Array: {e}")))?;
+            .map_err(|err| PyValueError::new_err(format!("Error importing Array: {err}")))?;
 
         if let Some(name) = name {
             field.name = name.to_owned();

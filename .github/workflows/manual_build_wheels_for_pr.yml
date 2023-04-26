@@ -1,0 +1,129 @@
+name: Build and Upload Wheels for PR
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  check-for-pr:
+    runs-on: ubuntu-latest
+    outputs:
+      PR_NUMBER: ${{ steps.get_pr.outputs.PR_NUMBER }}
+    steps:
+      - name: Check if commit belongs to a PR
+        id: get_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number=$(curl --silent --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            | jq '.[] | .number')
+
+          if [ -z "$pr_number" ]; then
+            echo "No PR associated with this commit"
+            exit 1
+          else
+            echo "Commit is associated with PR: $pr_number"
+            echo "PR_NUMBER=$pr_number" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-linux:
+    needs: [check-for-pr]
+    name: 'Linux: Build/Test Wheels'
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels-linux-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      PLATFORM: linux
+      WHEEL_ARTIFACT_NAME: linux-wheel
+      RRD_ARTIFACT_NAME: linux-rrd
+    secrets: inherit
+
+  build-windows:
+    needs: [check-for-pr]
+    name: 'Windows: Build/Test Wheels'
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels-windows-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      PLATFORM: windows
+      WHEEL_ARTIFACT_NAME: windows-wheel
+      RRD_ARTIFACT_NAME: ''
+    secrets: inherit
+
+  build-macos-arm:
+    needs: [check-for-pr]
+    name: 'Macos-Arm: Build/Test Wheels'
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels-macos-arm-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      PLATFORM: macos-arm
+      WHEEL_ARTIFACT_NAME: macos-arm-wheel
+      RRD_ARTIFACT_NAME: ''
+    secrets: inherit
+
+  build-macos-intel:
+    needs: [check-for-pr]
+    name: 'Macos-Intel: Build/Test Wheels'
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels-macos-intel-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      PLATFORM: macos-intel
+      WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
+      RRD_ARTIFACT_NAME: ''
+    secrets: inherit
+
+  upload-wheels-linux:
+    name: 'Linux: Upload Wheels'
+    needs: [build-linux]
+    uses: ./.github/workflows/reusable_upload_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels-linux-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      WHEEL_ARTIFACT_NAME: linux-wheel
+      RRD_ARTIFACT_NAME: linux-rrd
+    secrets: inherit
+
+  upload-wheels-windows:
+    name: 'Windows: Upload Wheels'
+    needs: [build-linux, build-windows]
+    uses: ./.github/workflows/reusable_upload_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels-windows-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      WHEEL_ARTIFACT_NAME: windows-wheel
+      RRD_ARTIFACT_NAME: linux-rrd
+    secrets: inherit
+
+  upload-wheels-macos-arm:
+    name: 'Macos-Arm: Upload Wheels'
+    needs: [build-linux, build-macos-arm]
+    uses: ./.github/workflows/reusable_upload_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels--macos-arm-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      WHEEL_ARTIFACT_NAME: macos-arm-wheel
+      RRD_ARTIFACT_NAME: linux-rrd
+    secrets: inherit
+
+  upload-wheels-macos-intel:
+    name: 'Macos-Intel: Upload Wheels'
+    needs: [build-linux, build-macos-intel]
+    uses: ./.github/workflows/reusable_upload_wheels.yml
+    with:
+      CONCURRENCY: manual-wheels-macos-intel-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      WHEEL_ARTIFACT_NAME: macos-intel-wheel
+      RRD_ARTIFACT_NAME: linux-rrd
+    secrets: inherit
+
+  generate-wheel-index:
+    name: 'Generate Pip Index'
+    needs: [check-for-pr, upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
+    uses: ./.github/workflows/reusable_pip_index.yml
+    with:
+      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+    secrets: inherit
+
+  update-pr-summary:
+    name: 'Update PR Summary'
+    needs: [check-for-pr, upload-wheels-linux, upload-wheels-windows, upload-wheels-macos-arm, upload-wheels-macos-intel]
+    uses: ./.github/workflows/reusable_pr_summary.yml
+    with:
+      CONCURRENCY: manual-wheels-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER}}
+    secrets: inherit

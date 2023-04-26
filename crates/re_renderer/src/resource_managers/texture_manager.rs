@@ -1,4 +1,4 @@
-use std::{num::NonZeroU32, sync::Arc};
+use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 
@@ -13,22 +13,58 @@ use crate::{
 /// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
 /// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 #[derive(Clone)]
-pub struct GpuTexture2DHandle(GpuTexture);
+pub struct GpuTexture2D(GpuTexture);
 
-impl GpuTexture2DHandle {
+impl GpuTexture2D {
+    #[inline]
+    pub fn handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
+        self.0.handle
+    }
+
     /// Width of the texture.
+    #[inline]
     pub fn width(&self) -> u32 {
         self.0.texture.width()
     }
 
     /// Height of the texture.
+    #[inline]
     pub fn height(&self) -> u32 {
         self.0.texture.height()
     }
 
     /// Width and height of the texture.
+    #[inline]
     pub fn width_height(&self) -> [u32; 2] {
         [self.width(), self.height()]
+    }
+
+    #[inline]
+    pub fn format(&self) -> wgpu::TextureFormat {
+        self.0.texture.format()
+    }
+}
+
+impl AsRef<GpuTexture> for GpuTexture2D {
+    #[inline(always)]
+    fn as_ref(&self) -> &GpuTexture {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for GpuTexture2D {
+    type Target = GpuTexture;
+
+    #[inline(always)]
+    fn deref(&self) -> &GpuTexture {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<GpuTexture> for GpuTexture2D {
+    #[inline(always)]
+    fn borrow(&self) -> &GpuTexture {
+        &self.0
     }
 }
 
@@ -39,7 +75,9 @@ pub struct Texture2DCreationDesc<'a> {
     pub label: DebugLabel,
 
     /// Data for the highest mipmap level.
-    /// Must be padded according to wgpu rules and ready for upload.
+    ///
+    /// Data is expected to be tightly packed.
+    /// I.e. it is *not* padded according to wgpu buffer->texture transfer rules, padding will happen on the fly if necessary.
     /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
     pub data: std::borrow::Cow<'a, [u8]>,
     pub format: wgpu::TextureFormat,
@@ -57,6 +95,41 @@ impl<'a> Texture2DCreationDesc<'a> {
     }
 }
 
+// TODO(andreas): Move this to texture pool.
+#[derive(thiserror::Error, Debug)]
+pub enum TextureCreationError {
+    #[error("Texture with debug label {0:?} has zero width or height!")]
+    ZeroSize(DebugLabel),
+
+    #[error(
+        "Texture with debug label {label:?} has a format {format:?} that data can't be transferred to!"
+    )]
+    UnsupportedFormatForTransfer {
+        label: DebugLabel,
+        format: wgpu::TextureFormat,
+    },
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum TextureManager2DError<DataCreationError> {
+    /// Something went wrong when creating the GPU texture.
+    #[error(transparent)]
+    TextureCreation(#[from] TextureCreationError),
+
+    /// Something went wrong in a user-callback.
+    #[error(transparent)]
+    DataCreation(DataCreationError),
+}
+
+impl From<TextureManager2DError<never::Never>> for TextureCreationError {
+    fn from(err: TextureManager2DError<never::Never>) -> Self {
+        match err {
+            TextureManager2DError::TextureCreation(texture_creation) => texture_creation,
+            TextureManager2DError::DataCreation(never) => match never {},
+        }
+    }
+}
+
 /// Texture manager for 2D textures.
 ///
 /// The scope is intentionally limited to particular kinds of textures that currently
@@ -68,11 +141,11 @@ pub struct TextureManager2D {
     // Long lived/short lived doesn't make sense for textures since we don't yet know a way to
     // optimize for short lived textures as we do with buffer data.
     //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
-    white_texture_unorm: GpuTexture2DHandle,
-    zeroed_texture_float: GpuTexture2DHandle,
-    zeroed_texture_depth: GpuTexture2DHandle,
-    zeroed_texture_sint: GpuTexture2DHandle,
-    zeroed_texture_uint: GpuTexture2DHandle,
+    white_texture_unorm: GpuTexture2D,
+    zeroed_texture_float: GpuTexture2D,
+    zeroed_texture_depth: GpuTexture2D,
+    zeroed_texture_sint: GpuTexture2D,
+    zeroed_texture_uint: GpuTexture2D,
 
     // For convenience to reduce amount of times we need to pass them around
     device: Arc<wgpu::Device>,
@@ -85,7 +158,7 @@ pub struct TextureManager2D {
     //
     // Any texture which wasn't accessed on the previous frame
     // is ejected from the cache during [`begin_frame`].
-    texture_cache: HashMap<u64, GpuTexture2DHandle>,
+    texture_cache: HashMap<u64, GpuTexture2D>,
     accessed_textures: HashSet<u64>,
 }
 
@@ -108,7 +181,8 @@ impl TextureManager2D {
                 width: 1,
                 height: 1,
             },
-        );
+        )
+        .expect("Failed to create white pixel texture!");
 
         let zeroed_texture_float =
             create_zero_texture(texture_pool, &device, wgpu::TextureFormat::Rgba8Unorm);
@@ -138,7 +212,7 @@ impl TextureManager2D {
         &mut self,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-    ) -> GpuTexture2DHandle {
+    ) -> Result<GpuTexture2D, TextureCreationError> {
         // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
         // However, it's still very much a concern especially once we add mipmapping. Something we need to keep in mind.
         //
@@ -165,39 +239,47 @@ impl TextureManager2D {
         key: u64,
         texture_pool: &mut GpuTexturePool,
         texture_desc: Texture2DCreationDesc<'_>,
-    ) -> GpuTexture2DHandle {
-        enum Never {}
-        match self.get_or_create_with(key, texture_pool, || -> Result<_, Never> {
-            Ok(texture_desc)
-        }) {
-            Ok(tex_handle) => tex_handle,
-            Err(never) => match never {},
-        }
+    ) -> Result<GpuTexture2D, TextureCreationError> {
+        self.get_or_create_with(key, texture_pool, || texture_desc)
     }
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
     /// wasn't already created using the same key.
-    pub fn get_or_create_with<'a, Err>(
+    pub fn get_or_create_with<'a>(
+        &mut self,
+        key: u64,
+        texture_pool: &mut GpuTexturePool,
+        create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
+    ) -> Result<GpuTexture2D, TextureCreationError> {
+        self.get_or_try_create_with(key, texture_pool, || -> Result<_, never::Never> {
+            Ok(create_texture_desc())
+        })
+        .map_err(|err| err.into())
+    }
+
+    /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
+    /// wasn't already created using the same key.
+    pub fn get_or_try_create_with<'a, Err: std::fmt::Display>(
         &mut self,
         key: u64,
         texture_pool: &mut GpuTexturePool,
         try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
-    ) -> Result<GpuTexture2DHandle, Err> {
+    ) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
         let texture_handle = match self.texture_cache.entry(key) {
             std::collections::hash_map::Entry::Occupied(texture_handle) => {
                 texture_handle.get().clone() // already inserted
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
                 // Run potentially expensive texture creation code:
-                let tex_creation_desc = try_create_texture_desc()?;
-                entry
-                    .insert(Self::create_and_upload_texture(
-                        &self.device,
-                        &self.queue,
-                        texture_pool,
-                        &tex_creation_desc,
-                    ))
-                    .clone()
+                let tex_creation_desc = try_create_texture_desc()
+                    .map_err(|err| TextureManager2DError::DataCreation(err))?;
+                let texture = Self::create_and_upload_texture(
+                    &self.device,
+                    &self.queue,
+                    texture_pool,
+                    &tex_creation_desc,
+                )?;
+                entry.insert(texture).clone()
             }
         };
 
@@ -206,7 +288,7 @@ impl TextureManager2D {
     }
 
     /// Returns a single pixel white pixel with an rgba8unorm format.
-    pub fn white_texture_unorm_handle(&self) -> &GpuTexture2DHandle {
+    pub fn white_texture_unorm_handle(&self) -> &GpuTexture2D {
         &self.white_texture_unorm
     }
 
@@ -240,8 +322,13 @@ impl TextureManager2D {
         queue: &wgpu::Queue,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-    ) -> GpuTexture2DHandle {
+    ) -> Result<GpuTexture2D, TextureCreationError> {
         crate::profile_function!();
+
+        if creation_desc.width == 0 || creation_desc.height == 0 {
+            return Err(TextureCreationError::ZeroSize(creation_desc.label.clone()));
+        }
+
         let size = wgpu::Extent3d {
             width: creation_desc.width,
             height: creation_desc.height,
@@ -260,9 +347,15 @@ impl TextureManager2D {
             },
         );
 
-        let format_info = creation_desc.format.describe();
-        let width_blocks = creation_desc.width / format_info.block_dimensions.0 as u32;
-        let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+        let width_blocks = creation_desc.width / creation_desc.format.block_dimensions().0;
+        let block_size = creation_desc
+            .format
+            .block_size(Some(wgpu::TextureAspect::All))
+            .ok_or_else(|| TextureCreationError::UnsupportedFormatForTransfer {
+                label: creation_desc.label.clone(),
+                format: creation_desc.format,
+            })?;
+        let bytes_per_row_unaligned = width_blocks * block_size;
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuisance!
@@ -281,9 +374,7 @@ impl TextureManager2D {
             data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(
-                    NonZeroU32::new(bytes_per_row_unaligned).expect("invalid bytes per row"),
-                ),
+                bytes_per_row: Some(bytes_per_row_unaligned),
                 rows_per_image: None,
             },
             size,
@@ -291,13 +382,7 @@ impl TextureManager2D {
 
         // TODO(andreas): mipmap generation
 
-        GpuTexture2DHandle(texture)
-    }
-
-    /// Retrieves gpu handle.
-    #[allow(clippy::unused_self)]
-    pub fn get(&self, handle: &GpuTexture2DHandle) -> GpuTexture {
-        handle.0.clone()
+        Ok(GpuTexture2D(texture))
     }
 
     pub(crate) fn begin_frame(&mut self, _frame_index: u64) {
@@ -312,9 +397,9 @@ fn create_zero_texture(
     texture_pool: &mut GpuTexturePool,
     device: &Arc<wgpu::Device>,
     format: wgpu::TextureFormat,
-) -> GpuTexture2DHandle {
+) -> GpuTexture2D {
     // Wgpu zeros out new textures automatically
-    GpuTexture2DHandle(texture_pool.alloc(
+    GpuTexture2D(texture_pool.alloc(
         device,
         &TextureDesc {
             label: format!("zeroed pixel {format:?}").into(),

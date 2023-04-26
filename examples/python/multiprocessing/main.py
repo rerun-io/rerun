@@ -25,12 +25,18 @@ def task(title: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Test multi-process logging to the same Rerun server")
-    parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.init("multiprocessing")
     rr.spawn(connect=False)  # this is the viewer that each process will connect to
 
     task("main_task")
+
+    # Using multiprocessing with "fork" results in a hang on shutdown so
+    # always use "spawn"
+    # TODO(https://github.com/rerun-io/rerun/issues/1921)
+    multiprocessing.set_start_method("spawn")
 
     p = multiprocessing.Process(target=task, args=("child_task",))
     p.start()

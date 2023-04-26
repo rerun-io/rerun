@@ -82,9 +82,9 @@ struct PointData {
 }
 
 // Backprojects the depth texture using the intrinsics passed in the uniform buffer.
-fn compute_point_data(quad_idx: i32) -> PointData {
+fn compute_point_data(quad_idx: u32) -> PointData {
     let wh = textureDimensions(depth_texture);
-    let texcoords = IVec2(quad_idx % wh.x, quad_idx / wh.x);
+    let texcoords = UVec2(quad_idx % wh.x, quad_idx / wh.x);
 
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
     let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;

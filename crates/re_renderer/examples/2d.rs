@@ -4,7 +4,7 @@ use re_renderer::{
         ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
         TextureFilterMin, TexturedRect,
     },
-    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
 };
@@ -12,7 +12,7 @@ use re_renderer::{
 mod framework;
 
 struct Render2D {
-    rerun_logo_texture: GpuTexture2DHandle,
+    rerun_logo_texture: GpuTexture2D,
     rerun_logo_texture_width: u32,
     rerun_logo_texture_height: u32,
 }
@@ -36,16 +36,19 @@ impl framework::Example for Render2D {
             );
         }
 
-        let rerun_logo_texture = re_ctx.texture_manager_2d.create(
-            &mut re_ctx.gpu_resources.textures,
-            &Texture2DCreationDesc {
-                label: "rerun logo".into(),
-                data: image_data.into(),
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                width: rerun_logo.width(),
-                height: rerun_logo.height(),
-            },
-        );
+        let rerun_logo_texture = re_ctx
+            .texture_manager_2d
+            .create(
+                &mut re_ctx.gpu_resources.textures,
+                &Texture2DCreationDesc {
+                    label: "rerun logo".into(),
+                    data: image_data.into(),
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    width: rerun_logo.width(),
+                    height: rerun_logo.height(),
+                },
+            )
+            .expect("Failed to create texture for rerun logo");
         Render2D {
             rerun_logo_texture,
 

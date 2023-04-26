@@ -89,7 +89,7 @@ impl DataStore {
                     col_timelines: [(*timeline, col_time.iter().copied().map(Some).collect())]
                         .into(),
                     col_entity_path: std::iter::repeat_with(|| table.ent_path.clone())
-                        .take(table.num_rows() as _)
+                        .take(col_row_id.len())
                         .collect(),
                     col_num_instances: col_num_instances.clone(),
                     columns: columns.clone(), // shallow

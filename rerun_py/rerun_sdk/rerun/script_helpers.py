@@ -91,10 +91,10 @@ def script_teardown(args: Namespace) -> None:
 
     """
     if args.serve:
-        import signal
-        from threading import Event
+        import time
 
-        exit = Event()
-        signal.signal(signal.SIGINT, lambda sig, frame: exit.set())
-        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
-        exit.wait()
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("Ctrl-C received. Exiting.")

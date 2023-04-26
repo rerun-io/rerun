@@ -34,7 +34,7 @@ impl RerunServer {
 
         let listener = TcpListener::bind(&bind_addr)
             .await
-            .map_err(|e| RerunServerError::BindFailed(port, e))?;
+            .map_err(|err| RerunServerError::BindFailed(port, err))?;
 
         let port = RerunServerPort(listener.local_addr()?.port());
 

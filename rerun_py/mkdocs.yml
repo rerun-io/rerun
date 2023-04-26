@@ -25,6 +25,7 @@ plugins:
           import: # Cross-references for python and numpy
             - https://docs.python.org/3/objects.inv
             - https://numpy.org/doc/stable/objects.inv
+            - https://ipython.readthedocs.io/en/stable/objects.inv
           options: # https://mkdocstrings.github.io/python/usage/#globallocal-options
             show_source: no
             docstring_style: numpy
