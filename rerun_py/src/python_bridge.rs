@@ -162,6 +162,7 @@ fn no_active_recording(origin: &str) {
     application_id,
     recording_id=None,
     application_path=None,
+    init_blueprint=false,
     default_enabled=true,
 ))]
 fn init(
@@ -169,6 +170,7 @@ fn init(
     application_id: String,
     recording_id: Option<String>,
     application_path: Option<PathBuf>,
+    init_blueprint: bool,
     default_enabled: bool,
 ) -> PyResult<()> {
     // The sentinel file we use to identify the official examples directory.
@@ -195,7 +197,7 @@ fn init(
     };
 
     let mut data_stream = global_data_stream();
-    *data_stream = RecordingStreamBuilder::new(application_id)
+    *data_stream = RecordingStreamBuilder::new(application_id.clone())
         .is_official_example(is_official_example)
         .recording_id(recording_id)
         .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
@@ -203,6 +205,20 @@ fn init(
         .buffered()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
         .into();
+
+    if init_blueprint {
+        re_log::info!("Initializing the blueprint..");
+        let mut bp_ctx = global_blueprint_stream();
+        *bp_ctx = RecordingStreamBuilder::new(application_id)
+            .is_official_example(is_official_example)
+            .recording_id(recording_id)
+            .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+            .blueprint()
+            .default_enabled(default_enabled)
+            .buffered()
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+            .into();
+    }
 
     Ok(())
 }

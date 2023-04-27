@@ -4,8 +4,8 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
+    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -53,6 +53,7 @@ pub struct RecordingStreamBuilder {
     batcher_config: Option<DataTableBatcherConfig>,
 
     is_official_example: bool,
+    recording_type: RecordingType,
 }
 
 impl RecordingStreamBuilder {
@@ -82,6 +83,7 @@ impl RecordingStreamBuilder {
 
             batcher_config: None,
             is_official_example,
+            recording_type: RecordingType::Data, // Default to data recording
         }
     }
 
@@ -139,7 +141,13 @@ impl RecordingStreamBuilder {
         self
     }
 
-    /// Creates a new [`RecordingStream`] that starts in a buffering state (RAM).
+    #[doc(hidden)]
+    pub fn blueprint(mut self) -> Self {
+        self.recording_type = RecordingType::Blueprint;
+        self
+    }
+
+    /// Creates a new [`RecordingContext`] that starts in a buffering state (RAM).
     ///
     /// ## Example
     ///
@@ -252,6 +260,7 @@ impl RecordingStreamBuilder {
             enabled,
             batcher_config,
             is_official_example,
+            recording_type,
         } = self;
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
@@ -267,7 +276,7 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             recording_source,
-            recording_type: re_log_types::RecordingType::Data,
+            recording_type,
         };
 
         let batcher_config = batcher_config
