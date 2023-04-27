@@ -16,7 +16,7 @@ use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 
 use crate::{
-    misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
+    misc::{time_control::PlayState, AppOptions, Caches, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
     viewer_analytics::ViewerAnalytics,
 };
@@ -34,6 +34,7 @@ enum TimeControlCommand {
     StepBack,
     StepForward,
     Restart,
+    Follow,
 }
 
 // ----------------------------------------------------------------------------
@@ -329,6 +330,9 @@ impl App {
             Command::PlaybackTogglePlayPause => {
                 self.run_time_control_command(TimeControlCommand::TogglePlayPause);
             }
+            Command::PlaybackFollow => {
+                self.run_time_control_command(TimeControlCommand::Follow);
+            }
             Command::PlaybackStepBack => {
                 self.run_time_control_command(TimeControlCommand::StepBack);
             }
@@ -352,6 +356,9 @@ impl App {
         match command {
             TimeControlCommand::TogglePlayPause => {
                 time_ctrl.toggle_play_pause(times_per_timeline);
+            }
+            TimeControlCommand::Follow => {
+                time_ctrl.set_play_state(times_per_timeline, PlayState::Following)
             }
             TimeControlCommand::StepBack => {
                 time_ctrl.step_time_back(times_per_timeline);
