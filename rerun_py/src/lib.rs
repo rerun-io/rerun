@@ -15,4 +15,3 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 
 mod arrow;
 mod python_bridge;
-mod python_session;

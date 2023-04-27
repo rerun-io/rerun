@@ -202,6 +202,10 @@ fn msg_encode(
                         re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
                         return;
                     }
+                    // TODO: this is incorrect and dangerous: flush() can return before this
+                    // thread is done with its workload, which means the python process might be
+                    // dead before this thread is dead, which means we call a C callback that has
+                    // been dunload().
                     if msg_drop_tx.send(msg_msg).is_err() {
                         re_log::error!("Failed to send message to msg_drop thread. Likely a shutdown race-condition");
                         return;

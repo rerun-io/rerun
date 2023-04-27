@@ -14,6 +14,7 @@ def task(title: str) -> None:
     # All processes spawned with `multiprocessing` will automatically
     # be assigned the same default recording_id.
     # We just need to connect each process to the the rerun viewer:
+    rr.init("multiprocessing")
     rr.connect()
 
     rr.log_text_entry(

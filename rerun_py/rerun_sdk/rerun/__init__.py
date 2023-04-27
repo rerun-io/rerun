@@ -29,8 +29,6 @@ __all__ = [
     "ClassDescription",
     "LoggingHandler",
     "bindings",
-    "components",
-    "inline_show",
     "ImageFormat",
     "log_annotation_context",
     "log_arrow",
@@ -58,7 +56,6 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
-    "notebook",
     "LogLevel",
     "MeshFormat",
     "RectFormat",
@@ -109,29 +106,13 @@ def get_recording_id() -> str:
     return str(bindings.get_recording_id())
 
 
-def set_recording_id(value: str) -> None:
-    """
-    Set the recording ID that this process is logging to, as a UUIDv4.
-
-    The default recording_id is based on `multiprocessing.current_process().authkey`
-    which means that all processes spawned with `multiprocessing`
-    will have the same default recording_id.
-
-    If you are not using `multiprocessing` and still want several different Python
-    processes to log to the same Rerun instance (and be part of the same recording),
-    you will need to manually assign them all the same recording_id.
-    Any random UUIDv4 will work, or copy the recording id for the parent process.
-
-    Parameters
-    ----------
-    value : str
-        The recording ID to use for this process.
-
-    """
-    bindings.set_recording_id(value)
-
-
-def init(application_id: str, spawn: bool = False, default_enabled: bool = True, strict: bool = False) -> None:
+def init(
+    application_id: str,
+    recording_id: Optional[str] = None,
+    spawn: bool = False,
+    default_enabled: bool = True,
+    strict: bool = False,
+) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -144,6 +125,17 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True,
         For example, if you have one application doing object detection
         and another doing camera calibration, you could have
         `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+    recording_id : Optional[str]
+        Set the recording ID that this process is logging to, as a UUIDv4.
+
+        The default recording_id is based on `multiprocessing.current_process().authkey`
+        which means that all processes spawned with `multiprocessing`
+        will have the same default recording_id.
+
+        If you are not using `multiprocessing` and still want several different Python
+        processes to log to the same Rerun instance (and be part of the same recording),
+        you will need to manually assign them all the same recording_id.
+        Any random UUIDv4 will work, or copy the recording id for the parent process.
     spawn : bool
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
@@ -189,6 +181,7 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True,
 
     bindings.init(
         application_id=application_id,
+        recording_id=recording_id,
         application_path=application_path,
         default_enabled=default_enabled,
     )
