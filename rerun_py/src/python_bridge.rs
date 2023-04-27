@@ -196,8 +196,10 @@ fn init(
             ))
         })?
     } else {
-        default_recording_id(py)
+        default_recording_id(py, "data")
     };
+
+    let blueprint_id = default_recording_id(py, "blueprint");
 
     let mut data_stream = global_data_stream();
     *data_stream = RecordingStreamBuilder::new(application_id.clone())
@@ -214,7 +216,7 @@ fn init(
         let mut bp_ctx = global_blueprint_stream();
         *bp_ctx = RecordingStreamBuilder::new(application_id)
             .is_official_example(is_official_example)
-            .recording_id(recording_id)
+            .recording_id(blueprint_id)
             .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
             .blueprint()
             .default_enabled(default_enabled)
@@ -236,7 +238,7 @@ fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     }
 }
 
-fn default_recording_id(py: Python<'_>) -> RecordingId {
+fn default_recording_id(py: Python<'_>, name: &str) -> RecordingId {
     use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
 
@@ -254,6 +256,7 @@ fn default_recording_id(py: Python<'_>) -> RecordingId {
     let mut hasher = std::collections::hash_map::DefaultHasher::default();
     seed.hash(&mut hasher);
     salt.hash(&mut hasher);
+    name.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
     let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
     RecordingId::from_uuid(uuid)
@@ -309,6 +312,11 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     };
 
     data_stream.connect(addr);
+
+    if let Some(bp_stream) = global_blueprint_stream().as_ref() {
+        re_log::info!("Connecting the blueprint stream");
+        bp_stream.connect(addr);
+    }
 
     Ok(())
 }
@@ -413,6 +421,11 @@ fn disconnect(py: Python<'_>) {
             return;
         };
         data_stream.disconnect();
+
+        if let Some(bp_stream) = global_blueprint_stream().as_ref() {
+            re_log::info!("Disconnecting the blueprint stream");
+            bp_stream.disconnect();
+        }
     });
 }
 
@@ -1085,14 +1098,14 @@ fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn set_trays(trays: bool) -> PyResult<()> {
-    let bp_ctx = global_blueprint_context();
-    let Some(rec_ctx) = bp_ctx.as_ref() else {
+    let bp_ctx = global_blueprint_stream();
+    let Some(bp_ctx) = bp_ctx.as_ref() else {
         no_active_recording("set_trays");
         return Ok(());
     };
 
     let entity_path = parse_entity_path("tray_state")?;
-    let timepoint = time(false);
+    let timepoint = time(false, bp_ctx);
 
     let radius = if trays { Radius(1.0) } else { Radius(0.0) };
 
@@ -1104,7 +1117,7 @@ fn set_trays(trays: bool) -> PyResult<()> {
         [radius].as_slice(),
     );
 
-    record_row(rec_ctx, row);
+    record_row(bp_ctx, row);
 
     Ok(())
 }
