@@ -1,14 +1,30 @@
 name: Pull-Request
 
 on:
+  # Run the pull_request workflow if changes to a workflow were made
+  # this is necessary to allow testing PRs that change workflows
+  # If this is run from an external fork, it will not have access
+  # to Secrets and will likely fail.
   pull_request:
     types:
       - opened
       - synchronize
+    paths:
+      - '.github/workflows/**'
+
+  # By default, run the pull_request using `pull_request_target` which runs
+  # off of the `main` version of `pull_request` and avoids risk of
+  # workflow-highjacking to access secrets.
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+
 
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
   checks:
+    if: ${{ (github.event_name == 'pull_request') || !contains(github.event.pull_request.changed_files, '.github/workflows') }}
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
     with:
@@ -16,6 +32,7 @@ jobs:
     secrets: inherit
 
   min-test-wheel:
+    if: ${{ (github.event_name == 'pull_request') || !contains(github.event.pull_request.changed_files, '.github/workflows') }}
     name: 'Minimum Wheel'
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -28,6 +45,7 @@ jobs:
     secrets: inherit
 
   build-web:
+    if: ${{ (github.event_name == 'pull_request') || !contains(github.event.pull_request.changed_files, '.github/workflows') }}
     name: 'Build Web'
     uses: ./.github/workflows/reusable_build_web.yml
     with:
@@ -35,6 +53,7 @@ jobs:
     secrets: inherit
 
   upload-web:
+    if: ${{ (github.event_name == 'pull_request') || !contains(github.event.pull_request.changed_files, '.github/workflows') }}
     name: 'Upload Web'
     needs: [min-test-wheel, build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
@@ -45,6 +64,7 @@ jobs:
     secrets: inherit
 
   run-notebook:
+    if: ${{ (github.event_name == 'pull_request') || !contains(github.event.pull_request.changed_files, '.github/workflows') }}
     name: 'Run Notebook'
     needs: [min-test-wheel]
     uses: ./.github/workflows/reusable_run_notebook.yml
@@ -55,6 +75,7 @@ jobs:
     secrets: inherit
 
   save-pr-summary:
+    if: ${{ (github.event_name == 'pull_request') || !contains(github.event.pull_request.changed_files, '.github/workflows') }}
     name: 'Save PR Summary'
     needs: [upload-web, run-notebook]
     uses: ./.github/workflows/reusable_pr_summary.yml
