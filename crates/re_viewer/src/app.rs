@@ -358,7 +358,7 @@ impl App {
                 time_ctrl.toggle_play_pause(times_per_timeline);
             }
             TimeControlCommand::Follow => {
-                time_ctrl.set_play_state(times_per_timeline, PlayState::Following)
+                time_ctrl.set_play_state(times_per_timeline, PlayState::Following);
             }
             TimeControlCommand::StepBack => {
                 time_ctrl.step_time_back(times_per_timeline);
@@ -1886,8 +1886,6 @@ fn new_recording_confg(
     data_source: &'_ re_smart_channel::Source,
     log_db: &'_ LogDb,
 ) -> RecordingConfig {
-    use crate::misc::time_control::PlayState;
-
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
         // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
