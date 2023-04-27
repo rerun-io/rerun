@@ -179,16 +179,16 @@ fn data_table_batcher_config() {
 // ---
 
 /// Implements an asynchronous batcher that coalesces [`DataRow`]s into [`DataTable`]s based upon
-/// the threshold defined in the associated [`DataTableBatcherConfig`].
+/// the thresholds defined in the associated [`DataTableBatcherConfig`].
 ///
 /// ## Multithreading and ordering
 ///
-/// `DataTableBatcher` can be cheaply clone and used freely across any number of threads.
+/// [`DataTableBatcher`] can be cheaply clone and used freely across any number of threads.
 ///
 /// Internally, all operations are linearized into a pipeline:
 /// - All operations sent by a given thread will take effect in the same exact order as that
-///   thread originally sent them in from its point of view.
-/// - There is no defined global ordering across multiple threads.
+///   thread originally sent them in, from its point of view.
+/// - There isn't any well defined global order across multiple threads.
 ///
 /// This means that e.g. flushing the pipeline ([`Self::flush_blocking`]) guarantees that all
 /// previous data sent by the calling thread has been batched; no more, no less.
@@ -242,7 +242,7 @@ impl Command {
 }
 
 impl DataTableBatcher {
-    /// Creates a new `DataTableBatcher` using the passed in `config`.
+    /// Creates a new [`DataTableBatcher`] using the passed in `config`.
     ///
     /// The returned object must be kept in scope: dropping it will trigger a clean shutdown of the
     /// batcher.
@@ -292,7 +292,7 @@ impl DataTableBatcher {
     ///
     /// This will call [`DataRow::compute_all_size_bytes`] from the batching thread!
     ///
-    /// See `DataTableBatcher` docs for ordering semantics and multithreading guarantees.
+    /// See [`DataTableBatcher`] docs for ordering semantics and multithreading guarantees.
     #[inline]
     pub fn push_row(&self, row: DataRow) {
         self.inner.push_row(row);
@@ -301,7 +301,7 @@ impl DataTableBatcher {
     /// Initiates a flush of the pipeline and returns immediately.
     ///
     /// This does **not** wait for the flush to propagate (see [`Self::flush_blocking`]).
-    /// See `DataTableBatcher` docs for ordering semantics and multithreading guarantees.
+    /// See [`DataTableBatcher`] docs for ordering semantics and multithreading guarantees.
     #[inline]
     pub fn flush_async(&self) {
         self.inner.flush_async();
@@ -309,7 +309,7 @@ impl DataTableBatcher {
 
     /// Initiates a flush the batching pipeline and waits for it to propagate.
     ///
-    /// See `DataTableBatcher` docs for ordering semantics and multithreading guarantees.
+    /// See [`DataTableBatcher`] docs for ordering semantics and multithreading guarantees.
     #[inline]
     pub fn flush_blocking(&self) {
         self.inner.flush_blocking();
@@ -321,7 +321,7 @@ impl DataTableBatcher {
     ///
     /// Shutting down the batcher will close this channel.
     ///
-    /// See `DataTableBatcher` docs for ordering semantics and multithreading guarantees.
+    /// See [`DataTableBatcher`] docs for ordering semantics and multithreading guarantees.
     pub fn tables(&self) -> Receiver<DataTable> {
         self.inner.rx_tables.clone()
     }
