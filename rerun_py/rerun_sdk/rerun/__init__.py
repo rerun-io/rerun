@@ -118,6 +118,7 @@ def init(
     application_id: str,
     recording_id: Optional[str] = None,
     spawn: bool = False,
+    init_blueprint: bool = False,
     default_enabled: bool = True,
     strict: bool = False,
 ) -> None:
@@ -155,6 +156,8 @@ def init(
     default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    init_blueprint
+        Should we initialize the blueprint for this application?
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types etc).
         If `False`, errors are logged as warnings instead.
@@ -194,6 +197,7 @@ def init(
         application_id=application_id,
         recording_id=recording_id,
         application_path=application_path,
+        init_blueprint=init_blueprint,
         default_enabled=default_enabled,
     )
 
