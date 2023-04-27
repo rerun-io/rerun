@@ -68,6 +68,8 @@ re_analytics = { workspace = true, optional = true }
 # External
 ahash.workspace = true
 anyhow.workspace = true
+arrow2.workspace = true
+arrow2_convert.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [

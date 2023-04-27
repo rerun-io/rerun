@@ -13,6 +13,7 @@ use pyo3::{
 
 use re_log_types::DataRow;
 use rerun::{
+    external::re_viewer::blueprint_components::PanelState,
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::TimePoint,
@@ -147,7 +148,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
 
     // blueprint
-    m.add_function(wrap_pyfunction!(set_trays, m)?)?;
+    m.add_function(wrap_pyfunction!(set_panel, m)?)?;
 
     Ok(())
 }
@@ -1097,24 +1098,26 @@ fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn set_trays(trays: bool) -> PyResult<()> {
+fn set_panel(entity_path: &str, expanded: bool) -> PyResult<()> {
     let bp_ctx = global_blueprint_stream();
     let Some(bp_ctx) = bp_ctx.as_ref() else {
         no_active_recording("set_trays");
         return Ok(());
     };
 
-    let entity_path = parse_entity_path("tray_state")?;
+    // TODO(jleibs): Validation this is a valid blueprint path?
+    let entity_path = parse_entity_path(entity_path)?;
+    // TODO(jleibs) timeless? Something else?
     let timepoint = time(false, bp_ctx);
 
-    let radius = if trays { Radius(1.0) } else { Radius(0.0) };
+    let panel_state = PanelState { expanded };
 
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         timepoint,
         1,
-        [radius].as_slice(),
+        [panel_state].as_slice(),
     );
 
     record_row(bp_ctx, row);

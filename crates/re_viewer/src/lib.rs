@@ -4,6 +4,7 @@
 //! including all 2D and 3D visualization code.
 
 mod app;
+pub mod blueprint_components;
 pub mod env_vars;
 pub mod math;
 mod misc;
