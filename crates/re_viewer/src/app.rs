@@ -695,10 +695,23 @@ impl App {
         while let Ok(msg) = self.rx.try_recv() {
             // All messages except [`LogMsg::GoodBye`] should have an associated recording id
             if let Some(recording_id) = msg.recording_id() {
+                // NOTE: we may receive BeginRecordingMsg multiple times
                 let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::debug!("Opening a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id;
-                    true
+                    match msg.info.recording_type {
+                        re_log_types::RecordingType::Unknown => {
+                            re_log::warn!("Received recording with unknown type");
+                            false
+                        }
+                        re_log_types::RecordingType::Data => {
+                            re_log::debug!("Opening a new recording: {:?}", msg.info);
+                            self.state.selected_rec_id = msg.info.recording_id;
+                            true
+                        }
+                        re_log_types::RecordingType::Blueprint => {
+                            re_log::info!("Incoming Blueprint!");
+                            true
+                        }
+                    }
                 } else {
                     false
                 };
