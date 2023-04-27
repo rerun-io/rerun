@@ -24,8 +24,6 @@ use re_log_types::{
     Timeline,
 };
 
-// TODO(#1619): introduce batching in the testing matrix
-
 // --- LatestComponentsAt ---
 
 #[test]

@@ -156,12 +156,6 @@ impl TableId {
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
     }
-
-    /// Temporary utility while we transition to batching. See #1619.
-    #[doc(hidden)]
-    pub fn into_row_id(self) -> RowId {
-        RowId(self.0)
-    }
 }
 
 impl SizeBytes for TableId {
