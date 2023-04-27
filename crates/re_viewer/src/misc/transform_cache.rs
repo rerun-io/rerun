@@ -126,8 +126,11 @@ impl TransformCache {
             match transform_at(
                 &current_tree.path,
                 entity_db,
-                entity_prop_map,
                 &query,
+                // TODO(andreas): For inverse pinhole cameras we'd like the image plane to be indefinitely far away.
+                // High values quickly run into precision issues though.
+                // What we really want is to render everything under the inverse pinhole on top, independent of everything else.
+                |_| 500.0,
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
@@ -181,11 +184,12 @@ impl TransformCache {
 
         for child_tree in tree.children.values() {
             let mut encountered_pinhole = encountered_pinhole;
+
             let reference_from_child = match transform_at(
                 &child_tree.path,
                 entity_db,
-                entity_properties,
                 query,
+                |p| *entity_properties.get(p).pinhole_image_plane_distance.get(),
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
@@ -234,8 +238,8 @@ impl TransformCache {
 fn transform_at(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
-    entity_properties: &EntityPropertyMap,
     query: &LatestAtQuery,
+    pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
     if let Some(transform) = query_latest_single(entity_db, entity_path, query) {
@@ -252,8 +256,7 @@ fn transform_at(
 
                     // A pinhole camera means that we're looking at some 2D image plane from a single point (the pinhole).
                     // Center the image plane and move it along z, scaling the further the image plane is.
-                    let props = entity_properties.get(entity_path);
-                    let distance = *props.pinhole_image_plane_distance.get();
+                    let distance = pinhole_image_plane_distance(entity_path);
 
                     let scale = distance / pinhole.focal_length_in_pixels();
                     let translation = (-pinhole.principal_point() * scale).extend(distance);

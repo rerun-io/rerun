@@ -177,40 +177,12 @@ impl ViewSpatialState {
         {
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {
-                let default_image_plane_distance =
-                    if *self.nav_mode.get() == SpatialNavigationMode::TwoD {
-                        // If we're in 2D mode things get tricky!
-                        // The issue is that position of any object not directly under the camera is influenced
-                        // by the image plane distance itself! The bounding box is therefore not useful at all.
-                        //
-                        // To make matters worse, we're running into accuracy issue surprisingly quickly!
-                        // Typically, at about 1000 units we can already see flickering in points when points are close.
-                        // (probably because pixel units are large and a high plane distance leads to a very small scale factor
-                        // also as of writing we don't have a good heuristic for the near plane either, making matters worse)
-                        //
-                        // What we *do* know is that as long the bounding box pierces through the image plane,
-                        // we apparently didn't choose a big enough image plane distance.
-                        // So let's enlarge it a bit.
-                        // (We could do so more accurately by taking the camera distance into account, but this would complicate things further.)
-                        //
-                        // Note that we wouldn't have any of these issues if the image plane wouldn't clip the scene!
-
-                        // TODO: Another issue with this is that it gets XY extents wrong at first and only works when the camera was added.
-                        if self.scene_bbox.max.z > 0.0 {
-                            properties.pinhole_image_plane_distance.get().at_least(1.0) * 1.1
-                        } else {
-                            properties.pinhole_image_plane_distance.get().at_least(1.0)
-                        }
-                    } else {
-                        let scene_size = self.scene_bbox_accum.size();
-                        let scene_diagonal = scene_size.length();
-                        if scene_diagonal.is_finite() && scene_diagonal > 0.0 {
-                            scene_diagonal * 0.05
-                        } else {
-                            1.0
-                        }
-                    };
-
+                let scene_size = self.scene_bbox_accum.size().length();
+                let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+                    scene_size * 0.05
+                } else {
+                    1.0
+                };
                 properties.pinhole_image_plane_distance =
                     EditableAutoValue::Auto(default_image_plane_distance);
                 data_blueprint
