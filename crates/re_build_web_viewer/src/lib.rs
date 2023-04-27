@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 //! Build the Rerun web-viewer .wasm and generate the .js bindings for it.
 
 use cargo_metadata::camino::Utf8PathBuf;
