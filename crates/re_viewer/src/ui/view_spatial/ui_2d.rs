@@ -420,9 +420,10 @@ fn setup_target_config(
         // Looking through a space camera at the space root in a 2D view is *similar* than
         // looking through that same camera in a 3D view.
         //
-        // There is once crucial difference though: the XY coordinates are supposed to be "pixels"
-        // I.e. if I place an image without any scaling (!), I expect the XY coordinates to be
-        // in pixels of that image.
+        // There is once crucial difference though:
+        // Images are supposed to be on the XY plane and scaled in pixels.
+        // I.e. if I place an image without 2D transform, it gets an identify transform
+        // and X/Y coordinates correspond to pixels.
 
         let pinhole = space_camera.pinhole.unwrap(); // TODO:
         (
