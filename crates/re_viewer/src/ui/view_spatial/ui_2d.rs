@@ -466,6 +466,7 @@ fn setup_target_config(
             resolution_in_pixel,
             view_from_world,
             projection_from_view,
+            viewport_transformation: re_renderer::RectF32::UNIT,
             pixels_from_point: pixels_from_points,
             auto_size_config,
             outline_config: any_outlines.then(|| outline_config(painter.ctx())),

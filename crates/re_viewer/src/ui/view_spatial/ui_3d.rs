@@ -330,6 +330,7 @@ pub fn view_3d(
             vertical_fov: eye.fov_y.unwrap(),
             near_plane_distance: eye.near(),
         },
+        viewport_transformation: re_renderer::RectF32::UNIT,
 
         pixels_from_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),

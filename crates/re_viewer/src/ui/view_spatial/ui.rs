@@ -710,7 +710,7 @@ pub fn picking(
 
     let _ = view_builder.schedule_picking_rect(
         ctx.render_ctx,
-        re_renderer::IntRect::from_middle_and_extent(
+        re_renderer::RectInt::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
         ),

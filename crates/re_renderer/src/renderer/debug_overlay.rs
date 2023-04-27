@@ -8,7 +8,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
         WgpuResourcePools,
     },
-    IntRect,
+    RectInt,
 };
 
 use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
@@ -75,7 +75,7 @@ impl DebugOverlayDrawData {
         ctx: &mut RenderContext,
         debug_texture: &GpuTexture,
         screen_resolution: glam::UVec2,
-        overlay_rect: IntRect,
+        overlay_rect: RectInt,
     ) -> Result<Self, DebugOverlayError> {
         let mut renderers = ctx.renderers.write();
         let debug_overlay = renderers.get_or_create::<_, DebugOverlayRenderer>(

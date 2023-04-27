@@ -10,9 +10,11 @@ use crate::{
         ScreenshotProcessor,
     },
     global_bindings::FrameUniformBuffer,
+    rect::RectF32,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
+    transform::region_of_interest_from_ndc,
     wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
-    DebugLabel, IntRect, Rgba, Size,
+    DebugLabel, RectInt, Rgba, Size,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(
@@ -152,9 +154,34 @@ impl Default for AutoSizeConfig {
 #[derive(Debug, Clone)]
 pub struct TargetConfiguration {
     pub name: DebugLabel,
+
     pub resolution_in_pixel: [u32; 2],
     pub view_from_world: macaw::IsoTransform,
     pub projection_from_view: Projection,
+
+    /// Defines a viewport transformation from the projected space to the final image space.
+    ///
+    /// The scale & translation defined by transforming this rectangle to
+    /// a unit rectangle with the origin in the top left corner and the right bottom corner at (1, 1)
+    /// is applied to the projection matrix as a final step.
+    /// I.e. this transform uses a texture coordinate system!
+    ///
+    /// This can be used to implement pan & zoom independent of the camera projection.
+    /// Meaning that this transform allows you to zoom in on a portion of a perspectively projected
+    /// scene.
+    ///
+    /// To apply no transform, you'd set this this to the unit rectangle, `RectF32::UNIT`.
+    /// In order to for example zoom in on the bottom-left quadrant of the projected space you'd set this to:
+    /// ```
+    /// RectF32 { left_top: glam::vec2(0.0, 0.5), extent: glam::vec2(0.5, 0.5) }
+    /// ```
+    /// This quadrant will then fill the entire target space.
+    ///
+    /// Note that it is perfectly valid to have rectangles that include areas outside of the 0-1 range.
+    ///
+    /// Internally, this is used to transform the normalized device coordinates to the given portion.
+    /// This transform is applied to the projection matrix.
+    pub viewport_transformation: RectF32,
 
     /// How many pixels are there per point.
     /// I.e. the ui scaling factor.
@@ -175,6 +202,10 @@ impl Default for TargetConfiguration {
             projection_from_view: Projection::Perspective {
                 vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                 near_plane_distance: 0.01,
+            },
+            viewport_transformation: RectF32 {
+                left_top: glam::Vec2::ZERO,
+                extent: glam::Vec2::ONE,
             },
             pixels_from_point: 1.0,
             auto_size_config: Default::default(),
@@ -376,6 +407,10 @@ impl ViewBuilder {
                 }
             };
 
+        // Finally, apply a viewport transformation to the projection.
+        let projection_from_view =
+            region_of_interest_from_ndc(config.viewport_transformation) * projection_from_view;
+
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.
         match config.projection_from_view {
@@ -387,6 +422,7 @@ impl ViewBuilder {
             },
             Projection::Perspective { .. } => {}
         };
+
         let camera_position = config.view_from_world.inverse().translation();
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
@@ -683,7 +719,7 @@ impl ViewBuilder {
     pub fn schedule_picking_rect<T: 'static + Send + Sync>(
         &mut self,
         ctx: &mut RenderContext,
-        picking_rect: IntRect,
+        picking_rect: RectInt,
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
         show_debug_view: bool,
