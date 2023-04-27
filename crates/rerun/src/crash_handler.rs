@@ -162,7 +162,7 @@ fn install_signal_handler(build_info: BuildInfo) {
         // but writing to stderr is one of them.
         // So we first print out what happened to stderr so we're sure that gets out,
         // then we do the unsafe things, like logging the stack trace.
-        // We take care not to allocate any memory before we genrate the call stack.
+        // We take care not to allocate any memory before we generate the call stack.
 
         write_to_stderr("\n");
         print_problem_and_links(signal_name);
