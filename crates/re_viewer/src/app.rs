@@ -10,7 +10,7 @@ use poll_promise::Promise;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{ApplicationId, LogMsg, RecordingId};
+use re_log_types::{ApplicationId, LogMsg, RecordingId, RecordingType};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -947,6 +947,7 @@ struct AppState {
     cache: Caches,
 
     selected_rec_id: RecordingId,
+    selected_blueprint_id: RecordingId,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
@@ -981,6 +982,7 @@ impl AppState {
             app_options: options,
             cache,
             selected_rec_id,
+            selected_blueprint_id,
             recording_configs,
             panel_selection,
             blueprints,
@@ -1176,6 +1178,10 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut 
 
         ui.menu_button("Recordings", |ui| {
             recordings_menu(ui, app);
+        });
+
+        ui.menu_button("Blueprints", |ui| {
+            blueprints_menu(ui, app);
         });
 
         ui.menu_button("Options", |ui| {
@@ -1642,7 +1648,10 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 
     ui.style_mut().wrap = Some(false);
-    for log_db in log_dbs {
+    for log_db in log_dbs.iter().filter(|log| {
+        log.recording_info()
+            .map_or(false, |ri| ri.recording_type == RecordingType::Data)
+    }) {
         let info = if let Some(rec_info) = log_db.recording_info() {
             format!(
                 "{} - {}",
@@ -1657,6 +1666,44 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
             .clicked()
         {
             app.state.selected_rec_id = log_db.recording_id();
+        }
+    }
+}
+
+fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
+    let log_dbs = app
+        .log_dbs
+        .values()
+        .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
+        .collect_vec();
+
+    if log_dbs.is_empty() {
+        ui.weak("(empty)");
+        return;
+    }
+
+    ui.style_mut().wrap = Some(false);
+    for log_db in log_dbs.iter().filter(|log| {
+        log.recording_info()
+            .map_or(false, |ri| ri.recording_type == RecordingType::Blueprint)
+    }) {
+        let info = if let Some(rec_info) = log_db.recording_info() {
+            format!(
+                "{} - {}",
+                rec_info.application_id,
+                rec_info.started.format()
+            )
+        } else {
+            "<UNKNOWN>".to_owned()
+        };
+        if ui
+            .radio(
+                app.state.selected_blueprint_id == log_db.recording_id(),
+                info,
+            )
+            .clicked()
+        {
+            app.state.selected_blueprint_id = log_db.recording_id();
         }
     }
 }
