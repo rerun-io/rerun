@@ -31,7 +31,7 @@
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
 //! # fn positions() -> Vec<rerun::components::Point3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::components::ColorRGBA> { Default::default() }
-//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
+//! let rec_stream = rerun::RecordingStreamBuilder::new("my_app").buffered()?;
 //!
 //! let points: Vec<rerun::components::Point3D> = positions();
 //! let colors: Vec<rerun::components::ColorRGBA> = colors();
@@ -40,16 +40,16 @@
 //! rerun::MsgSender::new("points")
 //!     .with_component(&points)?
 //!     .with_component(&colors)?
-//!     .send(&mut rr_session)?;
+//!     .send(&rec_stream)?;
 //!
 //! rerun::MsgSender::new("image")
 //!     .with_component(&[rerun::components::Tensor::from_image(image)?])?
-//!     .send(&mut rr_session)?;
+//!     .send(&rec_stream)?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
-//! See [`Session`] and [`MsgSender`] for details.
+//! See [`RecordingStream`] and [`MsgSender`] for details.
 //!
 //! #### Streaming
 //! To stream log data to an awaiting `rerun` process, you can do this:
@@ -57,18 +57,20 @@
 //!
 //! Then do this:
 //!
-//! ``` no_run
-//! let mut rr_session = rerun::SessionBuilder::new("my_app").connect(rerun::default_server_addr());
+//! ```no_run
+//! let rec_stream = rerun::RecordingStreamBuilder::new("my_app").connect(rerun::default_server_addr());
 //! ```
 //!
 //! #### Buffering
 //!
-//! ``` no_run
-//! # fn log_using(rr_session: &rerun::Session) {}
+//! ```no_run
+//! # fn log_using(rec_stream: &rerun::RecordingStream) {}
 //!
-//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
-//! log_using(&mut rr_session);
-//! rerun::native_viewer::show(&mut rr_session);
+//! let (rec_stream, storage) = rerun::RecordingStreamBuilder::new("my_app").memory()?;
+//! log_using(&rec_stream);
+//! rerun::native_viewer::show(storage.take());
+//!
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 //!
 //! ## Binary

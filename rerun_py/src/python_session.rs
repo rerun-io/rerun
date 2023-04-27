@@ -172,8 +172,8 @@ impl PythonSession {
         // Before changing the sink, we set drop_if_disconnected and
         // flush. This ensures that any messages that are currently
         // buffered will be sent.
-        self.sink.drop_msgs_if_disconnected();
-        self.sink.flush();
+        self.sink.drop_if_disconnected();
+        self.sink.flush_blocking();
         self.sink = sink;
 
         if backlog.is_empty() {
@@ -243,7 +243,7 @@ impl PythonSession {
 
     /// Wait until all logged data have been sent to the remove server (if any).
     pub fn flush(&mut self) {
-        self.sink.flush();
+        self.sink.flush_blocking();
     }
 
     /// Send a single [`DataRow`].
