@@ -224,6 +224,14 @@ pub struct BeginRecordingMsg {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum RecordingType {
+    Unknown,
+    Data,
+    Blueprint,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: ApplicationId,
@@ -240,6 +248,8 @@ pub struct RecordingInfo {
     pub started: Time,
 
     pub recording_source: RecordingSource,
+
+    pub recording_type: RecordingType,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

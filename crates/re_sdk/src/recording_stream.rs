@@ -267,6 +267,7 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             recording_source,
+            recording_type: re_log_types::RecordingType::Data,
         };
 
         let batcher_config = batcher_config

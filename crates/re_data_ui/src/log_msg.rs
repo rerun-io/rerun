@@ -41,6 +41,7 @@ impl DataUi for BeginRecordingMsg {
             started,
             recording_source,
             is_official_example,
+            recording_type: _,
         } = info;
 
         egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
