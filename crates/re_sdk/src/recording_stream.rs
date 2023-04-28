@@ -742,9 +742,6 @@ impl RecordingStream {
     }
 }
 
-// TODO: some regression tests and we're all good
-// TODO: an example would probably be nice too
-
 #[cfg(test)]
 mod tests {
     use re_log_types::RowId;
@@ -815,7 +812,7 @@ mod tests {
 
                 similar_asserts::assert_eq!(table, got);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected ArrowMsg"),
         }
 
         // That's all.
@@ -887,7 +884,7 @@ mod tests {
 
                     similar_asserts::assert_eq!(expected, got);
                 }
-                _ => panic!("expected BeginRecordingMsg"),
+                _ => panic!("expected ArrowMsg"),
             }
         };
 
@@ -897,6 +894,100 @@ mod tests {
         assert_next_row();
         assert_next_row();
         assert_next_row();
+
+        // That's all.
+        assert!(msgs.pop().is_none());
+    }
+
+    #[test]
+    fn flush_hierarchy() {
+        let (rec_stream, storage) = RecordingStreamBuilder::new("flush_hierarchy")
+            .enabled(true)
+            .batcher_config(DataTableBatcherConfig::NEVER)
+            .memory()
+            .unwrap();
+
+        let rec_info = rec_stream.recording_info().cloned().unwrap();
+
+        let mut table = DataTable::example(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec_stream.record_row(row);
+        }
+
+        {
+            let mut msgs = {
+                let mut msgs = storage.take();
+                msgs.reverse();
+                msgs
+            };
+
+            // First message should be a set_recording_info resulting from the original sink swap
+            // to in-memory mode.
+            match msgs.pop().unwrap() {
+                LogMsg::BeginRecordingMsg(msg) => {
+                    assert!(msg.row_id != RowId::ZERO);
+                    similar_asserts::assert_eq!(rec_info, msg.info);
+                }
+                _ => panic!("expected BeginRecordingMsg"),
+            }
+
+            // The underlying batcher is never flushing: there's nothing else.
+            assert!(msgs.pop().is_none());
+        }
+
+        // The underlying batcher is never flushing: there's nothing else.
+        assert!(storage.take().is_empty());
+
+        rec_stream.flush_blocking(); // flush the entire hierarchy
+
+        {
+            let mut msgs = {
+                let mut msgs = storage.take();
+                msgs.reverse();
+                msgs
+            };
+
+            // The batched table itself, which was sent as a result of the explicit flush above.
+            match msgs.pop().unwrap() {
+                LogMsg::ArrowMsg(rid, msg) => {
+                    assert_eq!(rec_info.recording_id, rid);
+
+                    let mut got = DataTable::from_arrow_msg(&msg).unwrap();
+                    // TODO(1760): we shouldn't have to (re)do this!
+                    got.compute_all_size_bytes();
+                    // NOTE: Override the resulting table's ID so they can be compared.
+                    got.table_id = table.table_id;
+
+                    similar_asserts::assert_eq!(table, got);
+                }
+                _ => panic!("expected ArrowMsg"),
+            }
+
+            // That's all.
+            assert!(msgs.pop().is_none());
+        }
+    }
+
+    #[test]
+    fn disabled() {
+        let (rec_stream, storage) = RecordingStreamBuilder::new("disabled")
+            .enabled(false)
+            .batcher_config(DataTableBatcherConfig::ALWAYS)
+            .memory()
+            .unwrap();
+
+        let mut table = DataTable::example(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec_stream.record_row(row);
+        }
+
+        let mut msgs = {
+            let mut msgs = storage.take();
+            msgs.reverse();
+            msgs
+        };
 
         // That's all.
         assert!(msgs.pop().is_none());
