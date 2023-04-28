@@ -343,6 +343,7 @@ impl Example for Multiview {
             Projection::Perspective {
                 vertical_fov: 70.0 * TAU / 360.0,
                 near_plane_distance: 0.01,
+                aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
             }
         } else {
             Projection::Orthographic {

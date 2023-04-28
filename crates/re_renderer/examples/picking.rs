@@ -135,6 +135,7 @@ impl framework::Example for Picking {
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
+                    aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                 },
                 pixels_from_point,
                 outline_config: None,

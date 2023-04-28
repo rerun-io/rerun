@@ -295,9 +295,6 @@ fn view_2d_scrollable(
     // Create our transforms.
     let ui_from_space = egui::emath::RectTransform::from_to(scene_rect_accum, response.rect);
     let space_from_ui = ui_from_space.inverse();
-    let space_from_points = space_from_ui.scale().y;
-    let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
-    let space_from_pixel = space_from_points * points_from_pixels;
 
     state
         .state_2d
@@ -313,7 +310,6 @@ fn view_2d_scrollable(
     let Ok(target_config) = setup_target_config(
         &painter,
         space_from_ui,
-        space_from_pixel,
         &space.to_string(),
         state.auto_size_config(),
         scene
@@ -403,7 +399,6 @@ fn view_2d_scrollable(
 fn setup_target_config(
     painter: &egui::Painter,
     space_from_ui: RectTransform,
-    space_from_pixel: f32,
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
@@ -414,49 +409,56 @@ fn setup_target_config(
         gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
-    // TODO: Determine earlier and
+    let default_pinhole_image_plane_size =
+        glam::vec2(space_from_ui.to().width(), space_from_ui.to().height());
+    let default_focal_length_in_pixels = default_pinhole_image_plane_size.x;
 
-    let (projection_from_view, view_from_world) = if let Some(space_camera) = space_camera {
-        // Looking through a space camera at the space root in a 2D view is *similar* than
-        // looking through that same camera in a 3D view.
-        //
-        // There is once crucial difference though:
-        // Images are supposed to be on the XY plane and scaled in pixels.
-        // I.e. if I place an image without 2D transform, it gets an identify transform
-        // and X/Y coordinates correspond to pixels.
-
-        let pinhole = space_camera.pinhole.unwrap(); // TODO:
-        (
-            re_renderer::view_builder::Projection::Perspective {
-                vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
-                near_plane_distance: 0.01,
-            },
-            // Put the camera at the position where it sees the entire image plane as defined
-            // by the pinhole camera.
-            macaw::IsoTransform::look_at_rh(
-                pinhole
-                    .principal_point()
-                    .extend(-pinhole.focal_length_in_pixels()),
-                pinhole.principal_point().extend(0.0),
-                -glam::Vec3::Y,
+    // TODO: don't use space camera but do a query.
+    let pinhole = space_camera
+        .and_then(|c| c.pinhole)
+        .unwrap_or(re_log_types::Pinhole {
+            image_from_cam: glam::Mat3::from_cols(
+                glam::vec3(default_focal_length_in_pixels, 0.0, 0.0),
+                glam::vec3(0.0, default_focal_length_in_pixels, 0.0),
+                (default_pinhole_image_plane_size * 0.5 + glam::Vec2::splat(0.5)).extend(1.0),
             )
-            .unwrap_or(macaw::IsoTransform::IDENTITY),
-        )
-    } else {
-        let top_left_pos = space_from_ui.transform_pos(painter.clip_rect().min);
-        (
-            re_renderer::view_builder::Projection::Orthographic {
-                camera_mode:
-                    re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,
-                far_plane_distance: 1000.0,
-            },
-            macaw::IsoTransform::from_translation(glam::vec3(
-                -top_left_pos.x,
-                -top_left_pos.y,
-                0.0,
-            )),
-        )
+            .into(),
+            // Look at the entire space by default.
+            resolution: Some(default_pinhole_image_plane_size.into()),
+        });
+
+    let projection_from_view = re_renderer::view_builder::Projection::Perspective {
+        vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
+        near_plane_distance: 0.01,
+        aspect_ratio: pinhole.aspect_ratio().unwrap(), // TODO:
+    };
+
+    // Put the camera at the position where it sees the entire image plane as defined
+    // by the pinhole camera.
+    let view_from_world = macaw::IsoTransform::look_at_rh(
+        pinhole
+            .principal_point()
+            .extend(-pinhole.focal_length_in_pixels()),
+        pinhole.principal_point().extend(0.0),
+        -glam::Vec3::Y,
+    )
+    .unwrap_or(macaw::IsoTransform::IDENTITY);
+
+    // What portion of the space are we looking at?
+    // TODO: cleanup spaces
+    // TODO: Need to take principal point into account
+    let total_ui_rect = space_from_ui.from();
+    let visible_ui_rect = painter.clip_rect();
+
+    let viewport_transformation = re_renderer::RectTransform {
+        from: re_renderer::RectF32 {
+            left_top: glam::vec2(visible_ui_rect.left(), visible_ui_rect.top()),
+            extent: glam::vec2(visible_ui_rect.width(), visible_ui_rect.height()),
+        },
+        to: re_renderer::RectF32 {
+            left_top: glam::vec2(total_ui_rect.left(), total_ui_rect.top()),
+            extent: glam::vec2(total_ui_rect.width(), total_ui_rect.height()),
+        },
     };
 
     Ok({
@@ -466,7 +468,7 @@ fn setup_target_config(
             resolution_in_pixel,
             view_from_world,
             projection_from_view,
-            viewport_transformation: re_renderer::RectF32::UNIT,
+            viewport_transformation,
             pixels_from_point: pixels_from_points,
             auto_size_config,
             outline_config: any_outlines.then(|| outline_config(painter.ctx())),

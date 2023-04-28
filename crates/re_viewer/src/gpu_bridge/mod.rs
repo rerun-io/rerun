@@ -198,7 +198,7 @@ pub fn render_image(
             vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,
             far_plane_distance: 1000.0,
         },
-        viewport_transformation: re_renderer::RectF32::UNIT,
+        viewport_transformation: re_renderer::RectTransform::IDENTITY,
         pixels_from_point: pixels_from_points,
         auto_size_config: Default::default(),
         outline_config: None,

@@ -123,6 +123,7 @@ impl RenderDepthClouds {
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
+                    aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
                 },
                 pixels_from_point,
                 ..Default::default()
@@ -202,6 +203,7 @@ impl RenderDepthClouds {
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
+                    aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
                 },
                 pixels_from_point,
                 ..Default::default()

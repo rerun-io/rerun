@@ -44,6 +44,7 @@ pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use rect::RectF32;
 pub use size::Size;
+pub use transform::RectTransform;
 pub use view_builder::{AutoSizeConfig, ViewBuilder};
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 

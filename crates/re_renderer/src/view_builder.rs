@@ -10,9 +10,8 @@ use crate::{
         ScreenshotProcessor,
     },
     global_bindings::FrameUniformBuffer,
-    rect::RectF32,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
-    transform::region_of_interest_from_ndc,
+    transform::RectTransform,
     wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
     DebugLabel, RectInt, Rgba, Size,
 };
@@ -111,6 +110,12 @@ pub enum Projection {
 
         /// Distance of the near plane.
         near_plane_distance: f32,
+
+        /// Aspect ratio of the perspective transformation.
+        ///
+        /// This is typically just resolution.y / resolution.x.
+        /// Setting this to anything else is mostly useful when panning & zooming within a fixed transformation.
+        aspect_ratio: f32,
     },
 
     /// Orthographic projection with the camera position at the near plane's center,
@@ -161,30 +166,22 @@ pub struct TargetConfiguration {
 
     /// Defines a viewport transformation from the projected space to the final image space.
     ///
-    /// The scale & translation defined by transforming this rectangle to
-    /// a unit rectangle with the origin in the top left corner and the right bottom corner at (1, 1)
-    /// is applied to the projection matrix as a final step.
-    /// I.e. this transform uses a texture coordinate system!
-    ///
     /// This can be used to implement pan & zoom independent of the camera projection.
     /// Meaning that this transform allows you to zoom in on a portion of a perspectively projected
     /// scene.
     ///
-    /// To apply no transform, you'd set this this to the unit rectangle, `RectF32::UNIT`.
-    /// In order to for example zoom in on the bottom-left quadrant of the projected space you'd set this to:
-    /// ```
-    /// RectF32 { left_top: glam::vec2(0.0, 0.5), extent: glam::vec2(0.5, 0.5) }
-    /// ```
-    /// This quadrant will then fill the entire target space.
-    ///
-    /// Note that it is perfectly valid to have rectangles that include areas outside of the 0-1 range.
+    /// Note only the relation of the rectangles in `RectTransform` is important.
+    /// Scaling or moving both rectangles by the same amount does not change the result.
     ///
     /// Internally, this is used to transform the normalized device coordinates to the given portion.
     /// This transform is applied to the projection matrix.
-    pub viewport_transformation: RectF32,
+    pub viewport_transformation: RectTransform,
 
     /// How many pixels are there per point.
+    ///
     /// I.e. the ui scaling factor.
+    /// Note that this does not affect any of the camera & projection properties and is only used
+    /// whenever point sizes were explicitly specified.
     pub pixels_from_point: f32,
 
     /// How [`Size::AUTO`] is interpreted.
@@ -202,11 +199,9 @@ impl Default for TargetConfiguration {
             projection_from_view: Projection::Perspective {
                 vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                 near_plane_distance: 0.01,
+                aspect_ratio: 1.0,
             },
-            viewport_transformation: RectF32 {
-                left_top: glam::Vec2::ZERO,
-                extent: glam::Vec2::ONE,
-            },
+            viewport_transformation: RectTransform::IDENTITY,
             pixels_from_point: 1.0,
             auto_size_config: Default::default(),
             outline_config: None,
@@ -323,14 +318,12 @@ impl ViewBuilder {
             },
         );
 
-        let aspect_ratio =
-            config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
-
         let (projection_from_view, tan_half_fov, pixel_world_size_from_camera_distance) =
             match config.projection_from_view.clone() {
                 Projection::Perspective {
                     vertical_fov,
                     near_plane_distance,
+                    aspect_ratio,
                 } => {
                     // We use infinite reverse-z projection matrix
                     // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
@@ -372,6 +365,8 @@ impl ViewBuilder {
                     vertical_world_size,
                     far_plane_distance,
                 } => {
+                    let aspect_ratio =
+                        config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
                     let horizontal_world_size = vertical_world_size * aspect_ratio;
                     // Note that we inverse z (by swapping near and far plane) to be consistent with our perspective projection.
                     let projection_from_view = match camera_mode {
@@ -409,7 +404,11 @@ impl ViewBuilder {
 
         // Finally, apply a viewport transformation to the projection.
         let projection_from_view =
-            region_of_interest_from_ndc(config.viewport_transformation) * projection_from_view;
+            config.viewport_transformation.to_ndc_transform() * projection_from_view;
+        let pixel_scale_factor = config.viewport_transformation.scale().min_element();
+        // TODO: this seems super weird.
+        let pixel_world_size_from_camera_distance =
+            pixel_world_size_from_camera_distance / pixel_scale_factor;
 
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.

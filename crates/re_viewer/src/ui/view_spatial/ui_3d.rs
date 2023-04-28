@@ -329,8 +329,9 @@ pub fn view_3d(
         projection_from_view: Projection::Perspective {
             vertical_fov: eye.fov_y.unwrap(),
             near_plane_distance: eye.near(),
+            aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
         },
-        viewport_transformation: re_renderer::RectF32::UNIT,
+        viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
         pixels_from_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),

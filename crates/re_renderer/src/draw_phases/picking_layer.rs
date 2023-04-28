@@ -15,7 +15,7 @@ use crate::{
     include_shader_module,
     rect::RectF32,
     texture_info::Texture2DBufferInfo,
-    transform::{ndc_from_pixel, region_of_interest_from_ndc},
+    transform::{ndc_from_pixel, RectTransform},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
@@ -227,11 +227,14 @@ impl PickingLayerProcessor {
             DepthReadbackWorkaround::new(ctx, picking_rect.extent, picking_depth_target.handle)
         });
 
-        let pixel_size = screen_resolution.as_vec2().recip();
-        let cropped_projection_from_projection = region_of_interest_from_ndc(RectF32 {
-            left_top: picking_rect.left_top.as_vec2() * pixel_size,
-            extent: picking_rect.extent.as_vec2() * pixel_size,
-        });
+        let cropped_projection_from_projection = RectTransform {
+            from: picking_rect.into(),
+            to: RectF32 {
+                left_top: glam::Vec2::ZERO,
+                extent: screen_resolution.as_vec2(),
+            },
+        }
+        .to_ndc_transform();
 
         // Setup frame uniform buffer
         let previous_projection_from_world: glam::Mat4 =
