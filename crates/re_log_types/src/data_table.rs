@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use crate::{
@@ -347,7 +347,7 @@ pub struct DataTable {
     ///
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
-    pub columns: IntMap<ComponentName, DataCellColumn>,
+    pub columns: BTreeMap<ComponentName, DataCellColumn>,
 }
 
 impl DataTable {
@@ -418,7 +418,7 @@ impl DataTable {
         }
 
         // Pre-allocate all columns (one per component).
-        let mut columns = IntMap::default();
+        let mut columns = BTreeMap::default();
         for component in components {
             columns.insert(
                 component,
