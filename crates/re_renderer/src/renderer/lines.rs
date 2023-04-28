@@ -227,7 +227,14 @@ bitflags! {
         const CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
 
         /// Disable color gradient which is on by default
+        ///
+        /// TODO(andreas): Could be moved to per batch flags.
         const NO_COLOR_GRADIENT = 0b0100_0000;
+
+        /// Forces spanning the line's quads as-if the camera was orthographic.
+        ///
+        /// TODO(andreas): Could be moved to per batch flags.
+        const FORCE_ORTHO_SPANNING = 0b1000_0000;
     }
 }
 

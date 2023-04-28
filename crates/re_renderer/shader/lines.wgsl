@@ -44,6 +44,7 @@ const CAP_START_TRIANGLE: u32 = 8u;
 const CAP_START_ROUND: u32 = 16u;
 const CAP_START_EXTEND_OUTWARDS: u32 = 32u;
 const NO_COLOR_GRADIENT: u32 = 64u;
+const FORCE_ORTHO_SPANNING: u32 = 128u;
 
 // A lot of the attributes don't need to be interpolated across triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)
@@ -199,7 +200,12 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Resolve radius.
     // (slight inaccuracy: End caps are going to adjust their center_position)
-    let camera_ray = camera_ray_to_world_pos(center_position);
+    var camera_ray: Ray;
+    if has_any_flag(strip_data.flags, FORCE_ORTHO_SPANNING) || is_camera_orthographic() {
+        camera_ray = camera_ray_to_world_pos_orthographic(center_position);
+    } else {
+        camera_ray = camera_ray_to_world_pos_perspective(center_position);
+    }
     let camera_distance = distance(camera_ray.origin, center_position);
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
 

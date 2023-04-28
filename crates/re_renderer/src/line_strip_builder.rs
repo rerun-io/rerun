@@ -104,6 +104,14 @@ impl LineStripSeriesBuilder {
     pub fn is_empty(&self) -> bool {
         self.strips.is_empty()
     }
+
+    pub fn default_rectangle_flags() -> LineStripFlags {
+        LineStripFlags::CAP_END_ROUND
+            | LineStripFlags::CAP_START_ROUND
+            | LineStripFlags::NO_COLOR_GRADIENT
+            | LineStripFlags::CAP_END_EXTEND_OUTWARDS
+            | LineStripFlags::CAP_START_EXTEND_OUTWARDS
+    }
 }
 
 pub struct LineBatchBuilder<'a>(&'a mut LineStripSeriesBuilder);
@@ -292,13 +300,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(
-            LineStripFlags::CAP_END_ROUND
-                | LineStripFlags::CAP_START_ROUND
-                | LineStripFlags::NO_COLOR_GRADIENT
-                | LineStripFlags::CAP_END_EXTEND_OUTWARDS
-                | LineStripFlags::CAP_START_EXTEND_OUTWARDS,
-        )
+        .flags(LineStripSeriesBuilder::default_rectangle_flags())
     }
 
     /// Adds a 2D series of line connected points.
