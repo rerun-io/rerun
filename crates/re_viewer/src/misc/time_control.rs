@@ -297,6 +297,7 @@ impl TimeControl {
         if let Some(time_points) = times_per_timeline.get(&self.timeline) {
             if let Some(state) = self.states.get_mut(&self.timeline) {
                 state.time = min(time_points).into();
+                self.following = false;
             }
         }
     }

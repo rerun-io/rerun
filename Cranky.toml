@@ -138,4 +138,8 @@ allow = [
   "clippy::missing_errors_doc",
   "trivial_casts",
   "unused_qualifications",
+
+  # This would be nice to enable, but we have way too many unwraps in our arrow store 😭
+  # Enabling this lint in 2023-04-27 yielded 556 hits.
+  "clippy::unwrap_used",
 ]

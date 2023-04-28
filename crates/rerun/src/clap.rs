@@ -80,14 +80,12 @@ impl RerunArgs {
         run: impl FnOnce(Session) + Send + 'static,
     ) -> anyhow::Result<()> {
         // Ensure we have a running tokio runtime.
-        #[allow(unused_assignments)]
         let mut tokio_runtime = None;
         let tokio_runtime_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
             handle
         } else {
-            tokio_runtime =
-                Some(tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
-            tokio_runtime.as_ref().unwrap().handle().clone()
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+            tokio_runtime.get_or_insert(rt).handle().clone()
         };
         let _tokio_runtime_guard = tokio_runtime_handle.enter();
 

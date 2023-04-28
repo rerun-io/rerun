@@ -12,6 +12,8 @@
 
 // TODO(cmc): this should only run for release builds
 
+#![allow(clippy::unwrap_used)]
+
 use std::path::Path;
 
 use walkdir::{DirEntry, WalkDir};
