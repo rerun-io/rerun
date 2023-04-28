@@ -234,7 +234,7 @@ impl PickingLayerProcessor {
                 extent: screen_resolution.as_vec2(),
             },
         }
-        .to_ndc_transform();
+        .to_ndc_scale_and_translation();
 
         // Setup frame uniform buffer
         let previous_projection_from_world: glam::Mat4 =

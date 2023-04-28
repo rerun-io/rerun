@@ -403,12 +403,13 @@ impl ViewBuilder {
             };
 
         // Finally, apply a viewport transformation to the projection.
-        let projection_from_view =
-            config.viewport_transformation.to_ndc_transform() * projection_from_view;
-        let pixel_scale_factor = config.viewport_transformation.scale().min_element();
-        // TODO: this seems super weird.
+        let ndc_scale_and_translation = config
+            .viewport_transformation
+            .to_ndc_scale_and_translation();
+        let projection_from_view = ndc_scale_and_translation * projection_from_view;
+        // Need to take into account that a smaller portion of the world scale is visible now.
         let pixel_world_size_from_camera_distance =
-            pixel_world_size_from_camera_distance / pixel_scale_factor;
+            pixel_world_size_from_camera_distance / ndc_scale_and_translation.col(0).x;
 
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.

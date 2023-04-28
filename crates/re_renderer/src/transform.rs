@@ -52,7 +52,7 @@ impl RectTransform {
     ///
     /// Note only the relation of the rectangles in `RectTransform` is important.
     /// Scaling or moving both rectangles by the same amount does not change the result.
-    pub fn to_ndc_transform(&self) -> glam::Mat4 {
+    pub fn to_ndc_scale_and_translation(&self) -> glam::Mat4 {
         // It's easier to think in texcoord space, and then transform to NDC.
         // This texcoord rect specifies the portion of the screen that should become the entire range of the NDC screen.
         let texcoord_rect = RectF32 {

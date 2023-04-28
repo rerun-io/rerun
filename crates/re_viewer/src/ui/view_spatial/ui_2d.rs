@@ -153,7 +153,8 @@ impl View2DState {
                         // Moving the center in the direction of the desired shift
                         center += shift_in_space;
                     }
-                    scale = new_scale;
+                    // Don't show less than one horizontal scene unit in the entire screen.
+                    scale = new_scale.at_most(available_size.x);
                     accepting_scroll = false;
                 }
 
