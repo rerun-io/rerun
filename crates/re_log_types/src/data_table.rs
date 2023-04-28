@@ -435,12 +435,6 @@ impl DataTable {
             }
         }
 
-        if col_row_id.len() > 1 {
-            re_log::warn_once!(
-                "batching features are not ready for use, use single-row data tables instead!"
-            );
-        }
-
         Self {
             table_id,
             col_row_id,
