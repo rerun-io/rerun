@@ -10,10 +10,10 @@ use crate::sink::{LogSink, MemorySinkStorage};
 
 // ---
 
-/// Errors that can occur when creating/manipulating a [`DataTableBatcher`].
+/// Errors that can occur when creating/manipulating a [`RecordingStream`].
 #[derive(thiserror::Error, Debug)]
 pub enum RecordingStreamError {
-    /// Error spawning one of the background threads.
+    /// Error within the underlying table batcher.
     #[error("Failed to spawn the underlying batcher: {0}")]
     DataTableBatcher(#[from] DataTableBatcherError),
 
@@ -138,7 +138,8 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("my_app").buffered();
+    /// let rec_stream = re_sdk::RecordingStreamBuilder::new("my_app").buffered()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
         let (enabled, recording_info, batcher_config) = self.finalize();
@@ -160,7 +161,8 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let (rec_stream, storage) = re_sdk::RecordingStreamBuilder::new("my_app").memory().unwrap();
+    /// let (rec_stream, storage) = re_sdk::RecordingStreamBuilder::new("my_app").memory()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn memory(
         self,
@@ -173,7 +175,7 @@ impl RecordingStreamBuilder {
             RecordingStream::new(recording_info, batcher_config, Box::new(sink))
                 .map(|rec_stream| (rec_stream, storage))
         } else {
-            re_log::debug!("Rerun disabled - call to memory_recording() ignored");
+            re_log::debug!("Rerun disabled - call to memory() ignored");
             Ok((RecordingStream::disabled(), Default::default()))
         }
     }
@@ -185,7 +187,8 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec_stream = re_sdk::RecordingStreamBuilder::new("my_app")
-    ///     .connect(re_sdk::default_server_addr());
+    ///     .connect(re_sdk::default_server_addr())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect(self, addr: std::net::SocketAddr) -> RecordingStreamResult<RecordingStream> {
         let (enabled, recording_info, batcher_config) = self.finalize();
@@ -229,7 +232,8 @@ impl RecordingStreamBuilder {
         }
     }
 
-    /// Returns whether or not logging is enabled, plus a [`RecordingInfo`].
+    /// Returns whether or not logging is enabled, a [`RecordingInfo`] and the associated batcher
+    /// configuration.
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
@@ -277,10 +281,12 @@ impl RecordingStreamBuilder {
 ///
 /// Data is logged into Rerun via [`LogSink`]s.
 ///
-/// The underlying [`LogSink`] for a [`RecordingStream`] can be changed at any point during its
+/// The underlying [`LogSink`] of a [`RecordingStream`] can be changed at any point during its
 /// lifetime by calling [`RecordingStream::set_sink`] or one of the higher level helpers
-/// ([`RecordingStream::connect`], [`RecordingStream::memory_recording`],
+/// ([`RecordingStream::connect`], [`RecordingStream::memory`],
 /// [`RecordingStream::save`], [`RecordingStream::disconnect`]).
+///
+/// See [`RecordingStream::set_sink`] for more information.
 ///
 /// ## Multithreading and ordering
 ///
@@ -409,7 +415,7 @@ impl RecordingStream {
     /// You can find sinks in [`crate::sink`].
     ///
     /// See also: [`RecordingStreamBuilder`].
-    #[must_use = "Recording will get closed automatically when this object is dropped"]
+    #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         info: RecordingInfo,
         batcher_config: DataTableBatcherConfig,
@@ -665,11 +671,6 @@ impl RecordingStream {
 
         // 2. Receive pending tables from the batcher's channel
         this.cmds_tx.send(Command::PopPendingTables).ok();
-
-        // 3. Wait for all tables to have been forwarded
-        let (cmd, oneshot) = Command::flush();
-        this.cmds_tx.send(cmd).ok();
-        oneshot.recv().ok();
     }
 
     /// Initiates a flush the batching pipeline and waits for it to propagate.
@@ -684,11 +685,7 @@ impl RecordingStream {
         // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
         // are safe.
 
-        // 1. Flush the batcher down the table channel
-        this.batcher.flush_blocking();
-
-        // 2. Receive pending tables from the batcher's channel
-        this.cmds_tx.send(Command::PopPendingTables).ok();
+        self.flush_async();
 
         // 3. Wait for all tables to have been forwarded
         let (cmd, oneshot) = Command::flush();

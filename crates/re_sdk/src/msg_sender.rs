@@ -218,7 +218,6 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    // TODO: wtf is this a DataTableError?
     pub fn send(self, rec_stream: &RecordingStream) -> Result<(), DataTableError> {
         if !rec_stream.is_enabled() {
             return Ok(()); // silently drop the message
