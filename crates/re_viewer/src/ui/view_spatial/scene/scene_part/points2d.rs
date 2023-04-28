@@ -110,6 +110,10 @@ impl Points2DPart {
                 .primitives
                 .points
                 .batch("2d points")
+                .flags(
+                    re_renderer::renderer::PointCloudBatchFlags::DRAW_AS_CIRCLES
+                        | re_renderer::renderer::PointCloudBatchFlags::ENABLE_SHADING,
+                )
                 .world_from_obj(world_from_obj)
                 .outline_mask_ids(entity_highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));

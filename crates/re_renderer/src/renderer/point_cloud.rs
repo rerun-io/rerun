@@ -49,6 +49,9 @@ bitflags! {
     pub struct PointCloudBatchFlags : u32 {
         /// If true, we shade all points in the batch like spheres.
         const ENABLE_SHADING = 0b0001;
+
+        /// If true, draw circles instead of spheres.
+        const DRAW_AS_CIRCLES = 0b0010;
     }
 }
 
