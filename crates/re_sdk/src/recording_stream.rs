@@ -13,6 +13,10 @@ use crate::sink::{LogSink, MemorySinkStorage};
 /// Errors that can occur when creating/manipulating a [`RecordingStream`].
 #[derive(thiserror::Error, Debug)]
 pub enum RecordingStreamError {
+    /// Error within the underlying file sink.
+    #[error("Failed to create the underlying file sink: {0}")]
+    FileSink(#[from] re_log_encoding::FileSinkError),
+
     /// Error within the underlying table batcher.
     #[error("Failed to spawn the underlying batcher: {0}")]
     DataTableBatcher(#[from] DataTableBatcherError),
@@ -224,7 +228,7 @@ impl RecordingStreamBuilder {
             RecordingStream::new(
                 recording_info,
                 batcher_config,
-                Box::new(crate::sink::FileSink::new(path).unwrap()), // TODO
+                Box::new(crate::sink::FileSink::new(path)?),
             )
         } else {
             re_log::debug!("Rerun disabled - call to save() ignored");
