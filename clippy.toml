@@ -2,6 +2,7 @@
 
 msrv = "1.67"
 
+allow-unwrap-in-tests = true
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_macros
 disallowed-macros = [

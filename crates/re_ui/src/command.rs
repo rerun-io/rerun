@@ -43,6 +43,7 @@ pub enum Command {
 
     // Playback:
     PlaybackTogglePlayPause,
+    PlaybackFollow,
     PlaybackStepBack,
     PlaybackStepForward,
     PlaybackRestart,
@@ -117,6 +118,7 @@ impl Command {
             Command::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")
             }
+            Command::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
             Command::PlaybackStepBack => (
                 "Step time back",
                 "Move the time marker back to the previous point in time with any data",
@@ -183,6 +185,7 @@ impl Command {
             Command::ToggleCommandPalette => Some(cmd(Key::P)),
 
             Command::PlaybackTogglePlayPause => Some(key(Key::Space)),
+            Command::PlaybackFollow => Some(cmd(Key::ArrowRight)),
             Command::PlaybackStepBack => Some(key(Key::ArrowLeft)),
             Command::PlaybackStepForward => Some(key(Key::ArrowRight)),
             Command::PlaybackRestart => Some(cmd(Key::ArrowLeft)),

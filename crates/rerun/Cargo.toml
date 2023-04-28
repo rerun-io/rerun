@@ -40,6 +40,7 @@ global_session = ["re_sdk?/global_session"]
 image = ["re_log_types/image"]
 
 ## Support spawning a native viewer.
+## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.

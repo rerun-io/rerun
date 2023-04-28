@@ -75,6 +75,7 @@ impl SceneTimeSeries {
         self.load_scalars(ctx, query);
     }
 
+    #[inline(never)] // Better callstacks on crashes
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
@@ -106,6 +107,8 @@ impl SceneTimeSeries {
             );
 
             for (time, ent_view) in ent_views {
+                let Some(time) = time else { continue; }; // scalars cannot be timeless
+
                 match ent_view.visit5(
                     |_instance,
                      scalar: component_types::Scalar,
@@ -121,7 +124,7 @@ impl SceneTimeSeries {
                         const DEFAULT_RADIUS: f32 = 0.75;
 
                         points.push(PlotPoint {
-                            time: time.unwrap().as_i64(), // scalars cannot be timeless
+                            time: time.as_i64(),
                             value: scalar.into(),
                             attrs: PlotPointAttrs {
                                 label,
@@ -148,10 +151,10 @@ impl SceneTimeSeries {
             // If all points within a line share the label (and it isn't `None`), then we use it
             // as the whole line label for the plot legend.
             // Otherwise, we just use the entity path as-is.
-            let same_label = |points: &[PlotPoint]| {
-                let label = points[0].attrs.label.as_ref();
-                (label.is_some() && points.iter().all(|p| p.attrs.label.as_ref() == label))
-                    .then(|| label.cloned().unwrap())
+            let same_label = |points: &[PlotPoint]| -> Option<String> {
+                let label = points[0].attrs.label.as_ref()?;
+                (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
+                    .then(|| label.clone())
             };
             let line_label = same_label(&points).unwrap_or_else(|| entity_path.to_string());
 
@@ -163,6 +166,7 @@ impl SceneTimeSeries {
     // segments.
     // A line segment is a continuous run of points with identical attributes: each time
     // we notice a change in attributes, we need a new line segment.
+    #[inline(never)] // Better callstacks on crashes
     fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
         crate::profile_function!();
 
