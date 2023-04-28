@@ -8,10 +8,10 @@
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "files.exclude": {
-        "env/**": true,
-        "target/**": true,
         "target_ra/**": true,
         "target_wasm/**": true,
+        "target/**": true,
+        "venv/**": true,
     },
     "files.autoGuessEncoding": true,
     "python.formatting.provider": "black",
