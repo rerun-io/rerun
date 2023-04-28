@@ -764,6 +764,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clock"
+version = "0.6.0-alpha.0"
+dependencies = [
+ "anyhow",
+ "clap 4.1.4",
+ "glam",
+ "rerun",
+]
+
+[[package]]
 name = "cocoa"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
