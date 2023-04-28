@@ -533,6 +533,9 @@ impl DataCell {
             inner.compute_size_bytes();
             return true;
         }
+
+        re_log::error_once!("cell size could _not_ be computed");
+
         false
     }
 }
