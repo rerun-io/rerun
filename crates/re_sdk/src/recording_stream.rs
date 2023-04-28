@@ -745,8 +745,160 @@ impl RecordingStream {
 // TODO: some regression tests and we're all good
 // TODO: an example would probably be nice too
 
-#[test]
-fn recording_stream_impl_send_sync() {
-    fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<RecordingStream>();
+#[cfg(test)]
+mod tests {
+    use re_log_types::RowId;
+
+    use super::*;
+
+    #[test]
+    fn impl_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<RecordingStream>();
+    }
+
+    #[test]
+    fn never_flush() {
+        let rec_stream = RecordingStreamBuilder::new("never_flush")
+            .enabled(true)
+            .batcher_config(DataTableBatcherConfig::NEVER)
+            .buffered()
+            .unwrap();
+
+        let rec_info = rec_stream.recording_info().cloned().unwrap();
+
+        let mut table = DataTable::example(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec_stream.record_row(row);
+        }
+
+        let storage = rec_stream.memory();
+        let mut msgs = {
+            let mut msgs = storage.take();
+            msgs.reverse();
+            msgs
+        };
+
+        // First message should be a set_recording_info resulting from the original sink swap to
+        // buffered mode.
+        match msgs.pop().unwrap() {
+            LogMsg::BeginRecordingMsg(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(rec_info, msg.info);
+            }
+            _ => panic!("expected BeginRecordingMsg"),
+        }
+
+        // Second message should be a set_recording_info resulting from the later sink swap from
+        // buffered mode into in-memory mode.
+        // This arrives _before_ the data itself since we're using manual flushing.
+        match msgs.pop().unwrap() {
+            LogMsg::BeginRecordingMsg(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(rec_info, msg.info);
+            }
+            _ => panic!("expected BeginRecordingMsg"),
+        }
+
+        // Third message is the batched table itself, which was sent as a result of the implicit
+        // flush when swapping the underlying sink from buffered to in-memory.
+        match msgs.pop().unwrap() {
+            LogMsg::ArrowMsg(rid, msg) => {
+                assert_eq!(rec_info.recording_id, rid);
+
+                let mut got = DataTable::from_arrow_msg(&msg).unwrap();
+                // TODO(1760): we shouldn't have to (re)do this!
+                got.compute_all_size_bytes();
+                // NOTE: Override the resulting table's ID so they can be compared.
+                got.table_id = table.table_id;
+
+                similar_asserts::assert_eq!(table, got);
+            }
+            _ => panic!("expected BeginRecordingMsg"),
+        }
+
+        // That's all.
+        assert!(msgs.pop().is_none());
+    }
+
+    #[test]
+    fn always_flush() {
+        let rec_stream = RecordingStreamBuilder::new("always_flush")
+            .enabled(true)
+            .batcher_config(DataTableBatcherConfig::ALWAYS)
+            .buffered()
+            .unwrap();
+
+        let rec_info = rec_stream.recording_info().cloned().unwrap();
+
+        let mut table = DataTable::example(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec_stream.record_row(row);
+        }
+
+        let storage = rec_stream.memory();
+        let mut msgs = {
+            let mut msgs = storage.take();
+            msgs.reverse();
+            msgs
+        };
+
+        // First message should be a set_recording_info resulting from the original sink swap to
+        // buffered mode.
+        match msgs.pop().unwrap() {
+            LogMsg::BeginRecordingMsg(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(rec_info, msg.info);
+            }
+            _ => panic!("expected BeginRecordingMsg"),
+        }
+
+        // Second message should be a set_recording_info resulting from the later sink swap from
+        // buffered mode into in-memory mode.
+        // This arrives _before_ the data itself since we're using manual flushing.
+        match msgs.pop().unwrap() {
+            LogMsg::BeginRecordingMsg(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(rec_info, msg.info);
+            }
+            _ => panic!("expected BeginRecordingMsg"),
+        }
+
+        let mut rows = {
+            let mut rows: Vec<_> = table.to_rows().collect();
+            rows.reverse();
+            rows
+        };
+
+        let mut assert_next_row = || {
+            match msgs.pop().unwrap() {
+                LogMsg::ArrowMsg(rid, msg) => {
+                    assert_eq!(rec_info.recording_id, rid);
+
+                    let mut got = DataTable::from_arrow_msg(&msg).unwrap();
+                    // TODO(1760): we shouldn't have to (re)do this!
+                    got.compute_all_size_bytes();
+                    // NOTE: Override the resulting table's ID so they can be compared.
+                    got.table_id = table.table_id;
+
+                    let expected = DataTable::from_rows(got.table_id, [rows.pop().unwrap()]);
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+                _ => panic!("expected BeginRecordingMsg"),
+            }
+        };
+
+        // 3rd, 4th and 5th messages are all the single-row batched tables themselves, which were
+        // sent as a result of the implicit flush when swapping the underlying sink from buffered
+        // to in-memory.
+        assert_next_row();
+        assert_next_row();
+        assert_next_row();
+
+        // That's all.
+        assert!(msgs.pop().is_none());
+    }
 }

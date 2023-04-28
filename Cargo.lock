@@ -4084,6 +4084,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
+ "similar-asserts",
  "thiserror",
 ]
 
