@@ -7,12 +7,7 @@ use crate::{
     Component, EntityPath, RecordingStream, SerializableComponent,
 };
 
-// TODO(#1619): Rust SDK batching
-
 // ---
-
-// TODO: effectively this is nothing but a rowbuilder? except sometimes it creates table due to
-// limitations..
 
 /// Errors that can occur when constructing or sending messages
 /// using [`MsgSender`].
@@ -50,12 +45,7 @@ pub enum MsgSenderError {
 ///         .map_err(Into::into)
 /// }
 /// ```
-// TODO(#1619): this whole thing needs to be rethought to incorporate batching and datatables.
 pub struct MsgSender {
-    // TODO
-    // TODO(cmc): At the moment, a `MsgBundle` can only contain data for a single entity, so
-    // this must be known as soon as we spawn the builder.
-    // This won't be true anymore once batch insertions land.
     entity_path: EntityPath,
 
     /// All the different timestamps for this message.
@@ -167,8 +157,6 @@ impl MsgSender {
     /// The SDK does not yet support batch insertions, which are semantically identical to adding
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
-    //
-    // TODO(#589): batch insertions
     pub fn with_component<'a, C: SerializableComponent>(
         mut self,
         data: impl IntoIterator<Item = &'a C>,
@@ -201,8 +189,6 @@ impl MsgSender {
     /// The SDK does not yet support batch insertions, which are semantically identical to adding
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
-    //
-    // TODO(#589): batch insertions
     pub fn with_splat<C: SerializableComponent>(mut self, data: C) -> Result<Self, MsgSenderError> {
         if C::name() == InstanceKey::name() {
             return Err(MsgSenderError::SplattedInstanceKeys);
@@ -232,7 +218,6 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    // TODO: wtf is this a DataTableError?
     pub fn send(self, rec_stream: &RecordingStream) -> Result<(), DataTableError> {
         if !rec_stream.is_enabled() {
             return Ok(()); // silently drop the message

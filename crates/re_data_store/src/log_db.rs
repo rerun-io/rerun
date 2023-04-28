@@ -61,7 +61,7 @@ impl EntityDb {
         let mut table = DataTable::from_arrow_msg(msg)?;
         table.compute_all_size_bytes();
 
-        // TODO(#1619): batch all of this
+        // TODO(cmc): batch all of this
         for row in table.to_rows() {
             self.try_add_data_row(&row)?;
         }

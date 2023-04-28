@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use crate::{
@@ -155,12 +155,6 @@ impl TableId {
     #[inline]
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
-    }
-
-    /// Temporary utility while we transition to batching. See #1619.
-    #[doc(hidden)]
-    pub fn into_row_id(self) -> RowId {
-        RowId(self.0)
     }
 }
 
@@ -353,7 +347,7 @@ pub struct DataTable {
     ///
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
-    pub columns: IntMap<ComponentName, DataCellColumn>,
+    pub columns: BTreeMap<ComponentName, DataCellColumn>,
 }
 
 impl DataTable {
@@ -424,7 +418,7 @@ impl DataTable {
         }
 
         // Pre-allocate all columns (one per component).
-        let mut columns = IntMap::default();
+        let mut columns = BTreeMap::default();
         for component in components {
             columns.insert(
                 component,
@@ -439,12 +433,6 @@ impl DataTable {
                 // NOTE: unwrap cannot fail, all arrays pre-allocated above.
                 columns.get_mut(&component).unwrap()[i] = Some(cell);
             }
-        }
-
-        if col_row_id.len() > 1 {
-            re_log::warn_once!(
-                "batching features are not ready for use, use single-row data tables instead!"
-            );
         }
 
         Self {
@@ -1128,5 +1116,45 @@ impl DataTable {
         table.compute_all_size_bytes();
 
         table
+    }
+}
+
+#[test]
+fn data_table_sizes() {
+    use crate::{component_types::InstanceKey, Component as _};
+    use arrow2::array::UInt64Array;
+
+    {
+        let mut cell = DataCell::from_arrow(
+            InstanceKey::name(),
+            UInt64Array::from_vec(vec![1, 2, 3]).boxed(),
+        );
+        cell.compute_size_bytes();
+
+        let row = DataRow::from_cells1(RowId::random(), "a/b/c", TimePoint::default(), 3, cell);
+
+        let table = DataTable::from_rows(TableId::random(), [row]);
+        assert_eq!(244, table.heap_size_bytes());
+
+        let mut table = DataTable::from_arrow_msg(&table.to_arrow_msg().unwrap()).unwrap();
+        table.compute_all_size_bytes();
+        assert_eq!(244, table.heap_size_bytes());
+    }
+
+    {
+        let mut cell = DataCell::from_arrow(
+            InstanceKey::name(),
+            UInt64Array::from_vec(vec![1, 2, 3]).boxed(),
+        );
+        cell.compute_size_bytes();
+
+        let row = DataRow::from_cells1(RowId::random(), "a/b/c", TimePoint::default(), 3, cell);
+
+        let table = DataTable::from_rows(TableId::random(), [row.clone(), row]);
+        assert_eq!(424, table.heap_size_bytes());
+
+        let mut table = DataTable::from_arrow_msg(&table.to_arrow_msg().unwrap()).unwrap();
+        table.compute_all_size_bytes();
+        assert_eq!(424, table.heap_size_bytes());
     }
 }

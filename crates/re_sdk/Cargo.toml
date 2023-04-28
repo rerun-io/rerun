@@ -53,6 +53,7 @@ arrow2_convert.workspace = true
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"
+similar-asserts = "1.4.2"
 
 
 [build-dependencies]

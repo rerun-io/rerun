@@ -11,9 +11,6 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrowMsg {
     /// Unique identifier for the [`crate::DataTable`] in this message.
-    ///
-    /// NOTE(#1619): While we're in the process of transitioning towards end-to-end batching, the
-    /// `table_id` is always the same as the `row_id` as the first and only row.
     pub table_id: TableId,
 
     /// The maximum values for all timelines across the entire batch of data.
