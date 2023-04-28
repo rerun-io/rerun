@@ -565,6 +565,10 @@ pub fn create_labels(
                 (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
             }
             UiLabelTarget::Position3D(pos) => {
+                // TODO(#1640): 3D labels are not visible in 2D for now.
+                if nav_mode == SpatialNavigationMode::TwoD {
+                    continue;
+                }
                 let pos_in_ui = ui_from_world_3d * pos.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
                     continue; // behind camera
