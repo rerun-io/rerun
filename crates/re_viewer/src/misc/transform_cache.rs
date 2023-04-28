@@ -282,7 +282,8 @@ fn inverse_transform_at(
                     *encountered_pinhole = true;
 
                     // TODO(andreas): If we don't have a resolution we don't know the FOV ergo we don't know how to project. Unclear what to do.
-                    if let Some(resolution) = pinhole.resolution() {
+                    if let (Some(resolution), Some(fov_y)) = (pinhole.resolution(), pinhole.fov_y())
+                    {
                         let translation = pinhole.principal_point().extend(-100.0); // Large Y offset so this is in front of all 2d that came so far. TODO(andreas): Find better solution
                         Ok(Some(
                             glam::Mat4::from_scale_rotation_translation(
@@ -291,7 +292,7 @@ fn inverse_transform_at(
                                 glam::Quat::IDENTITY,
                                 translation,
                             ) * glam::Mat4::perspective_infinite_lh(
-                                pinhole.fov_y().unwrap(),
+                                fov_y,
                                 pinhole.aspect_ratio().unwrap_or(1.0),
                                 0.0,
                             ),

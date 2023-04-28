@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 //! This crate is to be used from `build.rs` build scripts.
 //!
 //! Use this crate together with the `re_build_info` crate.

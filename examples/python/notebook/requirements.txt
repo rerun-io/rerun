@@ -1,2 +1,3 @@
+ipython<=8.12 # ipython 8.13 or greater doesn't work with python 3.8
 jupyter
 rerun-sdk
