@@ -570,7 +570,12 @@ impl eframe::App for App {
             frame_start.elapsed().as_secs_f32(),
         );
 
-        blueprint.process_updates(&blueprint_snapshot);
+        let blueprint_db = self
+            .log_dbs
+            .entry(self.state.selected_blueprint_id)
+            .or_default();
+
+        blueprint.process_updates(&blueprint_snapshot, blueprint_db);
     }
 }
 

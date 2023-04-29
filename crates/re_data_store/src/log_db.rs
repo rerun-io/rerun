@@ -69,7 +69,8 @@ impl EntityDb {
         Ok(())
     }
 
-    fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+    // TODO(jleibs): If this shouldn't be public, chain together other setters
+    pub fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
         for (&timeline, &time_int) in row.timepoint().iter() {
             self.times_per_timeline.insert(timeline, time_int);
         }
