@@ -62,7 +62,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
     pub nav_mode: EditableAutoValue<SpatialNavigationMode>,
@@ -90,6 +90,23 @@ pub struct ViewSpatialState {
 
     /// Size of automatically sized objects. None if it wasn't configured.
     auto_size_config: re_renderer::AutoSizeConfig,
+}
+
+// TODO(jleibs): This render-related state probably doesn't belong in the blueprint
+// in the blueprint in the first place. But since serde skips it we also have to ignore it.
+// or else we re-store state on every frame. Either way the fact that we don't get it
+// back out of the store is going to cause problems.
+impl PartialEq for ViewSpatialState {
+    fn eq(&self, other: &Self) -> bool {
+        self.nav_mode == other.nav_mode
+            //&& self.scene_bbox_accum == other.scene_bbox_accum
+            //&& self.scene_bbox == other.scene_bbox_accum
+            //&& self.scene_num_primitives == other.scene_num_primitives
+            //&& self.previous_picking_result == other.previous_picking_result
+            && self.state_2d == other.state_2d
+            && self.state_3d == other.state_3d
+            && self.auto_size_config == other.auto_size_config
+    }
 }
 
 impl Default for ViewSpatialState {
