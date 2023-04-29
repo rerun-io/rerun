@@ -11,7 +11,7 @@ use super::{SceneText, TextEntry};
 
 // --- Main view ---
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ViewTextState {
     /// Keeps track of the latest time selection made by the user.
@@ -117,7 +117,7 @@ pub(crate) fn view_text(
 
 // TODO(cmc): implement "body contains <value>" filter.
 // TODO(cmc): beyond filters, it'd be nice to be able to swap columns at some point.
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ViewTextFilters {
     // Column filters: which columns should be visible?
     // Timelines are special: each one has a dedicated column.

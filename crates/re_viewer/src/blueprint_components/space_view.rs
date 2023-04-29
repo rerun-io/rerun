@@ -4,7 +4,7 @@ use re_log_types::{serde_field::SerdeField, Component};
 
 use crate::ui::SpaceView;
 
-#[derive(Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct SpaceViewComponent {
     #[arrow_field(type = "SerdeField<SpaceView>")]
     pub space_view: SpaceView,
@@ -17,6 +17,12 @@ impl Component for SpaceViewComponent {
     }
 }
 
+impl std::fmt::Debug for SpaceViewComponent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SpaceViewComponent")
+    }
+}
+
 #[test]
 fn test_spaceview() {
     use crate::ui::ViewCategory;
@@ -26,8 +32,5 @@ fn test_spaceview() {
     let data = [SpaceViewComponent { space_view }];
     let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();
     let ret: Vec<SpaceViewComponent> = array.try_into_collection().unwrap();
-    assert_eq!(
-        data[0].space_view.space_path,
-        ret.as_slice()[0].space_view.space_path
-    );
+    assert_eq!(&data, ret.as_slice());
 }

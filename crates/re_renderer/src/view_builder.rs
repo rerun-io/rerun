@@ -132,7 +132,7 @@ pub enum Projection {
 }
 
 /// How [`Size::AUTO`] is interpreted.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct AutoSizeConfig {
     /// Determines the point radius when [`crate::Size::AUTO`].

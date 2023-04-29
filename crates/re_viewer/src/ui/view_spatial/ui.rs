@@ -62,7 +62,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
     pub nav_mode: EditableAutoValue<SpatialNavigationMode>,

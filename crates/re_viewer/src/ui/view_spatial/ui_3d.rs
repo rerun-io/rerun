@@ -28,7 +28,7 @@ use super::{
 
 // ---
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
@@ -184,7 +184,7 @@ impl View3DState {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 struct EyeInterpolation {
     elapsed_time: f32,
     target_time: f32,
@@ -205,7 +205,7 @@ impl EyeInterpolation {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct SpaceSpecs {
     pub up: Option<glam::Vec3>,
     pub right: Option<glam::Vec3>,

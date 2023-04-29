@@ -21,7 +21,7 @@ pub(crate) const HELP_TEXT: &str = "Pan by dragging, or scroll (+ shift = horizo
     Reset view with double-click.\n\
     Right click to move the time cursor to the current position.";
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ViewTimeSeriesState;
 
 pub(crate) fn view_time_series(

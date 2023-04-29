@@ -22,7 +22,7 @@ use crate::{
 
 // ---
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View2DState {
     /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
@@ -30,7 +30,7 @@ pub struct View2DState {
     zoom: ZoomState2D,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
 pub enum ZoomState2D {
     #[default]

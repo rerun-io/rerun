@@ -16,7 +16,7 @@ pub(crate) const HELP_TEXT: &str = "\
     Box zooming: Right click to zoom in and zoom out using a selection.\n\
     Reset view with double-click.";
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct BarChartState;
 
 pub(crate) fn view_bar_chart(

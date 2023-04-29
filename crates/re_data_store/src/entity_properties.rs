@@ -10,7 +10,7 @@ use crate::EditableAutoValue;
 
 /// Properties for a collection of entities.
 #[cfg(feature = "serde")]
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPropertyMap {
     props: nohash_hasher::IntMap<EntityPath, EntityProperties>,
