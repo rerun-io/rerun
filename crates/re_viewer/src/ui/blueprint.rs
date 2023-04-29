@@ -77,6 +77,24 @@ impl Blueprint {
         ret
     }
 
+    pub fn process_updates(&self, snapshot: &Self) {
+        if self.blueprint_panel_expanded != snapshot.blueprint_panel_expanded {
+            re_log::info!(
+                "blueprint_panel_expanded: {}",
+                self.blueprint_panel_expanded
+            );
+        }
+        if self.selection_panel_expanded != snapshot.selection_panel_expanded {
+            re_log::info!(
+                "selection_panel_expanded: {}",
+                self.selection_panel_expanded
+            );
+        }
+        if self.time_panel_expanded != snapshot.time_panel_expanded {
+            re_log::info!("time_panel_expanded: {}", self.time_panel_expanded);
+        }
+    }
+
     /// Prefer this to [`Blueprint::default`] to get better defaults based on screen size.
     pub fn new(egui_ctx: &egui::Context) -> Self {
         let screen_size = egui_ctx.screen_rect().size();
