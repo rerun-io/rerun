@@ -90,7 +90,7 @@ image = { workspace = true, optional = true, default-features = false, features 
 ] }
 macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
-rmp-serde = {version = "1.1", optional= true}
+rmp-serde = { version = "1.1", optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 serde_bytes = { version = "0.11", optional = true }
 
