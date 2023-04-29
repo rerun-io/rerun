@@ -1,13 +1,14 @@
 use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
-use re_data_store::{EntityPath, EntityPropertyMap};
+use re_data_store::{query_latest_single, EntityPath, EntityPropertyMap};
+use re_log_types::Pinhole;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
 use super::{
     eye::Eye,
     ui::{create_labels, picking, screenshot_context_menu},
-    SpaceCamera3D, SpatialNavigationMode, ViewSpatialState,
+    SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
     gpu_bridge,
@@ -306,7 +307,18 @@ fn view_2d_scrollable(
         fov_y: None,
     };
 
-    let space_camera = scene.space_cameras.iter().find(|c| &c.ent_path == space);
+    // Query for a pinhole camera at the space view's root that we should take over.
+    // Note that we can't rely on the camera being part of scene.space_cameras since that requires
+    // the camera to be added to the scene!
+    let pinhole = query_latest_single(
+        &ctx.log_db.entity_db,
+        space,
+        &ctx.rec_cfg.time_ctrl.current_query(),
+    )
+    .and_then(|transform| match transform {
+        re_log_types::Transform::Pinhole(pinhole) => Some(pinhole),
+        _ => None,
+    });
 
     let Ok(target_config) = setup_target_config(
         &painter,
@@ -316,7 +328,7 @@ fn view_2d_scrollable(
         scene
             .primitives
             .any_outlines,
-        space_camera,
+            pinhole,
     ) else {
         return response;
     };
@@ -403,30 +415,28 @@ fn setup_target_config(
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
-    space_camera: Option<&SpaceCamera3D>,
+    pinhole: Option<Pinhole>,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
+    // For simplicity (and to reduce surprises!) we always render with a pinhole camera.
+    // Make up a default pinhole camera if we don't have one placing it in a way to look at the entire space.
     let default_pinhole_image_plane_size =
         glam::vec2(space_from_ui.to().width(), space_from_ui.to().height());
     let default_focal_length_in_pixels = default_pinhole_image_plane_size.x;
-
-    // TODO: don't use space camera but do a query.
-    let pinhole = space_camera
-        .and_then(|c| c.pinhole)
-        .unwrap_or(re_log_types::Pinhole {
-            image_from_cam: glam::Mat3::from_cols(
-                glam::vec3(default_focal_length_in_pixels, 0.0, 0.0),
-                glam::vec3(0.0, default_focal_length_in_pixels, 0.0),
-                (default_pinhole_image_plane_size * 0.5 + glam::Vec2::splat(0.5)).extend(1.0),
-            )
-            .into(),
-            // Look at the entire space by default.
-            resolution: Some(default_pinhole_image_plane_size.into()),
-        });
+    let pinhole = pinhole.unwrap_or(re_log_types::Pinhole {
+        image_from_cam: glam::Mat3::from_cols(
+            glam::vec3(default_focal_length_in_pixels, 0.0, 0.0),
+            glam::vec3(0.0, default_focal_length_in_pixels, 0.0),
+            (default_pinhole_image_plane_size * 0.5 + glam::Vec2::splat(0.5)).extend(1.0),
+        )
+        .into(),
+        // Look at the entire space by default.
+        resolution: Some(default_pinhole_image_plane_size.into()),
+    });
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
