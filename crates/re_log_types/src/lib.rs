@@ -23,6 +23,9 @@ pub mod time_point;
 mod time_range;
 mod time_real;
 
+#[cfg(feature = "serde")]
+pub mod serde_field;
+
 pub mod external {
     pub use arrow2;
     pub use arrow2_convert;

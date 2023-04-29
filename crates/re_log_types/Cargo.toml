@@ -34,6 +34,7 @@ image = ["dep:ecolor", "dep:image"]
 
 ## Enable (de)serialization using serde.
 serde = [
+  "dep:rmp-serde",
   "dep:serde",
   "dep:serde_bytes",
   "half/serde",
@@ -89,6 +90,7 @@ image = { workspace = true, optional = true, default-features = false, features 
 ] }
 macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
+rmp-serde = {version = "1.1", optional= true}
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 serde_bytes = { version = "0.11", optional = true }
 
@@ -98,4 +100,4 @@ puffin.workspace = true
 
 
 [dev-dependencies]
-rmp-serde = "1.1"
+similar-asserts = "1.4.2"
