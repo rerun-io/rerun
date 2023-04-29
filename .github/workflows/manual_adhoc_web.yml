@@ -1,0 +1,48 @@
+name: Run an adhoc web build
+
+on:
+  workflow_dispatch:
+    inputs:
+      EXTRA_FLAGS:
+        type: string
+        description: 'Extra flags to pass to `re_build_web_viewer`'
+        required: false
+        default: ''
+      ADHOC_NAME:
+        type: string
+        description: 'Name of the stored adhoc build'
+        required: true
+
+jobs:
+
+  min-test-wheel:
+    name: 'Minimum Test Wheel'
+    # The upload-web job uses the min-test-wheel to get the RRD
+    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    with:
+      CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
+      PLATFORM: linux
+      MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
+      WHEEL_ARTIFACT_NAME: ''
+      RRD_ARTIFACT_NAME: linux-rrd-fast
+    secrets: inherit
+
+  build-web-adhoc:
+    name: 'Build Web'
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
+      EXTRA_FLAGS: ${{ github.event.inputs.EXTRA_FLAGS }}
+    secrets: inherit
+
+  upload-web:
+    name: 'Upload Web'
+    needs: [min-test-wheel, build-web-adhoc]
+    uses: ./.github/workflows/reusable_upload_web.yml
+    with:
+      CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
+      MARK_PRERELEASE_FOR_MAINLINE: false
+      MARK_TAGGED_VERSION: false
+      ADHOC_NAME: ${{ github.event.inputs.ADHOC_NAME }}
+      RRD_ARTIFACT_NAME: linux-rrd-fast
+    secrets: inherit
