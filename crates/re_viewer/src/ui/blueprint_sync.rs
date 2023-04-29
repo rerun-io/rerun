@@ -92,13 +92,14 @@ pub fn store_space_view(blueprint_db: &mut re_data_store::LogDb, space_view: &Sp
         space_view: space_view.clone(),
     };
 
-    let row = DataRow::from_cells1(
+    let mut row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         timepoint,
         1,
         [component].as_slice(),
     );
+    row.compute_all_size_bytes();
 
     // TODO(jleibs) Is this safe? Get rid of unwrap
     blueprint_db.entity_db.try_add_data_row(&row).unwrap();
@@ -116,7 +117,8 @@ pub fn clear_space_view(blueprint_db: &mut re_data_store::LogDb, space_view: &Sp
     let cell =
         DataCell::from_arrow_empty(SpaceViewComponent::name(), SpaceViewComponent::data_type());
 
-    let row = DataRow::from_cells1(RowId::random(), entity_path, timepoint, 0, cell);
+    let mut row = DataRow::from_cells1(RowId::random(), entity_path, timepoint, 0, cell);
+    row.compute_all_size_bytes();
 
     // TODO(jleibs) Is this safe? Get rid of unwrap
     blueprint_db.entity_db.try_add_data_row(&row).unwrap();
@@ -134,13 +136,14 @@ pub fn store_viewport(blueprint_db: &mut re_data_store::LogDb, viewport: &Viewpo
         has_been_user_edited: viewport.has_been_user_edited,
     };
 
-    let row = DataRow::from_cells1(
+    let mut row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         timepoint,
         1,
         [component].as_slice(),
     );
+    row.compute_all_size_bytes();
 
     // TODO(jleibs) Is this safe? Get rid of unwrap
     blueprint_db.entity_db.try_add_data_row(&row).unwrap();

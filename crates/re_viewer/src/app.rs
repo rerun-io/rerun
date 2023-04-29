@@ -716,7 +716,7 @@ impl App {
                             true
                         }
                         re_log_types::RecordingType::Blueprint => {
-                            re_log::info!("Incoming Blueprint!");
+                            re_log::debug!("Opening a new blueprint: {:?}", msg.info);
                             self.state.selected_blueprint_id = msg.info.recording_id;
                             true
                         }
