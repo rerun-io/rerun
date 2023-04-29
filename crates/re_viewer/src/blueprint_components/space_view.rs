@@ -10,6 +10,11 @@ pub struct SpaceViewComponent {
     pub space_view: SpaceView,
 }
 
+impl SpaceViewComponent {
+    // TODO(jleibs): Can we make this an EntityPath instead?
+    pub const SPACEVIEW_PREFIX: &str = "space_view";
+}
+
 impl Component for SpaceViewComponent {
     #[inline]
     fn name() -> ComponentName {

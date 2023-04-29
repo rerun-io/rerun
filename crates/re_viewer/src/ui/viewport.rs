@@ -29,28 +29,37 @@ type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 #[serde(default)]
 pub struct Viewport {
     /// Where the space views are stored.
-    space_views: HashMap<SpaceViewId, SpaceView>,
+    pub(crate) space_views: HashMap<SpaceViewId, SpaceView>,
 
     /// Which views are visible.
-    visible: VisibilitySet,
+    pub(crate) visible: VisibilitySet,
 
     /// The layouts of all the space views.
     ///
     /// One for each combination of what views are visible.
     /// So if a user toggles the visibility of one SpaceView, we
     /// switch which layout we are using. This is somewhat hacky.
-    trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
+    pub(crate) trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
 
     /// Show one tab as maximized?
-    maximized: Option<SpaceViewId>,
+    pub(crate) maximized: Option<SpaceViewId>,
 
     /// Set to `true` the first time the user messes around with the viewport blueprint.
     /// Before this is set we automatically add new spaces to the viewport
     /// when they show up in the data.
-    has_been_user_edited: bool,
+    pub(crate) has_been_user_edited: bool,
 
     #[serde(skip)]
-    space_view_entity_window: Option<SpaceViewEntityPicker>,
+    pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
+}
+
+impl PartialEq for Viewport {
+    fn eq(&self, other: &Self) -> bool {
+        self.space_views == other.space_views
+            && self.visible == other.visible
+            && self.maximized == other.maximized
+            && self.has_been_user_edited == other.has_been_user_edited
+    }
 }
 
 impl Viewport {
@@ -115,7 +124,9 @@ impl Viewport {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].space_path)
+                    .sorted_by_key(|space_view_id| {
+                        (&self.space_views[space_view_id].space_path, *space_view_id)
+                    })
                     .copied()
                     .collect_vec();
 

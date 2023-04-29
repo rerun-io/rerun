@@ -3,6 +3,8 @@
 //!               viewer dep in order to make use of them.
 mod panel;
 mod space_view;
+mod viewport;
 
 pub use panel::PanelState;
 pub use space_view::SpaceViewComponent;
+pub use viewport::ViewportComponent;
