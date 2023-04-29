@@ -5,7 +5,7 @@ use re_log_types::Component;
 /// A Panel component
 /// TODO(jleibs): Some serde back here might be nice
 /// TODO(jleibs): If we want these accessible from python, they need to
-/// go into the registery that's back in re_log_types
+/// go into the registery that's back in `re_log_types`
 #[derive(Debug, Clone, Copy, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct PanelState {
     pub expanded: bool,

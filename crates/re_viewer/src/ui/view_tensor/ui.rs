@@ -18,7 +18,7 @@ use super::dimension_mapping_ui;
 // ---
 
 /// How we slice a given tensor
-#[derive(Clone, Debug, Hash, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct SliceSelection {
     /// How we select which dimensions to project the tensor onto.
     pub dim_mapping: DimensionMapping,

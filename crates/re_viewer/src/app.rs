@@ -10,7 +10,7 @@ use poll_promise::Promise;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{ApplicationId, LogMsg, RecordingId, RecordingType};
+use re_log_types::{LogMsg, RecordingId, RecordingType};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -380,28 +380,6 @@ impl App {
         }
     }
 
-    fn selected_app_id(&self) -> ApplicationId {
-        if let Some(log_db) = self.log_dbs.get(&self.state.selected_rec_id) {
-            log_db
-                .recording_info()
-                .map_or_else(ApplicationId::unknown, |rec_info| {
-                    rec_info.application_id.clone()
-                })
-        } else {
-            ApplicationId::unknown()
-        }
-    }
-
-    /*
-    fn blueprint_mut(&mut self, egui_ctx: &egui::Context) -> &mut Blueprint {
-        let selected_app_id = self.selected_app_id();
-        self.state
-            .blueprints
-            .entry(selected_app_id)
-            .or_insert_with(|| Blueprint::new(egui_ctx))
-    }
-    */
-
     fn memory_panel_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -533,18 +511,6 @@ impl eframe::App for App {
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-                let selected_app_id = log_db
-                    .recording_info()
-                    .map_or_else(ApplicationId::unknown, |rec_info| {
-                        rec_info.application_id.clone()
-                    });
-                /*
-                let blueprint = self
-                    .state
-                    .blueprints
-                    .entry(selected_app_id)
-                    .or_insert_with(|| Blueprint::new(egui_ctx));
-                */
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
@@ -603,6 +569,8 @@ impl eframe::App for App {
             egui_ctx.input(|i| i.time),
             frame_start.elapsed().as_secs_f32(),
         );
+
+        blueprint.process_updates(&blueprint_snapshot);
     }
 }
 
@@ -1010,7 +978,7 @@ impl AppState {
             app_options: options,
             cache,
             selected_rec_id,
-            selected_blueprint_id,
+            selected_blueprint_id: _,
             recording_configs,
             panel_selection,
             selection_panel,
@@ -1021,11 +989,6 @@ impl AppState {
 
         let rec_cfg =
             recording_config_entry(recording_configs, *selected_rec_id, data_source, log_db);
-        let selected_app_id = log_db
-            .recording_info()
-            .map_or_else(ApplicationId::unknown, |rec_info| {
-                rec_info.application_id.clone()
-            });
 
         let mut ctx = ViewerContext {
             app_options: options,
@@ -1281,88 +1244,80 @@ fn top_bar_ui(
         input_latency_label_ui(ui, app);
     }
 
-    if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let selected_app_id = log_db
-                .recording_info()
-                .map_or_else(ApplicationId::unknown, |rec_info| {
-                    rec_info.application_id.clone()
-                });
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        // From right-to-left:
 
-            // From right-to-left:
+        if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
+            ui.add_space(8.0);
+            #[cfg(not(target_arch = "wasm32"))]
+            re_ui::native_window_buttons_ui(frame, ui);
+            ui.separator();
+        } else {
+            // Make the first button the same distance form the side as from the top,
+            // no matter how high the top bar is.
+            let extra_margin = (ui.available_height() - 24.0) / 2.0;
+            ui.add_space(extra_margin);
+        }
 
-            if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
-                ui.add_space(8.0);
-                #[cfg(not(target_arch = "wasm32"))]
-                re_ui::native_window_buttons_ui(frame, ui);
-                ui.separator();
-            } else {
-                // Make the first button the same distance form the side as from the top,
-                // no matter how high the top bar is.
-                let extra_margin = (ui.available_height() - 24.0) / 2.0;
-                ui.add_space(extra_margin);
-            }
+        let mut selection_panel_expanded = blueprint.selection_panel_expanded;
+        if app
+            .re_ui
+            .medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                &mut selection_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Selection View{}",
+                Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
+        {
+            app.pending_commands.push(Command::ToggleSelectionPanel);
+        }
 
-            let mut selection_panel_expanded = blueprint.selection_panel_expanded;
-            if app
-                .re_ui
-                .medium_icon_toggle_button(
-                    ui,
-                    &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                    &mut selection_panel_expanded,
-                )
-                .on_hover_text(format!(
-                    "Toggle Selection View{}",
-                    Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ))
-                .clicked()
-            {
-                app.pending_commands.push(Command::ToggleSelectionPanel);
-            }
+        let mut time_panel_expanded = blueprint.time_panel_expanded;
+        if app
+            .re_ui
+            .medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                &mut time_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Timeline View{}",
+                Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
+        {
+            app.pending_commands.push(Command::ToggleTimePanel);
+        }
 
-            let mut time_panel_expanded = blueprint.time_panel_expanded;
-            if app
-                .re_ui
-                .medium_icon_toggle_button(
-                    ui,
-                    &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                    &mut time_panel_expanded,
-                )
-                .on_hover_text(format!(
-                    "Toggle Timeline View{}",
-                    Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ))
-                .clicked()
-            {
-                app.pending_commands.push(Command::ToggleTimePanel);
-            }
+        let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
+        if app
+            .re_ui
+            .medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::LEFT_PANEL_TOGGLE,
+                &mut blueprint_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Blueprint View{}",
+                Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
+        {
+            app.pending_commands.push(Command::ToggleBlueprintPanel);
+        }
 
-            let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
-            if app
-                .re_ui
-                .medium_icon_toggle_button(
-                    ui,
-                    &re_ui::icons::LEFT_PANEL_TOGGLE,
-                    &mut blueprint_panel_expanded,
-                )
-                .on_hover_text(format!(
-                    "Toggle Blueprint View{}",
-                    Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ))
-                .clicked()
-            {
-                app.pending_commands.push(Command::ToggleBlueprintPanel);
-            }
-
-            if cfg!(debug_assertions) && app.state.app_options.show_metrics {
-                ui.vertical_centered(|ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
-                    egui::warn_if_debug_build(ui);
-                });
-            }
-        });
-    }
+        if cfg!(debug_assertions) && app.state.app_options.show_metrics {
+            ui.vertical_centered(|ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
+                egui::warn_if_debug_build(ui);
+            });
+        }
+    });
 }
 
 fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
