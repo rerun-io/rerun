@@ -42,13 +42,13 @@ impl serde::Serialize for ArrowMsg {
         let mut writer = StreamWriter::new(&mut buf, Default::default());
         writer
             .start(&self.schema, None)
-            .map_err(|e| serde::ser::Error::custom(e.to_string()))?;
+            .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
         writer
             .write(&self.chunk, None)
-            .map_err(|e| serde::ser::Error::custom(e.to_string()))?;
+            .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
         writer
             .finish()
-            .map_err(|e| serde::ser::Error::custom(e.to_string()))?;
+            .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
 
         let mut inner = serializer.serialize_tuple(3)?;
         inner.serialize_element(&self.table_id)?;
