@@ -231,14 +231,25 @@ impl App {
             })
     }
 
-    fn run_pending_commands(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn run_pending_commands(
+        &mut self,
+        blueprint: &mut Blueprint,
+        egui_ctx: &egui::Context,
+        frame: &mut eframe::Frame,
+    ) {
         let commands = self.pending_commands.drain(..).collect_vec();
         for cmd in commands {
-            self.run_command(cmd, frame, egui_ctx);
+            self.run_command(cmd, blueprint, frame, egui_ctx);
         }
     }
 
-    fn run_command(&mut self, cmd: Command, _frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
+    fn run_command(
+        &mut self,
+        cmd: Command,
+        blueprint: &mut Blueprint,
+        _frame: &mut eframe::Frame,
+        egui_ctx: &egui::Context,
+    ) {
         let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
 
         match cmd {
@@ -272,7 +283,6 @@ impl App {
                 self.memory_panel_open ^= true;
             }
             Command::ToggleBlueprintPanel => {
-                let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.blueprint_panel_expanded ^= true;
 
                 // Only one of blueprint or selection panel can be open at a time on mobile:
@@ -281,7 +291,6 @@ impl App {
                 }
             }
             Command::ToggleSelectionPanel => {
-                let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.selection_panel_expanded ^= true;
 
                 // Only one of blueprint or selection panel can be open at a time on mobile:
@@ -290,7 +299,7 @@ impl App {
                 }
             }
             Command::ToggleTimePanel => {
-                self.blueprint_mut(egui_ctx).time_panel_expanded ^= true;
+                blueprint.time_panel_expanded ^= true;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -383,6 +392,7 @@ impl App {
         }
     }
 
+    /*
     fn blueprint_mut(&mut self, egui_ctx: &egui::Context) -> &mut Blueprint {
         let selected_app_id = self.selected_app_id();
         self.state
@@ -390,6 +400,7 @@ impl App {
             .entry(selected_app_id)
             .or_insert_with(|| Blueprint::new(egui_ctx))
     }
+    */
 
     fn memory_panel_ui(
         &mut self,
@@ -499,6 +510,17 @@ impl eframe::App for App {
             // Add some margin so that we can later paint an outline around it all.
             main_panel_frame.inner_margin = 1.0.into();
         }
+
+        let blueprint_db = self
+            .log_dbs
+            .entry(self.state.selected_blueprint_id)
+            .or_default();
+
+        // Materialize the blueprint from the DB and save a snapshot so we
+        // can diff it at the end of the frame.
+        let blueprint_snapshot = Blueprint::from_db(egui_ctx, blueprint_db);
+        let mut blueprint = blueprint_snapshot.clone();
+
         egui::CentralPanel::default()
             .frame(main_panel_frame)
             .show(egui_ctx, |ui| {
@@ -506,7 +528,7 @@ impl eframe::App for App {
 
                 warning_panel(&self.re_ui, ui, frame);
 
-                top_panel(ui, frame, self, &gpu_resource_stats);
+                top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
@@ -516,11 +538,13 @@ impl eframe::App for App {
                     .map_or_else(ApplicationId::unknown, |rec_info| {
                         rec_info.application_id.clone()
                     });
+                /*
                 let blueprint = self
                     .state
                     .blueprints
                     .entry(selected_app_id)
                     .or_insert_with(|| Blueprint::new(egui_ctx));
+                */
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
@@ -547,6 +571,7 @@ impl eframe::App for App {
                         wait_screen_ui(ui, &self.rx);
                     } else {
                         self.state.show(
+                            &mut blueprint,
                             ui,
                             render_ctx,
                             log_db,
@@ -572,7 +597,7 @@ impl eframe::App for App {
             self.pending_commands.push(cmd);
         }
 
-        self.run_pending_commands(egui_ctx, frame);
+        self.run_pending_commands(&mut blueprint, egui_ctx, frame);
 
         self.frame_time_history.add(
             egui_ctx.input(|i| i.time),
@@ -754,23 +779,26 @@ impl App {
             .recording_configs
             .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
 
-        if self.state.blueprints.len() > 100 {
-            re_log::debug!("Pruning blueprints…");
+        // TODO(jleibs): This state needs to go somewhere else
+        /*
+                if self.state.blueprints.len() > 100 {
+                    re_log::debug!("Pruning blueprints…");
 
-            let used_app_ids: std::collections::HashSet<ApplicationId> = self
-                .log_dbs
-                .values()
-                .filter_map(|log_db| {
-                    log_db
-                        .recording_info()
-                        .map(|recording_info| recording_info.application_id.clone())
-                })
-                .collect();
+                    let used_app_ids: std::collections::HashSet<ApplicationId> = self
+                        .log_dbs
+                        .values()
+                        .filter_map(|log_db| {
+                            log_db
+                                .recording_info()
+                                .map(|recording_info| recording_info.application_id.clone())
+                        })
+                        .collect();
 
-            self.state
-                .blueprints
-                .retain(|application_id, _| used_app_ids.contains(application_id));
-        }
+                    self.state
+                        .blueprints
+                        .retain(|application_id, _| used_app_ids.contains(application_id));
+                }
+        */
     }
 
     fn purge_memory_if_needed(&mut self) {
@@ -952,8 +980,7 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
-
+    //blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
     /// Which view panel is currently being shown
     panel_selection: PanelSelection,
 
@@ -969,6 +996,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     fn show(
         &mut self,
+        blueprint: &mut Blueprint,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
@@ -985,7 +1013,6 @@ impl AppState {
             selected_blueprint_id,
             recording_configs,
             panel_selection,
-            blueprints,
             selection_panel,
             time_panel,
             #[cfg(not(target_arch = "wasm32"))]
@@ -1010,9 +1037,6 @@ impl AppState {
             render_ctx,
         };
 
-        let blueprint = blueprints
-            .entry(selected_app_id.clone())
-            .or_insert_with(|| Blueprint::new(ui.ctx()));
         time_panel.show_panel(&mut ctx, blueprint, ui);
         selection_panel.show_panel(&mut ctx, ui, blueprint);
 
@@ -1025,10 +1049,7 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| match *panel_selection {
-                PanelSelection::Viewport => blueprints
-                    .entry(selected_app_id)
-                    .or_insert_with(|| Blueprint::new(ui.ctx()))
-                    .blueprint_panel_and_viewport(&mut ctx, ui),
+                PanelSelection::Viewport => blueprint.blueprint_panel_and_viewport(&mut ctx, ui),
             });
 
         // move time last, so we get to see the first data first!
@@ -1075,6 +1096,7 @@ fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Fra
 }
 
 fn top_panel(
+    blueprint: &Blueprint,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
@@ -1103,7 +1125,7 @@ fn top_panel(
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
-                top_bar_ui(ui, frame, app, gpu_resource_stats);
+                top_bar_ui(blueprint, ui, frame, app, gpu_resource_stats);
             })
             .response;
 
@@ -1244,6 +1266,7 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
 }
 
 fn top_bar_ui(
+    blueprint: &Blueprint,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
@@ -1265,12 +1288,6 @@ fn top_bar_ui(
                 .map_or_else(ApplicationId::unknown, |rec_info| {
                     rec_info.application_id.clone()
                 });
-
-            let blueprint = app
-                .state
-                .blueprints
-                .entry(selected_app_id)
-                .or_insert_with(|| Blueprint::new(ui.ctx()));
 
             // From right-to-left:
 

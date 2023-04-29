@@ -25,7 +25,7 @@ use super::{
 type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 
 /// Describes the layout and contents of the Viewport Panel.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct Viewport {
     /// Where the space views are stored.
