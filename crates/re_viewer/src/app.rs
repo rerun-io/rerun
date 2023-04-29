@@ -386,6 +386,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
+        blueprint_stats: &DataStoreStats,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -403,6 +404,7 @@ impl App {
                     gpu_resource_stats,
                     store_config,
                     store_stats,
+                    blueprint_stats,
                 );
             });
     }
@@ -466,9 +468,11 @@ impl eframe::App for App {
 
         let store_config = self.log_db().entity_db.data_store.config().clone();
         let store_stats = DataStoreStats::from_store(&self.log_db().entity_db.data_store);
+        let blueprint_stats = DataStoreStats::from_store(&self.blueprint_db().entity_db.data_store);
 
         // do first, before doing too many allocations
-        self.memory_panel.update(&gpu_resource_stats, &store_stats);
+        self.memory_panel
+            .update(&gpu_resource_stats, &store_stats, &blueprint_stats);
 
         self.check_keyboard_shortcuts(egui_ctx);
 
@@ -508,7 +512,13 @@ impl eframe::App for App {
 
                 top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
 
-                self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
+                self.memory_panel_ui(
+                    ui,
+                    &gpu_resource_stats,
+                    &store_config,
+                    &store_stats,
+                    &blueprint_stats,
+                );
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
@@ -707,6 +717,7 @@ impl App {
                         }
                         re_log_types::RecordingType::Blueprint => {
                             re_log::info!("Incoming Blueprint!");
+                            self.state.selected_blueprint_id = msg.info.recording_id;
                             true
                         }
                     }
@@ -857,6 +868,12 @@ impl App {
 
     fn log_db(&mut self) -> &mut LogDb {
         self.log_dbs.entry(self.state.selected_rec_id).or_default()
+    }
+
+    fn blueprint_db(&mut self) -> &mut LogDb {
+        self.log_dbs
+            .entry(self.state.selected_blueprint_id)
+            .or_default()
     }
 
     fn show_log_db(&mut self, log_db: LogDb) {

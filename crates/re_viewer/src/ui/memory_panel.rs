@@ -19,6 +19,7 @@ impl MemoryPanel {
         &mut self,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &DataStoreStats,
+        blueprint_stats: &DataStoreStats,
     ) {
         crate::profile_function!();
         self.history.capture(
@@ -27,6 +28,7 @@ impl MemoryPanel {
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
             Some(store_stats.total.num_bytes as _),
+            Some(blueprint_stats.total.num_bytes as _),
         );
     }
 
@@ -42,6 +44,7 @@ impl MemoryPanel {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
+        blueprint_stats: &DataStoreStats,
     ) {
         crate::profile_function!();
 
@@ -53,7 +56,14 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, limit, gpu_resource_stats, store_config, store_stats);
+                Self::left_side(
+                    ui,
+                    limit,
+                    gpu_resource_stats,
+                    store_config,
+                    store_stats,
+                    blueprint_stats,
+                );
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -68,6 +78,7 @@ impl MemoryPanel {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
+        blueprint_stats: &DataStoreStats,
     ) {
         ui.strong("Rerun Viewer resource usage");
 
@@ -84,6 +95,11 @@ impl MemoryPanel {
         ui.separator();
         ui.collapsing("Datastore Resources", |ui| {
             Self::store_stats(ui, store_config, store_stats);
+        });
+
+        ui.separator();
+        ui.collapsing("Blueprint Resources", |ui| {
+            Self::store_stats(ui, store_config, blueprint_stats);
         });
     }
 
@@ -391,12 +407,18 @@ impl MemoryPanel {
                     counted,
                     counted_gpu,
                     counted_store,
+                    counted_blueprint,
                 } = &self.history;
 
                 plot_ui.line(to_line(resident).name("Resident").width(1.5));
                 plot_ui.line(to_line(counted).name("Counted").width(1.5));
                 plot_ui.line(to_line(counted_gpu).name("Counted GPU").width(1.5));
                 plot_ui.line(to_line(counted_store).name("Counted Store").width(1.5));
+                plot_ui.line(
+                    to_line(counted_blueprint)
+                        .name("Counted Blueprint")
+                        .width(1.5),
+                );
             });
     }
 }
