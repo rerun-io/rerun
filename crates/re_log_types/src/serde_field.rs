@@ -4,7 +4,7 @@ use arrow2::{
 };
 use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
 
-/// Helper for storing arbitrary serde-compatible types in an arrow2 Binary field
+/// Helper for storing arbitrary serde-compatible types in an arrow2 [`BinaryArray`] field
 ///
 /// Use as:
 /// ```
