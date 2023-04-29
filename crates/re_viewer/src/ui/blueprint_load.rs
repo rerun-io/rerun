@@ -10,6 +10,9 @@ impl Blueprint {
     pub fn from_db(egui_ctx: &egui::Context, blueprint_db: &re_data_store::LogDb) -> Self {
         let mut ret = Self::new(egui_ctx);
 
+        // TODO(jleibs): this needs to be part of the blueprint
+        ret.viewport.mark_user_interaction();
+
         // TODO(jleibs): maybe just combine these into a single component
         ret.blueprint_panel_expanded =
             load_selection_state(&PanelState::BLUEPRINT_PANEL.into(), blueprint_db);
@@ -67,12 +70,11 @@ fn load_space_view(path: &EntityPath, blueprint_db: &re_data_store::LogDb) -> Op
         &[SpaceViewComponent::name()],
     );
     blueprint_state.and_then(|(_, data)| {
-        data[0].as_ref().map(|cell| {
+        data[0].as_ref().and_then(|cell| {
             cell.try_to_native::<SpaceViewComponent>()
                 .unwrap()
                 .next()
-                .unwrap()
-                .space_view
+                .map(|c| c.space_view)
         })
     })
 }

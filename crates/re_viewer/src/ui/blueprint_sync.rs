@@ -1,4 +1,5 @@
-use re_log_types::{parse_entity_path, DataRow, RowId, TimePoint};
+use arrow2_convert::field::ArrowField;
+use re_log_types::{parse_entity_path, Component, DataCell, DataRow, RowId, TimePoint};
 
 use crate::blueprint_components::{PanelState, SpaceViewComponent};
 
@@ -29,6 +30,7 @@ impl Blueprint {
             );
         }
 
+        // Add any new or modified space views
         for id in self.viewport.space_view_ids() {
             let space_view = self.viewport.space_view(id).unwrap();
             if let Some(snapshot_space_view) = snapshot.viewport.space_view(id) {
@@ -37,6 +39,13 @@ impl Blueprint {
                 }
             }
             store_space_view(blueprint_db, space_view);
+        }
+        // Remove any deleted space views
+        for id in snapshot.viewport.space_view_ids() {
+            let space_view = snapshot.viewport.space_view(id).unwrap();
+            if self.viewport.space_view(id).is_none() {
+                clear_space_view(blueprint_db, space_view);
+            }
         }
     }
 }
@@ -83,6 +92,22 @@ pub fn store_space_view(blueprint_db: &mut re_data_store::LogDb, space_view: &Sp
         1,
         [component].as_slice(),
     );
+
+    // TODO(jleibs) Is this safe? Get rid of unwrap
+    blueprint_db.entity_db.try_add_data_row(&row).unwrap();
+}
+
+pub fn clear_space_view(blueprint_db: &mut re_data_store::LogDb, space_view: &SpaceView) {
+    re_log::debug!("Clearing removed spaceview");
+    // TODO(jleibs): NO UNWRAP
+    let entity_path = parse_entity_path(format!("space_view/{}", space_view.id).as_str()).unwrap();
+    // TODO(jleibs): Seq instead of timeless?
+    let timepoint = TimePoint::timeless();
+
+    let cell =
+        DataCell::from_arrow_empty(SpaceViewComponent::name(), SpaceViewComponent::data_type());
+
+    let row = DataRow::from_cells1(RowId::random(), entity_path, timepoint, 0, cell);
 
     // TODO(jleibs) Is this safe? Get rid of unwrap
     blueprint_db.entity_db.try_add_data_row(&row).unwrap();
