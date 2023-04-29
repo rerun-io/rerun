@@ -65,6 +65,10 @@ impl Viewport {
         blueprint
     }
 
+    pub(crate) fn space_view_ids(&self) -> impl Iterator<Item = &SpaceViewId> + '_ {
+        self.space_views.keys()
+    }
+
     pub(crate) fn space_view(&self, space_view: &SpaceViewId) -> Option<&SpaceView> {
         self.space_views.get(space_view)
     }

@@ -5,3 +5,4 @@ mod panel;
 mod space_view;
 
 pub use panel::PanelState;
+pub use space_view::SpaceViewComponent;
