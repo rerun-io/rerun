@@ -1,5 +1,6 @@
 mod auto_layout;
 mod blueprint;
+mod blueprint_load;
 mod blueprint_sync;
 mod data_blueprint;
 mod selection_history_ui;
