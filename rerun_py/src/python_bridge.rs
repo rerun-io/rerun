@@ -13,7 +13,10 @@ use pyo3::{
 
 use re_log_types::DataRow;
 use rerun::{
-    external::re_viewer::blueprint_components::PanelState,
+    external::re_viewer::{
+        blueprint_components::{PanelState, SpaceViewComponent, ViewportComponent},
+        SpaceView, ViewCategory,
+    },
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::TimePoint,
@@ -149,6 +152,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // blueprint
     m.add_function(wrap_pyfunction!(set_panel, m)?)?;
+    m.add_function(wrap_pyfunction!(add_space_view, m)?)?;
 
     Ok(())
 }
@@ -213,7 +217,6 @@ fn init(
         .into();
 
     if init_blueprint {
-        re_log::info!("Initializing the blueprint..");
         let mut bp_ctx = global_blueprint_stream();
         *bp_ctx = RecordingStreamBuilder::new(application_id)
             .is_official_example(is_official_example)
@@ -224,6 +227,9 @@ fn init(
             .buffered()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
             .into();
+        drop(bp_ctx);
+        // Always set user-modified to disable the heuristics
+        set_user_modified(true);
     }
 
     Ok(())
@@ -1123,6 +1129,73 @@ fn set_panel(entity_path: &str, expanded: bool) -> PyResult<()> {
     record_row(bp_ctx, row);
 
     Ok(())
+}
+
+#[pyfunction]
+fn add_space_view(name: &str, space_path: &str, entity_paths: Vec<&str>) {
+    let bp_ctx = global_blueprint_stream();
+    let Some(rec_ctx) = bp_ctx.as_ref() else {
+        no_active_recording("set_trays");
+        return;
+    };
+
+    let mut space_view = SpaceView::new(
+        ViewCategory::Spatial,
+        &space_path.into(),
+        &entity_paths
+            .into_iter()
+            .map(|s| s.into())
+            .collect::<Vec<_>>(),
+    );
+    space_view.display_name = name.into();
+    space_view.entities_determined_by_user = true;
+
+    let entity_path = parse_entity_path(
+        format!("{}/{}", SpaceViewComponent::SPACEVIEW_PREFIX, space_view.id).as_str(),
+    )
+    .unwrap();
+
+    // TODO(jleibs) timeless? Something else?
+    let timepoint = time(true, rec_ctx);
+
+    let space_view = SpaceViewComponent { space_view };
+
+    let row = DataRow::from_cells1(
+        RowId::random(),
+        entity_path,
+        timepoint,
+        1,
+        [space_view].as_slice(),
+    );
+
+    record_row(rec_ctx, row);
+}
+
+fn set_user_modified(user_modified: bool) {
+    let bp_ctx = global_blueprint_stream();
+    let Some(rec_ctx) = bp_ctx.as_ref() else {
+        no_active_recording("set_viewport");
+        return;
+    };
+
+    // TODO(jleibs) timeless? Something else?
+    let timepoint = time(true, rec_ctx);
+
+    let viewport = ViewportComponent {
+        visible: Default::default(),
+        maximized: None,
+        has_been_user_edited: user_modified,
+    };
+
+    let row = DataRow::from_cells1(
+        RowId::random(),
+        ViewportComponent::VIEWPORT,
+        timepoint,
+        1,
+        [viewport].as_slice(),
+    );
+
+    record_row(rec_ctx, row);
 }
 
 #[pyfunction]

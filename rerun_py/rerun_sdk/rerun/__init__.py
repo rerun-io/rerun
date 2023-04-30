@@ -68,6 +68,16 @@ __all__ = [
 ]
 
 
+# TOD(jleibs): docstrings
+def add_space_view(*args, **kwargs) -> None:
+    bindings.add_space_view(*args, **kwargs)
+
+
+# TOD(jleibs): docstrings
+def set_panel(*args, **kwargs) -> None:
+    bindings.set_panel(*args, **kwargs)
+
+
 # If `True`, we raise exceptions on use error (wrong parameter types etc).
 # If `False` we catch all errors and log a warning instead.
 _strict_mode = False

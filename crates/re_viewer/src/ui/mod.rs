@@ -24,7 +24,8 @@ pub mod view_spatial;
 // ----
 
 pub(crate) use self::blueprint::Blueprint;
-pub(crate) use self::space_view::{item_ui, SpaceView};
+// TODO(jleibs) should we avoid leaking this?
+pub use self::space_view::{item_ui, SpaceView};
 
 pub use self::view_category::ViewCategory;
 pub use self::viewport::Viewport;

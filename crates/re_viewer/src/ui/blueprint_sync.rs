@@ -84,7 +84,10 @@ pub fn set_panel_expanded(
 
 pub fn store_space_view(blueprint_db: &mut re_data_store::LogDb, space_view: &SpaceView) {
     // TODO(jleibs): NO UNWRAP
-    let entity_path = parse_entity_path(format!("space_view/{}", space_view.id).as_str()).unwrap();
+    let entity_path = parse_entity_path(
+        format!("{}/{}", SpaceViewComponent::SPACEVIEW_PREFIX, space_view.id).as_str(),
+    )
+    .unwrap();
     // TODO(jleibs): Seq instead of timeless?
     let timepoint = TimePoint::timeless();
 

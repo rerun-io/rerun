@@ -2,7 +2,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use re_data_store::ComponentName;
 use re_log_types::{serde_field::SerdeField, Component};
 
-use crate::ui::SpaceViewId;
+pub use re_viewer_context::SpaceViewId;
 
 // TODO(jleibs) export this from other viewport def
 type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
