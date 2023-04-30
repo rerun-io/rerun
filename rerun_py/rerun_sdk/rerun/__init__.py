@@ -20,7 +20,7 @@ from rerun.log.points import log_point, log_points
 from rerun.log.rects import RectFormat, log_rect, log_rects
 from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
-from rerun.log.text import LoggingHandler, LogLevel, log_text_entry
+from rerun.log.text import LoggingHandler, LogLevel, log_text_entry, log_textbox
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
 from rerun.recording import MemoryRecording
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
@@ -55,6 +55,7 @@ __all__ = [
     "log_segmentation_image",
     "log_tensor",
     "log_text_entry",
+    "log_textbox",
     "log_unknown_transform",
     "log_view_coordinates",
     "LogLevel",

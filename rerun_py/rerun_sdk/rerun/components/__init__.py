@@ -22,6 +22,7 @@ all = [
     "scalar_plot_props",
     "tensor",
     "text_entry",
+    "textbox",
     "vec",
 ]
 

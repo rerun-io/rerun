@@ -3,6 +3,7 @@ use re_data_store::{EntityPath, LogDb, Timeline};
 use re_log_types::{
     component_types::{
         Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TextEntry,
+        Textbox,
     },
     Arrow3D, Component, Mesh3D, Transform,
 };
@@ -82,6 +83,8 @@ pub fn categorize_entity_path(
     {
         if component == TextEntry::name() {
             set.insert(ViewCategory::Text);
+        } else if component == Textbox::name() {
+            set.insert(ViewCategory::Textbox);
         } else if component == Scalar::name() {
             set.insert(ViewCategory::TimeSeries);
         } else if component == Point2D::name()

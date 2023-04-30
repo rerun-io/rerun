@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Dict, Final, Optional
+from rerun.components.textbox import TextboxArray
 
 # Fully qualified to avoid circular import
 import rerun.log.extension_components
@@ -108,6 +109,51 @@ def log_text_entry(
     if color:
         colors = _normalize_colors([color])
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+
+    if ext:
+        rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
+
+    if splats:
+        splats["rerun.instance_key"] = InstanceArray.splat()
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+
+    # Always the primary component last so range-based queries will include the other data. See(#1215)
+    if instanced:
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+
+@log_decorator
+def log_textbox(
+    entity_path: str,
+    text: str,
+    *,
+    ext: Optional[Dict[str, Any]] = None,
+    timeless: bool = False,
+) -> None:
+    """
+    Log a textbox.
+
+    This is intended to be used for multi-line text entries to be displayed in their own view.
+
+    Parameters
+    ----------
+    entity_path:
+        The object path to log the text entry under.
+    text:
+        The text to log.
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
+    timeless:
+        Whether the textbox should be timeless.
+    """
+
+    instanced: Dict[str, Any] = {}
+    splats: Dict[str, Any] = {}
+
+    if text:
+        instanced["rerun.textbox"] = TextboxArray.from_bodies([(text,)])
+    else:
+        logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
 
     if ext:
         rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)
