@@ -60,26 +60,21 @@ impl View2DState {
     /// Returns `(desired_size, scroll_offset)` where:
     ///   - `desired_size` is the size of the painter necessary to capture the zoomed view in ui points
     ///   - `scroll_offset` is the position of the `ScrollArea` offset in ui points
-    fn desired_size_and_offset(
-        &self,
-        available_size: Vec2,
-        scene_rect_accum: Rect,
-    ) -> (Vec2, Vec2) {
+    fn desired_size_and_offset(&self, available_size: Vec2, canvas_rect: Rect) -> (Vec2, Vec2) {
         match self.zoom {
             ZoomState2D::Scaled { scale, center, .. } => {
-                let desired_size = scene_rect_accum.size() * scale;
+                let desired_size = canvas_rect.size() * scale;
 
                 // Try to keep the center of the scene in the middle of the available size
-                let scroll_offset = (center.to_vec2() - scene_rect_accum.left_top().to_vec2())
-                    * scale
+                let scroll_offset = (center.to_vec2() - canvas_rect.left_top().to_vec2()) * scale
                     - available_size / 2.0;
 
                 (desired_size, scroll_offset)
             }
             ZoomState2D::Auto => {
                 // Otherwise, we autoscale the space to fit available area while maintaining aspect ratio
-                let scene_bbox = if scene_rect_accum.is_positive() {
-                    scene_rect_accum
+                let scene_bbox = if canvas_rect.is_positive() {
+                    canvas_rect
                 } else {
                     Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
                 };
@@ -102,7 +97,7 @@ impl View2DState {
         &mut self,
         response: &egui::Response,
         ui_to_space: egui::emath::RectTransform,
-        scene_rect_accum: Rect,
+        canvas_rect: Rect,
         available_size: Vec2,
     ) {
         // Determine if we are zooming
@@ -118,14 +113,14 @@ impl View2DState {
                 if let Some(input_zoom) = hovered_zoom {
                     if input_zoom > 1.0 {
                         let scale = response.rect.height() / ui_to_space.to().height();
-                        let center = scene_rect_accum.center();
+                        let center = canvas_rect.center();
                         self.zoom = ZoomState2D::Scaled {
                             scale,
                             center,
                             accepting_scroll: false,
                         };
                         // Recursively update now that we have initialized `ZoomState` to `Scaled`
-                        self.update(response, ui_to_space, scene_rect_accum, available_size);
+                        self.update(response, ui_to_space, canvas_rect, available_size);
                     }
                 }
             }
@@ -183,8 +178,8 @@ impl View2DState {
             }
 
             // If our zoomed region is smaller than the available size
-            if scene_rect_accum.size().x * scale < available_size.x
-                && scene_rect_accum.size().y * scale < available_size.y
+            if canvas_rect.size().x * scale < available_size.x
+                && canvas_rect.size().y * scale < available_size.y
             {
                 self.zoom = ZoomState2D::Auto;
             }
@@ -193,7 +188,7 @@ impl View2DState {
 
     /// Take the offset from the `ScrollArea` and apply it back to center so that other
     /// scroll interfaces work as expected.
-    fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2, scene_rect_accum: Rect) {
+    fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2, canvas_rect: Rect) {
         if let ZoomState2D::Scaled {
             scale,
             accepting_scroll,
@@ -201,7 +196,7 @@ impl View2DState {
         } = self.zoom
         {
             if accepting_scroll {
-                let center = scene_rect_accum.left_top() + (available_size / 2.0 + offset) / scale;
+                let center = canvas_rect.left_top() + (available_size / 2.0 + offset) / scale;
                 self.zoom = ZoomState2D::Scaled {
                     scale,
                     center,
@@ -224,7 +219,7 @@ pub fn view_2d(
     ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
     space: &EntityPath,
-    scene: SceneSpatial,
+    mut scene: SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
     highlights: &SpaceViewHighlights,
@@ -235,79 +230,14 @@ pub fn view_2d(
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
-    let (desired_size, offset) = state
-        .state_2d
-        .desired_size_and_offset(available_size, scene_rect_accum);
-
-    // Bound the offset based on sizes
-    // TODO(jleibs): can we derive this from the ScrollArea shape?
-    let offset = offset.at_most(desired_size - available_size);
-    let offset = offset.at_least(Vec2::ZERO);
-
-    let scroll_area = ScrollArea::both()
-        .scroll_offset(offset)
-        .auto_shrink([false, false]);
-
-    let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(
-            desired_size,
-            available_size,
-            ctx,
-            ui,
-            state,
-            space,
-            scene,
-            scene_rect_accum,
-            space_view_id,
-            highlights,
-            entity_properties,
-        )
-    });
-
-    // Update the scroll area based on the computed offset
-    // This handles cases of dragging/zooming the space
-    state
-        .state_2d
-        .capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
-    scroll_out.inner
-}
-
-/// Create the real 2D view inside the scrollable area
-#[allow(clippy::too_many_arguments)]
-fn view_2d_scrollable(
-    desired_size: Vec2,
-    available_size: Vec2,
-    ctx: &mut ViewerContext<'_>,
-    parent_ui: &mut egui::Ui,
-    state: &mut ViewSpatialState,
-    space: &EntityPath,
-    mut scene: SceneSpatial,
-    scene_rect_accum: Rect,
-    space_view_id: SpaceViewId,
-    highlights: &SpaceViewHighlights,
-    entity_properties: &EntityPropertyMap,
-) -> egui::Response {
-    let (mut response, painter) =
-        parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
-
-    if !response.rect.is_positive() {
-        return response; // protect against problems with zero-sized views
-    }
-
-    // Create our transforms.
-    let ui_from_space = egui::emath::RectTransform::from_to(scene_rect_accum, response.rect);
-    let space_from_ui = ui_from_space.inverse();
-
-    state
-        .state_2d
-        .update(&response, space_from_ui, scene_rect_accum, available_size);
-
-    let eye = Eye {
-        world_from_view: IsoTransform::IDENTITY,
-        fov_y: None,
-    };
-
-    // Query for a pinhole camera at the space view's root that we should take over.
+    // Determine the canvas which determines the extent of the explorable scene coordinates,
+    // and thus the size of the scroll area.
+    //
+    // TODO(andreas): We want to move away from the scroll area and instead work with open ended 2D scene coordinates!
+    // The term canvas might then refer to the area in scene coordinates visible at a given moment.
+    // Orthogonally, we'll want to visualize the resolution rectangle of the pinhole camera.
+    //
+    // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
     let pinhole = query_latest_single(
@@ -319,99 +249,147 @@ fn view_2d_scrollable(
         re_log_types::Transform::Pinhole(pinhole) => Some(pinhole),
         _ => None,
     });
+    let canvas_rect = pinhole
+        .and_then(|p| p.resolution())
+        .map_or(scene_rect_accum, |res| {
+            Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(res.x, res.y))
+        });
 
-    let Ok(target_config) = setup_target_config(
-        &painter,
-        space_from_ui,
-        &space.to_string(),
-        state.auto_size_config(),
-        scene
-            .primitives
-            .any_outlines,
-            pinhole,
-    ) else {
-        return response;
-    };
+    let (desired_size, offset) = state
+        .state_2d
+        .desired_size_and_offset(available_size, canvas_rect);
 
-    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
+    // Bound the offset based on sizes
+    // TODO(jleibs): can we derive this from the ScrollArea shape?
+    let offset = offset.at_most(desired_size - available_size);
+    let offset = offset.at_least(Vec2::ZERO);
 
-    // Create labels now since their shapes participate are added to scene.ui for picking.
-    let label_shapes = create_labels(
-        &mut scene.ui,
-        ui_from_space,
-        space_from_ui,
-        &eye,
-        parent_ui,
-        highlights,
-        SpatialNavigationMode::TwoD,
-    );
+    let scroll_area = ScrollArea::both()
+        .scroll_offset(offset)
+        .auto_shrink([false, false]);
 
-    if !re_ui::egui_helpers::is_anything_being_dragged(parent_ui.ctx()) {
-        response = picking(
-            ctx,
-            response,
-            space_from_ui,
-            painter.clip_rect(),
-            parent_ui,
-            eye,
-            &mut view_builder,
-            space_view_id,
-            state,
-            &scene,
-            space,
-            entity_properties,
-        );
-    }
+    let scroll_out = scroll_area.show(ui, |ui| {
+        let (mut response, painter) =
+            ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
-    // ------------------------------------------------------------------------
+        if !response.rect.is_positive() {
+            return response; // protect against problems with zero-sized views
+        }
 
-    // Screenshot context menu.
-    let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
-    if let Some(mode) = screenshot_mode {
-        let _ =
-            view_builder.schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
-    }
+        let ui_from_canvas = egui::emath::RectTransform::from_to(canvas_rect, response.rect);
+        let canvas_from_ui = ui_from_canvas.inverse();
 
-    // Draw a re_renderer driven view.
-    // Camera & projection are configured to ingest space coordinates directly.
-    {
-        let command_buffer = match fill_view_builder(
-            ctx.render_ctx,
-            &mut view_builder,
-            scene.primitives,
-            &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
-        ) {
-            Ok(command_buffer) => command_buffer,
-            Err(err) => {
-                re_log::error!("Failed to fill view builder: {}", err);
-                return response;
-            }
+        state
+            .state_2d
+            .update(&response, canvas_from_ui, canvas_rect, available_size);
+
+        let eye = Eye {
+            world_from_view: IsoTransform::IDENTITY,
+            fov_y: None,
         };
-        painter.add(gpu_bridge::renderer_paint_callback(
-            ctx.render_ctx,
-            command_buffer,
-            view_builder,
-            painter.clip_rect(),
-            painter.ctx().pixels_per_point(),
+
+        let Ok(target_config) = setup_target_config(
+                &painter,
+                canvas_from_ui,
+                &space.to_string(),
+                state.auto_size_config(),
+                scene
+                    .primitives
+                    .any_outlines,
+                    pinhole,
+            ) else {
+                return response;
+            };
+
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
+
+        // Create labels now since their shapes participate are added to scene.ui for picking.
+        let label_shapes = create_labels(
+            &mut scene.ui,
+            ui_from_canvas,
+            &eye,
+            ui,
+            highlights,
+            SpatialNavigationMode::TwoD,
+        );
+
+        if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
+            response = picking(
+                ctx,
+                response,
+                canvas_from_ui,
+                painter.clip_rect(),
+                ui,
+                eye,
+                &mut view_builder,
+                space_view_id,
+                state,
+                &scene,
+                space,
+                entity_properties,
+            );
+        }
+
+        // ------------------------------------------------------------------------
+
+        // Screenshot context menu.
+        let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
+        if let Some(mode) = screenshot_mode {
+            let _ = view_builder.schedule_screenshot(
+                ctx.render_ctx,
+                space_view_id.gpu_readback_id(),
+                mode,
+            );
+        }
+
+        // Draw a re_renderer driven view.
+        // Camera & projection are configured to ingest space coordinates directly.
+        {
+            let command_buffer = match fill_view_builder(
+                ctx.render_ctx,
+                &mut view_builder,
+                scene.primitives,
+                &ScreenBackground::ClearColor(ui.visuals().extreme_bg_color.into()),
+            ) {
+                Ok(command_buffer) => command_buffer,
+                Err(err) => {
+                    re_log::error!("Failed to fill view builder: {}", err);
+                    return response;
+                }
+            };
+            painter.add(gpu_bridge::renderer_paint_callback(
+                ctx.render_ctx,
+                command_buffer,
+                view_builder,
+                painter.clip_rect(),
+                painter.ctx().pixels_per_point(),
+            ));
+        }
+
+        painter.extend(show_projections_from_3d_space(
+            ctx,
+            ui,
+            space,
+            &ui_from_canvas,
         ));
-    }
 
-    painter.extend(show_projections_from_3d_space(
-        ctx,
-        parent_ui,
-        space,
-        &ui_from_space,
-    ));
+        // Add egui driven labels on top of re_renderer content.
+        painter.extend(label_shapes);
 
-    // Add egui driven labels on top of re_renderer content.
-    painter.extend(label_shapes);
+        response
+    });
 
-    response
+    // Update the scroll area based on the computed offset
+    // This handles cases of dragging/zooming the space
+    state
+        .state_2d
+        .capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
+    scroll_out.inner
 }
 
 fn setup_target_config(
     painter: &egui::Painter,
-    space_from_ui: RectTransform,
+    canvas_from_ui: RectTransform,
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
@@ -424,24 +402,28 @@ fn setup_target_config(
 
     // For simplicity (and to reduce surprises!) we always render with a pinhole camera.
     // Make up a default pinhole camera if we don't have one placing it in a way to look at the entire space.
-    let default_pinhole_image_plane_size =
-        glam::vec2(space_from_ui.to().width(), space_from_ui.to().height());
-    let default_focal_length_in_pixels = default_pinhole_image_plane_size.x;
-    let pinhole = pinhole.unwrap_or(re_log_types::Pinhole {
-        image_from_cam: glam::Mat3::from_cols(
-            glam::vec3(default_focal_length_in_pixels, 0.0, 0.0),
-            glam::vec3(0.0, default_focal_length_in_pixels, 0.0),
-            (default_pinhole_image_plane_size * 0.5 + glam::Vec2::splat(0.5)).extend(1.0),
-        )
-        .into(),
-        // Look at the entire space by default.
-        resolution: Some(default_pinhole_image_plane_size.into()),
+    let canvas_size = glam::vec2(canvas_from_ui.to().width(), canvas_from_ui.to().height());
+    let default_principal_point = canvas_size * 0.5;
+    let pinhole = pinhole.unwrap_or_else(|| {
+        let focal_length_in_pixels = canvas_size.x;
+
+        re_log_types::Pinhole {
+            image_from_cam: glam::Mat3::from_cols(
+                glam::vec3(focal_length_in_pixels, 0.0, 0.0),
+                glam::vec3(0.0, focal_length_in_pixels, 0.0),
+                default_principal_point.extend(1.0),
+            )
+            .into(),
+            resolution: Some(canvas_size.into()),
+        }
     });
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
         near_plane_distance: 0.01,
-        aspect_ratio: pinhole.aspect_ratio().unwrap(), // TODO:
+        aspect_ratio: pinhole
+            .aspect_ratio()
+            .unwrap_or(canvas_size.x / canvas_size.y),
     };
 
     // Put the camera at the position where it sees the entire image plane as defined
@@ -455,22 +437,18 @@ fn setup_target_config(
     )
     .unwrap_or(macaw::IsoTransform::IDENTITY);
 
-    // What portion of the space are we looking at?
-    // TODO: cleanup spaces
-    // TODO: Need to take principal point into account
-    let total_ui_rect = space_from_ui.from();
-    let visible_ui_rect = painter.clip_rect();
-
-    let viewport_transformation = re_renderer::RectTransform {
-        from: re_renderer::RectF32 {
-            left_top: glam::vec2(visible_ui_rect.left(), visible_ui_rect.top()),
-            extent: glam::vec2(visible_ui_rect.width(), visible_ui_rect.height()),
-        },
-        to: re_renderer::RectF32 {
-            left_top: glam::vec2(total_ui_rect.left(), total_ui_rect.top()),
-            extent: glam::vec2(total_ui_rect.width(), total_ui_rect.height()),
-        },
+    // Cut to the portion of the currently visible ui area.
+    let mut viewport_transformation = re_renderer::RectTransform {
+        from: egui_rect_to_re_renderer(painter.clip_rect()),
+        to: egui_rect_to_re_renderer(*canvas_from_ui.from()),
     };
+
+    // The principal point might not be quite centered.
+    // We need to account for this translation in the viewport transformation.
+    let principal_point_offset = default_principal_point - pinhole.principal_point();
+    let ui_from_canvas_scale = canvas_from_ui.inverse().scale();
+    viewport_transformation.from.left_top +=
+        principal_point_offset * glam::vec2(ui_from_canvas_scale.x, ui_from_canvas_scale.y);
 
     Ok({
         let name = space_name.into();
@@ -487,13 +465,20 @@ fn setup_target_config(
     })
 }
 
+fn egui_rect_to_re_renderer(rect: egui::Rect) -> re_renderer::RectF32 {
+    re_renderer::RectF32 {
+        left_top: glam::vec2(rect.left(), rect.top()),
+        extent: glam::vec2(rect.width(), rect.height()),
+    }
+}
+
 // ------------------------------------------------------------------------
 
 fn show_projections_from_3d_space(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     space: &EntityPath,
-    ui_from_space: &RectTransform,
+    ui_from_canvas: &RectTransform,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
     if let HoveredSpace::ThreeD {
@@ -505,7 +490,7 @@ fn show_projections_from_3d_space(
             if space_2d == space {
                 if let Some(pos_2d) = pos_2d {
                     // User is hovering a 2D point inside a 3D view.
-                    let pos_in_ui = ui_from_space.transform_pos(pos2(pos_2d.x, pos_2d.y));
+                    let pos_in_ui = ui_from_canvas.transform_pos(pos2(pos_2d.x, pos_2d.y));
                     let radius = 4.0;
                     shapes.push(Shape::circle_filled(
                         pos_in_ui,

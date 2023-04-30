@@ -529,8 +529,7 @@ fn axis_name(axis: Option<glam::Vec3>) -> String {
 
 pub fn create_labels(
     scene_ui: &mut SceneSpatialUiData,
-    ui_from_space2d: egui::emath::RectTransform,
-    space2d_from_ui: egui::emath::RectTransform,
+    ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
@@ -540,7 +539,7 @@ pub fn create_labels(
 
     let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
 
-    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_space2d.to());
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
 
     for label in &scene_ui.labels {
         let (wrap_width, text_anchor_pos) = match label.target {
@@ -549,7 +548,7 @@ pub fn create_labels(
                 if nav_mode == SpatialNavigationMode::ThreeD {
                     continue;
                 }
-                let rect_in_ui = ui_from_space2d.transform_rect(rect);
+                let rect_in_ui = ui_from_canvas.transform_rect(rect);
                 (
                     // Place the text centered below the rect
                     (rect_in_ui.width() - 4.0).at_least(60.0),
@@ -561,7 +560,7 @@ pub fn create_labels(
                 if nav_mode == SpatialNavigationMode::ThreeD {
                     continue;
                 }
-                let pos_in_ui = ui_from_space2d.transform_pos(pos);
+                let pos_in_ui = ui_from_canvas.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
             }
             UiLabelTarget::Position3D(pos) => {
@@ -623,7 +622,7 @@ pub fn create_labels(
         label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
 
         scene_ui.pickable_ui_rects.push((
-            space2d_from_ui.transform_rect(bg_rect),
+            ui_from_canvas.inverse().transform_rect(bg_rect),
             label.labeled_instance,
         ));
     }

@@ -348,7 +348,6 @@ pub fn view_3d(
     let label_shapes = create_labels(
         &mut scene.ui,
         RectTransform::from_to(rect, rect),
-        RectTransform::from_to(rect, rect),
         &eye,
         ui,
         highlights,
