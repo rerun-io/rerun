@@ -4,7 +4,7 @@ use re_log_types::{
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::{renderer::LineStripFlags, LineStripSeriesBuilder, Size};
+use re_renderer::Size;
 
 use crate::{
     misc::{SpaceViewHighlights, TransformCache, ViewerContext},
@@ -69,10 +69,6 @@ impl Boxes2DPart {
                         rect.top_left_corner().into(),
                         glam::vec2(rect.width(), 0.0),
                         glam::vec2(0.0, rect.height()),
-                    )
-                    .flags(
-                        LineStripSeriesBuilder::default_rectangle_flags()
-                            | LineStripFlags::FORCE_ORTHO_SPANNING,
                     )
                     .color(color)
                     .radius(radius)

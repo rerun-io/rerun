@@ -244,11 +244,12 @@ impl<'a> PointCloudBatchBuilder<'a> {
             colors,
             picking_instance_ids,
         )
+        .flags(PointCloudBatchFlags::DRAW_AS_CIRCLES)
     }
 
-    /// Set flags for this batch.
+    /// Adds (!) flags for this batch.
     pub fn flags(mut self, flags: PointCloudBatchFlags) -> Self {
-        self.batch_mut().flags = flags;
+        self.batch_mut().flags |= flags;
         self
     }
 
