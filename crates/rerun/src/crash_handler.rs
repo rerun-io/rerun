@@ -59,7 +59,8 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
         eprintln!(
             "\n\
-            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting"
+            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting\n\
+            Report bugs: https://github.com/rerun-io/rerun/issues"
         );
 
         #[cfg(feature = "analytics")]
@@ -135,6 +136,17 @@ fn install_signal_handler(build_info: BuildInfo) {
     }
 
     unsafe extern "C" fn signal_handler(signal_number: libc::c_int) {
+        fn print_problem_and_links(signal_name: &str) {
+            write_to_stderr("Rerun caught a signal: ");
+            write_to_stderr(signal_name);
+            write_to_stderr("\n");
+            write_to_stderr(
+                "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting\n",
+            );
+            write_to_stderr("Report bugs: https://github.com/rerun-io/rerun/issues\n");
+            write_to_stderr("\n");
+        }
+
         let signal_name = match signal_number {
             libc::SIGABRT => "SIGABRT",
             libc::SIGBUS => "SIGBUS",
@@ -150,15 +162,10 @@ fn install_signal_handler(build_info: BuildInfo) {
         // but writing to stderr is one of them.
         // So we first print out what happened to stderr so we're sure that gets out,
         // then we do the unsafe things, like logging the stack trace.
-        // We take care not to allocate any memory along the way.
+        // We take care not to allocate any memory before we generate the call stack.
 
-        write_to_stderr("\n\n");
-        write_to_stderr("Rerun caught a signal: ");
-        write_to_stderr(signal_name);
-        write_to_stderr("\n\n");
-        write_to_stderr(
-            "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting\n\n",
-        );
+        write_to_stderr("\n");
+        print_problem_and_links(signal_name);
 
         // Ok, we printed the most important things.
         // Let's do less important things that require memory allocations.
@@ -167,7 +174,13 @@ fn install_signal_handler(build_info: BuildInfo) {
 
         let callstack = callstack();
         write_to_stderr(&callstack);
+        write_to_stderr("\n");
 
+        // Let's print the important stuff _again_ so it is visible at the bottom of the users terminal:
+        write_to_stderr("\n");
+        print_problem_and_links(signal_name);
+
+        // Send analytics - this also sleeps a while to give the analytics time to send the event.
         #[cfg(feature = "analytics")]
         {
             let build_info = BUILD_INFO
@@ -175,15 +188,6 @@ fn install_signal_handler(build_info: BuildInfo) {
                 .unwrap_or_else(|| re_build_info::build_info!());
             send_signal_analytics(build_info, signal_name, callstack);
         }
-
-        // Let's print the important stuff _again_ so it is visible at the bottom of the users terminal:
-        write_to_stderr("\n");
-        write_to_stderr("Rerun caught a signal: ");
-        write_to_stderr(signal_name);
-        write_to_stderr("\n");
-        write_to_stderr(
-            "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting\n\n",
-        );
 
         // We are done!
         // Call the default signal handler (which usually terminates the app):

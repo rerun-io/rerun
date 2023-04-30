@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use std::collections::{HashMap, HashSet};
 
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};

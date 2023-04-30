@@ -67,6 +67,7 @@ re_analytics = { workspace = true, optional = true }
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",

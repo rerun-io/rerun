@@ -16,16 +16,13 @@ use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 
 use crate::{
-    app_icon::setup_app_icon,
-    misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
+    misc::{time_control::PlayState, AppOptions, Caches, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
     viewer_analytics::ViewerAnalytics,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
-
-use super::app_icon::AppIconStatus;
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -37,6 +34,7 @@ enum TimeControlCommand {
     StepBack,
     StepForward,
     Restart,
+    Follow,
 }
 
 // ----------------------------------------------------------------------------
@@ -97,8 +95,6 @@ pub struct App {
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
-
-    icon_status: AppIconStatus,
 }
 
 impl App {
@@ -155,8 +151,6 @@ impl App {
             cmd_palette: Default::default(),
 
             analytics,
-
-            icon_status: AppIconStatus::NotSetTryAgain,
         }
     }
 
@@ -336,6 +330,9 @@ impl App {
             Command::PlaybackTogglePlayPause => {
                 self.run_time_control_command(TimeControlCommand::TogglePlayPause);
             }
+            Command::PlaybackFollow => {
+                self.run_time_control_command(TimeControlCommand::Follow);
+            }
             Command::PlaybackStepBack => {
                 self.run_time_control_command(TimeControlCommand::StepBack);
             }
@@ -359,6 +356,9 @@ impl App {
         match command {
             TimeControlCommand::TogglePlayPause => {
                 time_ctrl.toggle_play_pause(times_per_timeline);
+            }
+            TimeControlCommand::Follow => {
+                time_ctrl.set_play_state(times_per_timeline, PlayState::Following);
             }
             TimeControlCommand::StepBack => {
                 time_ctrl.step_time_back(times_per_timeline);
@@ -437,10 +437,6 @@ impl eframe::App for App {
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
-        }
-
-        if self.icon_status == AppIconStatus::NotSetTryAgain {
-            self.icon_status = setup_app_icon();
         }
 
         if self.shutdown.load(std::sync::atomic::Ordering::Relaxed) {
@@ -1890,8 +1886,6 @@ fn new_recording_confg(
     data_source: &'_ re_smart_channel::Source,
     log_db: &'_ LogDb,
 ) -> RecordingConfig {
-    use crate::misc::time_control::PlayState;
-
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
         // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.

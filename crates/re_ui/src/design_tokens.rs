@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // fixed json file
+
 use egui::Color32;
 
 /// The look and feel of the UI.

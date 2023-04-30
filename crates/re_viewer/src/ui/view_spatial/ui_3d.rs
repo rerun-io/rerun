@@ -327,7 +327,7 @@ pub fn view_3d(
 
         view_from_world: eye.world_from_view.inverse(),
         projection_from_view: Projection::Perspective {
-            vertical_fov: eye.fov_y.unwrap(),
+            vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
             near_plane_distance: eye.near(),
             aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
         },
