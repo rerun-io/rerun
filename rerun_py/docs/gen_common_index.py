@@ -7,7 +7,6 @@ The top-level index file should look like
 Function | Description
 -------- | -----------
 [rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK ...
-[rerun.set_recording_id()](initialization/#rerun.set_recording_id) | Set the recording ID ...
 [rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the ...
 [rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer ...
 ...
@@ -54,7 +53,7 @@ SECTION_TABLE: Final[List[Section]] = [
     Section(
         title="Viewer Control",
         module_summary=None,
-        func_list=["set_recording_id", "save"],
+        func_list=["save"],
     ),
     Section(
         title="Time",

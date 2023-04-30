@@ -39,13 +39,31 @@ use crate::arrow::get_registered_component_names;
 
 // --- FFI ---
 
-// TODO
-/// The global [`RecordingStream`] object used by the Python API.
+/// The global [`RecordingStream`] object used by the Python API for data.
 fn global_data_stream() -> parking_lot::MutexGuard<'static, Option<RecordingStream>> {
     use once_cell::sync::OnceCell;
     use parking_lot::Mutex;
-    static REC_CTX: OnceCell<Mutex<Option<RecordingStream>>> = OnceCell::new();
-    REC_CTX.get_or_init(Default::default).lock()
+    static DATA_STREAM: OnceCell<Mutex<Option<RecordingStream>>> = OnceCell::new();
+    DATA_STREAM.get_or_init(Default::default).lock()
+}
+
+/// The global [`RecordingStream`] object used by the Python API for blueprints.
+#[allow(dead_code)]
+fn global_blueprint_stream() -> parking_lot::MutexGuard<'static, Option<RecordingStream>> {
+    use once_cell::sync::OnceCell;
+    use parking_lot::Mutex;
+    static BP_STREAM: OnceCell<Mutex<Option<RecordingStream>>> = OnceCell::new();
+    BP_STREAM.get_or_init(Default::default).lock()
+}
+
+#[cfg(feature = "web_viewer")]
+fn global_web_viewer_server(
+) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServerHandle>> {
+    use once_cell::sync::OnceCell;
+    use parking_lot::Mutex;
+    static WEB_HANDLE: OnceCell<Mutex<Option<re_web_viewer_server::WebViewerServerHandle>>> =
+        OnceCell::new();
+    WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
 #[pyfunction]
@@ -315,21 +333,20 @@ impl PyMemorySinkStorage {
     }
 }
 
+#[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
+fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
+    use once_cell::sync::Lazy;
+    static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
+        Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
+    TOKIO_RUNTIME.enter()
+}
+
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
-        #[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
-        fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
-            use once_cell::sync::Lazy;
-            static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
-                tokio::runtime::Runtime::new().expect("Failed to create tokio runtime")
-            });
-            TOKIO_RUNTIME.enter()
-        }
-
         let rec_stream = global_data_stream();
         let Some(rec_stream) = rec_stream.as_ref() else {
             no_active_recording("serve");
@@ -397,39 +414,34 @@ fn flush(py: Python<'_>) {
 
 #[pyfunction]
 // TODO(jleibs) expose this as a python type
+/// Start a web server to host the run web-assets
 fn start_web_viewer_server(port: u16) -> PyResult<()> {
-    Ok(())
+    #[allow(clippy::unnecessary_wraps)]
+    #[cfg(feature = "web_viewer")]
+    {
+        let mut web_handle = global_web_viewer_server();
 
-    // /// Start a web server to host the run web-assets
-    // ///
-    // /// The caller needs to ensure that there is a `tokio` runtime running.
-    // #[allow(clippy::unnecessary_wraps)]
-    // #[cfg(feature = "web_viewer")]
-    // pub fn start_web_viewer_server(
-    //     &mut self,
-    //     _web_port: WebViewerServerPort,
-    // ) -> Result<(), PythonSessionError> {
-    //     self.web_viewer_server = Some(re_web_viewer_server::WebViewerServerHandle::new(_web_port)?);
+        let _guard = enter_tokio_runtime();
+        *web_handle = Some(
+            re_web_viewer_server::WebViewerServerHandle::new(WebViewerServerPort(port)).map_err(
+                |err| {
+                    PyRuntimeError::new_err(format!(
+                        "Failed to start web viewer server on port {port}: {err}",
+                    ))
+                },
+            )?,
+        );
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
-    // #[cfg(feature = "web_viewer")]
-    // {
-    //     let mut session = python_session();
-    //     let _guard = enter_tokio_runtime();
-    //     session
-    //         .start_web_viewer_server(WebViewerServerPort(port))
-    //         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
-    // }
-
-    // #[cfg(not(feature = "web_viewer"))]
-    // {
-    //     _ = port;
-    //     Err(PyRuntimeError::new_err(
-    //         "The Rerun SDK was not compiled with the 'web_viewer' feature",
-    //     ))
-    // }
+    #[cfg(not(feature = "web_viewer"))]
+    {
+        _ = port;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
+        ))
+    }
 }
 
 // --- Time ---
@@ -1131,26 +1143,19 @@ fn get_recording_id() -> PyResult<String> {
 }
 
 #[pyfunction]
+/// Get a url to an instance of the web-viewer
+///
+/// This may point to app.rerun.io or localhost depending on
+/// whether `host_assets` was called.
 fn get_app_url() -> String {
-    // TODO
-    "TODO".to_owned()
+    #[cfg(feature = "web_viewer")]
+    if let Some(hosted_assets) = &*global_web_viewer_server() {
+        return format!("http://localhost:{}", hosted_assets.port());
+    }
 
-    // /// Get a url to an instance of the web-viewer
-    // ///
-    // /// This may point to app.rerun.io or localhost depending on
-    // /// whether `host_assets` was called.
-    // pub fn get_app_url(&self) -> String {
-    //     #[cfg(feature = "web_viewer")]
-    //     if let Some(hosted_assets) = &self.web_viewer_server {
-    //         return format!("http://localhost:{}", hosted_assets.port());
-    //     }
-
-    //     let short_git_hash = &self.build_info.git_hash[..7];
-    //     format!("https://app.rerun.io/commit/{short_git_hash}")
-    // }
-
-    // let session = python_session();
-    // session.get_app_url()
+    let build_info = re_build_info::build_info!();
+    let short_git_hash = &build_info.git_hash[..7];
+    format!("https://app.rerun.io/commit/{short_git_hash}")
 }
 
 // --- Helpers ---
