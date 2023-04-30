@@ -283,6 +283,7 @@ pub fn view_2d(
             .state_2d
             .update(&response, canvas_from_ui, canvas_rect, available_size);
 
+        // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.
         let eye = Eye {
             world_from_view: IsoTransform::IDENTITY,
             fov_y: None,
