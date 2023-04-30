@@ -42,7 +42,7 @@ pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
 pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
-pub use rect::RectF32;
+pub use rect::{RectF32, RectInt};
 pub use size::Size;
 pub use transform::RectTransform;
 pub use view_builder::{AutoSizeConfig, ViewBuilder};
@@ -70,7 +70,6 @@ mod file_server;
 pub use self::file_server::FileServer;
 
 mod rect;
-pub use rect::RectInt;
 
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
 #[rustfmt::skip] // it's auto-generated

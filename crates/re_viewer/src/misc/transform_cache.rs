@@ -127,9 +127,8 @@ impl TransformCache {
                 &current_tree.path,
                 entity_db,
                 &query,
-                // TODO(andreas): For inverse pinhole cameras we'd like the image plane to be indefinitely far away.
-                // High values quickly run into precision issues though.
-                // What we really want is to render everything under the inverse pinhole on top, independent of everything else.
+                // TODO(#1988): See comment in transform_at. This is a workaround for precision issues
+                // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
                 &mut encountered_pinhole,
             ) {
@@ -184,7 +183,6 @@ impl TransformCache {
 
         for child_tree in tree.children.values() {
             let mut encountered_pinhole = encountered_pinhole;
-
             let reference_from_child = match transform_at(
                 &child_tree.path,
                 entity_db,
