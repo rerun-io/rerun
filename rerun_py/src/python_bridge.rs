@@ -227,9 +227,10 @@ fn init(
             .buffered()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
             .into();
-        drop(bp_ctx);
         // Always set user-modified to disable the heuristics
-        set_user_modified(true);
+        if let Some(bp_stream) = bp_ctx.as_ref() {
+            set_user_edited(bp_stream, true);
+        }
     }
 
     Ok(())
@@ -350,18 +351,39 @@ fn memory_recording() -> PyMemorySinkStorage {
         return Default::default();
     };
 
-    PyMemorySinkStorage(data_stream.memory())
+    let bp_stream = global_blueprint_stream();
+    let Some(bp_stream) = bp_stream.as_ref() else {
+        no_active_recording("memory_recording");
+        return Default::default();
+    };
+    let storage = PyMemorySinkStorage {
+        recording: data_stream.memory(),
+        blueprint: bp_stream.memory(),
+    };
+
+    // TOOD(jleibs): The need to keep track of this is a pain
+    // I think we should reverse the default and then set user-not-modified
+    // when we create a default-blueprint in the app.
+
+    set_user_edited(bp_stream, true);
+
+    storage
 }
 
 #[pyclass]
 #[derive(Default)]
-struct PyMemorySinkStorage(MemorySinkStorage);
+struct PyMemorySinkStorage {
+    recording: MemorySinkStorage,
+    blueprint: MemorySinkStorage,
+}
 
 #[pymethods]
 impl PyMemorySinkStorage {
-    fn get_rrd_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
-        self.0
-            .rrd_as_bytes()
+    fn get_sinks_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+        // TODO(jleibs) book-keep the right handles to flush here
+        flush(py);
+        // Encode blueprint first to avoid auto-blueprint behavior
+        rerun::sink::concat_memory_sinks_as_bytes(&[&self.blueprint, &self.recording])
             .map(|bytes| PyBytes::new(py, bytes.as_slice()))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
@@ -448,6 +470,13 @@ fn flush(py: Python<'_>) {
             return;
         };
         data_stream.flush_blocking();
+
+        let bp_stream = global_blueprint_stream();
+        let Some(bp_stream) = bp_stream.as_ref() else {
+            no_active_recording("flush");
+            return;
+        };
+        bp_stream.flush_blocking();
     });
 }
 
@@ -1171,20 +1200,14 @@ fn add_space_view(name: &str, space_path: &str, entity_paths: Vec<&str>) {
     record_row(rec_ctx, row);
 }
 
-fn set_user_modified(user_modified: bool) {
-    let bp_ctx = global_blueprint_stream();
-    let Some(rec_ctx) = bp_ctx.as_ref() else {
-        no_active_recording("set_viewport");
-        return;
-    };
-
+fn set_user_edited(bp_stream: &RecordingStream, user_edited: bool) {
     // TODO(jleibs) timeless? Something else?
-    let timepoint = time(true, rec_ctx);
+    let timepoint = time(true, bp_stream);
 
     let viewport = ViewportComponent {
         visible: Default::default(),
         maximized: None,
-        has_been_user_edited: user_modified,
+        has_been_user_edited: user_edited,
     };
 
     let row = DataRow::from_cells1(
@@ -1195,7 +1218,7 @@ fn set_user_modified(user_modified: bool) {
         [viewport].as_slice(),
     );
 
-    record_row(rec_ctx, row);
+    record_row(bp_stream, row);
 }
 
 #[pyfunction]

@@ -124,16 +124,27 @@ impl MemorySinkStorage {
     pub fn take(&self) -> Vec<LogMsg> {
         std::mem::take(&mut *self.0.write())
     }
-
-    /// Convert the stored messages into an in-memory Rerun log file.
-    #[inline]
-    pub fn rrd_as_bytes(&self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
-        let mut buffer = std::io::Cursor::new(Vec::new());
-        re_log_encoding::encoder::encode(self.read().iter(), &mut buffer)?;
-        Ok(buffer.into_inner())
-    }
 }
 
+/// Convert the stored messages into an in-memory Rerun log file.
+#[inline]
+pub fn concat_memory_sinks_as_bytes(
+    sinks: &[&MemorySinkStorage],
+) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+    let mut buffer = std::io::Cursor::new(Vec::new());
+
+    {
+        let mut encoder = re_log_encoding::encoder::Encoder::new(&mut buffer)?;
+        for sink in sinks {
+            for message in sink.read().iter() {
+                encoder.append(message)?;
+            }
+        }
+        encoder.finish()?;
+    }
+
+    Ok(buffer.into_inner())
+}
 // ----------------------------------------------------------------------------
 
 /// Stream log messages to a Rerun TCP server.

@@ -53,7 +53,7 @@ class MemoryRecording:
         # the storage.
         bindings.flush()
 
-        base64_data = base64.b64encode(self.storage.get_rrd_as_bytes()).decode("utf-8")
+        base64_data = base64.b64encode(self.storage.get_sinks_as_bytes()).decode("utf-8")
 
         html_template = f"""
         <div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
