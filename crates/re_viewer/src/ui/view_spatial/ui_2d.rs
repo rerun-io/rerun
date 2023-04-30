@@ -400,6 +400,20 @@ fn setup_target_config(
         gpu_bridge::viewport_resolution_in_pixels(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
+    // TODO(#1988):
+    // The camera setup is done in a way that works well with the way we inverse pinhole camera transformations right now.
+    // This has a lot of issues though, mainly because we pretend that the 2D plane has a defined depth.
+    // * very bad depth precision as we limit the depth range from 0 to focal_length_in_pixels
+    // * depth values in depth buffer are almost non-sensical and can't be used easily for picking
+    // * 2D rendering can use depth buffer for layering only in a very limited way
+    //
+    // Instead we should treat 2D objects as pre-projected with their depth information already lost.
+    //
+    // We would define two cameras then:
+    // * an orthographic camera for handling 2D rendering
+    // * a perspective camera *at the origin* for 3D rendering
+    // Both share the same view-builder and the same viewport transformation but are independent otherwise.
+
     // For simplicity (and to reduce surprises!) we always render with a pinhole camera.
     // Make up a default pinhole camera if we don't have one placing it in a way to look at the entire space.
     let canvas_size = glam::vec2(canvas_from_ui.to().width(), canvas_from_ui.to().height());

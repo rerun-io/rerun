@@ -266,15 +266,16 @@ fn transform_at(
                         translation,
                     );
 
-                    // Let's think the inverse of this through, in the context of a 2D view that sits at a pinhole camera:
-                    // In this situation, we have a camera that is `focal_length_in_pixels` away from the XY image plane
-                    // and peering down on it from the `principal_point`.
-                    //
-                    // In this case, any 3D object that is up to `pinhole_image_plane_distance` away from the camera should be visible!
-                    // (everything behind, is clipped by the image plane)
-                    // This means we need to apply the scaling factor of `pinhole.focal_length_in_pixels() / distance`,
-                    // as well as undo the translation of the principal point.
-                    // .. which is just what the inverse transformation does ◼️.
+                    // Above calculation is nice for a certain kind of visualizing a projected image plane,
+                    // but the image plane distance is arbitrary and there might be other, better visualizations!
+
+                    // TODO(#1988):
+                    // As such we don't ever want to invert this matrix!
+                    // However, currently our 2D views require do to exactly that since we're forced to
+                    // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
+                    // should have infinite depth!
+                    // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
+                    // See also `ui_2d.rs#setup_target_config`
 
                     Ok(Some(parent_from_child))
                 }
