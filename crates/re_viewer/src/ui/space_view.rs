@@ -11,7 +11,7 @@ use crate::{
 use super::{
     data_blueprint::DataBlueprintTree, space_view_heuristics::default_queried_entities,
     view_bar_chart, view_category::ViewCategory, view_spatial, view_tensor, view_text,
-    view_time_series,
+    view_textbox, view_time_series,
 };
 
 // ----------------------------------------------------------------------------
@@ -154,6 +154,9 @@ impl SpaceView {
             ViewCategory::Text => {
                 self.view_state.state_text.selection_ui(ctx.re_ui, ui);
             }
+            ViewCategory::Textbox => {
+                self.view_state.state_textbox.selection_ui(ctx.re_ui, ui);
+            }
             ViewCategory::TimeSeries => {}
             ViewCategory::BarChart => {}
             ViewCategory::Spatial => {
@@ -203,6 +206,12 @@ impl SpaceView {
                 let mut scene = view_text::SceneText::default();
                 scene.load(ctx, &query, &self.view_state.state_text.filters);
                 self.view_state.ui_text(ctx, ui, &scene);
+            }
+
+            ViewCategory::Textbox => {
+                let mut scene = view_textbox::SceneTextbox::default();
+                scene.load(ctx, &query);
+                self.view_state.ui_textbox(ctx, ui, &scene);
             }
 
             ViewCategory::TimeSeries => {
@@ -303,6 +312,7 @@ pub struct ViewState {
     selected_tensor: Option<InstancePath>,
 
     state_text: view_text::ViewTextState,
+    state_textbox: view_textbox::ViewTextboxState,
     state_time_series: view_time_series::ViewTimeSeriesState,
     state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
@@ -390,6 +400,21 @@ impl ViewState {
         }
         .show(ui, |ui| {
             view_text::view_text(ctx, ui, &mut self.state_text, scene);
+        });
+    }
+
+    fn ui_textbox(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene: &view_textbox::SceneTextbox,
+    ) {
+        egui::Frame {
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..egui::Frame::default()
+        }
+        .show(ui, |ui| {
+            view_textbox::view_textbox(ctx, ui, &mut self.state_textbox, scene);
         });
     }
 

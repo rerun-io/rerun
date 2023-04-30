@@ -17,6 +17,9 @@ pub enum ViewCategory {
     /// Text log view (text over time)
     Text,
 
+    /// Single textbox element
+    Textbox,
+
     /// Time series plot (scalar over time)
     TimeSeries,
 
@@ -35,6 +38,7 @@ impl ViewCategory {
     pub fn icon(self) -> &'static re_ui::Icon {
         match self {
             ViewCategory::Text => &re_ui::icons::SPACE_VIEW_TEXT,
+            ViewCategory::Textbox => &re_ui::icons::SPACE_VIEW_TEXTBOX,
             ViewCategory::TimeSeries => &re_ui::icons::SPACE_VIEW_SCATTERPLOT,
             ViewCategory::BarChart => &re_ui::icons::SPACE_VIEW_HISTOGRAM,
             ViewCategory::Spatial => &re_ui::icons::SPACE_VIEW_3D,
@@ -47,6 +51,7 @@ impl std::fmt::Display for ViewCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             ViewCategory::Text => "Text",
+            ViewCategory::Textbox => "Text Box",
             ViewCategory::TimeSeries => "Time Series",
             ViewCategory::BarChart => "Bar Chart",
             ViewCategory::Spatial => "Spatial",
