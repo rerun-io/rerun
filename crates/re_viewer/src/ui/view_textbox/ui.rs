@@ -30,7 +30,7 @@ impl ViewTextboxState {
 }
 
 pub(crate) fn view_textbox(
-    ctx: &mut ViewerContext<'_>,
+    _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTextboxState,
     scene: &SceneTextbox,

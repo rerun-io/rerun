@@ -76,9 +76,10 @@ pub(crate) fn tree_from_space_views(
                         super::view_spatial::SpatialNavigationMode::ThreeD => None,
                     }
                 }
-                ViewCategory::Tensor | ViewCategory::TimeSeries => Some(1.0), // Not sure if we should do `None` here.
-                ViewCategory::Text => Some(2.0),                              // Make text logs wide
-                ViewCategory::Textbox => Some(1.0),
+                ViewCategory::Textbox | ViewCategory::Tensor | ViewCategory::TimeSeries => {
+                    Some(1.0)
+                } // Not sure if we should do `None` here.
+                ViewCategory::Text => Some(2.0), // Make text logs wide
                 ViewCategory::BarChart => None,
             };
 
