@@ -50,7 +50,7 @@ pub(crate) fn view_textbox(
                 ui.add(Label::new(text).wrap(state.word_wrap));
             } else {
                 ui.label(format!(
-                    "Unepxected number of text entires: {}. Limit your query to 1.",
+                    "Unepxected number of text entries: {}. Limit your query to 1.",
                     scene.text_entries.len()
                 ));
             }
