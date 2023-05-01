@@ -5,12 +5,12 @@ use crate::Component;
 /// A text element intended to be displayed in a textbox
 ///
 /// ```
-/// use re_log_types::component_types::TextEntry;
+/// use re_log_types::component_types::Textbox;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
-///     TextEntry::data_type(),
+///     Textbox::data_type(),
 ///     DataType::Struct(vec![
 ///         Field::new("body", DataType::Utf8, false),
 ///     ])
