@@ -236,3 +236,62 @@ fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
 
     table
 }
+
+// See: https://github.com/rerun-io/rerun/pull/2007
+#[test]
+fn data_store_dump_empty_column() {
+    init_logs();
+
+    // Split tables on 1 row
+    let mut config = re_arrow_store::DataStoreConfig {
+        indexed_bucket_num_rows: 1,
+        ..re_arrow_store::DataStoreConfig::DEFAULT
+    };
+    config.store_insert_ids = false;
+
+    let mut store = DataStore::new(InstanceKey::name(), config);
+
+    data_store_dump_empty_column_impl(&mut store);
+}
+
+fn data_store_dump_empty_column_impl(store: &mut DataStore) {
+    let ent_path: EntityPath = "points".into();
+    let frame1: TimeInt = 1.into();
+    let frame2: TimeInt = 2.into();
+    let frame3: TimeInt = 3.into();
+
+    // Start by inserting a table with 2 rows, one with colors, and one with points.
+    {
+        let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
+        let row1 = test_row!(ent_path @ [
+                build_frame_nr(frame1),
+            ] => 3; [instances1, colors1]);
+
+        let (instances2, points2) = (build_some_instances(3), build_some_point2d(3));
+        let row2 = test_row!(ent_path @ [
+            build_frame_nr(frame2),
+        ] => 3; [instances2, points2]);
+        let mut table = DataTable::from_rows(TableId::random(), [row1, row2]);
+        table.compute_all_size_bytes();
+        store.insert_table(&table).ok();
+    }
+
+    // Now insert another table with points only.
+    {
+        let (instances3, points3) = (build_some_instances(3), build_some_colors(3));
+        let row3 = test_row!(ent_path @ [
+                build_frame_nr(frame3),
+            ] => 3; [instances3, points3]);
+        let mut table = DataTable::from_rows(TableId::random(), [row3]);
+        table.compute_all_size_bytes();
+        store.insert_table(&table).ok();
+    }
+
+    let data_msgs: Result<Vec<_>, _> = store
+        .to_data_tables(None)
+        .map(|table| table.to_arrow_msg())
+        .collect();
+
+    // Should end up with 2 tables
+    assert_eq!(data_msgs.unwrap().len(), 2);
+}
