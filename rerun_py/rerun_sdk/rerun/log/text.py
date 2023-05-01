@@ -1,6 +1,5 @@
 import logging
 from typing import Any, Dict, Final, Optional
-from rerun.components.textbox import TextboxArray
 
 # Fully qualified to avoid circular import
 import rerun.log.extension_components
@@ -8,6 +7,7 @@ from rerun import bindings
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
+from rerun.components.textbox import TextboxArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
 from rerun.log.text_internal import LogLevel
