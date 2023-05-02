@@ -698,11 +698,11 @@ impl ViewBuilder {
     /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::next_readback_result`].
     /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
     /// ```no_run
-    /// use re_renderer::{view_builder::ViewBuilder, IntRect, PickingLayerProcessor, RenderContext};
+    /// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext};
     /// fn schedule_picking_readback(
     ///     ctx: &mut RenderContext,
     ///     view_builder: &mut ViewBuilder,
-    ///     picking_rect: IntRect,
+    ///     picking_rect: RectInt,
     /// ) {
     ///     view_builder.schedule_picking_rect(
     ///         ctx, picking_rect, 42, "My screenshot".to_owned(), false,
