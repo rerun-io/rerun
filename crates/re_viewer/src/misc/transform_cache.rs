@@ -60,13 +60,6 @@ impl std::fmt::Display for UnreachableTransform {
     }
 }
 
-fn transform_affine3(a: glam::Affine3A, b: glam::Affine3A) -> glam::Affine3A {
-    glam::Affine3A {
-        matrix3: a.matrix3.mul_mat3(&b.matrix3),
-        translation: a.matrix3.mul_vec3a(b.translation) + a.translation,
-    }
-}
-
 impl TransformCache {
     /// Determines transforms for all entities relative to a space path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
@@ -139,8 +132,7 @@ impl TransformCache {
                 }
                 Ok(None) => {}
                 Ok(Some(parent_from_child)) => {
-                    reference_from_ancestor =
-                        transform_affine3(reference_from_ancestor, parent_from_child.inverse());
+                    reference_from_ancestor = reference_from_ancestor * parent_from_child.inverse();
                 }
             }
 
@@ -196,9 +188,7 @@ impl TransformCache {
                     continue;
                 }
                 Ok(None) => reference_from_entity,
-                Ok(Some(child_from_parent)) => {
-                    transform_affine3(reference_from_entity, child_from_parent)
-                }
+                Ok(Some(child_from_parent)) => reference_from_entity * child_from_parent,
             };
             self.gather_descendants_transforms(
                 child_tree,
