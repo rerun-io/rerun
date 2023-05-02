@@ -2,6 +2,12 @@ name: Build and Upload Wheels for PR
 
 on:
   workflow_dispatch:
+    inputs:
+      RELEASE_VERSION:
+        description: 'Release Version Number (Must match Cargo.toml)'
+        type: string
+        required: false
+        default: 'prerelease'
 
 jobs:
 
@@ -36,6 +42,7 @@ jobs:
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build-windows:
@@ -47,6 +54,7 @@ jobs:
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
       RRD_ARTIFACT_NAME: ''
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build-macos-arm:
@@ -58,6 +66,7 @@ jobs:
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
       RRD_ARTIFACT_NAME: ''
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   build-macos-intel:
@@ -69,6 +78,7 @@ jobs:
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: 'macos-intel-wheel'
       RRD_ARTIFACT_NAME: ''
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
 
   upload-wheels-linux:
