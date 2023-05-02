@@ -441,14 +441,15 @@ fn setup_target_config(
 
     // Put the camera at the position where it sees the entire image plane as defined
     // by the pinhole camera.
-    let view_from_world = macaw::IsoTransform::look_at_rh(
+    let Some(view_from_world) = macaw::IsoTransform::look_at_rh(
         pinhole
             .principal_point()
             .extend(-pinhole.focal_length_in_pixels()),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,
-    )
-    .unwrap_or(macaw::IsoTransform::IDENTITY);
+    ) else {
+        anyhow::bail!("Failed to compute camera transform for 2D view.");
+    };
 
     // Cut to the portion of the currently visible ui area.
     let mut viewport_transformation = re_renderer::RectTransform {
