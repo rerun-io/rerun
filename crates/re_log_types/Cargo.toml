@@ -73,7 +73,7 @@ num-derive = "0.3"
 num-traits = "0.2"
 smallvec.workspace = true
 thiserror.workspace = true
-time = { workspace = true, default-features = false, features = [
+time = { workspace = true, features = [
   "formatting",
   "macros",
 ] }
