@@ -1,4 +1,6 @@
+#import <./colormap.wgsl>
 #import <./rectangle.wgsl>
+#import <./utils/srgb.wgsl>
 
 fn is_magnifying(pixel_coord: Vec2) -> bool {
     return fwidth(pixel_coord.x) < 1.0;

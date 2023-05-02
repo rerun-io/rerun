@@ -2,7 +2,7 @@
 #import <./utils/srgb.wgsl>
 
 // NOTE: Keep in sync with `colormap.rs`!
-const COLORMAP_GRAYSCALE: u32 = 1u;
+const COLORMAP_GRAYSCALE: u32 = 1u; // sRGB gradient = perceptually even
 const COLORMAP_INFERNO:   u32 = 2u;
 const COLORMAP_MAGMA:     u32 = 3u;
 const COLORMAP_PLASMA:    u32 = 4u;
@@ -14,7 +14,7 @@ const COLORMAP_VIRIDIS:   u32 = 6u;
 /// The input will be saturated to [0, 1] range.
 fn colormap_srgb(which: u32, t: f32) -> Vec3 {
     if which == COLORMAP_GRAYSCALE {
-        return linear_from_srgb(Vec3(t));
+        return Vec3(t);
     } else if which == COLORMAP_INFERNO {
         return colormap_inferno_srgb(t);
     } else if which == COLORMAP_MAGMA {

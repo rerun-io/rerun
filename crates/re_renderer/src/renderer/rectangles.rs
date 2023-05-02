@@ -383,6 +383,8 @@ impl RectangleDrawData {
                         TextureFilterMin::Nearest => wgpu::FilterMode::Nearest,
                     },
                     mipmap_filter: wgpu::FilterMode::Nearest,
+                    address_mode_u: wgpu::AddressMode::ClampToEdge,
+                    address_mode_v: wgpu::AddressMode::ClampToEdge,
                     ..Default::default()
                 },
             );
