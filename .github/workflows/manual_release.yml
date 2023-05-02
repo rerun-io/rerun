@@ -7,13 +7,79 @@ on:
         description: 'Release Version Number (Must match Cargo.toml)'
         type: string
         required: true
+      OVERRIDE_COMMIT:
+        description: 'Commit to release'
+        type: string
+        required: false
 
 jobs:
-
   publish-wheels:
     name: 'Publish Wheels'
+
+    permissions:
+      contents: "read"
+      id-token: "write"
+
     runs-on: ubuntu-latest
+
+    container:
+      image: rerunio/ci_docker:0.6
+
     steps:
-      - name: publish
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Add SHORT_SHA env property with commit short sha
         run: |
-          echo "TODO: jleibs"
+          if [ -z "${{ inputs.OVERRIDE_COMMIT }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.OVERRIDE_COMMIT }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Install packaging
+        run: |
+          python -m pip install --upgrade pip
+          pip install packaging
+
+      - name: Download wheels from Google Cloud Storage
+        env:
+          BUCKET_PATH:
+        run: |
+          mkdir wheels
+          gsutil cp "gs://rerun-builds/commit/${{ env.SHORT_SHA }}/*.whl" wheels/
+
+      - name: Verify wheels match the expected release
+        run: |
+          python scripts/verify-wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
+
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        env:
+          # These are both set in the GitHub project configuration
+          MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
+        with:
+          command: upload
+          args: --skip-existing wheels/*
+
+      # Create the actual prerelease
+      # https://github.com/ncipollo/release-action
+      - name: GitHub Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          draft: true
+          name: "Release - ${{ inputs.RELEASE_VERSION }}}"
+          tag: ${{ inputs.RELEASE_VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generateReleaseNotes: true
+          allowUpdates: true
+          artifacts: "wheels/*.whl"
+
