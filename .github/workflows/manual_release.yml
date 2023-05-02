@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
 
       - name: Add SHORT_SHA env property with commit short sha
         run: |
@@ -34,6 +36,11 @@ jobs:
             USED_SHA=${{ inputs.OVERRIDE_COMMIT }}
           fi
           echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: Expand short hash to FULL_SHA hash
+        run: |
+          FULL_SHA=$(git rev-parse ${{ env.SHORT_SHA }})
+          echo "FULL_SHA=$FULL_SHA" >> $GITHUB_ENV
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -78,7 +85,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "Release - ${{ inputs.RELEASE_VERSION }}"
-          commit: ${{ env.SHORT_SHA }}
+          commit: ${{ env.FULL_SHA }}
           tag: ${{ inputs.RELEASE_VERSION }}
           artifacts: "wheels/*.whl"
           generateReleaseNotes: true
