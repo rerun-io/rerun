@@ -233,6 +233,10 @@ bitflags! {
 
         /// Forces spanning the line's quads as-if the camera was orthographic.
         ///
+        /// This is useful for lines that are on a plane that is parallel to the camera:
+        /// Without this flag, the lines will poke through the camera plane as they orient themselves towards the camera.
+        /// Note that since distances to the camera are computed differently in orthographic mode, this changes how screen space sizes are computed.
+        ///
         /// TODO(andreas): Could be moved to per batch flags.
         const FORCE_ORTHO_SPANNING = 0b1000_0000;
     }
