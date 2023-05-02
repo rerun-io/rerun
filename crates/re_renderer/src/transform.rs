@@ -56,10 +56,10 @@ impl RectTransform {
         // It's easier to think in texcoord space, and then transform to NDC.
         // This texcoord rect specifies the portion of the screen that should become the entire range of the NDC screen.
         let texcoord_rect = RectF32 {
-            left_top: (self.from.left_top - self.to.left_top) / self.to.extent,
+            min: (self.from.min - self.to.min) / self.to.extent,
             extent: self.from.extent / self.to.extent,
         };
-        let texcoord_rect_min = texcoord_rect.min();
+        let texcoord_rect_min = texcoord_rect.min;
         let texcoord_rect_max = texcoord_rect.max();
 
         // y axis is flipped in NDC, therefore we need to flip the y axis of the rect.

@@ -462,7 +462,7 @@ fn setup_target_config(
     // We need to account for this translation in the viewport transformation.
     let principal_point_offset = default_principal_point - pinhole.principal_point();
     let ui_from_canvas_scale = canvas_from_ui.inverse().scale();
-    viewport_transformation.from.left_top +=
+    viewport_transformation.from.min +=
         principal_point_offset * glam::vec2(ui_from_canvas_scale.x, ui_from_canvas_scale.y);
 
     Ok({
@@ -482,7 +482,7 @@ fn setup_target_config(
 
 fn egui_rect_to_re_renderer(rect: egui::Rect) -> re_renderer::RectF32 {
     re_renderer::RectF32 {
-        left_top: glam::vec2(rect.left(), rect.top()),
+        min: glam::vec2(rect.left(), rect.top()),
         extent: glam::vec2(rect.width(), rect.height()),
     }
 }
