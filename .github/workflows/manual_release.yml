@@ -79,11 +79,12 @@ jobs:
       - name: GitHub Release
         uses: ncipollo/release-action@v1.12.0
         with:
-          draft: true
-          name: "Release - ${{ inputs.RELEASE_VERSION }}}"
-          tag: ${{ inputs.RELEASE_VERSION }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          name: "Release - ${{ inputs.RELEASE_VERSION }}}"
+          commit: ${{ env.SHORT_SHA }}
+          tag: ${{ inputs.RELEASE_VERSION }}
+          artifacts: "wheels/*.whl"
           generateReleaseNotes: true
           allowUpdates: true
-          artifacts: "wheels/*.whl"
+          draft: true
 
