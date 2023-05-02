@@ -1,6 +1,7 @@
-use std::{num::NonZeroU32, ops::Range, sync::mpsc};
+use std::{ops::Range, sync::mpsc};
 
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, Texture2DBufferInfo};
+use crate::texture_info::Texture2DBufferInfo;
+use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
 
 /// Identifier used to identify a buffer upon retrieval of the data.
 ///
@@ -14,6 +15,12 @@ struct PendingReadbackRange {
     identifier: GpuReadbackIdentifier,
     buffer_range: Range<wgpu::BufferAddress>,
     user_data: GpuReadbackUserDataStorage,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum GpuReadbackError {
+    #[error("Texture format {0:?} is not supported for readback.")]
+    UnsupportedTextureFormatForReadback(wgpu::TextureFormat),
 }
 
 /// A reserved slice for GPU readback.
@@ -36,8 +43,8 @@ impl GpuReadbackBuffer {
         encoder: &mut wgpu::CommandEncoder,
         source: wgpu::ImageCopyTexture<'_>,
         copy_extents: glam::UVec2,
-    ) {
-        self.read_multiple_texture2d(encoder, &[(source, copy_extents)]);
+    ) -> Result<(), GpuReadbackError> {
+        self.read_multiple_texture2d(encoder, &[(source, copy_extents)])
     }
 
     /// Reads multiple textures into the same buffer.
@@ -54,11 +61,17 @@ impl GpuReadbackBuffer {
         mut self,
         encoder: &mut wgpu::CommandEncoder,
         sources_and_extents: &[(wgpu::ImageCopyTexture<'_>, glam::UVec2)],
-    ) {
+    ) -> Result<(), GpuReadbackError> {
         for (source, copy_extents) in sources_and_extents {
             let start_offset = wgpu::util::align_to(
                 self.range_in_chunk.start,
-                source.texture.format().describe().block_size as u64,
+                source
+                    .texture
+                    .format()
+                    .block_size(Some(source.aspect))
+                    .ok_or(GpuReadbackError::UnsupportedTextureFormatForReadback(
+                        source.texture.format(),
+                    ))? as u64,
             );
 
             let buffer_info = Texture2DBufferInfo::new(source.texture.format(), *copy_extents);
@@ -75,7 +88,7 @@ impl GpuReadbackBuffer {
                     buffer: &self.chunk_buffer,
                     layout: wgpu::ImageDataLayout {
                         offset: start_offset,
-                        bytes_per_row: NonZeroU32::new(buffer_info.bytes_per_row_padded),
+                        bytes_per_row: Some(buffer_info.bytes_per_row_padded),
                         rows_per_image: None,
                     },
                 },
@@ -89,6 +102,7 @@ impl GpuReadbackBuffer {
             self.range_in_chunk =
                 (start_offset + buffer_info.buffer_size_padded)..self.range_in_chunk.end;
         }
+        Ok(())
     }
 
     // TODO(andreas): Unused & untested so far!

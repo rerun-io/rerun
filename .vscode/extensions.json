@@ -2,17 +2,18 @@
     // See https://go.microsoft.com/fwlink/?LinkId=827846
     // for the documentation about the extensions.json format
     "recommendations": [
-        "charliermarsh.ruff", // Ruff for linting
+        "charliermarsh.ruff",
+        "github.vscode-github-actions",
         "ms-python.python",
-        "ms-vsliveshare.vsliveshare", // Live Share
+        "ms-vsliveshare.vsliveshare",
         "polymeilex.wgsl",
-        "rust-lang.rust-analyzer", // Rust-analyzer
+        "rust-lang.rust-analyzer",
         "serayuzgur.crates",
         "streetsidesoftware.code-spell-checker",
-        "tamasfe.even-better-toml", // TOML LSP
-        "vadimcn.vscode-lldb", // CodeLLDB
-        "wayou.vscode-todo-highlight", // TODO Highlight
-        "webfreak.debug", // Native Debug
-        "zxh404.vscode-proto3", // vscode-proto3
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "wayou.vscode-todo-highlight",
+        "webfreak.debug",
+        "zxh404.vscode-proto3",
     ]
 }

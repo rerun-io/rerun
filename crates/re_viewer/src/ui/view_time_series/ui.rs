@@ -17,6 +17,8 @@ use super::SceneTimeSeries;
 pub(crate) const HELP_TEXT: &str = "Pan by dragging, or scroll (+ shift = horizontal).\n\
     Box zooming: Right click to zoom in and zoom out using a selection.\n\
     Zoom with ctrl / ⌘ + pointer wheel, or with pinch gesture.\n\
+    You can also zoom by dragging a rectangle with the right mouse button.\n\
+    \n\
     Reset view with double-click.\n\
     Right click to move the time cursor to the current position.";
 
@@ -82,9 +84,10 @@ pub(crate) fn view_time_series(
         plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
     }
 
-    let egui::InnerResponse {
+    let egui::plot::PlotResponse {
         inner: time_x,
         response,
+        transform: _,
     } = plot.show(ui, |plot_ui| {
         if plot_ui.plot_secondary_clicked() {
             let timeline = ctx.rec_cfg.time_ctrl.timeline();

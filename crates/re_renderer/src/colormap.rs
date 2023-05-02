@@ -10,7 +10,7 @@ use glam::{Vec2, Vec3A, Vec4, Vec4Swizzles};
 #[repr(u32)]
 pub enum Colormap {
     // Reserve 0 for "disabled"
-    /// Perceptually even
+    /// sRGB gray gradient = perceptually even
     #[default]
     Grayscale = 1,
     Inferno = 2,
@@ -59,7 +59,6 @@ pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
 pub fn grayscale_srgb(t: f32) -> [u8; 4] {
     debug_assert!((0.0..=1.0).contains(&t));
 
-    let t = t.powf(2.2);
     let t = ((t * u8::MAX as f32) + 0.5) as u8;
 
     [t, t, t, 255]

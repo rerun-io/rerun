@@ -1,0 +1,59 @@
+name: Manually run the benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      BENCH_NAME:
+        description: 'Name of the benchmark to save'
+        type: string
+        required: false
+        default: ''
+      COMPARE_TO:
+        description: 'Saved Benchmark to compare to'
+        type: string
+        required: false
+        default: 'main'
+
+jobs:
+
+  check-for-pr:
+    runs-on: ubuntu-latest
+    outputs:
+      PR_NUMBER: ${{ steps.get_pr.outputs.PR_NUMBER }}
+    steps:
+      - name: Check if commit belongs to a PR
+        id: get_pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number=$(curl --silent --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --url "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            | jq '.[] | .number')
+
+          if [ -z "$pr_number" ]; then
+            echo "No PR associated with this commit"
+            exit 1
+          else
+            echo "Commit is associated with PR: $pr_number"
+            echo "PR_NUMBER=$pr_number" >> "$GITHUB_OUTPUT"
+          fi
+
+  run-benches:
+    name: Benchmarks
+    needs: [check-for-pr]
+    uses: ./.github/workflows/reusable_bench.yml
+    with:
+      CONCURRENCY: manual-bench-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      BENCH_NAME: ${{ github.event.inputs.BENCH_NAME }}
+      COMPARE_TO: ${{ github.event.inputs.COMPARE_TO }}
+    secrets: inherit
+
+
+  update-pr-summary:
+    name: 'Update PR Summary'
+    needs: [check-for-pr, run-benches]
+    uses: ./.github/workflows/reusable_pr_summary.yml
+    with:
+      CONCURRENCY: manual-bench-${{ needs.check-for-pr.outputs.PR_NUMBER }}
+      PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER}}
+    secrets: inherit

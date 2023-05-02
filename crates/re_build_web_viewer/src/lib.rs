@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 //! Build the Rerun web-viewer .wasm and generate the .js bindings for it.
 
 use cargo_metadata::camino::Utf8PathBuf;
@@ -12,7 +14,7 @@ fn target_directory() -> Utf8PathBuf {
 }
 
 /// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `./web_viewer` folder.
-pub fn build(release: bool) {
+pub fn build(release: bool, webgpu: bool) {
     eprintln!("Building web viewer wasm…");
     eprintln!("We assume you've already run ./scripts/setup_web.sh");
 
@@ -63,7 +65,13 @@ pub fn build(release: bool) {
         "wasm32-unknown-unknown",
         "--target-dir",
         target_wasm_dir.as_str(),
+        "--no-default-features",
     ]);
+    if webgpu {
+        cmd.arg("--features=analytics");
+    } else {
+        cmd.arg("--features=analytics,webgl");
+    }
     if release {
         cmd.arg("--release");
     }
@@ -71,6 +79,7 @@ pub fn build(release: bool) {
     // This is required to enable the web_sys clipboard API which egui_web uses
     // https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
     // https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+    // Furthermore, it's necessary for unstable WebGPU apis to work.
     cmd.env("RUSTFLAGS", "--cfg=web_sys_unstable_apis");
 
     // When executing this script from a Rust build script, do _not_, under any circumstances,

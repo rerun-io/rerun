@@ -28,11 +28,13 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["analytics"]
+default = ["analytics", "webgl"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
+## Render using webgl instead of webgpu on wasm builds.
+webgl = ["re_renderer/webgl"]
 
 [dependencies]
 # Internal:
@@ -46,7 +48,12 @@ re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_log.workspace = true
 re_memory.workspace = true
 re_query.workspace = true
-re_renderer = { workspace = true, features = ["arrow", "serde"] }
+re_renderer = { workspace = true, default-features = false, features = [
+  "arrow",
+  "import-gltf",
+  "import-obj",
+  "serde",
+] }
 re_smart_channel.workspace = true
 re_tensor_ops.workspace = true
 re_ui.workspace = true
@@ -60,6 +67,7 @@ re_analytics = { workspace = true, optional = true }
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",

@@ -252,8 +252,8 @@ impl DepthCloudDrawData {
             depth_cloud_ubo_binding_opaque
         ) {
             if !matches!(
-                depth_cloud.depth_texture.format().describe().sample_type,
-                wgpu::TextureSampleType::Float { filterable: _ }
+                depth_cloud.depth_texture.format().sample_type(None),
+                Some(wgpu::TextureSampleType::Float { filterable: _ })
             ) {
                 return Err(DepthCloudDrawDataError::InvalidDepthTextureFormat(
                     depth_cloud.depth_texture.format(),

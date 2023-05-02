@@ -1,4 +1,6 @@
+#import <./colormap.wgsl>
 #import <./rectangle.wgsl>
+#import <./utils/srgb.wgsl>
 
 fn is_magnifying(pixel_coord: Vec2) -> bool {
     return fwidth(pixel_coord.x) < 1.0;
@@ -86,10 +88,12 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         let colormap_size = textureDimensions(colormap_texture).xy;
         let color_index = normalized_value.r * f32(colormap_size.x * colormap_size.y);
         // TODO(emilk): interpolate between neighboring colors for non-integral color indices
-        let color_index_i32 = i32(color_index);
-        let x = color_index_i32 % colormap_size.x;
-        let y = color_index_i32 / colormap_size.x;
-        texture_color = textureLoad(colormap_texture, IVec2(x, y), 0);
+        // It's important to round here since otherwise numerical instability can push us to the adjacent class-id
+        // See: https://github.com/rerun-io/rerun/issues/1968
+        let color_index_u32 = u32(round(color_index));
+        let x = color_index_u32 % colormap_size.x;
+        let y = color_index_u32 / colormap_size.x;
+        texture_color = textureLoad(colormap_texture, UVec2(x, y), 0);
     } else {
         return ERROR_RGBA; // unknown color mapper
     }
