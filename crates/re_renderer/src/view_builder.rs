@@ -391,8 +391,8 @@ impl ViewBuilder {
                     };
 
                     let tan_half_fov = glam::vec2(f32::MAX, f32::MAX);
-                    let pixel_world_size_from_camera_distance =
-                        vertical_world_size / config.resolution_in_pixel[1] as f32;
+                    let pixel_world_size_from_camera_distance = vertical_world_size
+                        / config.resolution_in_pixel[0].max(config.resolution_in_pixel[1]) as f32;
 
                     (
                         projection_from_view,
@@ -408,8 +408,11 @@ impl ViewBuilder {
             .to_ndc_scale_and_translation();
         let projection_from_view = ndc_scale_and_translation * projection_from_view;
         // Need to take into account that a smaller portion of the world scale is visible now.
-        let pixel_world_size_from_camera_distance =
-            pixel_world_size_from_camera_distance / ndc_scale_and_translation.col(0).x;
+        let pixel_world_size_from_camera_distance = pixel_world_size_from_camera_distance
+            / ndc_scale_and_translation
+                .col(0)
+                .x
+                .max(ndc_scale_and_translation.col(1).y);
 
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.
