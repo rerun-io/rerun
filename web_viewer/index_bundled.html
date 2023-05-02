@@ -233,7 +233,13 @@
         function on_wasm_error(error) {
             console.error("Failed to start: " + error);
 
-            let render_backend_name = wasm_bindgen.is_webgpu_build() ? "WebGPU" : "WebGL";
+            let render_backend_name = "WebGPU/WebGL";
+            try {
+                render_backend_name = wasm_bindgen.is_webgpu_build() ? "WebGPU" : "WebGL";
+            } catch (e) {
+                // loading the wasm probably failed.
+            }
+
             document.getElementById("center_text").innerHTML = `
                 <p>
                     An error occurred during loading:
