@@ -416,8 +416,9 @@ pub fn view_3d(
     // Screenshot context menu.
     let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
     if let Some(mode) = screenshot_mode {
-        let _ =
-            view_builder.schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode);
+        view_builder
+            .schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode)
+            .ok();
     }
 
     show_projections_from_2d_space(

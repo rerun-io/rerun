@@ -336,11 +336,9 @@ pub fn view_2d(
         // Screenshot context menu.
         let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
         if let Some(mode) = screenshot_mode {
-            let _ = view_builder.schedule_screenshot(
-                ctx.render_ctx,
-                space_view_id.gpu_readback_id(),
-                mode,
-            );
+            view_builder
+                .schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode)
+                .ok();
         }
 
         // Draw a re_renderer driven view.
