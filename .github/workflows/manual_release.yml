@@ -1,0 +1,19 @@
+name: Release a branch or target with the given version
+
+on:
+  workflow_dispatch:
+    inputs:
+      RELEASE_VERSION:
+        description: 'Release Version Number (Must match Cargo.toml)'
+        type: string
+        required: true
+
+jobs:
+
+  publish-wheels:
+    name: 'Publish Wheels'
+    runs-on: ubuntu-latest
+    steps:
+      - name: publish
+        run: |
+          echo "TODO: jleibs"
