@@ -248,11 +248,8 @@ fn transform_at(
 
                     let scale = distance / pinhole.focal_length_in_pixels();
                     let translation = (-pinhole.principal_point() * scale).extend(distance);
-                    let parent_from_child = glam::Affine3A::from_scale_rotation_translation(
-                        glam::Vec3::splat(scale),
-                        glam::Quat::IDENTITY,
-                        translation,
-                    );
+                    let parent_from_child = glam::Affine3A::from_translation(translation)
+                        * glam::Affine3A::from_scale(glam::Vec3::splat(scale));
 
                     // Above calculation is nice for a certain kind of visualizing a projected image plane,
                     // but the image plane distance is arbitrary and there might be other, better visualizations!
