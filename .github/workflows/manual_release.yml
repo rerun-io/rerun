@@ -44,9 +44,14 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          version: '>= 363.0.0'
+
       - name: Install packaging
         run: |
-          python3 -m pip install packaging
+          python3 -m pip install packaging google-cloud-storage
 
       - name: Download wheels from Google Cloud Storage
         env:
