@@ -613,7 +613,7 @@ impl LineDrawData {
                 batches
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
-                        world_from_obj: glam::Mat4::from(batch_info.world_from_obj).into(),
+                        world_from_obj: batch_info.world_from_obj.into(),
                         outline_mask_ids: batch_info
                             .overall_outline_mask_ids
                             .0
@@ -637,8 +637,7 @@ impl LineDrawData {
                                 .additional_outline_mask_ids_vertex_ranges
                                 .iter()
                                 .map(|(_, mask)| gpu_data::BatchUniformBuffer {
-                                    world_from_obj: glam::Mat4::from(batch_info.world_from_obj)
-                                        .into(),
+                                    world_from_obj: batch_info.world_from_obj.into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     picking_object_id: batch_info.picking_object_id,
                                     end_padding: Default::default(),

@@ -50,7 +50,7 @@ bitflags! {
         /// If true, we shade all points in the batch like spheres.
         const ENABLE_SHADING = 0b0001;
 
-        /// If true, draw circles instead of spheres.
+        /// If true, draw 2D camera facing circles instead of spheres.
         const DRAW_AS_CIRCLES = 0b0010;
     }
 }
@@ -399,7 +399,7 @@ impl PointCloudDrawData {
                 batches
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
-                        world_from_obj: glam::Mat4::from(batch_info.world_from_obj).into(),
+                        world_from_obj: batch_info.world_from_obj.into(),
                         flags: batch_info.flags.bits.into(),
                         outline_mask_ids: batch_info
                             .overall_outline_mask_ids
@@ -424,8 +424,7 @@ impl PointCloudDrawData {
                                 .additional_outline_mask_ids_vertex_ranges
                                 .iter()
                                 .map(|(_, mask)| gpu_data::BatchUniformBuffer {
-                                    world_from_obj: glam::Mat4::from(batch_info.world_from_obj)
-                                        .into(),
+                                    world_from_obj: batch_info.world_from_obj.into(),
                                     flags: batch_info.flags.bits.into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     end_padding: Default::default(),
