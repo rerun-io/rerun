@@ -58,7 +58,7 @@ jobs:
           BUCKET_PATH:
         run: |
           mkdir wheels
-          gsutil cp "gs://rerun-builds/commit/${{ env.SHORT_SHA }}/*.whl" wheels/
+          gsutil cp "gs://rerun-builds/commit/${{ env.SHORT_SHA }}/wheels/*.whl" wheels/
 
       - name: Verify wheels match the expected release
         run: |
