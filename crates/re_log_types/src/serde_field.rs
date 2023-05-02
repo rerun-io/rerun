@@ -19,17 +19,10 @@ use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize
 /// }
 ///
 /// #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
-/// struct SomeArrowStruct {
-///     #[arrow_field(type = "SerdeField<SomeStruct>")]
-///     field: SomeStruct,
-/// }
+/// #[arrow_field(transparent)]
+/// struct SomeStructArrow(#[arrow_field(type = "SerdeField<SomeStruct>")] SomeStruct);
 ///
-/// assert_eq!(
-///     SomeArrowStruct::data_type(),
-///     DataType::Struct(vec![
-///         Field::new("field", DataType::Binary, false),
-///     ])
-/// );
+/// assert_eq!(SomeStructArrow::data_type(), DataType::Binary);
 /// ```
 pub struct SerdeField<T>(std::marker::PhantomData<T>);
 
@@ -59,6 +52,7 @@ where
         v: &<Self as ArrowField>::Type,
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()> {
+        crate::profile_function!();
         let mut buf = Vec::new();
         rmp_serde::encode::write_named(&mut buf, v).map_err(|_err| {
             // TODO(jleibs): Could not get re_error::format() to work here
@@ -76,6 +70,7 @@ where
 
     #[inline]
     fn arrow_deserialize(v: <&Self::ArrayType as IntoIterator>::Item) -> Option<T> {
+        crate::profile_function!();
         v.and_then(|v| rmp_serde::from_slice::<T>(v).ok())
     }
 }
