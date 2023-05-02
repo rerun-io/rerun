@@ -169,7 +169,8 @@ impl StringInterner {
         // and that is wat `ier()` gives us, so this is all correct.
         self.map
             .iter()
-            .map(|(k, v)| std::mem::size_of_val(k) + std::mem::size_of_val(v) + v.len())
+            // NOTE: v is a `&&str`!
+            .map(|(k, v)| std::mem::size_of_val(k) + std::mem::size_of_val(*v) + v.len())
             .sum()
     }
 }
