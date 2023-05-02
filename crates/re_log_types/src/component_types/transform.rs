@@ -156,10 +156,8 @@ impl Pinhole {
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[inline]
-    pub fn focal_length_in_pixels(&self) -> f32 {
-        // TODO(andreas): We should support anamorphic formats! https://en.wikipedia.org/wiki/Anamorphic_format
-        // The required changes trickle out to a few places and imply different fov in x & y direction that are not dependent on the
-        self.image_from_cam[0][0]
+    pub fn focal_length_in_pixels(&self) -> Vec2D {
+        [self.image_from_cam[0][0], self.image_from_cam[1][1]].into()
     }
 
     /// Focal length.

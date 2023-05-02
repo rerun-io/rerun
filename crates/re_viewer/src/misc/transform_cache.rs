@@ -246,10 +246,17 @@ fn transform_at(
                     // Center the image plane and move it along z, scaling the further the image plane is.
                     let distance = pinhole_image_plane_distance(entity_path);
 
-                    let scale = distance / pinhole.focal_length_in_pixels();
+                    let focal_length = pinhole.focal_length_in_pixels();
+                    let focal_length = glam::vec2(focal_length.x(), focal_length.y());
+                    let scale = distance / focal_length;
                     let translation = (-pinhole.principal_point() * scale).extend(distance);
                     let parent_from_child = glam::Affine3A::from_translation(translation)
-                        * glam::Affine3A::from_scale(glam::Vec3::splat(scale));
+
+                        // We want to preserve any depth that might be on the pinhole image.
+                        // Use harmonic mean of x/y scale for those.
+                        * glam::Affine3A::from_scale(
+                            scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
+                        );
 
                     // Above calculation is nice for a certain kind of visualizing a projected image plane,
                     // but the image plane distance is arbitrary and there might be other, better visualizations!

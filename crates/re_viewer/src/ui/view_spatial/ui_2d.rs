@@ -441,10 +441,13 @@ fn setup_target_config(
 
     // Put the camera at the position where it sees the entire image plane as defined
     // by the pinhole camera.
+    // TODO(andreas): Support anamorphic pinhole cameras properly.
+    let focal_length = pinhole.focal_length_in_pixels();
+    let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean
     let Some(view_from_world) = macaw::IsoTransform::look_at_rh(
         pinhole
             .principal_point()
-            .extend(-pinhole.focal_length_in_pixels()),
+            .extend(-focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,
     ) else {
