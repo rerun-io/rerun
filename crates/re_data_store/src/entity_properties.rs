@@ -141,7 +141,7 @@ impl ExtraQueryHistory {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Colormap {
-    /// Perceptually even
+    /// sRGB gray gradient = perceptually even
     Grayscale,
 
     Inferno,
