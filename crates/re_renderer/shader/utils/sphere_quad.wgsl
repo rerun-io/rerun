@@ -93,13 +93,14 @@ fn sphere_or_circle_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved
     return SphereQuadData(pos, radius);
 }
 
-fn sphere_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
+/// Computes coverage of a 3D sphere placed at `sphere_center` in the fragment shader using the currently set camera.
+fn sphere_quad_coverage(world_position: Vec3, radius: f32, sphere_center: Vec3) -> f32 {
     let ray = camera_ray_to_world_pos(world_position);
 
     // Sphere intersection with anti-aliasing as described by Iq here
     // https://www.shadertoy.com/view/MsSSWV
     // (but rearranged and labeled to it's easier to understand!)
-    let d = ray_sphere_distance(ray, point_center, radius);
+    let d = ray_sphere_distance(ray, sphere_center, radius);
     let distance_to_sphere_surface = d.x;
     let closest_ray_dist = d.y;
     let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
@@ -111,11 +112,12 @@ fn sphere_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -
     return saturate(0.5 - distance_to_surface_in_pixels);
 }
 
-/// Computes coverage of a sphere or circle on a quad.
+/// Computes coverage of a 2D sphere placed at `circle_center` in the fragment shader using the currently set camera.
 ///
-/// Note that in orthographic mode, spheres are always circles.
-fn circle_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
-    let to_center = point_center - world_position;
+/// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
+/// perspective projection is not taken into account.
+fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) -> f32 {
+    let to_center = circle_center - world_position;
     let distance = length(to_center);
     let distance_pixel_difference = fwidth(distance);
     return smoothstep(radius + distance_pixel_difference, radius - distance_pixel_difference, distance);
