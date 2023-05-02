@@ -62,7 +62,7 @@ jobs:
 
       - name: Verify wheels match the expected release
         run: |
-          python3 scripts/verify-wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
+          python3 scripts/verify_wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
