@@ -83,7 +83,7 @@ pub struct RecordingId(uuid::Uuid);
 impl nohash_hasher::IsEnabled for RecordingId {}
 
 // required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for RecordingId {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
