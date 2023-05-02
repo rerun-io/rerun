@@ -273,7 +273,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
         ] => 3; [instances2, points2]);
         let mut table = DataTable::from_rows(TableId::random(), [row1, row2]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).ok();
+        store.insert_table(&table).unwrap();
     }
 
     // Now insert another table with points only.
@@ -284,7 +284,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
             ] => 3; [instances3, points3]);
         let mut table = DataTable::from_rows(TableId::random(), [row3]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).ok();
+        store.insert_table(&table).unwrap();
     }
 
     let data_msgs: Result<Vec<_>, _> = store
