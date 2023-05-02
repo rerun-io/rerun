@@ -157,7 +157,8 @@ impl Pinhole {
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[inline]
     pub fn focal_length_in_pixels(&self) -> f32 {
-        // Use only the first element of the focal length vector, as we don't support non-square pixels.
+        // TODO(andreas): We should support anamorphic formats! https://en.wikipedia.org/wiki/Anamorphic_format
+        // The required changes trickle out to a few places and imply different fov in x & y direction that are not dependent on the
         self.image_from_cam[0][0]
     }
 
