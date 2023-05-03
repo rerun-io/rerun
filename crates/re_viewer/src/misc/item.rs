@@ -29,29 +29,6 @@ impl std::fmt::Debug for Item {
 }
 
 impl Item {
-    /// If `false`, the selection is referring to data that is no longer present.
-    pub(crate) fn is_valid(&self, blueprint: &crate::ui::Blueprint) -> bool {
-        match self {
-            Item::ComponentPath(_) => true,
-            Item::InstancePath(space_view_id, _) => space_view_id
-                .map(|space_view_id| blueprint.viewport.space_view(&space_view_id).is_some())
-                .unwrap_or(true),
-            Item::SpaceView(space_view_id) => {
-                blueprint.viewport.space_view(space_view_id).is_some()
-            }
-            Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                    space_view
-                        .data_blueprint
-                        .group(*data_blueprint_group_handle)
-                        .is_some()
-                } else {
-                    false
-                }
-            }
-        }
-    }
-
     pub fn kind(self: &Item) -> &'static str {
         match self {
             Item::InstancePath(space_view_id, instance_path) => {
@@ -133,8 +110,8 @@ impl ItemCollection {
         None
     }
 
-    /// Remove all invalid selections.
-    pub fn purge_invalid(&mut self, blueprint: &crate::ui::Blueprint) {
-        self.items.retain(|selection| selection.is_valid(blueprint));
+    /// Retains elements that fullfil a certain condition.
+    pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
+        self.items.retain(|item| f(item));
     }
 }

@@ -194,10 +194,10 @@ pub struct SelectionState {
 
 impl SelectionState {
     /// Called at the start of each frame
-    pub fn on_frame_start(&mut self, blueprint: &Blueprint) {
+    pub fn on_frame_start(&mut self, item_retain_condition: impl Fn(&Item) -> bool) {
         crate::profile_function!();
 
-        self.history.on_frame_start(blueprint);
+        self.history.retain(&item_retain_condition);
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);

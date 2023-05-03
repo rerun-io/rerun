@@ -1,6 +1,4 @@
-use crate::misc::ItemCollection;
-
-use super::Blueprint;
+use crate::misc::{Item, ItemCollection};
 
 /// A `Selection` and its index into the historical stack.
 #[derive(Debug, Clone)]
@@ -30,12 +28,13 @@ pub struct SelectionHistory {
 }
 
 impl SelectionHistory {
-    pub(crate) fn on_frame_start(&mut self, blueprint: &Blueprint) {
+    /// Retains all elements that fullfil a certain condition.
+    pub fn retain(&mut self, f: &impl Fn(&Item) -> bool) {
         crate::profile_function!();
 
         let mut i = 0;
         self.stack.retain_mut(|selection| {
-            selection.purge_invalid(blueprint);
+            selection.retain(f);
             let retain = !selection.is_empty();
             if !retain && i <= self.current {
                 self.current = self.current.saturating_sub(1);
@@ -65,6 +64,28 @@ impl SelectionHistory {
         self.stack
             .get(self.current + 1)
             .map(|sel| (self.current + 1, sel.clone()).into())
+    }
+
+    #[must_use]
+    pub fn select_previous(&mut self) -> Option<ItemCollection> {
+        if let Some(previous) = self.previous() {
+            if previous.index != self.current {
+                self.current = previous.index;
+                return self.current().map(|s| s.selection);
+            }
+        }
+        None
+    }
+
+    #[must_use]
+    pub fn select_next(&mut self) -> Option<ItemCollection> {
+        if let Some(next) = self.next() {
+            if next.index != self.current {
+                self.current = next.index;
+                return self.current().map(|s| s.selection);
+            }
+        }
+        None
     }
 
     pub fn update_selection(&mut self, item_collection: &ItemCollection) {

@@ -37,28 +37,6 @@ impl SelectionHistory {
         }).inner
     }
 
-    #[must_use]
-    pub fn select_previous(&mut self) -> Option<ItemCollection> {
-        if let Some(previous) = self.previous() {
-            if previous.index != self.current {
-                self.current = previous.index;
-                return self.current().map(|s| s.selection);
-            }
-        }
-        None
-    }
-
-    #[must_use]
-    pub fn select_next(&mut self) -> Option<ItemCollection> {
-        if let Some(next) = self.next() {
-            if next.index != self.current {
-                self.current = next.index;
-                return self.current().map(|s| s.selection);
-            }
-        }
-        None
-    }
-
     fn prev_button_ui(
         &mut self,
         re_ui: &re_ui::ReUi,
