@@ -51,7 +51,13 @@ pub struct PickingResult {
 
 impl PickingResult {
     pub fn space_position(&self) -> Option<glam::Vec3> {
-        self.hits.last().map(|hit| hit.space_position)
+        // Use gpu hit if available as they are usually the position one expects.
+        // (other picking sources might be in here even if hidden!)
+        self.hits
+            .iter()
+            .find(|h| h.hit_type == PickingHitType::GpuPickingResult)
+            .or_else(|| self.hits.first())
+            .map(|hit| hit.space_position)
     }
 }
 
