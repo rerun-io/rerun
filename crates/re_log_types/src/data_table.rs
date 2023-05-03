@@ -1127,7 +1127,7 @@ impl DataTable {
 
 #[test]
 fn data_table_sizes_basics() {
-    use crate::{component_types::InstanceKey, Component as _};
+    use crate::Component as _;
     use arrow2::array::{BooleanArray, UInt64Array};
 
     fn expect(mut cell: DataCell, num_rows: usize, num_bytes: u64) {
@@ -1153,45 +1153,62 @@ fn data_table_sizes_basics() {
         assert_eq!(num_bytes, table.heap_size_bytes());
     }
 
+    // boolean
+    let mut cell = DataCell::from_arrow(
+        "some_bools".into(),
+        BooleanArray::from(vec![Some(true), Some(false), Some(true)]).boxed(),
+    );
+    cell.compute_size_bytes();
+    expect(
+        cell.clone(), //
+        10_000,       // num_rows
+        2_690_064,    // expected_num_bytes
+    );
+    expect(
+        DataCell::from_arrow("some_bools".into(), cell.to_arrow().slice(1, 1)),
+        10_000,    // num_rows
+        2_690_064, // expected_num_bytes
+    );
+
     // primitive
     let mut cell = DataCell::from_arrow(
-        InstanceKey::name(),
+        "some_u64s".into(),
         UInt64Array::from_vec(vec![1, 2, 3]).boxed(),
     );
     cell.compute_size_bytes();
     expect(
         cell.clone(), //
         10_000,       // num_rows
-        1_800_064,    // expected_num_bytes
+        2_840_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow(InstanceKey::name(), cell.to_arrow().slice(1, 1)),
+        DataCell::from_arrow("some_u64s".into(), cell.to_arrow().slice(1, 1)),
         10_000,    // num_rows
-        1_640_064, // expected_num_bytes
+        2_680_064, // expected_num_bytes
     );
 
-    // boolean
+    // utf8 (and more generally: dyn_binary)
+    let mut cell = DataCell::from_native(
+        [
+            crate::component_types::Label("hey".into()),
+            crate::component_types::Label("hey".into()),
+            crate::component_types::Label("hey".into()),
+        ]
+        .as_slice(),
+    );
+    cell.compute_size_bytes();
+    expect(
+        cell.clone(), //
+        10_000,       // num_rows
+        3_090_064,    // expected_num_bytes
+    );
     expect(
         DataCell::from_arrow(
-            InstanceKey::name(),
-            BooleanArray::from(vec![Some(true), Some(false), Some(true)]).boxed(),
+            crate::component_types::Label::name(),
+            cell.to_arrow().slice(1, 1),
         ),
         10_000,    // num_rows
-        1_570_064, // expected_num_bytes
-    );
-
-    // utf8
-    expect(
-        DataCell::from_native(
-            [
-                crate::component_types::Label("hey".into()),
-                crate::component_types::Label("hey".into()),
-                crate::component_types::Label("hey".into()),
-            ]
-            .as_slice(),
-        ),
-        10_000,    // num_rows
-        1_810_064, // expected_num_bytes
+        2_950_064, // expected_num_bytes
     );
 
     // struct
@@ -1207,7 +1224,7 @@ fn data_table_sizes_basics() {
     expect(
         cell.clone(), //
         10_000,       // num_rows
-        4_220_064,    // expected_num_bytes
+        5_260_064,    // expected_num_bytes
     );
     expect(
         DataCell::from_arrow(
@@ -1215,7 +1232,7 @@ fn data_table_sizes_basics() {
             cell.to_arrow().slice(1, 1),
         ),
         10_000,    // num_rows
-        4_060_064, // expected_num_bytes
+        5_100_064, // expected_num_bytes
     );
 
     // struct + fixedsizelist
@@ -1231,7 +1248,7 @@ fn data_table_sizes_basics() {
     expect(
         cell.clone(), //
         10_000,       // num_rows
-        3_040_064,    // expected_num_bytes
+        4_080_064,    // expected_num_bytes
     );
     expect(
         DataCell::from_arrow(
@@ -1239,7 +1256,43 @@ fn data_table_sizes_basics() {
             cell.to_arrow().slice(1, 1),
         ),
         10_000,    // num_rows
-        2_880_064, // expected_num_bytes
+        3_920_064, // expected_num_bytes
+    );
+
+    // variable list
+    let mut cell = DataCell::from_native(
+        [
+            crate::component_types::LineStrip2D::from(vec![
+                [42.0, 666.0],
+                [42.0, 666.0],
+                [42.0, 666.0],
+            ]),
+            crate::component_types::LineStrip2D::from(vec![
+                [42.0, 666.0],
+                [42.0, 666.0],
+                [42.0, 666.0],
+            ]),
+            crate::component_types::LineStrip2D::from(vec![
+                [42.0, 666.0],
+                [42.0, 666.0],
+                [42.0, 666.0],
+            ]),
+        ]
+        .as_slice(),
+    );
+    cell.compute_size_bytes();
+    expect(
+        cell.clone(), //
+        10_000,       // num_rows
+        6_120_064,    // expected_num_bytes
+    );
+    expect(
+        DataCell::from_arrow(
+            crate::component_types::Point2D::name(),
+            cell.to_arrow().slice(1, 1),
+        ),
+        10_000,    // num_rows
+        5_560_064, // expected_num_bytes
     );
 }
 
@@ -1306,7 +1359,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        15_730_064, // expected_num_bytes
+        27_250_064, // expected_num_bytes
     );
 
     // dense union (varying)
@@ -1332,7 +1385,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        15_700_064, // expected_num_bytes
+        27_220_064, // expected_num_bytes
     );
 
     // --- Sparse ---
@@ -1364,7 +1417,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        17_900_064, // expected_num_bytes
+        29_420_064, // expected_num_bytes
     );
 
     // sparse union (varying)
@@ -1390,6 +1443,6 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        17_910_064, // expected_num_bytes
+        29_430_064, // expected_num_bytes
     );
 }

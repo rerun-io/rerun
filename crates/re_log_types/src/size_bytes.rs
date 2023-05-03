@@ -186,27 +186,10 @@ impl SizeBytes for dyn Array {
 
 use arrow2::array::{
     Array, BinaryArray, BooleanArray, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
-    GenericBinaryArray, ListArray, MapArray, MutableArray, PrimitiveArray, StructArray, UnionArray,
-    Utf8Array,
+    ListArray, MapArray, PrimitiveArray, StructArray, UnionArray, Utf8Array,
 };
 use arrow2::bitmap::Bitmap;
 use arrow2::datatypes::PhysicalType;
-
-macro_rules! dyn_binary {
-    ($array:expr, $ty:ty, $o:ty) => {{
-        let array = $array.as_any().downcast_ref::<$ty>().unwrap();
-        let offsets = array.offsets().buffer();
-
-        // in case of Binary/Utf8/List the offsets are sliced,
-        // not the values buffer
-        let values_start = offsets[0] as usize;
-        let values_end = offsets[offsets.len() - 1] as usize;
-
-        values_end - values_start
-            + offsets.len() * std::mem::size_of::<$o>()
-            + validity_size(array.validity())
-    }};
-}
 
 macro_rules! with_match_primitive_type {(
     $key_type:expr, | $_:tt $T:ident | $($body:tt)*
@@ -250,8 +233,24 @@ macro_rules! match_integer_type {(
     }
 })}
 
+macro_rules! dyn_binary {
+    ($array:expr, $ty:ty, $o:ty) => {{
+        let array = $array.as_any().downcast_ref::<$ty>().unwrap();
+        let offsets = array.offsets().buffer();
+
+        // in case of Binary/Utf8/List the offsets are sliced,
+        // not the values buffer
+        let values_start = offsets[0] as usize;
+        let values_end = offsets[offsets.len() - 1] as usize;
+
+        values_end - values_start
+            + offsets.len() * std::mem::size_of::<$o>()
+            + validity_size(array.validity())
+    }};
+}
+
 fn validity_size(validity: Option<&Bitmap>) -> usize {
-    validity.as_ref().map(|b| b.as_slice().0.len()).unwrap_or(0)
+    validity.as_ref().map_or(0, |b| b.as_slice().0.len())
 }
 
 /// Returns the total (heap) allocated size of the array in bytes.
@@ -279,7 +278,6 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 .as_any()
                 .downcast_ref::<PrimitiveArray<$T>>()
                 .unwrap();
-
             array.values().len() * std::mem::size_of::<$T>() + validity_size(array.validity())
         }),
         Binary => dyn_binary!(array, BinaryArray<i32>, i32),
@@ -293,21 +291,24 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
         LargeBinary => dyn_binary!(array, BinaryArray<i64>, i64),
         Utf8 => dyn_binary!(array, Utf8Array<i32>, i32),
         LargeUtf8 => dyn_binary!(array, Utf8Array<i64>, i64),
-        List => {
+        List | LargeList => {
             let array = array.as_any().downcast_ref::<ListArray<i32>>().unwrap();
-            estimated_bytes_size(array.values().as_ref())
-                + array.offsets().len() * std::mem::size_of::<i32>()
+
+            let offsets = array.offsets().buffer();
+            let values_start = offsets[0] as usize;
+            let values_end = offsets[offsets.len() - 1] as usize;
+
+            estimated_bytes_size(
+                array
+                    .values()
+                    .slice(values_start, values_end - values_start)
+                    .as_ref(),
+            ) + std::mem::size_of_val(array.offsets().as_slice())
                 + validity_size(array.validity())
         }
         FixedSizeList => {
             let array = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
             estimated_bytes_size(array.values().as_ref()) + validity_size(array.validity())
-        }
-        LargeList => {
-            let array = array.as_any().downcast_ref::<ListArray<i64>>().unwrap();
-            estimated_bytes_size(array.values().as_ref())
-                + array.offsets().len() * std::mem::size_of::<i64>()
-                + validity_size(array.validity())
         }
         Struct => {
             let array = array.as_any().downcast_ref::<StructArray>().unwrap();
@@ -321,18 +322,68 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
         }
         Union => {
             let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
+
             let types = array.types().len() * std::mem::size_of::<i8>();
             let offsets = array
                 .offsets()
                 .as_ref()
                 .map(|x| x.len() * std::mem::size_of::<i32>())
                 .unwrap_or_default();
-            let fields = array
-                .fields()
-                .iter()
-                .map(|x| x.as_ref())
-                .map(estimated_bytes_size)
-                .sum::<usize>();
+
+            let fields = if let Some(offsets) = array.offsets() {
+                // https://arrow.apache.org/docs/format/Columnar.html#dense-union:
+                //
+                // Dense union represents a mixed-type array with 5 bytes of overhead for each
+                // value. Its physical layout is as follows:
+                // - One child array for each type.
+                // - Types buffer: A buffer of 8-bit signed integers. Each type in the union has a
+                //   corresponding type id whose values are found in this buffer.
+                //   A union with more than 127 possible types can be modeled as a union of unions.
+                // - Offsets buffer: A buffer of signed Int32 values indicating the relative
+                //   offset into the respective child array for the type in a given slot.
+                //   The respective offsets for each child value array must be in
+                //   order / increasing.
+
+                if offsets.is_empty() {
+                    return 0;
+                }
+
+                let fields = array.fields();
+                let values_start = offsets[0] as usize;
+                let values_end = offsets[offsets.len() - 1] as usize;
+                array
+                    .types()
+                    .iter()
+                    .copied()
+                    .map(|ty| {
+                        fields.get(ty as usize).map_or(0, |x| {
+                            estimated_bytes_size(
+                                x.slice(values_start, values_end - values_start).as_ref(),
+                            )
+                        })
+                    })
+                    .sum::<usize>()
+            } else {
+                // https://arrow.apache.org/docs/format/Columnar.html#sparse-union:
+                //
+                // A sparse union has the same structure as a dense union, with the omission of
+                // the offsets array. In this case, the child arrays are each equal in length to
+                // the length of the union.
+                //
+                // While a sparse union may use significantly more space compared with a dense
+                // union, it has some advantages that may be desirable in certain use cases:
+                // - A sparse union is more amenable to vectorized expression evaluation in some
+                //   use cases.
+                // - Equal-length arrays can be interpreted as a union by only defining the types
+                //   array.
+
+                array
+                    .fields()
+                    .iter()
+                    .map(|x| estimated_bytes_size(x.slice(0, array.len()).as_ref()))
+                    .sum::<usize>()
+            };
+
             types + offsets + fields
         }
         Dictionary(key_type) => match_integer_type!(key_type, |$T| {
@@ -364,7 +415,6 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
 fn test_arrow_estimated_size_bytes() {
     use arrow2::{
         array::{Array, Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
-        compute::aggregate::estimated_bytes_size,
         datatypes::{DataType, Field},
         offset::Offsets,
     };
@@ -415,7 +465,7 @@ fn test_arrow_estimated_size_bytes() {
 
             ListArray::<i32>::new(
                 ListArray::<i32>::default_datatype(DataType::UInt64),
-                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
+                Offsets::try_from_lengths(std::iter::repeat(100).take(50))
                     .unwrap()
                     .into(),
                 array_flattened,
@@ -432,7 +482,7 @@ fn test_arrow_estimated_size_bytes() {
         let arrow_size_bytes = estimated_bytes_size(&*array);
 
         assert_eq!(41200, raw_size_bytes);
-        assert_eq!(40200, arrow_size_bytes); // smaller because smaller inner headers
+        assert_eq!(40204, arrow_size_bytes); // smaller because smaller inner headers
     }
 
     // compound type array
@@ -499,7 +549,7 @@ fn test_arrow_estimated_size_bytes() {
 
             ListArray::<i32>::new(
                 ListArray::<i32>::default_datatype(array.data_type().clone()),
-                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
+                Offsets::try_from_lengths(std::iter::repeat(100).take(50))
                     .unwrap()
                     .into(),
                 array.boxed(),
@@ -516,6 +566,6 @@ fn test_arrow_estimated_size_bytes() {
         let arrow_size_bytes = estimated_bytes_size(&*array);
 
         assert_eq!(81200, raw_size_bytes);
-        assert_eq!(80200, arrow_size_bytes); // smaller because smaller inner headers
+        assert_eq!(80204, arrow_size_bytes); // smaller because smaller inner headers
     }
 }

@@ -577,6 +577,7 @@ impl DataCellInner {
             return;
         }
 
+        let values: &dyn arrow2::array::Array = values.as_ref();
         *size_bytes = name.total_size_bytes()
             + size_bytes.total_size_bytes()
             + values.data_type().total_size_bytes()
@@ -602,8 +603,8 @@ fn data_cell_sizes() {
             DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         cell.compute_size_bytes();
 
-        assert_eq!(112, cell.heap_size_bytes());
-        assert_eq!(112, cell.heap_size_bytes());
+        assert_eq!(216, cell.heap_size_bytes());
+        assert_eq!(216, cell.heap_size_bytes());
     }
 
     // anything else
@@ -615,7 +616,7 @@ fn data_cell_sizes() {
         cell.compute_size_bytes();
 
         // zero-sized + 3x u64s
-        assert_eq!(136, cell.heap_size_bytes());
-        assert_eq!(136, cell.heap_size_bytes());
+        assert_eq!(240, cell.heap_size_bytes());
+        assert_eq!(240, cell.heap_size_bytes());
     }
 }
