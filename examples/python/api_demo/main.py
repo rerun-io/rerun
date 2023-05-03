@@ -297,7 +297,7 @@ def run_image_tensors() -> None:
         "uint16",
         "uint32",
         "uint64",
-        "int8",
+        "int8",  # produces wrap-around when casting, producing ugly images, but clipping which is not useful as a test
         "int16",
         "int32",
         "int64",

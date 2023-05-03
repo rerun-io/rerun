@@ -770,9 +770,15 @@ impl DataTable {
         let mut columns = Vec::new();
 
         for (component, rows) in table {
-            let (field, column) = Self::serialize_data_column(component.as_str(), rows)?;
-            schema.fields.push(field);
-            columns.push(column);
+            // If none of the rows have any data, there's nothing to do here
+            // TODO(jleibs): would be nice to make serialize_data_column robust to this case
+            // but I'm not sure if returning an empty column is the right thing to do there.
+            // See: https://github.com/rerun-io/rerun/issues/2005
+            if rows.iter().any(|c| c.is_some()) {
+                let (field, column) = Self::serialize_data_column(component.as_str(), rows)?;
+                schema.fields.push(field);
+                columns.push(column);
+            }
         }
 
         Ok((schema, columns))

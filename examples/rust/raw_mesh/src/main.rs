@@ -272,7 +272,7 @@ fn node_primitives<'data>(
             let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
             let indices = reader.read_indices();
-            let indices = indices.map(|indices| indices.into_u32().into_iter().collect());
+            let indices = indices.map(|indices| indices.into_u32().collect());
 
             let vertex_positions = reader.read_positions().unwrap();
             let vertex_positions = vertex_positions.collect();

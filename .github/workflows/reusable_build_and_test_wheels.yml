@@ -203,6 +203,7 @@ jobs:
 
       - name: Check the expected version
         if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
+        shell: bash
         run: |
           if [ "${{steps.expected_version.outputs.EXPECTED_VERSION}}" != "${{inputs.RELEASE_VERSION}}" ]; then
             echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
