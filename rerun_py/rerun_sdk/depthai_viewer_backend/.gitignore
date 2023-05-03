@@ -1,0 +1,5 @@
+.venv
+.vscode
+__pycache__
+rs_try
+dev_experiments

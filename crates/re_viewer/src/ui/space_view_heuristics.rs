@@ -256,6 +256,7 @@ fn is_default_added_to_space_view(
         re_log_types::component_types::InstanceKey::name(),
         re_log_types::component_types::KeypointId::name(),
         DataStore::insert_id_key(),
+        re_log_types::ImuData::name(), // Separate plotting view for IMU data.
     ];
 
     entity_path.is_descendant_of(space_path)

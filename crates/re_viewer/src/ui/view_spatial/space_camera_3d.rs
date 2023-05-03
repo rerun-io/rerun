@@ -6,7 +6,7 @@ use re_log_types::{EntityPath, ViewCoordinates};
 /// A logged camera that connects spaces.
 #[derive(Clone)]
 pub struct SpaceCamera3D {
-    /// Path to the entity which has the projection (pinhole, ortho or otherwise) transforms.
+    /// Path to the instance which has the projection (pinhole, ortho or otherwise) transforms.
     ///
     /// We expect the camera transform to apply to this instance and every path below it.
     pub ent_path: EntityPath,

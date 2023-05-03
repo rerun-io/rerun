@@ -211,7 +211,7 @@ const DISCLAIMER: &str = "
     help the Rerun team improve the library.
 
     Summary:
-    - We only collect high level events about the features used within the Rerun Viewer.
+    - We only collect high level events about the features used within the Depthai Viewer.
     - The actual data you log to Rerun, such as point clouds, images, or text logs,
       will never be collected.
     - We don't log IP addresses.

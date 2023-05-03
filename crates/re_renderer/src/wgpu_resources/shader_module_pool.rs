@@ -54,12 +54,17 @@ impl ShaderModuleDesc {
         &self,
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
+        shader_text_workaround_replacements: &[(String, String)],
     ) -> wgpu::ShaderModule {
-        let source_interpolated = resolver
+        let mut source_interpolated = resolver
             .populate(&self.source)
             .context("couldn't resolve shader module's contents")
             .map_err(|err| re_log::error!(err=%re_error::format(err)))
             .unwrap_or_default();
+
+        for (from, to) in shader_text_workaround_replacements {
+            source_interpolated.contents = source_interpolated.contents.replace(from, to);
+        }
 
         // All wgpu errors come asynchronously: this call will succeed whether the given
         // source is valid or not.
@@ -78,6 +83,11 @@ impl ShaderModuleDesc {
 #[derive(Default)]
 pub struct GpuShaderModulePool {
     pool: StaticResourcePool<GpuShaderModuleHandle, ShaderModuleDesc, wgpu::ShaderModule>,
+
+    /// Workarounds via text replacement in shader source code.
+    ///
+    /// TODO(andreas): These should be solved with a pre-processor.
+    pub shader_text_workaround_replacements: Vec<(String, String)>,
 }
 
 impl GpuShaderModulePool {
@@ -87,8 +97,9 @@ impl GpuShaderModulePool {
         resolver: &mut FileResolver<Fs>,
         desc: &ShaderModuleDesc,
     ) -> GpuShaderModuleHandle {
-        self.pool
-            .get_or_create(desc, |desc| desc.create_shader_module(device, resolver))
+        self.pool.get_or_create(desc, |desc| {
+            desc.create_shader_module(device, resolver, &self.shader_text_workaround_replacements)
+        })
     }
 
     pub fn begin_frame<Fs: FileSystem>(
@@ -115,7 +126,11 @@ impl GpuShaderModulePool {
             }
 
             paths.iter().any(|p| updated_paths.contains(p)).then(|| {
-                let shader_module = desc.create_shader_module(device, resolver);
+                let shader_module = desc.create_shader_module(
+                    device,
+                    resolver,
+                    &self.shader_text_workaround_replacements,
+                );
                 re_log::debug!(?desc.source, label = desc.label.get(), "recompiled shader module");
                 shader_module
             })

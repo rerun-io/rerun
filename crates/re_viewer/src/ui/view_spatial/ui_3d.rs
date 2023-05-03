@@ -289,7 +289,7 @@ pub fn view_3d(
         state
             .state_3d
             .update_eye(&response, &state.scene_bbox_accum, &scene.space_cameras);
-    let did_interact_with_eye = orbit_eye.interact(&response, orbit_eye_drag_threshold);
+    let did_interact_with_eye = orbit_eye.update(&response, orbit_eye_drag_threshold);
 
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
@@ -431,6 +431,26 @@ pub fn view_3d(
         scene
             .primitives
             .add_axis_lines(macaw::IsoTransform::IDENTITY, None, axis_length);
+    }
+
+    if state.state_3d.show_bbox {
+        let bbox = scene.primitives.bounding_box();
+        if bbox.is_something() && bbox.is_finite() {
+            let scale = bbox.size();
+            let translation = bbox.center();
+            let bbox_from_unit_cube = glam::Affine3A::from_scale_rotation_translation(
+                scale,
+                Default::default(),
+                translation,
+            );
+            scene
+                .primitives
+                .line_strips
+                .batch("scene_bbox")
+                .add_box_outline(bbox_from_unit_cube)
+                .radius(Size::AUTO)
+                .color(egui::Color32::WHITE);
+        }
     }
 
     if state.state_3d.show_bbox {
@@ -633,14 +653,10 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
 
     let eye_pos = center - radius * look_dir;
 
-    OrbitEye {
-        orbit_center: center,
-        orbit_radius: radius,
-        world_from_view_rot: Quat::from_affine3(
-            &Affine3A::look_at_rh(eye_pos, center, look_up).inverse(),
-        ),
-        fov_y: Eye::DEFAULT_FOV_Y,
-        up: space_specs.up.unwrap_or(Vec3::ZERO),
-        velocity: Vec3::ZERO,
-    }
+    OrbitEye::new(
+        center,
+        radius,
+        Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
+        space_specs.up.unwrap_or(Vec3::ZERO),
+    )
 }

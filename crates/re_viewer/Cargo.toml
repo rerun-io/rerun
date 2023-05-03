@@ -17,6 +17,7 @@ include = [
   "Cargo.toml",
   "data/*",
 ]
+resolver = "2"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -28,14 +29,15 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["analytics"]
+default = ["analytics", "webgl"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
+## Render using webgl instead of webgpu on wasm builds.
+webgl = ["re_renderer/webgl"]
 
-[dependencies]
-# Internal:
+[dependencies] # Internal:
 re_arrow_store.workspace = true
 re_build_info.workspace = true
 re_data_store = { workspace = true, features = ["serde"] }
@@ -46,11 +48,21 @@ re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_log.workspace = true
 re_memory.workspace = true
 re_query.workspace = true
-re_renderer = { workspace = true, features = ["arrow", "serde"] }
+re_renderer = { workspace = true, default-features = false, features = [
+  "arrow",
+  "import-gltf",
+  "import-obj",
+  "serde",
+] }
 re_smart_channel.workspace = true
 re_tensor_ops.workspace = true
 re_ui.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
+serde_json = "1"
+tokio = { workspace = true, default-features = false, features = ["rt"] }
+ewebsock = { version = "0.2", optional = false }
+strum = { version = "0.24", features = ["derive"] }
+strum_macros = "0.24"
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
@@ -60,15 +72,16 @@ re_analytics = { workspace = true, optional = true }
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
-eframe = { workspace = true, default-features = false, features = [
+crossbeam-channel = "0.5.7"
+eframe = { workspace = true, features = [
   "default_fonts",
   "persistence",
   "puffin",
   "wgpu",
 ] }
-egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
+egui.workspace = true
 egui_dock = { workspace = true, features = ["serde"] }
-egui_extras = { workspace = true, features = ["tracing"] }
+egui_extras.workspace = true
 egui-wgpu.workspace = true
 enumset.workspace = true
 glam = { workspace = true, features = [
@@ -93,16 +106,24 @@ serde = { version = "1", features = ["derive"] }
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
-time = { workspace = true, default-features = false, features = ["formatting"] }
+time = { workspace = true, default-features = false, features = [
+  "formatting",
+  "wasm-bindgen",
+] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu.workspace = true
+url = "2.3.1"
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 arboard = { version = "3.2", default-features = false, features = [
   "image-data",
 ] }
+pyo3 = { version = "0.18.0", features = ["auto-initialize"] }
+pyo3-asyncio = { version = "0.18", features = ["attributes", "tokio-runtime"] }
+async-std = "1.9"
+
 puffin_http = "0.11"
 puffin.workspace = true
 

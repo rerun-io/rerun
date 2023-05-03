@@ -11,6 +11,14 @@ pub struct DesignTokens {
     pub bottom_bar_stroke: egui::Stroke,
     pub bottom_bar_rounding: egui::Rounding,
     pub shadow_gradient_dark_start: egui::Color32,
+    pub success_bg_color: egui::Color32,
+    pub success_hover_bg_color: egui::Color32,
+    pub warning_bg_color: egui::Color32,
+    pub warning_hover_bg_color: egui::Color32,
+    pub error_bg_color: egui::Color32,
+    pub error_hover_bg_color: egui::Color32,
+    pub primary_bg_color: egui::Color32,
+    pub primary_hover_bg_color: egui::Color32,
 }
 
 impl DesignTokens {
@@ -46,7 +54,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     }
 
     let mut egui_style = egui::Style {
-        visuals: egui::Visuals::dark(),
+        visuals: egui::Visuals::light(),
         ..Default::default()
     };
 
@@ -71,26 +79,25 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     }
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
-    // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-    let floating_color = Color32::from_gray(38); // TODO(emilk): change the content of the design_tokens.json origin instead
+    let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
 
     // Used as the background of text edits, scroll bars and others things
     // that needs to look different from other interactive stuff.
     // We need this very dark, since the theme overall is very, very dark.
-    egui_style.visuals.extreme_bg_color = egui::Color32::BLACK;
+    egui_style.visuals.extreme_bg_color = egui::Color32::WHITE;
 
     egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
     egui_style.visuals.button_frame = true;
-    egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
-    egui_style.visuals.widgets.inactive.bg_fill = Color32::from_gray(40);
-    // get_aliased_color(&json, "{Alias.Color.Action.Default.value}"); // too dark to see, especially for scroll bars
+    egui_style.visuals.widgets.inactive.weak_bg_fill =
+        get_aliased_color(&json, "{Alias.Color.Action.Inactive.value}"); // Buttons have no background color when inactive
+    egui_style.visuals.widgets.inactive.bg_fill =
+        get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
 
     {
         // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-        // let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
-        let hovered_color = Color32::from_gray(64); // TODO(emilk): change the content of the design_tokens.json origin instead
+        let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
         egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
         egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
         egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
@@ -163,26 +170,39 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     ctx.set_style(egui_style);
 
     DesignTokens {
-        top_bar_color: Color32::from_gray(20), // copied from figma
-        bottom_bar_color: get_global_color(&json, "{Global.Color.Grey.150}"),
-        bottom_bar_stroke: egui::Stroke::new(1.0, egui::Color32::from_gray(47)), // copied from figma
+        top_bar_color: get_global_color(&json, "{Global.Color.Gray.200}"), // copied from figma
+        bottom_bar_color: get_global_color(&json, "{Global.Color.Gray.100}"),
+        bottom_bar_stroke: egui::Stroke::new(
+            1.0,
+            Color32::TRANSPARENT, // Transparent because it doesn't look good in light mode
+        ), // copied from figma
         bottom_bar_rounding: egui::Rounding {
             nw: 6.0,
             ne: 6.0,
             sw: 0.0,
             se: 0.0,
         }, // copied from figma, should be top only
-        shadow_gradient_dark_start: egui::Color32::from_black_alpha(77),
+        shadow_gradient_dark_start: Color32::TRANSPARENT,
+        success_bg_color: get_global_color(&json, "{Global.Color.Success.200}"),
+        success_hover_bg_color: get_global_color(&json, "{Global.Color.Success.300}"),
+        warning_bg_color: get_global_color(&json, "{Global.Color.Warning.200}"),
+        warning_hover_bg_color: get_global_color(&json, "{Global.Color.Warning.300}"),
+        error_bg_color: get_global_color(&json, "{Global.Color.Error.200}"),
+        error_hover_bg_color: get_global_color(&json, "{Global.Color.Error.300}"),
+        primary_bg_color: get_global_color(&json, "{Global.Color.Primary.Default}"),
+        primary_hover_bg_color: get_global_color(&json, "{Global.Color.Primary.500}"),
     }
 }
 
 // ----------------------------------------------------------------------------
 
 fn get_aliased_color(json: &serde_json::Value, alias_path: &str) -> egui::Color32 {
+    re_log::debug!("Alias path: {alias_path}");
     parse_color(get_alias_str(json, alias_path))
 }
 
 fn get_global_color(json: &serde_json::Value, global_path: &str) -> egui::Color32 {
+    re_log::debug!("Global path: {global_path}");
     parse_color(global_path_value(json, global_path).as_str().unwrap())
 }
 

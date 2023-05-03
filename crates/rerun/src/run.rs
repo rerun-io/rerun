@@ -15,7 +15,7 @@ use crate::web_viewer::host_web_viewer;
 
 // Note the extra blank lines between the point-lists below: it is required by `clap`.
 
-/// The Rerun Viewer and Server
+/// The Depthai Viewer and Server
 ///
 /// Features:
 ///
@@ -441,7 +441,7 @@ async fn run_impl(
             app.set_profiler(profiler);
             Box::new(app)
         }))
-        .map_err(|e| e.into());
+        .map_err(|err| err.into());
 
         #[cfg(not(feature = "native_viewer"))]
         {

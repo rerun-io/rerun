@@ -116,8 +116,38 @@ impl Viewport {
                     .copied()
                     .collect_vec();
 
+                let visible_space_views = &self.visible;
+                let all_entities = visible_space_views.iter().map(|space_view_id| {
+                    self.space_views
+                        .get(space_view_id)
+                        .unwrap()
+                        .data_blueprint
+                        .entity_paths()
+                });
+                if !self.visible.is_empty() {
+                    ctx.depthai_state.set_subscriptions_from_space_views(
+                        self.space_views
+                            .values()
+                            .filter(|space_view| self.visible.contains(&space_view.id))
+                            .collect_vec(),
+                    );
+                }
+
                 for space_view_id in &space_view_ids {
                     self.space_view_entry_ui(ctx, ui, space_view_id);
+                    if let Some(space_view) = self.space_views.get_mut(space_view_id) {
+                        if let Some(group) = space_view
+                            .data_blueprint
+                            .group(space_view.data_blueprint.root_handle())
+                        {
+                            ctx.depthai_state
+                                .entities_to_remove(&group.entities.clone())
+                                .iter()
+                                .for_each(|ep| {
+                                    space_view.data_blueprint.remove_entity(ep);
+                                });
+                        }
+                    }
                 }
             });
     }
@@ -138,6 +168,10 @@ impl Viewport {
             re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
             return;
         };
+        if space_view.data_blueprint.entity_paths().is_empty() {
+            self.remove(space_view_id);
+            return;
+        }
         debug_assert_eq!(space_view.id, *space_view_id);
 
         let mut visibility_changed = false;
@@ -362,6 +396,7 @@ impl Viewport {
         spaces_info: &SpaceInfoCollection,
     ) {
         crate::profile_function!();
+        // TODO(filip): Add back entities that were removed from the space view if they are available again
 
         for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(ctx, spaces_info);
@@ -374,6 +409,28 @@ impl Viewport {
                 }
             }
         }
+
+        let possible_space_views = default_created_space_views(ctx, spaces_info);
+        let mut entity_paths_added = Vec::new();
+        for entity_path in ctx.depthai_state.new_auto_add_entity_paths.iter() {
+            for space_view in possible_space_views.iter().filter_map(|(space_view)| {
+                if space_view.data_blueprint.contains_entity(entity_path) {
+                    entity_paths_added.push(entity_path.clone());
+                    Some(space_view.clone())
+                } else {
+                    None
+                }
+            }) {
+                self.add_space_view(space_view);
+            }
+        }
+        ctx.depthai_state.new_auto_add_entity_paths = ctx
+            .depthai_state
+            .new_auto_add_entity_paths
+            .iter()
+            .filter(|ep| !entity_paths_added.contains(ep))
+            .cloned()
+            .collect_vec();
     }
 
     fn should_auto_add_space_view(&self, space_view_candidate: &SpaceView) -> bool {
@@ -458,6 +515,7 @@ impl Viewport {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
 
             egui_dock::DockArea::new(tree)
+                .id(egui::Id::new("space_view_dock"))
                 .style(re_ui::egui_dock_style(ui.style()))
                 .show_inside(ui, &mut tab_viewer);
         });
@@ -706,6 +764,7 @@ fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
         ViewCategory::BarChart => Some(crate::ui::view_bar_chart::HELP_TEXT),
         ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text()),
         ViewCategory::Text | ViewCategory::Tensor => None,
+        ViewCategory::NodeGraph => None,
     };
 
     if let Some(help_text) = help_text {

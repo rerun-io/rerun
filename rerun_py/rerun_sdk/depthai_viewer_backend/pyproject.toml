@@ -1,0 +1,12 @@
+[project]
+name = "depthai_viewer_backend"
+version = "0.0.1"
+authors = [{ name = "Filip Jeretina", email = "filip.jeretina@luxonis.com" }]
+description = "DepthAi Viewer Backend"
+
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
+
+dependencies = ["depthai-sdk", "depthai", "numpy==1.24.*", "rerun_sdk", "ahrs"]

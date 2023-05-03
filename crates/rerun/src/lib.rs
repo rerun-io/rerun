@@ -13,7 +13,7 @@
 //! - [Rust API docs](https://docs.rs/rerun/)
 //! - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 //!
-//! There are many different ways of sending data to the Rerun Viewer depending on what you're
+//! There are many different ways of sending data to the Depthai Viewer depending on what you're
 //! trying to achieve and whether the viewer is running in the same process as your code, in
 //! another process, or even as a separate web application.
 //!

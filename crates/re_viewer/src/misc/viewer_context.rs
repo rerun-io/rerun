@@ -11,6 +11,8 @@ use super::{
     HoverHighlight,
 };
 
+use crate::depthai::depthai;
+
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
@@ -32,6 +34,7 @@ pub struct ViewerContext<'a> {
     pub re_ui: &'a re_ui::ReUi,
 
     pub render_ctx: &'a mut re_renderer::RenderContext,
+    pub depthai_state: &'a mut depthai::State,
 }
 
 impl<'a> ViewerContext<'a> {

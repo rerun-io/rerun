@@ -78,6 +78,7 @@ pub(crate) fn tree_from_space_views(
                 ViewCategory::Tensor | ViewCategory::TimeSeries => Some(1.0), // Not sure if we should do `None` here.
                 ViewCategory::Text => Some(2.0),                              // Make text logs wide
                 ViewCategory::BarChart => None,
+                ViewCategory::NodeGraph => Some(2.0), // Make node graphs wide
             };
 
             SpaceMakeInfo {

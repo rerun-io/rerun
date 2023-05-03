@@ -10,6 +10,7 @@ mod space_view_entity_picker;
 mod space_view_heuristics;
 mod view_bar_chart;
 mod view_category;
+mod view_node_graph;
 mod view_tensor;
 mod view_text;
 mod view_time_series;

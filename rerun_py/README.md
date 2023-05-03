@@ -3,7 +3,6 @@
 Rerun is an SDK for logging computer vision and robotics data paired with a visualizer for exploring that data over time.
 It lets you debug and understand the internal state and data of your systems with minimal code.
 
-
 <p align="center">
   <img width="800" alt="Rerun Viewer" src="https://user-images.githubusercontent.com/1148717/218763490-f6261ecd-e19e-4520-9b25-446ce1ee6328.png">
 </p>
@@ -11,13 +10,14 @@ It lets you debug and understand the internal state and data of your systems wit
 ## Install
 
 ```sh
-pip3 install rerun-sdk
+pip3 install depthai-viewer
 ```
 
 ℹ️ Note:
-The Python module is called `rerun`, while the package published on PyPI is `rerun-sdk`.
+The Python module is called `rerun`, while the package published on PyPI is `depthai-viewer`.
 
 ## Example
+
 ```py
 import rerun as rr
 import numpy as np
@@ -31,40 +31,44 @@ rr.log_points("my_points", positions=positions, colors=colors)
 ```
 
 ## Resources
-* [Quick start](https://www.rerun.io/docs/getting-started/python)
-* [Python API docs](https://ref.rerun.io/docs/python)
-* [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
-* [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
-* [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
-* [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
+
+- [Quick start](https://www.rerun.io/docs/getting-started/python)
+- [Python API docs](https://ref.rerun.io/docs/python)
+- [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
+- [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
+- [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+- [Discord Server](https://discord.com/invite/Gcm8BbTaAj)
 
 ## Logging and viewing in different processes
 
 You can run the viewer and logger in different processes.
 
 In one terminal, start up a viewer with a server that the SDK can connect to:
+
 ```sh
 python3 -m rerun
 ```
 
 In a second terminal, run the example with the `--connect` option:
+
 ```sh
 python3 examples/python/car/main.py --connect
 ```
 
--------------------------
+---
 
 # From Source
 
 Setup:
 
-* Install the Rust toolchain: <https://rustup.rs/>
-* `git clone git@github.com:rerun-io/rerun.git && cd rerun`
-* Run `./scripts/setup_dev.sh`.
-* Make sure `cargo --version` prints `1.67.1` once you are done
+- Install the Rust toolchain: <https://rustup.rs/>
+- `git clone git@github.com:rerun-io/rerun.git && cd rerun`
+- Run `./scripts/setup_dev.sh`.
+- Make sure `cargo --version` prints `1.67.1` once you are done
 
 ## Building
-To build from source and install Rerun into your *current* Python environment run:
+
+To build from source and install Rerun into your _current_ Python environment run:
 
 ```sh
 python3 -m pip install --upgrade pip
@@ -98,6 +102,7 @@ just py-build
 ```
 
 ### Test
+
 ```sh
 # Run the unit tests
 just py-test
@@ -110,9 +115,11 @@ python examples/python/car/main.py
 ```
 
 ## Building an installable Python Wheel
+
 The Python bindings to the core Rust library are built using https://github.com/PyO3/pyo3.
 
 To build an installable Python wheel run:
+
 ```
 pip install -r rerun_py/requirements-build.txt
 maturin build -m rerun_py/Cargo.toml --release
@@ -127,35 +134,41 @@ pip3 install target/wheels/*.whl
 ```
 
 ## Viewing the docs locally
+
 The rerun python docs are generated using `mkdocs`
 
 Install the doc requirements:
+
 ```
 pip install -r rerun_py/requirements-doc.txt
 ```
 
 Serve the docs:
+
 ```sh
 mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
 ```
+
 or
+
 ```sh
 just py-docs-serve
 ```
 
 For information on how the docs system works, see: [docs/docs.md](docs/docs.md)
 
-
 ## Troubleshooting
+
 You can run with `RUST_LOG=debug` to get more output out of the rerun SDK.
 
 If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
-``` sh
+```sh
 rustup set default-host aarch64-apple-darwin && rustup install 1.67
 ```
 
 If you want to switch back, this is how:
-``` sh
+
+```sh
 rustup set default-host x86_64-apple-darwin && rustup install 1.67
 ```

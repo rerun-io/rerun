@@ -2,7 +2,7 @@
 import argparse
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PosixPath
 from typing import Any, Dict, List, Tuple
 
 import cv2
@@ -251,7 +251,7 @@ def log_camera(
 
     rr.log_rigid3(
         # pathlib makes it easy to get the parent, but log_rigid requires a string
-        str(Path(entity_id).parent),
+        str(PosixPath(entity_id).parent),
         child_from_parent=camera_from_world,
         xyz="RDF",  # X=Right, Y=Down, Z=Forward
     )
@@ -263,6 +263,7 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.
     Reads out camera_from_world transform from trajectory string.
 
     Args:
+    ----
         traj_string: A space-delimited file where each line represents a camera position at a particular timestamp.
             The file has seven columns:
             * Column 1: timestamp
@@ -309,6 +310,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     Logs ARKit recording data using Rerun.
 
     Args:
+    ----
         recording_path (Path): The path to the ARKit recording.
 
     Returns
@@ -431,7 +433,8 @@ def main() -> None:
         help="Include the high resolution camera and depth images",
     )
     rr.script_add_args(parser)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "arkitscenes")
     recording_path = ensure_recording_available(args.video_id, args.include_highres)

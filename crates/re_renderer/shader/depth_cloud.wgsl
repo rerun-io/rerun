@@ -43,15 +43,25 @@ struct DepthCloudInfo {
     /// Configures color mapping mode, see `colormap.wgsl`.
     colormap: u32,
 
+    /// Is the albedo texture rgb or mono
+    albedo_color_space: u32,
+
     /// Changes between the opaque and outline draw-phases.
     radius_boost_in_ui_points: f32,
 };
+
+const ALBEDO_COLOR_RGB: u32 = 0u;
+const ALBEDO_COLOR_MONO: u32 = 1u;
 
 @group(1) @binding(0)
 var<uniform> depth_cloud_info: DepthCloudInfo;
 
 @group(1) @binding(1)
 var depth_texture: texture_2d<f32>;
+
+/// Only sampled if `DepthCloudInfo::colormap == ALBEDO_TEXTURE`.
+@group(1) @binding(2)
+var albedo_texture: texture_2d<f32>;
 
 struct VertexOut {
     @builtin(position)
@@ -82,19 +92,32 @@ struct PointData {
 }
 
 // Backprojects the depth texture using the intrinsics passed in the uniform buffer.
-fn compute_point_data(quad_idx: i32) -> PointData {
+fn compute_point_data(quad_idx: u32) -> PointData {
     let wh = textureDimensions(depth_texture);
-    let texcoords = IVec2(quad_idx % wh.x, quad_idx / wh.x);
+    let texcoords = UVec2(quad_idx % wh.x, quad_idx / wh.x);
 
     // TODO(cmc): expose knobs to linearize/normalize/flip/cam-to-plane depth.
     let world_space_depth = depth_cloud_info.world_depth_from_texture_value * textureLoad(depth_texture, texcoords, 0).x;
 
     var data: PointData;
-
     if 0.0 < world_space_depth && world_space_depth < f32max {
         // TODO(cmc): albedo textures
-        let color = Vec4(colormap_linear(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth_in_world), 1.0);
+        // let color = Vec4(colormap_linear(depth_cloud_info.colormap, world_space_depth / depth_cloud_info.max_depth_in_world), 1.0);
 
+        var color: Vec4;
+        if depth_cloud_info.colormap == ALBEDO_TEXTURE {
+            color = textureSampleLevel(
+                albedo_texture,
+                trilinear_sampler,
+                Vec2(texcoords) / Vec2(textureDimensions(albedo_texture)),
+                0.0
+            );
+            if depth_cloud_info.albedo_color_space == ALBEDO_COLOR_MONO {
+                color = Vec4(linear_from_srgb(Vec3(color.r)), 1.0);
+            }
+        } else {
+            color = Vec4(colormap_srgb(depth_cloud_info.colormap, world_space_depth), 1.0);
+        }
         // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
         let intrinsics = depth_cloud_info.depth_camera_intrinsics;
         let focal_length = Vec2(intrinsics[0][0], intrinsics[1][1]);

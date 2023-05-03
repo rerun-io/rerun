@@ -13,11 +13,12 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     global_bindings::FrameUniformBuffer,
     include_shader_module,
+    texture_info::Texture2DBufferInfo,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
         GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
-        Texture2DBufferInfo, TextureDesc, WgpuResourcePools,
+        TextureDesc, WgpuResourcePools,
     },
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, IntRect, RenderContext,
 };
@@ -130,6 +131,15 @@ pub fn pixel_coord_to_ndc(coord: glam::Vec2, target_resolution: glam::Vec2) -> g
         coord.x / target_resolution.x * 2.0 - 1.0,
         1.0 - coord.y / target_resolution.y * 2.0,
     )
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum PickingLayerError {
+    #[error(transparent)]
+    ReadbackError(#[from] crate::allocator::GpuReadbackError),
+
+    #[error(transparent)]
+    ResourcePoolError(#[from] PoolError),
 }
 
 /// Manages the rendering of the picking layer pass, its render targets & readback buffer.
@@ -278,8 +288,10 @@ impl PickingLayerProcessor {
         // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
         // This is "trivially true" if the size of the depth format is a multiple of the size of the id format.
         debug_assert!(
-            Self::PICKING_LAYER_FORMAT.describe().block_size
-                % Self::PICKING_LAYER_DEPTH_FORMAT.describe().block_size
+            Self::PICKING_LAYER_FORMAT.block_size(None).unwrap()
+                % Self::PICKING_LAYER_DEPTH_FORMAT
+                    .block_size(Some(wgpu::TextureAspect::DepthOnly))
+                    .unwrap()
                 == 0
         );
         let buffer_size = row_info_id.buffer_size_padded + row_info_depth.buffer_size_padded;
@@ -342,7 +354,7 @@ impl PickingLayerProcessor {
         self,
         encoder: &mut wgpu::CommandEncoder,
         pools: &WgpuResourcePools,
-    ) -> Result<(), PoolError> {
+    ) -> Result<(), PickingLayerError> {
         let extent = glam::uvec2(
             self.picking_target.texture.width(),
             self.picking_target.texture.height(),
@@ -373,12 +385,16 @@ impl PickingLayerProcessor {
                         texture: &readable_depth_texture.texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::All,
+                        aspect: if self.depth_readback_workaround.is_some() {
+                            wgpu::TextureAspect::All
+                        } else {
+                            wgpu::TextureAspect::DepthOnly
+                        },
                     },
                     extent,
                 ),
             ],
-        );
+        )?;
 
         Ok(())
     }
@@ -401,11 +417,13 @@ impl PickingLayerProcessor {
             .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data, metadata| {
                 // Assert that our texture data reinterpretation works out from a pixel size point of view.
                 debug_assert_eq!(
-                    Self::PICKING_LAYER_DEPTH_FORMAT.describe().block_size as usize,
-                    std::mem::size_of::<f32>()
+                    Self::PICKING_LAYER_DEPTH_FORMAT
+                        .block_size(Some(wgpu::TextureAspect::DepthOnly))
+                        .unwrap(),
+                    std::mem::size_of::<f32>() as u32
                 );
                 debug_assert_eq!(
-                    Self::PICKING_LAYER_FORMAT.describe().block_size as usize,
+                    Self::PICKING_LAYER_FORMAT.block_size(None).unwrap() as usize,
                     std::mem::size_of::<PickingLayerId>()
                 );
 
@@ -432,8 +450,8 @@ impl PickingLayerProcessor {
                     // See https://github.com/gfx-rs/wgpu/issues/3644
                     debug_assert_eq!(
                         DepthReadbackWorkaround::READBACK_FORMAT
-                            .describe()
-                            .block_size as usize,
+                            .block_size(None)
+                            .unwrap() as usize,
                         std::mem::size_of::<f32>() * 4
                     );
                     picking_depth_data = picking_depth_data.into_iter().step_by(4).collect();

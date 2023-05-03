@@ -31,6 +31,7 @@ where
         .spawn(move || run(session))
         .expect("Failed to spawn thread");
 
+
     // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
     // to spawn the viewer in place and migrate the user callback to a new thread.
     re_viewer::run_native_app(Box::new(move |cc, re_ui| {

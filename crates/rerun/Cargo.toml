@@ -1,7 +1,7 @@
 [package]
 name = "rerun"
 authors.workspace = true
-default-run = "rerun"
+default-run = "depthai-viewer"
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
 homepage.workspace = true
@@ -17,6 +17,9 @@ version.workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
+[[bin]]
+name = "depthai-viewer"
+path = "src/main.rs"
 
 [features]
 default = ["analytics", "glam", "image", "native_viewer", "server", "sdk"]

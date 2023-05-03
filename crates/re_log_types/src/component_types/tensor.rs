@@ -857,7 +857,7 @@ impl Tensor {
 /// A thin wrapper around a [`Tensor`] that is guaranteed to not be compressed (never a jpeg).
 ///
 /// All clones are shallow, like for [`Tensor`].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DecodedTensor(Tensor);
 
 impl DecodedTensor {

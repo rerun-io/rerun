@@ -27,7 +27,7 @@ pub struct SliceSelection {
     pub selector_values: BTreeMap<usize, u64>,
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct ViewTensorState {
     /// What slice are we vieiwing?
     slice: SliceSelection,
@@ -321,7 +321,8 @@ fn paint_colormap_gradient(
                 width,
                 height,
             }
-        });
+        })
+        .map_err(|err| anyhow::anyhow!("Failed to create horizontal gradient texture: {err}"))?;
 
     let colormapped_texture = re_renderer::renderer::ColormappedTexture {
         texture: horizontal_gradient,

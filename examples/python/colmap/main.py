@@ -182,7 +182,8 @@ def main() -> None:
     )
     parser.add_argument("--resize", action="store", help="Target resolution to resize images")
     rr.script_add_args(parser)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     if args.resize:
         args.resize = tuple(int(x) for x in args.resize.split("x"))

@@ -18,6 +18,7 @@ pub enum Colormap {
     Plasma = 4,
     Turbo = 5,
     Viridis = 6,
+    AlbedoTexture = 7,
 }
 
 impl Colormap {
@@ -40,6 +41,7 @@ impl std::fmt::Display for Colormap {
             Colormap::Plasma => write!(f, "Plasma"),
             Colormap::Turbo => write!(f, "Turbo"),
             Colormap::Viridis => write!(f, "Viridis"),
+            Colormap::AlbedoTexture => write!(f, "AlbedoTexture"),
         }
     }
 }
@@ -52,6 +54,10 @@ pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
         Colormap::Plasma => colormap_plasma_srgb(t),
         Colormap::Magma => colormap_magma_srgb(t),
         Colormap::Inferno => colormap_inferno_srgb(t),
+        Colormap::AlbedoTexture => {
+            re_log::error_once!("Trying to do texture sampling on the CPU");
+            [0; 4]
+        }
     }
 }
 

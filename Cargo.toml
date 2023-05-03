@@ -16,39 +16,39 @@ include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.67"
-version = "0.4.0"
+version = "0.6.0-alpha.0"
 
 [workspace.dependencies]
 # When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
 # This is because we treat alpha-releases as incompatible, but semver doesn't.
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
-re_analytics = { path = "crates/re_analytics", version = "0.4.0" }
-re_arrow_store = { path = "crates/re_arrow_store", version = "0.4.0" }
-re_build_build_info = { path = "crates/re_build_build_info", version = "0.4.0" }
-re_build_info = { path = "crates/re_build_info", version = "0.4.0" }
-re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "0.4.0" }
-re_data_store = { path = "crates/re_data_store", version = "0.4.0" }
-re_error = { path = "crates/re_error", version = "0.4.0" }
-re_format = { path = "crates/re_format", version = "0.4.0" }
-re_int_histogram = { path = "crates/re_int_histogram", version = "0.4.0" }
-re_log = { path = "crates/re_log", version = "0.4.0" }
-re_log_encoding = { path = "crates/re_log_encoding", version = "0.4.0" }
-re_log_types = { path = "crates/re_log_types", version = "0.4.0" }
-re_memory = { path = "crates/re_memory", version = "0.4.0" }
-re_query = { path = "crates/re_query", version = "0.4.0" }
-re_renderer = { path = "crates/re_renderer", version = "0.4.0" }
-re_sdk = { path = "crates/re_sdk", version = "0.4.0" }
-re_sdk_comms = { path = "crates/re_sdk_comms", version = "0.4.0" }
-re_smart_channel = { path = "crates/re_smart_channel", version = "0.4.0" }
-re_string_interner = { path = "crates/re_string_interner", version = "0.4.0" }
-re_tensor_ops = { path = "crates/re_tensor_ops", version = "0.4.0" }
-re_tuid = { path = "crates/re_tuid", version = "0.4.0" }
-re_ui = { path = "crates/re_ui", version = "0.4.0" }
-re_viewer = { path = "crates/re_viewer", version = "0.4.0" }
-re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "0.4.0" }
-re_ws_comms = { path = "crates/re_ws_comms", version = "0.4.0" }
-rerun = { path = "crates/rerun", version = "0.4.0" }
+re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.6.0-alpha.0" }
+re_analytics = { path = "crates/re_analytics", version = "=0.6.0-alpha.0" }
+re_arrow_store = { path = "crates/re_arrow_store", version = "=0.6.0-alpha.0" }
+re_build_build_info = { path = "crates/re_build_build_info", version = "=0.6.0-alpha.0" }
+re_build_info = { path = "crates/re_build_info", version = "=0.6.0-alpha.0" }
+re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.6.0-alpha.0" }
+re_data_store = { path = "crates/re_data_store", version = "=0.6.0-alpha.0" }
+re_error = { path = "crates/re_error", version = "=0.6.0-alpha.0" }
+re_format = { path = "crates/re_format", version = "=0.6.0-alpha.0" }
+re_int_histogram = { path = "crates/re_int_histogram", version = "=0.6.0-alpha.0" }
+re_log = { path = "crates/re_log", version = "=0.6.0-alpha.0" }
+re_log_encoding = { path = "crates/re_log_encoding", version = "=0.6.0-alpha.0" }
+re_log_types = { path = "crates/re_log_types", version = "=0.6.0-alpha.0" }
+re_memory = { path = "crates/re_memory", version = "=0.6.0-alpha.0" }
+re_query = { path = "crates/re_query", version = "=0.6.0-alpha.0" }
+re_renderer = { path = "crates/re_renderer", version = "=0.6.0-alpha.0", default-features = false }
+re_sdk = { path = "crates/re_sdk", version = "=0.6.0-alpha.0" }
+re_smart_channel = { path = "crates/re_smart_channel", version = "=0.6.0-alpha.0" }
+re_string_interner = { path = "crates/re_string_interner", version = "=0.6.0-alpha.0" }
+re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.6.0-alpha.0" }
+re_tuid = { path = "crates/re_tuid", version = "=0.6.0-alpha.0" }
+re_ui = { path = "crates/re_ui", version = "=0.6.0-alpha.0" }
+re_viewer = { path = "crates/re_viewer", version = "=0.6.0-alpha.0", default-features = false }
+re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.6.0-alpha.0" }
+re_ws_comms = { path = "crates/re_ws_comms", version = "=0.6.0-alpha.0" }
+rerun = { path = "crates/rerun", version = "=0.6.0-alpha.0" }
 
 ahash = "0.8"
 anyhow = "1.0"
@@ -59,10 +59,10 @@ comfy-table = { version = "6.1", default-features = false }
 ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
-egui = "0.21.0"
+egui = { version = "0.21.0", features = ["extra_debug_asserts", "log"] }
 egui-wgpu = "0.21.0"
 egui_dock = "0.4"
-egui_extras = "0.21.0"
+egui_extras = { version = "0.21.0", features = ["log"] }
 emath = "0.21.0"
 enumset = "1.0.12"
 epaint = "0.21.0"
@@ -85,9 +85,8 @@ thiserror = "1.0"
 time = { version = "0.3", features = ["wasm-bindgen"] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = "1.24"
-wgpu = { version = "0.15.1", default-features = false }
-wgpu-core = { version = "0.15.1", default-features = false }
-wgpu-hal = { version = "0.15.4", default-features = false }
+wgpu = { version = "0.16" }
+wgpu-core = { version = "0.16" }
 
 
 [profile.dev]
@@ -112,3 +111,17 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+
+# TODO(andreas/emilk): Update to a stable egui version
+# wgpu 0.16 support, device configuration dependent on adapter
+ecolor = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+eframe = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+egui = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+emath = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+
+# TODO(andreas): Either work around this issue in wgpu-egui (never discard command buffers) or wait for wgpu patch release.
+# Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726
+wgpu = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
+wgpu-core = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }

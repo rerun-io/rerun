@@ -1,9 +1,10 @@
-//! Rerun Viewer GUI.
+//! Depthai Viewer GUI.
 //!
-//! This crate contains all the GUI code for the Rerun Viewer,
+//! This crate contains all the GUI code for the Depthai Viewer,
 //! including all 2D and 3D visualization code.
 
 mod app;
+mod depthai;
 pub mod env_vars;
 pub(crate) mod gpu_bridge;
 pub mod math;
@@ -115,11 +116,7 @@ impl AppEnvironment {
 // ---------------------------------------------------------------------------
 
 #[allow(dead_code)]
-const APPLICATION_NAME: &str = "Rerun Viewer";
-
-pub(crate) fn hardware_tier() -> re_renderer::config::HardwareTier {
-    re_renderer::config::HardwareTier::default()
-}
+const APPLICATION_NAME: &str = "Depthai Viewer";
 
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
     egui_wgpu::WgpuConfiguration {
@@ -141,10 +138,8 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
-            backends: re_renderer::config::supported_backends(),
-            device_descriptor: crate::hardware_tier().device_descriptor(),
-            // TODO(andreas): This should be the default for egui-wgpu.
-            power_preference: wgpu::util::power_preference_from_env().unwrap_or(wgpu::PowerPreference::HighPerformance),
+            supported_backends: re_renderer::config::supported_backends(),
+            device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::HardwareTier::from_adapter(adapter).device_descriptor()),
             ..Default::default()
         }
 }
@@ -157,11 +152,14 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 
         paint_callback_resources.insert(RenderContext::new(
+            &render_state.adapter,
             render_state.device.clone(),
             render_state.queue.clone(),
             RenderContextConfig {
                 output_format_color: render_state.target_format,
-                hardware_tier: crate::hardware_tier(),
+                hardware_tier: re_renderer::config::HardwareTier::from_adapter(
+                    &render_state.adapter,
+                ),
             },
         ));
     }

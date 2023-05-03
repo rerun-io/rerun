@@ -44,8 +44,14 @@ pub struct EntityProperties {
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
 
+    /// Enable color mapping?
+    ///
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>,
+    /// Points to an entity with an albedo texture.
+    ///
+    /// Only relevant if [`Self::color_mapper`] is set to `AlbedoTexture`.
+    pub albedo_texture: Option<EntityPath>,
 
     /// Distance of the projection plane (frustum far plane).
     ///
@@ -80,6 +86,7 @@ impl Default for EntityProperties {
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::default(),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
+            albedo_texture: None,
         }
     }
 }
@@ -94,7 +101,7 @@ impl EntityProperties {
             interactive: self.interactive && child.interactive,
 
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
-
+            albedo_texture: self.albedo_texture.clone().or(child.albedo_texture.clone()),
             pinhole_image_plane_distance: self
                 .pinhole_image_plane_distance
                 .or(&child.pinhole_image_plane_distance)
@@ -170,22 +177,24 @@ impl std::fmt::Display for Colormap {
 pub enum ColorMapper {
     /// Use a well-known color map, pre-implemented as a wgsl module.
     Colormap(Colormap),
-    // TODO(cmc): support textures.
+    /// Point to an entity with an albedo texture.
+    AlbedoTexture,
     // TODO(cmc): support custom transfer functions.
-}
-
-impl std::fmt::Display for ColorMapper {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ColorMapper::Colormap(colormap) => colormap.fmt(f),
-        }
-    }
 }
 
 impl Default for ColorMapper {
     #[inline]
     fn default() -> Self {
-        Self::Colormap(Colormap::default())
+        Self::AlbedoTexture
+    }
+}
+
+impl std::fmt::Display for ColorMapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ColorMapper::Colormap(colormap) => write!(f, "Map:{colormap}"),
+            ColorMapper::AlbedoTexture => write!(f, "Albedo texture"),
+        }
     }
 }
 

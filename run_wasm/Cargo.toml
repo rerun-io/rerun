@@ -7,6 +7,6 @@ license.workspace = true
 publish = false
 
 [dependencies]
-cargo-run-wasm = "0.2.0"
+cargo-run-wasm = "0.3.2"
 pico-args = "0.5"
 webbrowser = "0.8"

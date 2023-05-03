@@ -1,1 +1,1 @@
-rerun-sdk
+depthai-viewer

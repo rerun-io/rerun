@@ -22,15 +22,21 @@ def rect_logger(path: str, color: npt.NDArray[np.float32]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     rr.script_add_args(parser)
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     rr.script_setup(args, "multithreading")
 
+    threads = []
     for i in range(10):
         t = threading.Thread(
             target=rect_logger, args=("thread/{}".format(i), [random.randrange(255) for _ in range(3)])
         )
         t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
 
     rr.script_teardown(args)
 

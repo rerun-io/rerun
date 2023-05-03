@@ -1,4 +1,4 @@
-//! All telemetry analytics collected by the Rerun Viewer are defined in this file for easy auditing.
+//! All telemetry analytics collected by the Depthai Viewer are defined in this file for easy auditing.
 //!
 //! There are two exceptions:
 //! * `crates/rerun/src/crash_handler.rs` sends anonymized callstacks on crashes
@@ -67,7 +67,7 @@ impl ViewerAnalytics {
 
 // ----------------------------------------------------------------------------
 
-/// Here follows all the analytics collected by the Rerun Viewer.
+/// Here follows all the analytics collected by the Depthai Viewer.
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
 impl ViewerAnalytics {
     /// When the viewer is first started

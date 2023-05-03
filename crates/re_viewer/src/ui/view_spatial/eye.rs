@@ -165,6 +165,7 @@ impl Eye {
 pub struct OrbitEye {
     pub orbit_center: Vec3,
     pub orbit_radius: f32,
+
     pub world_from_view_rot: Quat,
     pub fov_y: f32,
 
@@ -173,10 +174,37 @@ pub struct OrbitEye {
 
     /// For controlling the eye with WSAD in a smooth way.
     pub velocity: Vec3,
+
+    /// Left over scroll delta that still needs to be applied (smoothed out over several frames)
+    #[serde(skip)]
+    unprocessed_scroll_delta: f32,
 }
 
 impl OrbitEye {
     const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
+
+    /// Scroll wheels delta are capped out at this value per second. Anything above is smoothed out over several frames.
+    ///
+    /// We generally only want this to only kick in when the user scrolls fast while we maintain very high framerate,
+    /// so don't go too low!
+    ///
+    /// To give a sense of ballpark:
+    /// * measured 14.0 as the value of a single notch on a logitech mouse wheel connected to a Macbook returns in a single frame (!)
+    ///   (so scrolling 10 notches in a tenth of a second gives a per second scroll delta of 1400)
+    /// * macbook trackpad is typically at max 1.0 in every given frame
+    const MAX_SCROLL_DELTA_PER_SECOND: f32 = 1000.0;
+
+    pub fn new(orbit_center: Vec3, orbit_radius: f32, world_from_view_rot: Quat, up: Vec3) -> Self {
+        OrbitEye {
+            orbit_center,
+            orbit_radius,
+            world_from_view_rot,
+            fov_y: Eye::DEFAULT_FOV_Y,
+            up,
+            velocity: Vec3::ZERO,
+            unprocessed_scroll_delta: 0.0,
+        }
+    }
 
     pub fn position(&self) -> Vec3 {
         self.orbit_center + self.world_from_view_rot * vec3(0.0, 0.0, self.orbit_radius)
@@ -213,6 +241,10 @@ impl OrbitEye {
             fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
             up: self.up.lerp(other.up, t).normalize_or_zero(),
             velocity: self.velocity.lerp(other.velocity, t),
+            unprocessed_scroll_delta: lerp(
+                self.unprocessed_scroll_delta..=other.unprocessed_scroll_delta,
+                t,
+            ),
         }
     }
 
@@ -261,8 +293,9 @@ impl OrbitEye {
         }
     }
 
-    /// Returns `true` if any change
-    pub fn interact(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
+    /// Returns `true` if interaction occurred.
+    /// I.e. the camera changed via user input.
+    pub fn update(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
         let mut did_interact = false;
 
         if response.drag_delta().length() > drag_threshold {
@@ -283,21 +316,42 @@ impl OrbitEye {
             }
         }
 
-        if response.hovered() {
+        let (zoom_delta, raw_scroll_delta) = if response.hovered() {
             self.keyboard_navigation(&response.ctx);
-            let factor = response
-                .ctx
-                .input(|i| i.zoom_delta() * (i.scroll_delta.y / 200.0).exp());
-            if factor != 1.0 {
-                let new_radius = self.orbit_radius / factor;
+            response.ctx.input(|i| (i.zoom_delta(), i.scroll_delta.y))
+        } else {
+            (1.0, 0.0)
+        };
+        if zoom_delta != 1.0 || raw_scroll_delta != 0.0 {
+            did_interact = true;
+        }
 
-                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
-                // Max value is chosen with some generous margin of an observed crash due to infinity.
-                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
-                    self.orbit_radius = new_radius;
-                }
+        // Mouse wheels often go very large steps!
+        // This makes the zoom speed feel clunky, so we smooth it out over several frames.
+        let frame_delta = response.ctx.input(|i| i.stable_dt).at_most(0.1);
+        let accumulated_scroll_delta = raw_scroll_delta + self.unprocessed_scroll_delta;
+        let unsmoothed_scroll_per_second = accumulated_scroll_delta / frame_delta;
+        let scroll_dir = unsmoothed_scroll_per_second.signum();
+        let scroll_delta = scroll_dir
+            * unsmoothed_scroll_per_second
+                .abs()
+                .at_most(Self::MAX_SCROLL_DELTA_PER_SECOND)
+            * frame_delta;
+        self.unprocessed_scroll_delta = accumulated_scroll_delta - scroll_delta;
 
-                did_interact = true;
+        if self.unprocessed_scroll_delta.abs() > 0.1 {
+            // We have a lot of unprocessed scroll delta, so we need to keep calling this function.
+            response.ctx.request_repaint();
+        }
+
+        let zoom_factor = zoom_delta * (scroll_delta / 200.0).exp();
+        if zoom_factor != 1.0 {
+            let new_radius = self.orbit_radius / zoom_factor;
+
+            // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
+            // Max value is chosen with some generous margin of an observed crash due to infinity.
+            if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
+                self.orbit_radius = new_radius;
             }
         }
 

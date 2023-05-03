@@ -23,12 +23,14 @@ mod class_id;
 mod color;
 pub mod context;
 pub mod coordinates;
+mod imu;
 mod instance_key;
 mod keypoint_id;
 mod label;
 mod linestrip;
 mod mat;
 mod mesh3d;
+mod node_graph;
 mod point;
 mod quaternion;
 mod radius;
@@ -46,12 +48,14 @@ pub use class_id::ClassId;
 pub use color::ColorRGBA;
 pub use context::{AnnotationContext, AnnotationInfo, ClassDescription};
 pub use coordinates::ViewCoordinates;
+pub use imu::ImuData;
 pub use instance_key::InstanceKey;
 pub use keypoint_id::KeypointId;
 pub use label::Label;
 pub use linestrip::{LineStrip2D, LineStrip3D};
 pub use mat::Mat3x3;
 pub use mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
+pub use node_graph::NodeGraph;
 pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use radius::Radius;
@@ -70,7 +74,7 @@ pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 25] = [
+    static ref FIELDS: [Field; 27] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),
         <Box3D as Component>::field(),
@@ -96,6 +100,8 @@ lazy_static! {
         <Vec2D as Component>::field(),
         <Vec3D as Component>::field(),
         <ViewCoordinates as Component>::field(),
+        <NodeGraph as Component>::field(),
+        <ImuData as Component>::field(),
     ];
 }
 
@@ -210,6 +216,7 @@ where
 
 pub struct FastFixedSizeListArray<T, const SIZE: usize>(std::marker::PhantomData<T>);
 
+#[cfg(not(target_os = "windows"))]
 extern "C" {
     fn do_not_call_into_iter(); // we never define this function, so the linker will fail
 }

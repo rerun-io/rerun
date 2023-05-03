@@ -13,8 +13,10 @@ from rerun.log.camera import log_pinhole
 from rerun.log.extension_components import log_extension_components
 from rerun.log.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
 from rerun.log.image import log_depth_image, log_image, log_segmentation_image
+from rerun.log.imu import log_imu
 from rerun.log.lines import log_line_segments, log_line_strip, log_path
 from rerun.log.mesh import log_mesh, log_meshes
+from rerun.log.pipeline_graph import log_pipeline_graph
 from rerun.log.points import log_point, log_points
 from rerun.log.rects import RectFormat, log_rect, log_rects
 from rerun.log.scalar import log_scalar
@@ -39,6 +41,7 @@ __all__ = [
     "log_extension_components",
     "log_image_file",
     "log_image",
+    "log_pipeline_graph",
     "log_line_segments",
     "log_line_strip",
     "log_mesh_file",
@@ -65,6 +68,7 @@ __all__ = [
     "script_add_args",
     "script_setup",
     "script_teardown",
+    "log_imu",
 ]
 
 
@@ -145,7 +149,7 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True,
         and another doing camera calibration, you could have
         `rerun.init("object_detector")` and `rerun.init("calibrator")`.
     spawn : bool
-        Spawn a Rerun Viewer and stream logging data to it.
+        Spawn a Depthai Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
@@ -181,7 +185,8 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True,
         stack = inspect.stack()
         for frame in stack[:MAX_FRAMES]:
             filename = frame[FRAME_FILENAME_INDEX]
-            path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
+            # normalize before comparison!
+            path = pathlib.Path(str(filename)).resolve()
             if "rerun/examples" in str(path):
                 application_path = path
     except Exception:
@@ -264,9 +269,9 @@ def set_strict_mode(strict_mode: bool) -> None:
 
 def connect(addr: Optional[str] = None) -> None:
     """
-    Connect to a remote Rerun Viewer on the given ip:port.
+    Connect to a remote Depthai Viewer on the given ip:port.
 
-    Requires that you first start a Rerun Viewer, e.g. with 'python -m rerun'
+    Requires that you first start a Depthai Viewer, e.g. with 'python -m rerun'
 
     This function returns immediately.
 
@@ -289,7 +294,7 @@ _connect = connect  # we need this because Python scoping is horrible
 
 def spawn(port: int = 9876, connect: bool = True) -> None:
     """
-    Spawn a Rerun Viewer, listening on the given port.
+    Spawn a Depthai Viewer, listening on the given port.
 
     This is often the easiest and best way to use Rerun.
     Just call this once at the start of your program.

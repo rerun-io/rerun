@@ -14,8 +14,8 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 [features]
 default = ["extension-module", "native_viewer"]
 
-## The features we turn on when building the `rerun-sdk` PyPi package
-## for <https://pypi.org/project/rerun-sdk/>.
+## The features we turn on when building the `depthai-viewer` PyPi package
+## for <https://pypi.org/project/depthai-viewer/>.
 pypi = ["extension-module", "native_viewer", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
