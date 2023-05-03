@@ -28,7 +28,7 @@ pub struct SelectionHistory {
 }
 
 impl SelectionHistory {
-    /// Retains all elements that fullfil a certain condition.
+    /// Retains all elements that fulfil a certain condition.
     pub fn retain(&mut self, f: &impl Fn(&Item) -> bool) {
         crate::profile_function!();
 
