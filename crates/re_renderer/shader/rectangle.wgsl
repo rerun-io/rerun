@@ -1,7 +1,4 @@
 #import <./types.wgsl>
-#import <./colormap.wgsl>
-#import <./global_bindings.wgsl>
-#import <./utils/depth_offset.wgsl>
 
 // Keep in sync with mirror in rectangle.rs
 
