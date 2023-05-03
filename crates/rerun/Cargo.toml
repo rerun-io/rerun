@@ -1,11 +1,13 @@
 [package]
 name = "rerun"
 authors.workspace = true
+categories = ["visualization", "computer-vision"]
 default-run = "rerun"
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
+keywords = ["mesh", "plotting", "point-cloud", "robotics", "visualization"]
 license.workspace = true
 publish = true
 readme = "README.md"

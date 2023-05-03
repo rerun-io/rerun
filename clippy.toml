@@ -1,6 +1,6 @@
 # There is also a scripts/clippy_wasm/clippy.toml which forbids some methods that are not available in wasm.
 
-msrv = "1.67"
+msrv = "1.69"
 
 allow-unwrap-in-tests = true
 
