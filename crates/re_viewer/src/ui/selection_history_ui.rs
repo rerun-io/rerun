@@ -1,26 +1,23 @@
 use egui::RichText;
 use re_ui::Command;
 
-use super::SelectionHistory;
 use crate::{misc::ItemCollection, ui::Blueprint, Item};
+
+use super::SelectionHistory;
 
 // ---
 
-impl SelectionHistory {
+#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub struct SelectionHistoryUi {}
+
+impl SelectionHistoryUi {
     pub(crate) fn selection_ui(
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
-    ) -> Option<ItemCollection> {
-        self.control_bar_ui(re_ui, ui, blueprint)
-    }
-
-    fn control_bar_ui(
-        &mut self,
-        re_ui: &re_ui::ReUi,
-        ui: &mut egui::Ui,
-        blueprint: &Blueprint,
+        history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         ui.horizontal_centered(|ui| {
             ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s).");
@@ -30,33 +27,11 @@ impl SelectionHistory {
                 ui.available_size_before_wrap(),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    let next = self.next_button_ui(re_ui, ui, blueprint);
-                    let prev = self.prev_button_ui(re_ui, ui, blueprint);
+                    let next = self.next_button_ui(re_ui, ui, blueprint, history);
+                    let prev = self.prev_button_ui(re_ui, ui, blueprint, history);
                     prev.or(next)
                 }).inner
         }).inner
-    }
-
-    #[must_use]
-    pub fn select_previous(&mut self) -> Option<ItemCollection> {
-        if let Some(previous) = self.previous() {
-            if previous.index != self.current {
-                self.current = previous.index;
-                return self.current().map(|s| s.selection);
-            }
-        }
-        None
-    }
-
-    #[must_use]
-    pub fn select_next(&mut self) -> Option<ItemCollection> {
-        if let Some(next) = self.next() {
-            if next.index != self.current {
-                self.current = next.index;
-                return self.current().map(|s| s.selection);
-            }
-        }
-        None
     }
 
     fn prev_button_ui(
@@ -64,9 +39,10 @@ impl SelectionHistory {
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
+        history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // undo selection
-        if let Some(previous) = self.previous() {
+        if let Some(previous) = history.previous() {
             let response = re_ui
                 .small_icon_button(ui, &re_ui::icons::ARROW_LEFT)
                 .on_hover_text(format!(
@@ -80,8 +56,8 @@ impl SelectionHistory {
 
             let response = response.context_menu(|ui| {
                 // undo: newest on top, oldest on bottom
-                for i in (0..self.current).rev() {
-                    self.history_item_ui(blueprint, ui, i);
+                for i in (0..history.current).rev() {
+                    self.history_item_ui(blueprint, ui, i, history);
                 }
             });
 
@@ -89,7 +65,7 @@ impl SelectionHistory {
             // button or something (but then again it, it'd make more sense to do that
             // at the egui level rather than specifically here).
             if response.clicked() {
-                return self.select_previous();
+                return history.select_previous();
             }
         } else {
             ui.add_enabled_ui(false, |ui| {
@@ -107,9 +83,10 @@ impl SelectionHistory {
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
+        history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // redo selection
-        if let Some(next) = self.next() {
+        if let Some(next) = history.next() {
             let response = re_ui
                 .small_icon_button(ui, &re_ui::icons::ARROW_RIGHT)
                 .on_hover_text(format!(
@@ -123,8 +100,8 @@ impl SelectionHistory {
 
             let response = response.context_menu(|ui| {
                 // redo: oldest on top, most recent on bottom
-                for i in (self.current + 1)..self.stack.len() {
-                    self.history_item_ui(blueprint, ui, i);
+                for i in (history.current + 1)..history.stack.len() {
+                    self.history_item_ui(blueprint, ui, i, history);
                 }
             });
 
@@ -132,7 +109,7 @@ impl SelectionHistory {
             // button or something (but then again it, it'd make more sense to do that
             // at the egui level rather than specifically here).
             if response.clicked() {
-                return self.select_next();
+                return history.select_next();
             }
         } else {
             ui.add_enabled_ui(false, |ui| {
@@ -145,13 +122,23 @@ impl SelectionHistory {
         None
     }
 
-    fn history_item_ui(&mut self, blueprint: &Blueprint, ui: &mut egui::Ui, index: usize) {
-        if let Some(sel) = self.stack.get(index) {
+    #[allow(clippy::unused_self)]
+    fn history_item_ui(
+        &mut self,
+        blueprint: &Blueprint,
+        ui: &mut egui::Ui,
+        index: usize,
+        history: &mut SelectionHistory,
+    ) {
+        if let Some(sel) = history.stack.get(index) {
             ui.horizontal(|ui| {
                 {
                     // borrow checker workaround
                     let sel = item_collection_to_string(blueprint, sel);
-                    if ui.selectable_value(&mut self.current, index, sel).clicked() {
+                    if ui
+                        .selectable_value(&mut history.current, index, sel)
+                        .clicked()
+                    {
                         ui.close_menu();
                     }
                 }
