@@ -94,7 +94,7 @@ impl RerunArgs {
         let (rerun_enabled, recording_info, batcher_config) =
             crate::RecordingStreamBuilder::new(application_id)
                 .default_enabled(default_enabled)
-                .finalize();
+                .into_args();
 
         if !rerun_enabled {
             run(RecordingStream::disabled());
@@ -126,6 +126,8 @@ impl RerunArgs {
         let rec_stream = RecordingStream::new(recording_info, batcher_config, sink)?;
         run(rec_stream.clone());
 
+        // The user callback is done executing, it's a good opportunity to flush the pipeline
+        // independently of the current flush thresholds (which might be `NEVER`).
         rec_stream.flush_async();
 
         #[cfg(feature = "web_viewer")]

@@ -27,8 +27,7 @@ pub trait LogSink: Send + Sync + 'static {
     /// Blocks until all pending data in the sink's send buffers has been fully flushed.
     ///
     /// See also [`LogSink::drop_if_disconnected`].
-    #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self);
 
     /// Drops all pending data currently sitting in the sink's send buffers if it is unable to
     /// flush it for any reason (e.g. a broken TCP connection for a [`TcpSink`]).
@@ -65,6 +64,9 @@ impl LogSink for BufferedSink {
     fn drain_backlog(&self) -> Vec<LogMsg> {
         std::mem::take(&mut self.0.lock())
     }
+
+    #[inline]
+    fn flush_blocking(&self) {}
 }
 
 /// Store log messages directly in memory.
@@ -95,6 +97,9 @@ impl LogSink for MemorySink {
     fn send_all(&self, mut messages: Vec<LogMsg>) {
         self.0.write().append(&mut messages);
     }
+
+    #[inline]
+    fn flush_blocking(&self) {}
 }
 
 /// The storage used by [`MemorySink`].

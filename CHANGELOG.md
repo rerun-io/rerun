@@ -4,6 +4,18 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 …
 
+## [0.5.1](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.5.0) - Patch Release - 2023-05-01
+
+### Overview & Highlights
+This Release fixes a few small bugs on top of the v0.5.0 release.
+
+### In Detail
+* Bump hyper version due to RUSTSEC-2023-0034 [#1951](https://github.com/rerun-io/rerun/pull/1951)
+* Round to nearest color_index when doing color mapping [#1969](https://github.com/rerun-io/rerun/pull/1969)
+* Use an sRGB-correct gray gradient when displaying grayscale images [#2014](https://github.com/rerun-io/rerun/pull/2014)
+* Don't use console.error [#1984](https://github.com/rerun-io/rerun/pull/1984)
+* Fix failure to save files when split table contains no data [#2007](https://github.com/rerun-io/rerun/pull/2007)
+
 ## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore!
 
 ### Overview & Highlights

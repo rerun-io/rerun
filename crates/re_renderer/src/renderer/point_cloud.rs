@@ -49,6 +49,9 @@ bitflags! {
     pub struct PointCloudBatchFlags : u32 {
         /// If true, we shade all points in the batch like spheres.
         const ENABLE_SHADING = 0b0001;
+
+        /// If true, draw 2D camera facing circles instead of spheres.
+        const DRAW_AS_CIRCLES = 0b0010;
     }
 }
 
@@ -112,10 +115,9 @@ pub struct PointCloudBatchInfo {
 
     /// Transformation applies to point positions
     ///
-    /// TODO(andreas): Since we blindly apply this to positions only there is no restriction on this matrix.
     /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
     /// `let scale = Mat3::from(world_from_obj).determinant().abs().cbrt()`
-    pub world_from_obj: glam::Mat4,
+    pub world_from_obj: glam::Affine3A,
 
     /// Additional properties of this point cloud batch.
     pub flags: PointCloudBatchFlags,
@@ -201,7 +203,7 @@ impl PointCloudDrawData {
 
         let fallback_batches = [PointCloudBatchInfo {
             label: "fallback_batches".into(),
-            world_from_obj: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::empty(),
             point_count: vertices.len() as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
@@ -622,17 +624,26 @@ impl Renderer for PointCloudRenderer {
             &pools.bind_group_layouts,
         );
 
-        let shader_module = pools.shader_modules.get_or_create(
-            device,
-            resolver,
-            &include_shader_module!("../../shader/point_cloud.wgsl"),
-        );
+        let shader_module_desc = include_shader_module!("../../shader/point_cloud.wgsl");
+        let shader_module =
+            pools
+                .shader_modules
+                .get_or_create(device, resolver, &shader_module_desc);
+
+        // WORKAROUND for https://github.com/gfx-rs/naga/issues/1743
+        let mut shader_module_desc_vertex = shader_module_desc.clone();
+        shader_module_desc_vertex.extra_workaround_replacements =
+            vec![("fwidth(".to_owned(), "f32(".to_owned())];
+        let shader_module_vertex =
+            pools
+                .shader_modules
+                .get_or_create(device, resolver, &shader_module_desc_vertex);
 
         let render_pipeline_desc_color = RenderPipelineDesc {
             label: "PointCloudRenderer::render_pipeline_color".into(),
             pipeline_layout,
             vertex_entrypoint: "vs_main".into(),
-            vertex_handle: shader_module,
+            vertex_handle: shader_module_vertex,
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module,
             vertex_buffers: smallvec![],

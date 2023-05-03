@@ -21,6 +21,7 @@ macro_rules! include_shader_module {
         $crate::wgpu_resources::ShaderModuleDesc {
             label: $crate::DebugLabel::from(stringify!($path).strip_prefix("../../shader/")),
             source: $crate::include_file!($path),
+            extra_workaround_replacements: Vec::new(),
         }
     }};
 }
@@ -33,6 +34,9 @@ pub struct ShaderModuleDesc {
 
     /// Path to the source code of this shader module.
     pub source: PathBuf,
+
+    /// Additional text replacement workarounds that may be added on top of globally known workarounds.
+    pub extra_workaround_replacements: Vec<(String, String)>,
 }
 
 impl PartialEq for ShaderModuleDesc {
@@ -46,6 +50,7 @@ impl Hash for ShaderModuleDesc {
         // NOTE: for a shader, the only thing that should matter is the source
         // code since we can have many entrypoints referring to the same file!
         self.source.hash(state);
+        self.extra_workaround_replacements.hash(state);
     }
 }
 
@@ -62,7 +67,10 @@ impl ShaderModuleDesc {
             .map_err(|err| re_log::error!(err=%re_error::format(err)))
             .unwrap_or_default();
 
-        for (from, to) in shader_text_workaround_replacements {
+        for (from, to) in shader_text_workaround_replacements
+            .iter()
+            .chain(self.extra_workaround_replacements.iter())
+        {
             source_interpolated.contents = source_interpolated.contents.replace(from, to);
         }
 

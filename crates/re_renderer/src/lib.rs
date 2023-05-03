@@ -25,6 +25,7 @@ mod global_bindings;
 mod line_strip_builder;
 mod point_cloud_builder;
 mod size;
+mod transform;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
@@ -41,7 +42,9 @@ pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
 pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
+pub use rect::{RectF32, RectInt};
 pub use size::Size;
+pub use transform::RectTransform;
 pub use view_builder::{AutoSizeConfig, ViewBuilder};
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
@@ -67,7 +70,6 @@ mod file_server;
 pub use self::file_server::FileServer;
 
 mod rect;
-pub use rect::IntRect;
 
 #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
 #[rustfmt::skip] // it's auto-generated

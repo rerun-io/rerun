@@ -92,4 +92,7 @@ impl re_sdk::sink::LogSink for NativeViewerSink {
             re_log::error_once!("Failed to send log message to viewer: {err}");
         }
     }
+
+    #[inline]
+    fn flush_blocking(&self) {}
 }
