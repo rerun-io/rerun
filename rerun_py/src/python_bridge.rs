@@ -4,7 +4,7 @@
 
 use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
-use itertools::izip;
+use itertools::{izip, Itertools};
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
@@ -215,21 +215,23 @@ fn init(
         default_recording_id(py, "blueprint")
     };
 
-    if init_logging {
-        let mut data_stream = global_data_stream();
-        *data_stream = RecordingStreamBuilder::new(application_id.clone())
+    let mut data_stream = global_data_stream();
+    *data_stream = if init_logging {
+        RecordingStreamBuilder::new(application_id.clone())
             .is_official_example(is_official_example)
             .recording_id(recording_id)
             .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
             .default_enabled(default_enabled)
             .buffered()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .into();
-    }
+            .into()
+    } else {
+        None
+    };
 
-    if init_blueprint {
-        let mut bp_ctx = global_blueprint_stream();
-        *bp_ctx = RecordingStreamBuilder::new(application_id)
+    let mut bp_ctx = global_blueprint_stream();
+    *bp_ctx = if init_blueprint {
+        RecordingStreamBuilder::new(application_id)
             .is_official_example(is_official_example)
             .recording_id(blueprint_id)
             .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
@@ -237,12 +239,10 @@ fn init(
             .default_enabled(default_enabled)
             .buffered()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .into();
-        // Always set user-modified to disable the heuristics
-        if let Some(bp_stream) = bp_ctx.as_ref() {
-            set_user_edited(bp_stream, true);
-        }
-    }
+            .into()
+    } else {
+        None
+    };
 
     Ok(())
 }
@@ -356,36 +356,17 @@ fn save(path: &str) -> PyResult<()> {
 /// Create an in-memory rrd file
 #[pyfunction]
 fn memory_recording() -> PyMemorySinkStorage {
-    let data_stream = global_data_stream();
-    let Some(data_stream) = data_stream.as_ref() else {
-        no_active_recording("memory_recording");
-        return Default::default();
-    };
-
-    let bp_stream = global_blueprint_stream();
-    let Some(bp_stream) = bp_stream.as_ref() else {
-        no_active_recording("memory_recording");
-        return Default::default();
-    };
-    let storage = PyMemorySinkStorage {
-        recording: data_stream.memory(),
-        blueprint: bp_stream.memory(),
-    };
-
-    // TOOD(jleibs): The need to keep track of this is a pain
-    // I think we should reverse the default and then set user-not-modified
-    // when we create a default-blueprint in the app.
-
-    set_user_edited(bp_stream, true);
-
-    storage
+    PyMemorySinkStorage {
+        recording: global_data_stream().as_ref().map(|s| s.memory()),
+        blueprint: global_blueprint_stream().as_ref().map(|s| s.memory()),
+    }
 }
 
 #[pyclass]
 #[derive(Default)]
 struct PyMemorySinkStorage {
-    recording: MemorySinkStorage,
-    blueprint: MemorySinkStorage,
+    recording: Option<MemorySinkStorage>,
+    blueprint: Option<MemorySinkStorage>,
 }
 
 #[pymethods]
@@ -394,9 +375,14 @@ impl PyMemorySinkStorage {
         // TODO(jleibs) book-keep the right handles to flush here
         flush(py);
         // Encode blueprint first to avoid auto-blueprint behavior
-        rerun::sink::concat_memory_sinks_as_bytes(&[&self.blueprint, &self.recording])
-            .map(|bytes| PyBytes::new(py, bytes.as_slice()))
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+        rerun::sink::concat_memory_sinks_as_bytes(
+            &[&self.blueprint, &self.recording]
+                .iter()
+                .filter_map(|s| s.as_ref())
+                .collect_vec(),
+        )
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
 
