@@ -6,6 +6,7 @@ pub(crate) mod mesh_loader;
 pub mod queries;
 mod selection_state;
 pub(crate) mod space_info;
+mod space_view_highlights;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
 mod transform_cache;
@@ -32,9 +33,13 @@ pub use {
     app_options::*,
     item::{Item, ItemCollection},
     selection_state::{
-        HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewEntityHighlight,
-        SelectionHighlight, SelectionState, SpaceViewHighlights, SpaceViewOutlineMasks,
+        HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
     },
+};
+
+pub use space_view_highlights::{
+    highlights_for_space_view, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks,
 };
 
 // ----------------------------------------------------------------------------

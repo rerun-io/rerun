@@ -1,4 +1,4 @@
-use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
+use crate::misc::{space_info::SpaceInfoCollection, Item, ViewerContext};
 
 use super::viewport::Viewport;
 
@@ -120,6 +120,27 @@ impl Blueprint {
             .clicked()
         {
             self.viewport = Viewport::new(ctx, spaces_info);
+        }
+    }
+
+    /// If `false`, the item is referring to data that is not present in this blueprint.
+    pub fn is_item_valid(&self, item: &Item) -> bool {
+        match item {
+            Item::ComponentPath(_) => true,
+            Item::InstancePath(space_view_id, _) => space_view_id
+                .map(|space_view_id| self.viewport.space_view(&space_view_id).is_some())
+                .unwrap_or(true),
+            Item::SpaceView(space_view_id) => self.viewport.space_view(space_view_id).is_some(),
+            Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+                if let Some(space_view) = self.viewport.space_view(space_view_id) {
+                    space_view
+                        .data_blueprint
+                        .group(*data_blueprint_group_handle)
+                        .is_some()
+                } else {
+                    false
+                }
+            }
         }
     }
 }

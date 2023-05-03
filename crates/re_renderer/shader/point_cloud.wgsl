@@ -36,6 +36,8 @@ var<uniform> batch: BatchUniformBuffer;
 // Flags
 // See point_cloud.rs#PointCloudBatchFlags
 const ENABLE_SHADING: u32 = 1u;
+const DRAW_AS_CIRCLES: u32 = 2u;
+
 const TEXTURE_SIZE: u32 = 2048u;
 
 struct VertexOut {
@@ -94,7 +96,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = read_data(quad_idx);
 
     // Span quad
-    let quad = sphere_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius, draw_data.radius_boost_in_ui_points);
+    let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius,
+                                          draw_data.radius_boost_in_ui_points, has_any_flag(batch.flags, DRAW_AS_CIRCLES));
 
     // Output, transform to projection space and done.
     var out: VertexOut;
@@ -108,9 +111,32 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     return out;
 }
 
+// TODO(andreas): move this to sphere_quad.wgsl once https://github.com/gfx-rs/naga/issues/1743 is resolved
+// point_cloud.rs has a specific workaround in place so we don't need to split vertex/fragment shader here
+//
+/// Computes coverage of a 2D sphere placed at `circle_center` in the fragment shader using the currently set camera.
+///
+/// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
+/// perspective projection is not taken into account.
+fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) -> f32 {
+    let to_center = circle_center - world_position;
+    let distance = length(to_center);
+    let distance_pixel_difference = fwidth(distance);
+    return smoothstep(radius + distance_pixel_difference, radius - distance_pixel_difference, distance);
+}
+
+fn coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
+    if is_camera_orthographic() || has_any_flag(batch.flags, DRAW_AS_CIRCLES) {
+        return circle_quad_coverage(world_position, radius, point_center);
+    } else {
+        return sphere_quad_coverage(world_position, radius, point_center);
+    }
+}
+
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    let coverage = sphere_quad_coverage(in.world_position, in.radius, in.point_center);
+    let coverage = coverage(in.world_position, in.radius, in.point_center);
     if coverage < 0.001 {
         discard;
     }
@@ -127,7 +153,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
-    let coverage = sphere_quad_coverage(in.world_position, in.radius, in.point_center);
+    let coverage = coverage(in.world_position, in.radius, in.point_center);
     if coverage <= 0.5 {
         discard;
     }
@@ -139,7 +165,7 @@ fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
     // Output is an integer target, can't use coverage therefore.
     // But we still want to discard fragments where coverage is low.
     // Since the outline extends a bit, a very low cut off tends to look better.
-    let coverage = sphere_quad_coverage(in.world_position, in.radius, in.point_center);
+    let coverage = coverage(in.world_position, in.radius, in.point_center);
     if coverage < 1.0 {
         discard;
     }

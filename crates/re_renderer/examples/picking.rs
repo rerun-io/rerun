@@ -3,8 +3,8 @@ use rand::Rng;
 use re_renderer::{
     renderer::MeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackIdentifier, IntRect, PickingLayerId, PickingLayerInstanceId,
-    PickingLayerProcessor, PointCloudBuilder, Size,
+    Color32, GpuReadbackIdentifier, PickingLayerId, PickingLayerInstanceId, PickingLayerProcessor,
+    PointCloudBuilder, RectInt, Size,
 };
 
 mod framework;
@@ -135,6 +135,7 @@ impl framework::Example for Picking {
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
+                    aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                 },
                 pixels_from_point,
                 outline_config: None,
@@ -145,7 +146,7 @@ impl framework::Example for Picking {
         // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
         // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
         let picking_rect_size = 31;
-        let picking_rect = IntRect::from_middle_and_extent(
+        let picking_rect = RectInt::from_middle_and_extent(
             self.picking_position.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
         );

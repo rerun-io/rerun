@@ -4,7 +4,7 @@
 
 /// Span a quad in a way that guarantees that we'll be able to draw a perspective correct sphere
 /// on it.
-fn sphere_quad_span_perspective(
+fn sphere_quad(
     point_pos: Vec3,
     point_radius: f32,
     top_bottom: f32,
@@ -42,7 +42,7 @@ fn sphere_quad_span_perspective(
 
 /// Span a quad in a way that guarantees that we'll be able to draw an orthographic correct sphere
 /// on it.
-fn sphere_quad_span_orthographic(point_pos: Vec3, point_radius: f32, top_bottom: f32, left_right: f32) -> Vec3 {
+fn circle_quad(point_pos: Vec3, point_radius: f32, top_bottom: f32, left_right: f32) -> Vec3 {
     let quad_normal = frame.camera_forward;
     let quad_right = normalize(cross(quad_normal, frame.view_from_world[1].xyz)); // It's spheres so any orthogonal vector would do.
     let quad_up = cross(quad_right, quad_normal);
@@ -50,7 +50,8 @@ fn sphere_quad_span_orthographic(point_pos: Vec3, point_radius: f32, top_bottom:
 
     // Add half a pixel of margin for the feathering we do for antialiasing the spheres.
     // It's fairly subtle but if we don't do this our spheres look slightly squarish
-    let radius = point_radius + 0.5 * frame.pixel_world_size_from_camera_distance;
+    // TODO(andreas): Computing distance to camera here is a bit excessive, should get distance more easily - keep in mind this code runs for ortho & perspective.
+    let radius = point_radius + 0.5 * approx_pixel_world_size_at(distance(point_pos, frame.camera_position));
 
     return point_pos + pos_in_quad * radius;
 }
@@ -65,10 +66,11 @@ struct SphereQuadData {
     point_resolved_radius: f32,
 }
 
-/// Span a quad onto which perspective correct spheres can be drawn.
+/// Span a quad onto which circles or perspective correct spheres can be drawn.
 ///
-/// Spanning is done in perspective or orthographically depending of the state of the global cam.
-fn sphere_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved_radius: f32, radius_boost_in_ui_points: f32) -> SphereQuadData {
+/// Note that in orthographic mode, spheres are always circles.
+fn sphere_or_circle_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved_radius: f32,
+                                radius_boost_in_ui_points: f32, force_circle: bool) -> SphereQuadData {
     // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
     let to_camera = frame.camera_position - point_pos;
     let camera_distance = length(to_camera);
@@ -82,24 +84,23 @@ fn sphere_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved_radius: f
 
     // Span quad
     var pos: Vec3;
-    if is_camera_perspective() {
-        pos = sphere_quad_span_perspective(point_pos, radius, top_bottom, left_right, to_camera, camera_distance);
+    if is_camera_orthographic() || force_circle {
+        pos = circle_quad(point_pos, radius, top_bottom, left_right);
     } else {
-        pos = sphere_quad_span_orthographic(point_pos, radius, top_bottom, left_right);
+        pos = sphere_quad(point_pos, radius, top_bottom, left_right, to_camera, camera_distance);
     }
 
     return SphereQuadData(pos, radius);
 }
 
-fn sphere_quad_coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
-    // There's easier ways to compute anti-aliasing for when we are in ortho mode since it's just circles.
-    // But it's very nice to have mostly the same code path and this gives us the sphere world position along the way.
+/// Computes coverage of a 3D sphere placed at `sphere_center` in the fragment shader using the currently set camera.
+fn sphere_quad_coverage(world_position: Vec3, radius: f32, sphere_center: Vec3) -> f32 {
     let ray = camera_ray_to_world_pos(world_position);
 
     // Sphere intersection with anti-aliasing as described by Iq here
     // https://www.shadertoy.com/view/MsSSWV
     // (but rearranged and labeled to it's easier to understand!)
-    let d = ray_sphere_distance(ray, point_center, radius);
+    let d = ray_sphere_distance(ray, sphere_center, radius);
     let distance_to_sphere_surface = d.x;
     let closest_ray_dist = d.y;
     let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
