@@ -33,7 +33,6 @@ re_log_types.workspace = true
 # External dependencies:
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
-  "compute_aggregate",
 ] }
 document-features = "0.2"
 itertools = { workspace = true }

@@ -4,7 +4,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::{
     component_types::InstanceKey, external::arrow2, Component, ComponentName,
-    DeserializableComponent,
+    DeserializableComponent, SizeBytes as _,
 };
 use re_query::ComponentWithInstances;
 
@@ -126,7 +126,7 @@ impl ComponentUiRegistry {
         } else {
             // No special ui implementation - use a generic one:
             if let Some(value) = component.lookup_arrow(instance_key) {
-                let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
+                let bytes = value.total_size_bytes();
                 if bytes < 256 {
                     // For small items, print them
                     let mut repr = String::new();

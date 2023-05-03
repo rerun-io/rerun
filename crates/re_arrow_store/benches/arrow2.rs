@@ -5,17 +5,14 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use std::sync::Arc;
 
-use arrow2::{
-    array::{Array, PrimitiveArray, StructArray, UnionArray},
-    compute::aggregate::estimated_bytes_size,
-};
+use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
 use re_log_types::{
     component_types::{InstanceKey, Point2D, Rect2D},
     datagen::{build_some_instances, build_some_point2d, build_some_rects},
     external::arrow2_convert::serialize::TryIntoArrow,
-    DataCell, SerializableComponent,
+    DataCell, SerializableComponent, SizeBytes as _,
 };
 
 // ---
@@ -109,7 +106,7 @@ fn erased_clone(c: &mut Criterion) {
 
         let total_size_bytes = arrays
             .iter()
-            .map(|array| estimated_bytes_size(&**array) as u64)
+            .map(|array| array.total_size_bytes())
             .sum::<u64>();
         assert!(total_size_bytes as usize >= NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>());
 
@@ -117,7 +114,7 @@ fn erased_clone(c: &mut Criterion) {
             b.iter(|| {
                 let sz = arrays
                     .iter()
-                    .map(|array| estimated_bytes_size(&**array) as u64)
+                    .map(|array| array.total_size_bytes())
                     .sum::<u64>();
                 assert_eq!(total_size_bytes, sz);
                 sz

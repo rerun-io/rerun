@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 /// Approximations of stack and heap size for both internal and external types.
 ///
 /// Motly used for statistics and triggering events such as garbage collection.
-pub trait SizeBytes: Sized {
+pub trait SizeBytes {
     /// Returns the total size of `self` in bytes, accounting for both stack and heap space.
     #[inline]
     fn total_size_bytes(&self) -> u64 {
@@ -169,5 +169,353 @@ impl SizeBytes for Field {
             + data_type.heap_size_bytes()
             + is_nullable.heap_size_bytes()
             + metadata.heap_size_bytes()
+    }
+}
+
+impl SizeBytes for dyn Array {
+    fn heap_size_bytes(&self) -> u64 {
+        estimated_bytes_size(self) as _
+    }
+}
+
+// --- Arrow estimations ---
+
+// The following is a modified version of [1], available under MIT OR Apache-2.0.
+//
+// [1] https://github.com/jorgecarleitao/arrow2/blob/v0.16.0/src/compute/aggregate/memory.rs
+
+use arrow2::array::{
+    Array, BinaryArray, BooleanArray, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
+    GenericBinaryArray, ListArray, MapArray, MutableArray, PrimitiveArray, StructArray, UnionArray,
+    Utf8Array,
+};
+use arrow2::bitmap::Bitmap;
+use arrow2::datatypes::PhysicalType;
+
+macro_rules! dyn_binary {
+    ($array:expr, $ty:ty, $o:ty) => {{
+        let array = $array.as_any().downcast_ref::<$ty>().unwrap();
+        let offsets = array.offsets().buffer();
+
+        // in case of Binary/Utf8/List the offsets are sliced,
+        // not the values buffer
+        let values_start = offsets[0] as usize;
+        let values_end = offsets[offsets.len() - 1] as usize;
+
+        values_end - values_start
+            + offsets.len() * std::mem::size_of::<$o>()
+            + validity_size(array.validity())
+    }};
+}
+
+macro_rules! with_match_primitive_type {(
+    $key_type:expr, | $_:tt $T:ident | $($body:tt)*
+) => ({
+    macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
+    use arrow2::datatypes::PrimitiveType::*;
+    use arrow2::types::{days_ms, months_days_ns, f16, i256};
+    match $key_type {
+        Int8 => __with_ty__! { i8 },
+        Int16 => __with_ty__! { i16 },
+        Int32 => __with_ty__! { i32 },
+        Int64 => __with_ty__! { i64 },
+        Int128 => __with_ty__! { i128 },
+        Int256 => __with_ty__! { i256 },
+        DaysMs => __with_ty__! { days_ms },
+        MonthDayNano => __with_ty__! { months_days_ns },
+        UInt8 => __with_ty__! { u8 },
+        UInt16 => __with_ty__! { u16 },
+        UInt32 => __with_ty__! { u32 },
+        UInt64 => __with_ty__! { u64 },
+        Float16 => __with_ty__! { f16 },
+        Float32 => __with_ty__! { f32 },
+        Float64 => __with_ty__! { f64 },
+    }
+})}
+
+macro_rules! match_integer_type {(
+    $key_type:expr, | $_:tt $T:ident | $($body:tt)*
+) => ({
+    macro_rules! __with_ty__ {( $_ $T:ident ) => ( $($body)* )}
+    use arrow2::datatypes::IntegerType::*;
+    match $key_type {
+        Int8 => __with_ty__! { i8 },
+        Int16 => __with_ty__! { i16 },
+        Int32 => __with_ty__! { i32 },
+        Int64 => __with_ty__! { i64 },
+        UInt8 => __with_ty__! { u8 },
+        UInt16 => __with_ty__! { u16 },
+        UInt32 => __with_ty__! { u32 },
+        UInt64 => __with_ty__! { u64 },
+    }
+})}
+
+fn validity_size(validity: Option<&Bitmap>) -> usize {
+    validity.as_ref().map(|b| b.as_slice().0.len()).unwrap_or(0)
+}
+
+/// Returns the total (heap) allocated size of the array in bytes.
+/// # Implementation
+/// This estimation is the sum of the size of its buffers, validity, including nested arrays.
+/// Multiple arrays may share buffers and bitmaps. Therefore, the size of 2 arrays is not the
+/// sum of the sizes computed from this function. In particular, [`StructArray`]'s size is an upper bound.
+///
+/// When an array is sliced, its allocated size remains constant because the buffer unchanged.
+/// However, this function will yield a smaller number. This is because this function returns
+/// the visible size of the buffer, not its total capacity.
+///
+/// FFI buffers are included in this estimation.
+fn estimated_bytes_size(array: &dyn Array) -> usize {
+    #[allow(clippy::enum_glob_use)]
+    use PhysicalType::*;
+    match array.data_type().to_physical_type() {
+        Null => 0,
+        Boolean => {
+            let array = array.as_any().downcast_ref::<BooleanArray>().unwrap();
+            array.values().as_slice().0.len() + validity_size(array.validity())
+        }
+        Primitive(primitive) => with_match_primitive_type!(primitive, |$T| {
+            let array = array
+                .as_any()
+                .downcast_ref::<PrimitiveArray<$T>>()
+                .unwrap();
+
+            array.values().len() * std::mem::size_of::<$T>() + validity_size(array.validity())
+        }),
+        Binary => dyn_binary!(array, BinaryArray<i32>, i32),
+        FixedSizeBinary => {
+            let array = array
+                .as_any()
+                .downcast_ref::<FixedSizeBinaryArray>()
+                .unwrap();
+            array.values().len() + validity_size(array.validity())
+        }
+        LargeBinary => dyn_binary!(array, BinaryArray<i64>, i64),
+        Utf8 => dyn_binary!(array, Utf8Array<i32>, i32),
+        LargeUtf8 => dyn_binary!(array, Utf8Array<i64>, i64),
+        List => {
+            let array = array.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+            estimated_bytes_size(array.values().as_ref())
+                + array.offsets().len() * std::mem::size_of::<i32>()
+                + validity_size(array.validity())
+        }
+        FixedSizeList => {
+            let array = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
+            estimated_bytes_size(array.values().as_ref()) + validity_size(array.validity())
+        }
+        LargeList => {
+            let array = array.as_any().downcast_ref::<ListArray<i64>>().unwrap();
+            estimated_bytes_size(array.values().as_ref())
+                + array.offsets().len() * std::mem::size_of::<i64>()
+                + validity_size(array.validity())
+        }
+        Struct => {
+            let array = array.as_any().downcast_ref::<StructArray>().unwrap();
+            array
+                .values()
+                .iter()
+                .map(|x| x.as_ref())
+                .map(estimated_bytes_size)
+                .sum::<usize>()
+                + validity_size(array.validity())
+        }
+        Union => {
+            let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
+            let types = array.types().len() * std::mem::size_of::<i8>();
+            let offsets = array
+                .offsets()
+                .as_ref()
+                .map(|x| x.len() * std::mem::size_of::<i32>())
+                .unwrap_or_default();
+            let fields = array
+                .fields()
+                .iter()
+                .map(|x| x.as_ref())
+                .map(estimated_bytes_size)
+                .sum::<usize>();
+            types + offsets + fields
+        }
+        Dictionary(key_type) => match_integer_type!(key_type, |$T| {
+            let array = array
+                .as_any()
+                .downcast_ref::<DictionaryArray<$T>>()
+                .unwrap();
+            estimated_bytes_size(array.keys()) + estimated_bytes_size(array.values().as_ref())
+        }),
+        Map => {
+            let array = array.as_any().downcast_ref::<MapArray>().unwrap();
+            let offsets = array.offsets().len() * std::mem::size_of::<i32>();
+            offsets + estimated_bytes_size(array.field().as_ref()) + validity_size(array.validity())
+        }
+    }
+}
+
+// This test exists because the documentation and online discussions revolving around
+// arrow2's `estimated_bytes_size()` function indicate that there's a lot of limitations and
+// edge cases to be aware of.
+//
+// Also, it's just plain hard to be sure that the answer you get is the answer you're looking
+// for with these kinds of tools. When in doubt.. test everything we're going to need from it.
+//
+// In many ways, this is a specification of what we mean when we ask "what's the size of this
+// Arrow array?".
+#[test]
+#[allow(clippy::from_iter_instead_of_collect)]
+fn test_arrow_estimated_size_bytes() {
+    use arrow2::{
+        array::{Array, Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
+        compute::aggregate::estimated_bytes_size,
+        datatypes::{DataType, Field},
+        offset::Offsets,
+    };
+
+    // empty primitive array
+    {
+        let data = vec![];
+        let array = UInt64Array::from_vec(data.clone()).boxed();
+        let sz = estimated_bytes_size(&*array);
+        assert_eq!(0, sz);
+        assert_eq!(std::mem::size_of_val(data.as_slice()), sz);
+    }
+
+    // simple primitive array
+    {
+        let data = vec![42u64; 100];
+        let array = UInt64Array::from_vec(data.clone()).boxed();
+        assert_eq!(
+            std::mem::size_of_val(data.as_slice()),
+            estimated_bytes_size(&*array)
+        );
+    }
+
+    // utf8 strings array
+    {
+        let data = vec![Some("some very, very, very long string indeed"); 100];
+        let array = Utf8Array::<i32>::from(data.clone()).to_boxed();
+
+        let raw_size_bytes = data
+            .iter()
+            // headers + bodies!
+            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.unwrap().as_bytes()))
+            .sum::<usize>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(5600, raw_size_bytes);
+        assert_eq!(4404, arrow_size_bytes); // smaller because validity bitmaps instead of opts
+    }
+
+    // simple primitive list array
+    {
+        let data = std::iter::repeat(vec![42u64; 100])
+            .take(50)
+            .collect::<Vec<_>>();
+        let array = {
+            let array_flattened =
+                UInt64Array::from_vec(data.clone().into_iter().flatten().collect()).boxed();
+
+            ListArray::<i32>::new(
+                ListArray::<i32>::default_datatype(DataType::UInt64),
+                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
+                    .unwrap()
+                    .into(),
+                array_flattened,
+                None,
+            )
+            .boxed()
+        };
+
+        let raw_size_bytes = data
+            .iter()
+            // headers + bodies!
+            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
+            .sum::<usize>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(41200, raw_size_bytes);
+        assert_eq!(40200, arrow_size_bytes); // smaller because smaller inner headers
+    }
+
+    // compound type array
+    {
+        #[derive(Clone, Copy)]
+        struct Point {
+            x: f64,
+            y: f64,
+        }
+
+        impl Default for Point {
+            fn default() -> Self {
+                Self { x: 42.0, y: 666.0 }
+            }
+        }
+
+        let data = vec![Point::default(); 100];
+        let array = {
+            let x = Float64Array::from_vec(data.iter().map(|p| p.x).collect()).boxed();
+            let y = Float64Array::from_vec(data.iter().map(|p| p.y).collect()).boxed();
+            let fields = vec![
+                Field::new("x", DataType::Float64, false),
+                Field::new("y", DataType::Float64, false),
+            ];
+            StructArray::new(DataType::Struct(fields), vec![x, y], None).boxed()
+        };
+
+        let raw_size_bytes = std::mem::size_of_val(data.as_slice());
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(1600, raw_size_bytes);
+        assert_eq!(1600, arrow_size_bytes);
+    }
+
+    // compound type list array
+    {
+        #[derive(Clone, Copy)]
+        struct Point {
+            x: f64,
+            y: f64,
+        }
+
+        impl Default for Point {
+            fn default() -> Self {
+                Self { x: 42.0, y: 666.0 }
+            }
+        }
+
+        let data = std::iter::repeat(vec![Point::default(); 100])
+            .take(50)
+            .collect::<Vec<_>>();
+        let array: Box<dyn Array> = {
+            let array = {
+                let x =
+                    Float64Array::from_vec(data.iter().flatten().map(|p| p.x).collect()).boxed();
+                let y =
+                    Float64Array::from_vec(data.iter().flatten().map(|p| p.y).collect()).boxed();
+                let fields = vec![
+                    Field::new("x", DataType::Float64, false),
+                    Field::new("y", DataType::Float64, false),
+                ];
+                StructArray::new(DataType::Struct(fields), vec![x, y], None)
+            };
+
+            ListArray::<i32>::new(
+                ListArray::<i32>::default_datatype(array.data_type().clone()),
+                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
+                    .unwrap()
+                    .into(),
+                array.boxed(),
+                None,
+            )
+            .boxed()
+        };
+
+        let raw_size_bytes = data
+            .iter()
+            // headers + bodies!
+            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
+            .sum::<usize>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(81200, raw_size_bytes);
+        assert_eq!(80200, arrow_size_bytes); // smaller because smaller inner headers
     }
 }
