@@ -318,6 +318,9 @@ fn build_table(n: usize, packed: bool) -> DataTable {
             )
         }),
     );
+    if cfg!(debug_assertions) {
+        table.compute_all_size_bytes();
+    }
 
     // Do a serialization roundtrip to pack everything in contiguous memory.
     if packed {
