@@ -226,10 +226,10 @@ bitflags! {
         /// This flag makes end caps extend outwards.
         const FLAG_CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
 
-        /// Disable color gradient which is on by default
+        /// Enable color gradient across the line.
         ///
         /// TODO(andreas): Could be moved to per batch flags.
-        const FLAG_NO_COLOR_GRADIENT = 0b0100_0000;
+        const FLAG_COLOR_GRADIENT = 0b0100_0000;
 
         /// Forces spanning the line's quads as-if the camera was orthographic.
         ///

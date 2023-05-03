@@ -477,7 +477,6 @@ pub fn view_3d(
                     )
                 }))
                 .radius(Size::new_points(0.75))
-                .flags(re_renderer::renderer::LineStripFlags::FLAG_NO_COLOR_GRADIENT)
                 // TODO(andreas): Fade this out.
                 .color(re_renderer::Color32::WHITE);
 
@@ -588,13 +587,11 @@ fn add_picking_ray(
     line_batch
         .add_segment(origin, main_ray_end)
         .color(egui::Color32::WHITE)
-        .flags(re_renderer::renderer::LineStripFlags::FLAG_NO_COLOR_GRADIENT)
         .radius(Size::new_points(1.0));
     line_batch
         .add_segment(main_ray_end, fallback_ray_end)
         .color(egui::Color32::DARK_GRAY)
         // TODO(andreas): Make this dashed.
-        .flags(re_renderer::renderer::LineStripFlags::FLAG_NO_COLOR_GRADIENT)
         .radius(Size::new_points(0.5));
 }
 

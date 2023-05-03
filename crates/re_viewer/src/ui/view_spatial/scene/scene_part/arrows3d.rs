@@ -4,7 +4,7 @@ use re_log_types::{
     Arrow3D, Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
+use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
     misc::{SpaceViewHighlights, TransformCache, ViewerContext},
@@ -63,9 +63,10 @@ impl Arrows3DPart {
                 .radius(radius)
                 .color(color)
                 .flags(
-                    re_renderer::renderer::LineStripFlags::FLAG_CAP_END_TRIANGLE
-                        | re_renderer::renderer::LineStripFlags::FLAG_CAP_START_ROUND
-                        | re_renderer::renderer::LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
+                    LineStripFlags::FLAG_COLOR_GRADIENT
+                        | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                        | LineStripFlags::FLAG_CAP_START_ROUND
+                        | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
                 )
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,

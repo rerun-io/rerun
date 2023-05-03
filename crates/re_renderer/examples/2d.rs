@@ -119,7 +119,7 @@ impl framework::Example for Render2D {
                 line_batch
                     .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
                     .radius(Size::new_scene(15.0))
-                    .flags(*flags);
+                    .flags(*flags | LineStripFlags::FLAG_COLOR_GRADIENT);
             }
         }
 

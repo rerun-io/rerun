@@ -204,6 +204,7 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(color)
+                    .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                     // Select the entire object when clicking any of the lines.
                     .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
             }

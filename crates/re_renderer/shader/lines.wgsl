@@ -43,7 +43,7 @@ const FLAG_CAP_END_EXTEND_OUTWARDS: u32 = 4u;
 const FLAG_CAP_START_TRIANGLE: u32 = 8u;
 const FLAG_CAP_START_ROUND: u32 = 16u;
 const FLAG_CAP_START_EXTEND_OUTWARDS: u32 = 32u;
-const FLAG_NO_COLOR_GRADIENT: u32 = 64u;
+const FLAG_COLOR_GRADIENT: u32 = 64u;
 const FLAG_FORCE_ORTHO_SPANNING: u32 = 128u;
 
 // A lot of the attributes don't need to be interpolated across triangles.
@@ -269,7 +269,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.color = strip_data.color;
     out.active_radius = active_radius;
     out.fragment_flags = strip_data.flags &
-                    (FLAG_NO_COLOR_GRADIENT | (u32(is_cap_triangle) * select(FLAG_CAP_START_ROUND, FLAG_CAP_END_ROUND, is_right_triangle)));
+                    (FLAG_COLOR_GRADIENT | (u32(is_cap_triangle) * select(FLAG_CAP_START_ROUND, FLAG_CAP_END_ROUND, is_right_triangle)));
     out.picking_instance_id = strip_data.picking_instance_id;
 
     return out;
@@ -299,7 +299,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // TODO(andreas): lighting setup
     var shading = 1.0;
-    if !has_any_flag(in.fragment_flags, FLAG_NO_COLOR_GRADIENT) { // TODO(andreas): Flip flag meaning.
+    if has_any_flag(in.fragment_flags, FLAG_COLOR_GRADIENT) {
         let to_center = in.position_world - in.center_position;
         let relative_distance_to_center_sq = dot(to_center, to_center) / (in.active_radius * in.active_radius);
         shading = max(0.2, 1.0 - relative_distance_to_center_sq) * 0.9;

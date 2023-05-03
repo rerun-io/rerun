@@ -108,7 +108,6 @@ impl LineStripSeriesBuilder {
     pub fn default_box_flags() -> LineStripFlags {
         LineStripFlags::FLAG_CAP_END_ROUND
             | LineStripFlags::FLAG_CAP_START_ROUND
-            | LineStripFlags::FLAG_NO_COLOR_GRADIENT
             | LineStripFlags::FLAG_CAP_END_EXTEND_OUTWARDS
             | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS
     }
