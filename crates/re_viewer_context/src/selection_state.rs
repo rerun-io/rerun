@@ -82,7 +82,7 @@ impl InteractionHighlight {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct SelectionState {
-    /// Currently selected things; shown in the [`crate::selection_panel::SelectionPanel`].
+    /// Currently selected things.
     ///
     /// Do not access this field directly! Use the helper methods instead, which will make sure
     /// to properly maintain the undo/redo history.
