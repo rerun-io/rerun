@@ -153,6 +153,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // blueprint
     m.add_function(wrap_pyfunction!(set_panel, m)?)?;
     m.add_function(wrap_pyfunction!(add_space_view, m)?)?;
+    m.add_function(wrap_pyfunction!(enable_heuristics, m)?)?;
 
     Ok(())
 }
@@ -1186,6 +1187,13 @@ fn add_space_view(name: &str, space_path: &str, entity_paths: Vec<&str>) {
     );
 
     record_row(rec_ctx, row);
+}
+
+#[pyfunction]
+fn enable_heuristics() {
+    if let Some(bp_ctx) = global_blueprint_stream().as_ref() {
+        set_user_edited(bp_ctx, false);
+    };
 }
 
 fn set_user_edited(bp_stream: &RecordingStream, user_edited: bool) {

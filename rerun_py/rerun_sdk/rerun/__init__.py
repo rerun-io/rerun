@@ -78,6 +78,11 @@ def set_panel(*args, **kwargs) -> None:
     bindings.set_panel(*args, **kwargs)
 
 
+# TOD(jleibs): docstrings
+def enable_heuristics(*args, **kwargs) -> None:
+    bindings.enable_heuristics(*args, **kwargs)
+
+
 # If `True`, we raise exceptions on use error (wrong parameter types etc).
 # If `False` we catch all errors and log a warning instead.
 _strict_mode = False
