@@ -66,6 +66,11 @@ impl RectF32 {
     }
 
     #[inline]
+    pub fn center(self) -> glam::Vec2 {
+        self.min + self.extent / 2.0
+    }
+
+    #[inline]
     pub fn scale_extent(self, factor: f32) -> RectF32 {
         RectF32 {
             min: self.min * factor,

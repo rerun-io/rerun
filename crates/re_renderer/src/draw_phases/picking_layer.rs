@@ -228,8 +228,8 @@ impl PickingLayerProcessor {
         });
 
         let cropped_projection_from_projection = RectTransform {
-            from: picking_rect.into(),
-            to: RectF32 {
+            region_of_interest: picking_rect.into(),
+            region: RectF32 {
                 min: glam::Vec2::ZERO,
                 extent: screen_resolution.as_vec2(),
             },

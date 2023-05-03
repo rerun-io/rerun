@@ -456,15 +456,15 @@ fn setup_target_config(
 
     // Cut to the portion of the currently visible ui area.
     let mut viewport_transformation = re_renderer::RectTransform {
-        from: egui_rect_to_re_renderer(painter.clip_rect()),
-        to: egui_rect_to_re_renderer(*canvas_from_ui.from()),
+        region_of_interest: egui_rect_to_re_renderer(painter.clip_rect()),
+        region: egui_rect_to_re_renderer(*canvas_from_ui.from()),
     };
 
     // The principal point might not be quite centered.
     // We need to account for this translation in the viewport transformation.
     let principal_point_offset = default_principal_point - pinhole.principal_point();
     let ui_from_canvas_scale = canvas_from_ui.inverse().scale();
-    viewport_transformation.from.min +=
+    viewport_transformation.region_of_interest.min +=
         principal_point_offset * glam::vec2(ui_from_canvas_scale.x, ui_from_canvas_scale.y);
 
     Ok({
