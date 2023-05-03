@@ -1,11 +1,6 @@
 use std::collections::BTreeMap;
-
-use egui::{Color32, RichText};
-
-use re_data_store::{EntityPath, Timeline};
-use re_log_types::TimePoint;
-
 use crate::ViewerContext;
+use re_data_store::{EntityPath, Timeline};
 
 use super::{NodeGraphEntry, SceneNodeGraph};
 // --- Main view ---
@@ -90,7 +85,7 @@ impl ViewNodeGraphFilters {
 
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
-    fn update(&mut self, ctx: &mut ViewerContext<'_>, NodeGraph_entries: &[NodeGraphEntry]) {
+    fn update(&mut self, ctx: &mut ViewerContext<'_>, nodegraph_entries: &[NodeGraphEntry]) {
         crate::profile_function!();
     }
 }

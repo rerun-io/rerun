@@ -1,13 +1,5 @@
-use re_arrow_store::TimeRange;
-use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{self, InstanceKey},
-    Component,
-};
-use re_query::{range_entity_with_primary, QueryError};
-
 use crate::{ui::SceneQuery, ViewerContext};
-
+use re_data_store::EntityPath;
 // ---
 
 #[derive(Debug, Clone)]

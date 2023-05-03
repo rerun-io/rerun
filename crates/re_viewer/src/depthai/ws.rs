@@ -1,20 +1,19 @@
-use crossbeam_channel::{self, Receiver, Sender};
-use ewebsock::{WsEvent, WsMessage};
-use serde::{Deserialize, Serialize};
+use ewebsock::{ WsEvent, WsMessage };
+use serde::{ Deserialize, Serialize };
 use std::fmt;
 use std::ops::ControlFlow;
 use std::process::exit;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use crossbeam_channel;
 
 use super::depthai;
 
-// TODO(filip) make this try to reconnect until a successful connection
 async fn spawn_ws_client(
     recv_tx: crossbeam_channel::Sender<WsMessage>,
     send_rx: crossbeam_channel::Receiver<WsMessage>,
     shutdown: Arc<AtomicBool>,
-    connected: Arc<AtomicBool>,
+    connected: Arc<AtomicBool>
 ) {
     let (error_tx, error_rx) = crossbeam_channel::unbounded();
     // Retry connection until successful
@@ -22,35 +21,37 @@ async fn spawn_ws_client(
         let recv_tx = recv_tx.clone();
         let error_tx = error_tx.clone();
         let connected = connected.clone();
-        if let Ok(sender) = ewebsock::ws_connect(
-            String::from("ws://localhost:9001"),
-            Box::new(move |event| {
-                match event {
-                    WsEvent::Opened => {
-                        re_log::info!("Websocket opened");
-                        connected.store(true, std::sync::atomic::Ordering::SeqCst);
-                        ControlFlow::Continue(())
-                    }
-                    WsEvent::Message(message) => {
-                        // re_log::debug!("Websocket message");
-                        recv_tx.send(message);
-                        ControlFlow::Continue(())
-                    }
-                    WsEvent::Error(e) => {
-                        // re_log::info!("Websocket Error: {:?}", e);
-                        connected.store(false, std::sync::atomic::Ordering::SeqCst);
-                        error_tx.send(e);
-                        ControlFlow::Break(())
-                    }
-                    WsEvent::Closed => {
-                        // re_log::info!("Websocket Closed");
-                        error_tx.send(String::from("Websocket Closed"));
-                        ControlFlow::Break(())
-                    }
-                }
-            }),
-        )
-        .as_mut()
+        if
+            let Ok(sender) = ewebsock
+                ::ws_connect(
+                    String::from("ws://localhost:9001"),
+                    Box::new(move |event| {
+                        match event {
+                            WsEvent::Opened => {
+                                re_log::info!("Websocket opened");
+                                connected.store(true, std::sync::atomic::Ordering::SeqCst);
+                                ControlFlow::Continue(())
+                            }
+                            WsEvent::Message(message) => {
+                                // re_log::debug!("Websocket message");
+                                recv_tx.send(message);
+                                ControlFlow::Continue(())
+                            }
+                            WsEvent::Error(e) => {
+                                // re_log::info!("Websocket Error: {:?}", e);
+                                connected.store(false, std::sync::atomic::Ordering::SeqCst);
+                                error_tx.send(e);
+                                ControlFlow::Break(())
+                            }
+                            WsEvent::Closed => {
+                                // re_log::info!("Websocket Closed");
+                                error_tx.send(String::from("Websocket Closed"));
+                                ControlFlow::Break(())
+                            }
+                        }
+                    })
+                )
+                .as_mut()
         {
             while error_rx.is_empty() {
                 if shutdown.load(std::sync::atomic::Ordering::SeqCst) {
@@ -109,10 +110,7 @@ pub struct BackWsMessage {
 }
 
 impl<'de> Deserialize<'de> for BackWsMessage {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
         #[derive(Deserialize)]
         pub struct Message {
             #[serde(rename = "type")]
@@ -122,9 +120,10 @@ impl<'de> Deserialize<'de> for BackWsMessage {
 
         let message = Message::deserialize(deserializer)?;
         let data = match message.kind {
-            WsMessageType::Subscriptions => WsMessageData::Subscriptions(
-                serde_json::from_value(message.data).unwrap_or_default(),
-            ),
+            WsMessageType::Subscriptions =>
+                WsMessageData::Subscriptions(
+                    serde_json::from_value(message.data).unwrap_or_default()
+                ),
             WsMessageType::Devices => {
                 WsMessageData::Devices(serde_json::from_value(message.data).unwrap_or_default())
             }
@@ -181,24 +180,17 @@ impl WebSocket {
         let mut task = None;
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
             re_log::debug!("Using current tokio runtime");
-            task = Some(handle.spawn(spawn_ws_client(
-                recv_tx,
-                send_rx,
-                shutdown_clone,
-                connected_clone,
-            )));
+            task = Some(
+                handle.spawn(spawn_ws_client(recv_tx, send_rx, shutdown_clone, connected_clone))
+            );
         } else {
             re_log::debug!("Creating new tokio runtime");
             task = Some(
-                tokio::runtime::Builder::new_current_thread()
+                tokio::runtime::Builder
+                    ::new_current_thread()
                     .build()
                     .unwrap()
-                    .spawn(spawn_ws_client(
-                        recv_tx,
-                        send_rx,
-                        shutdown_clone,
-                        connected_clone,
-                    )),
+                    .spawn(spawn_ws_client(recv_tx, send_rx, shutdown_clone, connected_clone))
             );
         }
         Self {
@@ -211,8 +203,7 @@ impl WebSocket {
     }
 
     pub fn shutdown(&mut self) {
-        self.shutdown
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.shutdown.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn receive(&self) -> Option<BackWsMessage> {
@@ -230,7 +221,9 @@ impl WebSocket {
                         }
                     }
                 }
-                _ => return None,
+                _ => {
+                    return None;
+                }
             }
         }
         None

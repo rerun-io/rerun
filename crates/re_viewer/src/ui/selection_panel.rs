@@ -4,27 +4,24 @@ use egui::{
 };
 use re_data_store::{
     query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
-    ExtraQueryHistory,
 };
 
 use itertools::Itertools;
-use re_arrow_store::{LatestAtQuery, TimeInt, TimeRange, Timeline};
+use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
 use re_log_types::{
-    component_types::{ImuData, InstanceKey, Tensor, TensorDataMeaning},
+    component_types::{ImuData, Tensor, TensorDataMeaning},
     Component, TimeType, Transform,
 };
-use re_query::{query_primary_with_history, QueryError};
 
 use crate::{
     depthai::depthai,
-    misc::SpaceViewHighlights,
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
     Item, UiVerbosity, ViewerContext,
 };
 
-use egui_dock::{DockArea, NodeIndex, Tree};
+use egui_dock::{DockArea,  Tree};
 
-use super::{data_ui::DataUi, space_view::ViewState, SpaceView, ViewCategory};
+use super::{data_ui::DataUi, space_view::ViewState};
 
 use egui::emath::History;
 use strum::EnumIter;

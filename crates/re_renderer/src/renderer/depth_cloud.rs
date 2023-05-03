@@ -16,19 +16,35 @@ use smallvec::smallvec;
 
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
+    draw_phases::{ DrawPhase, OutlineMaskProcessor },
     include_shader_module,
-    resource_managers::{GpuTexture2D, ResourceManagerError},
+    resource_managers::{ GpuTexture2D, ResourceManagerError },
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
+        BindGroupDesc,
+        BindGroupEntry,
+        BindGroupLayoutDesc,
+        GpuBindGroup,
+        GpuBindGroupLayoutHandle,
+        GpuRenderPipelineHandle,
+        GpuTexture,
+        PipelineLayoutDesc,
+        RenderPipelineDesc,
+        TextureDesc,
     },
-    Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
+    Colormap,
+    OutlineMaskPreference,
+    PickingLayerObjectId,
+    PickingLayerProcessor,
 };
 
 use super::{
-    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    DrawData,
+    FileResolver,
+    FileSystem,
+    RenderContext,
+    Renderer,
+    SharedRendererData,
     WgpuResourcePools,
 };
 
@@ -36,17 +52,14 @@ use super::{
 
 #[derive(Debug, Clone, Copy)]
 enum AlbedoColorSpace {
-    RGB,
-    MONO,
+    Rgb,
+    Mono,
 }
 
 mod gpu_data {
-    use crate::{
-        wgpu_buffer_types::{self, U32RowPadded},
-        PickingLayerObjectId,
-    };
+    use crate::{ wgpu_buffer_types, PickingLayerObjectId };
 
-    use super::{AlbedoColorSpace, DepthCloudAlbedoData};
+    use super::{ AlbedoColorSpace, DepthCloudAlbedoData };
 
     /// Keep in sync with mirror in `depth_cloud.wgsl.`
     #[repr(C, align(256))]
@@ -84,7 +97,7 @@ mod gpu_data {
     impl DepthCloudInfoUBO {
         pub fn from_depth_cloud(
             radius_boost_in_ui_points: f32,
-            depth_cloud: &super::DepthCloud,
+            depth_cloud: &super::DepthCloud
         ) -> Self {
             let super::DepthCloud {
                 world_from_obj,
@@ -97,7 +110,7 @@ mod gpu_data {
                 colormap,
                 outline_mask_id,
                 picking_object_id,
-                albedo_dimensions,
+                albedo_dimensions: _,
                 albedo_data,
             } = depth_cloud;
 
@@ -109,15 +122,17 @@ mod gpu_data {
                 point_radius_from_world_depth: *point_radius_from_world_depth,
                 max_depth_in_world: *max_depth_in_world,
                 colormap: *colormap as u32,
-                albedo_color_space: (depth_cloud
-                    .albedo_data
-                    .as_ref()
-                    .map(|albedo_data| match albedo_data {
-                        DepthCloudAlbedoData::Mono8(_) => AlbedoColorSpace::MONO,
-                        _ => AlbedoColorSpace::RGB,
-                    })
-                    .unwrap_or(AlbedoColorSpace::RGB) as u32)
-                    .into(),
+                albedo_color_space: (
+                    depth_cloud.albedo_data
+                        .as_ref()
+                        .map(|albedo_data| {
+                            match albedo_data {
+                                DepthCloudAlbedoData::Mono8(_) => AlbedoColorSpace::Mono,
+                                _ => AlbedoColorSpace::Rgb,
+                            }
+                        })
+                        .unwrap_or(AlbedoColorSpace::Rgb) as u32
+                ).into(),
                 radius_boost_in_ui_points: radius_boost_in_ui_points.into(),
                 picking_layer_object_id: *picking_object_id,
                 end_padding: Default::default(),
@@ -207,7 +222,7 @@ impl DepthCloud {
 
         for corner in corners {
             let depth = corner.z;
-            let pos_in_obj = ((corner.truncate() - offset) * depth / focal_length).extend(depth);
+            let pos_in_obj = (((corner.truncate() - offset) * depth) / focal_length).extend(depth);
             let pos_in_world = self.world_from_obj.project_point3(pos_in_obj);
             bbox.extend(pos_in_world);
         }
@@ -240,35 +255,31 @@ impl DrawData for DepthCloudDrawData {
 
 #[derive(thiserror::Error, Debug)]
 pub enum DepthCloudDrawDataError {
-    #[error("Depth texture format was {0:?}, only formats with sample type float are supported")]
-    InvalidDepthTextureFormat(wgpu::TextureFormat),
+    #[error(
+        "Depth texture format was {0:?}, only formats with sample type float are supported"
+    )] InvalidDepthTextureFormat(wgpu::TextureFormat),
 
-    #[error(transparent)]
-    ResourceManagerError(#[from] ResourceManagerError),
+    #[error(transparent)] ResourceManagerError(#[from] ResourceManagerError),
 }
 
 impl DepthCloudDrawData {
     pub fn new(
         ctx: &mut RenderContext,
-        depth_clouds: &DepthClouds,
+        depth_clouds: &DepthClouds
     ) -> Result<Self, DepthCloudDrawDataError> {
         crate::profile_function!();
 
-        let DepthClouds {
-            clouds: depth_clouds,
-            radius_boost_in_ui_points_for_outlines,
-        } = depth_clouds;
+        let DepthClouds { clouds: depth_clouds, radius_boost_in_ui_points_for_outlines } =
+            depth_clouds;
 
-        let bg_layout = ctx
-            .renderers
+        let bg_layout = ctx.renderers
             .write()
             .get_or_create::<_, DepthCloudRenderer>(
                 &ctx.shared_renderer_data,
                 &mut ctx.gpu_resources,
                 &ctx.device,
-                &mut ctx.resolver,
-            )
-            .bind_group_layout;
+                &mut ctx.resolver
+            ).bind_group_layout;
 
         if depth_clouds.is_empty() {
             return Ok(DepthCloudDrawData {
@@ -279,19 +290,19 @@ impl DepthCloudDrawData {
         let depth_cloud_ubo_binding_outlines = create_and_fill_uniform_buffer_batch(
             ctx,
             "depth_cloud_ubos".into(),
-            depth_clouds.iter().map(|dc| {
-                gpu_data::DepthCloudInfoUBO::from_depth_cloud(
-                    *radius_boost_in_ui_points_for_outlines,
-                    dc,
-                )
-            }),
+            depth_clouds
+                .iter()
+                .map(|dc| {
+                    gpu_data::DepthCloudInfoUBO::from_depth_cloud(
+                        *radius_boost_in_ui_points_for_outlines,
+                        dc
+                    )
+                })
         );
         let depth_cloud_ubo_binding_opaque = create_and_fill_uniform_buffer_batch(
             ctx,
             "depth_cloud_ubos".into(),
-            depth_clouds
-                .iter()
-                .map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(0.0, dc)),
+            depth_clouds.iter().map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(0.0, dc))
         );
 
         let mut instances = Vec::with_capacity(depth_clouds.len());
@@ -300,84 +311,92 @@ impl DepthCloudDrawData {
             depth_cloud_ubo_binding_outlines,
             depth_cloud_ubo_binding_opaque
         ) {
-            if !matches!(
-                depth_cloud.depth_texture.format().sample_type(None),
-                Some(wgpu::TextureSampleType::Float { filterable: _ })
-            ) {
-                return Err(DepthCloudDrawDataError::InvalidDepthTextureFormat(
-                    depth_cloud.depth_texture.format(),
-                ));
+            if
+                !matches!(
+                    depth_cloud.depth_texture.format().sample_type(None),
+                    Some(wgpu::TextureSampleType::Float { filterable: _ })
+                )
+            {
+                return Err(
+                    DepthCloudDrawDataError::InvalidDepthTextureFormat(
+                        depth_cloud.depth_texture.format()
+                    )
+                );
             }
-            let albedo_texture = depth_cloud
-                .albedo_data
+            let albedo_texture = depth_cloud.albedo_data
                 .as_ref()
-                .map(|data| match data {
-                    DepthCloudAlbedoData::Rgba8(data) => create_and_upload_texture(
-                        ctx,
-                        depth_cloud.albedo_dimensions,
-                        wgpu::TextureFormat::Rgba8Unorm,
-                        data.as_slice(),
-                    ),
-                    DepthCloudAlbedoData::Rgba8Srgb(data) => create_and_upload_texture(
-                        ctx,
-                        depth_cloud.albedo_dimensions,
-                        wgpu::TextureFormat::Rgba8UnormSrgb,
-                        data.as_slice(),
-                    ),
-                    DepthCloudAlbedoData::Rgb8(data) => {
-                        let data = data
-                            .chunks(3)
-                            .into_iter()
-                            .flat_map(|c| [c[0], c[1], c[2], 255])
-                            .collect_vec();
-                        create_and_upload_texture(
-                            ctx,
-                            depth_cloud.albedo_dimensions,
-                            wgpu::TextureFormat::Rgba8Unorm,
-                            data.as_slice(),
-                        )
+                .map(|data| {
+                    match data {
+                        DepthCloudAlbedoData::Rgba8(data) =>
+                            create_and_upload_texture(
+                                ctx,
+                                depth_cloud.albedo_dimensions,
+                                wgpu::TextureFormat::Rgba8Unorm,
+                                data.as_slice()
+                            ),
+                        DepthCloudAlbedoData::Rgba8Srgb(data) =>
+                            create_and_upload_texture(
+                                ctx,
+                                depth_cloud.albedo_dimensions,
+                                wgpu::TextureFormat::Rgba8UnormSrgb,
+                                data.as_slice()
+                            ),
+                        DepthCloudAlbedoData::Rgb8(data) => {
+                            let data = data
+                                .chunks(3)
+                                .into_iter()
+                                .flat_map(|c| [c[0], c[1], c[2], 255])
+                                .collect_vec();
+                            create_and_upload_texture(
+                                ctx,
+                                depth_cloud.albedo_dimensions,
+                                wgpu::TextureFormat::Rgba8Unorm,
+                                data.as_slice()
+                            )
+                        }
+                        DepthCloudAlbedoData::Rgb8Srgb(data) => {
+                            let data = data
+                                .chunks(3)
+                                .into_iter()
+                                .flat_map(|c| [c[0], c[1], c[2], 255])
+                                .collect_vec();
+                            create_and_upload_texture(
+                                ctx,
+                                depth_cloud.albedo_dimensions,
+                                wgpu::TextureFormat::Rgba8UnormSrgb,
+                                data.as_slice()
+                            )
+                        }
+                        DepthCloudAlbedoData::Mono8(data) =>
+                            create_and_upload_texture(
+                                ctx,
+                                depth_cloud.albedo_dimensions,
+                                wgpu::TextureFormat::R8Unorm,
+                                data.as_slice()
+                            ),
                     }
-                    DepthCloudAlbedoData::Rgb8Srgb(data) => {
-                        let data = data
-                            .chunks(3)
-                            .into_iter()
-                            .flat_map(|c| [c[0], c[1], c[2], 255])
-                            .collect_vec();
-                        create_and_upload_texture(
-                            ctx,
-                            depth_cloud.albedo_dimensions,
-                            wgpu::TextureFormat::Rgba8UnormSrgb,
-                            data.as_slice(),
-                        )
-                    }
-                    DepthCloudAlbedoData::Mono8(data) => create_and_upload_texture(
-                        ctx,
-                        depth_cloud.albedo_dimensions,
-                        wgpu::TextureFormat::R8Unorm,
-                        data.as_slice(),
-                    ),
                 })
                 .unwrap_or_else(|| {
                     create_and_upload_texture(
                         ctx,
                         (1, 1).into(),
                         wgpu::TextureFormat::Rgba8Unorm,
-                        [0u8; 4].as_slice(),
+                        [0u8; 4].as_slice()
                     )
                 });
             let mk_bind_group = |label, ubo: BindGroupEntry| {
                 ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
-                    &BindGroupDesc {
+                    &(BindGroupDesc {
                         label,
                         entries: smallvec![
                             ubo,
                             BindGroupEntry::DefaultTextureView(depth_cloud.depth_texture.handle),
-                            BindGroupEntry::DefaultTextureView(albedo_texture.handle),
+                            BindGroupEntry::DefaultTextureView(albedo_texture.handle)
                         ],
                         layout: bg_layout,
-                    },
+                    })
                 )
             };
 
@@ -400,7 +419,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     ctx: &mut RenderContext,
     dimensions: glam::UVec2,
     format: wgpu::TextureFormat,
-    data: &[T],
+    data: &[T]
 ) -> GpuTexture {
     crate::profile_function!();
 
@@ -421,15 +440,13 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     let texture = ctx.gpu_resources.textures.alloc(&ctx.device, &texture_desc);
 
     let format_info = texture_desc.format;
-    let width_blocks = dimensions.x / format_info.block_dimensions().0 as u32;
-    let bytes_per_row_unaligned = width_blocks * format_info.block_size(None).unwrap() as u32;
+    let width_blocks = dimensions.x / (format_info.block_dimensions().0 as u32);
+    let bytes_per_row_unaligned = width_blocks * (format_info.block_size(None).unwrap() as u32);
     let bytes_per_row = u32::max(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
-    let mut texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(
-        &ctx.device,
-        &ctx.gpu_resources.buffers,
-        data.len(),
-    );
+    let mut texture_staging = ctx.cpu_write_gpu_read_belt
+        .lock()
+        .allocate::<T>(&ctx.device, &ctx.gpu_resources.buffers, data.len());
     texture_staging.extend_from_slice(data);
 
     texture_staging.copy_to_texture2d(
@@ -440,7 +457,7 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        glam::UVec2::new(texture_size.width, texture_size.height),
+        glam::UVec2::new(texture_size.width, texture_size.height)
     );
 
     texture
@@ -457,24 +474,20 @@ impl Renderer for DepthCloudRenderer {
     type RendererDrawData = DepthCloudDrawData;
 
     fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-            DrawPhase::OutlineMask,
-        ]
+        &[DrawPhase::Opaque, DrawPhase::PickingLayer, DrawPhase::OutlineMask]
     }
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
         pools: &mut WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &mut FileResolver<Fs>
     ) -> Self {
         crate::profile_function!();
 
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
-            &BindGroupLayoutDesc {
+            &(BindGroupLayoutDesc {
                 label: "depth_cloud_bg_layout".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
@@ -483,8 +496,9 @@ impl Renderer for DepthCloudRenderer {
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            min_binding_size: (std::mem::size_of::<gpu_data::DepthCloudInfoUBO>()
-                                as u64)
+                            min_binding_size: (
+                                std::mem::size_of::<gpu_data::DepthCloudInfoUBO>() as u64
+                            )
                                 .try_into()
                                 .ok(),
                         },
@@ -509,24 +523,24 @@ impl Renderer for DepthCloudRenderer {
                             multisampled: false,
                         },
                         count: None,
-                    },
+                    }
                 ],
-            },
+            })
         );
 
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
-            &PipelineLayoutDesc {
+            &(PipelineLayoutDesc {
                 label: "depth_cloud_rp_layout".into(),
                 entries: vec![shared_data.global_bindings.layout, bind_group_layout],
-            },
-            &pools.bind_group_layouts,
+            }),
+            &pools.bind_group_layouts
         );
 
         let shader_module = pools.shader_modules.get_or_create(
             device,
             resolver,
-            &include_shader_module!("../../shader/depth_cloud.wgsl"),
+            &include_shader_module!("../../shader/depth_cloud.wgsl")
         );
 
         let render_pipeline_desc_color = RenderPipelineDesc {
@@ -554,36 +568,36 @@ impl Renderer for DepthCloudRenderer {
             device,
             &render_pipeline_desc_color,
             &pools.pipeline_layouts,
-            &pools.shader_modules,
+            &pools.shader_modules
         );
         let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
             device,
-            &RenderPipelineDesc {
+            &(RenderPipelineDesc {
                 label: "DepthCloudRenderer::render_pipeline_picking_layer".into(),
                 fragment_entrypoint: "fs_main_picking_layer".into(),
                 render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
                 depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
                 ..render_pipeline_desc_color.clone()
-            },
+            }),
             &pools.pipeline_layouts,
-            &pools.shader_modules,
+            &pools.shader_modules
         );
         let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
             device,
-            &RenderPipelineDesc {
+            &(RenderPipelineDesc {
                 label: "DepthCloudRenderer::render_pipeline_outline_mask".into(),
                 fragment_entrypoint: "fs_main_outline_mask".into(),
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    shared_data.config.hardware_tier,
+                    shared_data.config.hardware_tier
                 ),
                 ..render_pipeline_desc_color
-            },
+            }),
             &pools.pipeline_layouts,
-            &pools.shader_modules,
+            &pools.shader_modules
         );
 
         DepthCloudRenderer {
@@ -599,7 +613,7 @@ impl Renderer for DepthCloudRenderer {
         pools: &'a WgpuResourcePools,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &'a Self::RendererDrawData,
+        draw_data: &'a Self::RendererDrawData
     ) -> anyhow::Result<()> {
         crate::profile_function!();
         if draw_data.instances.is_empty() {
