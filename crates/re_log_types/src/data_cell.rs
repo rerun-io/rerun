@@ -505,7 +505,7 @@ impl std::fmt::Display for DataCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "DataCell({})",
-            re_format::format_bytes(self.total_size_bytes() as _)
+            re_format::format_bytes(self.inner.size_bytes as _)
         ))?;
         re_format::arrow::format_table(
             // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
@@ -591,7 +591,7 @@ fn data_cell_sizes() {
     use arrow2::array::UInt64Array;
 
     // not computed
-    {
+    if !cfg!(debug_assertions) {
         let cell = DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         assert_eq!(0, cell.heap_size_bytes());
         assert_eq!(0, cell.heap_size_bytes());

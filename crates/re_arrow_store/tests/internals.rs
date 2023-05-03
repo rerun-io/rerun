@@ -52,22 +52,24 @@ fn pathological_bucket_topology() {
 
         let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
         for _ in 0..num {
-            let row = DataRow::from_cells1(
+            let mut row = DataRow::from_cells1(
                 RowId::random(),
                 ent_path.clone(),
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
             );
+            row.compute_all_size_bytes();
             store_forward.insert_row(&row).unwrap();
 
-            let row = DataRow::from_cells1(
+            let mut row = DataRow::from_cells1(
                 RowId::random(),
                 ent_path.clone(),
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
             );
+            row.compute_all_size_bytes();
             store_backward.insert_row(&row).unwrap();
         }
     }
@@ -83,13 +85,15 @@ fn pathological_bucket_topology() {
         let rows = range
             .map(|frame_nr| {
                 let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
-                DataRow::from_cells1(
+                let mut row = DataRow::from_cells1(
                     RowId::random(),
                     ent_path.clone(),
                     timepoint,
                     num_instances,
                     build_some_instances(num_instances as _),
-                )
+                );
+                row.compute_all_size_bytes();
+                row
             })
             .collect::<Vec<_>>();
 
