@@ -1,0 +1,94 @@
+name: Release a branch or target with the given version
+
+on:
+  workflow_dispatch:
+    inputs:
+      RELEASE_VERSION:
+        description: 'Release Version Number (Must match Cargo.toml)'
+        type: string
+        required: true
+      OVERRIDE_COMMIT:
+        description: 'Commit to release'
+        type: string
+        required: false
+
+jobs:
+  publish-wheels:
+    name: 'Publish Wheels'
+
+    permissions:
+      contents: write
+      id-token: "write"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: |
+          if [ -z "${{ inputs.OVERRIDE_COMMIT }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.OVERRIDE_COMMIT }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: Expand short hash to FULL_SHA hash
+        run: |
+          FULL_SHA=$(git rev-parse ${{ env.SHORT_SHA }})
+          echo "FULL_SHA=$FULL_SHA" >> $GITHUB_ENV
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+        with:
+          version: '>= 363.0.0'
+
+      - name: Install packaging
+        run: |
+          python3 -m pip install packaging google-cloud-storage
+
+      - name: Download wheels from Google Cloud Storage
+        env:
+          BUCKET_PATH:
+        run: |
+          mkdir wheels
+          gsutil cp "gs://rerun-builds/commit/${{ env.SHORT_SHA }}/wheels/*.whl" wheels/
+
+      - name: Verify wheels match the expected release
+        run: |
+          python3 scripts/verify_wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
+
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        env:
+          # These are both set in the GitHub project configuration
+          MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
+        with:
+          command: upload
+          args: --skip-existing wheels/*
+
+      # Create the actual prerelease
+      # https://github.com/ncipollo/release-action
+      - name: GitHub Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: "Release - ${{ inputs.RELEASE_VERSION }}"
+          commit: ${{ env.FULL_SHA }}
+          tag: ${{ inputs.RELEASE_VERSION }}
+          artifacts: "wheels/*.whl"
+          generateReleaseNotes: true
+          allowUpdates: true
+          draft: true
+

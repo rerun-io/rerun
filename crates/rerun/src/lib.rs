@@ -7,6 +7,9 @@
 //! over the networks, and to open our `.rrd` data files.
 //! If you need it, install the `rerun` binary with `cargo install rerun`.
 //!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 //! ## Links
 //! - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 //! - [High-level docs](http://rerun.io/docs)
@@ -84,10 +87,6 @@
 //! cargo install rerun
 //! rerun --help
 //! ```
-//!
-//! ## Feature flags
-#![doc = document_features::document_features!()]
-//!
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
