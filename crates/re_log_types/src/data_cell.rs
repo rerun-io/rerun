@@ -546,6 +546,10 @@ impl SizeBytes for DataCell {
         (self.inner.size_bytes > 0)
             .then_some(self.inner.size_bytes)
             .unwrap_or_else(|| {
+                debug_assert!(
+                    false,
+                    "called `DataCell::heap_size_bytes() without computing it first"
+                );
                 re_log::warn_once!(
                     "called `DataCell::heap_size_bytes() without computing it first"
                 );
