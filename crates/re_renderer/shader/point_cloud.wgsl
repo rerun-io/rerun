@@ -111,6 +111,20 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     return out;
 }
 
+// TODO(andreas): move this to sphere_quad.wgsl once https://github.com/gfx-rs/naga/issues/1743 is resolved
+// point_cloud.rs has a specific workaround in place so we don't need to split vertex/fragment shader here
+//
+/// Computes coverage of a 2D sphere placed at `circle_center` in the fragment shader using the currently set camera.
+///
+/// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
+/// perspective projection is not taken into account.
+fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) -> f32 {
+    let to_center = circle_center - world_position;
+    let distance = length(to_center);
+    let distance_pixel_difference = fwidth(distance);
+    return smoothstep(radius + distance_pixel_difference, radius - distance_pixel_difference, distance);
+}
+
 fn coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
     if is_camera_orthographic() || has_any_flag(batch.flags, DRAW_AS_CIRCLES) {
         return circle_quad_coverage(world_position, radius, point_center);

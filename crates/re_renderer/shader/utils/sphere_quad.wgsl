@@ -111,14 +111,3 @@ fn sphere_quad_coverage(world_position: Vec3, radius: f32, sphere_center: Vec3) 
     // Note that we have signed distances to the sphere surface.
     return saturate(0.5 - distance_to_surface_in_pixels);
 }
-
-/// Computes coverage of a 2D sphere placed at `circle_center` in the fragment shader using the currently set camera.
-///
-/// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
-/// perspective projection is not taken into account.
-fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) -> f32 {
-    let to_center = circle_center - world_position;
-    let distance = length(to_center);
-    let distance_pixel_difference = fwidth(distance);
-    return smoothstep(radius + distance_pixel_difference, radius - distance_pixel_difference, distance);
-}
