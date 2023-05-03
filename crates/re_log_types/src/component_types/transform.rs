@@ -163,6 +163,7 @@ impl Pinhole {
     /// Focal length.
     #[inline]
     pub fn focal_length(&self) -> Option<f32> {
+        // Use only the first element of the focal length vector, as we don't support non-square pixels.
         self.resolution.map(|r| self.image_from_cam[0][0] / r[0])
     }
 

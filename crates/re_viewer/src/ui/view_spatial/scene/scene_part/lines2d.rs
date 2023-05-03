@@ -1,5 +1,3 @@
-use glam::Mat4;
-
 use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, LineStrip2D, Radius},
@@ -22,7 +20,7 @@ impl Lines2DPart {
         scene: &mut SceneSpatial,
         entity_view: &EntityView<LineStrip2D>,
         ent_path: &EntityPath,
-        world_from_obj: Mat4,
+        world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;

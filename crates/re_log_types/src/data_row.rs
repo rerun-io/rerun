@@ -341,6 +341,24 @@ impl SizeBytes for DataRow {
     }
 }
 
+impl SizeBytes for DataRow {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            row_id,
+            timepoint,
+            entity_path,
+            num_instances,
+            cells,
+        } = self;
+
+        row_id.heap_size_bytes()
+            + timepoint.heap_size_bytes()
+            + entity_path.heap_size_bytes()
+            + num_instances.heap_size_bytes()
+            + cells.heap_size_bytes()
+    }
+}
+
 impl DataRow {
     #[inline]
     pub fn row_id(&self) -> RowId {

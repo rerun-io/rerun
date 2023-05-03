@@ -11,8 +11,9 @@ use crate::{
     },
     global_bindings::FrameUniformBuffer,
     renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
+    transform::RectTransform,
     wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
-    DebugLabel, IntRect, Rgba, Size,
+    DebugLabel, RectInt, Rgba, Size,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(
@@ -109,6 +110,12 @@ pub enum Projection {
 
         /// Distance of the near plane.
         near_plane_distance: f32,
+
+        /// Aspect ratio of the perspective transformation.
+        ///
+        /// This is typically just resolution.y / resolution.x.
+        /// Setting this to anything else is mostly useful when panning & zooming within a fixed transformation.
+        aspect_ratio: f32,
     },
 
     /// Orthographic projection with the camera position at the near plane's center,
@@ -152,12 +159,29 @@ impl Default for AutoSizeConfig {
 #[derive(Debug, Clone)]
 pub struct TargetConfiguration {
     pub name: DebugLabel,
+
     pub resolution_in_pixel: [u32; 2],
     pub view_from_world: macaw::IsoTransform,
     pub projection_from_view: Projection,
 
+    /// Defines a viewport transformation from the projected space to the final image space.
+    ///
+    /// This can be used to implement pan & zoom independent of the camera projection.
+    /// Meaning that this transform allows you to zoom in on a portion of a perspectively projected
+    /// scene.
+    ///
+    /// Note only the relation of the rectangles in `RectTransform` is important.
+    /// Scaling or moving both rectangles by the same amount does not change the result.
+    ///
+    /// Internally, this is used to transform the normalized device coordinates to the given portion.
+    /// This transform is applied to the projection matrix.
+    pub viewport_transformation: RectTransform,
+
     /// How many pixels are there per point.
+    ///
     /// I.e. the ui scaling factor.
+    /// Note that this does not affect any of the camera & projection properties and is only used
+    /// whenever point sizes were explicitly specified.
     pub pixels_from_point: f32,
 
     /// How [`Size::AUTO`] is interpreted.
@@ -175,7 +199,9 @@ impl Default for TargetConfiguration {
             projection_from_view: Projection::Perspective {
                 vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                 near_plane_distance: 0.01,
+                aspect_ratio: 1.0,
             },
+            viewport_transformation: RectTransform::IDENTITY,
             pixels_from_point: 1.0,
             auto_size_config: Default::default(),
             outline_config: None,
@@ -292,14 +318,12 @@ impl ViewBuilder {
             },
         );
 
-        let aspect_ratio =
-            config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
-
         let (projection_from_view, tan_half_fov, pixel_world_size_from_camera_distance) =
             match config.projection_from_view.clone() {
                 Projection::Perspective {
                     vertical_fov,
                     near_plane_distance,
+                    aspect_ratio,
                 } => {
                     // We use infinite reverse-z projection matrix
                     // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
@@ -341,6 +365,8 @@ impl ViewBuilder {
                     vertical_world_size,
                     far_plane_distance,
                 } => {
+                    let aspect_ratio =
+                        config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
                     let horizontal_world_size = vertical_world_size * aspect_ratio;
                     // Note that we inverse z (by swapping near and far plane) to be consistent with our perspective projection.
                     let projection_from_view = match camera_mode {
@@ -365,8 +391,8 @@ impl ViewBuilder {
                     };
 
                     let tan_half_fov = glam::vec2(f32::MAX, f32::MAX);
-                    let pixel_world_size_from_camera_distance =
-                        vertical_world_size / config.resolution_in_pixel[1] as f32;
+                    let pixel_world_size_from_camera_distance = vertical_world_size
+                        / config.resolution_in_pixel[0].max(config.resolution_in_pixel[1]) as f32;
 
                     (
                         projection_from_view,
@@ -375,6 +401,18 @@ impl ViewBuilder {
                     )
                 }
             };
+
+        // Finally, apply a viewport transformation to the projection.
+        let ndc_scale_and_translation = config
+            .viewport_transformation
+            .to_ndc_scale_and_translation();
+        let projection_from_view = ndc_scale_and_translation * projection_from_view;
+        // Need to take into account that a smaller portion of the world scale is visible now.
+        let pixel_world_size_from_camera_distance = pixel_world_size_from_camera_distance
+            / ndc_scale_and_translation
+                .col(0)
+                .x
+                .max(ndc_scale_and_translation.col(1).y);
 
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.
@@ -387,6 +425,7 @@ impl ViewBuilder {
             },
             Projection::Perspective { .. } => {}
         };
+
         let camera_position = config.view_from_world.inverse().translation();
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
@@ -662,11 +701,11 @@ impl ViewBuilder {
     /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::next_readback_result`].
     /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
     /// ```no_run
-    /// use re_renderer::{view_builder::ViewBuilder, IntRect, PickingLayerProcessor, RenderContext};
+    /// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext};
     /// fn schedule_picking_readback(
     ///     ctx: &mut RenderContext,
     ///     view_builder: &mut ViewBuilder,
-    ///     picking_rect: IntRect,
+    ///     picking_rect: RectInt,
     /// ) {
     ///     view_builder.schedule_picking_rect(
     ///         ctx, picking_rect, 42, "My screenshot".to_owned(), false,
@@ -683,7 +722,7 @@ impl ViewBuilder {
     pub fn schedule_picking_rect<T: 'static + Send + Sync>(
         &mut self,
         ctx: &mut RenderContext,
-        picking_rect: IntRect,
+        picking_rect: RectInt,
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
         show_debug_view: bool,

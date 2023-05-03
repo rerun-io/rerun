@@ -57,6 +57,7 @@ impl<'a> Packages<'a> {
             // account for locally patched dependencies.
             rerun_if_changed(path.join("Cargo.toml").as_ref());
             rerun_if_changed(path.join("**/*.rs").as_ref());
+            rerun_if_changed(path.join("**/*.wgsl").as_ref());
         }
 
         // Track all direct and indirect dependencies of that root package
