@@ -31,9 +31,7 @@ re_format.workspace = true
 re_log_types.workspace = true
 
 # External dependencies:
-arrow2 = { workspace = true, features = [
-  "compute_concatenate",
-] }
+arrow2 = { workspace = true, features = ["compute_concatenate"] }
 document-features = "0.2"
 itertools = { workspace = true }
 thiserror.workspace = true
