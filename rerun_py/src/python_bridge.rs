@@ -172,8 +172,10 @@ fn no_active_recording(origin: &str) {
     application_path=None,
     init_logging=true,
     init_blueprint=false,
+    append_blueprint=false,
     default_enabled=true,
 ))]
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 fn init(
     py: Python<'_>,
     application_id: String,
@@ -181,6 +183,7 @@ fn init(
     application_path: Option<PathBuf>,
     init_logging: bool,
     init_blueprint: bool,
+    append_blueprint: bool,
     default_enabled: bool,
 ) -> PyResult<()> {
     // The sentinel file we use to identify the official examples directory.
@@ -206,7 +209,11 @@ fn init(
         default_recording_id(py, "data")
     };
 
-    let blueprint_id = default_recording_id(py, "blueprint");
+    let blueprint_id = if append_blueprint {
+        RecordingId::APPEND_BLUEPRINT
+    } else {
+        default_recording_id(py, "blueprint")
+    };
 
     if init_logging {
         let mut data_stream = global_data_stream();

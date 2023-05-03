@@ -748,16 +748,30 @@ impl App {
                             true
                         }
                         re_log_types::RecordingType::Blueprint => {
-                            re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                            self.state.selected_blueprint_id = msg.info.recording_id;
-                            true
+                            if msg.info.recording_id == RecordingId::APPEND_BLUEPRINT {
+                                re_log::debug!("New append-only blueprint; not changing selection");
+                                // Continue at this point because we don't want to insert the begin-recording
+                                // message into the log_db.
+                                continue;
+                            } else {
+                                re_log::debug!("Opening a new blueprint: {:?}", msg.info);
+                                self.state.selected_blueprint_id = msg.info.recording_id;
+                                true
+                            }
                         }
                     }
                 } else {
                     false
                 };
 
-                let log_db = self.log_dbs.entry(*recording_id).or_default();
+                // TOOD(jleibs): Experimental support for appending to the existing blueprint
+                let log_db = if *recording_id == RecordingId::APPEND_BLUEPRINT {
+                    self.log_dbs
+                        .entry(self.state.selected_blueprint_id)
+                        .or_default()
+                } else {
+                    self.log_dbs.entry(*recording_id).or_default()
+                };
 
                 if log_db.data_source.is_none() {
                     log_db.data_source = Some(self.rx.source().clone());

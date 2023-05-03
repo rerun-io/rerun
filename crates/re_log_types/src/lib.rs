@@ -112,6 +112,11 @@ impl Default for RecordingId {
 impl RecordingId {
     /// The recording id:s given to recordings that don't have an ID.
     pub const ZERO: RecordingId = RecordingId(uuid::Uuid::nil());
+    // TODO(jleibs): This is maybe a bad idea, but wanted to prototype for
+    // experimentation. Easy to delete it.
+    pub const APPEND_BLUEPRINT: RecordingId = RecordingId(uuid::Uuid::from_u128(
+        0x00000000_0000_0000_0000_0000_0000_0000_0001,
+    ));
 
     #[inline]
     pub fn random() -> Self {
