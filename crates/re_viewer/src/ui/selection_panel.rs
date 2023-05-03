@@ -7,12 +7,12 @@ use re_log_types::{
     TimeType, Transform,
 };
 
-use crate::{
-    ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Item, UiVerbosity, ViewerContext,
-};
+use crate::{ui::Blueprint, Item, UiVerbosity, ViewerContext};
 
-use super::{data_ui::DataUi, selection_history_ui::SelectionHistoryUi, space_view::ViewState};
+use super::{
+    data_ui::DataUi, selection_history_ui::SelectionHistoryUi, space_view::ViewState,
+    view_spatial::SpatialNavigationMode,
+};
 
 // ---
 
