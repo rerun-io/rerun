@@ -7,7 +7,7 @@ use re_data_store::EntityPath;
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::OutlineMaskPreference;
 
-use crate::ui::{Blueprint, SelectionHistory, SpaceView, SpaceViewId};
+use crate::ui::{SelectionHistory, SpaceView, SpaceViewId};
 
 use super::{Item, ItemCollection};
 
@@ -173,7 +173,7 @@ pub struct SelectionState {
 
     /// History of selections (what was selected previously).
     #[serde(skip)]
-    history: SelectionHistory,
+    pub history: SelectionHistory,
 
     /// What objects are hovered? Read from this.
     #[serde(skip)]
@@ -282,15 +282,6 @@ impl SelectionState {
 
     pub fn set_hovered_space(&mut self, space: HoveredSpace) {
         self.hovered_space_this_frame = space;
-    }
-
-    pub fn selection_ui(
-        &mut self,
-        re_ui: &re_ui::ReUi,
-        ui: &mut egui::Ui,
-        blueprint: &mut Blueprint,
-    ) -> Option<ItemCollection> {
-        self.history.selection_ui(re_ui, ui, blueprint)
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {

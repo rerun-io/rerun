@@ -21,10 +21,10 @@ const MAX_SELECTION_HISTORY_LENGTH: usize = 100;
 #[derive(Clone, Default, Debug)]
 pub struct SelectionHistory {
     /// Index into [`Self::stack`].
-    pub(crate) current: usize,
+    pub current: usize,
 
     /// Oldest first.
-    pub(crate) stack: Vec<ItemCollection>,
+    pub stack: Vec<ItemCollection>,
 }
 
 impl SelectionHistory {
