@@ -170,6 +170,7 @@ fn no_active_recording(origin: &str) {
     application_id,
     recording_id=None,
     application_path=None,
+    init_logging=true,
     init_blueprint=false,
     default_enabled=true,
 ))]
@@ -178,6 +179,7 @@ fn init(
     application_id: String,
     recording_id: Option<String>,
     application_path: Option<PathBuf>,
+    init_logging: bool,
     init_blueprint: bool,
     default_enabled: bool,
 ) -> PyResult<()> {
@@ -206,15 +208,17 @@ fn init(
 
     let blueprint_id = default_recording_id(py, "blueprint");
 
-    let mut data_stream = global_data_stream();
-    *data_stream = RecordingStreamBuilder::new(application_id.clone())
-        .is_official_example(is_official_example)
-        .recording_id(recording_id)
-        .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
-        .default_enabled(default_enabled)
-        .buffered()
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-        .into();
+    if init_logging {
+        let mut data_stream = global_data_stream();
+        *data_stream = RecordingStreamBuilder::new(application_id.clone())
+            .is_official_example(is_official_example)
+            .recording_id(recording_id)
+            .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+            .default_enabled(default_enabled)
+            .buffered()
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+            .into();
+    }
 
     if init_blueprint {
         let mut bp_ctx = global_blueprint_stream();
@@ -293,6 +297,9 @@ fn is_enabled() -> bool {
     global_data_stream()
         .as_ref()
         .map_or(false, |data_stream| data_stream.is_enabled())
+        || global_blueprint_stream()
+            .as_ref()
+            .map_or(false, |blueprint_stream| blueprint_stream.is_enabled())
 }
 
 #[pyfunction]
@@ -307,19 +314,16 @@ fn shutdown(py: Python<'_>) {
 
 #[pyfunction]
 fn connect(addr: Option<String>) -> PyResult<()> {
-    let data_stream = global_data_stream();
-    let Some(data_stream) = data_stream.as_ref() else {
-        no_active_recording("connect");
-        return Ok(());
-    };
-
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
         rerun::default_server_addr()
     };
 
-    data_stream.connect(addr);
+    if let Some(data_stream) = global_data_stream().as_ref() {
+        re_log::info!("Connecting the logging stream");
+        data_stream.connect(addr);
+    }
 
     if let Some(bp_stream) = global_blueprint_stream().as_ref() {
         re_log::info!("Connecting the blueprint stream");
@@ -444,13 +448,10 @@ fn disconnect(py: Python<'_>) {
     // Release the GIL in case any flushing behavior needs to
     // cleanup a python object.
     py.allow_threads(|| {
-        let data_stream = global_data_stream();
-        let Some(data_stream) = data_stream.as_ref() else {
-            no_active_recording("disconnect");
-            return;
+        if let Some(data_stream) = global_data_stream().as_ref() {
+            re_log::info!("Disconnecting the blueprint stream");
+            data_stream.disconnect();
         };
-        data_stream.disconnect();
-
         if let Some(bp_stream) = global_blueprint_stream().as_ref() {
             re_log::info!("Disconnecting the blueprint stream");
             bp_stream.disconnect();
@@ -464,19 +465,13 @@ fn flush(py: Python<'_>) {
     // Release the GIL in case any flushing behavior needs to
     // cleanup a python object.
     py.allow_threads(|| {
-        let data_stream = global_data_stream();
-        let Some(data_stream) = data_stream.as_ref() else {
-            no_active_recording("flush");
-            return;
+        if let Some(data_stream) = global_data_stream().as_ref() {
+            data_stream.flush_blocking();
         };
-        data_stream.flush_blocking();
 
-        let bp_stream = global_blueprint_stream();
-        let Some(bp_stream) = bp_stream.as_ref() else {
-            no_active_recording("flush");
-            return;
+        if let Some(bp_stream) = global_blueprint_stream().as_ref() {
+            bp_stream.flush_blocking();
         };
-        bp_stream.flush_blocking();
     });
 }
 
