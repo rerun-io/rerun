@@ -207,29 +207,29 @@ bitflags! {
     #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripFlags : u8 {
         /// Puts a equilateral triangle at the end of the line strip (excludes other end caps).
-        const CAP_END_TRIANGLE = 0b0000_0001;
+        const FLAG_CAP_END_TRIANGLE = 0b0000_0001;
 
         /// Adds a round cap at the end of a line strip (excludes other end caps).
-        const CAP_END_ROUND = 0b0000_0010;
+        const FLAG_CAP_END_ROUND = 0b0000_0010;
 
         /// By default, line caps end at the last/first position of the the line strip.
         /// This flag makes end caps extend outwards.
-        const CAP_END_EXTEND_OUTWARDS = 0b0000_0100;
+        const FLAG_CAP_END_EXTEND_OUTWARDS = 0b0000_0100;
 
         /// Puts a equilateral triangle at the start of the line strip (excludes other start caps).
-        const CAP_START_TRIANGLE = 0b0000_1000;
+        const FLAG_CAP_START_TRIANGLE = 0b0000_1000;
 
         /// Adds a round cap at the start of a line strip (excludes other start caps).
-        const CAP_START_ROUND = 0b0001_0000;
+        const FLAG_CAP_START_ROUND = 0b0001_0000;
 
         /// By default, line caps end at the last/first position of the the line strip.
         /// This flag makes end caps extend outwards.
-        const CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
+        const FLAG_CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
 
         /// Disable color gradient which is on by default
         ///
         /// TODO(andreas): Could be moved to per batch flags.
-        const NO_COLOR_GRADIENT = 0b0100_0000;
+        const FLAG_NO_COLOR_GRADIENT = 0b0100_0000;
 
         /// Forces spanning the line's quads as-if the camera was orthographic.
         ///
@@ -238,7 +238,7 @@ bitflags! {
         /// Note that since distances to the camera are computed differently in orthographic mode, this changes how screen space sizes are computed.
         ///
         /// TODO(andreas): Could be moved to per batch flags.
-        const FORCE_ORTHO_SPANNING = 0b1000_0000;
+        const FLAG_FORCE_ORTHO_SPANNING = 0b1000_0000;
     }
 }
 

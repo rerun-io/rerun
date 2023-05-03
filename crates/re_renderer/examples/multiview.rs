@@ -107,7 +107,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             )
             .color(Color32::GREEN)
             .radius(Size::new_scene(0.05))
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
+            .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND);
     }
 
     // Blue spiral, rotating
@@ -125,7 +125,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         }))
         .color(Color32::BLUE)
         .radius(Size::new_scene(0.1))
-        .flags(LineStripFlags::CAP_END_TRIANGLE);
+        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
     builder.to_draw_data(re_ctx).unwrap()
 }

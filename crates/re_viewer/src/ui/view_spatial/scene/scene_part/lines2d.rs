@@ -50,7 +50,7 @@ impl Lines2DPart {
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
                 .radius(radius)
-                .flags(LineStripFlags::NO_COLOR_GRADIENT)
+                .flags(LineStripFlags::FLAG_NO_COLOR_GRADIENT)
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view,

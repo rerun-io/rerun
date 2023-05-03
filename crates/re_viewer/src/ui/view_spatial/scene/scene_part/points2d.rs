@@ -111,8 +111,8 @@ impl Points2DPart {
                 .points
                 .batch("2d points")
                 .flags(
-                    re_renderer::renderer::PointCloudBatchFlags::DRAW_AS_CIRCLES
-                        | re_renderer::renderer::PointCloudBatchFlags::ENABLE_SHADING,
+                    re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
+                        | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
                 )
                 .world_from_obj(world_from_obj)
                 .outline_mask_ids(entity_highlight.overall)

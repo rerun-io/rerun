@@ -175,9 +175,9 @@ impl CamerasPart {
             .radius(radius)
             .color(color)
             .flags(
-                LineStripFlags::NO_COLOR_GRADIENT
-                    | LineStripFlags::CAP_END_ROUND
-                    | LineStripFlags::CAP_START_ROUND,
+                LineStripFlags::FLAG_NO_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_ROUND
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
             )
             .picking_instance_id(instance_layer_id.instance);
 

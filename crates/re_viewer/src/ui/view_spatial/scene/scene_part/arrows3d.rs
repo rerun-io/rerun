@@ -63,9 +63,9 @@ impl Arrows3DPart {
                 .radius(radius)
                 .color(color)
                 .flags(
-                    re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE
-                        | re_renderer::renderer::LineStripFlags::CAP_START_ROUND
-                        | re_renderer::renderer::LineStripFlags::CAP_START_EXTEND_OUTWARDS,
+                    re_renderer::renderer::LineStripFlags::FLAG_CAP_END_TRIANGLE
+                        | re_renderer::renderer::LineStripFlags::FLAG_CAP_START_ROUND
+                        | re_renderer::renderer::LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
                 )
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
