@@ -324,7 +324,6 @@ impl DepthCloudDrawData {
                         wgpu::TextureFormat::Rgba8UnormSrgb,
                         data.as_slice(),
                     ),
-                    // TODO
                     DepthCloudAlbedoData::Rgb8(data) => {
                         let data = data
                             .chunks(3)
@@ -424,7 +423,6 @@ fn create_and_upload_texture<T: bytemuck::Pod>(
     let format_info = texture_desc.format;
     let width_blocks = dimensions.x / format_info.block_dimensions().0 as u32;
     let bytes_per_row_unaligned = width_blocks * format_info.block_size(None).unwrap() as u32;
-    // TODO
     let bytes_per_row = u32::max(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
     let mut texture_staging = ctx.cpu_write_gpu_read_belt.lock().allocate::<T>(

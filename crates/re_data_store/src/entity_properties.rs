@@ -48,6 +48,7 @@ pub struct EntityProperties {
     ///
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>,
+
     /// Points to an entity with an albedo texture.
     ///
     /// Only relevant if [`Self::color_mapper`] is set to `AlbedoTexture`.
@@ -177,6 +178,7 @@ impl std::fmt::Display for Colormap {
 pub enum ColorMapper {
     /// Use a well-known color map, pre-implemented as a wgsl module.
     Colormap(Colormap),
+
     /// Point to an entity with an albedo texture.
     AlbedoTexture,
     // TODO(cmc): support custom transfer functions.
