@@ -630,7 +630,7 @@ impl Renderer for PointCloudRenderer {
                 .shader_modules
                 .get_or_create(device, resolver, &shader_module_desc);
 
-        // HACK/WORKAROUND for https://github.com/gfx-rs/naga/issues/1743
+        // WORKAROUND for https://github.com/gfx-rs/naga/issues/1743
         let mut shader_module_desc_vertex = shader_module_desc.clone();
         shader_module_desc_vertex.extra_workaround_replacements =
             vec![("fwidth(".to_owned(), "f32(".to_owned())];
