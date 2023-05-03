@@ -20,11 +20,15 @@ impl Blueprint {
     /// Prefer this to [`Blueprint::default`] to get better defaults based on screen size.
     pub fn new(egui_ctx: &egui::Context) -> Self {
         let screen_size = egui_ctx.screen_rect().size();
+        let viewport = Viewport {
+            has_been_user_edited: true,
+            ..Default::default()
+        };
         Self {
             blueprint_panel_expanded: screen_size.x > 750.0,
             selection_panel_expanded: screen_size.x > 1000.0,
             time_panel_expanded: screen_size.y > 600.0,
-            viewport: Default::default(),
+            viewport,
         }
     }
 

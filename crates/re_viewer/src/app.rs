@@ -10,7 +10,7 @@ use poll_promise::Promise;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{LogMsg, RecordingId, RecordingType};
+use re_log_types::{BeginRecordingMsg, LogMsg, RecordingId, RecordingType};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -493,15 +493,50 @@ impl eframe::App for App {
             main_panel_frame.inner_margin = 1.0.into();
         }
 
+        let this_frame_blueprint_id = self.state.selected_blueprint_id;
+
+        // TODO(jleibs): Gross-hack. We changed the default behavior for
+        // blueprints from an empty DB to assume they have user-edits. This
+        // means after creating a new blueprint, we need to mark it as as not
+        // being user-edited. This way any other incoming blueprint can be
+        // assumed to be user-edited, avoiding application of heuristics and a
+        // race-condition for whether they get applied. A user can't be
+        // guaranteed to opt out since they have no control over when the
+        // opt-out message will get processed and heuristics will run on the
+        // first frame
+        let mut user_edited_hack = false;
+
+        // TODO(jleibs): This is gross but make sure that the default db that we
+        // create for the blueprint is correctly marked as a blueprint.
         let blueprint_db = self
             .log_dbs
-            .entry(self.state.selected_blueprint_id)
-            .or_default();
+            .entry(this_frame_blueprint_id)
+            .or_insert_with(|| {
+                user_edited_hack = true;
+                let mut blueprint_db = LogDb::default();
+                blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
+                    row_id: re_log_types::RowId::random(),
+                    info: re_log_types::RecordingInfo {
+                        application_id: "Initial Blueprint".into(),
+                        recording_id: self.state.selected_blueprint_id,
+                        is_official_example: false,
+                        started: re_log_types::Time::from_seconds_since_epoch(0.0),
+                        recording_source: re_log_types::RecordingSource::Other("viewer".to_owned()),
+                        recording_type: RecordingType::Blueprint,
+                    },
+                });
+
+                blueprint_db
+            });
 
         // Materialize the blueprint from the DB and save a snapshot so we
         // can diff it at the end of the frame.
         let blueprint_snapshot = Blueprint::from_db(egui_ctx, blueprint_db);
         let mut blueprint = blueprint_snapshot.clone();
+
+        if user_edited_hack {
+            blueprint.viewport.has_been_user_edited = false;
+        }
 
         egui::CentralPanel::default()
             .frame(main_panel_frame)
@@ -580,10 +615,7 @@ impl eframe::App for App {
             frame_start.elapsed().as_secs_f32(),
         );
 
-        let blueprint_db = self
-            .log_dbs
-            .entry(self.state.selected_blueprint_id)
-            .or_default();
+        let blueprint_db = self.log_dbs.get_mut(&this_frame_blueprint_id).unwrap();
 
         blueprint.process_updates(&blueprint_snapshot, blueprint_db);
     }

@@ -234,7 +234,7 @@ impl LogDb {
         Ok(())
     }
 
-    fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
+    pub fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
         self.recording_msg = Some(msg.clone());
     }
 
