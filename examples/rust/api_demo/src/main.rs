@@ -17,7 +17,7 @@ use std::{
     f32::consts::{PI, TAU},
 };
 
-use rerun::{
+use depthai_viewer::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, Label,
         LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3, Tensor,
@@ -149,7 +149,7 @@ fn demo_log_cleared(session: &Session) -> anyhow::Result<()> {
         ent_path: impl Into<EntityPath>,
         recursive: bool,
     ) {
-        use rerun::external::re_log_types::PathOp;
+        use depthai_viewer::external::re_log_types::PathOp;
         let tp = timepoint.iter().collect::<Vec<_>>();
         let timepoint = [
             (Timeline::log_time(), Time::now().into()),
@@ -474,7 +474,7 @@ fn demo_transforms_3d(session: &Session) -> anyhow::Result<()> {
     ) -> anyhow::Result<()> {
         let view_coords = ViewCoordinates::from_up_and_handedness(
             SignedAxis3::POSITIVE_Z,
-            rerun::coordinates::Handedness::Right,
+            depthai_viewer::coordinates::Handedness::Right,
         );
         MsgSender::new(ent_path.into())
             .with_timeless(true)
@@ -622,7 +622,7 @@ enum Demo {
 #[clap(author, version, about)]
 struct Args {
     #[command(flatten)]
-    rerun: rerun::clap::RerunArgs,
+    rerun: depthai_viewer::clap::RerunArgs,
 
     /// Which demo should we run? All of them by default.
     #[clap(long, value_enum)]

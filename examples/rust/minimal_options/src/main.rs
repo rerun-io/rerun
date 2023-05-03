@@ -5,17 +5,17 @@
 //!  cargo run -p minimal_options -- --help
 //! ```
 
-use rerun::components::{ColorRGBA, Point3D};
-use rerun::time::{TimeType, Timeline};
-use rerun::{external::re_log, MsgSender, Session};
+use depthai_viewer::components::{ColorRGBA, Point3D};
+use depthai_viewer::time::{TimeType, Timeline};
+use depthai_viewer::{external::re_log, MsgSender, Session};
 
-use rerun::demo_util::grid;
+use depthai_viewer::demo_util::grid;
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
     #[command(flatten)]
-    rerun: rerun::clap::RerunArgs,
+    rerun: depthai_viewer::clap::RerunArgs,
 
     #[clap(long, default_value = "10")]
     num_points_per_axis: usize,

@@ -10,7 +10,7 @@ from depthai_sdk.classes.packets import (
     DetectionPacket,
     FramePacket,
     IMUPacket,
-    PointcloudPacket,
+    # PointcloudPacket,
     TwoStagePacket,
 )
 from rerun.components.rect2d import RectFormat
@@ -63,27 +63,27 @@ class SdkCallbacks:
             return
         rr.log_imu([accel.z, accel.x, accel.y], [gyro.z, gyro.x, gyro.y], self.ahrs.Q, [mag.x, mag.y, mag.z])
 
-    def on_pointcloud(self, packet: PointcloudPacket):
-        # if Topic.PointCloud not in self.store.subscriptions:
-        #     return
-        colors = cv2.cvtColor(packet.color_frame.getCvFrame(), cv2.COLOR_BGR2RGB).reshape(-1, 3)
-        points = packet.points.reshape(-1, 3)
+    # def on_pointcloud(self, packet: PointcloudPacket):
+    #     # if Topic.PointCloud not in self.store.subscriptions:
+    #     #     return
+    #     colors = cv2.cvtColor(packet.color_frame.getCvFrame(), cv2.COLOR_BGR2RGB).reshape(-1, 3)
+    #     points = packet.points.reshape(-1, 3)
 
-        path = EntityPath.RGB_CAMERA_TRANSFORM + "/Point cloud"
-        depth = self.store.pipeline_config.depth
-        if not depth:
-            # Essentially impossible to get here
-            return
-        if depth.align == dai.CameraBoardSocket.LEFT or depth.align == dai.CameraBoardSocket.RIGHT:
-            path = EntityPath.MONO_CAMERA_TRANSFORM + "/Point cloud"
-        rr.log_points(path, points, colors=colors)
+    #     path = EntityPath.RGB_CAMERA_TRANSFORM + "/Point cloud"
+    #     depth = self.store.pipeline_config.depth
+    #     if not depth:
+    #         # Essentially impossible to get here
+    #         return
+    #     if depth.align == dai.CameraBoardSocket.LEFT or depth.align == dai.CameraBoardSocket.RIGHT:
+    #         path = EntityPath.MONO_CAMERA_TRANSFORM + "/Point cloud"
+    #     rr.log_points(path, points, colors=colors)
 
     def on_color_frame(self, frame: FramePacket):
         # Always log pinhole cam and pose (TODO(filip): move somewhere else or not)
         if Topic.ColorImage not in self.store.subscriptions:
             return
         rr.log_rigid3(EntityPath.RGB_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
-        w, h = frame.imgFrame.getWidth(), frame.imgFrame.getHeight()
+        w, h = frame.msg.getWidth(), frame.msg.getHeight()
         rr.log_pinhole(
             EntityPath.RGB_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
         )
@@ -92,7 +92,7 @@ class SdkCallbacks:
     def on_left_frame(self, frame: FramePacket):
         if Topic.LeftMono not in self.store.subscriptions:
             return
-        w, h = frame.imgFrame.getWidth(), frame.imgFrame.getHeight()
+        w, h = frame.msg.getWidth(), frame.msg.getHeight()
         rr.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         rr.log_pinhole(
             EntityPath.LEFT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
@@ -102,7 +102,7 @@ class SdkCallbacks:
     def on_right_frame(self, frame: FramePacket):
         if Topic.RightMono not in self.store.subscriptions:
             return
-        w, h = frame.imgFrame.getWidth(), frame.imgFrame.getHeight()
+        w, h = frame.msg.getWidth(), frame.msg.getHeight()
         rr.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         rr.log_pinhole(
             EntityPath.RIGHT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
@@ -115,8 +115,8 @@ class SdkCallbacks:
         depth_frame = frame.frame
         # Maybe move to rerun depth cloud in the future
         # depth_frame_color = depth_frame
-        # pinhole_camera = PinholeCamera(self._device.get_intrinsic_matrix(frame.imgFrame.getWidth(
-        # ), frame.imgFrame.getHeight()), frame.imgFrame.getWidth(), frame.imgFrame.getHeight())
+        # pinhole_camera = PinholeCamera(self._device.get_intrinsic_matrix(frame.msg.getWidth(
+        # ), frame.msg.getHeight()), frame.msg.getWidth(), frame.msg.getHeight())
         # depth_frame_color = cv2.normalize(depth_frame, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
         # depth_frame_color = cv2.equalizeHist(depth_frame_color)
         # depth_frame_color = cv2.applyColorMap(depth_frame_color, cv2.COLORMAP_HOT)

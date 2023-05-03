@@ -168,12 +168,12 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "anyhow",
  "clap 4.2.1",
+ "depthai-viewer",
  "glam",
  "itertools",
  "ndarray",
  "ndarray-rand",
  "rand",
- "rerun",
 ]
 
 [[package]]
@@ -1325,6 +1325,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "depthai-viewer"
+version = "0.6.0-alpha.0"
+dependencies = [
+ "anyhow",
+ "backtrace",
+ "clap 4.2.1",
+ "ctrlc",
+ "document-features",
+ "itertools",
+ "libc",
+ "mimalloc",
+ "parking_lot 0.12.1",
+ "re_analytics",
+ "re_build_build_info",
+ "re_build_info",
+ "re_data_store",
+ "re_format",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_sdk",
+ "re_sdk_comms",
+ "re_smart_channel",
+ "re_viewer",
+ "re_web_viewer_server",
+ "re_ws_comms",
+ "tokio",
+ "webbrowser",
+]
+
+[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1411,9 +1443,9 @@ dependencies = [
 name = "dna"
 version = "0.6.0-alpha.0"
 dependencies = [
+ "depthai-viewer",
  "itertools",
  "rand",
- "rerun",
 ]
 
 [[package]]
@@ -2834,7 +2866,7 @@ dependencies = [
 name = "minimal"
 version = "0.6.0-alpha.0"
 dependencies = [
- "rerun",
+ "depthai-viewer",
 ]
 
 [[package]]
@@ -2849,8 +2881,8 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "anyhow",
  "clap 4.2.1",
+ "depthai-viewer",
  "glam",
- "rerun",
 ]
 
 [[package]]
@@ -3292,10 +3324,10 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "anyhow",
  "clap 4.2.1",
+ "depthai-viewer",
  "glam",
  "prost",
  "prost-build",
- "rerun",
 ]
 
 [[package]]
@@ -3912,9 +3944,9 @@ dependencies = [
  "anyhow",
  "bytes",
  "clap 4.2.1",
+ "depthai-viewer",
  "gltf",
  "mimalloc",
- "rerun",
 ]
 
 [[package]]
@@ -4487,42 +4519,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216080ab382b992234dda86873c18d4c48358f5cfcb70fd693d7f6f2131b628b"
 
 [[package]]
-name = "rerun"
-version = "0.6.0-alpha.0"
-dependencies = [
- "anyhow",
- "backtrace",
- "clap 4.2.1",
- "ctrlc",
- "document-features",
- "itertools",
- "libc",
- "mimalloc",
- "parking_lot 0.12.1",
- "re_analytics",
- "re_build_build_info",
- "re_build_info",
- "re_data_store",
- "re_format",
- "re_log",
- "re_log_encoding",
- "re_log_types",
- "re_memory",
- "re_sdk",
- "re_sdk_comms",
- "re_smart_channel",
- "re_viewer",
- "re_web_viewer_server",
- "re_ws_comms",
- "tokio",
- "webbrowser",
-]
-
-[[package]]
 name = "rerun_py"
 version = "0.6.0-alpha.0"
 dependencies = [
  "arrow2",
+ "depthai-viewer",
  "document-features",
  "glam",
  "image",
@@ -4543,7 +4544,6 @@ dependencies = [
  "re_memory",
  "re_web_viewer_server",
  "re_ws_comms",
- "rerun",
  "thiserror",
  "tokio",
  "uuid",
@@ -5156,9 +5156,9 @@ dependencies = [
 name = "test_image_memory"
 version = "0.6.0-alpha.0"
 dependencies = [
+ "depthai-viewer",
  "mimalloc",
  "re_format",
- "rerun",
 ]
 
 [[package]]

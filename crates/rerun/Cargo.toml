@@ -1,5 +1,5 @@
 [package]
-name = "rerun"
+name = "depthai-viewer"
 authors.workspace = true
 default-run = "depthai-viewer"
 description = "Log images, point clouds, etc, and visualize them effortlessly"

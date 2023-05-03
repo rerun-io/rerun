@@ -8,7 +8,8 @@ import depthai as dai
 import numpy as np
 from depthai_sdk import OakCamera
 from depthai_sdk.components import NNComponent
-from depthai_sdk.components.pointcloud_component import PointcloudComponent
+
+# from depthai_sdk.components.pointcloud_component import PointcloudComponent
 from depthai_sdk.oak_camera import CameraComponent
 
 from depthai_viewer_backend.config_api import start_api
@@ -46,7 +47,7 @@ class SelectedDevice:
     _right: CameraComponent = None
     _stereo: CameraComponent = None
     _nnet: NNComponent = None
-    _pc: PointcloudComponent = None
+    # _pc: PointcloudComponent = None
 
     oak_cam: OakCamera = None
 
@@ -138,7 +139,6 @@ class SelectedDevice:
             self._stereo.config_stereo(
                 lr_check=config.depth.lr_check,
                 subpixel=config.depth.subpixel_disparity,
-                subpixel_bits=5,
                 confidence=config.depth.confidence,
                 align=config.depth.align,
                 lr_check_threshold=config.depth.lrc_threshold,

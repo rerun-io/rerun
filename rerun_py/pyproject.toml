@@ -8,8 +8,10 @@ dependencies = [
   "numpy>=1.23",
   "pyarrow==10.0.1",
   "ahrs",
-  "depthai",
-  "depthai-sdk",
+  "depthai==2.21.2.0",
+  "depthai-sdk==1.9.5",
+  "websockets",
+  "pydantic",
 ]
 classifiers = [
   "Programming Language :: Rust",
@@ -37,10 +39,10 @@ tests = ["pytest==7.1.2"]
 [project.urls]
 documentation = "https://www.rerun.io/docs"
 homepage = "https://www.rerun.io"
-repository = "https://github.com/zrezke/rerun"
+repository = "https://github.com/luxonis/depthai-viewer"
 
 [project.scripts]
-rerun = "rerun.__main__:main"
+depthai-viewer = "rerun.__main__:main"
 
 [tool.black]
 line-length = 120

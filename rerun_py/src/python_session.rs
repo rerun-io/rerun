@@ -6,9 +6,9 @@ use re_log_types::{
     RecordingId, RecordingInfo, RecordingSource, RowId, Time, TimePoint,
 };
 
+use depthai_viewer::sink::LogSink;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-use rerun::sink::LogSink;
 // ----------------------------------------------------------------------------
 
 #[derive(thiserror::Error, Debug)]
@@ -93,10 +93,10 @@ impl Default for PythonSession {
     fn default() -> Self {
         let default_enabled = true;
         Self {
-            enabled: rerun::decide_logging_enabled(default_enabled),
+            enabled: depthai_viewer::decide_logging_enabled(default_enabled),
             has_sent_begin_recording_msg: false,
             recording_meta_data: Default::default(),
-            sink: Box::new(rerun::sink::BufferedSink::new()),
+            sink: Box::new(depthai_viewer::sink::BufferedSink::new()),
             build_info: re_build_info::build_info!(),
             #[cfg(feature = "web_viewer")]
             web_viewer_server: None,
@@ -123,7 +123,7 @@ impl PythonSession {
     /// Set whether or not logging is enabled by default.
     /// This will be overridden by the `RERUN` environment variable, if found.
     pub fn set_default_enabled(&mut self, default_enabled: bool) {
-        self.enabled = rerun::decide_logging_enabled(default_enabled);
+        self.enabled = depthai_viewer::decide_logging_enabled(default_enabled);
     }
 
     /// Set the [`ApplicationId`] to use for the following stream of log messages.
@@ -163,7 +163,7 @@ impl PythonSession {
 
     /// Set the [`LogSink`] to use. This is where the log messages will be sent.
     ///
-    /// If the previous sink is [`rerun::sink::BufferedSink`] (the default),
+    /// If the previous sink is [`depthai_viewer::sink::BufferedSink`] (the default),
     /// it will be drained and sent to the new sink.
     pub fn set_sink(&mut self, sink: Box<dyn LogSink>) {
         // Capture the backlog (should only apply if this was a `BufferedSink`)
@@ -202,31 +202,31 @@ impl PythonSession {
         }
 
         re_log::debug!("Connecting to remote {addr}…");
-        self.set_sink(Box::new(rerun::sink::TcpSink::new(addr)));
+        self.set_sink(Box::new(depthai_viewer::sink::TcpSink::new(addr)));
     }
 
     /// Send all pending and future log messages to disk as an rrd file
     pub fn save(
         &mut self,
         path: impl Into<std::path::PathBuf>,
-    ) -> Result<(), rerun::sink::FileSinkError> {
+    ) -> Result<(), depthai_viewer::sink::FileSinkError> {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to save() ignored");
             return Ok(());
         }
 
-        self.set_sink(Box::new(rerun::sink::FileSink::new(path)?));
+        self.set_sink(Box::new(depthai_viewer::sink::FileSink::new(path)?));
         Ok(())
     }
 
     /// Send all pending and future log messages to an in-memory store
-    pub fn memory_recording(&mut self) -> rerun::sink::MemorySinkStorage {
+    pub fn memory_recording(&mut self) -> depthai_viewer::sink::MemorySinkStorage {
         if !self.enabled {
             re_log::debug!("Rerun disabled - call to memory_recording() ignored");
             return Default::default();
         }
 
-        let memory_sink = rerun::sink::MemorySink::default();
+        let memory_sink = depthai_viewer::sink::MemorySink::default();
         let buffer = memory_sink.buffer();
 
         self.set_sink(Box::new(memory_sink));
@@ -237,7 +237,7 @@ impl PythonSession {
 
     /// Disconnects any TCP connection, shuts down any server, and closes any file.
     pub fn disconnect(&mut self) {
-        self.set_sink(Box::new(rerun::sink::BufferedSink::new()));
+        self.set_sink(Box::new(depthai_viewer::sink::BufferedSink::new()));
         self.has_sent_begin_recording_msg = false;
     }
 
