@@ -30,6 +30,9 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn send(&self, msg: re_log_types::LogMsg) {
         re_log_encoding::FileSink::send(self, msg);
     }
+
+    #[inline]
+    fn flush_blocking(&self) {}
 }
 
 // ---------------

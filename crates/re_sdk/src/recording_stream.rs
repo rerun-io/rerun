@@ -146,7 +146,7 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn buffered(self) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, recording_info, batcher_config) = self.finalize();
+        let (enabled, recording_info, batcher_config) = self.into_args();
         if enabled {
             RecordingStream::new(
                 recording_info,
@@ -174,7 +174,7 @@ impl RecordingStreamBuilder {
         let sink = crate::log_sink::MemorySink::default();
         let storage = sink.buffer();
 
-        let (enabled, recording_info, batcher_config) = self.finalize();
+        let (enabled, recording_info, batcher_config) = self.into_args();
         if enabled {
             RecordingStream::new(recording_info, batcher_config, Box::new(sink))
                 .map(|rec_stream| (rec_stream, storage))
@@ -195,7 +195,7 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect(self, addr: std::net::SocketAddr) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, recording_info, batcher_config) = self.finalize();
+        let (enabled, recording_info, batcher_config) = self.into_args();
         if enabled {
             RecordingStream::new(
                 recording_info,
@@ -222,7 +222,7 @@ impl RecordingStreamBuilder {
         self,
         path: impl Into<std::path::PathBuf>,
     ) -> RecordingStreamResult<RecordingStream> {
-        let (enabled, recording_info, batcher_config) = self.finalize();
+        let (enabled, recording_info, batcher_config) = self.into_args();
 
         if enabled {
             RecordingStream::new(
@@ -241,7 +241,7 @@ impl RecordingStreamBuilder {
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
-    pub fn finalize(self) -> (bool, RecordingInfo, DataTableBatcherConfig) {
+    pub fn into_args(self) -> (bool, RecordingInfo, DataTableBatcherConfig) {
         let Self {
             application_id,
             recording_id,
@@ -448,6 +448,8 @@ fn forwarding_thread(
     cmds_rx: Receiver<Command>,
     tables: Receiver<DataTable>,
 ) {
+    /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
+    /// shutdown.
     fn handle_cmd(info: &RecordingInfo, cmd: Command, sink: &mut Box<dyn LogSink>) -> bool {
         match cmd {
             Command::RecordMsg(msg) => {
@@ -491,7 +493,8 @@ fn forwarding_thread(
                 drop(oneshot); // signals the oneshot
             }
             Command::PopPendingTables => {
-                // No need to do anything, just skip the current iteration.
+                // Wake up and skip the current iteration so that we can drain all pending tables
+                // before handling the next command.
             }
             Command::Shutdown => return false,
         }
@@ -670,11 +673,19 @@ impl RecordingStream {
         // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
         // are safe.
 
-        // 1. Flush the batcher down the table channel
+        // 1. Synchronously flush the batcher down the table channel
+        //
+        // NOTE: This _hash_ to be done synchronously as we need to be guaranteed that all tables
+        // are ready to be trained by the time this call returns.
+        // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
         this.batcher.flush_blocking();
 
-        // 2. Receive pending tables from the batcher's channel
+        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
         this.cmds_tx.send(Command::PopPendingTables).ok();
+
+        // 3. Asynchronously flush everything down the sink
+        let (cmd, _) = Command::flush();
+        this.cmds_tx.send(cmd).ok();
     }
 
     /// Initiates a flush the batching pipeline and waits for it to propagate.
@@ -689,9 +700,13 @@ impl RecordingStream {
         // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
         // are safe.
 
-        self.flush_async();
+        // 1. Flush the batcher down the table channel
+        this.batcher.flush_blocking();
 
-        // 3. Wait for all tables to have been forwarded
+        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
+        this.cmds_tx.send(Command::PopPendingTables).ok();
+
+        // 3. Wait for all tables to have been forwarded down the sink
         let (cmd, oneshot) = Command::flush();
         this.cmds_tx.send(cmd).ok();
         oneshot.recv().ok();

@@ -28,7 +28,7 @@ use super::ScenePart;
 fn to_textured_rect(
     ctx: &mut ViewerContext<'_>,
     annotations: &Annotations,
-    world_from_obj: glam::Mat4,
+    world_from_obj: glam::Affine3A,
     ent_path: &EntityPath,
     tensor: &DecodedTensor,
     multiplicative_tint: egui::Rgba,
@@ -169,7 +169,7 @@ impl ImagesPart {
         transforms: &TransformCache,
         properties: &EntityProperties,
         ent_path: &EntityPath,
-        world_from_obj: glam::Mat4,
+        world_from_obj: glam::Affine3A,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
@@ -360,7 +360,7 @@ impl ImagesPart {
         };
 
         scene.primitives.depth_clouds.clouds.push(DepthCloud {
-            world_from_obj,
+            world_from_obj: world_from_obj.into(),
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,

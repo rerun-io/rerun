@@ -13,14 +13,16 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     global_bindings::FrameUniformBuffer,
     include_shader_module,
+    rect::RectF32,
     texture_info::Texture2DBufferInfo,
+    transform::{ndc_from_pixel, RectTransform},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
         GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
         TextureDesc, WgpuResourcePools,
     },
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, IntRect, RenderContext,
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
 };
 
 use smallvec::smallvec;
@@ -32,7 +34,7 @@ pub struct PickingResult<T: 'static + Send + Sync> {
 
     /// Picking rect supplied on picking request.
     /// Describes the area of the picking layer that was read back.
-    pub rect: IntRect,
+    pub rect: RectInt,
 
     /// Picking id data for the requested rectangle.
     ///
@@ -64,8 +66,7 @@ impl<T: 'static + Send + Sync> PickingResult<T> {
             [(pos_on_picking_rect.y * self.rect.width() + pos_on_picking_rect.x) as usize];
 
         self.world_from_cropped_projection.project_point3(
-            pixel_coord_to_ndc(pos_on_picking_rect.as_vec2(), self.rect.extent.as_vec2())
-                .extend(raw_depth),
+            ndc_from_pixel(pos_on_picking_rect.as_vec2(), self.rect.extent).extend(raw_depth),
         )
     }
 
@@ -81,7 +82,7 @@ impl<T: 'static + Send + Sync> PickingResult<T> {
 
 /// Type used as user data on the gpu readback belt.
 struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
-    picking_rect: IntRect,
+    picking_rect: RectInt,
     world_from_cropped_projection: glam::Mat4,
     user_data: T,
 
@@ -123,14 +124,6 @@ impl From<PickingLayerId> for [u32; 4] {
             (val.instance.0 >> 32) as u32,
         ]
     }
-}
-
-/// Converts a pixel coordinate to normalized device coordinates.
-pub fn pixel_coord_to_ndc(coord: glam::Vec2, target_resolution: glam::Vec2) -> glam::Vec2 {
-    glam::vec2(
-        coord.x / target_resolution.x * 2.0 - 1.0,
-        1.0 - coord.y / target_resolution.y * 2.0,
-    )
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -184,7 +177,7 @@ impl PickingLayerProcessor {
         ctx: &mut RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
-        picking_rect: IntRect,
+        picking_rect: RectInt,
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
         readback_identifier: GpuReadbackIdentifier,
@@ -234,18 +227,14 @@ impl PickingLayerProcessor {
             DepthReadbackWorkaround::new(ctx, picking_rect.extent, picking_depth_target.handle)
         });
 
-        let rect_min = picking_rect.left_top.as_vec2();
-        let rect_max = rect_min + picking_rect.extent.as_vec2();
-        let screen_resolution = screen_resolution.as_vec2();
-        // y axis is flipped in NDC, therefore we need to flip the y axis of the rect.
-        let rect_min_ndc =
-            pixel_coord_to_ndc(glam::vec2(rect_min.x, rect_max.y), screen_resolution);
-        let rect_max_ndc =
-            pixel_coord_to_ndc(glam::vec2(rect_max.x, rect_min.y), screen_resolution);
-        let scale = 2.0 / (rect_max_ndc - rect_min_ndc);
-        let translation = -0.5 * (rect_min_ndc + rect_max_ndc);
-        let cropped_projection_from_projection = glam::Mat4::from_scale(scale.extend(1.0))
-            * glam::Mat4::from_translation(translation.extend(0.0));
+        let cropped_projection_from_projection = RectTransform {
+            region_of_interest: picking_rect.into(),
+            region: RectF32 {
+                min: glam::Vec2::ZERO,
+                extent: screen_resolution.as_vec2(),
+            },
+        }
+        .to_ndc_scale_and_translation();
 
         // Setup frame uniform buffer
         let previous_projection_from_world: glam::Mat4 =

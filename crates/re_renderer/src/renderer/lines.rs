@@ -227,7 +227,18 @@ bitflags! {
         const CAP_START_EXTEND_OUTWARDS = 0b0010_0000;
 
         /// Disable color gradient which is on by default
+        ///
+        /// TODO(andreas): Could be moved to per batch flags.
         const NO_COLOR_GRADIENT = 0b0100_0000;
+
+        /// Forces spanning the line's quads as-if the camera was orthographic.
+        ///
+        /// This is useful for lines that are on a plane that is parallel to the camera:
+        /// Without this flag, the lines will poke through the camera plane as they orient themselves towards the camera.
+        /// Note that since distances to the camera are computed differently in orthographic mode, this changes how screen space sizes are computed.
+        ///
+        /// TODO(andreas): Could be moved to per batch flags.
+        const FORCE_ORTHO_SPANNING = 0b1000_0000;
     }
 }
 
@@ -239,7 +250,7 @@ pub struct LineBatchInfo {
     ///
     /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
     /// `let scale = Mat3::from(world_from_obj).determinant().abs().cbrt()`
-    pub world_from_obj: glam::Mat4,
+    pub world_from_obj: glam::Affine3A,
 
     /// Number of vertices covered by this batch.
     ///
@@ -351,7 +362,7 @@ impl LineDrawData {
 
         let batches = if batches.is_empty() {
             vec![LineBatchInfo {
-                world_from_obj: glam::Mat4::IDENTITY,
+                world_from_obj: glam::Affine3A::IDENTITY,
                 label: "LineDrawData::fallback_batch".into(),
                 line_vertex_count: vertices.len() as _,
                 overall_outline_mask_ids: OutlineMaskPreference::NONE,
