@@ -1,4 +1,4 @@
-use crate::misc::{Item, ItemCollection};
+use super::{Item, ItemCollection};
 
 /// A `Selection` and its index into the historical stack.
 #[derive(Debug, Clone)]

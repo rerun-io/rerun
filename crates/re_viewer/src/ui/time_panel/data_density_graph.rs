@@ -9,11 +9,9 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_data_store::TimeHistogram;
 use re_log_types::{TimeInt, TimeRange, TimeReal};
+use re_viewer_context::Item;
 
-use crate::{
-    misc::{Item, ViewerContext},
-    ui::Blueprint,
-};
+use crate::{misc::ViewerContext, ui::Blueprint};
 
 use super::time_ranges_ui::TimeRangesUi;
 

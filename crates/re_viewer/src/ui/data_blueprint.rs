@@ -2,10 +2,9 @@ use std::collections::BTreeSet;
 
 use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
+use re_viewer_context::DataBlueprintGroupHandle;
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
-
-slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 
 /// A grouping of several data-blueprints.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]

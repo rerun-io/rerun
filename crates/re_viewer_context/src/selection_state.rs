@@ -2,8 +2,7 @@ use ahash::HashSet;
 
 use re_data_store::EntityPath;
 
-use super::{Item, ItemCollection};
-use crate::ui::SelectionHistory;
+use super::{Item, ItemCollection, SelectionHistory};
 
 #[derive(Clone, Default, Debug, PartialEq)]
 pub enum HoveredSpace {
