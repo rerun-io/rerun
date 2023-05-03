@@ -46,6 +46,8 @@ pub struct DataTableBatcherConfig {
     pub flush_tick: Duration,
 
     /// Flush if the accumulated payload has a size in bytes equal or greater than this.
+    ///
+    /// The resulting [`DataTable`] might be larger than `flush_num_bytes`!
     pub flush_num_bytes: u64,
 
     /// Flush if the accumulated payload has a number of rows equal or greater than this.
@@ -191,15 +193,15 @@ fn data_table_batcher_config() {
 /// - There isn't any well defined global order across multiple threads.
 ///
 /// This means that e.g. flushing the pipeline ([`Self::flush_blocking`]) guarantees that all
-/// previous data sent by the calling thread has been batched; no more, no less.
+/// previous data sent by the calling thread has been batched and sent down the channel returned
+/// by [`DataTableBatcher::tables`]; no more, no less.
 ///
 /// ## Shutdown
 ///
-/// The batcher can only be shutdown dropping all instances of it, at which point it will
+/// The batcher can only be shutdown by dropping all instances of it, at which point it will
 /// automatically take care of flushing any pending data that might remain in the pipeline.
 ///
-/// Shutting down cannot ever block, unless the output channel is bounded and happens to be full
-/// (see [`DataTableBatcherConfig::max_tables_in_flight`]).
+/// Shutting down cannot ever block.
 #[derive(Clone)]
 pub struct DataTableBatcher {
     inner: Arc<DataTableBatcherInner>,
@@ -212,12 +214,17 @@ struct DataTableBatcherInner {
     /// therefore the `Drop` implementation is guaranteed that no more data can come in while it's
     /// running.
     tx_cmds: Sender<Command>,
-    rx_tables: Receiver<DataTable>,
+    // NOTE: Option so we can make shutdown non-blocking even with bounded channels.
+    rx_tables: Option<Receiver<DataTable>>,
     cmds_to_tables_handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl Drop for DataTableBatcherInner {
     fn drop(&mut self) {
+        // Drop the receiving end of the table stream first and foremost, so that we don't block
+        // even if the output channel is bounded and currently full.
+        drop(self.rx_tables.take());
+
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
         self.tx_cmds.send(Command::Shutdown).ok();
@@ -277,7 +284,7 @@ impl DataTableBatcher {
 
         let inner = DataTableBatcherInner {
             tx_cmds,
-            rx_tables,
+            rx_tables: Some(rx_tables),
             cmds_to_tables_handle: Some(cmds_to_tables_handle),
         };
 
@@ -323,7 +330,9 @@ impl DataTableBatcher {
     ///
     /// See [`DataTableBatcher`] docs for ordering semantics and multithreading guarantees.
     pub fn tables(&self) -> Receiver<DataTable> {
-        self.inner.rx_tables.clone()
+        // NOTE: `rx_tables` is only ever taken when the batcher as a whole is dropped, at which
+        // point it is impossible to call this method.
+        self.inner.rx_tables.clone().unwrap()
     }
 }
 
@@ -381,11 +390,7 @@ fn batching_thread(
         pending_num_bytes: Default::default(),
     };
 
-    fn do_push_row(
-        config: &DataTableBatcherConfig,
-        acc: &mut Accumulator,
-        mut row: DataRow,
-    ) -> bool {
+    fn do_push_row(acc: &mut Accumulator, mut row: DataRow) {
         // TODO(#1760): now that we're re doing this here, it really is a massive waste not to send
         // it over the wire...
         row.compute_all_size_bytes();
@@ -393,9 +398,6 @@ fn batching_thread(
         acc.pending_num_rows += 1;
         acc.pending_num_bytes += row.total_size_bytes();
         acc.pending_rows.push(row);
-
-        acc.pending_num_rows >= config.flush_num_rows
-            || acc.pending_num_bytes >= config.flush_num_bytes
     }
 
     fn do_flush_all(acc: &mut Accumulator, tx_table: &Sender<DataTable>, reason: &str) {
@@ -414,6 +416,8 @@ fn batching_thread(
         // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
         // as long the batching thread is alive... which is where we currently are.
         tx_table.send(table).ok();
+
+        acc.reset();
     }
 
     use crossbeam::select;
@@ -426,24 +430,24 @@ fn batching_thread(
                     break;
                 };
 
-                match cmd {
-                    Command::AppendRow(row) => {
-                        if do_push_row(&config, &mut acc, row) {
-                            do_flush_all(&mut acc, &tx_table, "bytes|rows");
-                            acc.reset();
-                        }
-                    },
-                    Command::Flush(oneshot) => {
-                        do_flush_all(&mut acc, &tx_table, "manual");
-                        acc.reset();
-                        drop(oneshot); // signals the oneshot
-                    },
-                    Command::Shutdown => break,
-                };
+            match cmd {
+                Command::AppendRow(row) => {
+                    do_push_row(&mut acc, row);
+                    if acc.pending_num_rows >= config.flush_num_rows {
+                        do_flush_all(&mut acc, &tx_table, "rows");
+                    } else if acc.pending_num_bytes >= config.flush_num_bytes {
+                        do_flush_all(&mut acc, &tx_table, "bytes");
+                    }
+                },
+                Command::Flush(oneshot) => {
+                    do_flush_all(&mut acc, &tx_table, "manual");
+                    drop(oneshot); // signals the oneshot
+                },
+                Command::Shutdown => break,
+            };
             },
             recv(rx_tick) -> _ => {
                 do_flush_all(&mut acc, &tx_table, "duration");
-                acc.reset();
             },
         };
     }
