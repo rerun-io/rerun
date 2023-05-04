@@ -4,14 +4,11 @@ use ahash::HashMap;
 
 use re_log_types::component_types;
 
-use super::{tensor_decode_cache, TensorStats};
+use super::TensorStats;
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
 pub struct Caches {
-    /// Cached decoded tensors.
-    pub decode: tensor_decode_cache::DecodeCache,
-
     tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
 
     caches: HashMap<std::any::TypeId, Box<dyn Cache>>,
@@ -20,14 +17,6 @@ pub struct Caches {
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        let max_decode_cache_use = 4_000_000_000;
-
-        #[cfg(target_arch = "wasm32")]
-        let max_decode_cache_use = 1_000_000_000;
-
-        self.decode.begin_frame(max_decode_cache_use);
-
         for cache in self.caches.values_mut() {
             cache.begin_frame();
         }
@@ -35,11 +24,9 @@ impl Caches {
 
     pub fn purge_memory(&mut self) {
         let Self {
-            decode,
             tensor_stats,
             caches,
         } = self;
-        decode.purge_memory();
         tensor_stats.clear();
 
         for cache in caches.values_mut() {
@@ -69,6 +56,7 @@ impl Caches {
                 },
                 |cache| {
                     cache.as_any_mut().downcast_mut::<T>().or_else(|| {
+                        // This likely means `Caches` itself has a bug!
                         re_log::error_once!(
                             "Cache of type {:?} is not of the expected type.",
                             std::any::type_name::<T>()

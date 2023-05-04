@@ -3,6 +3,8 @@ use re_log_types::{
     DecodedTensor,
 };
 
+use super::Cache;
+
 // ----------------------------------------------------------------------------
 
 struct DecodedTensorResult {
@@ -18,14 +20,14 @@ struct DecodedTensorResult {
 
 /// A cache of decoded [`Tensor`] entities, indexed by `TensorId`.
 #[derive(Default)]
-pub struct DecodeCache {
+pub struct TensorDecodeCache {
     cache: nohash_hasher::IntMap<TensorId, DecodedTensorResult>,
     memory_used: u64,
     generation: u64,
 }
 
 #[allow(clippy::map_err_ignore)]
-impl DecodeCache {
+impl TensorDecodeCache {
     /// Decode a [`Tensor`] if necessary and cache the result.
     ///
     /// This is a no-op for Tensors that are not compressed.
@@ -60,21 +62,27 @@ impl DecodeCache {
             }
         }
     }
+}
 
-    /// Call once per frame to (potentially) flush the cache.
-    pub fn begin_frame(&mut self, max_memory_use: u64) {
+impl Cache for TensorDecodeCache {
+    fn begin_frame(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        let max_decode_cache_use = 4_000_000_000;
+
+        #[cfg(target_arch = "wasm32")]
+        let max_decode_cache_use = 1_000_000_000;
+
         // TODO(jleibs): a more incremental purging mechanism, maybe switching to an LRU Cache
         // would likely improve the behavior.
 
-        if self.memory_used > max_memory_use {
+        if self.memory_used > max_decode_cache_use {
             self.purge_memory();
         }
 
         self.generation += 1;
     }
 
-    /// Attempt to free up memory.
-    pub fn purge_memory(&mut self) {
+    fn purge_memory(&mut self) {
         crate::profile_function!();
 
         // Very aggressively flush everything not used in this frame
@@ -94,5 +102,9 @@ impl DecodeCache {
             before as f64 / 1e9,
             self.memory_used as f64 / 1e9,
         );
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }

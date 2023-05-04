@@ -9,7 +9,10 @@ use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
 
 use crate::{
-    misc::{caches::TensorStats, ViewerContext},
+    misc::{
+        caches::{TensorDecodeCache, TensorStats},
+        ViewerContext,
+    },
     ui::annotations::AnnotationMap,
 };
 
@@ -32,16 +35,14 @@ impl EntityDataUi for Tensor {
     ) {
         crate::profile_function!();
 
-        match ctx
-            .cache
-            .decode
-            .try_decode_tensor_if_necessary(self.clone())
-        {
-            Ok(decoded) => {
-                tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
-            }
-            Err(err) => {
-                ui.label(ctx.re_ui.error_text(err.to_string()));
+        if let Some(cache) = ctx.cache.get_mut::<TensorDecodeCache>() {
+            match cache.try_decode_tensor_if_necessary(self.clone()) {
+                Ok(decoded) => {
+                    tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
+                }
+                Err(err) => {
+                    ui.label(ctx.re_ui.error_text(err.to_string()));
+                }
             }
         }
     }

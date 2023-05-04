@@ -4,6 +4,7 @@ mod tensor_decode_cache;
 
 pub use caches::{Cache, Caches};
 pub use mesh_cache::MeshCache;
+pub use tensor_decode_cache::TensorDecodeCache;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TensorStats {
