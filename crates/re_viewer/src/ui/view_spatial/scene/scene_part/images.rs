@@ -189,18 +189,18 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            let tensor = if let Some(cache) = ctx.cache.get_mut::<TensorDecodeCache>() {
-                match cache.try_decode_tensor_if_necessary(tensor) {
-                    Ok(tensor) => tensor,
-                    Err(err) => {
-                        re_log::warn_once!(
-                            "Encountered problem decoding tensor at path {ent_path}: {err}"
-                        );
-                        continue;
-                    }
+            let tensor = match ctx
+                .cache
+                .get_mut::<TensorDecodeCache>()
+                .try_decode_tensor_if_necessary(tensor)
+            {
+                Ok(tensor) => tensor,
+                Err(err) => {
+                    re_log::warn_once!(
+                        "Encountered problem decoding tensor at path {ent_path}: {err}"
+                    );
+                    continue;
                 }
-            } else {
-                continue;
             };
 
             let annotations = scene.annotation_map.find(ent_path);

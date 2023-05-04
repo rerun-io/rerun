@@ -22,6 +22,7 @@ impl Caches {
         }
     }
 
+    /// Attempt to free up memory.
     pub fn purge_memory(&mut self) {
         let Self {
             tensor_stats,
@@ -42,40 +43,17 @@ impl Caches {
 
     /// Retrieves a cache for reading and writing.
     ///
-    /// Returns None if the cache is not present and logs an error.
-    pub fn get_mut<T: Cache>(&mut self) -> Option<&mut T> {
-        self.caches
-            .get_mut(&std::any::TypeId::of::<T>())
-            .map_or_else(
-                || {
-                    re_log::error_once!(
-                        "Cache of type {:?} is not registered.",
-                        std::any::type_name::<T>()
-                    );
-                    None
-                },
-                |cache| {
-                    cache.as_any_mut().downcast_mut::<T>().or_else(|| {
-                        // This likely means `Caches` itself has a bug!
-                        re_log::error_once!(
-                            "Cache of type {:?} is not of the expected type.",
-                            std::any::type_name::<T>()
-                        );
-                        None
-                    })
-                },
-            )
-    }
+    /// Adds the cache lazily if it wasn't already there.
+    pub fn get_mut<T: Cache + Default>(&mut self) -> &mut T {
+        let cache = self
+            .caches
+            .entry(std::any::TypeId::of::<T>())
+            .or_insert(Box::<T>::default());
 
-    /// Adds a cache to the list of caches.
-    ///
-    /// Fails if a cache of the same type already exists.
-    pub fn add_cache<T: Cache>(&mut self, cache: T) -> Result<(), ()> {
-        let type_id = std::any::TypeId::of::<T>();
-        match self.caches.insert(type_id, Box::new(cache)) {
-            Some(_) => Err(()),
-            None => Ok(()),
-        }
+        cache
+            .as_any_mut()
+            .downcast_mut::<T>()
+            .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types.")
     }
 }
 

@@ -829,23 +829,24 @@ pub fn picking(
                                 }
 
                                 let tensor_name = instance_path.to_string();
-                                if let Some(cache) = ctx.cache.get_mut::<TensorDecodeCache>() {
-                                    match cache.try_decode_tensor_if_necessary(tensor) {
-                                        Ok(decoded_tensor) =>
-                                            data_ui::image::show_zoomed_image_region(
-                                                ctx.render_ctx,
-                                                ui,
-                                                &decoded_tensor,
-                                                ctx.cache.tensor_stats(&decoded_tensor),
-                                                &scene.annotation_map.find(&instance_path.entity_path),
-                                                decoded_tensor.meter,
-                                                &tensor_name,
-                                                [coords[0] as _, coords[1] as _],
-                                            ),
-                                        Err(err) => re_log::warn_once!(
-                                                "Encountered problem decoding tensor at path {tensor_name}: {err}"
-                                            ),
-                                    }
+
+                                match ctx.cache
+                                        .get_mut::<TensorDecodeCache>()
+                                        .try_decode_tensor_if_necessary(tensor) {
+                                    Ok(decoded_tensor) =>
+                                        data_ui::image::show_zoomed_image_region(
+                                            ctx.render_ctx,
+                                            ui,
+                                            &decoded_tensor,
+                                            ctx.cache.tensor_stats(&decoded_tensor),
+                                            &scene.annotation_map.find(&instance_path.entity_path),
+                                            decoded_tensor.meter,
+                                            &tensor_name,
+                                            [coords[0] as _, coords[1] as _],
+                                        ),
+                                    Err(err) => re_log::warn_once!(
+                                            "Encountered problem decoding tensor at path {tensor_name}: {err}"
+                                        ),
                                 }
                             });
                         }
