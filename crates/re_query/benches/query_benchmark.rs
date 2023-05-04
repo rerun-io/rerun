@@ -123,13 +123,19 @@ fn build_points_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_POINTS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
-                DataRow::from_cells2(
+                let mut row = DataRow::from_cells2(
                     RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
                     (build_some_point2d(pts), build_some_colors(pts)),
-                )
+                );
+                // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
+                // in debug mode, by the standard test harness.
+                if cfg!(debug_assertions) {
+                    row.compute_all_size_bytes();
+                }
+                row
             })
         })
         .collect()
@@ -139,13 +145,19 @@ fn build_vecs_rows(paths: &[EntityPath], pts: usize) -> Vec<DataRow> {
     (0..NUM_FRAMES_VECS)
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
-                DataRow::from_cells1(
+                let mut row = DataRow::from_cells1(
                     RowId::ZERO,
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     pts as _,
                     build_some_vec3d(pts),
-                )
+                );
+                // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
+                // in debug mode, by the standard test harness.
+                if cfg!(debug_assertions) {
+                    row.compute_all_size_bytes();
+                }
+                row
             })
         })
         .collect()

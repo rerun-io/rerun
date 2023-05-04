@@ -64,8 +64,7 @@ fn insert(c: &mut Criterion) {
             (NUM_INSTANCES * NUM_ROWS) as _,
         ));
 
-        let mut table = build_table(NUM_INSTANCES as usize, packed);
-        table.compute_all_size_bytes();
+        let table = build_table(NUM_INSTANCES as usize, packed);
 
         // Default config
         group.bench_function("default", |b| {
@@ -270,8 +269,7 @@ fn gc(c: &mut Criterion) {
         (NUM_INSTANCES * NUM_ROWS) as _,
     ));
 
-    let mut table = build_table(NUM_INSTANCES as usize, false);
-    table.compute_all_size_bytes();
+    let table = build_table(NUM_INSTANCES as usize, false);
 
     // Default config
     group.bench_function("default", |b| {
@@ -319,16 +317,17 @@ fn build_table(n: usize, packed: bool) -> DataTable {
             )
         }),
     );
-    // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
-    // in debug mode, by the standard test harness.
-    if cfg!(debug_assertions) {
-        table.compute_all_size_bytes();
-    }
 
     // Do a serialization roundtrip to pack everything in contiguous memory.
     if packed {
         let (schema, columns) = table.serialize().unwrap();
         table = DataTable::deserialize(TableId::ZERO, &schema, &columns).unwrap();
+    }
+
+    // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
+    // in debug mode, by the standard test harness.
+    if cfg!(debug_assertions) {
+        table.compute_all_size_bytes();
     }
 
     table
