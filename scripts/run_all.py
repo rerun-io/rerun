@@ -7,9 +7,10 @@ import os
 import subprocess
 import time
 from glob import glob
+from typing import Any, List
 
 
-def run_py_example(path: str, args: list[str] = []) -> None:
+def run_py_example(path: str, args: List[str] = []) -> None:
     process = subprocess.Popen(
         ["python3", "main.py", "--num-frames=30", "--steps=200"] + args,
         cwd=path,
@@ -18,7 +19,7 @@ def run_py_example(path: str, args: list[str] = []) -> None:
     print(f"process exited with error code {returncode}")
 
 
-def run_saved_example(path: str, args: list[str] = []) -> None:
+def run_saved_example(path: str, args: List[str] = []) -> None:
     process = subprocess.Popen(
         ["cargo", "run", "-p", "rerun", "--all-features", "--", "out.rrd"] + args,
         cwd=path,
@@ -27,11 +28,11 @@ def run_saved_example(path: str, args: list[str] = []) -> None:
     print(f"process exited with error code {returncode}")
 
 
-def collect_examples() -> list[str]:
+def collect_examples() -> List[str]:
     return [os.path.dirname(entry) for entry in glob("examples/python/**/main.py")]
 
 
-def start_viewer(args: list[str] = []) -> subprocess.Popen[bytes]:
+def start_viewer(args: List[str] = []) -> Any:
     process = subprocess.Popen(
         ["cargo", "run", "-p", "rerun", "--all-features", "--"] + args,
         stdout=subprocess.PIPE,
