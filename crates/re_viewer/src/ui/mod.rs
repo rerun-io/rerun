@@ -2,6 +2,7 @@ mod annotations;
 mod auto_layout;
 mod blueprint;
 mod data_blueprint;
+mod item_ui;
 mod scene;
 mod selection_history_ui;
 mod space_view;

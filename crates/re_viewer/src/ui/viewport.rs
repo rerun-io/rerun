@@ -13,7 +13,7 @@ use crate::{
         highlights_for_space_view, space_info::SpaceInfoCollection, SpaceViewHighlights,
         ViewerContext,
     },
-    ui::space_view_heuristics::default_created_space_views,
+    ui::{item_ui, space_view_heuristics::default_created_space_views},
 };
 
 use super::{
@@ -160,7 +160,7 @@ impl Viewport {
                 true,
                 is_space_view_visible,
                 |ui| {
-                    let response = ctx.space_view_button(ui, space_view);
+                    let response = item_ui::space_view_button(ctx, ui, space_view);
                     if response.clicked() {
                         if let Some(tree) = self.trees.get_mut(&self.visible) {
                             focus_tab(tree, space_view_id);
@@ -234,7 +234,13 @@ impl Viewport {
                     |ui| {
                         let name = entity_path.iter().last().unwrap().to_string();
                         let label = format!("🔹 {name}");
-                        ctx.data_blueprint_button_to(ui, label, space_view.id, entity_path)
+                        item_ui::data_blueprint_button_to(
+                            ctx,
+                            ui,
+                            label,
+                            space_view.id,
+                            entity_path,
+                        )
                     },
                     |re_ui, ui| {
                         if visibility_button_ui(
@@ -283,7 +289,8 @@ impl Viewport {
                     group_is_visible,
                     child_group.properties_individual.visible,
                     |ui| {
-                        ctx.data_blueprint_group_button_to(
+                        item_ui::data_blueprint_group_button_to(
+                            ctx,
                             ui,
                             child_group.display_name.clone(),
                             space_view.id,

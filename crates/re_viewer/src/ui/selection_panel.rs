@@ -11,7 +11,7 @@ use re_viewer_context::{Item, SpaceViewId};
 use crate::{ui::Blueprint, UiVerbosity, ViewerContext};
 
 use super::{
-    data_ui::DataUi, selection_history_ui::SelectionHistoryUi, space_view::ViewState,
+    data_ui::DataUi, item_ui, selection_history_ui::SelectionHistoryUi, space_view::ViewState,
     view_spatial::SpatialNavigationMode,
 };
 
@@ -144,7 +144,7 @@ pub fn what_is_selected_ui(
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("Entity:");
-                    ctx.entity_path_button(ui, None, entity_path);
+                    item_ui::entity_path_button(ctx, ui, None, entity_path);
                     ui.end_row();
 
                     ui.label("Component:");
@@ -168,13 +168,13 @@ pub fn what_is_selected_ui(
                 } else {
                     ui.label("Entity instance:");
                 }
-                ctx.instance_path_button(ui, *space_view_id, instance_path);
+                item_ui::instance_path_button(ctx, ui, *space_view_id, instance_path);
                 ui.end_row();
 
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                         ui.label("in Space View:");
-                        ctx.space_view_button(ui, space_view);
+                        item_ui::space_view_button(ctx, ui, space_view);
                         ui.end_row();
                     }
                 }
@@ -190,7 +190,8 @@ pub fn what_is_selected_ui(
                         .num_columns(2)
                         .show(ui, |ui| {
                             ui.label("Data Group:");
-                            ctx.data_blueprint_group_button_to(
+                            item_ui::data_blueprint_group_button_to(
+                                ctx,
                                 ui,
                                 group.display_name.clone(),
                                 space_view.id,
@@ -199,7 +200,8 @@ pub fn what_is_selected_ui(
                             ui.end_row();
 
                             ui.label("in Space View:");
-                            ctx.space_view_button_to(
+                            item_ui::space_view_button_to(
+                                ctx,
                                 ui,
                                 space_view.display_name.clone(),
                                 space_view.id,
@@ -289,7 +291,12 @@ fn blueprint_ui(
                 if instance_path.instance_key.is_specific() {
                     ui.horizontal(|ui| {
                         ui.label("Part of");
-                        ctx.entity_path_button(ui, *space_view_id, &instance_path.entity_path);
+                        item_ui::entity_path_button(
+                            ctx,
+                            ui,
+                            *space_view_id,
+                            &instance_path.entity_path,
+                        );
                     });
                     // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                 } else {
@@ -350,7 +357,8 @@ fn list_existing_data_blueprints(
         ui.indent("list of data blueprints indent", |ui| {
             for space_view_id in &space_views_with_path {
                 if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                    ctx.entity_path_button_to(
+                    item_ui::entity_path_button_to(
+                        ctx,
                         ui,
                         Some(*space_view_id),
                         entity_path,
@@ -503,10 +511,9 @@ fn depth_props_ui(
 
     if backproject_depth {
         ui.label("Pinhole");
-        ctx.entity_path_button(ui, None, &pinhole_ent_path)
-            .on_hover_text(
-                "The entity path of the pinhole transform being used to do the backprojection.",
-            );
+        item_ui::entity_path_button(ctx, ui, None, &pinhole_ent_path).on_hover_text(
+            "The entity path of the pinhole transform being used to do the backprojection.",
+        );
         ui.end_row();
 
         depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
