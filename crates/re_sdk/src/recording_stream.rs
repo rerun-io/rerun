@@ -572,7 +572,7 @@ impl RecordingStream {
     #[inline]
     pub fn record_msg(&self, msg: LogMsg) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to record_msg() ignored");
+            re_log::warn_once!("Recording disabled - call to record_msg() ignored");
             return;
         };
 
@@ -592,7 +592,7 @@ impl RecordingStream {
         path_op: re_log_types::PathOp,
     ) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to record_path_op() ignored");
+            re_log::warn_once!("Recording disabled - call to record_path_op() ignored");
             return;
         };
 
@@ -613,7 +613,7 @@ impl RecordingStream {
     #[inline]
     pub fn record_row(&self, row: DataRow) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to record_row() ignored");
+            re_log::warn_once!("Recording disabled - call to record_row() ignored");
             return;
         };
 
@@ -636,7 +636,7 @@ impl RecordingStream {
     /// cannot be repaired), all pending data in its buffers will be dropped.
     pub fn set_sink(&self, sink: Box<dyn LogSink>) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to set_sink() ignored");
+            re_log::warn_once!("Recording disabled - call to set_sink() ignored");
             return;
         };
 
@@ -665,7 +665,7 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_async(&self) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to flush_async() ignored");
+            re_log::warn_once!("Recording disabled - call to flush_async() ignored");
             return;
         };
 
@@ -692,7 +692,7 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_blocking(&self) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to flush_blocking() ignored");
+            re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
             return;
         };
 
@@ -824,7 +824,7 @@ impl RecordingStream {
     /// Returns the current time of the recording on the current thread.
     pub fn now(&self) -> TimePoint {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to now() ignored");
+            re_log::warn_once!("Recording disabled - call to now() ignored");
             return TimePoint::default();
         };
 
@@ -840,7 +840,7 @@ impl RecordingStream {
     /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: Option<i64>) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to set_time_sequence() ignored");
+            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
             return;
         };
 
@@ -860,7 +860,7 @@ impl RecordingStream {
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
     pub fn set_time_seconds(&self, timeline: &str, seconds: Option<f64>) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to set_time_seconds() ignored");
+            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
             return;
         };
 
@@ -880,7 +880,7 @@ impl RecordingStream {
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
     pub fn set_time_nanos(&self, timeline: &str, ns: Option<i64>) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to set_time_nanos() ignored");
+            re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
             return;
         };
 
@@ -898,7 +898,7 @@ impl RecordingStream {
     /// For example: `rec.reset_time()`.
     pub fn reset_time(&self) {
         let Some(this) = &*self.inner else {
-            re_log::debug!("Recording disabled - call to reset_time() ignored");
+            re_log::warn_once!("Recording disabled - call to reset_time() ignored");
             return;
         };
 

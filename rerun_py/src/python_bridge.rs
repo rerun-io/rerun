@@ -150,7 +150,9 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 fn no_active_recording(origin: &str) {
-    re_log::debug!("No active recording - call to {origin}() ignored (have you called rr.init()?)",);
+    re_log::warn_once!(
+        "No active recording - call to {origin}() ignored (have you called rr.init()?)",
+    );
 }
 
 // --- Init ---

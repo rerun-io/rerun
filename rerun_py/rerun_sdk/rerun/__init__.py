@@ -1,6 +1,7 @@
 """The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 
 import atexit
+import logging
 from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
@@ -279,7 +280,7 @@ def connect(addr: Optional[str] = None) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - connect() call ignored")
+        logging.warning("Rerun is disabled - connect() call ignored")
         return
 
     bindings.connect(addr)
@@ -307,7 +308,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - spawn() call ignored")
+        logging.warning("Rerun is disabled - spawn() call ignored")
         return
 
     import os
@@ -360,7 +361,7 @@ def serve(open_browser: bool = True, web_port: Optional[int] = None, ws_port: Op
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - serve() call ignored")
+        logging.warning("Rerun is disabled - serve() call ignored")
         return
 
     bindings.serve(open_browser, web_port, ws_port)
@@ -385,7 +386,7 @@ def start_web_viewer_server(port: int = 0) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - self_host_assets() call ignored")
+        logging.warning("Rerun is disabled - self_host_assets() call ignored")
         return
 
     bindings.start_web_viewer_server(port)
@@ -414,7 +415,7 @@ def save(path: str) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - save() call ignored")
+        logging.warning("Rerun is disabled - save() call ignored")
         return
 
     bindings.save(path)
