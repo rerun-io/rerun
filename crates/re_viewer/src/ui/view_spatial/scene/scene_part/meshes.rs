@@ -7,7 +7,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    misc::{caches::MeshCache, SpaceViewHighlights, TransformCache},
+    misc::{MeshCache, SpaceViewHighlights, TransformCache},
     ui::view_spatial::{MeshSource, SceneSpatial},
 };
 

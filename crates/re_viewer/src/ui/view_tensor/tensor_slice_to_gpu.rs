@@ -3,11 +3,9 @@ use re_renderer::{
     renderer::ColormappedTexture,
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
+use re_viewer_context::TensorStats;
 
-use crate::{
-    gpu_bridge::{range, RangeError},
-    misc::caches::TensorStats,
-};
+use crate::gpu_bridge::{range, RangeError};
 
 use super::{
     ui::{selected_tensor_slice, SliceSelection},

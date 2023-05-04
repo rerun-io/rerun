@@ -1,5 +1,5 @@
-pub mod caches;
 pub mod format_time;
+mod mesh_cache;
 pub(crate) mod mesh_loader;
 pub mod queries;
 pub(crate) mod space_info;
@@ -18,6 +18,7 @@ pub(crate) mod profiler;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 
+pub use mesh_cache::MeshCache;
 pub use time_control_ui::TimeControlUi;
 pub use transform_cache::{TransformCache, UnreachableTransform};
 

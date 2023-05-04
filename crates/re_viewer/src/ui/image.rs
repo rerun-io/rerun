@@ -8,9 +8,10 @@ use re_log_types::{
 };
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
-use re_viewer_context::{AnnotationMap, Annotations, SceneQuery, UiVerbosity, ViewerContext};
-
-use crate::misc::caches::{TensorDecodeCache, TensorStats, TensorStatsCache};
+use re_viewer_context::{
+    AnnotationMap, Annotations, SceneQuery, TensorDecodeCache, TensorStats, TensorStatsCache,
+    UiVerbosity, ViewerContext,
+};
 
 pub fn format_tensor_shape_single_line(
     shape: &[re_log_types::component_types::TensorDimension],

@@ -10,6 +10,7 @@ mod item;
 mod scene_query;
 mod selection_history;
 mod selection_state;
+mod tensor;
 mod time_control;
 mod utils;
 mod viewer_context;
@@ -24,6 +25,7 @@ pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
+pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};

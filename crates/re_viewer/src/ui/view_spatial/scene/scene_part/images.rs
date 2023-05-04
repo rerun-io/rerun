@@ -13,13 +13,12 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     Colormap, OutlineMaskPreference,
 };
-use re_viewer_context::{Annotations, DefaultColor, SceneQuery, ViewerContext};
+use re_viewer_context::{
+    Annotations, DefaultColor, SceneQuery, TensorDecodeCache, TensorStatsCache, ViewerContext,
+};
 
 use crate::{
-    misc::{
-        caches::{TensorDecodeCache, TensorStatsCache},
-        SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache,
-    },
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
     ui::view_spatial::{Image, SceneSpatial},
 };
 

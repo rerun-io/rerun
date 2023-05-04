@@ -1,6 +1,7 @@
 //! Bridge to `re_renderer`
 
 mod tensor_to_gpu;
+use re_viewer_context::TensorStats;
 pub use tensor_to_gpu::tensor_to_gpu;
 
 // ----------------------------------------------------------------------------
@@ -29,7 +30,7 @@ pub enum RangeError {
 }
 
 /// Get a valid, finite range for the gpu to use.
-pub fn range(tensor_stats: &crate::misc::caches::TensorStats) -> Result<[f32; 2], RangeError> {
+pub fn range(tensor_stats: &TensorStats) -> Result<[f32; 2], RangeError> {
     let (min, max) = tensor_stats.range.ok_or(RangeError::MissingRange)?;
 
     let min = min as f32;

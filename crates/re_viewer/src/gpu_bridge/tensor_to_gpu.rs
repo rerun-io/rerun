@@ -14,8 +14,9 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
+use re_viewer_context::TensorStats;
 
-use crate::{gpu_bridge::get_or_create_texture, misc::caches::TensorStats};
+use crate::gpu_bridge::get_or_create_texture;
 
 use super::try_get_or_create_texture;
 

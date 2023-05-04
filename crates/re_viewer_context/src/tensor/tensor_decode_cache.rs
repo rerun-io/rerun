@@ -1,16 +1,14 @@
+use crate::Cache;
 use re_log_types::{
     component_types::{Tensor, TensorId, TensorImageLoadError},
     DecodedTensor,
 };
-use re_viewer_context::Cache;
-
-// ----------------------------------------------------------------------------
 
 struct DecodedTensorResult {
     /// Cached `Result` from decoding the `Tensor`
     tensor_result: Result<DecodedTensor, TensorImageLoadError>,
 
-    /// Total memory used by this `Tensor`.
+    /// Total memory used by this `Tensor`.\
     memory_used: u64,
 
     /// Which [`TensorDecodeCache::generation`] was this `Tensor` last used?

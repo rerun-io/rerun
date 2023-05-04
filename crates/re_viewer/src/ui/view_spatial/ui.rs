@@ -8,15 +8,12 @@ use re_format::format_f32;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
 use re_viewer_context::{
-    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, UiVerbosity, ViewerContext,
+    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
+    TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
 use crate::{
-    misc::{
-        caches::{TensorDecodeCache, TensorStatsCache},
-        space_info::query_view_coordinates,
-        SpaceViewHighlights,
-    },
+    misc::{space_info::query_view_coordinates, SpaceViewHighlights},
     ui::{
         data_blueprint::DataBlueprintTree,
         image::{show_zoomed_image_region, show_zoomed_image_region_area_outline},

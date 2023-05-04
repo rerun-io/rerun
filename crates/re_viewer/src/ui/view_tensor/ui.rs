@@ -10,9 +10,9 @@ use re_log_types::{
 };
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{TensorStatsCache, ViewerContext};
 
-use crate::{misc::caches::TensorStatsCache, ui::image::tensor_summary_ui_grid_contents};
+use crate::ui::image::tensor_summary_ui_grid_contents;
 
 use super::dimension_mapping_ui;
 
