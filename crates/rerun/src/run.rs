@@ -166,12 +166,13 @@ pub enum CallSource {
     Python(PythonVersion),
 }
 
-#[cfg(feature = "native_viewer")]
 impl CallSource {
+    #[allow(dead_code)]
     fn is_python(&self) -> bool {
         matches!(self, Self::Python(_))
     }
 
+    #[cfg(feature = "native_viewer")]
     fn app_env(&self) -> re_viewer::AppEnvironment {
         match self {
             CallSource::Cli => re_viewer::AppEnvironment::RerunCli {

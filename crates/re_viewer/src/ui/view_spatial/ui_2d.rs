@@ -4,6 +4,7 @@ use macaw::IsoTransform;
 use re_data_store::{query_latest_single, EntityPath, EntityPropertyMap};
 use re_log_types::Pinhole;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+use re_viewer_context::{HoveredSpace, SpaceViewId};
 
 use super::{
     eye::Eye,
@@ -12,14 +13,11 @@ use super::{
 };
 use crate::{
     gpu_bridge,
-    misc::{HoveredSpace, SpaceViewHighlights},
-    ui::{
-        view_spatial::{
-            ui::outline_config,
-            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-            SceneSpatial,
-        },
-        SpaceViewId,
+    misc::SpaceViewHighlights,
+    ui::view_spatial::{
+        ui::outline_config,
+        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+        SceneSpatial,
     },
     ViewerContext,
 };

@@ -5,7 +5,7 @@ use ahash::HashMap;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, InstanceKey, KeypointId},
-    DecodedTensor, MeshId,
+    DecodedTensor,
 };
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 
@@ -26,27 +26,6 @@ mod scene_part;
 pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
-
-// ----------------------------------------------------------------------------
-
-pub enum MeshSourceData {
-    Mesh3D(re_log_types::Mesh3D),
-
-    /// Static meshes that are embedded in the player
-    ///
-    /// Not used as of writing but may come back.
-    #[allow(dead_code)]
-    StaticGlb(MeshId, &'static [u8]),
-}
-
-impl MeshSourceData {
-    pub fn mesh_id(&self) -> MeshId {
-        match self {
-            MeshSourceData::Mesh3D(mesh) => mesh.mesh_id(),
-            MeshSourceData::StaticGlb(id, _) => *id,
-        }
-    }
-}
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
@@ -204,6 +183,7 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(color)
+                    .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                     // Select the entire object when clicking any of the lines.
                     .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
             }

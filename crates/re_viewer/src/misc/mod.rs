@@ -1,18 +1,13 @@
-mod app_options;
 pub mod caches;
 pub mod format_time;
-mod item;
 pub(crate) mod mesh_loader;
 pub mod queries;
-mod selection_state;
 pub(crate) mod space_info;
 mod space_view_highlights;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
 mod transform_cache;
 mod viewer_context;
-
-pub use caches::Caches;
 
 pub mod instance_hash_conversions;
 
@@ -29,13 +24,6 @@ pub(crate) mod profiler;
 pub mod clipboard;
 
 pub use transform_cache::{TransformCache, UnreachableTransform};
-pub use {
-    app_options::*,
-    item::{Item, ItemCollection},
-    selection_state::{
-        HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
-    },
-};
 
 pub use space_view_highlights::{
     highlights_for_space_view, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,

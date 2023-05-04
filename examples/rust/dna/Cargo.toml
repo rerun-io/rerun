@@ -1,13 +1,13 @@
 [package]
 name = "dna"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
+version = "0.6.0-alpha.0"
+edition = "2021"
+rust-version = "1.69"
+license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun.workspace = true
+rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
 
-itertools = { workspace = true }
+itertools = "0.10"
 rand = "0.8"

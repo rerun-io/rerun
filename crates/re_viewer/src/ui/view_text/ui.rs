@@ -5,7 +5,7 @@ use egui::{Color32, RichText};
 use re_data_store::{EntityPath, Timeline};
 use re_log_types::TimePoint;
 
-use crate::ViewerContext;
+use crate::{ui::item_ui, ViewerContext};
 
 use super::{SceneText, TextEntry};
 
@@ -255,7 +255,7 @@ fn table_ui(
             re_ui::ReUi::setup_table_header(&mut header);
             for timeline in &timelines {
                 header.col(|ui| {
-                    ctx.timeline_button(ui, timeline);
+                    item_ui::timeline_button(ctx, ui, timeline);
                 });
             }
             if state.filters.col_entity_path {
@@ -298,7 +298,7 @@ fn table_ui(
                 for timeline in &timelines {
                     row.col(|ui| {
                         if let Some(row_time) = time_point.get(timeline).copied() {
-                            ctx.time_button(ui, timeline, row_time);
+                            item_ui::time_button(ctx, ui, timeline, row_time);
 
                             if let Some(global_time) = global_time {
                                 if *timeline == &global_timeline {
@@ -323,7 +323,7 @@ fn table_ui(
                 // path
                 if state.filters.col_entity_path {
                     row.col(|ui| {
-                        ctx.entity_path_button(ui, None, &text_entry.entity_path);
+                        item_ui::entity_path_button(ctx, ui, None, &text_entry.entity_path);
                     });
                 }
 

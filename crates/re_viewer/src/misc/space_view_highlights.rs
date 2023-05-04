@@ -5,12 +5,11 @@ use nohash_hasher::IntMap;
 
 use re_log_types::{component_types::InstanceKey, EntityPath, EntityPathHash};
 use re_renderer::OutlineMaskPreference;
-
-use super::{InteractionHighlight, SelectionState};
-use crate::{
-    misc::{HoverHighlight, Item, SelectionHighlight},
-    ui::{SpaceView, SpaceViewId},
+use re_viewer_context::{
+    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SelectionState, SpaceViewId,
 };
+
+use crate::ui::SpaceView;
 
 /// Highlights of a specific entity path in a specific space view.
 ///

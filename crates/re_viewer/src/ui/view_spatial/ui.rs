@@ -1,23 +1,26 @@
 use eframe::epaint::text::TextWrapping;
-use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
-use re_format::format_f32;
-
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
+
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
+use re_format::format_f32;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
+use re_viewer_context::{HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId};
 
 use crate::{
     misc::{
-        space_info::query_view_coordinates, HoveredSpace, SelectionHighlight, SpaceViewHighlights,
-        ViewerContext,
+        caches::{TensorDecodeCache, TensorStatsCache},
+        space_info::query_view_coordinates,
+        SpaceViewHighlights, ViewerContext,
     },
     ui::{
         data_blueprint::DataBlueprintTree,
         data_ui::{self, DataUi},
+        item_ui,
+        selection_panel::select_hovered_on_click,
         space_view::ScreenshotMode,
         view_spatial::UiLabelTarget,
-        SpaceViewId,
     },
 };
 
@@ -249,7 +252,7 @@ impl ViewSpatialState {
                 .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
             // Specify space view id only if this is actually part of the space view itself.
             // (otherwise we get a somewhat broken link)
-            ctx.entity_path_button(
+            item_ui::entity_path_button(ctx,
                 ui,
                 data_blueprint
                     .contains_entity(space_path)
@@ -606,16 +609,14 @@ pub fn create_labels(
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance_key);
         let fill_color = match highlight.hover {
-            crate::misc::HoverHighlight::None => match highlight.selection {
+            HoverHighlight::None => match highlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
                 SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
             },
-            crate::misc::HoverHighlight::Hovered => {
-                parent_ui.style().visuals.widgets.hovered.bg_fill
-            }
+            HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
         label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
@@ -780,7 +781,7 @@ pub fn picking(
             instance_path.instance_key = re_log_types::component_types::InstanceKey::SPLAT;
         }
 
-        hovered_items.push(crate::misc::Item::InstancePath(
+        hovered_items.push(Item::InstancePath(
             Some(space_view_id),
             instance_path.clone(),
         ));
@@ -829,22 +830,24 @@ pub fn picking(
                                 }
 
                                 let tensor_name = instance_path.to_string();
-                                match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+
+                                match ctx.cache
+                                        .entry::<TensorDecodeCache>()
+                                        .entry(tensor) {
                                     Ok(decoded_tensor) =>
-                                    data_ui::image::show_zoomed_image_region(
-                                        ctx.render_ctx,
-                                        ui,
-                                        &decoded_tensor,
-                                        ctx.cache.tensor_stats(&decoded_tensor),
-                                        &scene.annotation_map.find(&instance_path.entity_path),
-                                        decoded_tensor.meter,
-                                        &tensor_name,
-                                        [coords[0] as _, coords[1] as _],
-                                    ),
-                                Err(err) =>
-                                    re_log::warn_once!(
-                                        "Encountered problem decoding tensor at path {tensor_name}: {err}"
-                                    ),
+                                        data_ui::image::show_zoomed_image_region(
+                                            ctx.render_ctx,
+                                            ui,
+                                            &decoded_tensor,
+                                            ctx.cache.entry::<TensorStatsCache>().entry(&decoded_tensor),
+                                            &scene.annotation_map.find(&instance_path.entity_path),
+                                            decoded_tensor.meter,
+                                            &tensor_name,
+                                            [coords[0] as _, coords[1] as _],
+                                        ),
+                                    Err(err) => re_log::warn_once!(
+                                            "Encountered problem decoding tensor at path {tensor_name}: {err}"
+                                        ),
                                 }
                             });
                         }
@@ -853,7 +856,7 @@ pub fn picking(
         } else {
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
-                ctx.instance_path_button(ui, Some(space_view_id), &instance_path);
+                item_ui::instance_path_button(ctx, ui, Some(space_view_id), &instance_path);
                 instance_path.data_ui(
                     ctx,
                     ui,
@@ -864,7 +867,7 @@ pub fn picking(
         };
     }
 
-    ctx.select_hovered_on_click(&response);
+    select_hovered_on_click(ctx.selection_state_mut(), &response);
     ctx.set_hovered(hovered_items.into_iter());
 
     let hovered_space = match state.nav_mode.get() {

@@ -35,8 +35,8 @@ var<uniform> batch: BatchUniformBuffer;
 
 // Flags
 // See point_cloud.rs#PointCloudBatchFlags
-const ENABLE_SHADING: u32 = 1u;
-const DRAW_AS_CIRCLES: u32 = 2u;
+const FLAG_ENABLE_SHADING: u32 = 1u;
+const FLAG_DRAW_AS_CIRCLES: u32 = 2u;
 
 const TEXTURE_SIZE: u32 = 2048u;
 
@@ -97,7 +97,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Span quad
     let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius,
-                                          draw_data.radius_boost_in_ui_points, has_any_flag(batch.flags, DRAW_AS_CIRCLES));
+                                          draw_data.radius_boost_in_ui_points, has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES));
 
     // Output, transform to projection space and done.
     var out: VertexOut;
@@ -126,7 +126,7 @@ fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) 
 }
 
 fn coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
-    if is_camera_orthographic() || has_any_flag(batch.flags, DRAW_AS_CIRCLES) {
+    if is_camera_orthographic() || has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES) {
         return circle_quad_coverage(world_position, radius, point_center);
     } else {
         return sphere_quad_coverage(world_position, radius, point_center);
@@ -145,7 +145,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // TODO(andreas): Proper shading
     // TODO(andreas): This doesn't even use the sphere's world position for shading, the world position used here is flat!
     var shading = 1.0;
-    if has_any_flag(batch.flags, ENABLE_SHADING) {
+    if has_any_flag(batch.flags, FLAG_ENABLE_SHADING) {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
     return vec4(in.color.rgb * shading, coverage);

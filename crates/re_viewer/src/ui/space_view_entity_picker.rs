@@ -2,12 +2,14 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath};
+use re_viewer_context::SpaceViewId;
 
 use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
 
 use super::{
+    item_ui,
     view_category::{categorize_entity_path, ViewCategory},
-    SpaceView, SpaceViewId,
+    SpaceView,
 };
 
 /// Window for adding/removing entities from a space view.
@@ -179,7 +181,8 @@ fn add_entities_line_ui(
             } else {
                 egui::RichText::new(name)
             };
-            let response = ctx.instance_path_button_to(
+            let response = item_ui::instance_path_button_to(
+                ctx,
                 ui,
                 space_view_id,
                 &InstancePath::entity_splat(entity_path.clone()),

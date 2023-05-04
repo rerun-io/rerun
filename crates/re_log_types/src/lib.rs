@@ -26,6 +26,9 @@ pub mod datagen;
 #[cfg(not(target_arch = "wasm32"))]
 mod data_table_batcher;
 
+#[cfg(feature = "serde")]
+pub mod serde_field;
+
 pub use self::arrow_msg::ArrowMsg;
 pub use self::component::{Component, DeserializableComponent, SerializableComponent};
 pub use self::component_types::context;

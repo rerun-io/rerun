@@ -675,8 +675,8 @@ impl RecordingStream {
 
         // 1. Synchronously flush the batcher down the table channel
         //
-        // NOTE: This _hash_ to be done synchronously as we need to be guaranteed that all tables
-        // are ready to be trained by the time this call returns.
+        // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all tables
+        // are ready to be drained by the time this call returns.
         // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
         this.batcher.flush_blocking();
 

@@ -18,8 +18,8 @@ LENGTH_M: Final = 10.0
 LENGTH_H: Final = 4.0
 
 WIDTH_S: Final = 0.25
-WIDTH_M: Final = 0.5
-WIDTH_H: Final = 0.7
+WIDTH_M: Final = 0.4
+WIDTH_H: Final = 0.6
 
 
 def log_clock(steps: int) -> None:

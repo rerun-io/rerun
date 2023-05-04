@@ -769,6 +769,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clock"
+version = "0.6.0-alpha.0"
+dependencies = [
+ "anyhow",
+ "clap 4.1.14",
+ "glam",
+ "rerun",
+]
+
+[[package]]
 name = "cocoa"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4206,6 +4216,7 @@ dependencies = [
  "re_smart_channel",
  "re_tensor_ops",
  "re_ui",
+ "re_viewer_context",
  "re_ws_comms",
  "rfd",
  "serde",
@@ -4219,6 +4230,23 @@ dependencies = [
  "web-sys",
  "wgpu",
  "winapi",
+]
+
+[[package]]
+name = "re_viewer_context"
+version = "0.6.0-alpha.0"
+dependencies = [
+ "ahash 0.8.2",
+ "glam",
+ "itertools",
+ "nohash-hasher",
+ "puffin",
+ "re_data_store",
+ "re_log_types",
+ "re_renderer",
+ "serde",
+ "slotmap",
+ "uuid",
 ]
 
 [[package]]

@@ -1,9 +1,8 @@
 use egui::RichText;
 use re_ui::Command;
+use re_viewer_context::{Item, ItemCollection, SelectionHistory};
 
-use crate::{misc::ItemCollection, ui::Blueprint, Item};
-
-use super::SelectionHistory;
+use crate::ui::Blueprint;
 
 // ---
 

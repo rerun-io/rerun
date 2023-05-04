@@ -2,7 +2,10 @@ use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
 use re_query::{get_component_with_instances, QueryError};
 
-use crate::{misc::ViewerContext, ui::UiVerbosity};
+use crate::{
+    misc::ViewerContext,
+    ui::{item_ui, UiVerbosity},
+};
 
 use super::DataUi;
 
@@ -55,7 +58,8 @@ impl DataUi for InstancePath {
                         UiVerbosity::All => {}
                     }
 
-                    ctx.component_path_button_to(
+                    item_ui::component_path_button_to(
+                        ctx,
                         ui,
                         component_name.short_name(),
                         &ComponentPath::new(self.entity_path.clone(), component_name),

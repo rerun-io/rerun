@@ -174,7 +174,11 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_X)
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
+            .flags(
+                LineStripFlags::FLAG_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
+            )
             .picking_instance_id(picking_instance_id);
         line_batch
             .add_segment(
@@ -183,7 +187,11 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_Y)
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
+            .flags(
+                LineStripFlags::FLAG_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
+            )
             .picking_instance_id(picking_instance_id);
         line_batch
             .add_segment(
@@ -192,7 +200,11 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_Z)
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
+            .flags(
+                LineStripFlags::FLAG_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
+            )
             .picking_instance_id(picking_instance_id);
     }
 }
