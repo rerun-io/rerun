@@ -512,8 +512,7 @@ mod tests {
         let batcher = DataTableBatcher::new(DataTableBatcherConfig::NEVER).unwrap();
         let tables = batcher.tables();
 
-        let mut table = create_table();
-        table.compute_all_size_bytes();
+        let table = create_table();
         let rows = table.to_rows().collect_vec();
 
         for _ in 0..3 {
@@ -551,9 +550,7 @@ mod tests {
 
     #[test]
     fn num_bytes_trigger() {
-        let mut table = create_table();
-        table.compute_all_size_bytes();
-
+        let table = create_table();
         let rows = table.to_rows().collect_vec();
         let flush_duration = std::time::Duration::from_millis(50);
         let flush_num_bytes = rows
@@ -615,9 +612,7 @@ mod tests {
 
     #[test]
     fn num_rows_trigger() {
-        let mut table = create_table();
-        table.compute_all_size_bytes();
-
+        let table = create_table();
         let rows = table.to_rows().collect_vec();
         let flush_duration = std::time::Duration::from_millis(50);
         let flush_num_rows = rows.len() as u64 - 1;
@@ -675,8 +670,7 @@ mod tests {
 
     #[test]
     fn duration_trigger() {
-        let mut table = create_table();
-        table.compute_all_size_bytes();
+        let table = create_table();
         let rows = table.to_rows().collect_vec();
 
         let flush_duration = Duration::from_millis(50);
@@ -791,6 +785,8 @@ mod tests {
             )
         };
 
-        DataTable::from_rows(TableId::ZERO, [row0, row1, row2])
+        let mut table = DataTable::from_rows(TableId::ZERO, [row0, row1, row2]);
+        table.compute_all_size_bytes();
+        table
     }
 }

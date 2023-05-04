@@ -6,26 +6,22 @@ use crate::{DataStore, DataStoreConfig};
 #[macro_export]
 macro_rules! test_row {
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr $(,)*]) => {{
-        let mut row = ::re_log_types::DataRow::from_cells1(
+        ::re_log_types::DataRow::from_cells1_sized(
             ::re_log_types::RowId::random(),
             $entity.clone(),
             $frames,
             $n,
             $c0,
-        );
-        row.compute_all_size_bytes();
-        row
+        )
     }};
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr, $c1:expr $(,)*]) => {{
-        let mut row = ::re_log_types::DataRow::from_cells2(
+        ::re_log_types::DataRow::from_cells2_sized(
             ::re_log_types::RowId::random(),
             $entity.clone(),
             $frames,
             $n,
             ($c0, $c1),
-        );
-        row.compute_all_size_bytes();
-        row
+        )
     }};
 }
 

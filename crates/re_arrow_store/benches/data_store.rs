@@ -318,6 +318,8 @@ fn build_table(n: usize, packed: bool) -> DataTable {
             )
         }),
     );
+    // NOTE: Using unsized cells will crash in debug mode, and benchmarks are run for 1 iteration,
+    // in debug mode, by the standard test harness.
     if cfg!(debug_assertions) {
         table.compute_all_size_bytes();
     }

@@ -19,22 +19,20 @@ fn simple_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-        let mut row =
-            DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint1, 2, points);
-        row.compute_all_size_bytes();
+        let row =
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, points);
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             timepoint1,
             1,
             (color_instances, colors),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
     }
 
@@ -43,14 +41,13 @@ fn simple_range() {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             timepoint2,
             1,
             (color_instances, colors),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
     }
 
@@ -58,9 +55,8 @@ fn simple_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
-        let mut row =
-            DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint3, 2, points);
-        row.compute_all_size_bytes();
+        let row =
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, points);
         store.insert_row(&row).unwrap();
     }
 
@@ -249,32 +245,29 @@ fn timeless_range() {
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let mut row = DataRow::from_cells1(RowId::random(), ent_path.clone(), [], 2, &points);
-        row.compute_all_size_bytes();
+        let row = DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), [], 2, &points);
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             timepoint1,
             1,
             (color_instances.clone(), colors.clone()),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             [],
             1,
             (color_instances, colors),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
     }
 
@@ -283,25 +276,23 @@ fn timeless_range() {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             timepoint2,
             1,
             (color_instances.clone(), colors.clone()),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             timepoint2,
             1,
             (color_instances, colors),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
     }
 
@@ -309,14 +300,12 @@ fn timeless_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
-        let mut row =
-            DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint3, 2, &points);
-        row.compute_all_size_bytes();
+        let row =
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, &points);
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let mut row = DataRow::from_cells1(RowId::random(), ent_path.clone(), [], 2, &points);
-        row.compute_all_size_bytes();
+        let row = DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), [], 2, &points);
         store.insert_row(&row).unwrap();
     }
 
@@ -686,22 +675,20 @@ fn simple_splatted_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-        let mut row =
-            DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint1, 2, points);
-        row.compute_all_size_bytes();
+        let row =
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint1, 2, points);
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
         let colors = vec![ColorRGBA(0xff000000)];
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             timepoint1,
             1,
             (color_instances, colors),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
     }
 
@@ -710,14 +697,13 @@ fn simple_splatted_range() {
         // Assign one of them a color with a splatted instance
         let color_instances = vec![InstanceKey::SPLAT];
         let colors = vec![ColorRGBA(0x00ff0000)];
-        let mut row = DataRow::from_cells2(
+        let row = DataRow::from_cells2_sized(
             RowId::random(),
             ent_path.clone(),
             timepoint2,
             1,
             (color_instances, colors),
         );
-        row.compute_all_size_bytes();
         store.insert_row(&row).unwrap();
     }
 
@@ -725,9 +711,8 @@ fn simple_splatted_range() {
     {
         // Create some points with implicit instances
         let points = vec![Point2D { x: 10.0, y: 20.0 }, Point2D { x: 30.0, y: 40.0 }];
-        let mut row =
-            DataRow::from_cells1(RowId::random(), ent_path.clone(), timepoint3, 2, points);
-        row.compute_all_size_bytes();
+        let row =
+            DataRow::from_cells1_sized(RowId::random(), ent_path.clone(), timepoint3, 2, points);
         store.insert_row(&row).unwrap();
     }
 

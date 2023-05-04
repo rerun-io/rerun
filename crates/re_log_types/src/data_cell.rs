@@ -546,6 +546,8 @@ impl SizeBytes for DataCell {
         (self.inner.size_bytes > 0)
             .then_some(self.inner.size_bytes)
             .unwrap_or_else(|| {
+                // NOTE: Relying on unsized cells is always a mistake, but it isn't worth crashing
+                // the viewer when in release mode.
                 debug_assert!(
                     false,
                     "called `DataCell::heap_size_bytes() without computing it first"
@@ -591,6 +593,7 @@ fn data_cell_sizes() {
     use arrow2::array::UInt64Array;
 
     // not computed
+    // NOTE: Unsized cells are illegal in debug mode and will flat out crash.
     if !cfg!(debug_assertions) {
         let cell = DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         assert_eq!(0, cell.heap_size_bytes());
