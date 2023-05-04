@@ -1,8 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{query_latest_single, EntityPath};
 use re_log_types::Transform;
-
-use super::ViewerContext;
+use re_viewer_context::ViewerContext;
 
 /// Find closest entity with a pinhole transform.
 pub fn closest_pinhole_transform(

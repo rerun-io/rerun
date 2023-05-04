@@ -28,13 +28,14 @@ use re_log_types::component_types::{ClassId, ColorRGBA, KeypointId, Radius};
 
 use super::SceneSpatial;
 use crate::{
-    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, TransformCache},
     ui::{
         annotations::ResolvedAnnotationInfo, scene::SceneQuery, view_spatial::scene::Keypoints,
         Annotations, DefaultColor,
     },
 };
 use re_data_store::{EntityPath, InstancePathHash};
+use re_viewer_context::ViewerContext;
 
 pub trait ScenePart {
     fn load(

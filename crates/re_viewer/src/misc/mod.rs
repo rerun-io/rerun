@@ -6,14 +6,11 @@ pub(crate) mod space_info;
 mod space_view_highlights;
 mod time_control_ui;
 mod transform_cache;
-mod viewer_context;
 
 pub mod instance_hash_conversions;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use clipboard::Clipboard;
-
-pub(crate) use viewer_context::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod profiler;

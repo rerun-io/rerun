@@ -1,13 +1,14 @@
 use re_log_types::ComponentPath;
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
 
 impl DataUi for ComponentPath {
     fn data_ui(
         &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: crate::ui::UiVerbosity,
+        verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
         let store = &ctx.log_db.entity_db.data_store;

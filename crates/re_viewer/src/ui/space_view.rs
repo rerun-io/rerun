@@ -1,10 +1,10 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_viewer_context::SpaceViewId;
+use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::{
-    misc::{space_info::SpaceInfoCollection, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{space_info::SpaceInfoCollection, SpaceViewHighlights, TransformCache},
     ui::view_category::categorize_entity_path,
 };
 

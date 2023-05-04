@@ -1,13 +1,12 @@
-use crate::{
-    ui::{annotations::AnnotationMap, DefaultColor, SceneQuery},
-    ViewerContext,
-};
 use re_arrow_store::TimeRange;
 use re_log_types::{
     component_types::{self, InstanceKey},
     Component,
 };
 use re_query::{range_entity_with_primary, QueryError};
+use re_viewer_context::ViewerContext;
+
+use crate::ui::{annotations::AnnotationMap, DefaultColor, SceneQuery};
 
 // ---
 

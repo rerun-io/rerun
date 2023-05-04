@@ -3,15 +3,11 @@
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, HoverHighlight, Item, SelectionState, SpaceViewId,
+    DataBlueprintGroupHandle, HoverHighlight, Item, SelectionState, SpaceViewId, UiVerbosity,
+    ViewerContext,
 };
 
-use crate::{
-    misc::ViewerContext,
-    ui::{data_ui::DataUi, UiVerbosity},
-};
-
-use super::selection_panel::select_hovered_on_click;
+use super::{data_ui::DataUi, selection_panel::select_hovered_on_click};
 
 // TODO(andreas): This is where we want to go, but we need to figure out how get the `SpaceViewCategory` from the `SpaceViewId`.
 // Simply pass in optional icons?
@@ -108,12 +104,7 @@ pub fn instance_path_button_to(
         .on_hover_ui(|ui| {
             ui.strong(subtype_string);
             ui.label(format!("Path: {instance_path}"));
-            instance_path.data_ui(
-                ctx,
-                ui,
-                crate::ui::UiVerbosity::Reduced,
-                &ctx.current_query(),
-            );
+            instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
         });
 
     cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)

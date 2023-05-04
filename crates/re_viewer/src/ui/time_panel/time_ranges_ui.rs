@@ -10,9 +10,7 @@ use egui::{lerp, remap, NumExt};
 use itertools::Itertools as _;
 
 use re_log_types::{TimeInt, TimeRange, TimeRangeF, TimeReal};
-use re_viewer_context::{PlayState, TimeView};
-
-use crate::ViewerContext;
+use re_viewer_context::{PlayState, TimeView, ViewerContext};
 
 /// The ideal gap between time segments.
 ///

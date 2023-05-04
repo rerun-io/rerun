@@ -1,8 +1,7 @@
 use re_data_store::InstancePath;
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
-use crate::misc::ViewerContext;
-
-use super::{DataUi, UiVerbosity};
+use super::DataUi;
 
 impl DataUi for re_data_store::EntityPath {
     fn data_ui(

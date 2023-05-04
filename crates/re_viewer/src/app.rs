@@ -14,13 +14,11 @@ use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
-use re_viewer_context::{AppOptions, Caches, PlayState};
-
-use crate::{
-    misc::{RecordingConfig, ViewerContext},
-    ui::{data_ui::ComponentUiRegistry, Blueprint},
-    viewer_analytics::ViewerAnalytics,
+use re_viewer_context::{
+    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, ViewerContext,
 };
+
+use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics};
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
@@ -134,7 +132,7 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
             text_log_rx,
-            component_ui_registry: Default::default(),
+            component_ui_registry: crate::ui::data_ui::create_component_ui_registry(),
             rx,
             log_dbs: Default::default(),
             state,

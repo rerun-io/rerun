@@ -5,8 +5,9 @@ use re_data_store::EntityPath;
 use re_log::warn_once;
 use re_log_types::component_types::{self, InstanceKey, Tensor};
 use re_query::query_entity_with_primary;
+use re_viewer_context::ViewerContext;
 
-use crate::{misc::ViewerContext, ui::scene::SceneQuery};
+use crate::ui::scene::SceneQuery;
 
 /// A bar chart scene, with everything needed to render it.
 #[derive(Default)]

@@ -10,6 +10,7 @@ use re_log_types::{
 };
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
+use re_viewer_context::ViewerContext;
 
 use crate::{misc::caches::TensorStatsCache, ui::data_ui::image::tensor_summary_ui_grid_contents};
 
@@ -65,7 +66,7 @@ impl ViewTensorState {
         &self.color_mapping
     }
 
-    pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub(crate) fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         let Some(tensor) = &self.tensor else {
             ui.label("No Tensor shown in this Space View.");
             return;
@@ -103,7 +104,7 @@ impl ViewTensorState {
 }
 
 pub(crate) fn view_tensor(
-    ctx: &mut crate::misc::ViewerContext<'_>,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
     tensor: &DecodedTensor,
@@ -158,7 +159,7 @@ pub(crate) fn view_tensor(
 }
 
 fn tensor_slice_ui(
-    ctx: &mut crate::misc::ViewerContext<'_>,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
     tensor: &DecodedTensor,
@@ -175,7 +176,7 @@ fn tensor_slice_ui(
 }
 
 fn paint_tensor_slice(
-    ctx: &mut crate::misc::ViewerContext<'_>,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
     tensor: &DecodedTensor,

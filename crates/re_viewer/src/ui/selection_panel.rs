@@ -1,4 +1,5 @@
 use egui::NumExt as _;
+
 use re_data_store::{
     query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
 };
@@ -6,9 +7,9 @@ use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
     TimeType, Transform,
 };
-use re_viewer_context::{Item, SelectionState, SpaceViewId};
+use re_viewer_context::{Item, SelectionState, SpaceViewId, UiVerbosity, ViewerContext};
 
-use crate::{ui::Blueprint, UiVerbosity, ViewerContext};
+use crate::ui::Blueprint;
 
 use super::{
     data_ui::DataUi, item_ui, selection_history_ui::SelectionHistoryUi, space_view::ViewState,

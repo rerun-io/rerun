@@ -6,13 +6,10 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
-use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId};
+use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
 
 use crate::{
-    misc::{
-        highlights_for_space_view, space_info::SpaceInfoCollection, SpaceViewHighlights,
-        ViewerContext,
-    },
+    misc::{highlights_for_space_view, space_info::SpaceInfoCollection, SpaceViewHighlights},
     ui::{item_ui, space_view_heuristics::default_created_space_views},
 };
 

@@ -12,9 +12,9 @@ mod remote_viewer_app;
 mod ui;
 mod viewer_analytics;
 
-pub(crate) use misc::{mesh_loader, ViewerContext};
+pub(crate) use misc::mesh_loader;
 use re_log_types::PythonVersion;
-pub(crate) use ui::{memory_panel, selection_panel, time_panel, UiVerbosity};
+pub(crate) use ui::{memory_panel, selection_panel, time_panel};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;

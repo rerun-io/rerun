@@ -8,9 +8,10 @@ use re_log_types::{
     DecodedTensor,
 };
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
+use re_viewer_context::ViewerContext;
 
 use crate::{
-    misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache},
     ui::{
         annotations::{auto_color, AnnotationMap},
         Annotations, SceneQuery,

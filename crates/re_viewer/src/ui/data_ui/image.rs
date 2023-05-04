@@ -7,16 +7,13 @@ use re_log_types::{
 };
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
+use super::EntityDataUi;
 use crate::{
-    misc::{
-        caches::{TensorDecodeCache, TensorStats, TensorStatsCache},
-        ViewerContext,
-    },
+    misc::caches::{TensorDecodeCache, TensorStats, TensorStatsCache},
     ui::annotations::AnnotationMap,
 };
-
-use super::{EntityDataUi, UiVerbosity};
 
 pub fn format_tensor_shape_single_line(
     shape: &[re_log_types::component_types::TensorDimension],
@@ -29,7 +26,7 @@ impl EntityDataUi for Tensor {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: crate::ui::UiVerbosity,
+        verbosity: UiVerbosity,
         entity_path: &re_log_types::EntityPath,
         query: &re_arrow_store::LatestAtQuery,
     ) {

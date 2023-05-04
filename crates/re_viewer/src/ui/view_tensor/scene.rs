@@ -5,11 +5,9 @@ use re_log_types::{
     DecodedTensor,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_viewer_context::ViewerContext;
 
-use crate::{
-    misc::{caches::TensorDecodeCache, ViewerContext},
-    ui::SceneQuery,
-};
+use crate::{misc::caches::TensorDecodeCache, ui::SceneQuery};
 
 // ---
 

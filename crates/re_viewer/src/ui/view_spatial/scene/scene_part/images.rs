@@ -13,11 +13,12 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     Colormap, OutlineMaskPreference,
 };
+use re_viewer_context::ViewerContext;
 
 use crate::{
     misc::{
         caches::{TensorDecodeCache, TensorStatsCache},
-        SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext,
+        SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache,
     },
     ui::{
         scene::SceneQuery,

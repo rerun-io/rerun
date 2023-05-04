@@ -7,12 +7,13 @@ use re_log_types::{
 use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::TimeControl;
+use re_viewer_context::ViewerContext;
 
 use crate::{
     misc::{
         instance_hash_conversions::picking_layer_id_from_instance_path_hash,
         space_info::query_view_coordinates, SpaceViewHighlights, SpaceViewOutlineMasks,
-        TransformCache, ViewerContext,
+        TransformCache,
     },
     ui::{
         scene::SceneQuery,

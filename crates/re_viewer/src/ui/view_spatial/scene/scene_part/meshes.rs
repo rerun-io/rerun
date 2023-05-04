@@ -4,9 +4,10 @@ use re_log_types::{
     Component, Mesh3D,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_viewer_context::ViewerContext;
 
 use crate::{
-    misc::{caches::MeshCache, SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{caches::MeshCache, SpaceViewHighlights, TransformCache},
     ui::{
         scene::SceneQuery,
         view_spatial::{MeshSource, SceneSpatial},

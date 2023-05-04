@@ -1,13 +1,10 @@
 use re_log_types::{
     ArrowMsg, BeginRecordingMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo,
 };
-
-use crate::{
-    misc::ViewerContext,
-    ui::{item_ui, UiVerbosity},
-};
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
+use crate::ui::item_ui;
 
 impl DataUi for LogMsg {
     fn data_ui(

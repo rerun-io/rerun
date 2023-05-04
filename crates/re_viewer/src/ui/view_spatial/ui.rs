@@ -6,13 +6,15 @@ use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPr
 use re_format::format_f32;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
-use re_viewer_context::{HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId};
+use re_viewer_context::{
+    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, UiVerbosity, ViewerContext,
+};
 
 use crate::{
     misc::{
         caches::{TensorDecodeCache, TensorStatsCache},
         space_info::query_view_coordinates,
-        SpaceViewHighlights, ViewerContext,
+        SpaceViewHighlights,
     },
     ui::{
         data_blueprint::DataBlueprintTree,
@@ -808,7 +810,7 @@ pub fn picking(
                         instance_path.data_ui(
                             ctx,
                             ui,
-                            crate::ui::UiVerbosity::Small,
+                            UiVerbosity::Small,
                             &ctx.current_query(),
                         );
 
@@ -857,12 +859,7 @@ pub fn picking(
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
                 item_ui::instance_path_button(ctx, ui, Some(space_view_id), &instance_path);
-                instance_path.data_ui(
-                    ctx,
-                    ui,
-                    crate::ui::UiVerbosity::Reduced,
-                    &ctx.current_query(),
-                );
+                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
             })
         };
     }
