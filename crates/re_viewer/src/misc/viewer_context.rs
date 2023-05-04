@@ -1,12 +1,12 @@
 use re_data_store::log_db::LogDb;
-use re_viewer_context::{Item, ItemCollection, SelectionState};
+use re_viewer_context::{AppOptions, Item, ItemCollection, SelectionState};
 
 use crate::ui::data_ui::ComponentUiRegistry;
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
-    pub app_options: &'a mut super::AppOptions,
+    pub app_options: &'a mut AppOptions,
 
     /// Things that need caching.
     pub cache: &'a mut super::Caches,

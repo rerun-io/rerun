@@ -1,4 +1,3 @@
-mod app_options;
 pub mod caches;
 pub mod format_time;
 pub(crate) mod mesh_loader;
@@ -26,7 +25,6 @@ pub(crate) mod profiler;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 
-pub use app_options::AppOptions;
 pub use transform_cache::{TransformCache, UnreachableTransform};
 
 pub use space_view_highlights::{

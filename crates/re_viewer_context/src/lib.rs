@@ -2,10 +2,12 @@
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
+mod app_options;
 mod item;
 mod selection_history;
 mod selection_state;
 
+pub use app_options::AppOptions;
 pub use item::{Item, ItemCollection};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
