@@ -9,7 +9,7 @@ use pyo3::{
     types::{IntoPyDict, PyString},
     PyAny, PyResult,
 };
-use re_log_types::{component_types, DataCell, DataRow, DataTable, EntityPath, RowId, TimePoint};
+use re_log_types::{component_types, DataCell, DataRow, EntityPath, RowId, TimePoint};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
