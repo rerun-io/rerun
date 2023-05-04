@@ -6,10 +6,10 @@ use re_log_types::component_types;
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
 pub struct Caches {
-    /// For displaying images efficiently in immediate mode.
+    /// Cached decoded tensors.
     pub decode: tensor_decode_cache::DecodeCache,
 
-    /// For displaying meshes efficiently in immediate mode.
+    /// Cached loaded meshes (from file or converted from user data).
     pub mesh: mesh_cache::MeshCache,
 
     tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
