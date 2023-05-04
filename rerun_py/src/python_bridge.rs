@@ -155,7 +155,6 @@ fn no_active_recording(origin: &str) {
 
 // --- Init ---
 
-// TODO: actual python object for RecordingStream + make_default logic etc
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -170,7 +169,6 @@ fn init(
     application_path: Option<PathBuf>,
     default_enabled: bool,
 ) -> PyResult<()> {
-    // TODO: pass this to the builder and let it do that logic
     // The sentinel file we use to identify the official examples directory.
     const SENTINEL_FILENAME: &str = ".rerun_examples";
     let is_official_example = application_path.map_or(false, |mut path| {
@@ -396,7 +394,6 @@ fn disconnect(py: Python<'_>) {
     });
 }
 
-// TODO
 /// Block until outstanding data has been flushed to the sink
 #[pyfunction]
 fn flush(py: Python<'_>) {
@@ -1120,7 +1117,7 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
         return Ok(());
     };
 
-    // TODO: do this well
+    // TODO(cmc): batch all the way to here at some point, maybe.
     for row in data_table.to_rows() {
         record_row(rec_stream, row);
     }
