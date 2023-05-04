@@ -33,6 +33,11 @@ pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};
 
+#[cfg(not(target_arch = "wasm32"))]
+mod clipboard;
+#[cfg(not(target_arch = "wasm32"))]
+pub use clipboard::Clipboard;
+
 // ---------------------------------------------------------------------------
 
 /// A unique id for each space view.

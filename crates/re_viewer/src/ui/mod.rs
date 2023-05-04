@@ -1,7 +1,6 @@
 mod auto_layout;
 mod blueprint;
 mod data_blueprint;
-mod image;
 mod selection_history_ui;
 mod space_view;
 mod space_view_entity_picker;

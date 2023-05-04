@@ -4,6 +4,7 @@ use macaw::BoundingBox;
 
 use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
 use re_data_ui::{item_ui, DataUi};
+use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
@@ -15,10 +16,7 @@ use re_viewer_context::{
 use crate::{
     misc::{space_info::query_view_coordinates, SpaceViewHighlights},
     ui::{
-        data_blueprint::DataBlueprintTree,
-        image::{show_zoomed_image_region, show_zoomed_image_region_area_outline},
-        space_view::ScreenshotMode,
-        view_spatial::UiLabelTarget,
+        data_blueprint::DataBlueprintTree, space_view::ScreenshotMode, view_spatial::UiLabelTarget,
     },
 };
 

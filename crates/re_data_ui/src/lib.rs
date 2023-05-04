@@ -12,11 +12,16 @@ mod component_path;
 mod component_ui_registry;
 mod data;
 mod entity_path;
+mod image;
 mod instance_path;
 mod item;
 pub mod item_ui;
 mod log_msg;
 
+pub use crate::image::{
+    show_zoomed_image_region, show_zoomed_image_region_area_outline,
+    tensor_summary_ui_grid_contents,
+};
 pub use component_ui_registry::create_component_ui_registry;
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].

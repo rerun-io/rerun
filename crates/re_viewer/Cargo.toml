@@ -96,9 +96,7 @@ macaw = { workspace = true, features = ["with_serde"] }
 ndarray = "0.15"
 nohash-hasher = "0.2"
 poll-promise = "0.2"
-rfd = { version = "0.11.3", default_features = false, features = [
-  "xdg-portal",
-] }
+rfd.workspace = true
 serde = { version = "1", features = ["derive"] }
 slotmap.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
@@ -110,9 +108,6 @@ wgpu.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-arboard = { version = "3.2", default-features = false, features = [
-  "image-data",
-] }
 puffin_http = "0.11"
 puffin.workspace = true
 

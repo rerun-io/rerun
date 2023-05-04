@@ -4,6 +4,7 @@ use eframe::emath::Align2;
 use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
+use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{
     component_types::{self, Tensor},
     DecodedTensor,
@@ -11,8 +12,6 @@ use re_log_types::{
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_viewer_context::{gpu_bridge, TensorStatsCache, ViewerContext};
-
-use crate::ui::image::tensor_summary_ui_grid_contents;
 
 use super::dimension_mapping_ui;
 

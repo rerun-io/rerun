@@ -110,7 +110,7 @@ impl SpaceView {
     fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
         // Set to clipboard.
         #[cfg(not(target_arch = "wasm32"))]
-        crate::misc::Clipboard::with(|clipboard| {
+        re_viewer_context::Clipboard::with(|clipboard| {
             clipboard.set_image([extent.x as _, extent.y as _], data);
         });
         if mode == ScreenshotMode::CopyToClipboard {

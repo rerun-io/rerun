@@ -3,7 +3,6 @@ use std::sync::Arc;
 use ahash::HashMap;
 
 use re_data_store::{EntityPath, InstancePathHash};
-use re_data_ui::DataUi;
 use re_log_types::{
     component_types::{ClassId, InstanceKey, KeypointId},
     DecodedTensor,

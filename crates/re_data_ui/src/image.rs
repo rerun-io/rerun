@@ -1,7 +1,6 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
-use re_data_ui::EntityDataUi;
 use re_log_types::{
     component_types::{ClassId, Tensor, TensorDataMeaning},
     DecodedTensor, TensorElement,
@@ -13,34 +12,35 @@ use re_viewer_context::{
     TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
+use super::EntityDataUi;
+
 pub fn format_tensor_shape_single_line(
     shape: &[re_log_types::component_types::TensorDimension],
 ) -> String {
     format!("[{}]", shape.iter().join(", "))
 }
 
-// TODO:
-// impl EntityDataUi for Tensor {
-//     fn entity_data_ui(
-//         &self,
-//         ctx: &mut ViewerContext<'_>,
-//         ui: &mut egui::Ui,
-//         verbosity: UiVerbosity,
-//         entity_path: &re_log_types::EntityPath,
-//         query: &re_arrow_store::LatestAtQuery,
-//     ) {
-//         crate::profile_function!();
+impl EntityDataUi for Tensor {
+    fn entity_data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        entity_path: &re_log_types::EntityPath,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        crate::profile_function!();
 
-//         match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
-//             Ok(decoded) => {
-//                 tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
-//             }
-//             Err(err) => {
-//                 ui.label(ctx.re_ui.error_text(err.to_string()));
-//             }
-//         }
-//     }
-// }
+        match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
+            Ok(decoded) => {
+                tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        }
+    }
+}
 
 fn tensor_ui(
     ctx: &mut ViewerContext<'_>,
@@ -670,7 +670,7 @@ fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &
             match tensor.to_dynamic_image() {
                 Ok(dynamic_image) => {
                     let rgba = dynamic_image.to_rgba8();
-                    crate::misc::Clipboard::with(|clipboard| {
+                    re_viewer_context::Clipboard::with(|clipboard| {
                         clipboard.set_image(
                             [rgba.width() as _, rgba.height() as _],
                             bytemuck::cast_slice(rgba.as_raw()),

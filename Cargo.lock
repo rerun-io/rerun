@@ -3879,13 +3879,16 @@ name = "re_data_ui"
 version = "0.6.0-alpha.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "egui",
  "egui_extras",
+ "image",
  "itertools",
  "nohash-hasher",
  "puffin",
  "re_arrow_store",
  "re_data_store",
+ "re_error",
  "re_format",
  "re_log",
  "re_log_types",
@@ -3893,6 +3896,7 @@ dependencies = [
  "re_renderer",
  "re_ui",
  "re_viewer_context",
+ "rfd",
 ]
 
 [[package]]
@@ -4198,7 +4202,6 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
- "arboard",
  "bytemuck",
  "cfg-if",
  "cocoa",
@@ -4261,6 +4264,7 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
+ "arboard",
  "bytemuck",
  "egui",
  "egui-wgpu",
@@ -5133,9 +5137,9 @@ dependencies = [
 
 [[package]]
 name = "tiff"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f17def29300a156c19ae30814710d9c63cd50288a49c6fd3a10ccfbe4cf886fd"
+checksum = "7449334f9ff2baf290d55d73983a7d6fa15e01198faef72af07e2a8db851e471"
 dependencies = [
  "flate2",
  "jpeg-decoder",

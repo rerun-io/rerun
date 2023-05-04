@@ -57,7 +57,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     // add::<re_log_types::component_types::Scalar>(&mut registry);
     // add::<re_log_types::component_types::ScalarPlotProps>(&mut registry);
     // add::<re_log_types::component_types::Size3D>(&mut registry);
-    // add::<re_log_types::component_types::Tensor>(&mut registry); // TODO:
+    add::<re_log_types::component_types::Tensor>(&mut registry);
     add::<re_log_types::component_types::TextEntry>(&mut registry);
     add::<re_log_types::component_types::Transform>(&mut registry);
     add::<re_log_types::component_types::Vec2D>(&mut registry);

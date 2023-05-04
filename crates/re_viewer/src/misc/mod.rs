@@ -10,13 +10,7 @@ mod transform_cache;
 pub mod instance_hash_conversions;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) use clipboard::Clipboard;
-
-#[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod profiler;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod clipboard;
 
 pub use mesh_cache::MeshCache;
 pub use time_control_ui::TimeControlUi;
