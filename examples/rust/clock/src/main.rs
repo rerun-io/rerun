@@ -29,8 +29,8 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     const LENGTH_M: f32 = 10.0;
     const LENGTH_H: f32 = 4.0;
     const WIDTH_S: f32 = 0.25;
-    const WIDTH_M: f32 = 0.5;
-    const WIDTH_H: f32 = 0.7;
+    const WIDTH_M: f32 = 0.4;
+    const WIDTH_H: f32 = 0.6;
 
     let view_coords = ViewCoordinates::from_up_and_handedness(
         SignedAxis3::POSITIVE_Y,
@@ -58,7 +58,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
 
     fn color(angle: f32, blue: u8) -> ColorRGBA {
         let c = (angle * 255.0) as u8;
-        ColorRGBA::from_unmultiplied_rgba(255 - c, c, blue, 128)
+        ColorRGBA::from_unmultiplied_rgba(255 - c, c, blue, u8::max(128, blue))
     }
 
     fn log_hand(
