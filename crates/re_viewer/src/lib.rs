@@ -186,6 +186,11 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
         .name("ui_waker".to_owned())
         .spawn(move || {
             while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
+                // TODO(filip): Improve this code to be more smart, maybe we have 100 legit messages and ui is in focus?
+                if tx.len() > 100 {
+                    re_log::trace!("Dropping messages: Most likely the app is not in focus!");
+                    continue
+                }
                 if tx.send_at(sent_at, msg).is_ok() {
                     ctx.request_repaint();
                 } else {
