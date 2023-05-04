@@ -1,7 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use egui::NumExt as _;
-
 use re_data_store::TimesPerTimeline;
 use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType, Timeline};
 
@@ -136,7 +134,7 @@ impl TimeControl {
                 });
             }
             PlayState::Playing => {
-                let dt = stable_dt.at_most(0.1) * self.speed;
+                let dt = stable_dt.min(0.1) * self.speed;
 
                 let state = self
                     .states
