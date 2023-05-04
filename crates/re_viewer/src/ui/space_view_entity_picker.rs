@@ -7,6 +7,7 @@ use re_viewer_context::SpaceViewId;
 use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
 
 use super::{
+    item_ui,
     view_category::{categorize_entity_path, ViewCategory},
     SpaceView,
 };
@@ -180,7 +181,8 @@ fn add_entities_line_ui(
             } else {
                 egui::RichText::new(name)
             };
-            let response = ctx.instance_path_button_to(
+            let response = item_ui::instance_path_button_to(
+                ctx,
                 ui,
                 space_view_id,
                 &InstancePath::entity_splat(entity_path.clone()),

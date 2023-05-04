@@ -1,6 +1,8 @@
 use re_data_store::{ComponentName, EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
 
+use crate::ui::item_ui;
+
 use super::DataUi;
 
 // We do NOT implement `DataUi` for just `ComponentWithInstances`
@@ -95,7 +97,8 @@ impl DataUi for EntityComponentWithInstances {
                             row.col(|ui| {
                                 let instance_path =
                                     InstancePath::instance(self.entity_path.clone(), instance_key);
-                                ctx.instance_path_button_to(
+                                item_ui::instance_path_button_to(
+                                    ctx,
                                     ui,
                                     None,
                                     &instance_path,

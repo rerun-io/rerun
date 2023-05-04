@@ -2,7 +2,10 @@ use re_log_types::{
     ArrowMsg, BeginRecordingMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo,
 };
 
-use crate::{misc::ViewerContext, ui::UiVerbosity};
+use crate::{
+    misc::ViewerContext,
+    ui::{item_ui, UiVerbosity},
+};
 
 use super::DataUi;
 
@@ -116,7 +119,7 @@ impl DataUi for ArrowMsg {
         for row in table.to_rows() {
             egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
                 ui.monospace("entity_path:");
-                ctx.entity_path_button(ui, None, row.entity_path());
+                item_ui::entity_path_button(ctx, ui, None, row.entity_path());
                 ui.end_row();
 
                 ui.monospace("time_point:");

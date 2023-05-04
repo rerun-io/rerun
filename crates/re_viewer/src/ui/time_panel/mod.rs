@@ -14,7 +14,7 @@ use re_viewer_context::Item;
 
 use crate::{TimeControl, TimeView, ViewerContext};
 
-use super::{data_ui::DataUi, selection_panel::what_is_selected_ui, Blueprint};
+use super::{data_ui::DataUi, item_ui, selection_panel::what_is_selected_ui, Blueprint};
 
 use time_axis::TimelineAxis;
 use time_ranges_ui::TimeRangesUi;
@@ -399,7 +399,7 @@ impl TimePanel {
                 default_open,
             )
             .show_header(ui, |ui| {
-                ctx.entity_path_button_to(ui, None, &tree.path, text)
+                item_ui::entity_path_button_to(ctx, ui, None, &tree.path, text)
             })
             .body(|ui| {
                 self.show_children(
@@ -504,7 +504,8 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        ctx.component_path_button_to(
+                        item_ui::component_path_button_to(
+                            ctx,
                             ui,
                             component_name.short_name(),
                             &component_path,

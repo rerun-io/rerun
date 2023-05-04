@@ -1,5 +1,5 @@
 [package]
-name = "api_demo"
+name = "clock"
 version = "0.6.0-alpha.0"
 edition = "2021"
 rust-version = "1.69"
@@ -12,7 +12,3 @@ rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 glam = "0.22"
-itertools = "0.10"
-ndarray = "0.15"
-ndarray-rand = "0.14"
-rand = "0.8"

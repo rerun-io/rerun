@@ -18,6 +18,8 @@ mod log_msg;
 
 pub(crate) use component_ui_registry::ComponentUiRegistry;
 
+use super::item_ui;
+
 /// Controls how mich space we use to show the data in [`DataUi`].
 #[derive(Clone, Copy, Debug)]
 pub enum UiVerbosity {
@@ -88,8 +90,8 @@ impl DataUi for TimePoint {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
                 for (timeline, value) in self.iter() {
-                    ctx.timeline_button_to(ui, format!("{}:", timeline.name()), timeline);
-                    ctx.time_button(ui, timeline, *value);
+                    item_ui::timeline_button_to(ctx, ui, format!("{}:", timeline.name()), timeline);
+                    item_ui::time_button(ctx, ui, timeline, *value);
                     ui.end_row();
                 }
             });
