@@ -1,6 +1,8 @@
 use re_data_store::log_db::LogDb;
 use re_viewer_context::{AppOptions, Item, ItemCollection, SelectionState};
 
+// TODO(andreas): Either viewer_context independent of these or move to re_viewer_context crate.
+use super::{Caches, TimeControl};
 use crate::ui::data_ui::ComponentUiRegistry;
 
 /// Common things needed by many parts of the viewer.
@@ -9,7 +11,7 @@ pub struct ViewerContext<'a> {
     pub app_options: &'a mut AppOptions,
 
     /// Things that need caching.
-    pub cache: &'a mut super::Caches,
+    pub cache: &'a mut Caches,
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
@@ -71,7 +73,7 @@ impl<'a> ViewerContext<'a> {
 #[serde(default)]
 pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
-    pub time_ctrl: crate::TimeControl,
+    pub time_ctrl: TimeControl,
 
     /// Selection & hovering state.
     pub selection_state: SelectionState,
