@@ -11,7 +11,7 @@ use re_log_types::{
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
-use crate::ui::data_ui::image::tensor_summary_ui_grid_contents;
+use crate::{misc::caches::TensorStatsCache, ui::data_ui::image::tensor_summary_ui_grid_contents};
 
 use super::dimension_mapping_ui;
 
@@ -78,7 +78,9 @@ impl ViewTensorState {
                     ctx.re_ui,
                     ui,
                     tensor,
-                    ctx.cache.tensor_stats(tensor),
+                    ctx.cache
+                        .get_or_insert::<TensorStatsCache>()
+                        .get_or_insert(tensor),
                 );
                 self.texture_settings.ui(ctx.re_ui, ui);
                 self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
@@ -182,7 +184,10 @@ fn paint_tensor_slice(
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     crate::profile_function!();
 
-    let tensor_stats = ctx.cache.tensor_stats(tensor);
+    let tensor_stats = ctx
+        .cache
+        .get_or_insert::<TensorStatsCache>()
+        .get_or_insert(tensor);
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
         ctx.render_ctx,
         tensor,

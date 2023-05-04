@@ -54,7 +54,7 @@ impl SceneTensor {
             if !tensor.is_shaped_like_an_image() {
                 match ctx
                     .cache
-                    .get_mut::<TensorDecodeCache>()
+                    .get_or_insert::<TensorDecodeCache>()
                     .try_decode_tensor_if_necessary(tensor)
                 {
                     Ok(tensor) => {

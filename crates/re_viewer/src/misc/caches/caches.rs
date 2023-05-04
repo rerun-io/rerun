@@ -1,52 +1,31 @@
-use std::any::Any;
-
 use ahash::HashMap;
-
-use re_log_types::component_types;
-
-use super::TensorStats;
+use std::any::Any;
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
-pub struct Caches {
-    tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
-
-    caches: HashMap<std::any::TypeId, Box<dyn Cache>>,
-}
+pub struct Caches(HashMap<std::any::TypeId, Box<dyn Cache>>);
 
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&mut self) {
-        for cache in self.caches.values_mut() {
+        for cache in self.0.values_mut() {
             cache.begin_frame();
         }
     }
 
     /// Attempt to free up memory.
     pub fn purge_memory(&mut self) {
-        let Self {
-            tensor_stats,
-            caches,
-        } = self;
-        tensor_stats.clear();
-
-        for cache in caches.values_mut() {
+        for cache in self.0.values_mut() {
             cache.purge_memory();
         }
-    }
-
-    pub fn tensor_stats(&mut self, tensor: &re_log_types::component_types::Tensor) -> &TensorStats {
-        self.tensor_stats
-            .entry(tensor.tensor_id)
-            .or_insert_with(|| TensorStats::new(tensor))
     }
 
     /// Retrieves a cache for reading and writing.
     ///
     /// Adds the cache lazily if it wasn't already there.
-    pub fn get_mut<T: Cache + Default>(&mut self) -> &mut T {
+    pub fn get_or_insert<T: Cache + Default>(&mut self) -> &mut T {
         let cache = self
-            .caches
+            .0
             .entry(std::any::TypeId::of::<T>())
             .or_insert(Box::<T>::default());
 

@@ -45,7 +45,7 @@ impl MeshPart {
 
                 if let Some(mesh) = ctx
                     .cache
-                    .get_mut::<MeshCache>()
+                    .get_or_insert::<MeshCache>()
                     .load(&ent_path.to_string(), &mesh, ctx.render_ctx)
                     .map(|cpu_mesh| MeshSource {
                         picking_instance_hash,

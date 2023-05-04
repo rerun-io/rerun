@@ -16,8 +16,8 @@ use re_renderer::{
 
 use crate::{
     misc::{
-        caches::TensorDecodeCache, SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache,
-        ViewerContext,
+        caches::{TensorDecodeCache, TensorStatsCache},
+        SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext,
     },
     ui::{
         scene::SceneQuery,
@@ -42,7 +42,10 @@ fn to_textured_rect(
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = ctx.cache.tensor_stats(tensor);
+    let tensor_stats = ctx
+        .cache
+        .get_or_insert::<TensorStatsCache>()
+        .get_or_insert(tensor);
 
     match crate::gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
@@ -191,7 +194,7 @@ impl ImagesPart {
 
             let tensor = match ctx
                 .cache
-                .get_mut::<TensorDecodeCache>()
+                .get_or_insert::<TensorDecodeCache>()
                 .try_decode_tensor_if_necessary(tensor)
             {
                 Ok(tensor) => tensor,
@@ -354,7 +357,12 @@ impl ImagesPart {
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
-        let max_data_value = if let Some((_min, max)) = ctx.cache.tensor_stats(tensor).range {
+        let max_data_value = if let Some((_min, max)) = ctx
+            .cache
+            .get_or_insert::<TensorStatsCache>()
+            .get_or_insert(tensor)
+            .range
+        {
             max as f32
         } else {
             // This could only happen for Jpegs, and we should never get here.

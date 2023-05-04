@@ -10,7 +10,7 @@ use re_ui::ReUi;
 
 use crate::{
     misc::{
-        caches::{TensorDecodeCache, TensorStats},
+        caches::{TensorDecodeCache, TensorStats, TensorStatsCache},
         ViewerContext,
     },
     ui::annotations::AnnotationMap,
@@ -37,7 +37,7 @@ impl EntityDataUi for Tensor {
 
         match ctx
             .cache
-            .get_mut::<TensorDecodeCache>()
+            .get_or_insert::<TensorDecodeCache>()
             .try_decode_tensor_if_necessary(self.clone())
         {
             Ok(decoded) => {
@@ -61,7 +61,10 @@ fn tensor_ui(
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
-    let tensor_stats = *ctx.cache.tensor_stats(tensor);
+    let tensor_stats = *ctx
+        .cache
+        .get_or_insert::<TensorStatsCache>()
+        .get_or_insert(tensor);
     let annotations = annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
     let texture_result = crate::gpu_bridge::tensor_to_gpu(

@@ -10,8 +10,9 @@ use re_viewer_context::{HoverHighlight, HoveredSpace, Item, SelectionHighlight, 
 
 use crate::{
     misc::{
-        caches::TensorDecodeCache, space_info::query_view_coordinates, SpaceViewHighlights,
-        ViewerContext,
+        caches::{TensorDecodeCache, TensorStatsCache},
+        space_info::query_view_coordinates,
+        SpaceViewHighlights, ViewerContext,
     },
     ui::{
         data_blueprint::DataBlueprintTree,
@@ -831,14 +832,14 @@ pub fn picking(
                                 let tensor_name = instance_path.to_string();
 
                                 match ctx.cache
-                                        .get_mut::<TensorDecodeCache>()
+                                        .get_or_insert::<TensorDecodeCache>()
                                         .try_decode_tensor_if_necessary(tensor) {
                                     Ok(decoded_tensor) =>
                                         data_ui::image::show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
                                             &decoded_tensor,
-                                            ctx.cache.tensor_stats(&decoded_tensor),
+                                            ctx.cache.get_or_insert::<TensorStatsCache>().get_or_insert(&decoded_tensor),
                                             &scene.annotation_map.find(&instance_path.entity_path),
                                             decoded_tensor.meter,
                                             &tensor_name,
