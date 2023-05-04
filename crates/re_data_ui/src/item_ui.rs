@@ -1,4 +1,6 @@
 //! Basic ui elements & interaction for most `re_viewer_context::Item`.
+//!
+//! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
@@ -7,7 +9,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use super::{data_ui::DataUi, selection_panel::select_hovered_on_click};
+use super::DataUi;
 
 // TODO(andreas): This is where we want to go, but we need to figure out how get the `SpaceViewCategory` from the `SpaceViewId`.
 // Simply pass in optional icons?
@@ -122,37 +124,6 @@ pub fn component_path_button_to(
     cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
 }
 
-pub fn space_view_button(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    space_view: &crate::ui::SpaceView,
-) -> egui::Response {
-    space_view_button_to(
-        ctx,
-        ui,
-        space_view.display_name.clone(),
-        space_view.id,
-        space_view.category,
-    )
-}
-
-pub fn space_view_button_to(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    space_view_id: SpaceViewId,
-    space_view_category: crate::ui::ViewCategory,
-) -> egui::Response {
-    let item = Item::SpaceView(space_view_id);
-    let is_selected = ctx.selection().contains(&item);
-
-    let response = ctx
-        .re_ui
-        .selectable_label_with_icon(ui, space_view_category.icon(), text, is_selected)
-        .on_hover_text("Space View");
-    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
-}
-
 pub fn data_blueprint_group_button_to(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -238,7 +209,7 @@ pub fn timeline_button_to(
     response
 }
 
-fn cursor_interact_with_selectable(
+pub fn cursor_interact_with_selectable(
     selection_state: &mut SelectionState,
     response: egui::Response,
     item: Item,
@@ -248,8 +219,13 @@ fn cursor_interact_with_selectable(
 
     if response.hovered() {
         selection_state.set_hovered(std::iter::once(item));
+    } else if response.clicked() {
+        if response.ctx.input(|i| i.modifiers.command) {
+            selection_state.toggle_selection(selection_state.hovered().to_vec());
+        } else {
+            selection_state.set_multi_selection(selection_state.hovered().clone().into_iter());
+        }
     }
-    select_hovered_on_click(selection_state, &response);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {

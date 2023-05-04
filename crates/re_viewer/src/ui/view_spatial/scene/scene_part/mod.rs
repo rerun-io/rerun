@@ -30,12 +30,12 @@ use super::SceneSpatial;
 use crate::{
     misc::{SpaceViewHighlights, TransformCache},
     ui::{
-        annotations::ResolvedAnnotationInfo, scene::SceneQuery, view_spatial::scene::Keypoints,
-        Annotations, DefaultColor,
+        annotations::ResolvedAnnotationInfo, view_spatial::scene::Keypoints, Annotations,
+        DefaultColor,
     },
 };
 use re_data_store::{EntityPath, InstancePathHash};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SceneQuery, ViewerContext};
 
 pub trait ScenePart {
     fn load(

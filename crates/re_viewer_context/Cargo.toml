@@ -24,6 +24,8 @@ re_renderer.workspace = true
 re_ui.workspace = true
 
 ahash.workspace = true
+anyhow.workspace = true
+bytemuck.workspace = true
 egui.workspace = true
 glam.workspace = true
 itertools.workspace = true

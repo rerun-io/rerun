@@ -191,7 +191,7 @@ impl SpaceView {
             return;
         }
 
-        let query = crate::ui::scene::SceneQuery {
+        let query = re_viewer_context::SceneQuery {
             entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
@@ -417,5 +417,42 @@ impl ViewState {
                 view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
             });
         });
+    }
+}
+
+// TODO(andreas): This should be part of re_data_ui::item_ui.
+pub mod item_ui {
+    use re_data_ui::item_ui;
+    use re_viewer_context::{Item, SpaceViewId, ViewerContext};
+
+    pub fn space_view_button(
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        space_view: &crate::ui::SpaceView,
+    ) -> egui::Response {
+        space_view_button_to(
+            ctx,
+            ui,
+            space_view.display_name.clone(),
+            space_view.id,
+            space_view.category,
+        )
+    }
+
+    pub fn space_view_button_to(
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        space_view_id: SpaceViewId,
+        space_view_category: crate::ui::ViewCategory,
+    ) -> egui::Response {
+        let item = Item::SpaceView(space_view_id);
+        let is_selected = ctx.selection().contains(&item);
+
+        let response = ctx
+            .re_ui
+            .selectable_label_with_icon(ui, space_view_category.icon(), text, is_selected)
+            .on_hover_text("Space View");
+        item_ui::cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
     }
 }

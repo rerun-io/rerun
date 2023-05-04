@@ -3,6 +3,7 @@ use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
+use re_data_ui::{item_ui, DataUi};
 use re_format::format_f32;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
@@ -18,9 +19,7 @@ use crate::{
     },
     ui::{
         data_blueprint::DataBlueprintTree,
-        data_ui::{self, DataUi},
-        item_ui,
-        selection_panel::select_hovered_on_click,
+        image::{show_zoomed_image_region, show_zoomed_image_region_area_outline},
         space_view::ScreenshotMode,
         view_spatial::UiLabelTarget,
     },
@@ -823,7 +822,7 @@ pub fn picking(
                                         egui::Pos2::ZERO,
                                         egui::vec2(w, h),
                                     );
-                                    data_ui::image::show_zoomed_image_region_area_outline(
+                                    show_zoomed_image_region_area_outline(
                                         ui,
                                         &tensor,
                                         [coords[0] as _, coords[1] as _],
@@ -837,7 +836,7 @@ pub fn picking(
                                         .entry::<TensorDecodeCache>()
                                         .entry(tensor) {
                                     Ok(decoded_tensor) =>
-                                        data_ui::image::show_zoomed_image_region(
+                                        show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
                                             &decoded_tensor,
@@ -864,7 +863,15 @@ pub fn picking(
         };
     }
 
-    select_hovered_on_click(ctx.selection_state_mut(), &response);
+    if response.clicked() {
+        let hovered = ctx.hovered().clone();
+        if response.ctx.input(|i| i.modifiers.command) {
+            ctx.selection_state_mut().toggle_selection(hovered.to_vec());
+        } else {
+            ctx.selection_state_mut()
+                .set_multi_selection(hovered.into_iter());
+        }
+    }
     ctx.set_hovered(hovered_items.into_iter());
 
     let hovered_space = match state.nav_mode.get() {

@@ -4,7 +4,7 @@ use re_query::{get_component_with_instances, QueryError};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
-use crate::ui::item_ui;
+use crate::item_ui;
 
 const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.instance_key"];
 const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &[];

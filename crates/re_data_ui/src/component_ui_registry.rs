@@ -57,7 +57,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     // add::<re_log_types::component_types::Scalar>(&mut registry);
     // add::<re_log_types::component_types::ScalarPlotProps>(&mut registry);
     // add::<re_log_types::component_types::Size3D>(&mut registry);
-    add::<re_log_types::component_types::Tensor>(&mut registry);
+    // add::<re_log_types::component_types::Tensor>(&mut registry); // TODO:
     add::<re_log_types::component_types::TextEntry>(&mut registry);
     add::<re_log_types::component_types::Transform>(&mut registry);
     add::<re_log_types::component_types::Vec2D>(&mut registry);
@@ -103,7 +103,7 @@ impl DataUi for re_log_types::component_types::TextEntry {
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        use crate::ui::view_text::level_to_rich_text;
+        use re_viewer_context::level_to_rich_text;
 
         let Self { body, level } = self;
 

@@ -12,7 +12,7 @@ use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_viewer_context::ViewerContext;
 
-use crate::{misc::caches::TensorStatsCache, ui::data_ui::image::tensor_summary_ui_grid_contents};
+use crate::{misc::caches::TensorStatsCache, ui::image::tensor_summary_ui_grid_contents};
 
 use super::dimension_mapping_ui;
 

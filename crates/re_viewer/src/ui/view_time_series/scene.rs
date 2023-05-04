@@ -4,9 +4,9 @@ use re_log_types::{
     Component,
 };
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SceneQuery, ViewerContext};
 
-use crate::ui::{annotations::AnnotationMap, DefaultColor, SceneQuery};
+use crate::ui::{annotations::AnnotationMap, DefaultColor};
 
 // ---
 

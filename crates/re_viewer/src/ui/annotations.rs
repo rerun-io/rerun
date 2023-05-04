@@ -11,9 +11,7 @@ use re_log_types::{
     AnnotationContext, RowId,
 };
 use re_query::query_entity_with_primary;
-use re_viewer_context::ViewerContext;
-
-use crate::ui::scene::SceneQuery;
+use re_viewer_context::{auto_color, SceneQuery, ViewerContext};
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
@@ -217,12 +215,4 @@ lazy_static! {
             context: Default::default(),
         })
     };
-}
-
-// default colors
-// Borrowed from `egui::PlotUi`
-pub fn auto_color(val: u16) -> re_renderer::Color32 {
-    let golden_ratio = (5.0_f32.sqrt() - 1.0) / 2.0; // 0.61803398875
-    let h = val as f32 * golden_ratio;
-    egui::Color32::from(egui::ecolor::Hsva::new(h, 0.85, 0.5, 1.0))
 }

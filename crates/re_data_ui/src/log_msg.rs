@@ -4,7 +4,7 @@ use re_log_types::{
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
-use crate::ui::item_ui;
+use crate::item_ui;
 
 impl DataUi for LogMsg {
     fn data_ui(

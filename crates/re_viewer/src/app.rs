@@ -132,7 +132,7 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
             text_log_rx,
-            component_ui_registry: crate::ui::data_ui::create_component_ui_registry(),
+            component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
             log_dbs: Default::default(),
             state,

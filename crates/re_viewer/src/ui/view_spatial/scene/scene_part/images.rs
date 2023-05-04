@@ -13,7 +13,7 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     Colormap, OutlineMaskPreference,
 };
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SceneQuery, ViewerContext};
 
 use crate::{
     misc::{
@@ -21,7 +21,6 @@ use crate::{
         SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache,
     },
     ui::{
-        scene::SceneQuery,
         view_spatial::{Image, SceneSpatial},
         Annotations, DefaultColor,
     },

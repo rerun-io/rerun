@@ -1,15 +1,15 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
+use re_data_ui::EntityDataUi;
 use re_log_types::{
     component_types::{ClassId, Tensor, TensorDataMeaning},
     DecodedTensor, TensorElement,
 };
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{SceneQuery, UiVerbosity, ViewerContext};
 
-use super::EntityDataUi;
 use crate::{
     misc::caches::{TensorDecodeCache, TensorStats, TensorStatsCache},
     ui::annotations::AnnotationMap,
@@ -21,27 +21,28 @@ pub fn format_tensor_shape_single_line(
     format!("[{}]", shape.iter().join(", "))
 }
 
-impl EntityDataUi for Tensor {
-    fn entity_data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        entity_path: &re_log_types::EntityPath,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        crate::profile_function!();
+// TODO:
+// impl EntityDataUi for Tensor {
+//     fn entity_data_ui(
+//         &self,
+//         ctx: &mut ViewerContext<'_>,
+//         ui: &mut egui::Ui,
+//         verbosity: UiVerbosity,
+//         entity_path: &re_log_types::EntityPath,
+//         query: &re_arrow_store::LatestAtQuery,
+//     ) {
+//         crate::profile_function!();
 
-        match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
-            Ok(decoded) => {
-                tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
-            }
-            Err(err) => {
-                ui.label(ctx.re_ui.error_text(err.to_string()));
-            }
-        }
-    }
-}
+//         match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
+//             Ok(decoded) => {
+//                 tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
+//             }
+//             Err(err) => {
+//                 ui.label(ctx.re_ui.error_text(err.to_string()));
+//             }
+//         }
+//     }
+// }
 
 fn tensor_ui(
     ctx: &mut ViewerContext<'_>,
@@ -170,7 +171,7 @@ fn annotations(
     let mut annotation_map = AnnotationMap::default();
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
-    let scene_query = crate::ui::scene::SceneQuery {
+    let scene_query = SceneQuery {
         entity_paths: &entity_paths,
         timeline: query.timeline,
         latest_at: query.at,

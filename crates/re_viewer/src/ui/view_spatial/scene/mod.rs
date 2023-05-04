@@ -3,19 +3,17 @@ use std::sync::Arc;
 use ahash::HashMap;
 
 use re_data_store::{EntityPath, InstancePathHash};
+use re_data_ui::DataUi;
 use re_log_types::{
     component_types::{ClassId, InstanceKey, KeypointId},
     DecodedTensor,
 };
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{auto_color, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache},
-    ui::{
-        annotations::{auto_color, AnnotationMap},
-        Annotations, SceneQuery,
-    },
+    ui::{annotations::AnnotationMap, Annotations},
 };
 
 use super::{SpaceCamera3D, SpatialNavigationMode};

@@ -3,16 +3,17 @@ use egui::NumExt as _;
 use re_data_store::{
     query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
 };
+use re_data_ui::{item_ui, DataUi};
 use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
     TimeType, Transform,
 };
-use re_viewer_context::{Item, SelectionState, SpaceViewId, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 
 use crate::ui::Blueprint;
 
 use super::{
-    data_ui::DataUi, item_ui, selection_history_ui::SelectionHistoryUi, space_view::ViewState,
+    selection_history_ui::SelectionHistoryUi, space_view::ViewState,
     view_spatial::SpatialNavigationMode,
 };
 
@@ -176,7 +177,7 @@ pub fn what_is_selected_ui(
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                         ui.label("in Space View:");
-                        item_ui::space_view_button(ctx, ui, space_view);
+                        super::item_ui::space_view_button(ctx, ui, space_view);
                         ui.end_row();
                     }
                 }
@@ -202,7 +203,7 @@ pub fn what_is_selected_ui(
                             ui.end_row();
 
                             ui.label("in Space View:");
-                            item_ui::space_view_button_to(
+                            super::item_ui::space_view_button_to(
                                 ctx,
                                 ui,
                                 space_view.display_name.clone(),
@@ -212,30 +213,6 @@ pub fn what_is_selected_ui(
                             ui.end_row();
                         });
                 }
-            }
-        }
-    }
-}
-
-impl DataUi for Item {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
-                // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
-                // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
-                debug_assert!(!has_data_section(self));
-            }
-            Item::ComponentPath(component_path) => {
-                component_path.data_ui(ctx, ui, verbosity, query);
-            }
-            Item::InstancePath(_, instance_path) => {
-                instance_path.data_ui(ctx, ui, verbosity, query);
             }
         }
     }
@@ -575,16 +552,4 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
         *property = EditableAutoValue::UserEdited(value);
     }
     ui.end_row();
-}
-
-/// Selects (or toggles selection if modifier is pressed) currently hovered elements on click.
-pub fn select_hovered_on_click(selection_state: &mut SelectionState, response: &egui::Response) {
-    if response.clicked() {
-        let hovered = selection_state.hovered().clone();
-        if response.ctx.input(|i| i.modifiers.command) {
-            selection_state.toggle_selection(hovered.to_vec());
-        } else {
-            selection_state.set_multi_selection(hovered.into_iter());
-        }
-    }
 }
