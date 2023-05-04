@@ -167,7 +167,7 @@ pub fn __populate_example_store() -> DataStore {
     let instances = vec![InstanceKey(42), InstanceKey(96)];
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
 
-    let row = DataRow::from_cells2(
+    let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
         timepoint,
@@ -179,7 +179,7 @@ pub fn __populate_example_store() -> DataStore {
     let instances = vec![InstanceKey(96)];
     let colors = vec![ColorRGBA(0xff000000)];
 
-    let row = DataRow::from_cells2(
+    let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
         timepoint,
