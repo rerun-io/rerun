@@ -51,7 +51,7 @@
     ],
     // don't share a cargo lock with rust-analyzer.
     // see https://github.com/rerun-io/rerun/pull/519 for rationale
-    "rust-analyzer.checkOnSave.overrideCommand": [
+    "rust-analyzer.check.overrideCommand": [
         "cargo",
         "cranky",
         "--target-dir=target_ra",
@@ -74,6 +74,9 @@
     // Having Rust Analyzer do this while doing other builds can lead to catastrophic failures.
     // INCLUDING attempts to publish a new release!
     "rust-analyzer.cargo.buildScripts.enable": false,
+    "rust-analyzer.cargo.extraEnv": {
+        "IS_IN_RERUN_WORKSPACE": "yes"
+    },
     "python.analysis.extraPaths": [
         "rerun_py/rerun_sdk"
     ],

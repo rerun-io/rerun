@@ -50,6 +50,7 @@ impl Lines3DPart {
                 .add_strip(strip.0.into_iter().map(|v| v.into()))
                 .radius(radius)
                 .color(color)
+                .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view,

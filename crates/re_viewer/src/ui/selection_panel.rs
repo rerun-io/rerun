@@ -6,8 +6,9 @@ use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
     TimeType, Transform,
 };
+use re_viewer_context::{Item, SpaceViewId};
 
-use crate::{ui::Blueprint, Item, UiVerbosity, ViewerContext};
+use crate::{ui::Blueprint, UiVerbosity, ViewerContext};
 
 use super::{
     data_ui::DataUi, selection_history_ui::SelectionHistoryUi, space_view::ViewState,
@@ -267,7 +268,7 @@ fn blueprint_ui(
                 {
                     if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
                         let mut new_space_view = space_view.clone();
-                        new_space_view.id = super::SpaceViewId::random();
+                        new_space_view.id = SpaceViewId::random();
                         blueprint.viewport.add_space_view(new_space_view);
                         blueprint.viewport.mark_user_interaction();
                     }

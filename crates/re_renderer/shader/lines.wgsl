@@ -37,14 +37,14 @@ const LINE_STRIP_TEXTURE_SIZE: u32 = 256u;
 
 // Flags
 // See lines.rs#LineStripFlags
-const CAP_END_TRIANGLE: u32 = 1u;
-const CAP_END_ROUND: u32 = 2u;
-const CAP_END_EXTEND_OUTWARDS: u32 = 4u;
-const CAP_START_TRIANGLE: u32 = 8u;
-const CAP_START_ROUND: u32 = 16u;
-const CAP_START_EXTEND_OUTWARDS: u32 = 32u;
-const NO_COLOR_GRADIENT: u32 = 64u;
-const FORCE_ORTHO_SPANNING: u32 = 128u;
+const FLAG_CAP_END_TRIANGLE: u32 = 1u;
+const FLAG_CAP_END_ROUND: u32 = 2u;
+const FLAG_CAP_END_EXTEND_OUTWARDS: u32 = 4u;
+const FLAG_CAP_START_TRIANGLE: u32 = 8u;
+const FLAG_CAP_START_ROUND: u32 = 16u;
+const FLAG_CAP_START_EXTEND_OUTWARDS: u32 = 32u;
+const FLAG_COLOR_GRADIENT: u32 = 64u;
+const FLAG_FORCE_ORTHO_SPANNING: u32 = 128u;
 
 // A lot of the attributes don't need to be interpolated across triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)
@@ -182,8 +182,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Compute quad_dir & correct center_position for triangle caps.
     var quad_dir: Vec3;
     var is_at_pointy_end = false;
-    let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND);
-    let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND);
+    let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE | FLAG_CAP_END_ROUND);
+    let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE | FLAG_CAP_START_ROUND);
     if is_end_cap_triangle {
         is_at_pointy_end = is_at_quad_end;
         quad_dir = pos_data_quad_begin.pos - pos_data_quad_before.pos; // Go one pos data back.
@@ -201,7 +201,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Resolve radius.
     // (slight inaccuracy: End caps are going to adjust their center_position)
     var camera_ray: Ray;
-    if has_any_flag(strip_data.flags, FORCE_ORTHO_SPANNING) || is_camera_orthographic() {
+    if has_any_flag(strip_data.flags, FLAG_FORCE_ORTHO_SPANNING) || is_camera_orthographic() {
         camera_ray = camera_ray_to_world_pos_orthographic(center_position);
     } else {
         camera_ray = camera_ray_to_world_pos_perspective(center_position);
@@ -210,18 +210,18 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines);
 
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
-    if !has_any_flag(strip_data.flags, CAP_END_EXTEND_OUTWARDS) &&
+    if !has_any_flag(strip_data.flags, FLAG_CAP_END_EXTEND_OUTWARDS) &&
         (is_end_cap_triangle || (is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index)) {
         var cap_length =
-            f32(has_any_flag(strip_data.flags, CAP_END_ROUND)) +
-            f32(has_any_flag(strip_data.flags, CAP_END_TRIANGLE)) * 4.0;
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)) +
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * 4.0;
         center_position -= quad_dir * (cap_length * strip_radius);
     }
-    if !has_any_flag(strip_data.flags, CAP_START_EXTEND_OUTWARDS) &&
+    if !has_any_flag(strip_data.flags, FLAG_CAP_START_EXTEND_OUTWARDS) &&
         (is_start_cap_triangle || (!is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index)) {
         var cap_length =
-            f32(has_any_flag(strip_data.flags, CAP_START_ROUND)) +
-            f32(has_any_flag(strip_data.flags, CAP_START_TRIANGLE)) * 4.0;
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND)) +
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) * 4.0;
         center_position += quad_dir * (cap_length * strip_radius);
     }
 
@@ -238,8 +238,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     var active_radius = strip_radius;
     // If this is a triangle cap, we blow up our ("virtual") quad by twice the size.
-    if (is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE)) ||
-       (is_start_cap_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE)) {
+    if (is_end_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) ||
+       (is_start_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) {
         active_radius *= 2.0;
     }
 
@@ -269,7 +269,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.color = strip_data.color;
     out.active_radius = active_radius;
     out.fragment_flags = strip_data.flags &
-                    (NO_COLOR_GRADIENT | (u32(is_cap_triangle) * select(CAP_START_ROUND, CAP_END_ROUND, is_right_triangle)));
+                    (FLAG_COLOR_GRADIENT | (u32(is_cap_triangle) * select(FLAG_CAP_START_ROUND, FLAG_CAP_END_ROUND, is_right_triangle)));
     out.picking_instance_id = strip_data.picking_instance_id;
 
     return out;
@@ -277,7 +277,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 fn compute_coverage(in: VertexOut) -> f32 {
     var coverage = 1.0;
-    if has_any_flag(in.fragment_flags, CAP_START_ROUND | CAP_END_ROUND) {
+    if has_any_flag(in.fragment_flags, FLAG_CAP_START_ROUND | FLAG_CAP_END_ROUND) {
         let distance_to_skeleton = length(in.position_world - in.round_cap_circle_center);
         let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
 
@@ -299,7 +299,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // TODO(andreas): lighting setup
     var shading = 1.0;
-    if !has_any_flag(in.fragment_flags, NO_COLOR_GRADIENT) { // TODO(andreas): Flip flag meaning.
+    if has_any_flag(in.fragment_flags, FLAG_COLOR_GRADIENT) {
         let to_center = in.position_world - in.center_position;
         let relative_distance_to_center_sq = dot(to_center, to_center) / (in.active_radius * in.active_radius);
         shading = max(0.2, 1.0 - relative_distance_to_center_sq) * 0.9;

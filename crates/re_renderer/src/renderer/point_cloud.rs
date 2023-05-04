@@ -48,10 +48,10 @@ bitflags! {
     #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PointCloudBatchFlags : u32 {
         /// If true, we shade all points in the batch like spheres.
-        const ENABLE_SHADING = 0b0001;
+        const FLAG_ENABLE_SHADING = 0b0001;
 
         /// If true, draw 2D camera facing circles instead of spheres.
-        const DRAW_AS_CIRCLES = 0b0010;
+        const FLAG_DRAW_AS_CIRCLES = 0b0010;
     }
 }
 

@@ -64,7 +64,7 @@ impl PointCloudBuilder {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
             world_from_obj: glam::Affine3A::IDENTITY,
-            flags: PointCloudBatchFlags::ENABLE_SHADING,
+            flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
             point_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
@@ -244,7 +244,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             colors,
             picking_instance_ids,
         )
-        .flags(PointCloudBatchFlags::DRAW_AS_CIRCLES)
+        .flags(PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES)
     }
 
     /// Adds (!) flags for this batch.

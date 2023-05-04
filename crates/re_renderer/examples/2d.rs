@@ -103,14 +103,14 @@ impl framework::Example for Render2D {
             let mut line_batch = line_strip_builder.batch("line cap variations");
             for (i, flags) in [
                 LineStripFlags::empty(),
-                LineStripFlags::CAP_START_ROUND,
-                LineStripFlags::CAP_END_ROUND,
-                LineStripFlags::CAP_START_TRIANGLE,
-                LineStripFlags::CAP_END_TRIANGLE,
-                LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_ROUND,
-                LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_TRIANGLE,
-                LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_ROUND,
-                LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_TRIANGLE,
+                LineStripFlags::FLAG_CAP_START_ROUND,
+                LineStripFlags::FLAG_CAP_END_ROUND,
+                LineStripFlags::FLAG_CAP_START_TRIANGLE,
+                LineStripFlags::FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::FLAG_CAP_START_ROUND | LineStripFlags::FLAG_CAP_END_ROUND,
+                LineStripFlags::FLAG_CAP_START_ROUND | LineStripFlags::FLAG_CAP_END_TRIANGLE,
+                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_ROUND,
+                LineStripFlags::FLAG_CAP_START_TRIANGLE | LineStripFlags::FLAG_CAP_END_TRIANGLE,
             ]
             .iter()
             .enumerate()
@@ -119,7 +119,7 @@ impl framework::Example for Render2D {
                 line_batch
                     .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
                     .radius(Size::new_scene(15.0))
-                    .flags(*flags);
+                    .flags(*flags | LineStripFlags::FLAG_COLOR_GRADIENT);
             }
         }
 
