@@ -64,7 +64,8 @@ fn insert(c: &mut Criterion) {
             (NUM_INSTANCES * NUM_ROWS) as _,
         ));
 
-        let table = build_table(NUM_INSTANCES as usize, packed);
+        let mut table = build_table(NUM_INSTANCES as usize, packed);
+        table.compute_all_size_bytes();
 
         // Default config
         group.bench_function("default", |b| {

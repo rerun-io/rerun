@@ -1317,7 +1317,7 @@ fn data_table_sizes_unions() {
         );
         assert_eq!(num_bytes, table.heap_size_bytes());
 
-        let err_margin = (num_bytes as f64 * 0.05) as u64;
+        let err_margin = (num_bytes as f64 * 0.01) as u64;
         let num_bytes_min = num_bytes;
         let num_bytes_max = num_bytes + err_margin;
 
@@ -1359,7 +1359,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        27_250_064, // expected_num_bytes
+        27_230_064, // expected_num_bytes
     );
 
     // dense union (varying)

@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use arrow2::datatypes::{DataType, Field};
+use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 // ---
@@ -291,6 +292,7 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
         LargeBinary => dyn_binary!(array, BinaryArray<i64>, i64),
         Utf8 => dyn_binary!(array, Utf8Array<i32>, i32),
         LargeUtf8 => dyn_binary!(array, Utf8Array<i64>, i64),
+        // NOTE: Diverges from upstream.
         List | LargeList => {
             let array = array.as_any().downcast_ref::<ListArray<i32>>().unwrap();
 
@@ -320,6 +322,7 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 .sum::<usize>()
                 + validity_size(array.validity())
         }
+        // NOTE: Diverges from upstream.
         Union => {
             let array = array.as_any().downcast_ref::<UnionArray>().unwrap();
 
@@ -349,14 +352,25 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 }
 
                 let fields = array.fields();
-                let values_start = offsets[0] as usize;
-                let values_end = offsets[offsets.len() - 1] as usize;
-                array
-                    .types()
-                    .iter()
-                    .copied()
-                    .map(|ty| {
-                        fields.get(ty as usize).map_or(0, |x| {
+                let types: IntSet<_> = array.types().iter().copied().collect();
+                types
+                    .into_iter()
+                    .map(|cur_ty| {
+                        let mut indices = array
+                            .types()
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(idx, &ty)| (ty == cur_ty).then_some(idx));
+
+                        let idx_start = indices.next().unwrap_or_default();
+                        let mut idx_end = idx_start;
+                        for idx in indices {
+                            idx_end = idx;
+                        }
+
+                        let values_start = offsets[idx_start] as usize;
+                        let values_end = offsets[idx_end] as usize;
+                        fields.get(cur_ty as usize).map_or(0, |x| {
                             estimated_bytes_size(
                                 x.slice(values_start, values_end - values_start).as_ref(),
                             )
