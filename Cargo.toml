@@ -84,6 +84,7 @@ polars-core = "0.27.1"
 polars-lazy = "0.27.1"
 polars-ops = "0.27.1"
 puffin = "0.14"
+slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 thiserror = "1.0"
 time = { version = "0.3", default-features = false, features = [
@@ -93,7 +94,6 @@ tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
 wgpu = { version = "0.16" }
 wgpu-core = { version = "0.16" }
-slotmap = { version = "1.0.6", features = ["serde"] }
 
 
 [profile.dev]
