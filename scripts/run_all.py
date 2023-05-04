@@ -52,9 +52,12 @@ def run_build() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Runs all examples.")
     parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK")
-    subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser("web", help="Run all examples in a web viewer.")
-    subparsers.add_parser("save", help="Run all examples, save them to disk as rrd, then view them natively.")
+    parser.add_argument("--web", action="store_true", help="Run all examples in a web viewer.")
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Run all examples, save them to disk as rrd, then view them natively.",
+    )
 
     args = parser.parse_args()
 
@@ -63,12 +66,12 @@ def main() -> None:
     if not args.skip_build:
         run_build()
 
-    if args.command == "web":
+    if args.web:
         viewer = start_viewer(["--web-viewer"])
         for example in examples:
             run_py_example(example, ["--connect"])
         viewer.kill()
-    elif args.command == "save":
+    elif args.save:
         viewer = start_viewer()
         for example in examples:
             run_py_example(example, ["--save", "out.rrd"])
