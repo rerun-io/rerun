@@ -1,6 +1,6 @@
-use ahash::HashMapExt;
+use std::collections::BTreeMap;
+
 use arrow2::Either;
-use nohash_hasher::IntMap;
 use re_log_types::{
     DataCellColumn, DataTable, ErasedTimeVec, RowIdVec, TableId, TimeRange, Timeline,
 };
@@ -51,7 +51,7 @@ impl DataStore {
                     .take(table.num_rows() as _)
                     .collect(),
                 col_num_instances: col_num_instances.clone(),
-                columns: columns.clone(), // shallow
+                columns: columns.clone().into_iter().collect(), // shallow
             }
         })
     }
@@ -92,7 +92,7 @@ impl DataStore {
                         .take(col_row_id.len())
                         .collect(),
                     col_num_instances: col_num_instances.clone(),
-                    columns: columns.clone(), // shallow
+                    columns: columns.clone().into_iter().collect(), // shallow
                 }
             })
         })
@@ -163,7 +163,7 @@ impl DataStore {
                     let col_num_instances =
                         filter_column(col_time, col_num_instances.iter(), time_filter).collect();
 
-                    let mut columns2 = IntMap::with_capacity(columns.len());
+                    let mut columns2 = BTreeMap::default();
                     for (component, column) in columns {
                         let column = filter_column(col_time, column.iter(), time_filter).collect();
                         columns2.insert(*component, DataCellColumn(column));

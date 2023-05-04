@@ -134,7 +134,7 @@ pub struct DataCellInner {
 }
 
 // TODO(cmc): We should be able to build a cell from non-reference types.
-// TODO(#1619): We shouldn't have to specify the component name separately, this should be
+// TODO(#1696): We shouldn't have to specify the component name separately, this should be
 // part of the metadata by using an extension.
 // TODO(#1696): Check that the array is indeed a leaf / component type when building a cell from an
 // arrow payload.
@@ -533,6 +533,9 @@ impl DataCell {
             inner.compute_size_bytes();
             return true;
         }
+
+        re_log::error_once!("cell size could _not_ be computed");
+
         false
     }
 }

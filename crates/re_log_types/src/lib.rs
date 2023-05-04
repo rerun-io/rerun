@@ -195,18 +195,6 @@ pub enum LogMsg {
 }
 
 impl LogMsg {
-    pub fn id(&self) -> RowId {
-        match self {
-            Self::BeginRecordingMsg(msg) => msg.row_id,
-            Self::EntityPathOpMsg(_, msg) => msg.row_id,
-            Self::Goodbye(row_id) => *row_id,
-            // TODO(#1619): the following only makes sense because, while we support sending and
-            // receiving batches, we don't actually do so yet.
-            // We need to stop storing raw `LogMsg`s before we can benefit from our batching.
-            Self::ArrowMsg(_, msg) => msg.table_id.into_row_id(),
-        }
-    }
-
     pub fn recording_id(&self) -> Option<&RecordingId> {
         match self {
             Self::BeginRecordingMsg(msg) => Some(&msg.info.recording_id),

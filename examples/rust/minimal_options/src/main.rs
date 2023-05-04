@@ -7,7 +7,7 @@
 
 use rerun::components::{ColorRGBA, Point3D};
 use rerun::time::{TimeType, Timeline};
-use rerun::{external::re_log, MsgSender, Session};
+use rerun::{external::re_log, MsgSender, RecordingStream};
 
 use rerun::demo_util::grid;
 
@@ -24,7 +24,7 @@ struct Args {
     radius: f32,
 }
 
-fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
+fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     let timeline_keyframe = Timeline::new("keyframe", TimeType::Sequence);
 
     let points = grid(
@@ -46,7 +46,7 @@ fn run(session: &Session, args: &Args) -> anyhow::Result<()> {
         .with_component(&points)?
         .with_component(&colors)?
         .with_time(timeline_keyframe, 0)
-        .send(session)?;
+        .send(rec_stream)?;
 
     Ok(())
 }
@@ -60,7 +60,7 @@ fn main() -> anyhow::Result<()> {
     let default_enabled = true;
     args.rerun
         .clone()
-        .run("minimal_options", default_enabled, move |session| {
-            run(&session, &args).unwrap();
+        .run("minimal_options", default_enabled, move |rec_stream| {
+            run(&rec_stream, &args).unwrap();
         })
 }

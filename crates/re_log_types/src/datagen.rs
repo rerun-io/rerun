@@ -1,6 +1,6 @@
 //! Generate random data for tests and benchmarks.
 
-// TODO(#1619): It really is time for whole module to disappear.
+// TODO(#1810): It really is time for whole module to disappear.
 
 use crate::{
     component_types::{self, InstanceKey},

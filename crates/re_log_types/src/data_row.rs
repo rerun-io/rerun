@@ -127,12 +127,6 @@ impl RowId {
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
     }
-
-    /// Temporary utility while we transition to batching. See #1619.
-    #[doc(hidden)]
-    pub fn into_table_id(self) -> TableId {
-        TableId(self.0)
-    }
 }
 
 impl SizeBytes for RowId {
@@ -322,13 +316,10 @@ impl DataRow {
         Self::try_from_cells(row_id, timepoint, entity_path, num_instances, cells).unwrap()
     }
 
-    /// Turns the `DataRow` into a single-row [`DataTable`] that carries the same ID.
-    ///
-    /// This only makes sense as part of our transition to batching. See #1619.
-    #[doc(hidden)]
+    /// Turns the `DataRow` into a single-row [`DataTable`].
     #[inline]
     pub fn into_table(self) -> DataTable {
-        DataTable::from_rows(self.row_id.into_table_id(), [self])
+        DataTable::from_rows(TableId::random(), [self])
     }
 }
 

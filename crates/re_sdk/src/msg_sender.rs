@@ -1,16 +1,11 @@
-use std::borrow::Borrow;
-
-use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId, RowId};
+use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RowId};
 
 use crate::{
     components::Transform,
-    log::{DataCell, LogMsg},
-    sink::LogSink,
+    log::DataCell,
     time::{Time, TimeInt, TimePoint, Timeline},
-    Component, EntityPath, SerializableComponent, Session,
+    Component, EntityPath, RecordingStream, SerializableComponent,
 };
-
-// TODO(#1619): Rust SDK batching
 
 // ---
 
@@ -35,7 +30,7 @@ pub enum MsgSenderError {
 ///
 /// ```ignore
 /// fn log_coordinate_space(
-///     session: &Session,
+///     rec_stream: &RecordingStream,
 ///     ent_path: impl Into<EntityPath>,
 ///     axes: &str,
 /// ) -> anyhow::Result<()> {
@@ -46,15 +41,11 @@ pub enum MsgSenderError {
 ///     MsgSender::new(ent_path)
 ///         .with_timeless(true)
 ///         .with_component(&[view_coords])?
-///         .send(session)
+///         .send(rec_stream)
 ///         .map_err(Into::into)
 /// }
 /// ```
-// TODO(#1619): this whole thing needs to be rethought to incorporate batching and datatables.
 pub struct MsgSender {
-    // TODO(cmc): At the moment, a `MsgBundle` can only contain data for a single entity, so
-    // this must be known as soon as we spawn the builder.
-    // This won't be true anymore once batch insertions land.
     entity_path: EntityPath,
 
     /// All the different timestamps for this message.
@@ -166,8 +157,6 @@ impl MsgSender {
     /// The SDK does not yet support batch insertions, which are semantically identical to adding
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
-    //
-    // TODO(#589): batch insertions
     pub fn with_component<'a, C: SerializableComponent>(
         mut self,
         data: impl IntoIterator<Item = &'a C>,
@@ -200,8 +189,6 @@ impl MsgSender {
     /// The SDK does not yet support batch insertions, which are semantically identical to adding
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
-    //
-    // TODO(#589): batch insertions
     pub fn with_splat<C: SerializableComponent>(mut self, data: C) -> Result<Self, MsgSenderError> {
         if C::name() == InstanceKey::name() {
             return Err(MsgSenderError::SplattedInstanceKeys);
@@ -231,42 +218,23 @@ impl MsgSender {
 
     /// Consumes, packs, sanity checks and finally sends the message to the currently configured
     /// target of the SDK.
-    pub fn send(self, session: &Session) -> Result<(), DataTableError> {
-        self.send_to_sink(session.recording_id(), session.borrow())
-    }
-
-    /// Consumes, packs, sanity checks and finally sends the message to the currently configured
-    /// target of the SDK.
-    fn send_to_sink(
-        self,
-        recording_id: RecordingId,
-        sink: &dyn LogSink,
-    ) -> Result<(), DataTableError> {
-        if !sink.is_enabled() {
+    pub fn send(self, rec_stream: &RecordingStream) -> Result<(), DataTableError> {
+        if !rec_stream.is_enabled() {
             return Ok(()); // silently drop the message
         }
 
         let [row_standard, row_transforms, row_splats] = self.into_rows();
 
         if let Some(row_transforms) = row_transforms {
-            sink.send(LogMsg::ArrowMsg(
-                recording_id,
-                row_transforms.into_table().to_arrow_msg()?,
-            ));
+            rec_stream.record_row(row_transforms);
         }
         if let Some(row_splats) = row_splats {
-            sink.send(LogMsg::ArrowMsg(
-                recording_id,
-                row_splats.into_table().to_arrow_msg()?,
-            ));
+            rec_stream.record_row(row_splats);
         }
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in msg_standard, see(#1215).
         if let Some(row_standard) = row_standard {
-            sink.send(LogMsg::ArrowMsg(
-                recording_id,
-                row_standard.into_table().to_arrow_msg()?,
-            ));
+            rec_stream.record_row(row_standard);
         }
 
         Ok(())

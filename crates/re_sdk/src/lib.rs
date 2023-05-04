@@ -9,21 +9,15 @@
 // ----------------
 // Private modules:
 
-#[cfg(feature = "global_session")]
-mod global;
-
 mod log_sink;
 mod msg_sender;
-mod session;
+mod recording_stream;
 
 // -------------
 // Public items:
 
-#[cfg(feature = "global_session")]
-pub use self::global::global_session;
-
 pub use self::msg_sender::{MsgSender, MsgSenderError};
-pub use self::session::{Session, SessionBuilder};
+pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 
 pub use re_sdk_comms::default_server_addr;
 
@@ -36,6 +30,9 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn send(&self, msg: re_log_types::LogMsg) {
         re_log_encoding::FileSink::send(self, msg);
     }
+
+    #[inline]
+    fn flush_blocking(&self) {}
 }
 
 // ---------------
@@ -49,9 +46,7 @@ pub mod demo_util;
 /// This is how you select whether the log stream ends up
 /// sent over TCP, written to file, etc.
 pub mod sink {
-    pub use crate::log_sink::{
-        disabled, BufferedSink, LogSink, MemorySink, MemorySinkStorage, TcpSink,
-    };
+    pub use crate::log_sink::{BufferedSink, LogSink, MemorySink, MemorySinkStorage, TcpSink};
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
@@ -153,7 +148,7 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
 
 // ----------------------------------------------------------------------------
 
-/// Creates a new [`re_log_types::RecordingInfo`] which can be used with [`Session::new`].
+/// Creates a new [`re_log_types::RecordingInfo`] which can be used with [`RecordingStream::new`].
 #[track_caller] // track_caller so that we can see if we are being called from an official example.
 pub fn new_recording_info(
     application_id: impl Into<re_log_types::ApplicationId>,
