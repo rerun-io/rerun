@@ -80,12 +80,12 @@ pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict>
     Ok(fields.into_py_dict(py))
 }
 
-/// Build a [`DataTable`] given a '**kwargs'-style dictionary of component arrays.
-pub fn build_data_table_from_components(
+/// Build a [`DataRow`] given a '**kwargs'-style dictionary of component arrays.
+pub fn build_data_row_from_components(
     entity_path: &EntityPath,
     components: &PyDict,
     time_point: &TimePoint,
-) -> PyResult<DataTable> {
+) -> PyResult<DataRow> {
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         components.iter().map(|(name, array)| {
             let name = name.downcast::<PyString>()?.to_str()?;
@@ -109,7 +109,5 @@ pub fn build_data_table_from_components(
         cells,
     );
 
-    let data_table = row.into_table();
-
-    Ok(data_table)
+    Ok(row)
 }

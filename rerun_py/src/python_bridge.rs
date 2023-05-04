@@ -39,8 +39,6 @@ use crate::arrow::get_registered_component_names;
 
 // --- FFI ---
 
-// we don't even need mutexes...
-
 /// The global [`RecordingStream`] object used by the Python API for data.
 fn global_data_stream() -> parking_lot::MutexGuard<'static, Option<RecordingStream>> {
     use once_cell::sync::OnceCell;
@@ -1079,8 +1077,7 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
-    let data_table =
-        crate::arrow::build_data_table_from_components(&entity_path, components, &timepoint)?;
+    let row = crate::arrow::build_data_row_from_components(&entity_path, components, &timepoint)?;
 
     let data_stream = global_data_stream();
     let Some(data_stream) = data_stream.as_ref() else {
@@ -1088,10 +1085,7 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
         return Ok(());
     };
 
-    // TODO(cmc): batch all the way to here at some point, maybe.
-    for row in data_table.to_rows() {
-        record_row(data_stream, row);
-    }
+    record_row(data_stream, row);
 
     Ok(())
 }
