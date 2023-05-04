@@ -13,6 +13,8 @@ use crate::{
     ui::{
         data_blueprint::DataBlueprintTree,
         data_ui::{self, DataUi},
+        item_ui,
+        selection_panel::select_hovered_on_click,
         space_view::ScreenshotMode,
         view_spatial::UiLabelTarget,
     },
@@ -246,7 +248,7 @@ impl ViewSpatialState {
                 .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
             // Specify space view id only if this is actually part of the space view itself.
             // (otherwise we get a somewhat broken link)
-            ctx.entity_path_button(
+            item_ui::entity_path_button(ctx,
                 ui,
                 data_blueprint
                     .contains_entity(space_path)
@@ -848,7 +850,7 @@ pub fn picking(
         } else {
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
-                ctx.instance_path_button(ui, Some(space_view_id), &instance_path);
+                item_ui::instance_path_button(ctx, ui, Some(space_view_id), &instance_path);
                 instance_path.data_ui(
                     ctx,
                     ui,
@@ -859,7 +861,7 @@ pub fn picking(
         };
     }
 
-    ctx.select_hovered_on_click(&response);
+    select_hovered_on_click(ctx.selection_state_mut(), &response);
     ctx.set_hovered(hovered_items.into_iter());
 
     let hovered_space = match state.nav_mode.get() {
