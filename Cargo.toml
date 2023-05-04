@@ -55,7 +55,6 @@ ahash = "0.8"
 anyhow = "1.0"
 arrow2 = "0.16"
 arrow2_convert = "0.4.2"
-nohash-hasher = "0.2"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cfg-if = "1.0"
 clap = "4.0"
@@ -64,9 +63,9 @@ ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
 egui = { version = "0.21.0", features = ["extra_debug_asserts", "log"] }
-egui-wgpu = "0.21.0"
 egui_dock = "0.4"
 egui_extras = { version = "0.21.0", features = ["log"] }
+egui-wgpu = "0.21.0"
 emath = "0.21.0"
 enumset = "1.0.12"
 epaint = "0.21.0"
@@ -79,6 +78,7 @@ lazy_static = "1.4"
 macaw = "0.18"
 mimalloc = "0.1.29"
 ndarray = "0.15"
+nohash-hasher = "0.2"
 parking_lot = "0.12"
 polars-core = "0.27.1"
 polars-lazy = "0.27.1"

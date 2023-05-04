@@ -16,16 +16,16 @@ include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 all-features = true
 
 [dependencies]
-re_renderer.workspace = true
-re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_data_store = { workspace = true, features = ["serde"] }
+re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_renderer.workspace = true
 
 ahash.workspace = true
 glam.workspace = true
-slotmap.workspace = true
+itertools.workspace = true
 nohash-hasher.workspace = true
 serde = "1"
-itertools.workspace = true
+slotmap.workspace = true
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
