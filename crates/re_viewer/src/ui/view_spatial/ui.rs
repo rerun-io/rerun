@@ -9,7 +9,11 @@ use re_renderer::OutlineConfig;
 use re_viewer_context::{HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId};
 
 use crate::{
-    misc::{space_info::query_view_coordinates, SpaceViewHighlights, ViewerContext},
+    misc::{
+        caches::{TensorDecodeCache, TensorStatsCache},
+        space_info::query_view_coordinates,
+        SpaceViewHighlights, ViewerContext,
+    },
     ui::{
         data_blueprint::DataBlueprintTree,
         data_ui::{self, DataUi},
@@ -826,22 +830,24 @@ pub fn picking(
                                 }
 
                                 let tensor_name = instance_path.to_string();
-                                match ctx.cache.decode.try_decode_tensor_if_necessary(tensor) {
+
+                                match ctx.cache
+                                        .entry::<TensorDecodeCache>()
+                                        .entry(tensor) {
                                     Ok(decoded_tensor) =>
-                                    data_ui::image::show_zoomed_image_region(
-                                        ctx.render_ctx,
-                                        ui,
-                                        &decoded_tensor,
-                                        ctx.cache.tensor_stats(&decoded_tensor),
-                                        &scene.annotation_map.find(&instance_path.entity_path),
-                                        decoded_tensor.meter,
-                                        &tensor_name,
-                                        [coords[0] as _, coords[1] as _],
-                                    ),
-                                Err(err) =>
-                                    re_log::warn_once!(
-                                        "Encountered problem decoding tensor at path {tensor_name}: {err}"
-                                    ),
+                                        data_ui::image::show_zoomed_image_region(
+                                            ctx.render_ctx,
+                                            ui,
+                                            &decoded_tensor,
+                                            ctx.cache.entry::<TensorStatsCache>().entry(&decoded_tensor),
+                                            &scene.annotation_map.find(&instance_path.entity_path),
+                                            decoded_tensor.meter,
+                                            &tensor_name,
+                                            [coords[0] as _, coords[1] as _],
+                                        ),
+                                    Err(err) => re_log::warn_once!(
+                                            "Encountered problem decoding tensor at path {tensor_name}: {err}"
+                                        ),
                                 }
                             });
                         }

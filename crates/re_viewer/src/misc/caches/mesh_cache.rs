@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use re_log_types::{Mesh3D, MeshId};
 use re_renderer::RenderContext;
+use re_viewer_context::Cache;
 
 use crate::mesh_loader::LoadedMesh;
 
@@ -11,7 +12,7 @@ use crate::mesh_loader::LoadedMesh;
 pub struct MeshCache(nohash_hasher::IntMap<MeshId, Option<Arc<LoadedMesh>>>);
 
 impl MeshCache {
-    pub fn load(
+    pub fn entry(
         &mut self,
         name: &str,
         mesh: &Mesh3D,
@@ -37,5 +38,17 @@ impl MeshCache {
                 }
             })
             .clone()
+    }
+}
+
+impl Cache for MeshCache {
+    fn begin_frame(&mut self) {}
+
+    fn purge_memory(&mut self) {
+        self.0.clear();
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
