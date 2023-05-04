@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
-use re_log_types::{component_types::InstanceKey, external::arrow2, Component, ComponentName};
+use re_log_types::{component_types::InstanceKey, Component, ComponentName};
 use re_query::ComponentWithInstances;
 
 use crate::ViewerContext;
@@ -33,12 +33,20 @@ type ComponentUiCallback = Box<
 >;
 
 /// How to display components in a Ui.
-#[derive(Default)]
 pub struct ComponentUiRegistry {
+    /// Ui method to use if there was no specific one registered for a component.
+    fallback_ui: ComponentUiCallback,
     components: BTreeMap<ComponentName, ComponentUiCallback>,
 }
 
 impl ComponentUiRegistry {
+    pub fn new(fallback_ui: ComponentUiCallback) -> Self {
+        Self {
+            fallback_ui,
+            components: Default::default(),
+        }
+    }
+
     /// Registers how to show a given component in the ui.
     ///
     /// If the component was already registered, the new callback replaces the old one.
@@ -66,32 +74,18 @@ impl ComponentUiRegistry {
             return;
         }
 
-        if let Some(ui_callback) = self.components.get(&component.name()) {
-            (*ui_callback)(
-                ctx,
-                ui,
-                verbosity,
-                query,
-                entity_path,
-                component,
-                instance_key,
-            );
-        } else {
-            // No special ui implementation - use a generic one:
-            if let Some(value) = component.lookup_arrow(instance_key) {
-                let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
-                if bytes < 256 {
-                    // For small items, print them
-                    let mut repr = String::new();
-                    let display = arrow2::array::get_display(value.as_ref(), "null");
-                    display(&mut repr, 0).unwrap();
-                    ui.label(repr);
-                } else {
-                    ui.label(format!("{bytes} bytes"));
-                }
-            } else {
-                ui.weak("(null)");
-            }
-        }
+        let ui_callback = self
+            .components
+            .get(&component.name())
+            .unwrap_or(&self.fallback_ui);
+        (*ui_callback)(
+            ctx,
+            ui,
+            verbosity,
+            query,
+            entity_path,
+            component,
+            instance_key,
+        );
     }
 }

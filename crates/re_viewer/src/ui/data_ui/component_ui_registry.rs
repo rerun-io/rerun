@@ -1,4 +1,8 @@
-use re_log_types::DeserializableComponent;
+use re_arrow_store::LatestAtQuery;
+use re_log_types::{
+    component_types::InstanceKey, external::arrow2, DeserializableComponent, EntityPath,
+};
+use re_query::ComponentWithInstances;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
 use super::{DataUi, EntityDataUi};
@@ -29,7 +33,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
         );
     }
 
-    let mut registry = ComponentUiRegistry::default();
+    let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
     // The things that are out-commented are components we have, but
     // where the default arrow-format for them looks good enough (at least for now).
@@ -61,6 +65,32 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_log_types::ViewCoordinates>(&mut registry);
 
     registry
+}
+
+fn fallback_component_ui(
+    _ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    _query: &LatestAtQuery,
+    _entity_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &InstanceKey,
+) {
+    // No special ui implementation - use a generic one:
+    if let Some(value) = component.lookup_arrow(instance_key) {
+        let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
+        if bytes < 256 {
+            // For small items, print them
+            let mut repr = String::new();
+            let display = arrow2::array::get_display(value.as_ref(), "null");
+            display(&mut repr, 0).unwrap();
+            ui.label(repr);
+        } else {
+            ui.label(format!("{bytes} bytes"));
+        }
+    } else {
+        ui.weak("(null)");
+    }
 }
 
 // ----------------------------------------------------------------------------
