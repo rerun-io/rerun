@@ -3,9 +3,10 @@ use re_renderer::{
     renderer::ColormappedTexture,
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
-use re_viewer_context::TensorStats;
-
-use crate::gpu_bridge::{range, RangeError};
+use re_viewer_context::{
+    gpu_bridge::{self, range, RangeError},
+    TensorStats,
+};
 
 use super::{
     ui::{selected_tensor_slice, SliceSelection},
@@ -55,7 +56,7 @@ fn upload_texture_slice_to_gpu(
 ) -> Result<GpuTexture2D, TextureManager2DError<TensorUploadError>> {
     let id = egui::util::hash((tensor.id(), slice_selection));
 
-    crate::gpu_bridge::try_get_or_create_texture(render_ctx, id, || {
+    gpu_bridge::try_get_or_create_texture(render_ctx, id, || {
         texture_desc_from_tensor(tensor, slice_selection)
     })
 }

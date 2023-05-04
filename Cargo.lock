@@ -4263,10 +4263,12 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "egui",
+ "egui-wgpu",
  "glam",
  "half 2.2.1",
  "itertools",
  "lazy_static",
+ "macaw",
  "ndarray",
  "nohash-hasher",
  "puffin",
@@ -4279,7 +4281,9 @@ dependencies = [
  "re_ui",
  "serde",
  "slotmap",
+ "thiserror",
  "uuid",
+ "wgpu",
 ]
 
 [[package]]

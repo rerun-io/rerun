@@ -1,7 +1,7 @@
 //! Upload [`Tensor`] to [`re_renderer`].
 
 use anyhow::Context;
-use re_viewer_context::{Annotations, DefaultColor};
+
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
@@ -14,11 +14,10 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_viewer_context::TensorStats;
 
-use crate::gpu_bridge::get_or_create_texture;
+use crate::{Annotations, DefaultColor, TensorStats};
 
-use super::try_get_or_create_texture;
+use super::{get_or_create_texture, try_get_or_create_texture};
 
 // ----------------------------------------------------------------------------
 
@@ -111,7 +110,7 @@ fn color_tensor_to_gpu(
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
     } else {
-        crate::gpu_bridge::range(tensor_stats)?
+        super::range(tensor_stats)?
     };
 
     let color_mapper = if re_renderer::texture_info::num_texture_components(texture_format) == 1 {

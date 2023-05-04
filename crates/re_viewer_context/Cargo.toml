@@ -27,16 +27,20 @@ re_ui.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
+egui-wgpu.workspace = true
 egui.workspace = true
 glam.workspace = true
 half.workspace = true
 itertools.workspace = true
 lazy_static.workspace = true
+macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
 serde = "1"
 slotmap.workspace = true
+thiserror.workspace = true
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
+wgpu.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true

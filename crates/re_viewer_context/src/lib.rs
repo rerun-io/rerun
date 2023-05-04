@@ -15,6 +15,9 @@ mod time_control;
 mod utils;
 mod viewer_context;
 
+// TODO(andreas): Move to its own crate?
+pub mod gpu_bridge;
+
 pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSING_ANNOTATIONS};
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};

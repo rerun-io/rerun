@@ -9,8 +9,8 @@ use re_log_types::{
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
 use re_viewer_context::{
-    AnnotationMap, Annotations, SceneQuery, TensorDecodeCache, TensorStats, TensorStatsCache,
-    UiVerbosity, ViewerContext,
+    gpu_bridge, AnnotationMap, Annotations, SceneQuery, TensorDecodeCache, TensorStats,
+    TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
 pub fn format_tensor_shape_single_line(
@@ -56,7 +56,7 @@ fn tensor_ui(
     let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let annotations = annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
-    let texture_result = crate::gpu_bridge::tensor_to_gpu(
+    let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
@@ -200,7 +200,7 @@ fn show_image_at_max_size(
     };
 
     let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-    if let Err(err) = crate::gpu_bridge::render_image(
+    if let Err(err) = gpu_bridge::render_image(
         render_ctx,
         &painter,
         response.rect,
@@ -436,13 +436,8 @@ fn try_show_zoomed_image_region(
     debug_name: &str,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
-    let texture = crate::gpu_bridge::tensor_to_gpu(
-        render_ctx,
-        debug_name,
-        tensor,
-        tensor_stats,
-        annotations,
-    )?;
+    let texture =
+        gpu_bridge::tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)?;
 
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
 
@@ -462,7 +457,7 @@ fn try_show_zoomed_image_region(
             POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
         );
 
-        crate::gpu_bridge::render_image(
+        gpu_bridge::render_image(
             render_ctx,
             &painter.with_clip_rect(zoom_rect),
             image_rect_on_screen,
@@ -497,7 +492,7 @@ fn try_show_zoomed_image_region(
                     - zoom * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
                 zoom * egui::vec2(width as f32, height as f32),
             );
-            crate::gpu_bridge::render_image(
+            gpu_bridge::render_image(
                 render_ctx,
                 &ui.painter().with_clip_rect(rect),
                 image_rect_on_screen,

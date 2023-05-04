@@ -14,7 +14,8 @@ use re_renderer::{
     Colormap, OutlineMaskPreference,
 };
 use re_viewer_context::{
-    Annotations, DefaultColor, SceneQuery, TensorDecodeCache, TensorStatsCache, ViewerContext,
+    gpu_bridge, Annotations, DefaultColor, SceneQuery, TensorDecodeCache, TensorStatsCache,
+    ViewerContext,
 };
 
 use crate::{
@@ -40,7 +41,7 @@ fn to_textured_rect(
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
 
-    match crate::gpu_bridge::tensor_to_gpu(
+    match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
