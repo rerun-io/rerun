@@ -15,22 +15,32 @@ struct Ray {
     direction: Vec3,
 }
 
+// Returns the ray from the camera to a given world position, assuming the camera is perspective
+fn camera_ray_to_world_pos_perspective(world_pos: Vec3) -> Ray {
+    var ray: Ray;
+    ray.origin = frame.camera_position;
+    ray.direction = normalize(world_pos - frame.camera_position);
+    return ray;
+}
+
+// Returns the ray from the camera to a given world position, assuming the camera is orthographic
+fn camera_ray_to_world_pos_orthographic(world_pos: Vec3) -> Ray {
+    var ray: Ray;
+    // The ray originates on the camera plane, not from the camera position
+    let to_pos = world_pos - frame.camera_position;
+    let camera_plane_distance = dot(to_pos, frame.camera_forward);
+    ray.origin = world_pos - frame.camera_forward * camera_plane_distance;
+    ray.direction = frame.camera_forward;
+    return ray;
+}
+
 // Returns the ray from the camera to a given world position.
 fn camera_ray_to_world_pos(world_pos: Vec3) -> Ray {
-    var ray: Ray;
-
     if is_camera_perspective() {
-        ray.origin = frame.camera_position;
-        ray.direction = normalize(world_pos - frame.camera_position);
+        return camera_ray_to_world_pos_perspective(world_pos);
     } else {
-        // The ray originates on the camera plane, not from the camera position
-        let to_pos = world_pos - frame.camera_position;
-        let camera_plane_distance = dot(to_pos, frame.camera_forward);
-        ray.origin = world_pos - frame.camera_forward * camera_plane_distance;
-        ray.direction = frame.camera_forward;
+        return camera_ray_to_world_pos_orthographic(world_pos);
     }
-
-    return ray;
 }
 
 // Returns the camera ray direction through a given screen uv coordinates (ranging from 0 to 1, i.e. NOT ndc coordinates)

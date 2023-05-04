@@ -7,22 +7,23 @@ use re_log_types::{
     TimeType, Transform,
 };
 
-use crate::{
-    ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Item, UiVerbosity, ViewerContext,
-};
+use crate::{ui::Blueprint, Item, UiVerbosity, ViewerContext};
 
-use super::{data_ui::DataUi, space_view::ViewState};
+use super::{
+    data_ui::DataUi, selection_history_ui::SelectionHistoryUi, space_view::ViewState,
+    view_spatial::SpatialNavigationMode,
+};
 
 // ---
 
 /// The "Selection View" side-bar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct SelectionPanel {}
+pub(crate) struct SelectionPanel {
+    selection_state_ui: SelectionHistoryUi,
+}
 
 impl SelectionPanel {
-    #[allow(clippy::unused_self)]
     pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -52,11 +53,12 @@ impl SelectionPanel {
                         ..Default::default()
                     })
                     .show_inside(ui, |ui| {
-                        if let Some(selection) = ctx
-                            .rec_cfg
-                            .selection_state
-                            .selection_ui(ctx.re_ui, ui, blueprint)
-                        {
+                        if let Some(selection) = self.selection_state_ui.selection_ui(
+                            ctx.re_ui,
+                            ui,
+                            blueprint,
+                            &mut ctx.selection_state_mut().history,
+                        ) {
                             ctx.set_multi_selection(selection.iter().cloned());
                         }
                     });

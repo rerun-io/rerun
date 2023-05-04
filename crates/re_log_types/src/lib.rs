@@ -4,9 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-#[cfg(feature = "arrow_datagen")]
-pub mod datagen;
-
 pub mod arrow_msg;
 mod component;
 pub mod component_types;
@@ -23,20 +20,14 @@ pub mod time_point;
 mod time_range;
 mod time_real;
 
+#[cfg(feature = "arrow_datagen")]
+pub mod datagen;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod data_table_batcher;
+
 #[cfg(feature = "serde")]
 pub mod serde_field;
-
-pub mod external {
-    pub use arrow2;
-    pub use arrow2_convert;
-    pub use re_tuid;
-
-    #[cfg(feature = "glam")]
-    pub use glam;
-
-    #[cfg(feature = "image")]
-    pub use image;
-}
 
 pub use self::arrow_msg::ArrowMsg;
 pub use self::component::{Component, DeserializableComponent, SerializableComponent};
@@ -64,6 +55,23 @@ pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName}
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::data_table_batcher::{
+    DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
+};
+
+pub mod external {
+    pub use arrow2;
+    pub use arrow2_convert;
+    pub use re_tuid;
+
+    #[cfg(feature = "glam")]
+    pub use glam;
+
+    #[cfg(feature = "image")]
+    pub use image;
+}
+
 #[macro_export]
 macro_rules! impl_into_enum {
     ($from_ty: ty, $enum_name: ident, $to_enum_variant: ident) => {
@@ -86,7 +94,7 @@ pub struct RecordingId(uuid::Uuid);
 impl nohash_hasher::IsEnabled for RecordingId {}
 
 // required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl std::hash::Hash for RecordingId {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

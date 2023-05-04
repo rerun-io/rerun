@@ -289,6 +289,13 @@ impl From<glam::Mat4> for Mat4 {
     }
 }
 
+impl From<glam::Affine3A> for Mat4 {
+    #[inline]
+    fn from(m: glam::Affine3A) -> Self {
+        glam::Mat4::from(m).into()
+    }
+}
+
 impl From<Mat4> for glam::Mat4 {
     #[inline]
     fn from(val: Mat4) -> Self {

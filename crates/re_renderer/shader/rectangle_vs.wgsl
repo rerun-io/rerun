@@ -1,4 +1,5 @@
 #import <./rectangle.wgsl>
+#import <./utils/depth_offset.wgsl>
 
 @vertex
 fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {

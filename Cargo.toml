@@ -15,7 +15,7 @@ homepage = "https://rerun.io"
 include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.67"
+rust-version = "1.69"
 version = "0.6.0-alpha.0"
 
 [workspace.dependencies]
@@ -57,6 +57,7 @@ arrow2_convert = "0.4.2"
 cfg-if = "1.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
+crossbeam = "0.8"
 ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
@@ -83,9 +84,11 @@ polars-ops = "0.27.1"
 puffin = "0.14"
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 thiserror = "1.0"
-time = { version = "0.3", features = ["wasm-bindgen"] }
+time = { version = "0.3", default-features = false, features = [
+  "wasm-bindgen",
+] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
-tokio = "1.24"
+tokio = { version = "1.24", default-features = false }
 wgpu = { version = "0.16" }
 wgpu-core = { version = "0.16" }
 

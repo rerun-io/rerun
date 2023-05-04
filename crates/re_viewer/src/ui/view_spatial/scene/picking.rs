@@ -51,7 +51,13 @@ pub struct PickingResult {
 
 impl PickingResult {
     pub fn space_position(&self) -> Option<glam::Vec3> {
-        self.hits.last().map(|hit| hit.space_position)
+        // Use gpu hit if available as they are usually the position one expects.
+        // (other picking sources might be in here even if hidden!)
+        self.hits
+            .iter()
+            .find(|h| h.hit_type == PickingHitType::GpuPickingResult)
+            .or_else(|| self.hits.first())
+            .map(|hit| hit.space_position)
     }
 }
 
@@ -176,7 +182,7 @@ fn picking_gpu(
         // First, figure out where on the rect the cursor is by now.
         // (for simplicity, we assume the screen hasn't been resized)
         let pointer_on_picking_rect =
-            context.pointer_in_pixel - gpu_picking_result.rect.left_top.as_vec2();
+            context.pointer_in_pixel - gpu_picking_result.rect.min.as_vec2();
         // The cursor might have moved outside of the rect. Clamp it back in.
         let pointer_on_picking_rect = pointer_on_picking_rect.clamp(
             glam::Vec2::ZERO,

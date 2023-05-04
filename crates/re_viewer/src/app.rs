@@ -530,7 +530,7 @@ impl eframe::App for App {
                     log_db,
                 )
                 .selection_state
-                .on_frame_start(blueprint);
+                .on_frame_start(|item| blueprint.is_item_valid(item));
 
                 {
                     // TODO(andreas): store the re_renderer somewhere else.

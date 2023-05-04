@@ -74,10 +74,7 @@ num-derive = "0.3"
 num-traits = "0.2"
 smallvec.workspace = true
 thiserror.workspace = true
-time = { workspace = true, default-features = false, features = [
-  "formatting",
-  "macros",
-] }
+time = { workspace = true, features = ["formatting", "macros"] }
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
@@ -96,4 +93,9 @@ serde_bytes = { version = "0.11", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+crossbeam.workspace = true
 puffin.workspace = true
+
+
+[dev-dependencies]
+similar-asserts = "1.4.2"
