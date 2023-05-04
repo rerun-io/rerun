@@ -1,0 +1,22 @@
+[package]
+authors.workspace = true
+description = "Provides ui elements for Rerun component data for the Rerun Viewer."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_data_ui"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_viewer_context.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin.workspace = true
