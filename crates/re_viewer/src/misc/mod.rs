@@ -9,8 +9,6 @@ pub(crate) mod time_control_ui;
 mod transform_cache;
 mod viewer_context;
 
-pub use caches::Caches;
-
 pub mod instance_hash_conversions;
 
 #[cfg(not(target_arch = "wasm32"))]

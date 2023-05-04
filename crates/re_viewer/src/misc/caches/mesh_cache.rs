@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use re_log_types::{Mesh3D, MeshId};
 use re_renderer::RenderContext;
+use re_viewer_context::Cache;
 
 use crate::mesh_loader::LoadedMesh;
-
-use super::Cache;
 
 // ----------------------------------------------------------------------------
 

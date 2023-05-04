@@ -14,10 +14,10 @@ use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
-use re_viewer_context::AppOptions;
+use re_viewer_context::{AppOptions, Caches};
 
 use crate::{
-    misc::{time_control::PlayState, Caches, RecordingConfig, ViewerContext},
+    misc::{time_control::PlayState, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
     viewer_analytics::ViewerAnalytics,
 };

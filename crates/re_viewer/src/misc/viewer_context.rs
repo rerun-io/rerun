@@ -1,8 +1,8 @@
 use re_data_store::log_db::LogDb;
-use re_viewer_context::{AppOptions, Item, ItemCollection, SelectionState};
+use re_viewer_context::{AppOptions, Caches, Item, ItemCollection, SelectionState};
 
 // TODO(andreas): Either viewer_context independent of these or move to re_viewer_context crate.
-use super::{Caches, TimeControl};
+use super::TimeControl;
 use crate::ui::data_ui::ComponentUiRegistry;
 
 /// Common things needed by many parts of the viewer.

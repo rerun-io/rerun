@@ -2,8 +2,7 @@ use re_log_types::{
     component_types::{Tensor, TensorId, TensorImageLoadError},
     DecodedTensor,
 };
-
-use super::Cache;
+use re_viewer_context::Cache;
 
 // ----------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use std::any::Any;
 
-/// Does memoization of different things for the immediate mode UI.
+/// Does memoization of different objects for the immediate mode UI.
 #[derive(Default)]
 pub struct Caches(HashMap<std::any::TypeId, Box<dyn Cache>>);
 
