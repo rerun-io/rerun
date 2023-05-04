@@ -2,12 +2,16 @@
 
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
-use re_viewer_context::{DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId};
+use re_viewer_context::{
+    DataBlueprintGroupHandle, HoverHighlight, Item, SelectionState, SpaceViewId,
+};
 
 use crate::{
     misc::ViewerContext,
     ui::{data_ui::DataUi, UiVerbosity},
 };
+
+use super::selection_panel::select_hovered_on_click;
 
 /// Show an entity path and make it selectable.
 pub fn entity_path_button(
@@ -86,7 +90,7 @@ pub fn instance_path_button_to(
             );
         });
 
-    cursor_interact_with_selectable(ctx, response, item)
+    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
 }
 
 /// Show a component path and make it selectable.
@@ -98,7 +102,7 @@ pub fn component_path_button_to(
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
     let response = ui.selectable_label(ctx.selection().contains(&item), text);
-    cursor_interact_with_selectable(ctx, response, item)
+    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
 }
 
 pub fn space_view_button(
@@ -129,7 +133,7 @@ pub fn space_view_button_to(
         .re_ui
         .selectable_label_with_icon(ui, space_view_category.icon(), text, is_selected)
         .on_hover_text("Space View");
-    cursor_interact_with_selectable(ctx, response, item)
+    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
 }
 
 pub fn data_blueprint_group_button_to(
@@ -149,7 +153,7 @@ pub fn data_blueprint_group_button_to(
             ctx.selection().contains(&item),
         )
         .on_hover_text("Group");
-    cursor_interact_with_selectable(ctx, response, item)
+    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
 }
 
 pub fn data_blueprint_button_to(
@@ -170,7 +174,7 @@ pub fn data_blueprint_button_to(
             ui.label(format!("Path: {entity_path}"));
             entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
         });
-    cursor_interact_with_selectable(ctx, response, item)
+    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
 }
 
 pub fn time_button(
@@ -218,19 +222,17 @@ pub fn timeline_button_to(
 }
 
 fn cursor_interact_with_selectable(
-    ctx: &mut ViewerContext<'_>,
+    selection_state: &mut SelectionState,
     response: egui::Response,
     item: Item,
 ) -> egui::Response {
     let is_item_hovered =
-        ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+        selection_state.highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
     if response.hovered() {
-        ctx.rec_cfg
-            .selection_state
-            .set_hovered(std::iter::once(item));
+        selection_state.set_hovered(std::iter::once(item));
     }
-    ctx.select_hovered_on_click(&response);
+    select_hovered_on_click(selection_state, &response);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {

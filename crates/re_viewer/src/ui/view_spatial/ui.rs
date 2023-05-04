@@ -14,6 +14,7 @@ use crate::{
         data_blueprint::DataBlueprintTree,
         data_ui::{self, DataUi},
         item_ui,
+        selection_panel::select_hovered_on_click,
         space_view::ScreenshotMode,
         view_spatial::UiLabelTarget,
     },
@@ -860,7 +861,7 @@ pub fn picking(
         };
     }
 
-    ctx.select_hovered_on_click(&response);
+    select_hovered_on_click(ctx.selection_state_mut(), &response);
     ctx.set_hovered(hovered_items.into_iter());
 
     let hovered_space = match state.nav_mode.get() {

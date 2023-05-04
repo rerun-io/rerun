@@ -6,7 +6,7 @@ use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
     TimeType, Transform,
 };
-use re_viewer_context::{Item, SpaceViewId};
+use re_viewer_context::{Item, SelectionState, SpaceViewId};
 
 use crate::{ui::Blueprint, UiVerbosity, ViewerContext};
 
@@ -60,7 +60,8 @@ impl SelectionPanel {
                             blueprint,
                             &mut ctx.selection_state_mut().history,
                         ) {
-                            ctx.set_multi_selection(selection.iter().cloned());
+                            ctx.selection_state_mut()
+                                .set_multi_selection(selection.iter().cloned());
                         }
                     });
 
@@ -573,4 +574,16 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
         *property = EditableAutoValue::UserEdited(value);
     }
     ui.end_row();
+}
+
+/// Selects (or toggles selection if modifier is pressed) currently hovered elements on click.
+pub fn select_hovered_on_click(selection_state: &mut SelectionState, response: &egui::Response) {
+    if response.clicked() {
+        let hovered = selection_state.hovered().clone();
+        if response.ctx.input(|i| i.modifiers.command) {
+            selection_state.toggle_selection(hovered.to_vec());
+        } else {
+            selection_state.set_multi_selection(hovered.into_iter());
+        }
+    }
 }

@@ -28,35 +28,11 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    // ---------------------------------------------------------
-    // shortcuts for common selection/hover manipulation
-
     /// Sets a single selection, updating history as needed.
     ///
     /// Returns the previous selection.
     pub fn set_single_selection(&mut self, item: Item) -> ItemCollection {
         self.rec_cfg.selection_state.set_single_selection(item)
-    }
-
-    /// Sets several objects to be selected, updating history as needed.
-    ///
-    /// Returns the previous selection.
-    pub fn set_multi_selection(&mut self, items: impl Iterator<Item = Item>) -> ItemCollection {
-        self.rec_cfg.selection_state.set_multi_selection(items)
-    }
-
-    /// Selects (or toggles selection if modifier is clicked) currently hovered elements on click.
-    pub fn select_hovered_on_click(&mut self, response: &egui::Response) {
-        if response.clicked() {
-            let hovered = self.rec_cfg.selection_state.hovered().clone();
-            if response.ctx.input(|i| i.modifiers.command) {
-                self.rec_cfg
-                    .selection_state
-                    .toggle_selection(hovered.to_vec());
-            } else {
-                self.set_multi_selection(hovered.into_iter());
-            }
-        }
     }
 
     /// Returns the current selection.
