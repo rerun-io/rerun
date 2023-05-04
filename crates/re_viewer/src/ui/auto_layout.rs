@@ -16,8 +16,9 @@ use egui::Vec2;
 use itertools::Itertools as _;
 
 use re_data_store::{EntityPath, EntityPathPart};
+use re_viewer_context::SpaceViewId;
 
-use super::{space_view::SpaceView, view_category::ViewCategory, SpaceViewId};
+use super::{space_view::SpaceView, view_category::ViewCategory};
 
 #[derive(Clone, Debug)]
 pub struct SpaceMakeInfo {

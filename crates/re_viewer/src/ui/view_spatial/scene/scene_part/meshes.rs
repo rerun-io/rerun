@@ -9,7 +9,7 @@ use crate::{
     misc::{SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{MeshSource, MeshSourceData, SceneSpatial},
+        view_spatial::{MeshSource, SceneSpatial},
         DefaultColor,
     },
 };
@@ -46,11 +46,7 @@ impl MeshPart {
                 if let Some(mesh) = ctx
                     .cache
                     .mesh
-                    .load(
-                        &ent_path.to_string(),
-                        &MeshSourceData::Mesh3D(mesh),
-                        ctx.render_ctx,
-                    )
+                    .load(&ent_path.to_string(), &mesh, ctx.render_ctx)
                     .map(|cpu_mesh| MeshSource {
                         picking_instance_hash,
                         world_from_mesh: world_from_obj,
