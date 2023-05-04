@@ -44,6 +44,9 @@ pub trait Cache: std::any::Any {
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
 
+    // TODO(andreas): Track bytes used for each cache and show in the memory panel!
+    //fn bytes_used(&self) -> usize;
+
     /// Converts itself to a mutable reference of [`Any`], which enables mutable downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
