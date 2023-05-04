@@ -1093,15 +1093,12 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
 // --- Misc ---
 
 #[pyfunction]
-fn get_recording_id() -> PyResult<String> {
-    let recording_id = global_data_stream()
-        .as_ref()
-        .and_then(|data_stream| data_stream.recording_info().map(|info| info.recording_id));
-
-    match recording_id {
-        Some(id) => Ok(id.to_string()),
-        None => Err(PyTypeError::new_err("module has not been initialized")),
-    }
+fn get_recording_id() -> Option<String> {
+    global_data_stream().as_ref().and_then(|data_stream| {
+        data_stream
+            .recording_info()
+            .map(|info| info.recording_id.to_string())
+    })
 }
 
 #[pyfunction]

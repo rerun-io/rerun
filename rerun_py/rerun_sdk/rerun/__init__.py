@@ -84,9 +84,11 @@ def unregister_shutdown() -> None:
 # -----------------------------------------------------------------------------
 
 
-def get_recording_id() -> str:
+def get_recording_id() -> Optional[str]:
     """
-    Get the recording ID that this process is logging to, as a UUIDv4.
+    Get the recording ID that this process is logging to, as a UUIDv4, if any.
+
+    You must have called [`rr.init`][] first in order to have an active recording.
 
     The default recording_id is based on `multiprocessing.current_process().authkey`
     which means that all processes spawned with `multiprocessing`
@@ -103,7 +105,10 @@ def get_recording_id() -> str:
         The recording ID that this process is logging to.
 
     """
-    return str(bindings.get_recording_id())
+    rid = bindings.get_recording_id()
+    if rid:
+        return str(rid)
+    return None
 
 
 def init(
@@ -115,6 +120,9 @@ def init(
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
+
+    You must call this function first in order to initialize a global recording.
+    Without an active recording, all methods of the SDK will turn into no-ops.
 
     Parameters
     ----------
