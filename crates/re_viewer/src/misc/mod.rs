@@ -4,7 +4,6 @@ pub(crate) mod mesh_loader;
 pub mod queries;
 pub(crate) mod space_info;
 mod space_view_highlights;
-pub(crate) mod time_control;
 mod time_control_ui;
 mod transform_cache;
 mod viewer_context;
@@ -14,7 +13,6 @@ pub mod instance_hash_conversions;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use clipboard::Clipboard;
 
-pub(crate) use time_control::{TimeControl, TimeView};
 pub(crate) use viewer_context::*;
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -486,12 +486,12 @@ impl TimeControl {
     }
 
     /// The range of time we are currently zoomed in on.
-    pub(crate) fn time_view(&self) -> Option<TimeView> {
+    pub fn time_view(&self) -> Option<TimeView> {
         self.states.get(&self.timeline).and_then(|state| state.view)
     }
 
     /// The range of time we are currently zoomed in on.
-    pub(crate) fn set_time_view(&mut self, view: TimeView) {
+    pub fn set_time_view(&mut self, view: TimeView) {
         self.states
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(view.min))

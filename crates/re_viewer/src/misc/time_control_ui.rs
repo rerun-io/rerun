@@ -3,7 +3,7 @@ use egui::NumExt as _;
 use re_data_store::TimesPerTimeline;
 use re_log_types::TimeType;
 
-use super::time_control::{Looping, PlayState, TimeControl};
+use re_viewer_context::{Looping, PlayState, TimeControl};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct TimeControlUi;

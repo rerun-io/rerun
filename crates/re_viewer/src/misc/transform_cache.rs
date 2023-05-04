@@ -3,8 +3,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::{
     log_db::EntityDb, query_latest_single, EntityPath, EntityPropertyMap, EntityTree,
 };
-
-use crate::misc::TimeControl;
+use re_viewer_context::TimeControl;
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
 /// for the currently selected time & timeline.

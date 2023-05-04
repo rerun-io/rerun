@@ -10,9 +10,9 @@ use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
 
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
-use re_viewer_context::Item;
+use re_viewer_context::{Item, TimeControl, TimeView};
 
-use crate::{misc::TimeControlUi, TimeControl, TimeView, ViewerContext};
+use crate::{misc::TimeControlUi, ViewerContext};
 
 use super::{data_ui::DataUi, item_ui, selection_panel::what_is_selected_ui, Blueprint};
 
