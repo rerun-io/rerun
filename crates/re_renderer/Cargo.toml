@@ -48,7 +48,7 @@ re_log.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bitflags = "1.3"
-bytemuck = { version = "1.12", features = ["derive"] }
+bytemuck.workspace = true
 clean-path = "0.2"
 document-features = "0.2"
 ecolor = { workspace = true, features = ["bytemuck"] }
@@ -60,7 +60,7 @@ macaw.workspace = true
 never = '0.1'
 ordered-float = "3.2"
 parking_lot.workspace = true
-slotmap = "1.0.6"
+slotmap.workspace = true
 smallvec.workspace = true
 static_assertions = "1.1"
 thiserror.workspace = true
@@ -75,7 +75,7 @@ tobj = { version = "3.2", optional = true }
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-crossbeam = "0.8"
+crossbeam.workspace = true
 notify = "5.0"
 puffin.workspace = true
 wgpu-core.workspace = true

@@ -41,6 +41,7 @@ re_log.workspace = true
 re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }
 
+crossbeam.workspace = true
 document-features = "0.2"
 parking_lot.workspace = true
 thiserror.workspace = true
@@ -54,6 +55,7 @@ arrow2_convert.workspace = true
 ndarray.workspace = true
 ndarray-rand = "0.14"
 rand = "0.8"
+similar-asserts = "1.4.2"
 
 
 [build-dependencies]

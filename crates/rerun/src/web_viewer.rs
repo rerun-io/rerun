@@ -78,6 +78,9 @@ impl crate::sink::LogSink for WebViewerSink {
             re_log::error_once!("Failed to send log message to web server: {err}");
         }
     }
+
+    #[inline]
+    fn flush_blocking(&self) {}
 }
 
 // ----------------------------------------------------------------------------

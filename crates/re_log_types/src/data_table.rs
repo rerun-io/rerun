@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use crate::{
@@ -155,12 +155,6 @@ impl TableId {
     #[inline]
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
-    }
-
-    /// Temporary utility while we transition to batching. See #1619.
-    #[doc(hidden)]
-    pub fn into_row_id(self) -> RowId {
-        RowId(self.0)
     }
 }
 
@@ -353,7 +347,7 @@ pub struct DataTable {
     ///
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
-    pub columns: IntMap<ComponentName, DataCellColumn>,
+    pub columns: BTreeMap<ComponentName, DataCellColumn>,
 }
 
 impl DataTable {
@@ -424,7 +418,7 @@ impl DataTable {
         }
 
         // Pre-allocate all columns (one per component).
-        let mut columns = IntMap::default();
+        let mut columns = BTreeMap::default();
         for component in components {
             columns.insert(
                 component,
@@ -439,12 +433,6 @@ impl DataTable {
                 // NOTE: unwrap cannot fail, all arrays pre-allocated above.
                 columns.get_mut(&component).unwrap()[i] = Some(cell);
             }
-        }
-
-        if col_row_id.len() > 1 {
-            re_log::warn_once!(
-                "batching features are not ready for use, use single-row data tables instead!"
-            );
         }
 
         Self {

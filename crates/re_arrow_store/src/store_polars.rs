@@ -17,7 +17,7 @@ use crate::{
 };
 
 // TODO(#1692): all of this stuff should be defined by Data{Cell,Row,Table}, not the store.
-// TODO(#1619): remove this and reimplement it on top of store serialization
+// TODO(#1759): remove this and reimplement it on top of store serialization
 
 // ---
 

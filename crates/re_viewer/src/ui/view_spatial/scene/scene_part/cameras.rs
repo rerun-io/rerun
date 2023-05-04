@@ -81,20 +81,32 @@ impl CamerasPart {
                 return;
             };
 
-        // If this transform is not representable as rigid transform, the camera is probably under another camera transform,
-        // in which case we don't (yet) know how to deal with this!
-        let Some(world_from_camera) = macaw::IsoTransform::from_mat4(&world_from_parent) else {
+        let frustum_length = *props.pinhole_image_plane_distance.get();
+
+        // If the camera is our reference, there is nothing for us to display.
+        if transforms.reference_path() == ent_path {
+            scene.space_cameras.push(SpaceCamera3D {
+                ent_path: ent_path.clone(),
+                view_coordinates,
+                world_from_camera: macaw::IsoTransform::IDENTITY,
+                pinhole: Some(pinhole),
+                picture_plane_distance: frustum_length,
+            });
+            return;
+        }
+
+        // If this transform is not representable an iso transform transform we can't display it yet.
+        // This would happen if the camera is under another camera or under a transform with non-uniform scale.
+        let Some(world_from_camera) = macaw::IsoTransform::from_mat4(&world_from_parent.into()) else {
             return;
         };
-
-        let frustum_length = *props.pinhole_image_plane_distance.get();
 
         scene.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
-            picture_plane_distance: Some(frustum_length),
+            picture_plane_distance: frustum_length,
         });
 
         // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
@@ -162,11 +174,7 @@ impl CamerasPart {
             .add_segments(segments.into_iter())
             .radius(radius)
             .color(color)
-            .flags(
-                LineStripFlags::NO_COLOR_GRADIENT
-                    | LineStripFlags::CAP_END_ROUND
-                    | LineStripFlags::CAP_START_ROUND,
-            )
+            .flags(LineStripFlags::FLAG_CAP_END_ROUND | LineStripFlags::FLAG_CAP_START_ROUND)
             .picking_instance_id(instance_layer_id.instance);
 
         if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {

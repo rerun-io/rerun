@@ -92,6 +92,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         batch
             .add_strip(lorenz_points.into_iter())
             .color(Color32::from_rgb(255, 191, 0))
+            .flags(LineStripFlags::FLAG_COLOR_GRADIENT)
             .radius(Size::new_points(1.0));
 
         // Green Zig-Zag arrow
@@ -107,13 +108,19 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             )
             .color(Color32::GREEN)
             .radius(Size::new_scene(0.05))
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
+            .flags(
+                LineStripFlags::FLAG_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
+            );
     }
 
     // Blue spiral, rotating
     builder
         .batch("blue spiral")
-        .world_from_obj(glam::Mat4::from_rotation_x(seconds_since_startup * 10.0))
+        .world_from_obj(glam::Affine3A::from_rotation_x(
+            seconds_since_startup * 10.0,
+        ))
         .add_strip((0..1000).map(|i| {
             glam::vec3(
                 (i as f32 * 0.01).sin() * 2.0,
@@ -123,7 +130,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         }))
         .color(Color32::BLUE)
         .radius(Size::new_scene(0.1))
-        .flags(LineStripFlags::CAP_END_TRIANGLE);
+        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
     builder.to_draw_data(re_ctx).unwrap()
 }
@@ -318,7 +325,7 @@ impl Example for Multiview {
         let mut builder = PointCloudBuilder::new(re_ctx);
         builder
             .batch("Random Points")
-            .world_from_obj(glam::Mat4::from_rotation_x(seconds_since_startup))
+            .world_from_obj(glam::Affine3A::from_rotation_x(seconds_since_startup))
             .add_points(
                 self.random_points_positions.len(),
                 self.random_points_positions.iter().cloned(),
@@ -341,6 +348,7 @@ impl Example for Multiview {
             Projection::Perspective {
                 vertical_fov: 70.0 * TAU / 360.0,
                 near_plane_distance: 0.01,
+                aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
             }
         } else {
             Projection::Orthographic {

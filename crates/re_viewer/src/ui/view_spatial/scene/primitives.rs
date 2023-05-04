@@ -105,22 +105,12 @@ impl SceneSpatialPrimitives {
         // we calculate a per batch bounding box for lines and points.
         // TODO(andreas): We should keep these around to speed up picking!
         for (batch, vertex_iter) in points.iter_vertices_by_batch() {
-            // Only use points which are an IsoTransform to update the bounding box
-            // This prevents crazy bounds-increases when projecting 3d to 2d
-            // See: https://github.com/rerun-io/rerun/issues/1203
-            if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
-                let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-                *bounding_box = bounding_box.union(batch_bb.transform_affine3(&transform.into()));
-            }
+            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
+            *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));
         }
         for (batch, vertex_iter) in line_strips.iter_vertices_by_batch() {
-            // Only use points which are an IsoTransform to update the bounding box
-            // This prevents crazy bounds-increases when projecting 3d to 2d
-            // See: https://github.com/rerun-io/rerun/issues/1203
-            if let Some(transform) = macaw::IsoTransform::from_mat4(&batch.world_from_obj) {
-                let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-                *bounding_box = bounding_box.union(batch_bb.transform_affine3(&transform.into()));
-            }
+            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
+            *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));
         }
 
         for mesh in meshes {
@@ -184,7 +174,11 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_X)
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
+            .flags(
+                LineStripFlags::FLAG_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
+            )
             .picking_instance_id(picking_instance_id);
         line_batch
             .add_segment(
@@ -193,7 +187,11 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_Y)
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
+            .flags(
+                LineStripFlags::FLAG_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
+            )
             .picking_instance_id(picking_instance_id);
         line_batch
             .add_segment(
@@ -202,7 +200,11 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_Z)
-            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
+            .flags(
+                LineStripFlags::FLAG_COLOR_GRADIENT
+                    | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::FLAG_CAP_START_ROUND,
+            )
             .picking_instance_id(picking_instance_id);
     }
 }

@@ -2,7 +2,7 @@ use itertools::Itertools;
 use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
 
-use crate::ui::SpaceViewId;
+use super::{DataBlueprintGroupHandle, SpaceViewId};
 
 /// One "thing" in the UI.
 ///
@@ -14,7 +14,7 @@ pub enum Item {
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
-    DataBlueprintGroup(SpaceViewId, crate::ui::DataBlueprintGroupHandle),
+    DataBlueprintGroup(SpaceViewId, DataBlueprintGroupHandle),
 }
 
 impl std::fmt::Debug for Item {
@@ -29,29 +29,6 @@ impl std::fmt::Debug for Item {
 }
 
 impl Item {
-    /// If `false`, the selection is referring to data that is no longer present.
-    pub(crate) fn is_valid(&self, blueprint: &crate::ui::Blueprint) -> bool {
-        match self {
-            Item::ComponentPath(_) => true,
-            Item::InstancePath(space_view_id, _) => space_view_id
-                .map(|space_view_id| blueprint.viewport.space_view(&space_view_id).is_some())
-                .unwrap_or(true),
-            Item::SpaceView(space_view_id) => {
-                blueprint.viewport.space_view(space_view_id).is_some()
-            }
-            Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                    space_view
-                        .data_blueprint
-                        .group(*data_blueprint_group_handle)
-                        .is_some()
-                } else {
-                    false
-                }
-            }
-        }
-    }
-
     pub fn kind(self: &Item) -> &'static str {
         match self {
             Item::InstancePath(space_view_id, instance_path) => {
@@ -106,10 +83,6 @@ impl ItemCollection {
         self.items.iter()
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = Item> {
-        self.items.into_iter()
-    }
-
     pub fn to_vec(&self) -> Vec<Item> {
         self.items.clone()
     }
@@ -133,8 +106,17 @@ impl ItemCollection {
         None
     }
 
-    /// Remove all invalid selections.
-    pub fn purge_invalid(&mut self, blueprint: &crate::ui::Blueprint) {
-        self.items.retain(|selection| selection.is_valid(blueprint));
+    /// Retains elements that fulfil a certain condition.
+    pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
+        self.items.retain(|item| f(item));
+    }
+}
+
+impl std::iter::IntoIterator for ItemCollection {
+    type Item = Item;
+    type IntoIter = std::vec::IntoIter<Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
     }
 }

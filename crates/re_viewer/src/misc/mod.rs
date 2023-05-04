@@ -1,11 +1,10 @@
 mod app_options;
 pub mod caches;
 pub mod format_time;
-mod item;
 pub(crate) mod mesh_loader;
 pub mod queries;
-mod selection_state;
 pub(crate) mod space_info;
+mod space_view_highlights;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
 mod transform_cache;
@@ -27,14 +26,12 @@ pub(crate) mod profiler;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 
+pub use app_options::AppOptions;
 pub use transform_cache::{TransformCache, UnreachableTransform};
-pub use {
-    app_options::*,
-    item::{Item, ItemCollection},
-    selection_state::{
-        HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewEntityHighlight,
-        SelectionHighlight, SelectionState, SpaceViewHighlights, SpaceViewOutlineMasks,
-    },
+
+pub use space_view_highlights::{
+    highlights_for_space_view, OptionalSpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks,
 };
 
 // ----------------------------------------------------------------------------

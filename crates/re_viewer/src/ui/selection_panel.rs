@@ -6,23 +6,25 @@ use re_log_types::{
     component_types::{Tensor, TensorDataMeaning},
     TimeType, Transform,
 };
+use re_viewer_context::{Item, SpaceViewId};
 
-use crate::{
-    ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Item, UiVerbosity, ViewerContext,
+use crate::{ui::Blueprint, UiVerbosity, ViewerContext};
+
+use super::{
+    data_ui::DataUi, selection_history_ui::SelectionHistoryUi, space_view::ViewState,
+    view_spatial::SpatialNavigationMode,
 };
-
-use super::{data_ui::DataUi, space_view::ViewState};
 
 // ---
 
 /// The "Selection View" side-bar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct SelectionPanel {}
+pub(crate) struct SelectionPanel {
+    selection_state_ui: SelectionHistoryUi,
+}
 
 impl SelectionPanel {
-    #[allow(clippy::unused_self)]
     pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -52,11 +54,12 @@ impl SelectionPanel {
                         ..Default::default()
                     })
                     .show_inside(ui, |ui| {
-                        if let Some(selection) = ctx
-                            .rec_cfg
-                            .selection_state
-                            .selection_ui(ctx.re_ui, ui, blueprint)
-                        {
+                        if let Some(selection) = self.selection_state_ui.selection_ui(
+                            ctx.re_ui,
+                            ui,
+                            blueprint,
+                            &mut ctx.selection_state_mut().history,
+                        ) {
                             ctx.set_multi_selection(selection.iter().cloned());
                         }
                     });
@@ -265,7 +268,7 @@ fn blueprint_ui(
                 {
                     if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
                         let mut new_space_view = space_view.clone();
-                        new_space_view.id = super::SpaceViewId::random();
+                        new_space_view.id = SpaceViewId::random();
                         blueprint.viewport.add_space_view(new_space_view);
                         blueprint.viewport.mark_user_interaction();
                     }

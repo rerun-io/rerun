@@ -1,11 +1,10 @@
-use glam::Mat4;
 use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Label, Radius},
     Arrow3D, Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
+use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
     misc::{SpaceViewHighlights, TransformCache, ViewerContext},
@@ -21,7 +20,7 @@ impl Arrows3DPart {
         scene: &mut SceneSpatial,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
-        world_from_obj: Mat4,
+        world_from_obj: glam::Affine3A,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
@@ -64,9 +63,10 @@ impl Arrows3DPart {
                 .radius(radius)
                 .color(color)
                 .flags(
-                    re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE
-                        | re_renderer::renderer::LineStripFlags::CAP_START_ROUND
-                        | re_renderer::renderer::LineStripFlags::CAP_START_EXTEND_OUTWARDS,
+                    LineStripFlags::FLAG_COLOR_GRADIENT
+                        | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                        | LineStripFlags::FLAG_CAP_START_ROUND
+                        | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
                 )
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,

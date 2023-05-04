@@ -15,9 +15,8 @@ use crate::{
     IndexedTable, PersistentIndexedTable,
 };
 
-// TODO(#1619):
-// - The store should insert column-per-column rather than row-per-row (purely a performance
-//   matter)
+// TODO(cmc): the store should insert column-per-column rather than row-per-row (purely a
+// performance matter).
 
 // --- Data store ---
 

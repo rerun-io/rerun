@@ -57,6 +57,7 @@ re_renderer = { workspace = true, default-features = false, features = [
 re_smart_channel.workspace = true
 re_tensor_ops.workspace = true
 re_ui = { workspace = true, features = ["eframe", "egui_dock"] }
+re_viewer_context.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 # Internal (optional):
@@ -98,7 +99,7 @@ rfd = { version = "0.11.3", default_features = false, features = [
   "xdg-portal",
 ] }
 serde = { version = "1", features = ["derive"] }
-slotmap = { version = "1.0.6", features = ["serde"] }
+slotmap.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting"] }

@@ -87,6 +87,13 @@ impl std::ops::IndexMut<usize> for DataCellRow {
     }
 }
 
+impl SizeBytes for DataCellRow {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+}
+
 // ---
 
 /// A unique ID for a [`DataRow`].
@@ -119,12 +126,6 @@ impl RowId {
     #[inline]
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
-    }
-
-    /// Temporary utility while we transition to batching. See #1619.
-    #[doc(hidden)]
-    pub fn into_table_id(self) -> TableId {
-        TableId(self.0)
     }
 }
 
@@ -315,13 +316,28 @@ impl DataRow {
         Self::try_from_cells(row_id, timepoint, entity_path, num_instances, cells).unwrap()
     }
 
-    /// Turns the `DataRow` into a single-row [`DataTable`] that carries the same ID.
-    ///
-    /// This only makes sense as part of our transition to batching. See #1619.
-    #[doc(hidden)]
+    /// Turns the `DataRow` into a single-row [`DataTable`].
     #[inline]
     pub fn into_table(self) -> DataTable {
-        DataTable::from_rows(self.row_id.into_table_id(), [self])
+        DataTable::from_rows(TableId::random(), [self])
+    }
+}
+
+impl SizeBytes for DataRow {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            row_id,
+            timepoint,
+            entity_path,
+            num_instances,
+            cells,
+        } = self;
+
+        row_id.heap_size_bytes()
+            + timepoint.heap_size_bytes()
+            + entity_path.heap_size_bytes()
+            + num_instances.heap_size_bytes()
+            + cells.heap_size_bytes()
     }
 }
 

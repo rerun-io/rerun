@@ -2,12 +2,11 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
+use re_sdk::RecordingStream;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
-
-use crate::Session;
 
 // ---
 
@@ -23,6 +22,9 @@ enum RerunBehavior {
     #[cfg(feature = "native_viewer")]
     Spawn,
 }
+
+// TODO(cmc): There are definitely ways of making this all nicer now (this, native_viewer and
+// web_viewer).. but one thing at a time.
 
 /// This struct implements a `clap::Parser` that defines all the arguments that a typical Rerun
 /// application might use, and provides helpers to evaluate those arguments and behave
@@ -67,7 +69,7 @@ pub struct RerunArgs {
 }
 
 impl RerunArgs {
-    /// Set up Rerun, and run the given code with a [`Session`] object
+    /// Set up Rerun, and run the given code with a [`RecordingStream`] object
     /// that can be used to log data.
     ///
     /// Logging will be controlled by the `RERUN` environment variable,
@@ -77,7 +79,7 @@ impl RerunArgs {
         &self,
         application_id: &str,
         default_enabled: bool,
-        run: impl FnOnce(Session) + Send + 'static,
+        run: impl FnOnce(RecordingStream) + Send + 'static,
     ) -> anyhow::Result<()> {
         // Ensure we have a running tokio runtime.
         let mut tokio_runtime = None;
@@ -89,12 +91,13 @@ impl RerunArgs {
         };
         let _tokio_runtime_guard = tokio_runtime_handle.enter();
 
-        let (rerun_enabled, recording_info) = crate::SessionBuilder::new(application_id)
-            .default_enabled(default_enabled)
-            .finalize();
+        let (rerun_enabled, recording_info, batcher_config) =
+            crate::RecordingStreamBuilder::new(application_id)
+                .default_enabled(default_enabled)
+                .into_args();
 
         if !rerun_enabled {
-            run(Session::disabled());
+            run(RecordingStream::disabled());
             return Ok(());
         }
 
@@ -115,14 +118,17 @@ impl RerunArgs {
 
             #[cfg(feature = "native_viewer")]
             RerunBehavior::Spawn => {
-                crate::native_viewer::spawn(recording_info, run)?;
+                crate::native_viewer::spawn(recording_info, batcher_config, run)?;
                 return Ok(());
             }
         };
 
-        let session = Session::new(recording_info, sink);
-        let _sink = session.sink().clone(); // Keep sink (and potential associated servers) alive until the end of this function scope.
-        run(session);
+        let rec_stream = RecordingStream::new(recording_info, batcher_config, sink)?;
+        run(rec_stream.clone());
+
+        // The user callback is done executing, it's a good opportunity to flush the pipeline
+        // independently of the current flush thresholds (which might be `NEVER`).
+        rec_stream.flush_async();
 
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {

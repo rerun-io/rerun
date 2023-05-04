@@ -6,18 +6,19 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
+use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId};
 
 use crate::{
-    misc::{space_info::SpaceInfoCollection, Item, SpaceViewHighlights, ViewerContext},
+    misc::{
+        highlights_for_space_view, space_info::SpaceInfoCollection, SpaceViewHighlights,
+        ViewerContext,
+    },
     ui::space_view_heuristics::default_created_space_views,
 };
 
 use super::{
-    data_blueprint::{DataBlueprintGroup, DataBlueprintGroupHandle},
-    space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::all_possible_space_views,
-    view_category::ViewCategory,
-    SpaceView, SpaceViewId,
+    data_blueprint::DataBlueprintGroup, space_view_entity_picker::SpaceViewEntityPicker,
+    space_view_heuristics::all_possible_space_views, view_category::ViewCategory, SpaceView,
 };
 
 // ----------------------------------------------------------------------------
@@ -662,10 +663,8 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
         crate::profile_function!();
 
-        let highlights = self
-            .ctx
-            .selection_state()
-            .highlights_for_space_view(*space_view_id, self.space_views);
+        let highlights =
+            highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);
         let space_view = self
             .space_views
             .get_mut(space_view_id)

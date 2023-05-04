@@ -1,5 +1,3 @@
-use glam::Mat4;
-
 use re_data_store::EntityPath;
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey},
@@ -11,7 +9,7 @@ use crate::{
     misc::{SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
-        view_spatial::{MeshSource, MeshSourceData, SceneSpatial},
+        view_spatial::{MeshSource, SceneSpatial},
         DefaultColor,
     },
 };
@@ -25,14 +23,13 @@ impl MeshPart {
         scene: &mut SceneSpatial,
         entity_view: &EntityView<Mesh3D>,
         ent_path: &EntityPath,
-        world_from_obj: Mat4,
+        world_from_obj: glam::Affine3A,
         ctx: &mut ViewerContext<'_>,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
         let _default_color = DefaultColor::EntityPath(ent_path);
-        let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
         let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
         let visitor =
@@ -49,14 +46,10 @@ impl MeshPart {
                 if let Some(mesh) = ctx
                     .cache
                     .mesh
-                    .load(
-                        &ent_path.to_string(),
-                        &MeshSourceData::Mesh3D(mesh),
-                        ctx.render_ctx,
-                    )
+                    .load(&ent_path.to_string(), &mesh, ctx.render_ctx)
                     .map(|cpu_mesh| MeshSource {
                         picking_instance_hash,
-                        world_from_mesh: world_from_obj_affine,
+                        world_from_mesh: world_from_obj,
                         mesh: cpu_mesh,
                         outline_mask_ids,
                     })

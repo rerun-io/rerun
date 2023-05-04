@@ -1,23 +1,20 @@
 use eframe::epaint::text::TextWrapping;
-use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
-use re_format::format_f32;
-
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
+
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
+use re_format::format_f32;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
+use re_viewer_context::{HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId};
 
 use crate::{
-    misc::{
-        space_info::query_view_coordinates, HoveredSpace, SelectionHighlight, SpaceViewHighlights,
-        ViewerContext,
-    },
+    misc::{space_info::query_view_coordinates, SpaceViewHighlights, ViewerContext},
     ui::{
         data_blueprint::DataBlueprintTree,
         data_ui::{self, DataUi},
         space_view::ScreenshotMode,
         view_spatial::UiLabelTarget,
-        SpaceViewId,
     },
 };
 
@@ -152,29 +149,21 @@ impl ViewSpatialState {
     ) {
         crate::profile_function!();
 
-        let scene_size = self.scene_bbox_accum.size().length();
-
         let query = ctx.current_query();
 
         let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
         for entity_path in entity_paths {
-            Self::update_pinhole_property_heuristics(
-                ctx,
-                data_blueprint,
-                &query,
-                &entity_path,
-                scene_size,
-            );
+            self.update_pinhole_property_heuristics(ctx, data_blueprint, &query, &entity_path);
             self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
         }
     }
 
     fn update_pinhole_property_heuristics(
+        &self,
         ctx: &mut ViewerContext<'_>,
         data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
-        scene_size: f32,
     ) {
         if let Some(re_log_types::Transform::Pinhole(_)) =
             query_latest_single::<re_log_types::Transform>(
@@ -183,14 +172,14 @@ impl ViewSpatialState {
                 query,
             )
         {
-            let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-                scene_size * 0.05
-            } else {
-                1.0
-            };
-
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {
+                let scene_size = self.scene_bbox_accum.size().length();
+                let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+                    scene_size * 0.05
+                } else {
+                    1.0
+                };
                 properties.pinhole_image_plane_distance =
                     EditableAutoValue::Auto(default_image_plane_distance);
                 data_blueprint
@@ -537,8 +526,7 @@ fn axis_name(axis: Option<glam::Vec3>) -> String {
 
 pub fn create_labels(
     scene_ui: &mut SceneSpatialUiData,
-    ui_from_space2d: egui::emath::RectTransform,
-    space2d_from_ui: egui::emath::RectTransform,
+    ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
@@ -548,7 +536,7 @@ pub fn create_labels(
 
     let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
 
-    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_space2d.to());
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
 
     for label in &scene_ui.labels {
         let (wrap_width, text_anchor_pos) = match label.target {
@@ -557,7 +545,7 @@ pub fn create_labels(
                 if nav_mode == SpatialNavigationMode::ThreeD {
                     continue;
                 }
-                let rect_in_ui = ui_from_space2d.transform_rect(rect);
+                let rect_in_ui = ui_from_canvas.transform_rect(rect);
                 (
                     // Place the text centered below the rect
                     (rect_in_ui.width() - 4.0).at_least(60.0),
@@ -569,10 +557,14 @@ pub fn create_labels(
                 if nav_mode == SpatialNavigationMode::ThreeD {
                     continue;
                 }
-                let pos_in_ui = ui_from_space2d.transform_pos(pos);
+                let pos_in_ui = ui_from_canvas.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
             }
             UiLabelTarget::Position3D(pos) => {
+                // TODO(#1640): 3D labels are not visible in 2D for now.
+                if nav_mode == SpatialNavigationMode::TwoD {
+                    continue;
+                }
                 let pos_in_ui = ui_from_world_3d * pos.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
                     continue; // behind camera
@@ -611,23 +603,21 @@ pub fn create_labels(
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance_key);
         let fill_color = match highlight.hover {
-            crate::misc::HoverHighlight::None => match highlight.selection {
+            HoverHighlight::None => match highlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
                 SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
             },
-            crate::misc::HoverHighlight::Hovered => {
-                parent_ui.style().visuals.widgets.hovered.bg_fill
-            }
+            HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
         label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
         label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
 
         scene_ui.pickable_ui_rects.push((
-            space2d_from_ui.transform_rect(bg_rect),
+            ui_from_canvas.inverse().transform_rect(bg_rect),
             label.labeled_instance,
         ));
     }
@@ -718,7 +708,7 @@ pub fn picking(
 
     let _ = view_builder.schedule_picking_rect(
         ctx.render_ctx,
-        re_renderer::IntRect::from_middle_and_extent(
+        re_renderer::RectInt::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
         ),
@@ -785,7 +775,7 @@ pub fn picking(
             instance_path.instance_key = re_log_types::component_types::InstanceKey::SPLAT;
         }
 
-        hovered_items.push(crate::misc::Item::InstancePath(
+        hovered_items.push(Item::InstancePath(
             Some(space_view_id),
             instance_path.clone(),
         ));

@@ -18,8 +18,8 @@ LENGTH_M: Final = 10.0
 LENGTH_H: Final = 4.0
 
 WIDTH_S: Final = 0.25
-WIDTH_M: Final = 0.5
-WIDTH_H: Final = 0.7
+WIDTH_M: Final = 0.4
+WIDTH_H: Final = 0.6
 
 
 def log_clock(steps: int) -> None:
@@ -61,7 +61,7 @@ def log_clock(steps: int) -> None:
         point_h = np.array(rotate(math.tau * scaled_h, LENGTH_H))
         color_h = (int(255 - (scaled_h * 255)), int(scaled_h * 255), 255, 255)
         rr.log_point("world/hours_pt", position=point_h, color=color_h)
-        rr.log_arrow("world/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_M)
+        rr.log_arrow("world/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_H)
 
 
 if __name__ == "__main__":
