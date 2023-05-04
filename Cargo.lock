@@ -773,7 +773,7 @@ name = "clock"
 version = "0.6.0-alpha.0"
 dependencies = [
  "anyhow",
- "clap 4.1.4",
+ "clap 4.1.14",
  "glam",
  "rerun",
 ]
