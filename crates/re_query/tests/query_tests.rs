@@ -18,13 +18,13 @@ fn simple_query() {
 
     // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let row = DataRow::from_cells1(RowId::random(), ent_path, timepoint, 2, points);
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![ColorRGBA(0xff000000)];
-    let row = DataRow::from_cells2(
+    let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
         timepoint,
@@ -89,13 +89,14 @@ fn timeless_query() {
 
     // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let row = DataRow::from_cells1(RowId::random(), ent_path, timepoint, 2, points);
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign one of them a color with an explicit instance.. timelessly!
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![ColorRGBA(0xff000000)];
-    let row = DataRow::from_cells2(RowId::random(), ent_path, [], 1, (color_instances, colors));
+    let row =
+        DataRow::from_cells2_sized(RowId::random(), ent_path, [], 1, (color_instances, colors));
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
@@ -154,12 +155,12 @@ fn no_instance_join_query() {
 
     // Create some points with an implicit instance
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let row = DataRow::from_cells1(RowId::random(), ent_path, timepoint, 2, points);
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign them colors with explicit instances
     let colors = vec![ColorRGBA(0xff000000), ColorRGBA(0x00ff0000)];
-    let row = DataRow::from_cells1(RowId::random(), ent_path, timepoint, 2, colors);
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, colors);
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
@@ -218,7 +219,7 @@ fn missing_column_join_query() {
 
     // Create some points with an implicit instance
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let row = DataRow::from_cells1(RowId::random(), ent_path, timepoint, 2, points);
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
@@ -276,13 +277,13 @@ fn splatted_query() {
 
     // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
-    let row = DataRow::from_cells1(RowId::random(), ent_path, timepoint, 2, points);
+    let row = DataRow::from_cells1_sized(RowId::random(), ent_path, timepoint, 2, points);
     store.insert_row(&row).unwrap();
 
     // Assign all of them a color via splat
     let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![ColorRGBA(0xff000000)];
-    let row = DataRow::from_cells2(
+    let row = DataRow::from_cells2_sized(
         RowId::random(),
         ent_path,
         timepoint,

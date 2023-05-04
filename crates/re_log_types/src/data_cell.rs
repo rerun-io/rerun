@@ -505,7 +505,7 @@ impl std::fmt::Display for DataCell {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "DataCell({})",
-            re_format::format_bytes(self.total_size_bytes() as _)
+            re_format::format_bytes(self.inner.size_bytes as _)
         ))?;
         re_format::arrow::format_table(
             // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
@@ -546,6 +546,12 @@ impl SizeBytes for DataCell {
         (self.inner.size_bytes > 0)
             .then_some(self.inner.size_bytes)
             .unwrap_or_else(|| {
+                // NOTE: Relying on unsized cells is always a mistake, but it isn't worth crashing
+                // the viewer when in release mode.
+                debug_assert!(
+                    false,
+                    "called `DataCell::heap_size_bytes() without computing it first"
+                );
                 re_log::warn_once!(
                     "called `DataCell::heap_size_bytes() without computing it first"
                 );
@@ -573,11 +579,11 @@ impl DataCellInner {
             return;
         }
 
+        let values: &dyn arrow2::array::Array = values.as_ref();
         *size_bytes = name.total_size_bytes()
             + size_bytes.total_size_bytes()
             + values.data_type().total_size_bytes()
-            + std::mem::size_of_val(values) as u64
-            + arrow2::compute::aggregate::estimated_bytes_size(&**values) as u64;
+            + values.total_size_bytes();
     }
 }
 
@@ -587,7 +593,8 @@ fn data_cell_sizes() {
     use arrow2::array::UInt64Array;
 
     // not computed
-    {
+    // NOTE: Unsized cells are illegal in debug mode and will flat out crash.
+    if !cfg!(debug_assertions) {
         let cell = DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         assert_eq!(0, cell.heap_size_bytes());
         assert_eq!(0, cell.heap_size_bytes());
@@ -599,8 +606,8 @@ fn data_cell_sizes() {
             DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         cell.compute_size_bytes();
 
-        assert_eq!(112, cell.heap_size_bytes());
-        assert_eq!(112, cell.heap_size_bytes());
+        assert_eq!(216, cell.heap_size_bytes());
+        assert_eq!(216, cell.heap_size_bytes());
     }
 
     // anything else
@@ -612,177 +619,7 @@ fn data_cell_sizes() {
         cell.compute_size_bytes();
 
         // zero-sized + 3x u64s
-        assert_eq!(136, cell.heap_size_bytes());
-        assert_eq!(136, cell.heap_size_bytes());
-    }
-}
-
-// This test exists because the documentation and online discussions revolving around
-// arrow2's `estimated_bytes_size()` function indicate that there's a lot of limitations and
-// edge cases to be aware of.
-//
-// Also, it's just plain hard to be sure that the answer you get is the answer you're looking
-// for with these kinds of tools. When in doubt.. test everything we're going to need from it.
-//
-// In many ways, this is a specification of what we mean when we ask "what's the size of this
-// Arrow array?".
-#[test]
-#[allow(clippy::from_iter_instead_of_collect)]
-fn test_arrow_estimated_size_bytes() {
-    use arrow2::{
-        array::{Array, Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
-        compute::aggregate::estimated_bytes_size,
-        datatypes::{DataType, Field},
-        offset::Offsets,
-    };
-
-    // empty primitive array
-    {
-        let data = vec![];
-        let array = UInt64Array::from_vec(data.clone()).boxed();
-        let sz = estimated_bytes_size(&*array);
-        assert_eq!(0, sz);
-        assert_eq!(std::mem::size_of_val(data.as_slice()), sz);
-    }
-
-    // simple primitive array
-    {
-        let data = vec![42u64; 100];
-        let array = UInt64Array::from_vec(data.clone()).boxed();
-        assert_eq!(
-            std::mem::size_of_val(data.as_slice()),
-            estimated_bytes_size(&*array)
-        );
-    }
-
-    // utf8 strings array
-    {
-        let data = vec![Some("some very, very, very long string indeed"); 100];
-        let array = Utf8Array::<i32>::from(data.clone()).to_boxed();
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.unwrap().as_bytes()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(5600, raw_size_bytes);
-        assert_eq!(4404, arrow_size_bytes); // smaller because validity bitmaps instead of opts
-    }
-
-    // simple primitive list array
-    {
-        let data = std::iter::repeat(vec![42u64; 100])
-            .take(50)
-            .collect::<Vec<_>>();
-        let array = {
-            let array_flattened =
-                UInt64Array::from_vec(data.clone().into_iter().flatten().collect()).boxed();
-
-            ListArray::<i32>::new(
-                ListArray::<i32>::default_datatype(DataType::UInt64),
-                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
-                    .unwrap()
-                    .into(),
-                array_flattened,
-                None,
-            )
-            .boxed()
-        };
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(41200, raw_size_bytes);
-        assert_eq!(40200, arrow_size_bytes); // smaller because smaller inner headers
-    }
-
-    // compound type array
-    {
-        #[derive(Clone, Copy)]
-        struct Point {
-            x: f64,
-            y: f64,
-        }
-
-        impl Default for Point {
-            fn default() -> Self {
-                Self { x: 42.0, y: 666.0 }
-            }
-        }
-
-        let data = vec![Point::default(); 100];
-        let array = {
-            let x = Float64Array::from_vec(data.iter().map(|p| p.x).collect()).boxed();
-            let y = Float64Array::from_vec(data.iter().map(|p| p.y).collect()).boxed();
-            let fields = vec![
-                Field::new("x", DataType::Float64, false),
-                Field::new("y", DataType::Float64, false),
-            ];
-            StructArray::new(DataType::Struct(fields), vec![x, y], None).boxed()
-        };
-
-        let raw_size_bytes = std::mem::size_of_val(data.as_slice());
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(1600, raw_size_bytes);
-        assert_eq!(1600, arrow_size_bytes);
-    }
-
-    // compound type list array
-    {
-        #[derive(Clone, Copy)]
-        struct Point {
-            x: f64,
-            y: f64,
-        }
-
-        impl Default for Point {
-            fn default() -> Self {
-                Self { x: 42.0, y: 666.0 }
-            }
-        }
-
-        let data = std::iter::repeat(vec![Point::default(); 100])
-            .take(50)
-            .collect::<Vec<_>>();
-        let array: Box<dyn Array> = {
-            let array = {
-                let x =
-                    Float64Array::from_vec(data.iter().flatten().map(|p| p.x).collect()).boxed();
-                let y =
-                    Float64Array::from_vec(data.iter().flatten().map(|p| p.y).collect()).boxed();
-                let fields = vec![
-                    Field::new("x", DataType::Float64, false),
-                    Field::new("y", DataType::Float64, false),
-                ];
-                StructArray::new(DataType::Struct(fields), vec![x, y], None)
-            };
-
-            ListArray::<i32>::new(
-                ListArray::<i32>::default_datatype(array.data_type().clone()),
-                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
-                    .unwrap()
-                    .into(),
-                array.boxed(),
-                None,
-            )
-            .boxed()
-        };
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(81200, raw_size_bytes);
-        assert_eq!(80200, arrow_size_bytes); // smaller because smaller inner headers
+        assert_eq!(240, cell.heap_size_bytes());
+        assert_eq!(240, cell.heap_size_bytes());
     }
 }

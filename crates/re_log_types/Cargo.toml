@@ -57,9 +57,7 @@ array-init = "2.1.0"
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",
-  "compute_aggregate",
   "compute_concatenate",
-  "compute_aggregate",
 ] }
 arrow2_convert.workspace = true
 bytemuck = "1.11"
