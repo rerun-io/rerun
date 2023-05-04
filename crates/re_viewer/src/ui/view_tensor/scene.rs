@@ -52,11 +52,7 @@ impl SceneTensor {
     ) -> Result<(), QueryError> {
         entity_view.visit1(|instance_key: InstanceKey, tensor: Tensor| {
             if !tensor.is_shaped_like_an_image() {
-                match ctx
-                    .cache
-                    .get_or_insert::<TensorDecodeCache>()
-                    .try_decode_tensor_if_necessary(tensor)
-                {
+                match ctx.cache.entry::<TensorDecodeCache>().entry(tensor) {
                     Ok(tensor) => {
                         let instance_path = InstancePath::instance(ent_path.clone(), instance_key);
                         self.tensors.insert(instance_path, tensor);

@@ -35,11 +35,7 @@ impl EntityDataUi for Tensor {
     ) {
         crate::profile_function!();
 
-        match ctx
-            .cache
-            .get_or_insert::<TensorDecodeCache>()
-            .try_decode_tensor_if_necessary(self.clone())
-        {
+        match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
             Ok(decoded) => {
                 tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
             }
@@ -61,10 +57,7 @@ fn tensor_ui(
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
-    let tensor_stats = *ctx
-        .cache
-        .get_or_insert::<TensorStatsCache>()
-        .get_or_insert(tensor);
+    let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let annotations = annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
     let texture_result = crate::gpu_bridge::tensor_to_gpu(

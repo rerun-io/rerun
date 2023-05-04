@@ -23,7 +23,7 @@ impl Caches {
     /// Retrieves a cache for reading and writing.
     ///
     /// Adds the cache lazily if it wasn't already there.
-    pub fn get_or_insert<T: Cache + Default>(&mut self) -> &mut T {
+    pub fn entry<T: Cache + Default>(&mut self) -> &mut T {
         let cache = self
             .0
             .entry(std::any::TypeId::of::<T>())

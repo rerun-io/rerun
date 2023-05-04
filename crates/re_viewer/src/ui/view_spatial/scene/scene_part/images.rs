@@ -42,10 +42,7 @@ fn to_textured_rect(
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = ctx
-        .cache
-        .get_or_insert::<TensorStatsCache>()
-        .get_or_insert(tensor);
+    let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
 
     match crate::gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
@@ -192,11 +189,7 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            let tensor = match ctx
-                .cache
-                .get_or_insert::<TensorDecodeCache>()
-                .try_decode_tensor_if_necessary(tensor)
-            {
+            let tensor = match ctx.cache.entry::<TensorDecodeCache>().entry(tensor) {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
@@ -357,22 +350,18 @@ impl ImagesPart {
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
-        let max_data_value = if let Some((_min, max)) = ctx
-            .cache
-            .get_or_insert::<TensorStatsCache>()
-            .get_or_insert(tensor)
-            .range
-        {
-            max as f32
-        } else {
-            // This could only happen for Jpegs, and we should never get here.
-            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
-            re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
-            match tensor.data {
-                TensorData::U16(_) => u16::MAX as f32,
-                _ => 10.0,
-            }
-        };
+        let max_data_value =
+            if let Some((_min, max)) = ctx.cache.entry::<TensorStatsCache>().entry(tensor).range {
+                max as f32
+            } else {
+                // This could only happen for Jpegs, and we should never get here.
+                // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
+                re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
+                match tensor.data {
+                    TensorData::U16(_) => u16::MAX as f32,
+                    _ => 10.0,
+                }
+            };
 
         scene.primitives.depth_clouds.clouds.push(DepthCloud {
             world_from_obj: world_from_obj.into(),

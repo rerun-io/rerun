@@ -7,7 +7,7 @@ use super::TensorStats;
 pub struct TensorStatsCache(nohash_hasher::IntMap<component_types::TensorId, TensorStats>);
 
 impl TensorStatsCache {
-    pub fn get_or_insert(&mut self, tensor: &Tensor) -> &TensorStats {
+    pub fn entry(&mut self, tensor: &Tensor) -> &TensorStats {
         self.0
             .entry(tensor.tensor_id)
             .or_insert_with(|| TensorStats::new(tensor))

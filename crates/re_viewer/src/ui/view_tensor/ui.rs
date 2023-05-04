@@ -78,9 +78,7 @@ impl ViewTensorState {
                     ctx.re_ui,
                     ui,
                     tensor,
-                    ctx.cache
-                        .get_or_insert::<TensorStatsCache>()
-                        .get_or_insert(tensor),
+                    ctx.cache.entry::<TensorStatsCache>().entry(tensor),
                 );
                 self.texture_settings.ui(ctx.re_ui, ui);
                 self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
@@ -184,10 +182,7 @@ fn paint_tensor_slice(
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     crate::profile_function!();
 
-    let tensor_stats = ctx
-        .cache
-        .get_or_insert::<TensorStatsCache>()
-        .get_or_insert(tensor);
+    let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
         ctx.render_ctx,
         tensor,

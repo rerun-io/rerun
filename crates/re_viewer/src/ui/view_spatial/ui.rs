@@ -832,14 +832,14 @@ pub fn picking(
                                 let tensor_name = instance_path.to_string();
 
                                 match ctx.cache
-                                        .get_or_insert::<TensorDecodeCache>()
-                                        .try_decode_tensor_if_necessary(tensor) {
+                                        .entry::<TensorDecodeCache>()
+                                        .entry(tensor) {
                                     Ok(decoded_tensor) =>
                                         data_ui::image::show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
                                             &decoded_tensor,
-                                            ctx.cache.get_or_insert::<TensorStatsCache>().get_or_insert(&decoded_tensor),
+                                            ctx.cache.entry::<TensorStatsCache>().entry(&decoded_tensor),
                                             &scene.annotation_map.find(&instance_path.entity_path),
                                             decoded_tensor.meter,
                                             &tensor_name,

@@ -12,7 +12,7 @@ use crate::mesh_loader::LoadedMesh;
 pub struct MeshCache(nohash_hasher::IntMap<MeshId, Option<Arc<LoadedMesh>>>);
 
 impl MeshCache {
-    pub fn load(
+    pub fn entry(
         &mut self,
         name: &str,
         mesh: &Mesh3D,

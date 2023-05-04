@@ -32,7 +32,7 @@ impl TensorDecodeCache {
     /// This is a no-op for Tensors that are not compressed.
     ///
     /// Currently supports JPEG encoded tensors.
-    pub fn try_decode_tensor_if_necessary(
+    pub fn entry(
         &mut self,
         maybe_encoded_tensor: Tensor,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
