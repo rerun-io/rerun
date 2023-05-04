@@ -1,3 +1,7 @@
+//! Rerun Viewer context
+//!
+//! This crate contains data structures that are shared with most modules of the viewer.
+
 mod item;
 mod selection_history;
 mod selection_state;
