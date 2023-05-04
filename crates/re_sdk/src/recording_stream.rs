@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
+use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time,
+    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time, TimeInt,
+    TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -325,9 +327,6 @@ struct RecordingStreamInner {
 
     batcher: DataTableBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
-    //
-    // TODO(emilk): add convenience `TimePoint` here so that users can
-    // do things like `session.set_time_sequence("frame", frame_idx);`
 }
 
 impl Drop for RecordingStreamInner {
@@ -760,6 +759,154 @@ impl RecordingStream {
         self.set_sink(Box::new(crate::sink::BufferedSink::new()));
     }
 }
+
+// --- Stateful time ---
+
+/// Thread-local data.
+#[derive(Default)]
+struct ThreadInfo {
+    /// The current time per-thread per-recording, which can be set by users.
+    timepoints: HashMap<RecordingId, TimePoint>,
+}
+
+impl ThreadInfo {
+    fn thread_now(rid: RecordingId) -> TimePoint {
+        Self::with(|ti| ti.now(rid))
+    }
+
+    fn set_thread_time(rid: RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
+        Self::with(|ti| ti.set_time(rid, timeline, time_int));
+    }
+
+    fn reset_thread_time(rid: RecordingId) {
+        Self::with(|ti| ti.reset_time(rid));
+    }
+
+    /// Get access to the thread-local [`ThreadInfo`].
+    fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
+        use std::cell::RefCell;
+        thread_local! {
+            static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None);
+        }
+
+        THREAD_INFO.with(|thread_info| {
+            let mut thread_info = thread_info.borrow_mut();
+            let thread_info = thread_info.get_or_insert_with(ThreadInfo::default);
+            f(thread_info)
+        })
+    }
+
+    fn now(&self, rid: RecordingId) -> TimePoint {
+        let mut timepoint = self.timepoints.get(&rid).cloned().unwrap_or_default();
+        timepoint.insert(Timeline::log_time(), Time::now().into());
+        timepoint
+    }
+
+    fn set_time(&mut self, rid: RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
+        if let Some(time_int) = time_int {
+            self.timepoints
+                .entry(rid)
+                .or_default()
+                .insert(timeline, time_int);
+        } else if let Some(timepoint) = self.timepoints.get_mut(&rid) {
+            timepoint.remove(&timeline);
+        }
+    }
+
+    fn reset_time(&mut self, rid: RecordingId) {
+        if let Some(timepoint) = self.timepoints.get_mut(&rid) {
+            *timepoint = TimePoint::default();
+        }
+    }
+}
+
+impl RecordingStream {
+    /// Returns the current time of the recording on the current thread.
+    pub fn now(&self) -> TimePoint {
+        let Some(this) = &*self.inner else {
+            re_log::debug!("Recording disabled - call to now() ignored");
+            return TimePoint::default();
+        };
+
+        ThreadInfo::thread_now(this.info.recording_id)
+    }
+
+    /// Set the current time of the recording, for the current calling thread.
+    /// Used for all subsequent logging performed from this same thread, until the next call to
+    /// [`Self::set_time_sequence`].
+    ///
+    /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+    ///
+    /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
+    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: Option<i64>) {
+        let Some(this) = &*self.inner else {
+            re_log::debug!("Recording disabled - call to set_time_sequence() ignored");
+            return;
+        };
+
+        ThreadInfo::set_thread_time(
+            this.info.recording_id,
+            Timeline::new(timeline, TimeType::Sequence),
+            sequence.map(TimeInt::from),
+        );
+    }
+
+    /// Set the current time of the recording, for the current calling thread.
+    /// Used for all subsequent logging performed from this same thread, until the next call to
+    /// [`Self::set_time_seconds`].
+    ///
+    /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+    ///
+    /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    pub fn set_time_seconds(&self, timeline: &str, seconds: Option<f64>) {
+        let Some(this) = &*self.inner else {
+            re_log::debug!("Recording disabled - call to set_time_seconds() ignored");
+            return;
+        };
+
+        ThreadInfo::set_thread_time(
+            this.info.recording_id,
+            Timeline::new(timeline, TimeType::Time),
+            seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
+        );
+    }
+
+    /// Set the current time of the recording, for the current calling thread.
+    /// Used for all subsequent logging performed from this same thread, until the next call to
+    /// [`Self::set_time_nanos`].
+    ///
+    /// For example: `rec.set_time_seconds("sim_time", sim_time_nanos)`.
+    ///
+    /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    pub fn set_time_nanos(&self, timeline: &str, ns: Option<i64>) {
+        let Some(this) = &*self.inner else {
+            re_log::debug!("Recording disabled - call to set_time_nanos() ignored");
+            return;
+        };
+
+        ThreadInfo::set_thread_time(
+            this.info.recording_id,
+            Timeline::new(timeline, TimeType::Time),
+            ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
+        );
+    }
+
+    /// Clears out the current time of the recording, for the current calling thread.
+    /// Used for all subsequent logging performed from this same thread, until the next call to
+    /// [`Self::set_time_sequence`]/[`Self::set_time_seconds`]/[`Self::set_time_nanos`].
+    ///
+    /// For example: `rec.reset_time()`.
+    pub fn reset_time(&self) {
+        let Some(this) = &*self.inner else {
+            re_log::debug!("Recording disabled - call to reset_time() ignored");
+            return;
+        };
+
+        ThreadInfo::reset_thread_time(this.info.recording_id);
+    }
+}
+
+// ---
 
 #[cfg(test)]
 mod tests {

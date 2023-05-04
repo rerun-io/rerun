@@ -15,7 +15,7 @@ use re_log_types::DataRow;
 use rerun::{
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
-    time::{Time, TimeInt, TimePoint, TimeType, Timeline},
+    time::TimePoint,
     EntityPath, RecordingId, RecordingStream, RecordingStreamBuilder,
 };
 
@@ -38,6 +38,8 @@ use re_ws_comms::RerunServerPort;
 use crate::arrow::get_registered_component_names;
 
 // --- FFI ---
+
+// we don't even need mutexes...
 
 /// The global [`RecordingStream`] object used by the Python API for data.
 fn global_data_stream() -> parking_lot::MutexGuard<'static, Option<RecordingStream>> {
@@ -192,8 +194,8 @@ fn init(
         default_recording_id(py)
     };
 
-    let mut rec_stream = global_data_stream();
-    *rec_stream = RecordingStreamBuilder::new(application_id)
+    let mut data_stream = global_data_stream();
+    *data_stream = RecordingStreamBuilder::new(application_id)
         .is_official_example(is_official_example)
         .recording_id(recording_id)
         .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
@@ -260,7 +262,7 @@ authkey = multiprocessing.current_process().authkey
 fn is_enabled() -> bool {
     global_data_stream()
         .as_ref()
-        .map_or(false, |rec_stream| rec_stream.is_enabled())
+        .map_or(false, |data_stream| data_stream.is_enabled())
 }
 
 #[pyfunction]
@@ -275,8 +277,8 @@ fn shutdown(py: Python<'_>) {
 
 #[pyfunction]
 fn connect(addr: Option<String>) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("connect");
         return Ok(());
     };
@@ -287,20 +289,20 @@ fn connect(addr: Option<String>) -> PyResult<()> {
         rerun::default_server_addr()
     };
 
-    rec_stream.connect(addr);
+    data_stream.connect(addr);
 
     Ok(())
 }
 
 #[pyfunction]
 fn save(path: &str) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("save");
         return Ok(());
     };
 
-    rec_stream
+    data_stream
         .save(path)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
@@ -308,13 +310,13 @@ fn save(path: &str) -> PyResult<()> {
 /// Create an in-memory rrd file
 #[pyfunction]
 fn memory_recording() -> PyMemorySinkStorage {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("memory_recording");
         return Default::default();
     };
 
-    PyMemorySinkStorage(rec_stream.memory())
+    PyMemorySinkStorage(data_stream.memory())
 }
 
 #[pyclass]
@@ -331,6 +333,7 @@ impl PyMemorySinkStorage {
     }
 }
 
+#[cfg(feature = "web_viewer")]
 #[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
 fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
     use once_cell::sync::Lazy;
@@ -345,15 +348,15 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
-        let rec_stream = global_data_stream();
-        let Some(rec_stream) = rec_stream.as_ref() else {
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
             no_active_recording("serve");
             return Ok(());
         };
 
         let _guard = enter_tokio_runtime();
 
-        rec_stream.set_sink(
+        data_stream.set_sink(
             rerun::web_viewer::new_sink(
                 open_browser,
                 web_port.map(WebViewerServerPort).unwrap_or_default(),
@@ -385,12 +388,12 @@ fn disconnect(py: Python<'_>) {
     // Release the GIL in case any flushing behavior needs to
     // cleanup a python object.
     py.allow_threads(|| {
-        let rec_stream = global_data_stream();
-        let Some(rec_stream) = rec_stream.as_ref() else {
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
             no_active_recording("disconnect");
             return;
         };
-        rec_stream.disconnect();
+        data_stream.disconnect();
     });
 }
 
@@ -400,12 +403,12 @@ fn flush(py: Python<'_>) {
     // Release the GIL in case any flushing behavior needs to
     // cleanup a python object.
     py.allow_threads(|| {
-        let rec_stream = global_data_stream();
-        let Some(rec_stream) = rec_stream.as_ref() else {
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
             no_active_recording("flush");
             return;
         };
-        rec_stream.flush_blocking();
+        data_stream.flush_blocking();
     });
 }
 
@@ -443,92 +446,52 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
 
 // --- Time ---
 
-/// Set the current time globally. Used for all subsequent logging,
-/// until the next call to `set_time_sequence`.
-///
-/// For example: `set_time_sequence("frame_nr", frame_nr)`.
-///
-/// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
+fn time(timeless: bool, rec: &RecordingStream) -> TimePoint {
+    if timeless {
+        TimePoint::timeless()
+    } else {
+        rec.now()
+    }
+}
+
 #[pyfunction]
 fn set_time_sequence(timeline: &str, sequence: Option<i64>) {
-    ThreadInfo::set_thread_time(
-        Timeline::new(timeline, TimeType::Sequence),
-        sequence.map(TimeInt::from),
-    );
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("set_time_sequence");
+        return;
+    };
+    data_stream.set_time_sequence(timeline, sequence);
 }
 
 #[pyfunction]
 fn set_time_seconds(timeline: &str, seconds: Option<f64>) {
-    ThreadInfo::set_thread_time(
-        Timeline::new(timeline, TimeType::Time),
-        seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
-    );
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("set_time_seconds");
+        return;
+    };
+    data_stream.set_time_seconds(timeline, seconds);
 }
 
 #[pyfunction]
-fn set_time_nanos(timeline: &str, ns: Option<i64>) {
-    ThreadInfo::set_thread_time(
-        Timeline::new(timeline, TimeType::Time),
-        ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
-    );
+fn set_time_nanos(timeline: &str, nanos: Option<i64>) {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("set_time_nanos");
+        return;
+    };
+    data_stream.set_time_nanos(timeline, nanos);
 }
 
 #[pyfunction]
 fn reset_time() {
-    ThreadInfo::reset_thread_time();
-}
-
-/// Thread-local info
-#[derive(Default)]
-struct ThreadInfo {
-    /// The current time, which can be set by users.
-    time_point: TimePoint,
-}
-
-impl ThreadInfo {
-    pub fn thread_now() -> TimePoint {
-        Self::with(|ti| ti.now())
-    }
-
-    pub fn set_thread_time(timeline: Timeline, time_int: Option<TimeInt>) {
-        Self::with(|ti| ti.set_time(timeline, time_int));
-    }
-
-    pub fn reset_thread_time() {
-        Self::with(|ti| ti.reset_time());
-    }
-
-    /// Get access to the thread-local [`ThreadInfo`].
-    fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
-        use std::cell::RefCell;
-        thread_local! {
-            static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None);
-        }
-
-        THREAD_INFO.with(|thread_info| {
-            let mut thread_info = thread_info.borrow_mut();
-            let thread_info = thread_info.get_or_insert_with(ThreadInfo::default);
-            f(thread_info)
-        })
-    }
-
-    fn now(&self) -> TimePoint {
-        let mut time_point = self.time_point.clone();
-        time_point.insert(Timeline::log_time(), Time::now().into());
-        time_point
-    }
-
-    fn set_time(&mut self, timeline: Timeline, time_int: Option<TimeInt>) {
-        if let Some(time_int) = time_int {
-            self.time_point.insert(timeline, time_int);
-        } else {
-            self.time_point.remove(&timeline);
-        }
-    }
-
-    fn reset_time(&mut self) {
-        self.time_point = TimePoint::default();
-    }
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("reset_time");
+        return;
+    };
+    data_stream.reset_time();
 }
 
 // --- Log transforms ---
@@ -582,8 +545,8 @@ fn log_transform(
     transform: re_log_types::Transform,
     timeless: bool,
 ) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("log_transform");
         return Ok(());
     };
@@ -592,7 +555,7 @@ fn log_transform(
     if entity_path.is_root() {
         return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so the root cannot have a transform"));
     }
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     // We currently log arrow transforms from inside the bridge because we are
     // using glam and macaw to potentially do matrix-inversion as part of the
@@ -608,7 +571,7 @@ fn log_transform(
         [transform].as_slice(),
     );
 
-    record_row(rec_stream, row);
+    record_row(data_stream, row);
 
     Ok(())
 }
@@ -660,8 +623,8 @@ fn log_view_coordinates(
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         re_log::debug!("No active recording - call to log_view_coordinates() ignored");
         return Ok(());
     };
@@ -677,7 +640,7 @@ fn log_view_coordinates(
         parse_entity_path(entity_path_str)?
     };
 
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     // We currently log view coordinates from inside the bridge because the code
     // that does matching and validation on different string representations is
@@ -693,7 +656,7 @@ fn log_view_coordinates(
         [coordinates].as_slice(),
     );
 
-    record_row(rec_stream, row);
+    record_row(data_stream, row);
 
     Ok(())
 }
@@ -725,8 +688,8 @@ fn log_annotation_context(
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         re_log::debug!("No active recording - call to log_annotation_context() ignored");
         return Ok(());
     };
@@ -757,7 +720,7 @@ fn log_annotation_context(
             });
     }
 
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     // We currently log AnnotationContext from inside the bridge because it's a
     // fairly complex type with a need for a fair amount of data-validation. We
@@ -774,7 +737,7 @@ fn log_annotation_context(
         [annotation_context].as_slice(),
     );
 
-    record_row(rec_stream, row);
+    record_row(data_stream, row);
 
     Ok(())
 }
@@ -791,8 +754,8 @@ fn log_meshes(
     albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     timeless: bool,
 ) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("log_meshes");
         return Ok(());
     };
@@ -816,7 +779,7 @@ fn log_meshes(
         )));
     }
 
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
 
@@ -896,7 +859,7 @@ fn log_meshes(
         meshes,
     );
 
-    record_row(rec_stream, row);
+    record_row(data_stream, row);
 
     Ok(())
 }
@@ -909,8 +872,8 @@ fn log_mesh_file(
     transform: numpy::PyReadonlyArray2<'_, f32>,
     timeless: bool,
 ) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("log_mesh_file");
         return Ok(());
     };
@@ -953,7 +916,7 @@ fn log_mesh_file(
         ]
     };
 
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
@@ -977,7 +940,7 @@ fn log_mesh_file(
         [mesh3d].as_slice(),
     );
 
-    record_row(rec_stream, row);
+    record_row(data_stream, row);
 
     Ok(())
 }
@@ -994,8 +957,8 @@ fn log_image_file(
     img_format: Option<&str>,
     timeless: bool,
 ) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("log_image_file");
         return Ok(());
     };
@@ -1047,7 +1010,7 @@ fn log_image_file(
         }
     };
 
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     let tensor = re_log_types::component_types::Tensor {
         tensor_id: TensorId::random(),
@@ -1069,7 +1032,7 @@ fn log_image_file(
         [tensor].as_slice(),
     );
 
-    record_row(rec_stream, row);
+    record_row(data_stream, row);
 
     Ok(())
 }
@@ -1087,16 +1050,16 @@ enum TensorDataMeaning {
 
 #[pyfunction]
 fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("log_cleared");
         return Ok(());
     };
 
     let entity_path = parse_entity_path(entity_path)?;
-    let timepoint = time(false);
+    let timepoint = time(false, data_stream);
 
-    rec_stream.record_path_op(timepoint, PathOp::clear(recursive, entity_path));
+    data_stream.record_path_op(timepoint, PathOp::clear(recursive, entity_path));
 
     Ok(())
 }
@@ -1104,22 +1067,30 @@ fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
 #[pyfunction]
 fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
+    let timepoint = {
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
+            no_active_recording("log_arrow_msg");
+            return Ok(());
+        };
+        time(timeless, data_stream)
+    };
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
     let data_table =
-        crate::arrow::build_data_table_from_components(&entity_path, components, &time(timeless))?;
+        crate::arrow::build_data_table_from_components(&entity_path, components, &timepoint)?;
 
-    let rec_stream = global_data_stream();
-    let Some(rec_stream) = rec_stream.as_ref() else {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
         no_active_recording("log_arrow_msg");
         return Ok(());
     };
 
     // TODO(cmc): batch all the way to here at some point, maybe.
     for row in data_table.to_rows() {
-        record_row(rec_stream, row);
+        record_row(data_stream, row);
     }
 
     Ok(())
@@ -1131,7 +1102,7 @@ fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyRe
 fn get_recording_id() -> PyResult<String> {
     let recording_id = global_data_stream()
         .as_ref()
-        .and_then(|rec_stream| rec_stream.recording_info().map(|info| info.recording_id));
+        .and_then(|data_stream| data_stream.recording_info().map(|info| info.recording_id));
 
     match recording_id {
         Some(id) => Ok(id.to_string()),
@@ -1184,8 +1155,8 @@ fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
     Cow::Owned(array.iter().cloned().collect())
 }
 
-fn record_row(rec_stream: &RecordingStream, row: DataRow) {
-    rec_stream.record_row(row);
+fn record_row(data_stream: &RecordingStream, row: DataRow) {
+    data_stream.record_row(row);
 }
 
 fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
@@ -1197,13 +1168,5 @@ fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
         ))
     } else {
         Ok(EntityPath::from(components))
-    }
-}
-
-fn time(timeless: bool) -> TimePoint {
-    if timeless {
-        TimePoint::timeless()
-    } else {
-        ThreadInfo::thread_now()
     }
 }
