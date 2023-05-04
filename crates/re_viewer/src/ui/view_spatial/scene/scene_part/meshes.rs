@@ -6,7 +6,7 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 
 use crate::{
-    misc::{SpaceViewHighlights, TransformCache, ViewerContext},
+    misc::{caches::MeshCache, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::{
         scene::SceneQuery,
         view_spatial::{MeshSource, SceneSpatial},
@@ -43,17 +43,16 @@ impl MeshPart {
 
                 let outline_mask_ids = entity_highlight.index_outline_mask(instance_key);
 
-                if let Some(mesh) = ctx
-                    .cache
-                    .mesh
-                    .load(&ent_path.to_string(), &mesh, ctx.render_ctx)
-                    .map(|cpu_mesh| MeshSource {
-                        picking_instance_hash,
-                        world_from_mesh: world_from_obj,
-                        mesh: cpu_mesh,
-                        outline_mask_ids,
-                    })
-                {
+                if let Some(mesh) = ctx.cache.get_mut::<MeshCache>().and_then(|mesh_cache| {
+                    mesh_cache
+                        .load(&ent_path.to_string(), &mesh, ctx.render_ctx)
+                        .map(|cpu_mesh| MeshSource {
+                            picking_instance_hash,
+                            world_from_mesh: world_from_obj,
+                            mesh: cpu_mesh,
+                            outline_mask_ids,
+                        })
+                }) {
                     scene.primitives.meshes.push(mesh);
                 };
             };

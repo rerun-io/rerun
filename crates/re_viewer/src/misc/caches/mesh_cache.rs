@@ -5,6 +5,8 @@ use re_renderer::RenderContext;
 
 use crate::mesh_loader::LoadedMesh;
 
+use super::Cache;
+
 // ----------------------------------------------------------------------------
 
 #[derive(Default)]
@@ -37,5 +39,17 @@ impl MeshCache {
                 }
             })
             .clone()
+    }
+}
+
+impl Cache for MeshCache {
+    fn begin_frame(&mut self) {}
+
+    fn purge_memory(&mut self) {
+        self.0.clear();
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }

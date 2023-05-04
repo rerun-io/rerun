@@ -117,13 +117,19 @@ impl App {
             );
         }
 
-        let state: AppState = if startup_options.persist_state {
+        let mut state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
                 .unwrap_or_default()
         } else {
             AppState::default()
         };
+
+        // Add caches to the App's caches if they aren't there already.
+        state
+            .cache
+            .add_cache(crate::misc::caches::MeshCache::default())
+            .ok();
 
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
