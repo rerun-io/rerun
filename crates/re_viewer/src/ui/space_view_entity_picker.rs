@@ -2,12 +2,13 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath};
+use re_viewer_context::SpaceViewId;
 
 use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
 
 use super::{
     view_category::{categorize_entity_path, ViewCategory},
-    SpaceView, SpaceViewId,
+    SpaceView,
 };
 
 /// Window for adding/removing entities from a space view.

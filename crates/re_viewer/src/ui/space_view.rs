@@ -1,6 +1,7 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
-use re_renderer::{GpuReadbackIdentifier, ScreenshotProcessor};
+use re_renderer::ScreenshotProcessor;
+use re_viewer_context::SpaceViewId;
 
 use crate::{
     misc::{space_info::SpaceInfoCollection, SpaceViewHighlights, TransformCache, ViewerContext},
@@ -12,24 +13,6 @@ use super::{
     view_bar_chart, view_category::ViewCategory, view_spatial, view_tensor, view_text,
     view_time_series,
 };
-
-// ----------------------------------------------------------------------------
-
-/// A unique id for each space view.
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
-)]
-pub struct SpaceViewId(uuid::Uuid);
-
-impl SpaceViewId {
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-
-    pub fn gpu_readback_id(self) -> GpuReadbackIdentifier {
-        re_log_types::hash::Hash64::hash(self).hash64()
-    }
-}
 
 // ----------------------------------------------------------------------------
 

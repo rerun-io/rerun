@@ -2,7 +2,7 @@ use itertools::Itertools;
 use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
 
-use crate::ui::SpaceViewId;
+use super::{DataBlueprintGroupHandle, SpaceViewId};
 
 /// One "thing" in the UI.
 ///
@@ -14,7 +14,7 @@ pub enum Item {
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
-    DataBlueprintGroup(SpaceViewId, crate::ui::DataBlueprintGroupHandle),
+    DataBlueprintGroup(SpaceViewId, DataBlueprintGroupHandle),
 }
 
 impl std::fmt::Debug for Item {
@@ -83,10 +83,6 @@ impl ItemCollection {
         self.items.iter()
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = Item> {
-        self.items.into_iter()
-    }
-
     pub fn to_vec(&self) -> Vec<Item> {
         self.items.clone()
     }
@@ -113,5 +109,14 @@ impl ItemCollection {
     /// Retains elements that fulfil a certain condition.
     pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
         self.items.retain(|item| f(item));
+    }
+}
+
+impl std::iter::IntoIterator for ItemCollection {
+    type Item = Item;
+    type IntoIter = std::vec::IntoIter<Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
     }
 }

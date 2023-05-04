@@ -1,4 +1,6 @@
-use crate::misc::{space_info::SpaceInfoCollection, Item, ViewerContext};
+use re_viewer_context::Item;
+
+use crate::misc::{space_info::SpaceInfoCollection, ViewerContext};
 
 use super::viewport::Viewport;
 

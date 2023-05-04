@@ -1,14 +1,12 @@
 use re_data_store::{log_db::LogDb, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
+use re_viewer_context::{
+    DataBlueprintGroupHandle, HoverHighlight, Item, ItemCollection, SelectionState, SpaceViewId,
+};
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
-    DataBlueprintGroupHandle, SpaceViewId, UiVerbosity,
-};
-
-use super::{
-    item::{Item, ItemCollection},
-    HoverHighlight,
+    UiVerbosity,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -299,11 +297,11 @@ impl<'a> ViewerContext<'a> {
         self.rec_cfg.selection_state.set_hovered(hovered);
     }
 
-    pub fn selection_state(&self) -> &super::SelectionState {
+    pub fn selection_state(&self) -> &SelectionState {
         &self.rec_cfg.selection_state
     }
 
-    pub fn selection_state_mut(&mut self) -> &mut super::SelectionState {
+    pub fn selection_state_mut(&mut self) -> &mut SelectionState {
         &mut self.rec_cfg.selection_state
     }
 
@@ -323,5 +321,5 @@ pub struct RecordingConfig {
     pub time_ctrl: crate::TimeControl,
 
     /// Selection & hovering state.
-    pub selection_state: super::SelectionState,
+    pub selection_state: SelectionState,
 }

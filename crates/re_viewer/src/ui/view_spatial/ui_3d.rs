@@ -9,17 +9,15 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Size,
 };
+use re_viewer_context::{HoveredSpace, Item, SpaceViewId};
 
 use crate::{
     gpu_bridge,
-    misc::{HoveredSpace, Item, SpaceViewHighlights},
-    ui::{
-        view_spatial::{
-            ui::{create_labels, outline_config, picking, screenshot_context_menu},
-            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-            SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
-        },
-        SpaceViewId,
+    misc::SpaceViewHighlights,
+    ui::view_spatial::{
+        ui::{create_labels, outline_config, picking, screenshot_context_menu},
+        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+        SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
     },
     ViewerContext,
 };

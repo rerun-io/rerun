@@ -1,23 +1,20 @@
 use eframe::epaint::text::TextWrapping;
-use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
-use re_format::format_f32;
-
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
+
+use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
+use re_format::format_f32;
 use re_log_types::component_types::{Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
+use re_viewer_context::{HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId};
 
 use crate::{
-    misc::{
-        space_info::query_view_coordinates, HoveredSpace, SelectionHighlight, SpaceViewHighlights,
-        ViewerContext,
-    },
+    misc::{space_info::query_view_coordinates, SpaceViewHighlights, ViewerContext},
     ui::{
         data_blueprint::DataBlueprintTree,
         data_ui::{self, DataUi},
         space_view::ScreenshotMode,
         view_spatial::UiLabelTarget,
-        SpaceViewId,
     },
 };
 
@@ -606,16 +603,14 @@ pub fn create_labels(
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance_key);
         let fill_color = match highlight.hover {
-            crate::misc::HoverHighlight::None => match highlight.selection {
+            HoverHighlight::None => match highlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
                 SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
             },
-            crate::misc::HoverHighlight::Hovered => {
-                parent_ui.style().visuals.widgets.hovered.bg_fill
-            }
+            HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
         label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
@@ -780,7 +775,7 @@ pub fn picking(
             instance_path.instance_key = re_log_types::component_types::InstanceKey::SPLAT;
         }
 
-        hovered_items.push(crate::misc::Item::InstancePath(
+        hovered_items.push(Item::InstancePath(
             Some(space_view_id),
             instance_path.clone(),
         ));
