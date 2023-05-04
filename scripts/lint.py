@@ -284,8 +284,8 @@ def lint_workspace_deps(lines_in: List[str]) -> Tuple[List[str], List[str]]:
 def test_lint_workspace_deps() -> None:
     assert re_workspace_dep.search("workspace=true")
     assert re_workspace_dep.search("workspace=false")
-    assert re_workspace_dep.search("xxx = { xxx: \"yyy\", workspace = true }")
-    assert re_workspace_dep.search("xxx = { xxx: \"yyy\", workspace = false }")
+    assert re_workspace_dep.search('xxx = { xxx: "yyy", workspace = true }')
+    assert re_workspace_dep.search('xxx = { xxx: "yyy", workspace = false }')
 
     should_pass = [
         "hello world",
@@ -340,6 +340,7 @@ def test_lint_workspace_deps() -> None:
 
     pass
 
+
 # -----------------------------------------------------------------------------
 
 
@@ -380,7 +381,6 @@ def lint_file(filepath: str, args: Any) -> int:
             print(f"{filepath} fixed.")
 
         num_errors += len(errors)
-
 
     return num_errors
 
