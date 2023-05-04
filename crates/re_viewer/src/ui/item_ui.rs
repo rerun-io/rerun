@@ -13,6 +13,32 @@ use crate::{
 
 use super::selection_panel::select_hovered_on_click;
 
+// TODO(andreas): This is where we want to go, but we need to figure out how get the `SpaceViewCategory` from the `SpaceViewId`.
+// Simply pass in optional icons?
+//
+// Show a button to an [`Item`] with a given text.
+// pub fn item_button_to(
+//     ctx: &mut ViewerContext<'_>,
+//     ui: &mut egui::Ui,
+//     item: &Item,
+//     text: impl Into<egui::WidgetText>,
+// ) -> egui::Response {
+//     match item {
+//         Item::ComponentPath(component_path) => {
+//             component_path_button_to(ctx, ui, text, component_path)
+//         }
+//         Item::SpaceView(space_view_id) => {
+//             space_view_button_to(ctx, ui, text, *space_view_id, space_view_category)
+//         }
+//         Item::InstancePath(space_view_id, instance_path) => {
+//             instance_path_button_to(ctx, ui, *space_view_id, instance_path, text)
+//         }
+//         Item::DataBlueprintGroup(space_view_id, group_handle) => {
+//             data_blueprint_group_button_to(ctx, ui, text, *space_view_id, *group_handle)
+//         }
+//     }
+// }
+
 /// Show an entity path and make it selectable.
 pub fn entity_path_button(
     ctx: &mut ViewerContext<'_>,
