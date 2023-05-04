@@ -1,6 +1,7 @@
 """The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 
 import atexit
+import logging
 from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
@@ -29,8 +30,6 @@ __all__ = [
     "ClassDescription",
     "LoggingHandler",
     "bindings",
-    "components",
-    "inline_show",
     "ImageFormat",
     "log_annotation_context",
     "log_arrow",
@@ -58,7 +57,6 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
-    "notebook",
     "LogLevel",
     "MeshFormat",
     "RectFormat",
@@ -87,9 +85,11 @@ def unregister_shutdown() -> None:
 # -----------------------------------------------------------------------------
 
 
-def get_recording_id() -> str:
+def get_recording_id() -> Optional[str]:
     """
-    Get the recording ID that this process is logging to, as a UUIDv4.
+    Get the recording ID that this process is logging to, as a UUIDv4, if any.
+
+    You must have called [`rr.init`][] first in order to have an active recording.
 
     The default recording_id is based on `multiprocessing.current_process().authkey`
     which means that all processes spawned with `multiprocessing`
@@ -106,34 +106,24 @@ def get_recording_id() -> str:
         The recording ID that this process is logging to.
 
     """
-    return str(bindings.get_recording_id())
+    rid = bindings.get_recording_id()
+    if rid:
+        return str(rid)
+    return None
 
 
-def set_recording_id(value: str) -> None:
-    """
-    Set the recording ID that this process is logging to, as a UUIDv4.
-
-    The default recording_id is based on `multiprocessing.current_process().authkey`
-    which means that all processes spawned with `multiprocessing`
-    will have the same default recording_id.
-
-    If you are not using `multiprocessing` and still want several different Python
-    processes to log to the same Rerun instance (and be part of the same recording),
-    you will need to manually assign them all the same recording_id.
-    Any random UUIDv4 will work, or copy the recording id for the parent process.
-
-    Parameters
-    ----------
-    value : str
-        The recording ID to use for this process.
-
-    """
-    bindings.set_recording_id(value)
-
-
-def init(application_id: str, spawn: bool = False, default_enabled: bool = True, strict: bool = False) -> None:
+def init(
+    application_id: str,
+    recording_id: Optional[str] = None,
+    spawn: bool = False,
+    default_enabled: bool = True,
+    strict: bool = False,
+) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
+
+    You must call this function first in order to initialize a global recording.
+    Without an active recording, all methods of the SDK will turn into no-ops.
 
     Parameters
     ----------
@@ -144,6 +134,17 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True,
         For example, if you have one application doing object detection
         and another doing camera calibration, you could have
         `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+    recording_id : Optional[str]
+        Set the recording ID that this process is logging to, as a UUIDv4.
+
+        The default recording_id is based on `multiprocessing.current_process().authkey`
+        which means that all processes spawned with `multiprocessing`
+        will have the same default recording_id.
+
+        If you are not using `multiprocessing` and still want several different Python
+        processes to log to the same Rerun instance (and be part of the same recording),
+        you will need to manually assign them all the same recording_id.
+        Any random UUIDv4 will work, or copy the recording id for the parent process.
     spawn : bool
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
@@ -189,6 +190,7 @@ def init(application_id: str, spawn: bool = False, default_enabled: bool = True,
 
     bindings.init(
         application_id=application_id,
+        recording_id=recording_id,
         application_path=application_path,
         default_enabled=default_enabled,
     )
@@ -278,7 +280,7 @@ def connect(addr: Optional[str] = None) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - connect() call ignored")
+        logging.warning("Rerun is disabled - connect() call ignored")
         return
 
     bindings.connect(addr)
@@ -306,7 +308,7 @@ def spawn(port: int = 9876, connect: bool = True) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - spawn() call ignored")
+        logging.warning("Rerun is disabled - spawn() call ignored")
         return
 
     import os
@@ -359,7 +361,7 @@ def serve(open_browser: bool = True, web_port: Optional[int] = None, ws_port: Op
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - serve() call ignored")
+        logging.warning("Rerun is disabled - serve() call ignored")
         return
 
     bindings.serve(open_browser, web_port, ws_port)
@@ -384,7 +386,7 @@ def start_web_viewer_server(port: int = 0) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - self_host_assets() call ignored")
+        logging.warning("Rerun is disabled - self_host_assets() call ignored")
         return
 
     bindings.start_web_viewer_server(port)
@@ -413,7 +415,7 @@ def save(path: str) -> None:
     """
 
     if not bindings.is_enabled():
-        print("Rerun is disabled - save() call ignored")
+        logging.warning("Rerun is disabled - save() call ignored")
         return
 
     bindings.save(path)

@@ -1,6 +1,7 @@
 import functools
 import logging
 import traceback
+import warnings
 from typing import Any, Callable, TypeVar, cast
 
 import rerun
@@ -25,6 +26,8 @@ def log_decorator(func: _TFunc) -> _TFunc:
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if not bindings.is_enabled():
+            # NOTE: use `warnings` which handles runtime deduplication.
+            warnings.warn(f"Rerun is disabled - {func.__name__}() call ignored")
             return
 
         if rerun.strict_mode():

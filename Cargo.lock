@@ -4075,6 +4075,7 @@ dependencies = [
 name = "re_sdk"
 version = "0.6.0-alpha.0"
 dependencies = [
+ "ahash 0.8.2",
  "arrow2_convert",
  "crossbeam",
  "document-features",

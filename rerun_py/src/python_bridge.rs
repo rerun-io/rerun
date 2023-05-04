@@ -6,17 +6,17 @@ use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
 use itertools::izip;
 use pyo3::{
-    exceptions::{PyRuntimeError, PyTypeError, PyValueError},
+    exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
     types::{PyBytes, PyDict},
 };
 
-use re_log_types::{ArrowMsg, DataRow, DataTableError};
+use re_log_types::DataRow;
 use rerun::{
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
-    time::{Time, TimeInt, TimePoint, TimeType, Timeline},
-    ApplicationId, EntityPath, RecordingId,
+    time::TimePoint,
+    EntityPath, RecordingId, RecordingStream, RecordingStreamBuilder,
 };
 
 pub use rerun::{
@@ -35,88 +35,52 @@ use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
 
-use crate::{arrow::get_registered_component_names, python_session::PythonSession};
+use crate::arrow::get_registered_component_names;
 
-// ----------------------------------------------------------------------------
+// --- FFI ---
 
-/// The global [`PythonSession`] object used by the Python API.
-fn python_session() -> parking_lot::MutexGuard<'static, PythonSession> {
+/// The global [`RecordingStream`] object used by the Python API for data.
+fn global_data_stream() -> parking_lot::MutexGuard<'static, Option<RecordingStream>> {
     use once_cell::sync::OnceCell;
     use parking_lot::Mutex;
-    static PYTHON_SESSION: OnceCell<Mutex<PythonSession>> = OnceCell::new();
-    PYTHON_SESSION.get_or_init(Default::default).lock()
+    static DATA_STREAM: OnceCell<Mutex<Option<RecordingStream>>> = OnceCell::new();
+    DATA_STREAM.get_or_init(Default::default).lock()
 }
 
-// ----------------------------------------------------------------------------
-
-/// Thread-local info
-#[derive(Default)]
-struct ThreadInfo {
-    /// The current time, which can be set by users.
-    time_point: TimePoint,
+/// The global [`RecordingStream`] object used by the Python API for blueprints.
+#[allow(dead_code)]
+fn global_blueprint_stream() -> parking_lot::MutexGuard<'static, Option<RecordingStream>> {
+    use once_cell::sync::OnceCell;
+    use parking_lot::Mutex;
+    static BP_STREAM: OnceCell<Mutex<Option<RecordingStream>>> = OnceCell::new();
+    BP_STREAM.get_or_init(Default::default).lock()
 }
 
-impl ThreadInfo {
-    pub fn thread_now() -> TimePoint {
-        Self::with(|ti| ti.now())
-    }
-
-    pub fn set_thread_time(timeline: Timeline, time_int: Option<TimeInt>) {
-        Self::with(|ti| ti.set_time(timeline, time_int));
-    }
-
-    pub fn reset_thread_time() {
-        Self::with(|ti| ti.reset_time());
-    }
-
-    /// Get access to the thread-local [`ThreadInfo`].
-    fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
-        use std::cell::RefCell;
-        thread_local! {
-            static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None);
-        }
-
-        THREAD_INFO.with(|thread_info| {
-            let mut thread_info = thread_info.borrow_mut();
-            let thread_info = thread_info.get_or_insert_with(ThreadInfo::default);
-            f(thread_info)
-        })
-    }
-
-    fn now(&self) -> TimePoint {
-        let mut time_point = self.time_point.clone();
-        time_point.insert(Timeline::log_time(), Time::now().into());
-        time_point
-    }
-
-    fn set_time(&mut self, timeline: Timeline, time_int: Option<TimeInt>) {
-        if let Some(time_int) = time_int {
-            self.time_point.insert(timeline, time_int);
-        } else {
-            self.time_point.remove(&timeline);
-        }
-    }
-
-    fn reset_time(&mut self) {
-        self.time_point = TimePoint::default();
-    }
+#[cfg(feature = "web_viewer")]
+fn global_web_viewer_server(
+) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServerHandle>> {
+    use once_cell::sync::OnceCell;
+    use parking_lot::Mutex;
+    static WEB_HANDLE: OnceCell<Mutex<Option<re_web_viewer_server::WebViewerServerHandle>>> =
+        OnceCell::new();
+    WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
-// ----------------------------------------------------------------------------
-
-fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
-    let py_version = py.version_info();
-    re_log_types::PythonVersion {
-        major: py_version.major,
-        minor: py_version.minor,
-        patch: py_version.patch,
-        suffix: py_version.suffix.map(|s| s.to_owned()).unwrap_or_default(),
-    }
+#[pyfunction]
+fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+    let build_info = re_build_info::build_info!();
+    let call_src = rerun::CallSource::Python(python_version(py));
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(rerun::run(build_info, call_src, argv))
+        .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
 /// The python module is called "rerun_bindings".
 #[pymodule]
-fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     re_log::setup_native_logging();
@@ -137,51 +101,120 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
         return Ok(());
     }
 
-    python_session().set_python_version(python_version(py));
-
-    // NOTE: We do this here because we want child processes to share the same recording-id,
-    // whether the user has called `init` or not.
-    // See `default_recording_id` for extra information.
-    python_session().set_recording_id(default_recording_id(py));
-
-    m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
-    m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
-
-    m.add_function(wrap_pyfunction!(connect, m)?)?;
-    m.add_function(wrap_pyfunction!(disconnect, m)?)?;
-    m.add_function(wrap_pyfunction!(flush, m)?)?;
-    m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
+    // init
     m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
-    m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
-    m.add_function(wrap_pyfunction!(save, m)?)?;
-    m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
-    m.add_function(wrap_pyfunction!(serve, m)?)?;
-    m.add_function(wrap_pyfunction!(set_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
+    // sinks
+    m.add_function(wrap_pyfunction!(connect, m)?)?;
+    m.add_function(wrap_pyfunction!(save, m)?)?;
+    m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
+    m.add_function(wrap_pyfunction!(serve, m)?)?;
+    m.add_function(wrap_pyfunction!(disconnect, m)?)?;
+    m.add_function(wrap_pyfunction!(flush, m)?)?;
+    m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
+
+    // time
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
 
+    // log transforms
     m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_rigid3, m)?)?;
     m.add_function(wrap_pyfunction!(log_pinhole, m)?)?;
 
-    m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
-
+    // log view coordinates
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
 
+    // log segmentation
     m.add_function(wrap_pyfunction!(log_annotation_context, m)?)?;
 
+    // log assets
+    m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
+
+    // log special
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
 
+    // misc
+    m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
+    m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
+
     Ok(())
+}
+
+fn no_active_recording(origin: &str) {
+    re_log::warn_once!(
+        "No active recording - call to {origin}() ignored (have you called rr.init()?)",
+    );
+}
+
+// --- Init ---
+
+#[pyfunction]
+#[pyo3(signature = (
+    application_id,
+    recording_id=None,
+    application_path=None,
+    default_enabled=true,
+))]
+fn init(
+    py: Python<'_>,
+    application_id: String,
+    recording_id: Option<String>,
+    application_path: Option<PathBuf>,
+    default_enabled: bool,
+) -> PyResult<()> {
+    // The sentinel file we use to identify the official examples directory.
+    const SENTINEL_FILENAME: &str = ".rerun_examples";
+    let is_official_example = application_path.map_or(false, |mut path| {
+        // more than 4 layers would be really pushing it
+        for _ in 0..4 {
+            path.pop(); // first iteration is always a file path in our examples
+            if path.join(SENTINEL_FILENAME).exists() {
+                return true;
+            }
+        }
+        false
+    });
+
+    let recording_id = if let Some(recording_id) = recording_id {
+        recording_id.parse().map_err(|_err| {
+            PyTypeError::new_err(format!(
+                "Invalid recording id - expected a UUID, got {recording_id:?}"
+            ))
+        })?
+    } else {
+        default_recording_id(py)
+    };
+
+    let mut data_stream = global_data_stream();
+    *data_stream = RecordingStreamBuilder::new(application_id)
+        .is_official_example(is_official_example)
+        .recording_id(recording_id)
+        .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+        .default_enabled(default_enabled)
+        .buffered()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .into();
+
+    Ok(())
+}
+
+fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
+    let py_version = py.version_info();
+    re_log_types::PythonVersion {
+        major: py_version.major,
+        minor: py_version.minor,
+        patch: py_version.patch,
+        suffix: py_version.suffix.map(|s| s.to_owned()).unwrap_or_default(),
+    }
 }
 
 fn default_recording_id(py: Python<'_>) -> RecordingId {
@@ -224,99 +257,84 @@ authkey = multiprocessing.current_process().authkey
     authkey.as_bytes().to_vec()
 }
 
-// ----------------------------------------------------------------------------
-
-fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
-    let components = re_log_types::parse_entity_path(entity_path)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    if components.is_empty() {
-        Err(PyTypeError::new_err(
-            "You cannot log to the root {entity_path:?}",
-        ))
-    } else {
-        Ok(EntityPath::from(components))
-    }
-}
-
-fn time(timeless: bool) -> TimePoint {
-    if timeless {
-        TimePoint::timeless()
-    } else {
-        ThreadInfo::thread_now()
-    }
-}
-
-// ----------------------------------------------------------------------------
-
+/// Is logging enabled in the global recording?
 #[pyfunction]
-fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
-    let build_info = re_build_info::build_info!();
-    let call_src = rerun::CallSource::Python(python_version(py));
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(rerun::run(build_info, call_src, argv))
-        .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
+fn is_enabled() -> bool {
+    global_data_stream()
+        .as_ref()
+        .map_or(false, |data_stream| data_stream.is_enabled())
 }
 
 #[pyfunction]
-fn get_recording_id() -> PyResult<String> {
-    let recording_id = python_session().recording_id();
-
-    if recording_id == RecordingId::ZERO {
-        Err(PyTypeError::new_err("module has not been initialized"))
-    } else {
-        Ok(recording_id.to_string())
-    }
+fn shutdown(py: Python<'_>) {
+    re_log::debug!("Shutting down the Rerun SDK");
+    // Disconnect the current sink which ensures that
+    // it flushes and cleans up.
+    disconnect(py);
 }
 
-#[pyfunction]
-fn set_recording_id(recording_id: &str) -> PyResult<()> {
-    if let Ok(recording_id) = recording_id.parse() {
-        python_session().set_recording_id(recording_id);
-        Ok(())
-    } else {
-        Err(PyTypeError::new_err(format!(
-            "Invalid recording id - expected a UUID, got {recording_id:?}"
-        )))
-    }
-}
-
-#[pyfunction]
-#[pyo3(signature = (application_id, application_path=None, default_enabled=true))]
-fn init(application_id: String, application_path: Option<PathBuf>, default_enabled: bool) {
-    // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let is_official_example = application_path.map_or(false, |mut path| {
-        // more than 4 layers would be really pushing it
-        for _ in 0..4 {
-            path.pop(); // first iteration is always a file path in our examples
-            if path.join(SENTINEL_FILENAME).exists() {
-                return true;
-            }
-        }
-        false
-    });
-
-    let mut session = python_session();
-    session.set_default_enabled(default_enabled);
-    session.set_application_id(ApplicationId(application_id), is_official_example);
-}
+// --- Sinks ---
 
 #[pyfunction]
 fn connect(addr: Option<String>) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("connect");
+        return Ok(());
+    };
+
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
         rerun::default_server_addr()
     };
-    python_session().connect(addr);
+
+    data_stream.connect(addr);
+
     Ok(())
 }
 
-#[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
+#[pyfunction]
+fn save(path: &str) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("save");
+        return Ok(());
+    };
+
+    data_stream
+        .save(path)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+/// Create an in-memory rrd file
+#[pyfunction]
+fn memory_recording() -> PyMemorySinkStorage {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("memory_recording");
+        return Default::default();
+    };
+
+    PyMemorySinkStorage(data_stream.memory())
+}
+
+#[pyclass]
+#[derive(Default)]
+struct PyMemorySinkStorage(MemorySinkStorage);
+
+#[pymethods]
+impl PyMemorySinkStorage {
+    fn get_rrd_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+        self.0
+            .rrd_as_bytes()
+            .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
 #[cfg(feature = "web_viewer")]
+#[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
 fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
     use once_cell::sync::Lazy;
     static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
@@ -330,16 +348,15 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
-        let mut session = python_session();
-
-        if !session.is_enabled() {
-            re_log::debug!("Rerun disabled - call to serve() ignored");
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
+            no_active_recording("serve");
             return Ok(());
-        }
+        };
 
         let _guard = enter_tokio_runtime();
 
-        session.set_sink(
+        data_stream.set_sink(
             rerun::web_viewer::new_sink(
                 open_browser,
                 web_port.map(WebViewerServerPort).unwrap_or_default(),
@@ -362,16 +379,60 @@ fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyR
     }
 }
 
+/// Disconnect from remote server (if any).
+///
+/// Subsequent log messages will be buffered and either sent on the next call to `connect`,
+/// or shown with `show`.
+#[pyfunction]
+fn disconnect(py: Python<'_>) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
+            no_active_recording("disconnect");
+            return;
+        };
+        data_stream.disconnect();
+    });
+}
+
+/// Block until outstanding data has been flushed to the sink
+#[pyfunction]
+fn flush(py: Python<'_>) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
+            no_active_recording("flush");
+            return;
+        };
+        data_stream.flush_blocking();
+    });
+}
+
 #[pyfunction]
 // TODO(jleibs) expose this as a python type
+/// Start a web server to host the run web-assets
 fn start_web_viewer_server(port: u16) -> PyResult<()> {
+    #[allow(clippy::unnecessary_wraps)]
     #[cfg(feature = "web_viewer")]
     {
-        let mut session = python_session();
+        let mut web_handle = global_web_viewer_server();
+
         let _guard = enter_tokio_runtime();
-        session
-            .start_web_viewer_server(WebViewerServerPort(port))
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+        *web_handle = Some(
+            re_web_viewer_server::WebViewerServerHandle::new(WebViewerServerPort(port)).map_err(
+                |err| {
+                    PyRuntimeError::new_err(format!(
+                        "Failed to start web viewer server on port {port}: {err}",
+                    ))
+                },
+            )?,
+        );
+
+        Ok(())
     }
 
     #[cfg(not(feature = "web_viewer"))]
@@ -383,132 +444,57 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
     }
 }
 
-#[pyfunction]
-fn get_app_url() -> String {
-    let session = python_session();
-    session.get_app_url()
-}
+// --- Time ---
 
-#[pyfunction]
-fn shutdown(py: Python<'_>) {
-    re_log::debug!("Shutting down the Rerun SDK");
-    // Disconnect the current sink which ensures that
-    // it flushes and cleans up.
-    disconnect(py);
-}
-
-/// Is logging enabled in the global session?
-#[pyfunction]
-fn is_enabled() -> bool {
-    python_session().is_enabled()
-}
-
-/// Enable or disable logging in the global session.
-///
-/// This is a global setting that affects all threads.
-/// By default logging is enabled.
-#[pyfunction]
-fn set_enabled(enabled: bool) {
-    python_session().set_enabled(enabled);
-}
-
-/// Block until outstanding data has been flushed to the sink
-#[pyfunction]
-fn flush(py: Python<'_>) {
-    // Release the GIL in case any flushing behavior needs to
-    // cleanup a python object.
-    py.allow_threads(|| {
-        python_session().flush();
-    });
-}
-
-/// Disconnect from remote server (if any).
-///
-/// Subsequent log messages will be buffered and either sent on the next call to `connect`,
-/// or shown with `show`.
-#[pyfunction]
-fn disconnect(py: Python<'_>) {
-    // Release the GIL in case any flushing behavior needs to
-    // cleanup a python object.
-    py.allow_threads(|| {
-        python_session().disconnect();
-    });
-}
-
-#[pyfunction]
-fn save(path: &str) -> PyResult<()> {
-    let mut session = python_session();
-    session
-        .save(path)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
-}
-
-#[pyclass]
-struct PyMemorySinkStorage(MemorySinkStorage);
-
-#[pymethods]
-impl PyMemorySinkStorage {
-    fn get_rrd_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
-        self.0
-            .rrd_as_bytes()
-            .map(|bytes| PyBytes::new(py, bytes.as_slice()))
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+fn time(timeless: bool, rec: &RecordingStream) -> TimePoint {
+    if timeless {
+        TimePoint::timeless()
+    } else {
+        rec.now()
     }
 }
 
-/// Create an in-memory rrd file
-#[pyfunction]
-fn memory_recording() -> PyMemorySinkStorage {
-    let mut session = python_session();
-    PyMemorySinkStorage(session.memory_recording())
-}
-
-// ----------------------------------------------------------------------------
-
-/// Set the current time globally. Used for all subsequent logging,
-/// until the next call to `set_time_sequence`.
-///
-/// For example: `set_time_sequence("frame_nr", frame_nr)`.
-///
-/// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
 #[pyfunction]
 fn set_time_sequence(timeline: &str, sequence: Option<i64>) {
-    ThreadInfo::set_thread_time(
-        Timeline::new(timeline, TimeType::Sequence),
-        sequence.map(TimeInt::from),
-    );
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("set_time_sequence");
+        return;
+    };
+    data_stream.set_time_sequence(timeline, sequence);
 }
 
 #[pyfunction]
 fn set_time_seconds(timeline: &str, seconds: Option<f64>) {
-    ThreadInfo::set_thread_time(
-        Timeline::new(timeline, TimeType::Time),
-        seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
-    );
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("set_time_seconds");
+        return;
+    };
+    data_stream.set_time_seconds(timeline, seconds);
 }
 
 #[pyfunction]
-fn set_time_nanos(timeline: &str, ns: Option<i64>) {
-    ThreadInfo::set_thread_time(
-        Timeline::new(timeline, TimeType::Time),
-        ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
-    );
+fn set_time_nanos(timeline: &str, nanos: Option<i64>) {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("set_time_nanos");
+        return;
+    };
+    data_stream.set_time_nanos(timeline, nanos);
 }
 
 #[pyfunction]
 fn reset_time() {
-    ThreadInfo::reset_thread_time();
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("reset_time");
+        return;
+    };
+    data_stream.reset_time();
 }
 
-fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
-    match &color[..] {
-        [r, g, b] => Ok([*r, *g, *b, 255]),
-        [r, g, b, a] => Ok([*r, *g, *b, *a]),
-        _ => Err(PyTypeError::new_err(format!(
-            "Expected color to be of length 3 or 4, got {color:?}"
-        ))),
-    }
-}
+// --- Log transforms ---
 
 #[pyfunction]
 fn log_unknown_transform(entity_path: &str, timeless: bool) -> PyResult<()> {
@@ -559,12 +545,17 @@ fn log_transform(
     transform: re_log_types::Transform,
     timeless: bool,
 ) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("log_transform");
+        return Ok(());
+    };
+
     let entity_path = parse_entity_path(entity_path)?;
     if entity_path.is_root() {
         return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so the root cannot have a transform"));
     }
-    let mut session = python_session();
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     // We currently log arrow transforms from inside the bridge because we are
     // using glam and macaw to potentially do matrix-inversion as part of the
@@ -580,10 +571,12 @@ fn log_transform(
         [transform].as_slice(),
     );
 
-    session.send_row(row)
+    record_row(data_stream, row);
+
+    Ok(())
 }
 
-// ----------------------------------------------------------------------------
+// --- Log view coordinates ---
 
 #[pyfunction]
 #[pyo3(signature = (entity_path, xyz, right_handed = None, timeless = false))]
@@ -630,6 +623,12 @@ fn log_view_coordinates(
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        re_log::debug!("No active recording - call to log_view_coordinates() ignored");
+        return Ok(());
+    };
+
     if coordinates.handedness() == Some(Handedness::Left) {
         re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
     }
@@ -641,8 +640,7 @@ fn log_view_coordinates(
         parse_entity_path(entity_path_str)?
     };
 
-    let mut session = python_session();
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     // We currently log view coordinates from inside the bridge because the code
     // that does matching and validation on different string representations is
@@ -658,22 +656,93 @@ fn log_view_coordinates(
         [coordinates].as_slice(),
     );
 
-    session.send_row(row)
+    record_row(data_stream, row);
+
+    Ok(())
 }
 
-// ----------------------------------------------------------------------------
+// --- Log segmentation ---
 
-// TODO(jleibs): This shadows [`re_log_types::TensorDataMeaning`]
-//
-#[pyclass]
-#[derive(Clone, Debug)]
-enum TensorDataMeaning {
-    Unknown,
-    ClassId,
-    Depth,
+#[derive(FromPyObject)]
+struct AnnotationInfoTuple(u16, Option<String>, Option<Vec<u8>>);
+
+impl From<AnnotationInfoTuple> for AnnotationInfo {
+    fn from(tuple: AnnotationInfoTuple) -> Self {
+        let AnnotationInfoTuple(id, label, color) = tuple;
+        Self {
+            id,
+            label: label.map(Label),
+            color: color
+                .as_ref()
+                .map(|color| convert_color(color.clone()).unwrap())
+                .map(|bytes| bytes.into()),
+        }
+    }
 }
 
-// ----------------------------------------------------------------------------
+type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec<u16>);
+
+#[pyfunction]
+fn log_annotation_context(
+    entity_path_str: &str,
+    class_descriptions: Vec<ClassDescriptionTuple>,
+    timeless: bool,
+) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        re_log::debug!("No active recording - call to log_annotation_context() ignored");
+        return Ok(());
+    };
+
+    // We normally disallow logging to root, but we make an exception for class_descriptions
+    let entity_path = if entity_path_str == "/" {
+        EntityPath::root()
+    } else {
+        parse_entity_path(entity_path_str)?
+    };
+
+    let mut annotation_context = AnnotationContext::default();
+
+    for (info, keypoint_annotations, keypoint_skeleton_edges) in class_descriptions {
+        annotation_context
+            .class_map
+            .entry(ClassId(info.0))
+            .or_insert_with(|| ClassDescription {
+                info: info.into(),
+                keypoint_map: keypoint_annotations
+                    .into_iter()
+                    .map(|k| (KeypointId(k.0), k.into()))
+                    .collect(),
+                keypoint_connections: keypoint_skeleton_edges
+                    .chunks_exact(2)
+                    .map(|pair| (KeypointId(pair[0]), KeypointId(pair[1])))
+                    .collect(),
+            });
+    }
+
+    let time_point = time(timeless, data_stream);
+
+    // We currently log AnnotationContext from inside the bridge because it's a
+    // fairly complex type with a need for a fair amount of data-validation. We
+    // already have the serialization implemented in rust so we start with this
+    // implementation.
+    //
+    // TODO(jleibs) replace with python-native implementation
+
+    let row = DataRow::from_cells1(
+        RowId::random(),
+        entity_path,
+        time_point,
+        1,
+        [annotation_context].as_slice(),
+    );
+
+    record_row(data_stream, row);
+
+    Ok(())
+}
+
+// --- Log assets ---
 
 #[pyfunction]
 fn log_meshes(
@@ -685,6 +754,12 @@ fn log_meshes(
     albedo_factors: Vec<Option<numpy::PyReadonlyArray1<'_, f32>>>,
     timeless: bool,
 ) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("log_meshes");
+        return Ok(());
+    };
+
     let entity_path = parse_entity_path(entity_path_str)?;
 
     // Make sure we have as many position buffers as index buffers, etc.
@@ -704,9 +779,7 @@ fn log_meshes(
         )));
     }
 
-    let mut session = python_session();
-
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
 
@@ -786,7 +859,9 @@ fn log_meshes(
         meshes,
     );
 
-    session.send_row(row)
+    record_row(data_stream, row);
+
+    Ok(())
 }
 
 #[pyfunction]
@@ -797,6 +872,12 @@ fn log_mesh_file(
     transform: numpy::PyReadonlyArray2<'_, f32>,
     timeless: bool,
 ) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("log_mesh_file");
+        return Ok(());
+    };
+
     let entity_path = parse_entity_path(entity_path_str)?;
     let format = match mesh_format {
         "GLB" => MeshFormat::Glb,
@@ -835,9 +916,7 @@ fn log_mesh_file(
         ]
     };
 
-    let mut session = python_session();
-
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
@@ -861,7 +940,9 @@ fn log_mesh_file(
         [mesh3d].as_slice(),
     );
 
-    session.send_row(row)
+    record_row(data_stream, row);
+
+    Ok(())
 }
 
 /// Log an image file given its contents or path on disk.
@@ -876,6 +957,12 @@ fn log_image_file(
     img_format: Option<&str>,
     timeless: bool,
 ) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("log_image_file");
+        return Ok(());
+    };
+
     let entity_path = parse_entity_path(entity_path)?;
 
     let img_bytes = match (img_bytes, img_path) {
@@ -923,9 +1010,7 @@ fn log_image_file(
         }
     };
 
-    let mut session = python_session();
-
-    let time_point = time(timeless);
+    let time_point = time(timeless, data_stream);
 
     let tensor = re_log_types::component_types::Tensor {
         tensor_id: TensorId::random(),
@@ -947,90 +1032,34 @@ fn log_image_file(
         [tensor].as_slice(),
     );
 
-    session.send_row(row)
+    record_row(data_stream, row);
+
+    Ok(())
 }
 
-#[derive(FromPyObject)]
-struct AnnotationInfoTuple(u16, Option<String>, Option<Vec<u8>>);
-
-impl From<AnnotationInfoTuple> for AnnotationInfo {
-    fn from(tuple: AnnotationInfoTuple) -> Self {
-        let AnnotationInfoTuple(id, label, color) = tuple;
-        Self {
-            id,
-            label: label.map(Label),
-            color: color
-                .as_ref()
-                .map(|color| convert_color(color.clone()).unwrap())
-                .map(|bytes| bytes.into()),
-        }
-    }
+// TODO(jleibs): This shadows [`re_log_types::TensorDataMeaning`]
+#[pyclass]
+#[derive(Clone, Debug)]
+enum TensorDataMeaning {
+    Unknown,
+    ClassId,
+    Depth,
 }
 
-type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec<u16>);
-
-#[pyfunction]
-fn log_annotation_context(
-    entity_path_str: &str,
-    class_descriptions: Vec<ClassDescriptionTuple>,
-    timeless: bool,
-) -> PyResult<()> {
-    let mut session = python_session();
-
-    // We normally disallow logging to root, but we make an exception for class_descriptions
-    let entity_path = if entity_path_str == "/" {
-        EntityPath::root()
-    } else {
-        parse_entity_path(entity_path_str)?
-    };
-
-    let mut annotation_context = AnnotationContext::default();
-
-    for (info, keypoint_annotations, keypoint_skeleton_edges) in class_descriptions {
-        annotation_context
-            .class_map
-            .entry(ClassId(info.0))
-            .or_insert_with(|| ClassDescription {
-                info: info.into(),
-                keypoint_map: keypoint_annotations
-                    .into_iter()
-                    .map(|k| (KeypointId(k.0), k.into()))
-                    .collect(),
-                keypoint_connections: keypoint_skeleton_edges
-                    .chunks_exact(2)
-                    .map(|pair| (KeypointId(pair[0]), KeypointId(pair[1])))
-                    .collect(),
-            });
-    }
-
-    let time_point = time(timeless);
-
-    // We currently log AnnotationContext from inside the bridge because it's a
-    // fairly complex type with a need for a fair amount of data-validation. We
-    // already have the serialization implemented in rust so we start with this
-    // implementation.
-    //
-    // TODO(jleibs) replace with python-native implementation
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        time_point,
-        1,
-        [annotation_context].as_slice(),
-    );
-
-    session.send_row(row)
-}
+// --- Log special ---
 
 #[pyfunction]
 fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("log_cleared");
+        return Ok(());
+    };
+
     let entity_path = parse_entity_path(entity_path)?;
-    let mut session = python_session();
+    let timepoint = time(false, data_stream);
 
-    let time_point = time(false);
-
-    session.send_path_op(&time_point, PathOp::clear(recursive, entity_path));
+    data_stream.record_path_op(timepoint, PathOp::clear(recursive, entity_path));
 
     Ok(())
 }
@@ -1038,25 +1067,69 @@ fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
 #[pyfunction]
 fn log_arrow_msg(entity_path: &str, components: &PyDict, timeless: bool) -> PyResult<()> {
     let entity_path = parse_entity_path(entity_path)?;
+    let timepoint = {
+        let data_stream = global_data_stream();
+        let Some(data_stream) = data_stream.as_ref() else {
+            no_active_recording("log_arrow_msg");
+            return Ok(());
+        };
+        time(timeless, data_stream)
+    };
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
-    let data_table =
-        crate::arrow::build_data_table_from_components(&entity_path, components, &time(timeless))?;
+    let row = crate::arrow::build_data_row_from_components(&entity_path, components, &timepoint)?;
 
-    let mut session = python_session();
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("log_arrow_msg");
+        return Ok(());
+    };
 
-    let msg: ArrowMsg = data_table
-        .to_arrow_msg()
-        .map_err(|err: DataTableError| PyValueError::new_err(err.to_string()))?;
-
-    session.send_arrow_msg(msg);
+    record_row(data_stream, row);
 
     Ok(())
 }
 
-// ----------------------------------------------------------------------------
+// --- Misc ---
+
+#[pyfunction]
+fn get_recording_id() -> Option<String> {
+    global_data_stream().as_ref().and_then(|data_stream| {
+        data_stream
+            .recording_info()
+            .map(|info| info.recording_id.to_string())
+    })
+}
+
+#[pyfunction]
+/// Get a url to an instance of the web-viewer
+///
+/// This may point to app.rerun.io or localhost depending on
+/// whether `host_assets` was called.
+fn get_app_url() -> String {
+    #[cfg(feature = "web_viewer")]
+    if let Some(hosted_assets) = &*global_web_viewer_server() {
+        return format!("http://localhost:{}", hosted_assets.port());
+    }
+
+    let build_info = re_build_info::build_info!();
+    let short_git_hash = &build_info.git_hash[..7];
+    format!("https://app.rerun.io/commit/{short_git_hash}")
+}
+
+// --- Helpers ---
+
+fn convert_color(color: Vec<u8>) -> PyResult<[u8; 4]> {
+    match &color[..] {
+        [r, g, b] => Ok([*r, *g, *b, 255]),
+        [r, g, b, a] => Ok([*r, *g, *b, *a]),
+        _ => Err(PyTypeError::new_err(format!(
+            "Expected color to be of length 3 or 4, got {color:?}"
+        ))),
+    }
+}
 
 fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
     array: &'a numpy::PyReadonlyArray<'_, T, D>,
@@ -1073,4 +1146,20 @@ fn slice_from_np_array<'a, T: numpy::Element, D: numpy::ndarray::Dimension>(
     }
 
     Cow::Owned(array.iter().cloned().collect())
+}
+
+fn record_row(data_stream: &RecordingStream, row: DataRow) {
+    data_stream.record_row(row);
+}
+
+fn parse_entity_path(entity_path: &str) -> PyResult<EntityPath> {
+    let components = re_log_types::parse_entity_path(entity_path)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    if components.is_empty() {
+        Err(PyTypeError::new_err(
+            "You cannot log to the root {entity_path:?}",
+        ))
+    } else {
+        Ok(EntityPath::from(components))
+    }
 }
