@@ -2,8 +2,7 @@ use egui::{CursorIcon, Id, NumExt as _, Rect};
 
 use re_data_store::LogDb;
 use re_log_types::{Duration, TimeInt, TimeRangeF, TimeReal, TimeType};
-
-use crate::{misc::time_control::Looping, TimeControl};
+use re_viewer_context::{Looping, TimeControl};
 
 use super::{is_time_safe_to_show, time_ranges_ui::TimeRangesUi};
 

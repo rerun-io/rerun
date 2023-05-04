@@ -1,7 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use egui::NumExt as _;
-
 use re_data_store::TimesPerTimeline;
 use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType, Timeline};
 
@@ -114,7 +112,7 @@ impl Default for TimeControl {
 
 impl TimeControl {
     /// Update the current time
-    pub fn move_time(&mut self, egui_ctx: &egui::Context, times_per_timeline: &TimesPerTimeline) {
+    pub fn move_time(&mut self, times_per_timeline: &TimesPerTimeline, stable_dt: f32) {
         self.select_a_valid_timeline(times_per_timeline);
 
         let Some(full_range) = self.full_range(times_per_timeline) else {
@@ -136,7 +134,7 @@ impl TimeControl {
                 });
             }
             PlayState::Playing => {
-                let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) * self.speed;
+                let dt = stable_dt.min(0.1) * self.speed;
 
                 let state = self
                     .states
@@ -166,7 +164,6 @@ impl TimeControl {
                     }
                     TimeType::Time => state.time += TimeReal::from(Duration::from_secs(dt)),
                 }
-                egui_ctx.request_repaint(); // keep playing next frame
 
                 if let Some(loop_range) = loop_range {
                     if state.time > loop_range.max {
@@ -489,12 +486,12 @@ impl TimeControl {
     }
 
     /// The range of time we are currently zoomed in on.
-    pub(crate) fn time_view(&self) -> Option<TimeView> {
+    pub fn time_view(&self) -> Option<TimeView> {
         self.states.get(&self.timeline).and_then(|state| state.view)
     }
 
     /// The range of time we are currently zoomed in on.
-    pub(crate) fn set_time_view(&mut self, view: TimeView) {
+    pub fn set_time_view(&mut self, view: TimeView) {
         self.states
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(view.min))

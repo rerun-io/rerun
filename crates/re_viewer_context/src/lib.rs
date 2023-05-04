@@ -7,6 +7,7 @@ mod caches;
 mod item;
 mod selection_history;
 mod selection_state;
+mod time_control;
 
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
@@ -15,6 +16,7 @@ pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
+pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 
 // ---------------------------------------------------------------------------
 
