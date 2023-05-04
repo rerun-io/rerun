@@ -4,14 +4,11 @@ use re_log_types::{
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_viewer_context::{SceneQuery, ViewerContext};
+use re_viewer_context::{DefaultColor, ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
-    ui::{
-        annotations::ResolvedAnnotationInfo,
-        view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
-    },
+    ui::view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
 };
 
 use super::{

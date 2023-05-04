@@ -1,4 +1,3 @@
-mod annotations;
 mod auto_layout;
 mod blueprint;
 mod data_blueprint;
@@ -25,6 +24,5 @@ pub mod view_spatial;
 pub(crate) use self::blueprint::Blueprint;
 pub(crate) use self::space_view::{item_ui, SpaceView};
 
-pub use self::annotations::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 pub use self::view_category::ViewCategory;
 pub use self::viewport::Viewport;

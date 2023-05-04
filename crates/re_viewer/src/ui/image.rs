@@ -8,12 +8,9 @@ use re_log_types::{
 };
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
-use re_viewer_context::{SceneQuery, UiVerbosity, ViewerContext};
+use re_viewer_context::{AnnotationMap, Annotations, SceneQuery, UiVerbosity, ViewerContext};
 
-use crate::{
-    misc::caches::{TensorDecodeCache, TensorStats, TensorStatsCache},
-    ui::annotations::AnnotationMap,
-};
+use crate::misc::caches::{TensorDecodeCache, TensorStats, TensorStatsCache};
 
 pub fn format_tensor_shape_single_line(
     shape: &[re_log_types::component_types::TensorDimension],
@@ -167,7 +164,7 @@ fn annotations(
     ctx: &mut ViewerContext<'_>,
     query: &re_arrow_store::LatestAtQuery,
     entity_path: &re_data_store::EntityPath,
-) -> std::sync::Arc<crate::ui::Annotations> {
+) -> std::sync::Arc<Annotations> {
     let mut annotation_map = AnnotationMap::default();
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
@@ -327,7 +324,7 @@ fn show_zoomed_image_region_tooltip(
     response: egui::Response,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     image_rect: egui::Rect,
@@ -407,7 +404,7 @@ pub fn show_zoomed_image_region(
     ui: &mut egui::Ui,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
@@ -433,7 +430,7 @@ fn try_show_zoomed_image_region(
     ui: &mut egui::Ui,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
@@ -516,7 +513,7 @@ fn try_show_zoomed_image_region(
 fn tensor_pixel_value_ui(
     ui: &mut egui::Ui,
     tensor: &Tensor,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     [x, y]: [u64; 2],
     meter: Option<f32>,
 ) {

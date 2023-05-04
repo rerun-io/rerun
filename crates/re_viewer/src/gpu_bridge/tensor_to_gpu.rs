@@ -1,6 +1,7 @@
 //! Upload [`Tensor`] to [`re_renderer`].
 
 use anyhow::Context;
+use re_viewer_context::{Annotations, DefaultColor};
 use std::borrow::Cow;
 
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
@@ -31,7 +32,7 @@ pub fn tensor_to_gpu(
     debug_name: &str,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     crate::profile_function!(format!(
         "meaning: {:?}, dtype: {}, shape: {:?}",
@@ -135,7 +136,7 @@ fn class_id_tensor_to_gpu(
     debug_name: &str,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     let [_height, _width, depth] = height_width_depth(tensor)?;
     anyhow::ensure!(
@@ -168,7 +169,7 @@ fn class_id_tensor_to_gpu(
                     let color = annotations
                         .class_description(Some(re_log_types::component_types::ClassId(id as u16)))
                         .annotation_info()
-                        .color(None, crate::ui::DefaultColor::TransparentBlack);
+                        .color(None, DefaultColor::TransparentBlack);
                     color.to_array() // premultiplied!
                 })
                 .collect();

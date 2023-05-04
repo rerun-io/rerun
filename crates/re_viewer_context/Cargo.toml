@@ -33,6 +33,7 @@ nohash-hasher.workspace = true
 serde = "1"
 slotmap.workspace = true
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
+lazy_static.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true

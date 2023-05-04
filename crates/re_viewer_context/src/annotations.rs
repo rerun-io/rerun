@@ -11,7 +11,10 @@ use re_log_types::{
     AnnotationContext, RowId,
 };
 use re_query::query_entity_with_primary;
-use re_viewer_context::{auto_color, SceneQuery, ViewerContext};
+
+use crate::DefaultColor;
+
+use super::{auto_color, SceneQuery, ViewerContext};
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
@@ -70,13 +73,6 @@ impl<'a> ResolvedClassDescription<'a> {
             }
         }
     }
-}
-
-#[derive(Clone, Copy)]
-pub enum DefaultColor<'a> {
-    OpaqueWhite,
-    TransparentBlack,
-    EntityPath(&'a EntityPath),
 }
 
 #[derive(Clone)]

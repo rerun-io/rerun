@@ -2,6 +2,7 @@
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
+mod annotations;
 mod app_options;
 mod caches;
 mod component_ui_registry;
@@ -13,6 +14,7 @@ mod time_control;
 mod utils;
 mod viewer_context;
 
+pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSING_ANNOTATIONS};
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
@@ -23,7 +25,7 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
-pub use utils::{auto_color, level_to_rich_text};
+pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};
 
 // ---------------------------------------------------------------------------

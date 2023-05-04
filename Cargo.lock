@@ -4265,6 +4265,7 @@ dependencies = [
  "egui",
  "glam",
  "itertools",
+ "lazy_static",
  "nohash-hasher",
  "puffin",
  "re_arrow_store",
