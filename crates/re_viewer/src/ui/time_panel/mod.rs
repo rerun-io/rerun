@@ -12,7 +12,7 @@ use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
 use re_viewer_context::Item;
 
-use crate::{TimeControl, TimeView, ViewerContext};
+use crate::{misc::TimeControlUi, TimeControl, TimeView, ViewerContext};
 
 use super::{data_ui::DataUi, item_ui, selection_panel::what_is_selected_ui, Blueprint};
 
@@ -37,6 +37,9 @@ pub(crate) struct TimePanel {
     /// The time axis view, regenerated each frame.
     #[serde(skip)]
     time_ranges_ui: TimeRangesUi,
+
+    /// Ui elements for controlling time.
+    time_control_ui: TimeControlUi,
 }
 
 impl Default for TimePanel {
@@ -46,6 +49,7 @@ impl Default for TimePanel {
             prev_col_width: 400.0,
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
+            time_control_ui: TimeControlUi::default(),
         }
     }
 }
@@ -110,7 +114,7 @@ impl TimePanel {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
                                     ui.visuals_mut().button_frame = true;
-                                    top_row_ui(ctx, ui);
+                                    self.top_row_ui(ctx, ui);
                                 });
                             })
                             .response
@@ -148,13 +152,18 @@ impl TimePanel {
                     let re_ui = &ctx.re_ui;
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     let times_per_timeline = ctx.log_db.times_per_timeline();
-                    time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
-                    time_ctrl.playback_speed_ui(ui);
-                    time_ctrl.fps_ui(ui);
+                    self.time_control_ui
+                        .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
+                    self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                    self.time_control_ui.fps_ui(time_ctrl, ui);
                 });
                 ui.horizontal(|ui| {
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-                    time_ctrl.timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+                    self.time_control_ui.timeline_selector_ui(
+                        time_ctrl,
+                        ctx.log_db.times_per_timeline(),
+                        ui,
+                    );
                     collapsed_time_marker_and_time(ui, ctx);
                 });
             });
@@ -163,10 +172,12 @@ impl TimePanel {
             let re_ui = &ctx.re_ui;
             let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
             let times_per_timeline = ctx.log_db.times_per_timeline();
-            time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
-            time_ctrl.timeline_selector_ui(times_per_timeline, ui);
-            time_ctrl.playback_speed_ui(ui);
-            time_ctrl.fps_ui(ui);
+            self.time_control_ui
+                .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
+            self.time_control_ui
+                .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
+            self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+            self.time_control_ui.fps_ui(time_ctrl, ui);
 
             collapsed_time_marker_and_time(ui, ctx);
         }
@@ -565,6 +576,56 @@ impl TimePanel {
             }
         }
     }
+
+    fn top_row_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+        ui.spacing_mut().item_spacing.x = 18.0; // from figma
+
+        if ui.max_rect().width() < 600.0 {
+            // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    let re_ui = &ctx.re_ui;
+                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    let times_per_timeline = ctx.log_db.times_per_timeline();
+                    self.time_control_ui
+                        .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
+                    self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                    self.time_control_ui.fps_ui(time_ctrl, ui);
+                });
+                ui.horizontal(|ui| {
+                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    self.time_control_ui.timeline_selector_ui(
+                        time_ctrl,
+                        ctx.log_db.times_per_timeline(),
+                        ui,
+                    );
+
+                    current_time_ui(ctx, ui);
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        help_button(ui);
+                    });
+                });
+            });
+        } else {
+            // One row:
+            let re_ui = &ctx.re_ui;
+            let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+            let times_per_timeline = ctx.log_db.times_per_timeline();
+
+            self.time_control_ui
+                .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
+            self.time_control_ui
+                .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
+            self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+            self.time_control_ui.fps_ui(time_ctrl, ui);
+            current_time_ui(ctx, ui);
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                help_button(ui);
+            });
+        }
+    }
 }
 
 fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) {
@@ -625,49 +686,6 @@ fn paint_streams_guide_line(
         response_rect.center().y,
         (stroke_width, line_color),
     );
-}
-
-fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-    ui.spacing_mut().item_spacing.x = 18.0; // from figma
-
-    if ui.max_rect().width() < 600.0 {
-        // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
-        ui.vertical(|ui| {
-            ui.horizontal(|ui| {
-                let re_ui = &ctx.re_ui;
-                let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-                let times_per_timeline = ctx.log_db.times_per_timeline();
-                time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
-                time_ctrl.playback_speed_ui(ui);
-                time_ctrl.fps_ui(ui);
-            });
-            ui.horizontal(|ui| {
-                let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-                time_ctrl.timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
-
-                current_time_ui(ctx, ui);
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    help_button(ui);
-                });
-            });
-        });
-    } else {
-        // One row:
-        let re_ui = &ctx.re_ui;
-        let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-        let times_per_timeline = ctx.log_db.times_per_timeline();
-
-        time_ctrl.play_pause_ui(re_ui, times_per_timeline, ui);
-        time_ctrl.timeline_selector_ui(times_per_timeline, ui);
-        time_ctrl.playback_speed_ui(ui);
-        time_ctrl.fps_ui(ui);
-        current_time_ui(ctx, ui);
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            help_button(ui);
-        });
-    }
 }
 
 fn help_button(ui: &mut egui::Ui) {

@@ -1021,7 +1021,10 @@ impl AppState {
         // move time last, so we get to see the first data first!
         ctx.rec_cfg
             .time_ctrl
-            .move_time(ui.ctx(), log_db.times_per_timeline());
+            .move_time(log_db.times_per_timeline(), ui.ctx().input(|i| i.stable_dt));
+        if ctx.rec_cfg.time_ctrl.play_state() == PlayState::Playing {
+            ui.ctx().request_repaint();
+        }
 
         if WATERMARK {
             re_ui.paint_watermark();

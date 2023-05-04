@@ -114,7 +114,7 @@ impl Default for TimeControl {
 
 impl TimeControl {
     /// Update the current time
-    pub fn move_time(&mut self, egui_ctx: &egui::Context, times_per_timeline: &TimesPerTimeline) {
+    pub fn move_time(&mut self, times_per_timeline: &TimesPerTimeline, stable_dt: f32) {
         self.select_a_valid_timeline(times_per_timeline);
 
         let Some(full_range) = self.full_range(times_per_timeline) else {
@@ -136,7 +136,7 @@ impl TimeControl {
                 });
             }
             PlayState::Playing => {
-                let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) * self.speed;
+                let dt = stable_dt.at_most(0.1) * self.speed;
 
                 let state = self
                     .states
@@ -166,7 +166,6 @@ impl TimeControl {
                     }
                     TimeType::Time => state.time += TimeReal::from(Duration::from_secs(dt)),
                 }
-                egui_ctx.request_repaint(); // keep playing next frame
 
                 if let Some(loop_range) = loop_range {
                     if state.time > loop_range.max {
