@@ -54,9 +54,8 @@ where
     ) -> arrow2::error::Result<()> {
         crate::profile_function!();
         let mut buf = Vec::new();
-        rmp_serde::encode::write_named(&mut buf, v).map_err(|_err| {
-            // TODO(jleibs): Could not get re_error::format() to work here
-            arrow2::error::Error::ExternalFormat("Could not encode as rmp".to_owned())
+        rmp_serde::encode::write_named(&mut buf, v).map_err(|err| {
+            arrow2::error::Error::ExternalFormat(format!("Could not encode as rmp: {err}"))
         })?;
         array.try_push(Some(buf))
     }
