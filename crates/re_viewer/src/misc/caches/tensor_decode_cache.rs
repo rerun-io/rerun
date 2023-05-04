@@ -13,7 +13,7 @@ struct DecodedTensorResult {
     /// Total memory used by this `Tensor`.
     memory_used: u64,
 
-    /// Which [`DecodeCache::generation`] was this `Tensor` last used?
+    /// Which [`TensorDecodeCache::generation`] was this `Tensor` last used?
     last_use_generation: u64,
 }
 
