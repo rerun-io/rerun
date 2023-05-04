@@ -7,7 +7,7 @@ use re_query::ComponentWithInstances;
 
 use crate::ViewerContext;
 
-/// Controls how mich space we use to show the data in [`DataUi`].
+/// Controls how mich space we use to show the data in a component ui.
 #[derive(Clone, Copy, Debug)]
 pub enum UiVerbosity {
     /// Keep it small enough to fit on one row.
