@@ -1,6 +1,7 @@
 mod mesh_cache;
 mod tensor_decode_cache;
 
+use ahash::HashMap;
 use re_log_types::component_types;
 
 /// Does memoization of different things for the immediate mode UI.
@@ -13,6 +14,8 @@ pub struct Caches {
     pub mesh: mesh_cache::MeshCache,
 
     tensor_stats: nohash_hasher::IntMap<component_types::TensorId, TensorStats>,
+
+    caches: HashMap<std::any::TypeId, Box<dyn Cache + 'static>>,
 }
 
 impl Caches {
@@ -25,6 +28,10 @@ impl Caches {
         let max_decode_cache_use = 1_000_000_000;
 
         self.decode.begin_frame(max_decode_cache_use);
+
+        for cache in self.caches.values_mut() {
+            cache.begin_frame();
+        }
     }
 
     pub fn purge_memory(&mut self) {
@@ -32,9 +39,14 @@ impl Caches {
             decode,
             tensor_stats,
             mesh: _, // TODO(emilk)
+            caches,
         } = self;
         decode.purge_memory();
         tensor_stats.clear();
+
+        for cache in caches.values_mut() {
+            cache.purge_memory();
+        }
     }
 
     pub fn tensor_stats(&mut self, tensor: &re_log_types::component_types::Tensor) -> &TensorStats {
@@ -42,6 +54,44 @@ impl Caches {
             .entry(tensor.tensor_id)
             .or_insert_with(|| TensorStats::new(tensor))
     }
+
+    /// Retrieves a cache for reading and writing.
+    ///
+    /// Returns None if the cache is not present.
+    pub fn get_mut<T: Cache>(&mut self) -> Option<&mut T> {
+        self.caches
+            .get_mut(&std::any::TypeId::of::<T>())
+            .and_then(|cache| <dyn std::any::Any>::downcast_mut::<T>(cache))
+    }
+
+    /// Retrieves a cache for reading.
+    ///
+    /// Returns None if the cache is not present.
+    pub fn get<T: Cache>(&self) -> Option<&T> {
+        self.caches
+            .get(&std::any::TypeId::of::<T>())
+            .and_then(|cache| <dyn std::any::Any>::downcast_ref::<T>(cache))
+    }
+
+    /// Adds a cache to the list of caches.
+    ///
+    /// Fails if a cache of the same type already exists.
+    pub fn add_cache<T: Cache>(&mut self, cache: T) -> Result<(), ()> {
+        let type_id = std::any::TypeId::of::<T>();
+        match self.caches.insert(type_id, Box::new(cache)) {
+            Some(_) => Err(()),
+            None => Ok(()),
+        }
+    }
+}
+
+/// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.
+pub trait Cache: std::any::Any {
+    /// Called once per frame to potentially flush the cache.
+    fn begin_frame(&mut self);
+
+    /// Attempt to free up memory.
+    fn purge_memory(&mut self);
 }
 
 #[derive(Clone, Copy, Debug)]
