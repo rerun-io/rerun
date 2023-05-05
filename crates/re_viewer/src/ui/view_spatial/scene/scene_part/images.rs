@@ -25,6 +25,7 @@ use crate::{
 
 use super::ScenePart;
 
+#[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
     ctx: &mut ViewerContext<'_>,
     annotations: &Annotations,
@@ -91,14 +92,12 @@ fn to_textured_rect(
 fn handle_image_layering(scene: &mut SceneSpatial) {
     crate::profile_function!();
 
-    // TODO: Need to adjust this and make it aware of change depth offsets.
-
-    // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
+    // Handle layered rectangles that are on (roughly) the same plane with the same depth offset and were logged in sequence.
     // First, group by similar plane.
     // TODO(andreas): Need planes later for picking as well!
     let images_grouped_by_plane = {
         let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
-        let mut rectangle_group = Vec::new();
+        let mut rectangle_group: Vec<Image> = Vec::new();
         scene
             .primitives
             .images
@@ -113,10 +112,17 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
                         rect.top_left_corner_position,
                     );
 
+                    fn is_plane_similar(a: macaw::Plane3, b: macaw::Plane3) -> bool {
+                        a.normal.dot(b.normal) >= 0.99 && (a.d - b.d) >= 0.01
+                    }
+                    let has_same_depth_offset = rectangle_group.last().map_or(true, |last_image| {
+                        last_image.textured_rect.options.depth_offset
+                            == image.textured_rect.options.depth_offset
+                    });
+
                     // Are the image planes too unsimilar? Then this is a new group.
                     if !rectangle_group.is_empty()
-                        && prev_plane.normal.dot(cur_plane.normal) < 0.99
-                        && (prev_plane.d - cur_plane.d) < 0.01
+                        && (!is_plane_similar(prev_plane, cur_plane) || !has_same_depth_offset)
                     {
                         let previous_group = std::mem::replace(&mut rectangle_group, vec![image]);
                         return Some(previous_group);
@@ -134,16 +140,12 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
 
     // Then, for each planar group do resorting and change transparency.
     for mut grouped_images in images_grouped_by_plane {
-        // Class id images should generally come last as they typically have large areas being zeroed out (which maps to fully transparent).
+        // Class id images should generally come last within the same layer as
+        // they typically have large areas being zeroed out (which maps to fully transparent).
         grouped_images.sort_by_key(|image| image.tensor.meaning == TensorDataMeaning::ClassId);
 
         let total_num_images = grouped_images.len();
         for (idx, image) in grouped_images.iter_mut().enumerate() {
-            // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
-            // Keep behind depth offset 0 for correct picking order.
-            image.textured_rect.options.depth_offset =
-                (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
-
             // make top images transparent
             let opacity = if idx == 0 {
                 1.0
