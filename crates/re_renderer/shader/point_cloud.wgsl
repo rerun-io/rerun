@@ -119,9 +119,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 /// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
 /// perspective projection is not taken into account.
 fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) -> f32 {
-    let to_center = circle_center - world_position;
-    let distance = length(to_center);
-    let distance_pixel_difference = fwidth(distance);
+    let distance = distance(circle_center, world_position);
+    let distance_pixel_difference = fwidth(distance) * 0.5;
     return smoothstep(radius + distance_pixel_difference, radius - distance_pixel_difference, distance);
 }
 
