@@ -171,7 +171,13 @@ fn default_created_space_views_from_candidates(
 
         // Spatial views with images get extra treatment as well.
         if candidate.category == ViewCategory::Spatial {
-            let mut images_by_size: HashMap<(u64, u64), Vec<EntityPath>> = HashMap::default();
+            #[derive(Hash, PartialEq, Eq)]
+            enum ImageBucketing {
+                BySize((u64, u64)),
+                ExplicitDrawOrder,
+            }
+
+            let mut images_by_bucket: HashMap<ImageBucketing, Vec<EntityPath>> = HashMap::default();
 
             // For this we're only interested in the direct children.
             for entity_path in &candidate.data_blueprint.root_group().entities {
@@ -184,24 +190,41 @@ fn default_created_space_views_from_candidates(
                     for tensor in entity_view.iter_primary_flattened() {
                         if tensor.is_shaped_like_an_image() {
                             debug_assert!(matches!(tensor.shape.len(), 2 | 3));
-                            let dim = (tensor.shape[0].size, tensor.shape[1].size);
-                            images_by_size
-                                .entry(dim)
-                                .or_default()
-                                .push(entity_path.clone());
+
+                            if query_latest_single::<re_log_types::DrawOrder>(
+                                entity_db,
+                                entity_path,
+                                &query,
+                            )
+                            .is_some()
+                            {
+                                // Put everything in the same bucket if it has a draw order.
+                                images_by_bucket
+                                    .entry(ImageBucketing::ExplicitDrawOrder)
+                                    .or_default()
+                                    .push(entity_path.clone());
+                            } else {
+                                // Otherwise, distinguish buckets by image size.
+                                let dim = (tensor.shape[0].size, tensor.shape[1].size);
+                                images_by_bucket
+                                    .entry(ImageBucketing::BySize(dim))
+                                    .or_default()
+                                    .push(entity_path.clone());
+                            }
                         }
                     }
                 }
             }
 
-            // If all images are the same size, proceed with the candidate as is. Otherwise...
-            if images_by_size.len() > 1 {
-                // ...stack images of the same size, but no others.
-                for dim in images_by_size.keys() {
-                    // Ignore every image that has a different size.
-                    let images_of_different_size = images_by_size
+            if images_by_bucket.len() > 1 {
+                // If all images end up in the same bucket, proceed as normal. Otherwise stack images as instructed.
+                for bucket in images_by_bucket.keys() {
+                    // Ignore every image from antoher bucket. Keep all other entities.
+                    let images_of_different_size = images_by_bucket
                         .iter()
-                        .filter_map(|(other_dim, images)| (dim != other_dim).then_some(images))
+                        .filter_map(|(other_bucket, images)| {
+                            (bucket != other_bucket).then_some(images)
+                        })
                         .flatten()
                         .cloned()
                         .collect::<IntSet<_>>();
