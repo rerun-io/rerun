@@ -314,7 +314,7 @@ fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[DrawOrder(1.5)])?
         .send(rec_stream)?;
 
-    // And some random points in between
+    // And some points in front of the rectangle.
     MsgSender::new("2d_layering/points_between_top_and_middle")
         .with_timepoint(sim_time(1 as _))
         .with_component(
@@ -322,7 +322,7 @@ fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
                 .map(|i| Point2D::new(32.0 + (i / 16) as f32 * 16.0, 64.0 + (i % 16) as f32 * 16.0))
                 .collect::<Vec<_>>(),
         )?
-        .with_component(&[DrawOrder(1.5)])?
+        .with_component(&[DrawOrder(1.51)])?
         .send(rec_stream)?;
 
     Ok(())

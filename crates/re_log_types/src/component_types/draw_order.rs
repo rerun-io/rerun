@@ -8,6 +8,8 @@ use crate::Component;
 /// An entity can have only a single draw order component.
 /// Within an entity draw order is governed by the order of the components.
 ///
+/// Draw order for entities with the same draw order is generally undefined.
+///
 /// ```
 /// use re_log_types::component_types::DrawOrder;
 /// use arrow2_convert::field::ArrowField;
