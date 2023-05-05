@@ -290,21 +290,39 @@ fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     // Add several overlapping images
     let img = Array::<u8, _>::from_elem((512, 512, 3).f(), 64);
     MsgSender::new("2d_layering/background")
-        .with_timepoint(sim_time(1 as _))
+        .with_timepoint(sim_time(1.0))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(0.0)])?
         .send(rec_stream)?;
     let img = Array::<u8, _>::from_elem((256, 256, 3).f(), 128);
     MsgSender::new("2d_layering/middle")
-        .with_timepoint(sim_time(1 as _))
+        .with_timepoint(sim_time(1.0))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(1.0)])?
         .send(rec_stream)?;
     let img = Array::<u8, _>::from_elem((128, 128, 3).f(), 255);
     MsgSender::new("2d_layering/top")
-        .with_timepoint(sim_time(1 as _))
+        .with_timepoint(sim_time(1.0))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(2.0)])?
+        .send(rec_stream)?;
+
+    // Put a rectangle in between
+    MsgSender::new("2d_layering/rect_between_top_and_middle")
+        .with_timepoint(sim_time(2.0))
+        .with_component(&[Rect2D::from_xywh(64.0, 64.0, 256.0, 256.0)])?
+        .with_component(&[DrawOrder(1.5)])?
+        .send(rec_stream)?;
+
+    // And some random points in between
+    MsgSender::new("2d_layering/points_between_top_and_middle")
+        .with_timepoint(sim_time(1 as _))
+        .with_component(
+            &(0..256)
+                .map(|i| Point2D::new(32.0 + (i / 16) as f32 * 16.0, 64.0 + (i % 16) as f32 * 16.0))
+                .collect::<Vec<_>>(),
+        )?
+        .with_component(&[DrawOrder(1.5)])?
         .send(rec_stream)?;
 
     Ok(())
