@@ -158,11 +158,11 @@ impl SceneSpatial {
             .or_default()
             .push(DrawOrderTarget::DefaultImage);
         entities_per_draw_order
-            .entry(DrawOrder::DEFAULT_LINES)
+            .entry(DrawOrder::DEFAULT_LINES2D)
             .or_default()
             .push(DrawOrderTarget::DefaultLines2D);
         entities_per_draw_order
-            .entry(DrawOrder::DEFAULT_POINTS)
+            .entry(DrawOrder::DEFAULT_POINTS2D)
             .or_default()
             .push(DrawOrderTarget::DefaultPoints);
 

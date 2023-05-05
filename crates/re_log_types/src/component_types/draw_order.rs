@@ -15,18 +15,23 @@ use crate::Component;
 ///
 /// assert_eq!(DrawOrder::data_type(), DataType::Float32);
 /// ```
-///
-/// TODO: Define default ordering for different elements.
 #[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct DrawOrder(pub f32);
 
 impl DrawOrder {
+    /// Draw order used for images if no draw order was specified.
     pub const DEFAULT_IMAGE: DrawOrder = DrawOrder(-10.0);
+
+    /// Draw order used for 2D boxes if no draw order was specified.
     pub const DEFAULT_BOX2D: DrawOrder = DrawOrder(10.0);
-    pub const DEFAULT_LINES: DrawOrder = DrawOrder(20.0);
-    pub const DEFAULT_POINTS: DrawOrder = DrawOrder(30.0);
+
+    /// Draw order used for 2D lines if no draw order was specified.
+    pub const DEFAULT_LINES2D: DrawOrder = DrawOrder(20.0);
+
+    /// Draw order used for 2D points if no draw order was specified.
+    pub const DEFAULT_POINTS2D: DrawOrder = DrawOrder(30.0);
 }
 
 impl Component for DrawOrder {
