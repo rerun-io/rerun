@@ -9,7 +9,7 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
-    ui::view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
+    ui::view_spatial::{scene::EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
 };
 
 use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
@@ -97,6 +97,7 @@ impl ScenePart for Boxes3DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("Boxes3DPart");
 

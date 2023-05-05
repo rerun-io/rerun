@@ -9,7 +9,7 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{SpaceViewHighlights, TransformCache},
-    ui::view_spatial::SceneSpatial,
+    ui::view_spatial::{scene::EntityDepthOffsets, SceneSpatial},
 };
 
 use super::{instance_key_to_picking_id, ScenePart};
@@ -94,6 +94,7 @@ impl ScenePart for Arrows3DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("Points2DPart");
 

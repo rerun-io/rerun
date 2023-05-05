@@ -1,14 +1,16 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 
-use re_data_store::{EntityPath, InstancePathHash};
+use nohash_hasher::IntMap;
+use re_data_store::{query_latest_single, EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, InstanceKey, KeypointId},
-    DecodedTensor,
+    DecodedTensor, DrawOrder, EntityPathHash,
 };
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_viewer_context::{auto_color, AnnotationMap, Annotations, SceneQuery, ViewerContext};
+use smallvec::SmallVec;
 
 use crate::misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache};
 
@@ -91,6 +93,21 @@ pub struct SceneSpatial {
 
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
+#[derive(Default)]
+pub struct EntityDepthOffsets {
+    pub per_entity: IntMap<EntityPathHash, re_renderer::DepthOffset>,
+    pub box2d: re_renderer::DepthOffset,
+    pub lines2d: re_renderer::DepthOffset,
+    pub image: re_renderer::DepthOffset,
+    pub points: re_renderer::DepthOffset,
+}
+
+impl EntityDepthOffsets {
+    pub fn get(&self, ent_path: &EntityPath) -> Option<re_renderer::DepthOffset> {
+        self.per_entity.get(&ent_path.hash()).cloned()
+    }
+}
+
 impl SceneSpatial {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         Self {
@@ -101,6 +118,89 @@ impl SceneSpatial {
             num_logged_3d_objects: Default::default(),
             space_cameras: Default::default(),
         }
+    }
+
+    fn determine_depth_offsets(
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+    ) -> EntityDepthOffsets {
+        crate::profile_function!();
+
+        enum DrawOrderTarget {
+            Entity(EntityPathHash),
+            DefaultBox2D,
+            DefaultLines2D,
+            DefaultImage,
+            DefaultPoints,
+        }
+
+        let mut entities_per_draw_order = BTreeMap::<DrawOrder, SmallVec<[_; 4]>>::new();
+        for (ent_path, _) in query.iter_entities() {
+            if let Some(draw_order) = query_latest_single::<DrawOrder>(
+                &ctx.log_db.entity_db,
+                ent_path,
+                &ctx.rec_cfg.time_ctrl.current_query(),
+            ) {
+                entities_per_draw_order
+                    .entry(draw_order)
+                    .or_default()
+                    .push(DrawOrderTarget::Entity(ent_path.hash()));
+            }
+        }
+
+        // Push in default draw orders. All of them using the none hash.
+        entities_per_draw_order
+            .entry(DrawOrder::DEFAULT_BOX2D)
+            .or_default()
+            .push(DrawOrderTarget::DefaultBox2D);
+        entities_per_draw_order
+            .entry(DrawOrder::DEFAULT_IMAGE)
+            .or_default()
+            .push(DrawOrderTarget::DefaultImage);
+        entities_per_draw_order
+            .entry(DrawOrder::DEFAULT_LINES)
+            .or_default()
+            .push(DrawOrderTarget::DefaultLines2D);
+        entities_per_draw_order
+            .entry(DrawOrder::DEFAULT_POINTS)
+            .or_default()
+            .push(DrawOrderTarget::DefaultPoints);
+
+        // Determine re_renderer draw order from this.
+        // We want to be as tightly around 0 as possible.
+        let mut offsets = EntityDepthOffsets::default();
+        let mut draw_order = -((entities_per_draw_order.len() / 2) as re_renderer::DepthOffset);
+        offsets.per_entity = entities_per_draw_order
+            .into_values()
+            .flat_map(move |targets| {
+                let pairs = targets
+                    .into_iter()
+                    .filter_map(|target| match target {
+                        DrawOrderTarget::Entity(entity) => Some((entity, draw_order)),
+                        DrawOrderTarget::DefaultBox2D => {
+                            offsets.box2d = draw_order;
+                            None
+                        }
+                        DrawOrderTarget::DefaultLines2D => {
+                            offsets.lines2d = draw_order;
+                            None
+                        }
+                        DrawOrderTarget::DefaultImage => {
+                            offsets.image = draw_order;
+                            None
+                        }
+                        DrawOrderTarget::DefaultPoints => {
+                            offsets.points = draw_order;
+                            None
+                        }
+                    })
+                    .collect::<SmallVec<[_; 4]>>();
+                draw_order += 1;
+                pairs
+            })
+            .collect();
+
+        offsets
     }
 
     /// Loads all 3D objects into the scene according to the given query.
@@ -133,8 +233,10 @@ impl SceneSpatial {
             &scene_part::CamerasPart,
         ];
 
+        let depth_offsets = Self::determine_depth_offsets(ctx, query);
+
         for part in parts {
-            part.load(self, ctx, query, transforms, highlights);
+            part.load(self, ctx, query, transforms, highlights, &depth_offsets);
         }
 
         self.primitives.any_outlines = highlights.any_outlines();

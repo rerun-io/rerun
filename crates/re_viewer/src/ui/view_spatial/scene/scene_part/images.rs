@@ -20,7 +20,7 @@ use re_viewer_context::{
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
-    ui::view_spatial::{Image, SceneSpatial},
+    ui::view_spatial::{scene::EntityDepthOffsets, Image, SceneSpatial},
 };
 
 use super::ScenePart;
@@ -33,6 +33,7 @@ fn to_textured_rect(
     tensor: &DecodedTensor,
     multiplicative_tint: egui::Rgba,
     outline_mask: OutlineMaskPreference,
+    depth_offset: re_renderer::DepthOffset,
 ) -> Option<re_renderer::renderer::TexturedRect> {
     crate::profile_function!();
 
@@ -75,7 +76,7 @@ fn to_textured_rect(
                     texture_filter_magnification,
                     texture_filter_minification,
                     multiplicative_tint,
-                    depth_offset: -1, // Push to background. Mostly important for mouse picking order!
+                    depth_offset,
                     outline_mask,
                 },
             })
@@ -89,6 +90,8 @@ fn to_textured_rect(
 
 fn handle_image_layering(scene: &mut SceneSpatial) {
     crate::profile_function!();
+
+    // TODO: Need to adjust this and make it aware of change depth offsets.
 
     // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
     // First, group by similar plane.
@@ -171,6 +174,7 @@ impl ImagesPart {
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
         highlights: &SpaceViewHighlights,
+        depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
@@ -239,6 +243,7 @@ impl ImagesPart {
                 &tensor,
                 color.into(),
                 entity_highlight.overall,
+                depth_offset,
             ) {
                 scene.primitives.images.push(Image {
                     ent_path: ent_path.clone(),
@@ -385,6 +390,7 @@ impl ScenePart for ImagesPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("ImagesPart");
 
@@ -412,6 +418,7 @@ impl ScenePart for ImagesPart {
                         ent_path,
                         world_from_obj,
                         highlights,
+                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.image),
                     )?;
                 }
                 Ok(())

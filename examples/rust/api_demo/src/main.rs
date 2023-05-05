@@ -19,8 +19,8 @@ use std::{
 
 use rerun::{
     components::{
-        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, Label,
-        LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3, Tensor,
+        AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, DrawOrder,
+        Label, LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3, Tensor,
         TensorDataMeaning, TextEntry, Transform, Vec3D, ViewCoordinates,
     },
     coordinates::SignedAxis3,
@@ -279,6 +279,32 @@ fn demo_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("rects_demo/rects")
         .with_timepoint(sim_time(3 as _))
         .with_component(&Vec::<Rect2D>::new())?
+        .send(rec_stream)?;
+
+    Ok(())
+}
+
+fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
+    use ndarray::prelude::*;
+
+    // Add several overlapping images
+    let img = Array::<u8, _>::from_elem((512, 512, 3).f(), 64);
+    MsgSender::new("2d_layering/background")
+        .with_timepoint(sim_time(1 as _))
+        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
+        .with_component(&[DrawOrder(0.0)])?
+        .send(rec_stream)?;
+    let img = Array::<u8, _>::from_elem((256, 256, 3).f(), 128);
+    MsgSender::new("2d_layering/middle")
+        .with_timepoint(sim_time(1 as _))
+        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
+        .with_component(&[DrawOrder(1.0)])?
+        .send(rec_stream)?;
+    let img = Array::<u8, _>::from_elem((128, 128, 3).f(), 255);
+    MsgSender::new("2d_layering/top")
+        .with_timepoint(sim_time(1 as _))
+        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
+        .with_component(&[DrawOrder(2.0)])?
         .send(rec_stream)?;
 
     Ok(())
@@ -612,6 +638,9 @@ enum Demo {
     #[value(name("rects"))]
     Rects,
 
+    #[value(name("2d_ordering"))]
+    TwoDOrdering,
+
     #[value(name("segmentation"))]
     Segmentation,
 
@@ -647,6 +676,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
             Demo::LogCleared => demo_log_cleared(rec_stream)?,
             Demo::Points3D => demo_3d_points(rec_stream)?,
             Demo::Rects => demo_rects(rec_stream)?,
+            Demo::TwoDOrdering => demo_2d_layering(rec_stream)?,
             Demo::Segmentation => demo_segmentation(rec_stream)?,
             Demo::TextLogs => demo_text_logs(rec_stream)?,
             Demo::Transforms3D => demo_transforms_3d(rec_stream)?,

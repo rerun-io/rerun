@@ -22,11 +22,14 @@ pub(crate) use images::ImagesPart;
 pub(crate) use lines2d::Lines2DPart;
 pub(crate) use lines3d::Lines3DPart;
 pub(crate) use meshes::MeshPart;
+
 pub(crate) use points2d::Points2DPart;
 pub(crate) use points3d::Points3DPart;
-use re_log_types::component_types::{ClassId, ColorRGBA, KeypointId, Radius};
+use re_log_types::{
+    component_types::{ClassId, ColorRGBA, KeypointId, Radius},
+};
 
-use super::SceneSpatial;
+use super::{EntityDepthOffsets, SceneSpatial};
 use crate::{
     misc::{SpaceViewHighlights, TransformCache},
     ui::view_spatial::scene::Keypoints,
@@ -44,6 +47,7 @@ pub trait ScenePart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        depth_offsets: &EntityDepthOffsets,
     );
 }
 
