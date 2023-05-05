@@ -18,7 +18,10 @@ use re_viewer_context::{
     AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, ViewerContext,
 };
 
-use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics};
+use crate::{
+    ui::{Blueprint, ViewportState},
+    viewer_analytics::ViewerAnalytics,
+};
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
@@ -115,7 +118,7 @@ impl App {
             );
         }
 
-        let state: AppState = if startup_options.persist_state {
+        let persist_state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
                 .unwrap_or_default()
@@ -135,7 +138,7 @@ impl App {
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
             log_dbs: Default::default(),
-            state,
+            state: persist_state,
             shutdown,
             pending_promises: Default::default(),
             toasts: toasts::Toasts::new(),
@@ -1026,6 +1029,11 @@ struct AppState {
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(skip)]
     profiler: crate::Profiler,
+
+    // This is sort of a weird place to put this but makes more sense than the
+    // blueprint
+    #[serde(skip)]
+    viewport_state: ViewportState,
 }
 
 impl AppState {
@@ -1053,6 +1061,7 @@ impl AppState {
             time_panel,
             #[cfg(not(target_arch = "wasm32"))]
                 profiler: _,
+            viewport_state,
         } = self;
 
         let rec_cfg =
@@ -1069,7 +1078,7 @@ impl AppState {
         };
 
         time_panel.show_panel(&mut ctx, blueprint, ui);
-        selection_panel.show_panel(&mut ctx, ui, blueprint);
+        selection_panel.show_panel(viewport_state, &mut ctx, ui, blueprint);
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -1080,7 +1089,9 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| match *panel_selection {
-                PanelSelection::Viewport => blueprint.blueprint_panel_and_viewport(&mut ctx, ui),
+                PanelSelection::Viewport => {
+                    blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
+                }
             });
 
         // move time last, so we get to see the first data first!

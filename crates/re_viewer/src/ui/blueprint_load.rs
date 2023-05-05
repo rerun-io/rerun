@@ -106,7 +106,6 @@ fn load_viewport(blueprint_db: &re_data_store::LogDb) -> Option<Viewport> {
                     trees: Default::default(),
                     maximized: v.maximized,
                     has_been_user_edited: v.has_been_user_edited,
-                    space_view_entity_window: Default::default(),
                 })
         })
     })

@@ -3,7 +3,7 @@ use re_viewer_context::Item;
 use crate::misc::space_info::SpaceInfoCollection;
 use re_viewer_context::ViewerContext;
 
-use super::viewport::Viewport;
+use super::{viewport::Viewport, ViewportState};
 
 /// Defines the layout of the whole Viewer (or will, eventually).
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
@@ -32,7 +32,12 @@ impl Blueprint {
         }
     }
 
-    pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn blueprint_panel_and_viewport(
+        &mut self,
+        viewport_state: &mut ViewportState,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+    ) {
         crate::profile_function!();
 
         let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
@@ -49,7 +54,7 @@ impl Blueprint {
         egui::CentralPanel::default()
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(ui, ctx);
+                self.viewport.viewport_ui(viewport_state, ui, ctx);
             });
     }
 

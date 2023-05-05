@@ -28,4 +28,4 @@ pub(crate) use self::blueprint::Blueprint;
 pub use self::space_view::{item_ui, SpaceView};
 
 pub use self::view_category::ViewCategory;
-pub use self::viewport::Viewport;
+pub use self::viewport::{Viewport, ViewportState};

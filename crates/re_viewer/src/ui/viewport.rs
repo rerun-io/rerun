@@ -48,9 +48,6 @@ pub struct Viewport {
     /// Before this is set we automatically add new spaces to the viewport
     /// when they show up in the data.
     pub(crate) has_been_user_edited: bool,
-
-    #[serde(skip)]
-    pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
 }
 
 impl PartialEq for Viewport {
@@ -93,14 +90,7 @@ impl Viewport {
             trees,
             maximized,
             has_been_user_edited,
-            space_view_entity_window,
         } = self;
-
-        if let Some(window) = space_view_entity_window {
-            if window.space_view_id == *space_view_id {
-                *space_view_entity_window = None;
-            }
-        }
 
         *has_been_user_edited = true;
 
@@ -373,10 +363,6 @@ impl Viewport {
         id
     }
 
-    pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
-        self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
-    }
-
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -420,15 +406,20 @@ impl Viewport {
         true
     }
 
-    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) {
-        if let Some(window) = &mut self.space_view_entity_window {
+    pub fn viewport_ui(
+        &mut self,
+        state: &mut ViewportState,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+    ) {
+        if let Some(window) = &mut state.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
                 if !window.ui(ctx, ui, space_view) {
-                    self.space_view_entity_window = None;
+                    state.space_view_entity_window = None;
                 }
             } else {
                 // The space view no longer exist, close the window!
-                self.space_view_entity_window = None;
+                state.space_view_entity_window = None;
             }
         }
 
@@ -568,6 +559,19 @@ impl Viewport {
                 }
             })
             .collect()
+    }
+}
+
+/// State for the blueprint that persists across frames but otherwise
+/// is not saved.
+#[derive(Clone, Default)]
+pub struct ViewportState {
+    pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
+}
+
+impl ViewportState {
+    pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
+        self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
     }
 }
 
