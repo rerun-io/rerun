@@ -858,15 +858,7 @@ pub fn picking(
         };
     }
 
-    if response.clicked() {
-        let hovered = ctx.hovered().clone();
-        if response.ctx.input(|i| i.modifiers.command) {
-            ctx.selection_state_mut().toggle_selection(hovered.to_vec());
-        } else {
-            ctx.selection_state_mut()
-                .set_multi_selection(hovered.into_iter());
-        }
-    }
+    item_ui::select_hovered_on_click(&response, ctx.selection_state_mut(), &hovered_items);
     ctx.set_hovered(hovered_items.into_iter());
 
     let hovered_space = match state.nav_mode.get() {

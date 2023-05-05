@@ -209,6 +209,7 @@ pub fn timeline_button_to(
     response
 }
 
+// TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
 pub fn cursor_interact_with_selectable(
     selection_state: &mut SelectionState,
     response: egui::Response,
@@ -217,20 +218,29 @@ pub fn cursor_interact_with_selectable(
     let is_item_hovered =
         selection_state.highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    if response.hovered() {
-        selection_state.set_hovered(std::iter::once(item));
-    } else if response.clicked() {
-        if response.ctx.input(|i| i.modifiers.command) {
-            selection_state.toggle_selection(selection_state.hovered().to_vec());
-        } else {
-            selection_state.set_multi_selection(selection_state.hovered().clone().into_iter());
-        }
-    }
+    select_hovered_on_click(&response, selection_state, &[item]);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {
         response.highlight()
     } else {
         response
+    }
+}
+
+// TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
+pub fn select_hovered_on_click(
+    response: &egui::Response,
+    selection_state: &mut SelectionState,
+    items: &[Item],
+) {
+    if response.hovered() {
+        selection_state.set_hovered(items.iter().cloned());
+    } else if response.clicked() {
+        if response.ctx.input(|i| i.modifiers.command) {
+            selection_state.toggle_selection(selection_state.hovered().to_vec());
+        } else {
+            selection_state.set_multi_selection(selection_state.hovered().clone().into_iter());
+        }
     }
 }
