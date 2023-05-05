@@ -5,9 +5,10 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
+use re_viewer_context::ViewerContext;
 
 use crate::{
-    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
     ui::{scene::SceneQuery, view_spatial::SceneSpatial, DefaultColor},
 };
 

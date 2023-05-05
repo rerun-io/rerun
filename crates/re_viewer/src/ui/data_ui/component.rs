@@ -1,9 +1,9 @@
 use re_data_store::{ComponentName, EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
-
-use crate::ui::item_ui;
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
+use crate::ui::item_ui;
 
 // We do NOT implement `DataUi` for just `ComponentWithInstances`
 // because we also want the context of what entity it is part of!
@@ -27,9 +27,9 @@ impl EntityComponentWithInstances {
 impl DataUi for EntityComponentWithInstances {
     fn data_ui(
         &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: super::UiVerbosity,
+        verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
         crate::profile_function!(self.component_name().full_name());
@@ -45,8 +45,8 @@ impl DataUi for EntityComponentWithInstances {
         let num_instances = self.num_instances();
 
         let one_line = match verbosity {
-            crate::ui::UiVerbosity::Small => true,
-            crate::UiVerbosity::Reduced | crate::ui::UiVerbosity::All => false,
+            UiVerbosity::Small => true,
+            UiVerbosity::Reduced | UiVerbosity::All => false,
         };
 
         if num_instances == 0 {
@@ -109,7 +109,7 @@ impl DataUi for EntityComponentWithInstances {
                                 ctx.component_ui_registry.ui(
                                     ctx,
                                     ui,
-                                    crate::ui::UiVerbosity::Small,
+                                    UiVerbosity::Small,
                                     query,
                                     &self.entity_path,
                                     &self.component_data,

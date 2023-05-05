@@ -4,9 +4,10 @@ use re_log_types::{
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_viewer_context::ViewerContext;
 
 use crate::{
-    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache, ViewerContext},
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,

@@ -9,7 +9,7 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Size,
 };
-use re_viewer_context::{HoveredSpace, Item, SpaceViewId};
+use re_viewer_context::{HoveredSpace, Item, SpaceViewId, ViewerContext};
 
 use crate::{
     gpu_bridge,
@@ -19,7 +19,6 @@ use crate::{
         ui_renderer_bridge::{fill_view_builder, ScreenBackground},
         SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
     },
-    ViewerContext,
 };
 
 use super::{

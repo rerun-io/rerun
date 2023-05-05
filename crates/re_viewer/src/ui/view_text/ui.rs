@@ -4,8 +4,9 @@ use egui::{Color32, RichText};
 
 use re_data_store::{EntityPath, Timeline};
 use re_log_types::TimePoint;
+use re_viewer_context::ViewerContext;
 
-use crate::{ui::item_ui, ViewerContext};
+use crate::ui::item_ui;
 
 use super::{SceneText, TextEntry};
 

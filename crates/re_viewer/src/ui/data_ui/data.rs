@@ -6,8 +6,7 @@ use re_log_types::{
     component_types::{LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D},
     Pinhole, Rigid3, Transform, ViewCoordinates,
 };
-
-use crate::ui::UiVerbosity;
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
 
@@ -17,7 +16,7 @@ const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 impl DataUi for [u8; 4] {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -37,7 +36,7 @@ impl DataUi for [u8; 4] {
 impl DataUi for ColorRGBA {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -57,7 +56,7 @@ impl DataUi for ColorRGBA {
 impl DataUi for Transform {
     fn data_ui(
         &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -75,7 +74,7 @@ impl DataUi for Transform {
 impl DataUi for ViewCoordinates {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -95,7 +94,7 @@ impl DataUi for Rigid3 {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -134,7 +133,7 @@ impl DataUi for Rigid3 {
 impl DataUi for Pinhole {
     fn data_ui(
         &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -178,7 +177,7 @@ impl DataUi for Pinhole {
 impl DataUi for Mat3x3 {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -205,7 +204,7 @@ impl DataUi for Mat3x3 {
 impl DataUi for Vec2D {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -217,7 +216,7 @@ impl DataUi for Vec2D {
 impl DataUi for Vec3D {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -229,7 +228,7 @@ impl DataUi for Vec3D {
 impl DataUi for Rect2D {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -263,7 +262,7 @@ impl DataUi for Rect2D {
 impl DataUi for LineStrip2D {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -312,7 +311,7 @@ impl DataUi for LineStrip2D {
 impl DataUi for LineStrip3D {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,

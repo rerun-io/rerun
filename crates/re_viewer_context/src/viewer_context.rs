@@ -1,8 +1,8 @@
 use re_data_store::log_db::LogDb;
-use re_viewer_context::{AppOptions, Caches, Item, ItemCollection, SelectionState, TimeControl};
 
-// TODO(andreas): Either viewer_context independent of these or move to re_viewer_context crate.
-use crate::ui::data_ui::ComponentUiRegistry;
+use crate::{
+    AppOptions, Caches, ComponentUiRegistry, Item, ItemCollection, SelectionState, TimeControl,
+};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {

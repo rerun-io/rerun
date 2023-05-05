@@ -1,19 +1,19 @@
 use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_log_types::{context::AnnotationInfo, AnnotationContext};
-
-use crate::ui::{annotations::auto_color, UiVerbosity};
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
+use crate::ui::annotations::auto_color;
 
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: crate::ui::UiVerbosity,
+        verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
         match verbosity {

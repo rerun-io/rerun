@@ -9,9 +9,9 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_data_store::TimeHistogram;
 use re_log_types::{TimeInt, TimeRange, TimeReal};
-use re_viewer_context::Item;
+use re_viewer_context::{Item, UiVerbosity, ViewerContext};
 
-use crate::{misc::ViewerContext, ui::Blueprint};
+use crate::ui::{data_ui::DataUi, Blueprint};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -528,8 +528,6 @@ fn show_row_ids_tooltip(
         return;
     }
 
-    use crate::ui::data_ui::DataUi as _;
-
     egui::show_tooltip_at_pointer(egui_ctx, egui::Id::new("data_tooltip"), |ui| {
         if num_messages == 1 {
             ui.label(format!("{num_messages} message"));
@@ -543,6 +541,6 @@ fn show_row_ids_tooltip(
 
         let timeline = *ctx.rec_cfg.time_ctrl.timeline();
         let query = re_arrow_store::LatestAtQuery::new(timeline, time_range.max);
-        item.data_ui(ctx, ui, crate::ui::UiVerbosity::Reduced, &query);
+        item.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
     });
 }

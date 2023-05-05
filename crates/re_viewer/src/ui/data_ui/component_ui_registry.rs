@@ -1,79 +1,19 @@
-use std::collections::BTreeMap;
-
 use re_arrow_store::LatestAtQuery;
-use re_data_store::EntityPath;
 use re_log_types::{
-    component_types::InstanceKey, external::arrow2, Component, ComponentName,
-    DeserializableComponent, SizeBytes as _,
+    component_types::InstanceKey, external::arrow2, DeserializableComponent, EntityPath, SizeBytes,
 };
 use re_query::ComponentWithInstances;
-
-use crate::{misc::ViewerContext, ui::UiVerbosity};
+use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
 use super::{DataUi, EntityDataUi};
 
-type ComponentUiCallback = Box<
-    dyn Fn(
-        &mut ViewerContext<'_>,
-        &mut egui::Ui,
-        UiVerbosity,
-        &LatestAtQuery,
-        &EntityPath,
-        &ComponentWithInstances,
-        &InstanceKey,
-    ),
->;
-
-/// How to display components in a Ui
-pub struct ComponentUiRegistry {
-    components: BTreeMap<ComponentName, ComponentUiCallback>,
-}
-
-impl Default for ComponentUiRegistry {
-    fn default() -> Self {
-        let mut registry = Self {
-            components: Default::default(),
-        };
-
-        // The things that are out-commented are components we have, but
-        // where the default arrow-format for them looks good enough (at least for now).
-        // Basically: adding custom UI:s for these out-commented components would be nice, but is not a must.
-        registry.add::<re_log_types::component_types::AnnotationContext>();
-        // registry.add::<re_log_types::component_types::Arrow3D>();
-        // registry.add::<re_log_types::component_types::Box3D>();
-        // registry.add::<re_log_types::component_types::ClassId>();
-        registry.add::<re_log_types::component_types::ColorRGBA>();
-        // registry.add::<re_log_types::component_types::InstanceKey>();
-        // registry.add::<re_log_types::component_types::KeypointId>();
-        // registry.add::<re_log_types::component_types::Label>();
-        registry.add::<re_log_types::component_types::LineStrip2D>();
-        registry.add::<re_log_types::component_types::LineStrip3D>();
-        registry.add::<re_log_types::component_types::Mesh3D>();
-        // registry.add::<re_log_types::component_types::Point2D>();
-        // registry.add::<re_log_types::component_types::Point3D>();
-        // registry.add::<re_log_types::component_types::Quaternion>();
-        // registry.add::<re_log_types::component_types::Radius>();
-        registry.add::<re_log_types::component_types::Rect2D>();
-        // registry.add::<re_log_types::component_types::Scalar>();
-        // registry.add::<re_log_types::component_types::ScalarPlotProps>();
-        // registry.add::<re_log_types::component_types::Size3D>();
-        registry.add::<re_log_types::component_types::Tensor>();
-        registry.add::<re_log_types::component_types::TextEntry>();
-        registry.add::<re_log_types::component_types::Transform>();
-        registry.add::<re_log_types::component_types::Vec2D>();
-        registry.add::<re_log_types::component_types::Vec3D>();
-        registry.add::<re_log_types::ViewCoordinates>();
-
-        registry
-    }
-}
-
-impl ComponentUiRegistry {
-    fn add<C: DeserializableComponent + EntityDataUi>(&mut self)
+pub fn create_component_ui_registry() -> ComponentUiRegistry {
+    /// Registers how to show a given component in the ui.
+    pub fn add<C: DeserializableComponent + EntityDataUi>(registry: &mut ComponentUiRegistry)
     where
         for<'a> &'a C::ArrayType: IntoIterator,
     {
-        self.components.insert(
+        registry.add(
             C::name(),
             Box::new(
                 |ctx, ui, verbosity, query, entity_path, component, instance| match component
@@ -93,53 +33,63 @@ impl ComponentUiRegistry {
         );
     }
 
-    /// Show a ui for this instance of this component.
-    #[allow(clippy::too_many_arguments)]
-    pub fn ui(
-        &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: crate::ui::UiVerbosity,
-        query: &LatestAtQuery,
-        entity_path: &EntityPath,
-        component: &ComponentWithInstances,
-        instance_key: &InstanceKey,
-    ) {
-        crate::profile_function!(component.name().full_name());
+    let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
-        if component.name() == InstanceKey::name() {
-            // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
-            ui.label(instance_key.to_string());
-            return;
-        }
+    // The things that are out-commented are components we have, but
+    // where the default arrow-format for them looks good enough (at least for now).
+    // Basically: adding custom UI:s for these out-commented components would be nice, but is not a must.
+    add::<re_log_types::component_types::AnnotationContext>(&mut registry);
+    // add::<re_log_types::component_types::Arrow3D>(&mut registry);
+    // add::<re_log_types::component_types::Box3D>(&mut registry);
+    // add::<re_log_types::component_types::ClassId>(&mut registry);
+    add::<re_log_types::component_types::ColorRGBA>(&mut registry);
+    // add::<re_log_types::component_types::InstanceKey>(&mut registry);
+    // add::<re_log_types::component_types::KeypointId>(&mut registry);
+    // add::<re_log_types::component_types::Label>(&mut registry);
+    add::<re_log_types::component_types::LineStrip2D>(&mut registry);
+    add::<re_log_types::component_types::LineStrip3D>(&mut registry);
+    add::<re_log_types::component_types::Mesh3D>(&mut registry);
+    // add::<re_log_types::component_types::Point2D>(&mut registry);
+    // add::<re_log_types::component_types::Point3D>(&mut registry);
+    // add::<re_log_types::component_types::Quaternion>(&mut registry);
+    // add::<re_log_types::component_types::Radius>(&mut registry);
+    add::<re_log_types::component_types::Rect2D>(&mut registry);
+    // add::<re_log_types::component_types::Scalar>(&mut registry);
+    // add::<re_log_types::component_types::ScalarPlotProps>(&mut registry);
+    // add::<re_log_types::component_types::Size3D>(&mut registry);
+    add::<re_log_types::component_types::Tensor>(&mut registry);
+    add::<re_log_types::component_types::TextEntry>(&mut registry);
+    add::<re_log_types::component_types::Transform>(&mut registry);
+    add::<re_log_types::component_types::Vec2D>(&mut registry);
+    add::<re_log_types::component_types::Vec3D>(&mut registry);
+    add::<re_log_types::ViewCoordinates>(&mut registry);
 
-        if let Some(ui_callback) = self.components.get(&component.name()) {
-            (*ui_callback)(
-                ctx,
-                ui,
-                verbosity,
-                query,
-                entity_path,
-                component,
-                instance_key,
-            );
+    registry
+}
+
+fn fallback_component_ui(
+    _ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    _query: &LatestAtQuery,
+    _entity_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &InstanceKey,
+) {
+    // No special ui implementation - use a generic one:
+    if let Some(value) = component.lookup_arrow(instance_key) {
+        let bytes = value.total_size_bytes();
+        if bytes < 256 {
+            // For small items, print them
+            let mut repr = String::new();
+            let display = arrow2::array::get_display(value.as_ref(), "null");
+            display(&mut repr, 0).unwrap();
+            ui.label(repr);
         } else {
-            // No special ui implementation - use a generic one:
-            if let Some(value) = component.lookup_arrow(instance_key) {
-                let bytes = value.total_size_bytes();
-                if bytes < 256 {
-                    // For small items, print them
-                    let mut repr = String::new();
-                    let display = arrow2::array::get_display(value.as_ref(), "null");
-                    display(&mut repr, 0).unwrap();
-                    ui.label(repr);
-                } else {
-                    ui.label(format!("{bytes} bytes"));
-                }
-            } else {
-                ui.weak("(null)");
-            }
+            ui.label(format!("{bytes} bytes"));
         }
+    } else {
+        ui.weak("(null)");
     }
 }
 

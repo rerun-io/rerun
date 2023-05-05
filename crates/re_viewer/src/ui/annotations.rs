@@ -11,8 +11,9 @@ use re_log_types::{
     AnnotationContext, RowId,
 };
 use re_query::query_entity_with_primary;
+use re_viewer_context::ViewerContext;
 
-use crate::{misc::ViewerContext, ui::scene::SceneQuery};
+use crate::ui::scene::SceneQuery;
 
 #[derive(Clone, Debug)]
 pub struct Annotations {

@@ -1,10 +1,8 @@
 //! The `DataUi` trait and implementations provide methods for representing data using [`egui`].
 
 use itertools::Itertools;
-use re_data_store::EntityPath;
-use re_log_types::{DataCell, PathOp, TimePoint};
-
-use crate::misc::ViewerContext;
+use re_log_types::{DataCell, EntityPath, PathOp, TimePoint};
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
 mod annotation_context;
 mod component;
@@ -16,25 +14,12 @@ pub(crate) mod image;
 mod instance_path;
 mod log_msg;
 
-pub(crate) use component_ui_registry::ComponentUiRegistry;
+pub use component_ui_registry::create_component_ui_registry;
 
 use super::item_ui;
 
-/// Controls how mich space we use to show the data in [`DataUi`].
-#[derive(Clone, Copy, Debug)]
-pub enum UiVerbosity {
-    /// Keep it small enough to fit on one row.
-    Small,
-
-    /// Display a reduced set, used for hovering.
-    Reduced,
-
-    /// Display everything, as large as you want. Used for selection panel.
-    All,
-}
-
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
-pub(crate) trait DataUi {
+pub trait DataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
     fn data_ui(
         &self,
@@ -48,7 +33,7 @@ pub(crate) trait DataUi {
 /// Similar to [`DataUi`], but for data that is related to an entity (e.g. a component).
 ///
 /// This is given the context of the entity it is part of so it can do queries.
-pub(crate) trait EntityDataUi {
+pub trait EntityDataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
     fn entity_data_ui(
         &self,

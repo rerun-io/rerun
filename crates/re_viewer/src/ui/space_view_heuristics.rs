@@ -6,9 +6,10 @@ use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_data_store::{log_db::EntityDb, query_latest_single, ComponentName, EntityPath};
 use re_log_types::{component_types::Tensor, Component};
+use re_viewer_context::ViewerContext;
 
 use crate::{
-    misc::{space_info::SpaceInfoCollection, ViewerContext},
+    misc::space_info::SpaceInfoCollection,
     ui::{view_category::categorize_entity_path, ViewCategory},
 };
 

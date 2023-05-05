@@ -4,13 +4,12 @@ use egui::{
 };
 
 use re_arrow_store::TimeType;
-
-use crate::{
-    misc::format_time::next_grid_tick_magnitude_ns, ui::view_time_series::scene::PlotSeriesKind,
-    ViewerContext,
-};
+use re_viewer_context::ViewerContext;
 
 use super::SceneTimeSeries;
+use crate::{
+    misc::format_time::next_grid_tick_magnitude_ns, ui::view_time_series::scene::PlotSeriesKind,
+};
 
 // ---
 

@@ -1,13 +1,10 @@
 use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
 use re_query::{get_component_with_instances, QueryError};
-
-use crate::{
-    misc::ViewerContext,
-    ui::{item_ui, UiVerbosity},
-};
+use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
+use crate::ui::item_ui;
 
 const HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY: &[&str] = &["rerun.instance_key"];
 const HIDDEN_COMPONENTS_FOR_LOW_VERBOSITY: &[&str] = &[];
