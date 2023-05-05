@@ -5,7 +5,8 @@ use crate::{
         PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
         PointCloudVertex,
     },
-    Color32, DebugLabel, OutlineMaskPreference, PickingLayerInstanceId, RenderContext, Size,
+    Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
+    Size,
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
@@ -69,6 +70,7 @@ impl PointCloudBuilder {
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
+            depth_offset: 0,
         });
 
         PointCloudBatchBuilder(self)
@@ -137,6 +139,13 @@ impl<'a> PointCloudBatchBuilder<'a> {
     #[inline]
     pub fn outline_mask_ids(mut self, outline_mask_ids: OutlineMaskPreference) -> Self {
         self.batch_mut().overall_outline_mask_ids = outline_mask_ids;
+        self
+    }
+
+    /// Sets the depth offset for the entire batch.
+    #[inline]
+    pub fn depth_offset(mut self, depth_offset: DepthOffset) -> Self {
+        self.batch_mut().depth_offset = depth_offset;
         self
     }
 

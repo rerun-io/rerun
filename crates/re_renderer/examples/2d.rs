@@ -174,16 +174,48 @@ impl framework::Example for Render2D {
             std::iter::repeat(re_renderer::PickingLayerInstanceId::default()),
         );
 
-        // Pile stuff to test for overlap handling
+        // Pile stuff to test for overlap handling.
+        // Do in individual batches to test depth offset.
         {
-            let mut batch = line_strip_builder.batch("overlapping objects");
-            for i in 0..10 {
-                let x = 5.0 * i as f32 + 20.0;
+            let num_lines = 20_i16;
+            let y_range = 700.0..780.0;
+
+            // Cycle through which line is on top.
+            let top_line = ((time.seconds_since_startup() * 6.0) as i16 % (num_lines * 2 - 1)
+                - num_lines)
+                .abs();
+            for i in 0..num_lines {
+                let depth_offset = if i < top_line { i } else { top_line * 2 - i };
+                let mut batch = line_strip_builder
+                    .batch(format!("overlapping objects {i}"))
+                    .depth_offset(depth_offset);
+
+                let x = 15.0 * i as f32 + 20.0;
                 batch
-                    .add_segment_2d(glam::vec2(x, 700.0), glam::vec2(x, 780.0))
-                    .color(Hsva::new(10.0 / i as f32, 1.0, 0.5, 1.0).into())
-                    .radius(Size::new_points(10.0));
+                    .add_segment_2d(glam::vec2(x, y_range.start), glam::vec2(x, y_range.end))
+                    .color(Hsva::new(0.25 / num_lines as f32 * i as f32, 1.0, 0.5, 1.0).into())
+                    .radius(Size::new_points(10.0))
+                    .flags(LineStripFlags::FLAG_COLOR_GRADIENT);
             }
+
+            let num_points = 8;
+            let size = Size::new_points(3.0);
+            point_cloud_builder
+                .batch("points overlapping with lines")
+                .depth_offset(5)
+                .add_points_2d(
+                    num_points,
+                    (0..num_points).map(|i| {
+                        glam::vec2(
+                            30.0 * i as f32 + 20.0,
+                            y_range.start
+                                + (y_range.end - y_range.start) / num_points as f32 * i as f32,
+                        )
+                    }),
+                    std::iter::repeat(size),
+                    std::iter::repeat(Color32::WHITE),
+                    std::iter::repeat(re_renderer::PickingLayerInstanceId::default()),
+                );
         }
 
         let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx).unwrap();

@@ -4,6 +4,7 @@
 #import <./utils/flags.wgsl>
 #import <./utils/size.wgsl>
 #import <./utils/sphere_quad.wgsl>
+#import <./utils/depth_offset.wgsl>
 
 @group(1) @binding(0)
 var position_data_texture: texture_2d<f32>;
@@ -26,7 +27,8 @@ var<uniform> draw_data: DrawDataUniformBuffer;
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
     flags: u32,
-    _padding: UVec2, // UVec3 would take its own 4xf32 row, UVec2 is on the same as flags
+    depth_offset: f32,
+    _padding: UVec2,
     outline_mask: UVec2,
     picking_layer_object_id: UVec2,
 };
@@ -101,7 +103,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Output, transform to projection space and done.
     var out: VertexOut;
-    out.position = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
+    out.position = apply_depth_offset(frame.projection_from_world * Vec4(quad.pos_in_world, 1.0), batch.depth_offset);
     out.color = point_data.color;
     out.radius = quad.point_resolved_radius;
     out.world_position = quad.pos_in_world;
