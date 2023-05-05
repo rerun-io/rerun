@@ -4250,7 +4250,6 @@ dependencies = [
  "smallvec",
  "thiserror",
  "time 0.3.20",
- "uuid",
  "vec1",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4443,7 +4442,6 @@ dependencies = [
  "re_web_viewer_server",
  "re_ws_comms",
  "rerun",
- "thiserror",
  "tokio",
  "uuid",
 ]
