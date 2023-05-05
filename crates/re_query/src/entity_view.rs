@@ -107,8 +107,8 @@ impl ComponentWithInstances {
             0
         } else {
             // Otherwise binary search to find the offset of the instance
-            keys.binary_search(&instance_key.0).ok()? as u32
-        } as usize;
+            keys.binary_search(&instance_key.0).ok()?
+        };
 
         let arrow_ref = self.values.as_arrow_ref();
         (arrow_ref.len() > offset).then(|| arrow_ref.slice(offset, 1))
