@@ -120,8 +120,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 /// perspective projection is not taken into account.
 fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) -> f32 {
     let distance = distance(circle_center, world_position);
-    let distance_pixel_difference = fwidth(distance) * 0.5;
-    return smoothstep(radius + distance_pixel_difference, radius - distance_pixel_difference, distance);
+    let feathering_radius = fwidth(distance) * 0.5;
+    return smoothstep(radius + feathering_radius, radius - feathering_radius, distance);
 }
 
 fn coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
