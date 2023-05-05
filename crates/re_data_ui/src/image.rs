@@ -7,13 +7,12 @@ use re_log_types::{
 };
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, AnnotationMap, Annotations, SceneQuery, TensorDecodeCache, TensorStats,
+    TensorStatsCache, UiVerbosity, ViewerContext,
+};
 
 use super::EntityDataUi;
-use crate::{
-    misc::caches::{TensorDecodeCache, TensorStats, TensorStatsCache},
-    ui::annotations::AnnotationMap,
-};
 
 pub fn format_tensor_shape_single_line(
     shape: &[re_log_types::component_types::TensorDimension],
@@ -57,7 +56,7 @@ fn tensor_ui(
     let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let annotations = annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
-    let texture_result = crate::gpu_bridge::tensor_to_gpu(
+    let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
@@ -166,11 +165,11 @@ fn annotations(
     ctx: &mut ViewerContext<'_>,
     query: &re_arrow_store::LatestAtQuery,
     entity_path: &re_data_store::EntityPath,
-) -> std::sync::Arc<crate::ui::Annotations> {
+) -> std::sync::Arc<Annotations> {
     let mut annotation_map = AnnotationMap::default();
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
-    let scene_query = crate::ui::scene::SceneQuery {
+    let scene_query = SceneQuery {
         entity_paths: &entity_paths,
         timeline: query.timeline,
         latest_at: query.at,
@@ -201,7 +200,7 @@ fn show_image_at_max_size(
     };
 
     let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-    if let Err(err) = crate::gpu_bridge::render_image(
+    if let Err(err) = gpu_bridge::render_image(
         render_ctx,
         &painter,
         response.rect,
@@ -326,7 +325,7 @@ fn show_zoomed_image_region_tooltip(
     response: egui::Response,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     image_rect: egui::Rect,
@@ -406,7 +405,7 @@ pub fn show_zoomed_image_region(
     ui: &mut egui::Ui,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
@@ -432,18 +431,13 @@ fn try_show_zoomed_image_region(
     ui: &mut egui::Ui,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
-    let texture = crate::gpu_bridge::tensor_to_gpu(
-        render_ctx,
-        debug_name,
-        tensor,
-        tensor_stats,
-        annotations,
-    )?;
+    let texture =
+        gpu_bridge::tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)?;
 
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
 
@@ -463,7 +457,7 @@ fn try_show_zoomed_image_region(
             POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
         );
 
-        crate::gpu_bridge::render_image(
+        gpu_bridge::render_image(
             render_ctx,
             &painter.with_clip_rect(zoom_rect),
             image_rect_on_screen,
@@ -498,7 +492,7 @@ fn try_show_zoomed_image_region(
                     - zoom * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
                 zoom * egui::vec2(width as f32, height as f32),
             );
-            crate::gpu_bridge::render_image(
+            gpu_bridge::render_image(
                 render_ctx,
                 &ui.painter().with_clip_rect(rect),
                 image_rect_on_screen,
@@ -515,7 +509,7 @@ fn try_show_zoomed_image_region(
 fn tensor_pixel_value_ui(
     ui: &mut egui::Ui,
     tensor: &Tensor,
-    annotations: &crate::ui::Annotations,
+    annotations: &Annotations,
     [x, y]: [u64; 2],
     meter: Option<f32>,
 ) {
@@ -676,7 +670,7 @@ fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &
             match tensor.to_dynamic_image() {
                 Ok(dynamic_image) => {
                     let rgba = dynamic_image.to_rgba8();
-                    crate::misc::Clipboard::with(|clipboard| {
+                    re_viewer_context::Clipboard::with(|clipboard| {
                         clipboard.set_image(
                             [rgba.width() as _, rgba.height() as _],
                             bytemuck::cast_slice(rgba.as_raw()),

@@ -4,20 +4,16 @@ use re_log_types::{
     Component,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
-    ui::{
-        annotations::ResolvedAnnotationInfo,
-        scene::SceneQuery,
-        view_spatial::{
-            scene::scene_part::{
-                instance_key_to_picking_id, instance_path_hash_for_picking,
-                process_annotations_and_keypoints, process_colors, process_radii,
-            },
-            SceneSpatial, UiLabel, UiLabelTarget,
+    ui::view_spatial::{
+        scene::scene_part::{
+            instance_key_to_picking_id, instance_path_hash_for_picking,
+            process_annotations_and_keypoints, process_colors, process_radii,
         },
+        SceneSpatial, UiLabel, UiLabelTarget,
     },
 };
 

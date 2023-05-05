@@ -2,25 +2,41 @@
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
+mod annotations;
 mod app_options;
 mod caches;
 mod component_ui_registry;
 mod item;
+mod scene_query;
 mod selection_history;
 mod selection_state;
+mod tensor;
 mod time_control;
+mod utils;
 mod viewer_context;
 
+// TODO(andreas): Move to its own crate?
+pub mod gpu_bridge;
+
+pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSING_ANNOTATIONS};
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{Item, ItemCollection};
+pub use scene_query::SceneQuery;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
+pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
+pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod clipboard;
+#[cfg(not(target_arch = "wasm32"))]
+pub use clipboard::Clipboard;
 
 // ---------------------------------------------------------------------------
 

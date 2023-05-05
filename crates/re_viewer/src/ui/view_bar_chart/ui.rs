@@ -5,9 +5,7 @@ use egui::util::hash;
 use re_data_store::EntityPath;
 use re_log::warn_once;
 use re_log_types::component_types::{self, InstanceKey};
-use re_viewer_context::ViewerContext;
-
-use crate::ui::annotations::auto_color;
+use re_viewer_context::{auto_color, ViewerContext};
 
 use super::SceneBarChart;
 

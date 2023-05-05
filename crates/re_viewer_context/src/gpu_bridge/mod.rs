@@ -3,6 +3,8 @@
 mod tensor_to_gpu;
 pub use tensor_to_gpu::tensor_to_gpu;
 
+use crate::TensorStats;
+
 // ----------------------------------------------------------------------------
 
 use egui::mutex::Mutex;
@@ -29,7 +31,7 @@ pub enum RangeError {
 }
 
 /// Get a valid, finite range for the gpu to use.
-pub fn range(tensor_stats: &crate::misc::caches::TensorStats) -> Result<[f32; 2], RangeError> {
+pub fn range(tensor_stats: &TensorStats) -> Result<[f32; 2], RangeError> {
     let (min, max) = tensor_stats.range.ok_or(RangeError::MissingRange)?;
 
     let min = min as f32;
@@ -182,8 +184,7 @@ pub fn render_image(
     let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
     let space_from_pixel = space_from_points * points_from_pixels;
 
-    let resolution_in_pixel =
-        crate::gpu_bridge::viewport_resolution_in_pixels(clip_rect, pixels_from_points);
+    let resolution_in_pixel = viewport_resolution_in_pixels(clip_rect, pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
     let camera_position_space = space_from_ui.transform_pos(clip_rect.min);
@@ -213,7 +214,7 @@ pub fn render_image(
 
     let command_buffer = view_builder.draw(render_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
-    painter.add(crate::gpu_bridge::renderer_paint_callback(
+    painter.add(renderer_paint_callback(
         render_ctx,
         command_buffer,
         view_builder,

@@ -13,18 +13,14 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     Colormap, OutlineMaskPreference,
 };
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{
+    gpu_bridge, Annotations, DefaultColor, SceneQuery, TensorDecodeCache, TensorStatsCache,
+    ViewerContext,
+};
 
 use crate::{
-    misc::{
-        caches::{TensorDecodeCache, TensorStatsCache},
-        SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache,
-    },
-    ui::{
-        scene::SceneQuery,
-        view_spatial::{Image, SceneSpatial},
-        Annotations, DefaultColor,
-    },
+    misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
+    ui::view_spatial::{Image, SceneSpatial},
 };
 
 use super::ScenePart;
@@ -45,7 +41,7 @@ fn to_textured_rect(
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
 
-    match crate::gpu_bridge::tensor_to_gpu(
+    match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,

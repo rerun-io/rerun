@@ -1,10 +1,10 @@
 [package]
 authors.workspace = true
-description = "Rerun viewer state that is shared with the viewer's code components."
+description = "Provides ui elements for Rerun component data for the Rerun Viewer."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-name = "re_viewer_context"
+name = "re_data_ui"
 publish = true
 readme = "README.md"
 repository.workspace = true
@@ -17,34 +17,24 @@ all-features = true
 
 [dependencies]
 re_arrow_store.workspace = true
-re_data_store = { workspace = true, features = ["serde"] }
-re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_data_store.workspace = true
+re_error.workspace = true
+re_format.workspace = true
+re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
 re_renderer.workspace = true
 re_ui.workspace = true
+re_viewer_context.workspace = true
 
-ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
-egui-wgpu.workspace = true
+egui_extras.workspace = true
 egui.workspace = true
-glam.workspace = true
-half.workspace = true
+image.workspace = true
 itertools.workspace = true
-lazy_static.workspace = true
-macaw.workspace = true
-ndarray.workspace = true
 nohash-hasher.workspace = true
-serde = "1"
-slotmap.workspace = true
-thiserror.workspace = true
-uuid = { version = "1.1", features = ["serde", "v4", "js"] }
-wgpu.workspace = true
+rfd.workspace = true
 
-# Native only dependencies.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-arboard = { version = "3.2", default-features = false, features = [
-  "image-data",
-] }
 puffin.workspace = true

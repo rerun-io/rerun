@@ -1,7 +1,7 @@
 use re_log_types::{component_types, Tensor};
-use re_viewer_context::Cache;
 
 use super::TensorStats;
+use crate::Cache;
 
 #[derive(Default)]
 pub struct TensorStatsCache(nohash_hasher::IntMap<component_types::TensorId, TensorStats>);

@@ -5,11 +5,7 @@ use re_log_types::{
     DecodedTensor,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};
-use re_viewer_context::ViewerContext;
-
-use crate::{misc::caches::TensorDecodeCache, ui::SceneQuery};
-
-// ---
+use re_viewer_context::{SceneQuery, TensorDecodeCache, ViewerContext};
 
 /// A tensor scene, with everything needed to render it.
 #[derive(Default)]

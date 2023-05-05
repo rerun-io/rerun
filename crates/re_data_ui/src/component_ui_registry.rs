@@ -103,7 +103,7 @@ impl DataUi for re_log_types::component_types::TextEntry {
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        use crate::ui::view_text::level_to_rich_text;
+        use re_viewer_context::level_to_rich_text;
 
         let Self { body, level } = self;
 

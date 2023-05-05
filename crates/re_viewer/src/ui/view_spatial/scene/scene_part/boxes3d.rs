@@ -5,15 +5,11 @@ use re_log_types::{
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
-    ui::{
-        scene::SceneQuery,
-        view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
-        DefaultColor,
-    },
+    ui::view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
 };
 
 use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};

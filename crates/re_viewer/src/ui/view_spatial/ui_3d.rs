@@ -9,10 +9,9 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Size,
 };
-use re_viewer_context::{HoveredSpace, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
 
 use crate::{
-    gpu_bridge,
     misc::SpaceViewHighlights,
     ui::view_spatial::{
         ui::{create_labels, outline_config, picking, screenshot_context_menu},

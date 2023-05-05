@@ -2,12 +2,12 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath};
+use re_data_ui::item_ui;
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::misc::space_info::SpaceInfoCollection;
 
 use super::{
-    item_ui,
     view_category::{categorize_entity_path, ViewCategory},
     SpaceView,
 };

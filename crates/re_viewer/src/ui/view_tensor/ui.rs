@@ -4,15 +4,14 @@ use eframe::emath::Align2;
 use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
+use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{
     component_types::{self, Tensor},
     DecodedTensor,
 };
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
-use re_viewer_context::ViewerContext;
-
-use crate::{misc::caches::TensorStatsCache, ui::data_ui::image::tensor_summary_ui_grid_contents};
+use re_viewer_context::{gpu_bridge, TensorStatsCache, ViewerContext};
 
 use super::dimension_mapping_ui;
 
@@ -212,7 +211,7 @@ fn paint_tensor_slice(
     let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
 
     let debug_name = "tensor_slice";
-    crate::gpu_bridge::render_image(
+    gpu_bridge::render_image(
         ctx.render_ctx,
         &painter,
         image_rect,
@@ -305,7 +304,7 @@ fn paint_colormap_gradient(
 ) -> anyhow::Result<()> {
     let horizontal_gradient_id = egui::util::hash("horizontal_gradient");
     let horizontal_gradient =
-        crate::gpu_bridge::get_or_create_texture(render_ctx, horizontal_gradient_id, || {
+        gpu_bridge::get_or_create_texture(render_ctx, horizontal_gradient_id, || {
             let width = 256;
             let height = 1;
             let data: Vec<u8> = (0..width)
@@ -333,7 +332,7 @@ fn paint_colormap_gradient(
     };
 
     let debug_name = format!("colormap_{colormap}");
-    crate::gpu_bridge::render_image(
+    gpu_bridge::render_image(
         render_ctx,
         ui.painter(),
         rect,

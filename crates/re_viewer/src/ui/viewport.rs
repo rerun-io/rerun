@@ -6,11 +6,12 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
+use re_data_ui::item_ui;
 use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
 
 use crate::{
     misc::{highlights_for_space_view, space_info::SpaceInfoCollection, SpaceViewHighlights},
-    ui::{item_ui, space_view_heuristics::default_created_space_views},
+    ui::space_view_heuristics::default_created_space_views,
 };
 
 use super::{
@@ -157,7 +158,7 @@ impl Viewport {
                 true,
                 is_space_view_visible,
                 |ui| {
-                    let response = item_ui::space_view_button(ctx, ui, space_view);
+                    let response = crate::ui::item_ui::space_view_button(ctx, ui, space_view);
                     if response.clicked() {
                         if let Some(tree) = self.trees.get_mut(&self.visible) {
                             focus_tab(tree, space_view_id);

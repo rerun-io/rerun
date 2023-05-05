@@ -1,12 +1,11 @@
 use std::collections::BTreeMap;
 
-use egui::{Color32, RichText};
+use egui::Color32;
 
 use re_data_store::{EntityPath, Timeline};
+use re_data_ui::item_ui;
 use re_log_types::TimePoint;
-use re_viewer_context::ViewerContext;
-
-use crate::ui::item_ui;
+use re_viewer_context::{level_to_rich_text, ViewerContext};
 
 use super::{SceneText, TextEntry};
 
@@ -371,18 +370,4 @@ fn calc_row_height(entry: &TextEntry) -> f32 {
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;
     num_rows as f32 * re_ui::ReUi::table_line_height()
-}
-
-pub fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
-    match lvl {
-        "CRITICAL" => RichText::new(lvl)
-            .color(Color32::WHITE)
-            .background_color(ui.visuals().error_fg_color),
-        "ERROR" => RichText::new(lvl).color(ui.visuals().error_fg_color),
-        "WARN" => RichText::new(lvl).color(ui.visuals().warn_fg_color),
-        "INFO" => RichText::new(lvl).color(Color32::LIGHT_GREEN),
-        "DEBUG" => RichText::new(lvl).color(Color32::LIGHT_BLUE),
-        "TRACE" => RichText::new(lvl).color(Color32::LIGHT_GRAY),
-        _ => RichText::new(lvl).color(ui.visuals().text_color()),
-    }
 }

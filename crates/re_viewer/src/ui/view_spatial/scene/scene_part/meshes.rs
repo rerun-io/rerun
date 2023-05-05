@@ -4,15 +4,11 @@ use re_log_types::{
     Component, Mesh3D,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    misc::{caches::MeshCache, SpaceViewHighlights, TransformCache},
-    ui::{
-        scene::SceneQuery,
-        view_spatial::{MeshSource, SceneSpatial},
-        DefaultColor,
-    },
+    misc::{MeshCache, SpaceViewHighlights, TransformCache},
+    ui::view_spatial::{MeshSource, SceneSpatial},
 };
 
 use super::{instance_path_hash_for_picking, ScenePart};

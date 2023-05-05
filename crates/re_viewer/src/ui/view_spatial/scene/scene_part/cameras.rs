@@ -7,7 +7,7 @@ use re_log_types::{
 use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::TimeControl;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SceneQuery, ViewerContext};
 
 use crate::{
     misc::{
@@ -15,10 +15,7 @@ use crate::{
         space_info::query_view_coordinates, SpaceViewHighlights, SpaceViewOutlineMasks,
         TransformCache,
     },
-    ui::{
-        scene::SceneQuery,
-        view_spatial::{SceneSpatial, SpaceCamera3D},
-    },
+    ui::view_spatial::{SceneSpatial, SpaceCamera3D},
 };
 
 use super::{instance_path_hash_for_picking, ScenePart};

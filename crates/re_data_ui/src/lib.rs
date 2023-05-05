@@ -1,4 +1,6 @@
-//! The `DataUi` trait and implementations provide methods for representing data using [`egui`].
+//! Rerun Data Ui
+//!
+//! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
 use itertools::Itertools;
 use re_log_types::{DataCell, EntityPath, PathOp, TimePoint};
@@ -10,13 +12,17 @@ mod component_path;
 mod component_ui_registry;
 mod data;
 mod entity_path;
-pub(crate) mod image;
+mod image;
 mod instance_path;
+mod item;
+pub mod item_ui;
 mod log_msg;
 
+pub use crate::image::{
+    show_zoomed_image_region, show_zoomed_image_region_area_outline,
+    tensor_summary_ui_grid_contents,
+};
 pub use component_ui_registry::create_component_ui_registry;
-
-use super::item_ui;
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {
@@ -137,4 +143,26 @@ impl DataUi for PathOp {
             }
         };
     }
+}
+
+// ---------------------------------------------------------------------------
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_function {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_function!($($arg)*);
+    };
+}
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_scope {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_scope!($($arg)*);
+    };
 }

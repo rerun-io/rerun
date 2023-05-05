@@ -3,7 +3,7 @@ use re_query::ComponentWithInstances;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
-use crate::ui::item_ui;
+use crate::item_ui;
 
 // We do NOT implement `DataUi` for just `ComponentWithInstances`
 // because we also want the context of what entity it is part of!
