@@ -28,9 +28,8 @@ def run_py_example(path: str, viewer_port: int, wait: bool = True, save: Optiona
 
 
 def run_saved_example(path: str, wait: bool = True) -> Any:
-    args = ["out.rrd"]
     process = subprocess.Popen(
-        ["cargo", "run", "-p", "rerun", "--all-features", "--"] + args,
+        ["cargo", "run", "-p", "rerun", "--all-features", "--", "out.rrd"],
         cwd=path,
     )
     if wait:
@@ -117,11 +116,15 @@ class Viewer:
             self.process.kill()
 
 
-def run_build() -> None:
-    process = subprocess.Popen(
+def run_sdk_build() -> None:
+    returncode = subprocess.Popen(
         ["maturin", "develop", "--manifest-path", "rerun_py/Cargo.toml", '--extras="tests"'],
-    )
-    returncode = process.wait()
+    ).wait()
+    assert returncode == 0, f"process exited with error code {returncode}"
+
+
+def run_viewer_build() -> None:
+    returncode = subprocess.Popen(["cargo", "build", "-p", "rerun", "--all-features"]).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
 
@@ -145,43 +148,49 @@ def run_web(examples: List[str], separate: bool) -> None:
                 run_py_example(example, viewer_port=viewer.port)
 
 
-def run_separate_with(examples: List[str], close: bool, start_example: Callable[[str, int, bool], Any]) -> None:
-    processes: List[Tuple[Any, Any]] = []
-    # start all examples in parallel
-    for path in examples:
-        # each example gets its own viewer
-        viewer = Viewer().start()
-        example = start_example(path, viewer.port, False)
-        processes.append((viewer, example))
-    # wait for all examples to finish
-    for process in processes:
-        process[1].wait()
-    # close viewers if requested
-    if close:
-        for process in processes:
-            process[0].close()
-
-
-def run_save(examples: List[str], separate: bool, close: bool) -> None:
+def run_save(examples: List[str]) -> None:
     with Viewer(close=True) as viewer:  # ephemeral viewer that exists only while saving
         for example in examples:
             run_py_example(example, viewer_port=viewer.port, save="out.rrd")
 
-    if separate:
-        run_separate_with(examples, close, lambda path, viewer_port, wait: run_saved_example(path, wait))
-    else:
-        with Viewer(close) as viewer:
-            for example in examples:
-                run_saved_example(example)
+
+def run_load(examples: List[str], separate: bool, close: bool) -> None:
+    if not separate:
+        for path in examples:
+            run_saved_example(path)
+        return
+
+    cleanup: List[Any] = []
+    for path in examples:
+        process = run_saved_example(path, wait=False)
+        cleanup.append(process)
+
+    for process in cleanup:
+        process.wait()
+        if close:
+            process.kill()
 
 
 def run_native(examples: List[str], separate: bool, close: bool) -> None:
-    if separate:
-        run_separate_with(examples, close, run_py_example)
-    else:
+    if not separate:
         with Viewer(close) as viewer:
-            for example in examples:
-                run_py_example(example, viewer_port=viewer.port)
+            for path in examples:
+                run_py_example(path, viewer_port=viewer.port, wait=True)
+        return
+
+    cleanup: List[Tuple[Any, Any]] = []
+    # start all examples in parallel
+    for path in examples:
+        # each example gets its own viewer
+        viewer = Viewer().start()
+        example = run_py_example(path, viewer.port, False)
+        cleanup.append((viewer, example))
+
+    for pair in cleanup:
+        viewer, example = pair
+        example.wait()
+        if close:
+            viewer.close()
 
 
 def main() -> None:
@@ -191,7 +200,10 @@ def main() -> None:
     parser.add_argument(
         "--save",
         action="store_true",
-        help="Run examples, save them to disk as rrd, then view them natively.",
+        help="Run examples and save them to disk as rrd.",
+    )
+    parser.add_argument(
+        "--load", action="store_true", help="Run examples using rrd files previously saved via `--save`."
     )
     parser.add_argument("--fast", action="store_true", help="Run only examples which complete quickly.")
     parser.add_argument("--separate", action="store_true", help="Run each example in a separate viewer.")
@@ -202,14 +214,23 @@ def main() -> None:
     examples = collect_examples(args.fast)
 
     if not args.skip_build:
-        run_build()
+        run_sdk_build()
+    run_viewer_build()
 
     if args.web:
         run_web(examples, separate=args.separate)
-    elif args.save:
-        run_save(examples, separate=args.separate, close=args.close)
-    else:
-        run_native(examples, separate=args.separate, close=args.close)
+        return
+
+    if args.save:
+        run_save(examples)
+        if not args.load:
+            return
+
+    if args.load:
+        run_load(examples, separate=args.separate, close=args.close)
+        return
+
+    run_native(examples, separate=args.separate, close=args.close)
 
 
 if __name__ == "__main__":
