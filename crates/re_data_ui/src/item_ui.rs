@@ -236,7 +236,9 @@ pub fn select_hovered_on_click(
 ) {
     if response.hovered() {
         selection_state.set_hovered(items.iter().cloned());
-    } else if response.clicked() {
+    }
+
+    if response.clicked() {
         if response.ctx.input(|i| i.modifiers.command) {
             selection_state.toggle_selection(selection_state.hovered().to_vec());
         } else {
