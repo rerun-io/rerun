@@ -9,7 +9,7 @@ import subprocess
 import time
 from glob import glob
 from types import TracebackType
-from typing import Any, Callable, List, Optional, Tuple, Type, cast
+from typing import Any, List, Optional, Tuple, Type, cast
 
 
 def run_py_example(path: str, viewer_port: int, wait: bool = True, save: Optional[str] = None) -> Any:
@@ -129,23 +129,25 @@ def run_viewer_build() -> None:
 
 
 def run_web(examples: List[str], separate: bool) -> None:
-    if separate:
-        processes: List[Tuple[Any, Any]] = []
-        # start all examples in parallel
-        for path in examples:
-            # each example gets its own viewer
-            viewer = Viewer(web=True).start()
-            example = run_py_example(path, viewer_port=viewer.port, wait=False)
-            processes.append((viewer, example))
-        # wait for all processes to finish, and close the viewers
-        for process in processes:
-            viewer, example = process
-            example.wait()
-            viewer.close()
-    else:
+    if not separate:
         with Viewer(close=True, web=True) as viewer:
-            for example in examples:
-                run_py_example(example, viewer_port=viewer.port)
+            for path in examples:
+                run_py_example(path, viewer_port=viewer.port)
+        return
+
+    cleanup: List[Tuple[Any, Any]] = []
+    # start all examples in parallel
+    for path in examples:
+        # each example gets its own viewer
+        viewer = Viewer(web=True).start()
+        example = run_py_example(path, viewer_port=viewer.port, wait=False)
+        cleanup.append((viewer, example))
+
+    # wait for all processes to finish, and close the viewers
+    for pair in cleanup:
+        viewer, example = pair
+        example.wait()
+        viewer.close()
 
 
 def run_save(examples: List[str]) -> None:
@@ -156,7 +158,9 @@ def run_save(examples: List[str]) -> None:
 
 def run_load(examples: List[str], separate: bool, close: bool) -> None:
     if not separate:
+        # run all examples sequentially
         for path in examples:
+            # each one must be closed for the next one to start running
             run_saved_example(path)
         return
 
@@ -173,6 +177,7 @@ def run_load(examples: List[str], separate: bool, close: bool) -> None:
 
 def run_native(examples: List[str], separate: bool, close: bool) -> None:
     if not separate:
+        # run all examples sequentially in a single viewer
         with Viewer(close) as viewer:
             for path in examples:
                 run_py_example(path, viewer_port=viewer.port, wait=True)
@@ -186,6 +191,7 @@ def run_native(examples: List[str], separate: bool, close: bool) -> None:
         example = run_py_example(path, viewer.port, False)
         cleanup.append((viewer, example))
 
+    # wait for all processes to finish, and close the viewers if requested
     for pair in cleanup:
         viewer, example = pair
         example.wait()
