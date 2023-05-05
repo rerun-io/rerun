@@ -70,13 +70,14 @@ pub fn set_panel_expanded(
 
     let panel_state = PanelState { expanded };
 
-    let row = DataRow::from_cells1(
+    let mut row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
         timepoint,
         1,
         [panel_state].as_slice(),
     );
+    row.compute_all_size_bytes();
 
     // TODO(jleibs) Is this safe? Get rid of unwrap
     blueprint_db.entity_db.try_add_data_row(&row).unwrap();
