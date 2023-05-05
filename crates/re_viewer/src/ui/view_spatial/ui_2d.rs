@@ -413,7 +413,8 @@ fn setup_target_config(
     // For simplicity (and to reduce surprises!) we always render with a pinhole camera.
     // Make up a default pinhole camera if we don't have one placing it in a way to look at the entire space.
     let canvas_size = glam::vec2(canvas_from_ui.to().width(), canvas_from_ui.to().height());
-    let default_principal_point = canvas_size * 0.5;
+    let default_principal_point = canvas_from_ui.to().center();
+    let default_principal_point = glam::vec2(default_principal_point.x, default_principal_point.y);
     let pinhole = pinhole.unwrap_or_else(|| {
         let focal_length_in_pixels = canvas_size.x;
 
