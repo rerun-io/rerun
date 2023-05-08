@@ -75,7 +75,7 @@ mod gpu_data {
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 
-    /// Uniform buffer that changes for every 1 of points.
+    /// Uniform buffer that changes for every batch of points.
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
@@ -83,7 +83,7 @@ mod gpu_data {
 
         pub flags: u32, // PointCloudBatchFlags
         pub depth_offset: f32,
-        pub padding: [f32; 2],
+        pub _row_padding: [f32; 2],
 
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
@@ -417,7 +417,7 @@ impl PointCloudDrawData {
                         picking_object_id: batch_info.picking_object_id,
                         depth_offset: batch_info.depth_offset as f32,
 
-                        padding: [0.0, 0.0],
+                        _row_padding: [0.0, 0.0],
                         end_padding: Default::default(),
                     }),
             );
@@ -441,7 +441,7 @@ impl PointCloudDrawData {
                                     picking_object_id: batch_info.picking_object_id,
                                     depth_offset: batch_info.depth_offset as f32,
 
-                                    padding: [0.0, 0.0],
+                                    _row_padding: [0.0, 0.0],
                                     end_padding: Default::default(),
                                 })
                         })
