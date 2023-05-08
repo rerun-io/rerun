@@ -1,5 +1,6 @@
 use re_log_types::component_types::{
-    Affine3D, Pinhole, Transform3D, TranslationMatrix3x3, TranslationRotationScale,
+    Affine3D, Angle, AxisAngleRotation, Pinhole, Rotation3D, Scale3D, Transform3D,
+    TranslationMatrix3x3, TranslationRotationScale, Vec3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
@@ -73,18 +74,88 @@ impl DataUi for TranslationRotationScale {
         egui::Grid::new("translation_rotation_scale")
             .num_columns(2)
             .show(ui, |ui| {
+                // TODO(andreas): Should we skip zero translations?
+                // Unlike Rotation/Scale, we don't have a value that indicates that nothing was logged.
                 ui.label("translation");
                 translation.data_ui(ctx, ui, verbosity, query);
                 ui.end_row();
 
-                ui.label("rotation");
-                ui.monospace(format!("{rotation:?}")); // TODO: make prettier
-                ui.end_row();
+                // Skip identity rotations as they typically aren't logged explicitly.
+                if !matches!(rotation, Rotation3D::Identity) {
+                    ui.label("rotation");
+                    rotation.data_ui(ctx, ui, verbosity, query);
+                    ui.end_row();
+                }
 
-                ui.label("scale");
-                ui.monospace(format!("{scale:?}")); // TODO: make prettier
-                ui.end_row();
+                // Skip unit scales as they typically aren't logged explicitly.
+                if !matches!(scale, Scale3D::Unit) {
+                    ui.label("scale");
+                    scale.data_ui(ctx, ui, verbosity, query);
+                    ui.end_row();
+                }
             });
+    }
+}
+
+impl DataUi for Rotation3D {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        match self {
+            Rotation3D::Identity => {
+                ui.label("No rotation");
+            }
+            Rotation3D::Quaternion(q) => {
+                // TODO(andreas): Better formatting for quaternions
+                ui.label(format!("{q:?}"));
+            }
+            Rotation3D::AxisAngle(AxisAngleRotation { axis, angle }) => {
+                egui::Grid::new("axis_angle").num_columns(2).show(ui, |ui| {
+                    ui.label("axis");
+                    axis.data_ui(ctx, ui, verbosity, query);
+                    ui.end_row();
+
+                    ui.label("angle");
+                    match angle {
+                        Angle::Radians(v) => {
+                            ui.label(format!("{}rad", re_format::format_f32(*v)));
+                        }
+                        Angle::Degrees(v) => {
+                            // TODO(andreas): Convert to arc minutes/seconds for very small angles.
+                            // That code should be in re_format!
+                            ui.label(format!("{}°", re_format::format_f32(*v),));
+                        }
+                    }
+                    ui.end_row();
+                });
+            }
+        }
+    }
+}
+
+impl DataUi for Scale3D {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        match self {
+            Scale3D::Unit => {
+                ui.label("No scaling");
+            }
+            Scale3D::Uniform(scale) => {
+                ui.label(re_format::format_f32(*scale));
+            }
+            Scale3D::ThreeD(v) => {
+                v.data_ui(ctx, ui, verbosity, query);
+            }
+        }
     }
 }
 
