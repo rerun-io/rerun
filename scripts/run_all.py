@@ -6,6 +6,7 @@ import argparse
 import os
 import socket
 import subprocess
+import sys
 import time
 from glob import glob
 from types import TracebackType
@@ -90,8 +91,25 @@ class Viewer:
                 f"--ws-server-port={self.ws_server_port}",
             ]
 
-        self.process = subprocess.Popen(args, stdout=subprocess.PIPE)
-        time.sleep(1)  # give it a moment to start
+        process = subprocess.Popen(
+            args,
+            bufsize=1,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+        )
+        assert process.stdout is not None
+
+        # wait for process to start
+        # we look for the message "Hosting a SDK server over TCP" in its standard output
+        started = False
+        while not started and process.poll() is None:
+            line = process.stdout.readline()
+            if "Hosting a SDK server over TCP" in line:
+                started = True
+            sys.stdout.write(line)
+
+        self.process = process
         return self
 
     def __enter__(self) -> "Viewer":
@@ -141,10 +159,17 @@ def run_web(examples: List[str], separate: bool) -> None:
         example = run_py_example(path, viewer_port=viewer.sdk_port, wait=False)
         cleanup.append((viewer, example))
 
-    # wait for all processes to finish, and close the viewers
+    # wait for examples to finish logging
     for pair in cleanup:
         viewer, example = pair
         example.wait()
+
+    # give servers/viewers a moment to finish loading data
+    time.sleep(5)
+
+    # shut down servers/viewers
+    for pair in cleanup:
+        viewer, example = pair
         viewer.close()
 
 
