@@ -4,8 +4,8 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
+    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -53,6 +53,7 @@ pub struct RecordingStreamBuilder {
     batcher_config: Option<DataTableBatcherConfig>,
 
     is_official_example: bool,
+    recording_type: RecordingType,
 }
 
 impl RecordingStreamBuilder {
@@ -82,6 +83,7 @@ impl RecordingStreamBuilder {
 
             batcher_config: None,
             is_official_example,
+            recording_type: RecordingType::Data, // Default to data recording
         }
     }
 
@@ -136,6 +138,12 @@ impl RecordingStreamBuilder {
     #[doc(hidden)]
     pub fn is_official_example(mut self, is_official_example: bool) -> Self {
         self.is_official_example = is_official_example;
+        self
+    }
+
+    #[doc(hidden)]
+    pub fn blueprint(mut self) -> Self {
+        self.recording_type = RecordingType::Blueprint;
         self
     }
 
@@ -252,6 +260,7 @@ impl RecordingStreamBuilder {
             enabled,
             batcher_config,
             is_official_example,
+            recording_type,
         } = self;
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
@@ -267,6 +276,7 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             recording_source,
+            recording_type,
         };
 
         let batcher_config = batcher_config
@@ -351,20 +361,6 @@ impl RecordingStreamInner {
         let batcher = DataTableBatcher::new(batcher_config)?;
 
         // TODO(cmc): BeginRecordingMsg is a misnomer; it's idempotent.
-        {
-            re_log::debug!(
-                app_id = %info.application_id,
-                rec_id = %info.recording_id,
-                "setting recording info",
-            );
-            sink.send(
-                re_log_types::BeginRecordingMsg {
-                    row_id: re_log_types::RowId::random(),
-                    info: info.clone(),
-                }
-                .into(),
-            );
-        }
 
         let (cmds_tx, cmds_rx) = crossbeam::channel::unbounded();
 
@@ -447,12 +443,19 @@ fn forwarding_thread(
     cmds_rx: Receiver<Command>,
     tables: Receiver<DataTable>,
 ) {
+    let mut needs_begin_recording = true;
+
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
     /// shutdown.
-    fn handle_cmd(info: &RecordingInfo, cmd: Command, sink: &mut Box<dyn LogSink>) -> bool {
+    fn handle_cmd(
+        info: &RecordingInfo,
+        cmd: Command,
+        sink: &mut Box<dyn LogSink>,
+        needs_begin_recording: &mut bool,
+    ) -> bool {
         match cmd {
             Command::RecordMsg(msg) => {
-                sink.send(msg);
+                handle_send(msg, info, sink, needs_begin_recording);
             }
             Command::SwapSink(new_sink) => {
                 let backlog = {
@@ -468,19 +471,24 @@ fn forwarding_thread(
 
                 // Send the recording info to the new sink. This is idempotent.
                 {
-                    re_log::debug!(
-                        app_id = %info.application_id,
-                        rec_id = %info.recording_id,
-                        "setting recording info",
-                    );
-                    new_sink.send(
-                        re_log_types::BeginRecordingMsg {
-                            row_id: re_log_types::RowId::random(),
-                            info: info.clone(),
-                        }
-                        .into(),
-                    );
-                    new_sink.send_all(backlog);
+                    if backlog.is_empty() {
+                        *needs_begin_recording = true;
+                    } else {
+                        re_log::debug!(
+                            app_id = %info.application_id,
+                            rec_id = %info.recording_id,
+                            "setting recording info",
+                        );
+                        new_sink.send(
+                            re_log_types::BeginRecordingMsg {
+                                row_id: re_log_types::RowId::random(),
+                                info: info.clone(),
+                            }
+                            .into(),
+                        );
+                        *needs_begin_recording = false;
+                        new_sink.send_all(backlog);
+                    }
                 }
 
                 *sink = new_sink;
@@ -501,6 +509,30 @@ fn forwarding_thread(
         true
     }
 
+    fn handle_send(
+        msg: LogMsg,
+        info: &RecordingInfo,
+        sink: &mut Box<dyn LogSink>,
+        needs_begin_recording: &mut bool,
+    ) {
+        if *needs_begin_recording {
+            re_log::debug!(
+                app_id = %info.application_id,
+                rec_id = %info.recording_id,
+                "setting recording info",
+            );
+            sink.send(
+                re_log_types::BeginRecordingMsg {
+                    row_id: re_log_types::RowId::random(),
+                    info: info.clone(),
+                }
+                .into(),
+            );
+            *needs_begin_recording = false;
+        }
+        sink.send(msg);
+    }
+
     use crossbeam::select;
     loop {
         // NOTE: Always pop tables first, this is what makes `Command::PopPendingTables` possible,
@@ -514,7 +546,12 @@ fn forwarding_thread(
                     continue;
                 }
             };
-            sink.send(LogMsg::ArrowMsg(info.recording_id, table));
+            handle_send(
+                LogMsg::ArrowMsg(info.recording_id, table),
+                &info,
+                &mut sink,
+                &mut needs_begin_recording,
+            );
         }
 
         select! {
@@ -532,7 +569,12 @@ fn forwarding_thread(
                         continue;
                     }
                 };
-                sink.send(LogMsg::ArrowMsg(info.recording_id, table));
+                handle_send(
+                    LogMsg::ArrowMsg(info.recording_id, table),
+                    &info,
+                    &mut sink,
+                    &mut needs_begin_recording,
+                );
             }
             recv(cmds_rx) -> res => {
                 let Ok(cmd) = res else {
@@ -540,7 +582,7 @@ fn forwarding_thread(
                     // `RecordingStream` itself has been dropped.
                     break;
                 };
-                if !handle_cmd(&info, cmd, &mut sink) {
+                if !handle_cmd(&info, cmd, &mut sink, &mut needs_begin_recording) {
                     break; // shutdown
                 }
             }
