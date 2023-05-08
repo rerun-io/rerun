@@ -13,14 +13,11 @@ from typing import Any, List, Optional, Tuple, Type
 
 
 def run_py_example(path: str, viewer_port: int, wait: bool = True, save: Optional[str] = None) -> Any:
-    args = ["--connect", "--addr", f"127.0.0.1:{viewer_port}"]
+    args = ["python3", "main.py", "--num-frames=30", "--steps=200", "--connect", f"--addr=127.0.0.1:{viewer_port}"]
     if save is not None:
-        args += ["--save", str(save)]
+        args.append(f"--save={save}")
 
-    process = subprocess.Popen(
-        ["python3", "main.py", "--num-frames=30", "--steps=200"] + args,
-        cwd=path,
-    )
+    process = subprocess.Popen(args, cwd=path)
     if wait:
         returncode = process.wait()
         assert returncode == 0, f"process exited with error code {returncode}"
@@ -85,20 +82,15 @@ class Viewer:
         self.process = None
 
     def start(self) -> "Viewer":
-        args = ["--port", str(self.sdk_port)]
+        args = ["./target/debug/rerun", f"--port={self.sdk_port}"]
         if self.web:
             args += [
                 "--web-viewer",
-                "--web-viewer-port",
-                str(self.web_viewer_port),
-                "--ws-server-port",
-                str(self.ws_server_port),
+                f"--web-viewer-port={self.web_viewer_port}",
+                f"--ws-server-port={self.ws_server_port}",
             ]
 
-        self.process = subprocess.Popen(
-            ["cargo", "run", "-p", "rerun", "--all-features", "--"] + args,
-            stdout=subprocess.PIPE,
-        )
+        self.process = subprocess.Popen(args, stdout=subprocess.PIPE)
         time.sleep(1)  # give it a moment to start
         return self
 
@@ -118,7 +110,13 @@ class Viewer:
 
 def run_sdk_build() -> None:
     returncode = subprocess.Popen(
-        ["maturin", "develop", "--manifest-path", "rerun_py/Cargo.toml", '--extras="tests"'],
+        [
+            "maturin",
+            "develop",
+            "--manifest-path",
+            "rerun_py/Cargo.toml",
+            '--extras="tests"',
+        ],
     ).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
