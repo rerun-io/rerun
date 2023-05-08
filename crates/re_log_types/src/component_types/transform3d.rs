@@ -24,7 +24,7 @@ use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "sparse")] // TODO:
+#[arrow_field(type = "sparse")] // TODO(jeremy): Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110 // TODO:
 pub enum Scale3D {
     /// Unit scale, meaning no scaling.
     #[default]
@@ -87,7 +87,7 @@ impl Into<glam::Vec3> for Scale3D {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "sparse")]
+#[arrow_field(type = "sparse")] // TODO(jeremy): Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
 pub enum Rotation3D {
     /// No rotation.
     #[default]
@@ -233,7 +233,7 @@ impl From<Scale3D> for TranslationRotationScale {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "sparse")] // TODO: Write todo and issue
+#[arrow_field(type = "sparse")] // TODO(jeremy): Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
 pub enum Affine3D {
     TranslationMatrix3x3(TranslationMatrix3x3),
     TranslationRotationScale(TranslationRotationScale),
