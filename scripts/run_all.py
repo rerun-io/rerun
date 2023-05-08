@@ -45,9 +45,7 @@ def get_free_port() -> int:
 
 
 def collect_examples(fast: bool) -> List[str]:
-    if not fast:
-        return [os.path.dirname(entry) for entry in glob("examples/python/**/main.py")]
-    else:
+    if fast:
         # cherry picked
         return [
             "examples/python/deep_sdf",
@@ -61,6 +59,8 @@ def collect_examples(fast: bool) -> List[str]:
             "examples/python/nyud",
             "examples/python/text_logging",
         ]
+    else:
+        return [os.path.dirname(entry) for entry in glob("examples/python/**/main.py")]
 
 
 class Viewer:
