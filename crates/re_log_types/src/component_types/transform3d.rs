@@ -59,13 +59,13 @@ impl From<[f32; 3]> for Scale3D {
 }
 
 #[cfg(feature = "glam")]
-impl Into<glam::Vec3> for Scale3D {
+impl From<Scale3D> for glam::Vec3 {
     #[inline]
-    fn into(self) -> glam::Vec3 {
-        match self {
-            Self::Unit => glam::Vec3::ONE,
-            Self::ThreeD(v) => v.into(),
-            Self::Uniform(v) => glam::Vec3::splat(v),
+    fn from(val: Scale3D) -> Self {
+        match val {
+            Scale3D::Unit => glam::Vec3::ONE,
+            Scale3D::ThreeD(v) => v.into(),
+            Scale3D::Uniform(v) => glam::Vec3::splat(v),
         }
     }
 }
@@ -108,12 +108,12 @@ impl From<Quaternion> for Rotation3D {
 }
 
 #[cfg(feature = "glam")]
-impl Into<glam::Quat> for Rotation3D {
+impl From<Rotation3D> for glam::Quat {
     #[inline]
-    fn into(self) -> glam::Quat {
-        match self {
-            Self::Identity => glam::Quat::IDENTITY,
-            Self::Quaternion(v) => v.into(),
+    fn from(val: Rotation3D) -> Self {
+        match val {
+            Rotation3D::Identity => glam::Quat::IDENTITY,
+            Rotation3D::Quaternion(v) => v.into(),
         }
     }
 }
