@@ -9,7 +9,7 @@ import subprocess
 import time
 from glob import glob
 from types import TracebackType
-from typing import Any, List, Optional, Tuple, Type, cast
+from typing import Any, List, Optional, Tuple, Type
 
 
 def run_py_example(path: str, viewer_port: int, wait: bool = True, save: Optional[str] = None) -> Any:
@@ -41,7 +41,7 @@ def run_saved_example(path: str, wait: bool = True) -> Any:
 def get_free_port() -> int:
     with socket.socket() as s:
         s.bind(("", 0))
-        return cast(int, s.getsockname()[1])
+        return int(s.getsockname()[1])
 
 
 def collect_examples(fast: bool) -> List[str]:
