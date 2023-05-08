@@ -147,7 +147,7 @@ impl RecordingStreamBuilder {
         self
     }
 
-    /// Creates a new [`RecordingContext`] that starts in a buffering state (RAM).
+    /// Creates a new [`RecordingStream`] that starts in a buffering state (RAM).
     ///
     /// ## Example
     ///

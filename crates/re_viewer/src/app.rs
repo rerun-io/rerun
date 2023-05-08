@@ -118,7 +118,7 @@ impl App {
             );
         }
 
-        let persist_state: AppState = if startup_options.persist_state {
+        let state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
                 .unwrap_or_default()
@@ -138,7 +138,7 @@ impl App {
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
             log_dbs: Default::default(),
-            state: persist_state,
+            state,
             shutdown,
             pending_promises: Default::default(),
             toasts: toasts::Toasts::new(),
@@ -767,7 +767,7 @@ impl App {
                     false
                 };
 
-                // TOOD(jleibs): Experimental support for appending to the existing blueprint
+                // TODO(jleibs): Experimental support for appending to the existing blueprint
                 let log_db = if *recording_id == RecordingId::APPEND_BLUEPRINT {
                     self.log_dbs
                         .entry(self.state.selected_blueprint_id)
@@ -811,27 +811,6 @@ impl App {
         self.state
             .recording_configs
             .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
-
-        // TODO(jleibs): This state needs to go somewhere else
-        /*
-                if self.state.blueprints.len() > 100 {
-                    re_log::debug!("Pruning blueprints…");
-
-                    let used_app_ids: std::collections::HashSet<ApplicationId> = self
-                        .log_dbs
-                        .values()
-                        .filter_map(|log_db| {
-                            log_db
-                                .recording_info()
-                                .map(|recording_info| recording_info.application_id.clone())
-                        })
-                        .collect();
-
-                    self.state
-                        .blueprints
-                        .retain(|application_id, _| used_app_ids.contains(application_id));
-                }
-        */
     }
 
     fn purge_memory_if_needed(&mut self) {
@@ -1019,7 +998,6 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
-    //blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
     /// Which view panel is currently being shown
     panel_selection: PanelSelection,
 
@@ -1030,8 +1008,8 @@ struct AppState {
     #[serde(skip)]
     profiler: crate::Profiler,
 
-    // This is sort of a weird place to put this but makes more sense than the
-    // blueprint
+    // TODO(jleibs): This is sort of a weird place to put this but makes more
+    // sense than the blueprint
     #[serde(skip)]
     viewport_state: ViewportState,
 }

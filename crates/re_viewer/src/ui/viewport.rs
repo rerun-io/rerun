@@ -22,7 +22,7 @@ use super::{
 // ----------------------------------------------------------------------------
 
 /// What views are visible?
-type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
+pub type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]

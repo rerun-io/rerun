@@ -31,14 +31,6 @@ impl Blueprint {
 
         ret.viewport = load_viewport(blueprint_db, space_views);
 
-        /*
-                if viewport.space_view_keys.contains(&space_view.id) {
-                    ret.space_views.insert(space_view.id, space_view.clone());
-                } else {
-                    ret.viewport.add_space_view(space_view);
-                }
-        */
-
         // TODO(jleibs): maybe just combine these into a single component
         // TODO(jleibs): Also, don't use them if they aren't set instead of defaulting to true
         //               so that we get the right default state on new()

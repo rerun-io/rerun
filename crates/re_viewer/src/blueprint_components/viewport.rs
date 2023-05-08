@@ -5,8 +5,7 @@ use re_log_types::{serde_field::SerdeField, Component};
 
 pub use re_viewer_context::SpaceViewId;
 
-// TODO(jleibs) export this from other viewport def
-type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
+use crate::ui::VisibilitySet;
 
 #[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ViewportComponent {
