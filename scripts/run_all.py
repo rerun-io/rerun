@@ -48,15 +48,15 @@ def collect_examples(fast: bool) -> List[str]:
     if fast:
         # cherry picked
         return [
-            "examples/python/deep_sdf",
-            "examples/python/dicom",
-            "examples/python/raw_mesh",
-            "examples/python/clock",
             "examples/python/api_demo",
             "examples/python/car",
+            "examples/python/clock",
             "examples/python/colmap",
-            "examples/python/plots",
+            "examples/python/deep_sdf",
+            "examples/python/dicom",
             "examples/python/nyud",
+            "examples/python/plots",
+            "examples/python/raw_mesh",
             "examples/python/text_logging",
         ]
     else:
