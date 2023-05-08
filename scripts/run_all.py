@@ -13,10 +13,12 @@ from types import TracebackType
 from typing import Any, List, Optional, Tuple, Type
 
 
-def run_py_example(path: str, viewer_port: int, wait: bool = True, save: Optional[str] = None) -> Any:
-    args = ["python3", "main.py", "--num-frames=30", "--steps=200", "--connect", f"--addr=127.0.0.1:{viewer_port}"]
+def run_py_example(path: str, viewer_port: Optional[int] = None, wait: bool = True, save: Optional[str] = None) -> Any:
+    args = ["python3", "main.py", "--num-frames=30", "--steps=200", "--connect", f"--addr='127.0.0.1:{viewer_port}'"]
     if save is not None:
-        args.append(f"--save={save}")
+        args += [f"--save={save}"]
+    if viewer_port is not None:
+        args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
 
     process = subprocess.Popen(args, cwd=path)
     if wait:
@@ -174,9 +176,8 @@ def run_web(examples: List[str], separate: bool) -> None:
 
 
 def run_save(examples: List[str]) -> None:
-    with Viewer(close=True) as viewer:  # ephemeral viewer that exists only while saving
-        for example in examples:
-            run_py_example(example, viewer_port=viewer.sdk_port, save="out.rrd")
+    for example in examples:
+        run_py_example(example, save="out.rrd")
 
 
 def run_load(examples: List[str], separate: bool, close: bool) -> None:
