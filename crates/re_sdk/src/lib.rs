@@ -70,9 +70,16 @@ pub mod components {
     pub use re_log_types::component_types::{
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
         EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
-        MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D,
-        Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDataMeaning,
-        TensorDimension, TensorId, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+        MeshFormat, MeshId, Point2D, Point3D, Quaternion, Radius, RawMesh3D, Rect2D, Scalar,
+        ScalarPlotProps, Size3D, Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId,
+        TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+    };
+}
+
+/// Transform helpers, for use with [`components::Transform3D`].
+pub mod transform {
+    pub use re_log_types::component_types::{
+        Pinhole, Rotation3D, Scale3D, TranslationMatrix3x3, TranslationRotationScale,
     };
 }
 

@@ -4,8 +4,8 @@ use itertools::Itertools;
 
 use re_data_store::{query_latest_single, EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning},
-    Component, DecodedTensor, Transform,
+    component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning, Transform3D},
+    Component, DecodedTensor,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
@@ -264,7 +264,7 @@ impl ImagesPart {
     ) -> Result<(), String> {
         crate::profile_function!();
 
-        let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
+        let Some(Transform3D::Pinhole(intrinsics)) = query_latest_single::<Transform3D>(
             &ctx.log_db.entity_db,
             pinhole_ent_path,
             &ctx.current_query(),

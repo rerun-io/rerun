@@ -6,7 +6,7 @@ use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPr
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
-use re_log_types::component_types::{Tensor, TensorDataMeaning};
+use re_log_types::component_types::{Tensor, TensorDataMeaning, Transform3D};
 use re_renderer::OutlineConfig;
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
@@ -167,12 +167,8 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) {
-        if let Some(re_log_types::Transform::Pinhole(_)) =
-            query_latest_single::<re_log_types::Transform>(
-                &ctx.log_db.entity_db,
-                entity_path,
-                query,
-            )
+        if let Some(Transform3D::Pinhole(_)) =
+            query_latest_single::<Transform3D>(&ctx.log_db.entity_db, entity_path, query)
         {
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {

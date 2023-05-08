@@ -1,7 +1,7 @@
 use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RowId};
 
 use crate::{
-    components::Transform,
+    components::Transform3D,
     log::DataCell,
     time::{Time, TimeInt, TimePoint, Timeline},
     Component, EntityPath, RecordingStream, SerializableComponent,
@@ -262,14 +262,14 @@ impl MsgSender {
         let mut all_cells: Vec<_> = instanced.into_iter().map(Some).collect();
         let standard_cells: Vec<_> = all_cells
             .iter_mut()
-            .filter(|cell| cell.as_ref().unwrap().component_name() != Transform::name())
+            .filter(|cell| cell.as_ref().unwrap().component_name() != Transform3D::name())
             .map(|cell| cell.take().unwrap())
             .collect();
         let transform_cells: Vec<_> = all_cells
             .iter_mut()
             .filter(|cell| {
                 cell.as_ref()
-                    .map_or(false, |cell| cell.component_name() == Transform::name())
+                    .map_or(false, |cell| cell.component_name() == Transform3D::name())
             })
             .map(|cell| cell.take().unwrap())
             .collect();
@@ -338,7 +338,7 @@ mod tests {
             components::Label("label1".into()),
             components::Label("label2".into()),
         ];
-        let transform = vec![components::Transform::Rigid3(components::Rigid3::default())];
+        let transform = vec![components::Transform3D::Affine3D(Default::default())];
         let color = components::ColorRGBA::from_rgb(255, 0, 255);
 
         let [standard, transforms, splats] = MsgSender::new("some/path")
@@ -357,7 +357,7 @@ mod tests {
         {
             let transforms = transforms.unwrap();
             let idx = transforms
-                .find_cell(&components::Transform::name())
+                .find_cell(&components::Transform3D::name())
                 .unwrap();
             let cell = &transforms.cells[idx];
             assert!(cell.num_instances() == 1);

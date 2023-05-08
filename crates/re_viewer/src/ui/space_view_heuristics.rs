@@ -100,8 +100,9 @@ fn is_interesting_space_view_not_at_root(
     if candidate.category == ViewCategory::Spatial {
         if let Some(transform) = query_latest_single(entity_db, &candidate.space_path, query) {
             match transform {
-                re_log_types::Transform::Rigid3(_) => {}
-                re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
+                re_log_types::component_types::Transform3D::Affine3D(_) => {}
+                re_log_types::component_types::Transform3D::Pinhole(_)
+                | re_log_types::component_types::Transform3D::Unknown => {
                     return true;
                 }
             }
@@ -252,7 +253,7 @@ fn is_default_added_to_space_view(
     timeline: Timeline,
 ) -> bool {
     let ignored_components = [
-        re_log_types::Transform::name(),
+        re_log_types::component_types::Transform3D::name(),
         re_log_types::ViewCoordinates::name(),
         re_log_types::component_types::InstanceKey::name(),
         re_log_types::component_types::KeypointId::name(),

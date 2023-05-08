@@ -4,7 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
 use re_data_store::{log_db::EntityDb, query_latest_single, EntityPath, EntityTree};
-use re_log_types::{Transform, ViewCoordinates};
+use re_log_types::{component_types::Transform3D, ViewCoordinates};
 use re_query::query_entity_with_primary;
 
 use super::UnreachableTransform;
@@ -23,10 +23,10 @@ pub struct SpaceInfo {
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
     /// The transform is from parent to child, i.e. the *same* as in its [`Self::child_spaces`] array.
-    parent: Option<(EntityPath, Transform)>,
+    parent: Option<(EntityPath, Transform3D)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.
-    pub child_spaces: BTreeMap<EntityPath, Transform>,
+    pub child_spaces: BTreeMap<EntityPath, Transform3D>,
 }
 
 impl SpaceInfo {
@@ -62,11 +62,11 @@ impl SpaceInfo {
                 };
 
                 let is_pinhole = match transform {
-                    Transform::Unknown => {
+                    Transform3D::Unknown => {
                         continue;
                     }
-                    Transform::Rigid3(_) => false,
-                    Transform::Pinhole(_) => {
+                    Transform3D::Affine3D(_) => false,
+                    Transform3D::Pinhole(_) => {
                         // Don't allow nested pinhole
                         if encountered_pinhole {
                             continue;
@@ -112,7 +112,8 @@ impl SpaceInfoCollection {
             tree: &EntityTree,
             query: &LatestAtQuery,
         ) {
-            if let Some(transform) = query_latest_single::<Transform>(entity_db, &tree.path, query)
+            if let Some(transform) =
+                query_latest_single::<Transform3D>(entity_db, &tree.path, query)
             {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
@@ -157,7 +158,7 @@ impl SpaceInfoCollection {
         let mut spaces_info = Self::default();
 
         // Start at the root. The root is always part of the collection!
-        if query_latest_single::<Transform>(entity_db, &EntityPath::root(), &query).is_some() {
+        if query_latest_single::<Transform3D>(entity_db, &EntityPath::root(), &query).is_some() {
             re_log::warn_once!("The root entity has a 'transform' component! This will have no effect. Did you mean to apply the transform elsewhere?");
         }
         let mut root_space_info = SpaceInfo::new(EntityPath::root());
@@ -226,9 +227,9 @@ impl SpaceInfoCollection {
             if let Some((parent_path, transform)) = parent {
                 // Matches the connectedness requirements in `inverse_transform_at`/`transform_at` in `transform_cache.rs`
                 match transform {
-                    Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
-                    Transform::Rigid3(_) => Ok(()),
-                    Transform::Pinhole(pinhole) => {
+                    Transform3D::Unknown => Err(UnreachableTransform::UnknownTransform),
+                    Transform3D::Affine3D(_) => Ok(()),
+                    Transform3D::Pinhole(pinhole) => {
                         if encountered_pinhole {
                             Err(UnreachableTransform::NestedPinholeCameras)
                         } else {

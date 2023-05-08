@@ -235,9 +235,12 @@ fn test_clean_for_polars_nomodify() {
 
 #[test]
 fn test_clean_for_polars_modify() {
-    use re_log_types::{DataCell, Pinhole, Transform};
+    use re_log_types::{
+        component_types::{Pinhole, Transform3D},
+        DataCell,
+    };
     // transforms are a nice pathological type with both Unions and FixedSizeLists
-    let transforms = vec![Transform::Pinhole(Pinhole {
+    let transforms = vec![Transform3D::Pinhole(Pinhole {
         image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
         resolution: None,
     })];

@@ -3,6 +3,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::{
     log_db::EntityDb, query_latest_single, EntityPath, EntityPropertyMap, EntityTree,
 };
+use re_log_types::component_types::Transform3D;
 use re_viewer_context::TimeControl;
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
@@ -231,11 +232,11 @@ fn transform_at(
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
     if let Some(transform) = query_latest_single(entity_db, entity_path, query) {
         match transform {
-            re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().into())),
+            Transform3D::Affine3D(rigid) => Ok(Some(rigid.parent_from_child())),
             // If we're connected via 'unknown' it's not reachable
-            re_log_types::Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
+            Transform3D::Unknown => Err(UnreachableTransform::UnknownTransform),
 
-            re_log_types::Transform::Pinhole(pinhole) => {
+            Transform3D::Pinhole(pinhole) => {
                 if *encountered_pinhole {
                     Err(UnreachableTransform::NestedPinholeCameras)
                 } else {

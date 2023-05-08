@@ -37,7 +37,7 @@ mod scalar;
 mod size;
 mod tensor;
 mod text_entry;
-mod transform;
+mod transform3d;
 mod vec;
 
 pub use arrow::Arrow3D;
@@ -65,7 +65,10 @@ pub use tensor::{
 #[cfg(feature = "image")]
 pub use tensor::{TensorImageLoadError, TensorImageSaveError};
 pub use text_entry::TextEntry;
-pub use transform::{Pinhole, Rigid3, Transform};
+pub use transform3d::{
+    Affine3D, Pinhole, Rotation3D, Scale3D, Transform3D, TranslationMatrix3x3,
+    TranslationRotationScale,
+};
 pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
@@ -92,7 +95,7 @@ lazy_static! {
         <Size3D as Component>::field(),
         <Tensor as Component>::field(),
         <TextEntry as Component>::field(),
-        <Transform as Component>::field(),
+        <Transform3D as Component>::field(),
         <Vec2D as Component>::field(),
         <Vec3D as Component>::field(),
         <ViewCoordinates as Component>::field(),

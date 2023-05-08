@@ -17,6 +17,7 @@ mod instance_path;
 mod item;
 pub mod item_ui;
 mod log_msg;
+mod transform3d;
 
 pub use crate::image::{
     show_zoomed_image_region, show_zoomed_image_region_area_outline,
