@@ -52,8 +52,18 @@ pub struct Viewport {
 
 impl PartialEq for Viewport {
     fn eq(&self, other: &Self) -> bool {
+        // Terrible hack since egui_dock::Tree does not implement PartialEq:
+        // This could likely be improved using a crate like `serde_diff`, but we already
+        // have the dep on `rmp_serde`, and hopefully this just goes away when we move
+        // to `egui_tiles`.
+        let mut tree_buff_self = Vec::new();
+        rmp_serde::encode::write_named(&mut tree_buff_self, &self.trees).unwrap();
+        let mut tree_buff_other = Vec::new();
+        rmp_serde::encode::write_named(&mut tree_buff_other, &other.trees).unwrap();
+
         self.space_views == other.space_views
             && self.visible == other.visible
+            && tree_buff_self == tree_buff_other
             && self.maximized == other.maximized
             && self.has_been_user_edited == other.has_been_user_edited
     }

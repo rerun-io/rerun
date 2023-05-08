@@ -32,6 +32,7 @@ impl Blueprint {
         }
         // Save the viewport state
         if self.viewport != snapshot.viewport {
+            re_log::debug!("Viewport change detected. Saving modifications.");
             store_viewport(blueprint_db, &self.viewport);
 
             // Since space views are part of the viewport, we only need to handle them here

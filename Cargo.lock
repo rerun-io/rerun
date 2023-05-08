@@ -4132,6 +4132,7 @@ dependencies = [
  "re_viewer_context",
  "re_ws_comms",
  "rfd",
+ "rmp-serde",
  "serde",
  "slotmap",
  "smallvec",
