@@ -23,7 +23,7 @@ def run_py_example(path: str, viewer_port: int, wait: bool = True, save: Optiona
     )
     if wait:
         returncode = process.wait()
-        print(f"process exited with error code {returncode}")
+        assert returncode == 0, f"process exited with error code {returncode}"
     return process
 
 
@@ -34,7 +34,7 @@ def run_saved_example(path: str, wait: bool = True) -> Any:
     )
     if wait:
         returncode = process.wait()
-        print(f"process exited with error code {returncode}")
+        assert returncode == 0, f"process exited with error code {returncode}"
     return process
 
 
