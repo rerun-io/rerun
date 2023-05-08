@@ -66,9 +66,9 @@ def collect_examples(fast: bool) -> List[str]:
 class Viewer:
     should_close: bool
     web: bool
-    sdk_port: int
-    web_viewer_port: int
-    ws_server_port: int
+    sdk_port: int  # where the logging SDK sends the log stream (where the server receives)
+    web_viewer_port: int  # the HTTP port where we serve the web viewer
+    ws_server_port: int  # the WebSocket port where we serve the log stream
     process: Optional[Any]
 
     def __init__(self, close: bool = False, web: bool = False):
