@@ -443,7 +443,7 @@ fn disconnect(py: Python<'_>) {
     // cleanup a python object.
     py.allow_threads(|| {
         if let Some(data_stream) = global_data_stream().as_ref() {
-            re_log::info!("Disconnecting the blueprint stream");
+            re_log::info!("Disconnecting the data stream");
             data_stream.disconnect();
         };
         if let Some(bp_stream) = global_blueprint_stream().as_ref() {

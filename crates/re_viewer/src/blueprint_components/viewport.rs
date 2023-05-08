@@ -7,7 +7,7 @@ pub use re_viewer_context::SpaceViewId;
 
 use crate::ui::VisibilitySet;
 
-#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ViewportComponent {
     #[arrow_field(type = "SerdeField<VisibilitySet>")]
     pub space_view_keys: std::collections::BTreeSet<SpaceViewId>,
@@ -18,6 +18,18 @@ pub struct ViewportComponent {
     #[arrow_field(type = "Option<SerdeField<SpaceViewId>>")]
     pub maximized: Option<SpaceViewId>,
     pub has_been_user_edited: bool,
+}
+
+impl Default for ViewportComponent {
+    fn default() -> Self {
+        Self {
+            space_view_keys: Default::default(),
+            visible: Default::default(),
+            trees: Default::default(),
+            maximized: Default::default(),
+            has_been_user_edited: true,
+        }
+    }
 }
 
 impl ViewportComponent {
