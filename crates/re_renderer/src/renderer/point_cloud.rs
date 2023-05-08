@@ -18,7 +18,7 @@ use std::{num::NonZeroU64, ops::Range};
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
-    include_shader_module, DebugLabel, OutlineMaskPreference, PointCloudBuilder,
+    include_shader_module, DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
 use bytemuck::Zeroable as _;
@@ -80,7 +80,11 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
-        pub flags: wgpu_buffer_types::U32RowPadded, // PointCloudBatchFlags
+
+        pub flags: u32, // PointCloudBatchFlags
+        pub depth_offset: f32,
+        pub _row_padding: [f32; 2],
+
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
 
@@ -141,6 +145,9 @@ pub struct PointCloudBatchInfo {
 
     /// Picking object id that applies for the entire batch.
     pub picking_object_id: PickingLayerObjectId,
+
+    /// Depth offset applied after projection.
+    pub depth_offset: DepthOffset,
 }
 
 /// Description of a point cloud.
@@ -209,6 +216,7 @@ impl PointCloudDrawData {
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
+            depth_offset: 0,
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -400,14 +408,17 @@ impl PointCloudDrawData {
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
-                        flags: batch_info.flags.bits.into(),
+                        flags: batch_info.flags.bits,
                         outline_mask_ids: batch_info
                             .overall_outline_mask_ids
                             .0
                             .unwrap_or_default()
                             .into(),
-                        end_padding: Default::default(),
                         picking_object_id: batch_info.picking_object_id,
+                        depth_offset: batch_info.depth_offset as f32,
+
+                        _row_padding: [0.0, 0.0],
+                        end_padding: Default::default(),
                     }),
             );
 
@@ -425,10 +436,13 @@ impl PointCloudDrawData {
                                 .iter()
                                 .map(|(_, mask)| gpu_data::BatchUniformBuffer {
                                     world_from_obj: batch_info.world_from_obj.into(),
-                                    flags: batch_info.flags.bits.into(),
+                                    flags: batch_info.flags.bits,
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
-                                    end_padding: Default::default(),
                                     picking_object_id: batch_info.picking_object_id,
+                                    depth_offset: batch_info.depth_offset as f32,
+
+                                    _row_padding: [0.0, 0.0],
+                                    end_padding: Default::default(),
                                 })
                         })
                         .collect::<Vec<_>>()

@@ -5,6 +5,7 @@
 #import <./utils/flags.wgsl>
 #import <./utils/size.wgsl>
 #import <./utils/srgb.wgsl>
+#import <./utils/depth_offset.wgsl>
 
 @group(1) @binding(0)
 var line_strip_texture: texture_2d<f32>;
@@ -28,6 +29,7 @@ struct BatchUniformBuffer {
     world_from_obj: Mat4,
     outline_mask_ids: UVec2,
     picking_layer_object_id: UVec2,
+    depth_offset: f32,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -262,7 +264,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Output, transform to projection space and done.
     var out: VertexOut;
-    out.position = frame.projection_from_world * Vec4(pos, 1.0);
+    out.position = apply_depth_offset(frame.projection_from_world * Vec4(pos, 1.0), batch.depth_offset);
     out.position_world = pos;
     out.center_position = center_position;
     out.round_cap_circle_center = round_cap_circle_center;
