@@ -64,17 +64,17 @@ def collect_examples(fast: bool) -> List[str]:
 
 
 class Viewer:
-    port: int
     should_close: bool
     web: bool
+    sdk_port: int
     web_viewer_port: int
     ws_server_port: int
     process: Optional[Any]
 
     def __init__(self, close: bool = False, web: bool = False):
-        self.port = get_free_port()
         self.should_close = close
         self.web = web
+        self.sdk_port = get_free_port()
         self.web_viewer_port = get_free_port()
         self.ws_server_port = get_free_port()
         self.process = None
@@ -85,7 +85,7 @@ class Viewer:
         self.process = None
 
     def start(self) -> "Viewer":
-        args = ["--port", str(self.port)]
+        args = ["--port", str(self.sdk_port)]
         if self.web:
             args += [
                 "--web-viewer",
@@ -132,7 +132,7 @@ def run_web(examples: List[str], separate: bool) -> None:
     if not separate:
         with Viewer(close=True, web=True) as viewer:
             for path in examples:
-                run_py_example(path, viewer_port=viewer.port)
+                run_py_example(path, viewer_port=viewer.sdk_port)
         return
 
     cleanup: List[Tuple[Any, Any]] = []
@@ -140,7 +140,7 @@ def run_web(examples: List[str], separate: bool) -> None:
     for path in examples:
         # each example gets its own viewer
         viewer = Viewer(web=True).start()
-        example = run_py_example(path, viewer_port=viewer.port, wait=False)
+        example = run_py_example(path, viewer_port=viewer.sdk_port, wait=False)
         cleanup.append((viewer, example))
 
     # wait for all processes to finish, and close the viewers
@@ -153,7 +153,7 @@ def run_web(examples: List[str], separate: bool) -> None:
 def run_save(examples: List[str]) -> None:
     with Viewer(close=True) as viewer:  # ephemeral viewer that exists only while saving
         for example in examples:
-            run_py_example(example, viewer_port=viewer.port, save="out.rrd")
+            run_py_example(example, viewer_port=viewer.sdk_port, save="out.rrd")
 
 
 def run_load(examples: List[str], separate: bool, close: bool) -> None:
@@ -180,7 +180,7 @@ def run_native(examples: List[str], separate: bool, close: bool) -> None:
         # run all examples sequentially in a single viewer
         with Viewer(close) as viewer:
             for path in examples:
-                run_py_example(path, viewer_port=viewer.port, wait=True)
+                run_py_example(path, viewer_port=viewer.sdk_port, wait=True)
         return
 
     cleanup: List[Tuple[Any, Any]] = []
@@ -188,7 +188,7 @@ def run_native(examples: List[str], separate: bool, close: bool) -> None:
     for path in examples:
         # each example gets its own viewer
         viewer = Viewer().start()
-        example = run_py_example(path, viewer.port, False)
+        example = run_py_example(path, viewer.sdk_port, False)
         cleanup.append((viewer, example))
 
     # wait for all processes to finish, and close the viewers if requested
