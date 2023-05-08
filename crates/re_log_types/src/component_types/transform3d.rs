@@ -19,12 +19,12 @@ use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 ///         Field::new("Unit", DataType::Boolean, false),
 ///         Field::new("ThreeD", Vec3D::data_type(), false),
 ///         Field::new("Uniform", DataType::Float32, false),
-///     ], None, UnionMode::Sparse),
+///     ], None, UnionMode::Dense),
 /// );
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "sparse")] // TODO(jeremy): Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110 // TODO:
+#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110 // TODO:
 pub enum Scale3D {
     /// Unit scale, meaning no scaling.
     #[default]
@@ -70,6 +70,59 @@ impl From<Scale3D> for glam::Vec3 {
     }
 }
 
+// TODO:
+#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+pub enum Angle {
+    Radians(f32),
+    Degrees(f32),
+}
+
+impl Angle {
+    #[inline]
+    pub fn radians(&self) -> f32 {
+        match self {
+            Self::Radians(v) => *v,
+            Self::Degrees(v) => v.to_radians(),
+        }
+    }
+
+    #[inline]
+    pub fn degrees(&self) -> f32 {
+        match self {
+            Self::Radians(v) => v.to_degrees(),
+            Self::Degrees(v) => *v,
+        }
+    }
+}
+
+// TODO:
+#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct AxisAngleRotation {
+    pub axis: Vec3D,
+    pub angle: Angle,
+}
+
+impl AxisAngleRotation {
+    #[inline]
+    pub fn new<V: Into<Vec3D>>(axis: V, angle: Angle) -> Self {
+        Self {
+            axis: axis.into(),
+            angle,
+        }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<AxisAngleRotation> for glam::Quat {
+    #[inline]
+    fn from(val: AxisAngleRotation) -> Self {
+        glam::Quat::from_axis_angle(val.axis.into(), val.angle.radians())
+    }
+}
+
 /// 3D rotation.
 ///
 /// ```
@@ -82,12 +135,12 @@ impl From<Scale3D> for glam::Vec3 {
 ///     DataType::Union(vec![
 ///         Field::new("Identity", DataType::Boolean, false),
 ///         Field::new("Quaternion", Quaternion::data_type(), false),
-///     ], None, UnionMode::Sparse),
+///     ], None, UnionMode::Dense),
 /// );
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "sparse")] // TODO(jeremy): Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
 pub enum Rotation3D {
     /// No rotation.
     #[default]
@@ -95,15 +148,22 @@ pub enum Rotation3D {
 
     /// Rotation defined by a quaternion.
     Quaternion(Quaternion),
-    // TODO:
-    // Rotation around a given axis.
-    //AxisAngle { axis: Vec3D, angle: Angle },
+
+    /// Rotation defined with an axis and an angle.
+    AxisAngle(AxisAngleRotation),
 }
 
 impl From<Quaternion> for Rotation3D {
     #[inline]
-    fn from(v: Quaternion) -> Self {
-        Self::Quaternion(v)
+    fn from(q: Quaternion) -> Self {
+        Self::Quaternion(q)
+    }
+}
+
+impl From<AxisAngleRotation> for Rotation3D {
+    #[inline]
+    fn from(r: AxisAngleRotation) -> Self {
+        Self::AxisAngle(r)
     }
 }
 
@@ -114,6 +174,7 @@ impl From<Rotation3D> for glam::Quat {
         match val {
             Rotation3D::Identity => glam::Quat::IDENTITY,
             Rotation3D::Quaternion(v) => v.into(),
+            Rotation3D::AxisAngle(a) => a.into(),
         }
     }
 }
@@ -228,12 +289,12 @@ impl From<Scale3D> for TranslationRotationScale {
 ///     DataType::Union(vec![
 ///         Field::new("TranslationMatrix3x3", TranslationMatrix3x3::data_type(), false),
 ///         Field::new("TranslationRotationScale", TranslationRotationScale::data_type(), false),
-///     ], None, UnionMode::Sparse),
+///     ], None, UnionMode::Dense),
 /// );
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "sparse")] // TODO(jeremy): Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
 pub enum Affine3D {
     TranslationMatrix3x3(TranslationMatrix3x3),
     TranslationRotationScale(TranslationRotationScale),
@@ -242,6 +303,64 @@ pub enum Affine3D {
 
 impl Affine3D {
     pub const IDENTITY: Affine3D = Affine3D::TranslationMatrix3x3(TranslationMatrix3x3::IDENTITY);
+
+    /// Affine transform from a translation only.
+    #[inline]
+    pub fn from_translation<T: Into<Vec3D>>(translation: T) -> Self {
+        Self::TranslationMatrix3x3(TranslationMatrix3x3 {
+            translation: translation.into(),
+            matrix: Mat3x3::IDENTITY,
+        })
+    }
+
+    /// Affine transform from a rotation only.
+    #[inline]
+    pub fn from_rotation<R: Into<Rotation3D>>(rotation: R) -> Self {
+        Self::TranslationRotationScale(TranslationRotationScale {
+            rotation: rotation.into(),
+            ..Default::default()
+        })
+    }
+
+    /// Affine transform from a scale only.
+    #[inline]
+    pub fn from_scale<S: Into<Scale3D>>(scale: S) -> Self {
+        Self::TranslationRotationScale(TranslationRotationScale {
+            scale: scale.into(),
+            ..Default::default()
+        })
+    }
+
+    /// Affine transform from a translation, applied after a rotation.
+    #[inline]
+    pub fn from_translation_rotation<T: Into<Vec3D>, R: Into<Rotation3D>>(
+        translation: T,
+        rotation: R,
+    ) -> Self {
+        Self::TranslationRotationScale(TranslationRotationScale {
+            translation: translation.into(),
+            rotation: rotation.into(),
+            scale: Scale3D::Unit,
+        })
+    }
+
+    /// Affine transform from a translation, applied after a rotation, applied after a scale.
+    #[inline]
+    pub fn from_translation_rotation_scale<
+        T: Into<Vec3D>,
+        R: Into<Rotation3D>,
+        S: Into<Scale3D>,
+    >(
+        translation: T,
+        rotation: R,
+        scale: S,
+    ) -> Self {
+        Self::TranslationRotationScale(TranslationRotationScale {
+            translation: translation.into(),
+            rotation: rotation.into(),
+            scale: scale.into(),
+        })
+    }
 }
 
 impl Default for Affine3D {
@@ -453,6 +572,20 @@ impl Component for Transform3D {
     #[inline]
     fn name() -> crate::ComponentName {
         "rerun.transform3d".into()
+    }
+}
+
+impl From<Affine3D> for Transform3D {
+    #[inline]
+    fn from(affine: Affine3D) -> Self {
+        Self::Affine3D(affine)
+    }
+}
+
+impl From<Pinhole> for Transform3D {
+    #[inline]
+    fn from(pinhole: Pinhole) -> Self {
+        Self::Pinhole(pinhole)
     }
 }
 

@@ -113,7 +113,7 @@ fn log_baseline_objects(
     rec_stream: &RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    use rerun::components::{Box3D, ColorRGBA, Label, Rigid3, Transform};
+    use rerun::components::{Affine3D, Box3D, ColorRGBA, Label, Rigid3};
 
     let boxes = objects.iter().filter_map(|object| {
         Some({
@@ -128,7 +128,7 @@ fn log_baseline_objects(
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
                 let rotation = glam::Quat::from_mat3(&rotation).into();
-                Transform::Rigid3(Rigid3 {
+                Affine3D::Rigid3(Rigid3 {
                     rotation,
                     translation,
                 })
@@ -192,17 +192,17 @@ fn log_ar_camera(
     // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);
 
-    use rerun::components::{Pinhole, Rigid3, Transform};
+    use rerun::components::{Affine3D, Pinhole, Rigid3};
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        .with_component(&[Transform::Rigid3(Rigid3 {
+        .with_component(&[Affine3D::Rigid3(Rigid3 {
             rotation: rot.into(),
             translation: translation.into(),
         })])?
         .send(rec_stream)?;
     MsgSender::new("world/camera/video")
         .with_timepoint(timepoint)
-        .with_component(&[Transform::Pinhole(Pinhole {
+        .with_component(&[Transform3D::Pinhole(Pinhole {
             image_from_cam: intrinsics.into(),
             resolution: Some(resolution.into()),
         })])?

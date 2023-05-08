@@ -12,7 +12,9 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use rerun::components::{ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates};
+use rerun::components::{
+    ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates,
+};
 use rerun::time::{TimeType, Timeline};
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
@@ -52,17 +54,14 @@ impl From<GltfPrimitive> for Mesh3D {
 }
 
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
-impl From<GltfTransform> for Transform {
+impl From<GltfTransform> for Transform3D {
     fn from(transform: GltfTransform) -> Self {
-        Transform::Rigid3(rerun::components::Rigid3 {
-            rotation: rerun::components::Quaternion {
-                x: transform.r[0],
-                y: transform.r[1],
-                z: transform.r[2],
-                w: transform.r[3],
-            },
-            translation: rerun::components::Vec3D(transform.t),
-        })
+        rerun::transform::Affine3D::from_translation_rotation_scale(
+            transform.t,
+            rerun::components::Quaternion::from_xyzw(transform.r),
+            transform.s,
+        )
+        .into()
     }
 }
 
@@ -71,7 +70,7 @@ fn log_node(rec_stream: &RecordingStream, node: GltfNode) -> anyhow::Result<()> 
     let ent_path = EntityPath::from(node.name.as_str());
 
     // Convert glTF objects into Rerun components.
-    let transform = node.transform.map(Transform::from);
+    let transform = node.transform.map(Transform3D::from);
     let primitives = node
         .primitives
         .into_iter()
