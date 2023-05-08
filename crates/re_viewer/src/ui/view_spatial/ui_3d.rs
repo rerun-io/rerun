@@ -28,7 +28,7 @@ use super::{
 
 // ---
 
-#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
@@ -61,6 +61,25 @@ pub struct View3DState {
     space_camera: Vec<SpaceCamera3D>, // TODO(andreas): remove this once camera meshes are gone
 }
 
+// TODO(jleibs): This state probably doesn't belong in the blueprint in the
+// first place. But since serde skips it we also have to ignore it. or else we
+// re-store state on every frame. Either way the fact that we don't get it back
+// out of the store is going to cause problems.
+impl PartialEq for View3DState {
+    fn eq(&self, other: &Self) -> bool {
+        self.orbit_eye == other.orbit_eye
+            && self.tracked_camera == other.tracked_camera
+            && self.camera_before_tracked_camera == other.camera_before_tracked_camera
+            //&& self.eye_interpolation == other.eye_interpolation
+            //&& self.hovered_point == other.hovered_point
+            && self.spin == other.spin
+            && self.show_axes == other.show_axes
+            && self.show_bbox == other.show_bbox
+        //&& self.last_eye_interact_time == other.last_eye_interact_time
+        //&& self.space_specs == other.space_specs
+        //&& self.space_camera == other.space_camera
+    }
+}
 impl Default for View3DState {
     fn default() -> Self {
         Self {

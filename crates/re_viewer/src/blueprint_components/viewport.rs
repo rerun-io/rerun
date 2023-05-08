@@ -1,3 +1,4 @@
+use ahash::HashMap;
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use re_data_store::ComponentName;
 use re_log_types::{serde_field::SerdeField, Component};
@@ -7,14 +8,14 @@ pub use re_viewer_context::SpaceViewId;
 // TODO(jleibs) export this from other viewport def
 type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 
-#[derive(Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ViewportComponent {
     #[arrow_field(type = "SerdeField<VisibilitySet>")]
+    pub space_view_keys: std::collections::BTreeSet<SpaceViewId>,
+    #[arrow_field(type = "SerdeField<VisibilitySet>")]
     pub visible: VisibilitySet,
-    // TODO(jleibs): Something down in arrow-convert still requires implementing support for `==`
-    // Since we're replacing this with our own layout anyways, remove this for now
-    //#[arrow_field(type = "SerdeField<HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>>")]
-    //trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
+    #[arrow_field(type = "SerdeField<HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>>")]
+    pub trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
     #[arrow_field(type = "Option<SerdeField<SpaceViewId>>")]
     pub maximized: Option<SpaceViewId>,
     pub has_been_user_edited: bool,

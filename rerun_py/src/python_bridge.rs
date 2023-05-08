@@ -1201,7 +1201,9 @@ fn set_user_edited(bp_stream: &RecordingStream, user_edited: bool) {
     let timepoint = time(true, bp_stream);
 
     let viewport = ViewportComponent {
+        space_view_keys: Default::default(),
         visible: Default::default(),
+        trees: Default::default(),
         maximized: None,
         has_been_user_edited: user_edited,
     };

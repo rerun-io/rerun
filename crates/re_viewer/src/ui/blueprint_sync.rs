@@ -135,7 +135,9 @@ pub fn store_viewport(blueprint_db: &mut re_data_store::LogDb, viewport: &Viewpo
     let timepoint = TimePoint::timeless();
 
     let component = ViewportComponent {
+        space_view_keys: viewport.space_views.keys().cloned().collect(),
         visible: viewport.visible.clone(),
+        trees: viewport.trees.clone(),
         maximized: viewport.maximized,
         has_been_user_edited: viewport.has_been_user_edited,
     };
