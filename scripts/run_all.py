@@ -14,7 +14,7 @@ from typing import Any, List, Optional, Tuple, Type
 
 
 def run_py_example(path: str, viewer_port: Optional[int] = None, wait: bool = True, save: Optional[str] = None) -> Any:
-    args = ["python3", "main.py", "--num-frames=30", "--steps=200", "--connect", f"--addr='127.0.0.1:{viewer_port}'"]
+    args = ["python3", "main.py", "--num-frames=30", "--steps=200"]
     if save is not None:
         args += [f"--save={save}"]
     if viewer_port is not None:
@@ -136,13 +136,23 @@ def run_sdk_build() -> None:
             "--manifest-path",
             "rerun_py/Cargo.toml",
             '--extras="tests"',
+            "--quiet",
         ],
     ).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
 
 def run_viewer_build() -> None:
-    returncode = subprocess.Popen(["cargo", "build", "-p", "rerun", "--all-features"]).wait()
+    returncode = subprocess.Popen(
+        [
+            "cargo",
+            "build",
+            "-p",
+            "rerun",
+            "--all-features",
+            "--quiet",
+        ]
+    ).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
 
