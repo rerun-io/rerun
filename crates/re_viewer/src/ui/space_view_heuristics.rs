@@ -4,8 +4,8 @@ use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
-use re_data_store::{log_db::EntityDb, query_latest_single, ComponentName, EntityPath};
-use re_log_types::{component_types::Tensor, Component};
+use re_data_store::{log_db::EntityDb, query_latest_single, ComponentName, EntityPath, EntityTree};
+use re_log_types::{component_types::Tensor, Component, EntityPathPart};
 
 use crate::{
     misc::{space_info::SpaceInfoCollection, ViewerContext},
@@ -22,8 +22,24 @@ pub fn all_possible_space_views(
     crate::profile_function!();
 
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
-    // as well as all direct descendants of the root.
-    let root_children = &ctx.log_db.entity_db.tree.children;
+    // as well as all direct descendants of the root that have some messages.
+    let root_children = &ctx
+        .log_db
+        .entity_db
+        .tree
+        .children
+        .iter()
+        .filter(|(k, v)| {
+            let timelines = v.prefix_times.timelines();
+            let mut total_msgs = 0;
+            for timeline in timelines {
+                if let Some(hist) = v.prefix_times.get(timeline) {
+                    total_msgs += hist.total_count();
+                }
+            }
+            total_msgs != 0
+        })
+        .collect::<BTreeMap<&EntityPathPart, &EntityTree>>();
     let candidate_space_paths = spaces_info
         .iter()
         .map(|info| &info.path)
@@ -294,7 +310,6 @@ pub fn default_queried_entities(
                 .cloned(),
         );
     });
-
     entities
 }
 

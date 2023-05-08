@@ -71,7 +71,8 @@ impl Blueprint {
                 ..Default::default()
             }
             .show(ui, |ui| {
-                self.viewport.tree_ui(ctx, ui);
+                self.viewport
+                    .add_or_remove_space_views_ui(ctx, ui, spaces_info);
             });
         });
     }
@@ -98,8 +99,6 @@ impl Blueprint {
                         ui.available_size_before_wrap(),
                         egui::Layout::right_to_left(egui::Align::Center),
                         |ui| {
-                            self.viewport
-                                .add_new_spaceview_button_ui(ctx, ui, spaces_info);
                             self.reset_button_ui(ctx, ui, spaces_info);
                         },
                     );

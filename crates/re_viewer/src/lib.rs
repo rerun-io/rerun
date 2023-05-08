@@ -4,7 +4,7 @@
 //! including all 2D and 3D visualization code.
 
 mod app;
-mod depthai;
+pub mod depthai;
 pub mod env_vars;
 pub(crate) mod gpu_bridge;
 pub mod math;
@@ -189,7 +189,7 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
                 // TODO(filip): Improve this code to be more smart, maybe we have 100 legit messages and ui is in focus?
                 if tx.len() > 100 {
                     re_log::trace!("Dropping messages: Most likely the app is not in focus!");
-                    continue
+                    continue;
                 }
                 if tx.send_at(sent_at, msg).is_ok() {
                     ctx.request_repaint();

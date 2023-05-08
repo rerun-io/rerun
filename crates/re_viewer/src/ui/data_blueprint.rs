@@ -210,8 +210,8 @@ impl DataBlueprintTree {
     ) {
         crate::profile_function!();
 
+        self.entity_paths.clear();
         let mut new_leaf_groups = Vec::new();
-
         for path in paths {
             self.entity_paths.insert(path.clone());
 

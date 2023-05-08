@@ -19,7 +19,7 @@ use crate::{
     Item, UiVerbosity, ViewerContext,
 };
 
-use egui_dock::{DockArea,  Tree};
+use egui_dock::{DockArea, Tree};
 
 use super::{data_ui::DataUi, space_view::ViewState};
 
@@ -51,7 +51,6 @@ struct DepthaiTabs<'a, 'b> {
     now: f64, // Time elapsed from spawning SelectionPanel
     unsubscribe_from_imu: bool,
     imu_visible: &'a mut bool,
-    apply_button_enabled: &'a mut bool,
 }
 
 impl<'a, 'b> DepthaiTabs<'a, 'b> {
@@ -527,10 +526,9 @@ impl SelectionPanel {
                     })
                     .show_inside(ui, |ui| {
                         let mut available_devices = ctx.depthai_state.get_devices();
-                        let mut currently_selected_device =
-                            ctx.depthai_state.selected_device.clone();
+                        let currently_selected_device = ctx.depthai_state.selected_device.clone();
                         let mut combo_device: depthai::DeviceId = currently_selected_device.id;
-                        if combo_device != "" && available_devices.is_empty() {
+                        if !combo_device.is_empty() && available_devices.is_empty() {
                             available_devices.push(combo_device.clone());
                         }
                         ui.vertical(|ui| {
@@ -538,7 +536,7 @@ impl SelectionPanel {
                                 ui.label("Device: ");
                                 egui::ComboBox::from_id_source("device")
                                     .width(70.0)
-                                    .selected_text(if combo_device != "" {
+                                    .selected_text(if !combo_device.is_empty() {
                                         combo_device.clone().to_string()
                                     } else {
                                         "No device selected".to_string()
@@ -604,7 +602,6 @@ impl SelectionPanel {
                                         now: self.start_time.elapsed().as_nanos() as f64 / 1e9,
                                         unsubscribe_from_imu,
                                         imu_visible: &mut imu_tab_visible,
-                                        apply_button_enabled: &mut self.apply_cfg_button_enabled,
                                     },
                                 );
                             self.imu_tab_visible = imu_tab_visible;

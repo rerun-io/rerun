@@ -113,22 +113,15 @@ class SdkCallbacks:
         if Topic.DepthImage not in self.store.subscriptions:
             return
         depth_frame = frame.frame
-        # Maybe move to rerun depth cloud in the future
-        # depth_frame_color = depth_frame
-        # pinhole_camera = PinholeCamera(self._device.get_intrinsic_matrix(frame.msg.getWidth(
-        # ), frame.msg.getHeight()), frame.msg.getWidth(), frame.msg.getHeight())
-        # depth_frame_color = cv2.normalize(depth_frame, None, 255, 0, cv2.NORM_INF, cv2.CV_8UC1)
-        # depth_frame_color = cv2.equalizeHist(depth_frame_color)
-        # depth_frame_color = cv2.applyColorMap(depth_frame_color, cv2.COLORMAP_HOT)
-        path = EntityPath.RGB_PINHOLE_CAMERA + "/depth"
+        path = EntityPath.RGB_PINHOLE_CAMERA + "/Depth"
         depth = self.store.pipeline_config.depth
         if not depth:
             # Essentially impossible to get here
             return
         if depth.align == dai.CameraBoardSocket.LEFT:
-            path = EntityPath.LEFT_PINHOLE_CAMERA + "/depth"
+            path = EntityPath.LEFT_PINHOLE_CAMERA + "/Depth"
         elif depth.align == dai.CameraBoardSocket.RIGHT:
-            path = EntityPath.RIGHT_PINHOLE_CAMERA + "/depth"
+            path = EntityPath.RIGHT_PINHOLE_CAMERA + "/Depth"
         rr.log_depth_image(path, depth_frame, meter=1e3)
 
     def on_detections(self, packet: DetectionPacket):
