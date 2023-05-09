@@ -72,12 +72,20 @@ impl Timeline {
     }
 
     /// The log time timeline to which all API functions will always log.
+    ///
+    /// This timeline is automatically maintained by the SDKs and captures the wall-clock time at
+    /// which point the data was logged (according to the client's wall-clock).
     #[inline]
     pub fn log_time() -> Self {
         Timeline::new("log_time", TimeType::Time)
     }
 
     /// The log tick timeline to which all API functions will always log.
+    ///
+    /// This timeline is automatically maintained by the SDKs and captures the logging tick at
+    /// which point the data was logged.
+    /// The logging tick is monotically incremented each time the client calls one of the logging
+    /// methods on a `RecordingStream`.
     #[inline]
     pub fn log_tick() -> Self {
         Timeline::new("log_tick", TimeType::Sequence)
