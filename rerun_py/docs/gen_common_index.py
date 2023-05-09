@@ -119,6 +119,11 @@ SECTION_TABLE: Final[List[Section]] = [
         module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
     ),
+    Section(
+        title="Experimental",
+        module_summary="experimental",
+        func_list=["experimental.log_text_box"],
+    ),
 ]
 
 # Virtual folder where we will generate the md files
