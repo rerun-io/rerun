@@ -1163,7 +1163,7 @@ fn set_panel(entity_path: &str, expanded: bool) -> PyResult<()> {
     // TODO(jleibs): Validation this is a valid blueprint path?
     let entity_path = parse_entity_path(entity_path)?;
     // TODO(jleibs) timeless? Something else?
-    let timepoint = time(false, bp_ctx);
+    let timepoint = time(true, bp_ctx);
 
     let panel_state = PanelState { expanded };
 

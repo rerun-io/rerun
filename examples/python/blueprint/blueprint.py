@@ -16,6 +16,9 @@ def main() -> None:
     if args.enable_heuristics:
         rr.enable_heuristics()
 
+    rr.set_panel("blueprint_panel", expanded=False)
+    rr.set_panel("selection_panel", expanded=False)
+    rr.set_panel("timeline_panel", expanded=False)
     rr.add_space_view("earth-centric", "transforms3d/sun/planet", ["transforms3d/sun", "transforms3d/sun/planet"])
 
 
