@@ -41,7 +41,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_log_types::component_types::AnnotationContext>(&mut registry);
     // add::<re_log_types::component_types::Arrow3D>(&mut registry);
     // add::<re_log_types::component_types::Box3D>(&mut registry);
-    // add::<re_log_types::component_types::ClassId>(&mut registry);
+    add::<re_log_types::component_types::ClassId>(&mut registry);
     add::<re_log_types::component_types::ColorRGBA>(&mut registry);
     // add::<re_log_types::component_types::InstanceKey>(&mut registry);
     // add::<re_log_types::component_types::KeypointId>(&mut registry);

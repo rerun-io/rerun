@@ -8,6 +8,44 @@ use super::DataUi;
 
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
+impl crate::EntityDataUi for re_log_types::component_types::ClassId {
+    fn entity_data_ui(
+        &self,
+        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: re_viewer_context::UiVerbosity,
+        entity_path: &re_log_types::EntityPath,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        let annotations = crate::annotations(ctx, query, entity_path);
+        let class = annotations.class_description(Some(*self)).class_description;
+        if let Some(class) = class {
+            let response = ui.horizontal(|ui| {
+                ui.label(format!("{}", self.0));
+                if let Some(label) = &class.info.label {
+                    ui.label(label.as_str());
+                }
+                color_ui(ui, &class.info, re_ui::ReUi::table_line_height());
+            });
+
+            match verbosity {
+                UiVerbosity::Small => {
+                    if !class.keypoint_connections.is_empty() || !class.keypoint_map.is_empty() {
+                        response.response.on_hover_ui(|ui| {
+                            class_description_ui(ui, class, *self);
+                        });
+                    }
+                }
+                UiVerbosity::Reduced | UiVerbosity::All => {
+                    class_description_ui(ui, class, *self);
+                }
+            }
+        } else {
+            ui.label(format!("{}", self.0));
+        }
+    }
+}
+
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,

@@ -16,6 +16,13 @@ use crate::Component;
 #[arrow_field(transparent)]
 pub struct Label(pub String);
 
+impl Label {
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 impl Component for Label {
     #[inline]
     fn name() -> crate::ComponentName {
@@ -34,5 +41,27 @@ impl From<Label> for String {
     #[inline]
     fn from(value: Label) -> Self {
         value.0
+    }
+}
+
+impl AsRef<str> for Label {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::borrow::Borrow<str> for Label {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::ops::Deref for Label {
+    type Target = str;
+    #[inline]
+    fn deref(&self) -> &str {
+        self.as_str()
     }
 }
