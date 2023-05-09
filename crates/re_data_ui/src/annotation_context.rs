@@ -21,11 +21,12 @@ impl crate::EntityDataUi for re_log_types::component_types::ClassId {
         let class = annotations.class_description(Some(*self)).class_description;
         if let Some(class) = class {
             let response = ui.horizontal(|ui| {
+                // Color first, to keep subsequent rows of the same things aligned
+                small_color_ui(ui, &class.info);
                 ui.label(format!("{}", self.0));
                 if let Some(label) = &class.info.label {
                     ui.label(label.as_str());
                 }
-                color_ui(ui, &class.info, re_ui::ReUi::table_line_height());
             });
 
             match verbosity {
@@ -57,11 +58,12 @@ impl crate::EntityDataUi for re_log_types::component_types::KeypointId {
     ) {
         if let Some(info) = annotation_info(ctx, entity_path, query, self) {
             ui.horizontal(|ui| {
+                // Color first, to keep subsequent rows of the same things aligned
+                small_color_ui(ui, &info);
                 ui.label(format!("{}", self.0));
                 if let Some(label) = &info.label {
                     ui.label(label.as_str());
                 }
-                color_ui(ui, &info, re_ui::ReUi::table_line_height());
             });
         } else {
             ui.label(format!("{}", self.0));
@@ -239,23 +241,37 @@ fn annotation_info_table_ui<'a>(
                         ui.label(label);
                     });
                     row.col(|ui| {
-                        color_ui(ui, info, row_height);
+                        color_ui(ui, info, Vec2::new(64.0, row_height));
                     });
                 });
             }
         });
 }
 
-fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, row_height: f32) {
+fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 8.0;
         let color = info
             .color
             .map_or_else(|| auto_color(info.id), |color| color.into());
-        color_picker::show_color(ui, color, Vec2::new(64.0, row_height));
+        color_picker::show_color(ui, color, size);
         if info.color.is_none() {
             ui.weak("(auto)")
                 .on_hover_text("Color chosen automatically, since it was not logged.");
         }
     });
+}
+
+fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
+    let size = egui::Vec2::splat(re_ui::ReUi::table_line_height());
+
+    let color = info
+        .color
+        .map_or_else(|| auto_color(info.id), |color| color.into());
+
+    let response = color_picker::show_color(ui, color, size);
+
+    if info.color.is_none() {
+        response.on_hover_text("Color chosen automatically, since it was not logged.");
+    }
 }
