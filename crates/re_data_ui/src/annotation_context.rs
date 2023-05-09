@@ -46,6 +46,43 @@ impl crate::EntityDataUi for re_log_types::component_types::ClassId {
     }
 }
 
+impl crate::EntityDataUi for re_log_types::component_types::KeypointId {
+    fn entity_data_ui(
+        &self,
+        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: re_viewer_context::UiVerbosity,
+        entity_path: &re_log_types::EntityPath,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        if let Some(info) = annotation_info(ctx, entity_path, query, self) {
+            ui.horizontal(|ui| {
+                ui.label(format!("{}", self.0));
+                if let Some(label) = &info.label {
+                    ui.label(label.as_str());
+                }
+                color_ui(ui, &info, re_ui::ReUi::table_line_height());
+            });
+        } else {
+            ui.label(format!("{}", self.0));
+        }
+    }
+}
+
+fn annotation_info(
+    ctx: &mut re_viewer_context::ViewerContext<'_>,
+    entity_path: &re_log_types::EntityPath,
+    query: &re_arrow_store::LatestAtQuery,
+    keypoint_id: &re_log_types::component_types::KeypointId,
+) -> Option<re_log_types::context::AnnotationInfo> {
+    let class_id = re_data_store::query_latest_single(&ctx.log_db.entity_db, entity_path, query)?;
+    let annotations = crate::annotations(ctx, query, entity_path);
+    let class = annotations
+        .class_description(Some(class_id))
+        .class_description?;
+    class.keypoint_map.get(keypoint_id).cloned()
+}
+
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,

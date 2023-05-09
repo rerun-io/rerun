@@ -16,7 +16,6 @@ mod image;
 mod instance_path;
 mod item;
 pub mod item_ui;
-mod keypoint_id;
 mod log_msg;
 
 pub use crate::image::{
@@ -153,6 +152,7 @@ pub fn annotations(
     query: &re_arrow_store::LatestAtQuery,
     entity_path: &re_data_store::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
+    crate::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
