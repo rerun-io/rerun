@@ -404,12 +404,16 @@ impl Tensor {
     /// If all dimension sizes are one, this returns only the first dimension.
     #[inline]
     pub fn shape_short(&self) -> &[TensorDimension] {
-        self.shape
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, dim)| dim.size != 1)
-            .map_or(&self.shape[0..1], |(i, _)| &self.shape[..(i + 1)])
+        if self.shape.is_empty() {
+            &self.shape
+        } else {
+            self.shape
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, dim)| dim.size != 1)
+                .map_or(&self.shape[0..1], |(i, _)| &self.shape[..(i + 1)])
+        }
     }
 
     #[inline]
@@ -1161,6 +1165,16 @@ fn test_tensor_shape_utilities() {
             meaning: TensorDataMeaning::Unknown,
             meter: None,
         }
+    }
+
+    // Empty tensor
+    {
+        let tensor = generate_tensor_from_shape(&[]);
+
+        assert_eq!(tensor.image_height_width_channels(), None);
+        assert_eq!(tensor.shape_short(), tensor.shape());
+        assert!(!tensor.is_vector());
+        assert!(!tensor.is_shaped_like_an_image());
     }
 
     // Single element vectors
