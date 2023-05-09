@@ -251,7 +251,7 @@ fn demo_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
 
     // Add an image
-    let img = Array::<u8, _>::from_elem((1024, 1024, 3).f(), 128);
+    let img = Array::<u8, _>::from_elem((1024, 1024, 3, 1).f(), 128);
     MsgSender::new("rects_demo/img")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?

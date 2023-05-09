@@ -465,7 +465,12 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
 fn height_width_depth(tensor: &Tensor) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
 
-    let shape = &tensor.shape();
+    let mut shape = tensor.shape_short();
+
+    // Handle 1x1 and 1x1x1 images.
+    if shape.len() == 1 {
+        shape = tensor.shape();
+    }
 
     anyhow::ensure!(
         shape.len() == 2 || shape.len() == 3,
