@@ -2689,9 +2689,9 @@ dependencies = [
 
 [[package]]
 name = "memory-stats"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d3f458a3076e337e027943b8cb5f4f72a6651714f9258fc7dcd3ae3b51f0276"
+checksum = "34f79cf9964c5c9545493acda1263f1912f8d2c56c8a2ffee2606cb960acaacc"
 dependencies = [
  "libc",
  "winapi",
