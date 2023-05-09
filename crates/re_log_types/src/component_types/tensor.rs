@@ -427,8 +427,8 @@ impl Tensor {
 
         match shape_short.len() {
             1 => {
-                // Special case: Nx1 and Nx1x1 tensors are treated as Nx1 grey images.
-                if self.shape.len() == 2 || self.shape.len() == 3 {
+                // Special case: Nx1(x1x1x...) tensors are treated as Nx1 grey images.
+                if self.shape.len() >= 2 {
                     Some([shape_short[0].size, 1, 1])
                 } else {
                     None
@@ -1152,7 +1152,7 @@ fn test_tensor_shape_utilities() {
         }
     }
 
-    // Empty tensor
+    // Empty tensor.
     {
         let tensor = generate_tensor_from_shape(&[]);
 
@@ -1162,8 +1162,8 @@ fn test_tensor_shape_utilities() {
         assert!(!tensor.is_shaped_like_an_image());
     }
 
-    // Single element vectors
-    for shape in [vec![1], vec![1, 1, 1, 1]] {
+    // Single dimension tensors.
+    for shape in [vec![4], vec![1]] {
         let tensor = generate_tensor_from_shape(&shape);
 
         assert_eq!(tensor.image_height_width_channels(), None);
@@ -1172,8 +1172,13 @@ fn test_tensor_shape_utilities() {
         assert!(!tensor.is_shaped_like_an_image());
     }
 
-    // Special case: Single element, but kinda looks like a grey image!
-    for shape in [vec![1, 1], vec![1, 1, 1]] {
+    // Single element, but it might be interpreted as a 1x1 grey image!
+    for shape in [
+        vec![1, 1],
+        vec![1, 1, 1],
+        vec![1, 1, 1, 1],
+        vec![1, 1, 1, 1, 1],
+    ] {
         let tensor = generate_tensor_from_shape(&shape);
 
         assert_eq!(tensor.image_height_width_channels(), Some([1, 1, 1]));
@@ -1181,17 +1186,6 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_vector());
         assert!(tensor.is_shaped_like_an_image());
     }
-
-    // 1D tensors
-    for shape in [vec![4], vec![4, 1, 1, 1]] {
-        let tensor = generate_tensor_from_shape(&shape);
-
-        assert_eq!(tensor.image_height_width_channels(), None);
-        assert_eq!(tensor.shape_short(), &tensor.shape()[0..1]);
-        assert!(tensor.is_vector());
-        assert!(!tensor.is_shaped_like_an_image());
-    }
-
     // Color/Grey 2x4 images
     for shape in [
         vec![4, 2],
@@ -1215,7 +1209,12 @@ fn test_tensor_shape_utilities() {
     }
 
     // Grey 1x4 images
-    for shape in [vec![4, 1], vec![4, 1, 1]] {
+    for shape in [
+        vec![4, 1],
+        vec![4, 1, 1],
+        vec![4, 1, 1, 1],
+        vec![4, 1, 1, 1, 1],
+    ] {
         let tensor = generate_tensor_from_shape(&shape);
 
         assert_eq!(tensor.image_height_width_channels(), Some([4, 1, 1]));
@@ -1225,7 +1224,12 @@ fn test_tensor_shape_utilities() {
     }
 
     // Grey 4x1 images
-    for shape in [vec![1, 4], vec![1, 4, 1]] {
+    for shape in [
+        vec![1, 4],
+        vec![1, 4, 1],
+        vec![1, 4, 1, 1],
+        vec![1, 4, 1, 1, 1],
+    ] {
         let tensor = generate_tensor_from_shape(&shape);
 
         assert_eq!(tensor.image_height_width_channels(), Some([1, 4, 1]));
