@@ -230,6 +230,7 @@ impl std::fmt::Debug for TensorData {
         }
     }
 }
+
 /// Flattened `Tensor` data payload
 ///
 /// ## Examples
