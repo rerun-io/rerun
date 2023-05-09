@@ -1076,7 +1076,7 @@ impl DataTable {
                 TimePoint::timeless()
             } else {
                 TimePoint::from([
-                    (Timeline::new_temporal("log_time"), Time::now().into()),
+                    (Timeline::log_time(), Time::now().into()),
                     (Timeline::new_sequence("frame_nr"), frame_nr.into()),
                 ])
             }

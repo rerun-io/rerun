@@ -523,9 +523,9 @@ fn default_timeline<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Option
     let mut log_time_timeline = None;
 
     for timeline in timelines {
-        if timeline.name().as_str() == "log_time" {
+        if timeline == &Timeline::log_time() {
             log_time_timeline = Some(timeline);
-        } else if timeline.name().as_str() != "log_tick" {
+        } else if timeline != &Timeline::log_tick() {
             return Some(timeline); // user timeline - always prefer!
         }
     }
