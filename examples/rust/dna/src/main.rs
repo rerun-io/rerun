@@ -96,7 +96,8 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
                         glam::Vec3::Z,
                         rerun::transform::Angle::Radians(time / 4.0 * TAU),
                     ),
-                ),
+                )
+                .parent_from_child(),
             )])?
             .send(rec_stream)?;
     }

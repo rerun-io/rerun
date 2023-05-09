@@ -179,6 +179,14 @@ impl From<Rotation3D> for glam::Quat {
     }
 }
 
+#[cfg(feature = "glam")]
+impl From<glam::Quat> for Rotation3D {
+    #[inline]
+    fn from(val: glam::Quat) -> Self {
+        Rotation3D::Quaternion(val.into())
+    }
+}
+
 /// TODO:
 ///
 /// ```
@@ -226,28 +234,28 @@ impl TranslationMatrix3x3 {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TranslationRotationScale {
+pub struct TranslationRotationScale3D {
     pub translation: Vec3D,
     pub rotation: Rotation3D,
     pub scale: Scale3D,
 }
 
-impl TranslationRotationScale {
-    pub const IDENTITY: TranslationRotationScale = TranslationRotationScale {
+impl TranslationRotationScale3D {
+    pub const IDENTITY: TranslationRotationScale3D = TranslationRotationScale3D {
         translation: Vec3D::ZERO,
         rotation: Rotation3D::Identity,
         scale: Scale3D::Unit,
     };
 }
 
-impl Default for TranslationRotationScale {
+impl Default for TranslationRotationScale3D {
     #[inline]
     fn default() -> Self {
         Self::IDENTITY
     }
 }
 
-impl From<Vec3D> for TranslationRotationScale {
+impl From<Vec3D> for TranslationRotationScale3D {
     #[inline]
     fn from(v: Vec3D) -> Self {
         Self {
@@ -257,7 +265,7 @@ impl From<Vec3D> for TranslationRotationScale {
     }
 }
 
-impl From<Rotation3D> for TranslationRotationScale {
+impl From<Rotation3D> for TranslationRotationScale3D {
     #[inline]
     fn from(v: Rotation3D) -> Self {
         Self {
@@ -267,7 +275,7 @@ impl From<Rotation3D> for TranslationRotationScale {
     }
 }
 
-impl From<Scale3D> for TranslationRotationScale {
+impl From<Scale3D> for TranslationRotationScale3D {
     #[inline]
     fn from(v: Scale3D) -> Self {
         Self {
@@ -280,24 +288,25 @@ impl From<Scale3D> for TranslationRotationScale {
 /// TODO:
 ///
 /// ```
-/// use re_log_types::component_types::{Affine3D, TranslationMatrix3x3, TranslationRotationScale};
+/// use re_log_types::component_types::{Affine3DRepresentation, TranslationMatrix3x3, TranslationRotationScale};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
 /// assert_eq!(
-///     Affine3D::data_type(),
+///     Affine3DRepresentation::data_type(),
 ///     DataType::Union(vec![
 ///         Field::new("TranslationMatrix3x3", TranslationMatrix3x3::data_type(), false),
 ///         Field::new("TranslationRotationScale", TranslationRotationScale::data_type(), false),
 ///     ], None, UnionMode::Dense),
 /// );
 /// ```
+
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
 pub enum Affine3D {
     TranslationMatrix3x3(TranslationMatrix3x3),
-    TranslationRotationScale(TranslationRotationScale),
+    TranslationRotationScale(TranslationRotationScale3D),
     // TODO: Raw 4x4 matrix.
 }
 
@@ -316,7 +325,7 @@ impl Affine3D {
     /// Affine transform from a rotation only.
     #[inline]
     pub fn from_rotation<R: Into<Rotation3D>>(rotation: R) -> Self {
-        Self::TranslationRotationScale(TranslationRotationScale {
+        Self::TranslationRotationScale(TranslationRotationScale3D {
             rotation: rotation.into(),
             ..Default::default()
         })
@@ -325,7 +334,7 @@ impl Affine3D {
     /// Affine transform from a scale only.
     #[inline]
     pub fn from_scale<S: Into<Scale3D>>(scale: S) -> Self {
-        Self::TranslationRotationScale(TranslationRotationScale {
+        Self::TranslationRotationScale(TranslationRotationScale3D {
             scale: scale.into(),
             ..Default::default()
         })
@@ -337,10 +346,22 @@ impl Affine3D {
         translation: T,
         rotation: R,
     ) -> Self {
-        Self::TranslationRotationScale(TranslationRotationScale {
+        Self::TranslationRotationScale(TranslationRotationScale3D {
             translation: translation.into(),
             rotation: rotation.into(),
             scale: Scale3D::Unit,
+        })
+    }
+
+    /// Affine transform from a translation, applied after a linear transformation via a 3x3 matrix.
+    #[inline]
+    pub fn from_translation_matrix<T: Into<Vec3D>, M: Into<Mat3x3>>(
+        translation: T,
+        matrix: M,
+    ) -> Self {
+        Self::TranslationMatrix3x3(TranslationMatrix3x3 {
+            translation: translation.into(),
+            matrix: matrix.into(),
         })
     }
 
@@ -355,11 +376,21 @@ impl Affine3D {
         rotation: R,
         scale: S,
     ) -> Self {
-        Self::TranslationRotationScale(TranslationRotationScale {
+        Self::TranslationRotationScale(TranslationRotationScale3D {
             translation: translation.into(),
             rotation: rotation.into(),
             scale: scale.into(),
         })
+    }
+
+    #[inline]
+    pub fn parent_from_child(self) -> DirectedAffine3D {
+        DirectedAffine3D::ParentFromChild(self)
+    }
+
+    #[inline]
+    pub fn child_from_parent(self) -> DirectedAffine3D {
+        DirectedAffine3D::ChildFromParent(self)
     }
 }
 
@@ -377,55 +408,80 @@ impl From<TranslationMatrix3x3> for Affine3D {
     }
 }
 
-impl From<TranslationRotationScale> for Affine3D {
+impl From<TranslationRotationScale3D> for Affine3D {
     #[inline]
-    fn from(v: TranslationRotationScale) -> Self {
+    fn from(v: TranslationRotationScale3D) -> Self {
         Self::TranslationRotationScale(v)
     }
 }
 
 #[cfg(feature = "glam")]
-impl Affine3D {
-    // #[inline]
-    // pub fn new_parent_from_child(parent_from_child: macaw::IsoTransform) -> Self {
-    //     Self {
-    //         rotation: parent_from_child.rotation().into(),
-    //         translation: parent_from_child.translation().into(),
-    //     }
-    // }
-
-    // #[inline]
-    // pub fn new_child_from_parent(child_from_parent: macaw::IsoTransform) -> Self {
-    //     Self::new_parent_from_child(child_from_parent.inverse())
-    // }
-
-    #[inline]
-    pub fn parent_from_child(&self) -> glam::Affine3A {
-        match self {
+impl From<Affine3D> for glam::Affine3A {
+    fn from(value: Affine3D) -> Self {
+        match value {
             Affine3D::TranslationMatrix3x3(TranslationMatrix3x3 {
                 translation,
                 matrix,
-            }) => {
-                let translation = (*translation).into();
-                let matrix = (*matrix).into();
-                glam::Affine3A::from_mat3_translation(matrix, translation)
-            }
-            Affine3D::TranslationRotationScale(TranslationRotationScale {
+            }) => glam::Affine3A::from_mat3_translation(matrix.into(), translation.into()),
+
+            Affine3D::TranslationRotationScale(TranslationRotationScale3D {
                 translation,
                 rotation,
                 scale,
-            }) => {
-                let rotation = (*rotation).into();
-                let translation = (*translation).into();
-                let scale = (*scale).into();
-                glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation)
+            }) => glam::Affine3A::from_scale_rotation_translation(
+                scale.into(),
+                rotation.into(),
+                translation.into(),
+            ),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+pub enum DirectedAffine3D {
+    ChildFromParent(Affine3D),
+    ParentFromChild(Affine3D),
+}
+
+impl DirectedAffine3D {
+    /// Identity transform, i.e. parent & child are in the same space.
+    ///
+    /// Uses [`DirectedAffine3D::ParentFromChild`] since this is more common internally,
+    /// as we usually transform everything into a parent space.
+    pub const IDENTITY: DirectedAffine3D = DirectedAffine3D::ParentFromChild(Affine3D::IDENTITY);
+}
+
+impl Default for DirectedAffine3D {
+    #[inline]
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}
+
+#[cfg(feature = "glam")]
+impl DirectedAffine3D {
+    #[inline]
+    pub fn parent_from_child_transform(self) -> glam::Affine3A {
+        match self {
+            DirectedAffine3D::ChildFromParent(transform) => {
+                let transform: glam::Affine3A = transform.into();
+                transform.inverse()
             }
+            DirectedAffine3D::ParentFromChild(transform) => transform.into(),
         }
     }
 
     #[inline]
-    pub fn child_from_parent(&self) -> glam::Affine3A {
-        self.parent_from_child().inverse()
+    pub fn child_from_parent_transform(self) -> glam::Affine3A {
+        match self {
+            DirectedAffine3D::ChildFromParent(transform) => transform.into(),
+            DirectedAffine3D::ParentFromChild(transform) => {
+                let transform: glam::Affine3A = transform.into();
+                transform.inverse()
+            }
+        }
     }
 }
 
@@ -562,7 +618,7 @@ pub enum Transform3D {
     Unknown,
 
     /// For example: the parent is a 3D world space, the child a camera space.
-    Affine3D(Affine3D),
+    Affine3D(DirectedAffine3D),
 
     /// The parent is some local camera space, the child an image space.
     Pinhole(Pinhole),
@@ -575,9 +631,9 @@ impl Component for Transform3D {
     }
 }
 
-impl From<Affine3D> for Transform3D {
+impl From<DirectedAffine3D> for Transform3D {
     #[inline]
-    fn from(affine: Affine3D) -> Self {
+    fn from(affine: DirectedAffine3D) -> Self {
         Self::Affine3D(affine)
     }
 }
@@ -599,21 +655,21 @@ fn test_transform_roundtrip() {
             image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
             resolution: None,
         }),
-        Transform3D::Affine3D(
+        Transform3D::Affine3D(DirectedAffine3D::ChildFromParent(
             TranslationMatrix3x3 {
                 translation: [10.0, 11.0, 12.0].into(),
                 matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
             }
             .into(),
-        ),
-        Transform3D::Affine3D(
-            TranslationRotationScale {
+        )),
+        Transform3D::Affine3D(DirectedAffine3D::ChildFromParent(
+            TranslationRotationScale3D {
                 translation: [10.0, 11.0, 12.0].into(),
                 rotation: Quaternion::new(13.0, 14.0, 15.0, 16.0).into(),
                 scale: [17.0, 18.0, 19.0].into(),
             }
             .into(),
-        ),
+        )),
         Transform3D::Pinhole(Pinhole {
             image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]].into(),
             resolution: Some([123.0, 456.0].into()),

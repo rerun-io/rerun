@@ -61,6 +61,7 @@ impl From<GltfTransform> for Transform3D {
             rerun::components::Quaternion::from_xyzw(transform.r),
             transform.s,
         )
+        .parent_from_child()
         .into()
     }
 }

@@ -2,7 +2,7 @@
 #[test]
 fn test_transform_to_polars() {
     use re_log_types::component_types::{
-        Pinhole, Quaternion, Transform3D, TranslationRotationScale,
+        DirectedAffine3D, Pinhole, Quaternion, Transform3D, TranslationRotationScale3D,
     };
 
     let transforms = vec![
@@ -10,8 +10,8 @@ fn test_transform_to_polars() {
             image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
             resolution: None,
         })),
-        Some(Transform3D::Affine3D(
-            TranslationRotationScale {
+        Some(Transform3D::Affine3D(DirectedAffine3D::ChildFromParent(
+            TranslationRotationScale3D {
                 rotation: Quaternion {
                     x: 11.0,
                     y: 12.0,
@@ -23,7 +23,7 @@ fn test_transform_to_polars() {
                 scale: [18.0, 19.0, 20.0].into(),
             }
             .into(),
-        )),
+        ))),
         Some(Transform3D::Pinhole(Pinhole {
             image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]].into(),
             resolution: Some([123.0, 456.0].into()),

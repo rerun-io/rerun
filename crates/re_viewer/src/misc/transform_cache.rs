@@ -232,7 +232,7 @@ fn transform_at(
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
     if let Some(transform) = query_latest_single(entity_db, entity_path, query) {
         match transform {
-            Transform3D::Affine3D(rigid) => Ok(Some(rigid.parent_from_child())),
+            Transform3D::Affine3D(rigid) => Ok(Some(rigid.parent_from_child_transform())),
             // If we're connected via 'unknown' it's not reachable
             Transform3D::Unknown => Err(UnreachableTransform::UnknownTransform),
 

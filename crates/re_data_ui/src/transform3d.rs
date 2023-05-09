@@ -1,6 +1,6 @@
 use re_log_types::component_types::{
-    Affine3D, Angle, AxisAngleRotation, Pinhole, Rotation3D, Scale3D, Transform3D,
-    TranslationMatrix3x3, TranslationRotationScale, Vec3D,
+    Affine3D, Angle, AxisAngleRotation, DirectedAffine3D, Pinhole, Rotation3D, Scale3D,
+    Transform3D, TranslationMatrix3x3, TranslationRotationScale3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
@@ -24,7 +24,7 @@ impl DataUi for Transform3D {
     }
 }
 
-impl DataUi for Affine3D {
+impl DataUi for DirectedAffine3D {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
@@ -41,15 +41,16 @@ impl DataUi for Affine3D {
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => {
+                let (affine3d, dir_string) = match self {
+                    DirectedAffine3D::ChildFromParent(affine3d) => (affine3d, "parent ➡ child"),
+                    DirectedAffine3D::ParentFromChild(affine3d) => (affine3d, "child ➡ parent"),
+                };
+
                 ui.vertical(|ui| {
-                    ui.label("Affine 3D transform:");
-                    ui.indent("affine3", |ui| match self {
-                        Affine3D::TranslationMatrix3x3(translation_matrix) => {
-                            translation_matrix.data_ui(ctx, ui, verbosity, query);
-                        }
-                        Affine3D::TranslationRotationScale(translation_rotation_scale) => {
-                            translation_rotation_scale.data_ui(ctx, ui, verbosity, query);
-                        }
+                    ui.label("Affine 3D transform");
+                    ui.indent("affine3", |ui| {
+                        ui.label(dir_string);
+                        affine3d.data_ui(ctx, ui, verbosity, query);
                     });
                 });
             }
@@ -57,7 +58,8 @@ impl DataUi for Affine3D {
     }
 }
 
-impl DataUi for TranslationRotationScale {
+impl DataUi for Affine3D {
+    #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -65,7 +67,34 @@ impl DataUi for TranslationRotationScale {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let TranslationRotationScale {
+        match verbosity {
+            UiVerbosity::Small => {
+                ui.label("Affine 3D transform").on_hover_ui(|ui| {
+                    self.data_ui(ctx, ui, UiVerbosity::All, query);
+                });
+            }
+
+            UiVerbosity::All | UiVerbosity::Reduced => match self {
+                Affine3D::TranslationMatrix3x3(translation_matrix) => {
+                    translation_matrix.data_ui(ctx, ui, verbosity, query);
+                }
+                Affine3D::TranslationRotationScale(translation_rotation_scale) => {
+                    translation_rotation_scale.data_ui(ctx, ui, verbosity, query);
+                }
+            },
+        }
+    }
+}
+
+impl DataUi for TranslationRotationScale3D {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &re_arrow_store::LatestAtQuery,
+    ) {
+        let TranslationRotationScale3D {
             translation,
             rotation,
             scale,
@@ -110,7 +139,7 @@ impl DataUi for Rotation3D {
                 ui.label("No rotation");
             }
             Rotation3D::Quaternion(q) => {
-                // TODO(andreas): Better formatting for quaternions
+                // TODO(andreas): Better formatting for quaternions.
                 ui.label(format!("{q:?}"));
             }
             Rotation3D::AxisAngle(AxisAngleRotation { axis, angle }) => {
