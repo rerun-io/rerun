@@ -421,7 +421,7 @@ impl Tensor {
 
         match shape_short.len() {
             1 => {
-                // Special case: A nx1 tensor is treated as nx1 grey image.
+                // Special case: Nx1 and Nx1x1 tensors are treated as Nx1 grey images.
                 if self.shape.len() == 2 || self.shape.len() == 3 {
                     Some([shape_short[0].size, 1, 1])
                 } else {
@@ -447,7 +447,7 @@ impl Tensor {
 
         match shape_short.len() {
             1 => {
-                // Special case: A 1x1 tensor is treated as 1x1 grey image if it has image like dimensions.
+                // Special case: Nx1 and Nx1x1 tensors are treated as Nx1 grey images.
                 self.shape.len() == 2 || self.shape.len() == 3
             }
             2 => true,
