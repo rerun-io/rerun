@@ -4,8 +4,8 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
-    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time, TimeInt,
+    TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -53,7 +53,6 @@ pub struct RecordingStreamBuilder {
     batcher_config: Option<DataTableBatcherConfig>,
 
     is_official_example: bool,
-    recording_type: RecordingType,
 }
 
 impl RecordingStreamBuilder {
@@ -83,7 +82,6 @@ impl RecordingStreamBuilder {
 
             batcher_config: None,
             is_official_example,
-            recording_type: RecordingType::Data, // Default to data recording
         }
     }
 
@@ -138,12 +136,6 @@ impl RecordingStreamBuilder {
     #[doc(hidden)]
     pub fn is_official_example(mut self, is_official_example: bool) -> Self {
         self.is_official_example = is_official_example;
-        self
-    }
-
-    #[doc(hidden)]
-    pub fn blueprint(mut self) -> Self {
-        self.recording_type = RecordingType::Blueprint;
         self
     }
 
@@ -260,7 +252,6 @@ impl RecordingStreamBuilder {
             enabled,
             batcher_config,
             is_official_example,
-            recording_type,
         } = self;
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
@@ -276,7 +267,6 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             recording_source,
-            recording_type,
         };
 
         let batcher_config = batcher_config
@@ -359,8 +349,6 @@ impl RecordingStreamInner {
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
         let batcher = DataTableBatcher::new(batcher_config)?;
-
-        // TODO(cmc): BeginRecordingMsg is a misnomer; it's idempotent.
 
         let (cmds_tx, cmds_rx) = crossbeam::channel::unbounded();
 
