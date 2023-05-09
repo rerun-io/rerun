@@ -1071,15 +1071,19 @@ impl DataTable {
 
         let table_id = TableId::random();
 
-        let timepoint = |frame_nr: i64| {
-            if timeless {
+        let mut tick = 0i64;
+        let mut timepoint = |frame_nr: i64| {
+            let tp = if timeless {
                 TimePoint::timeless()
             } else {
                 TimePoint::from([
                     (Timeline::log_time(), Time::now().into()),
+                    (Timeline::log_tick(), tick.into()),
                     (Timeline::new_sequence("frame_nr"), frame_nr.into()),
                 ])
-            }
+            };
+            tick += 1;
+            tp
         };
 
         let row0 = {

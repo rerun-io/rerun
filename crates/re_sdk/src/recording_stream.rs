@@ -620,8 +620,14 @@ impl RecordingStream {
             return;
         };
 
+        // TODO(xxx): Adding a timeline to something timeless would suddenly make it not
+        // timeless... so for now it cannot even have a tick :/
+        //
+        // NOTE: We're incrementing the current tick still.
         let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        row.timepoint.insert(Timeline::log_tick(), tick.into());
+        if !row.timepoint().is_timeless() {
+            row.timepoint.insert(Timeline::log_tick(), tick.into());
+        }
 
         this.batcher.push_row(row);
     }
