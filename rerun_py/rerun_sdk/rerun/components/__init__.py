@@ -13,6 +13,7 @@ all = [
     "arrow",
     "box",
     "color",
+    "experimental",
     "label",
     "point",
     "quaternion",
