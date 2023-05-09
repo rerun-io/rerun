@@ -599,7 +599,10 @@ tensor_type!(arrow2::types::f16, F16);
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
-// Manual expansion of tensor_type! macro for `half::f16` types.
+// Manual expansion of tensor_type! macro for `half::f16` types. We need to do this
+// because arrow uses its own half type. The two use the same underlying representation
+// but are still distinct types. `half::f16`, however, is more full-featured and
+// generally a better choice to use when converting to ndarray.
 // ==========================================
 // TODO(jleibs): would be nice to support this with the macro definition as well
 // but the bytemuck casts add a bit of complexity here.
