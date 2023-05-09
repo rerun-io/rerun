@@ -19,7 +19,7 @@ pub enum ViewCategory {
     Text,
 
     /// Single textbox element
-    Textbox,
+    TextBox,
 
     /// Time series plot (scalar over time)
     TimeSeries,
@@ -39,7 +39,7 @@ impl ViewCategory {
     pub fn icon(self) -> &'static re_ui::Icon {
         match self {
             ViewCategory::Text => &re_ui::icons::SPACE_VIEW_TEXT,
-            ViewCategory::Textbox => &re_ui::icons::SPACE_VIEW_TEXTBOX,
+            ViewCategory::TextBox => &re_ui::icons::SPACE_VIEW_TEXTBOX,
             ViewCategory::TimeSeries => &re_ui::icons::SPACE_VIEW_SCATTERPLOT,
             ViewCategory::BarChart => &re_ui::icons::SPACE_VIEW_HISTOGRAM,
             ViewCategory::Spatial => &re_ui::icons::SPACE_VIEW_3D,
@@ -52,7 +52,7 @@ impl std::fmt::Display for ViewCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             ViewCategory::Text => "Text",
-            ViewCategory::Textbox => "Text Box",
+            ViewCategory::TextBox => "Text Box",
             ViewCategory::TimeSeries => "Time Series",
             ViewCategory::BarChart => "Bar Chart",
             ViewCategory::Spatial => "Spatial",
@@ -84,7 +84,7 @@ pub fn categorize_entity_path(
         if component == TextEntry::name() {
             set.insert(ViewCategory::Text);
         } else if component == TextBox::name() {
-            set.insert(ViewCategory::Textbox);
+            set.insert(ViewCategory::TextBox);
         } else if component == Scalar::name() {
             set.insert(ViewCategory::TimeSeries);
         } else if component == Point2D::name()

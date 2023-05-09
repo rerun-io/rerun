@@ -154,7 +154,7 @@ impl SpaceView {
             ViewCategory::Text => {
                 self.view_state.state_text.selection_ui(ctx.re_ui, ui);
             }
-            ViewCategory::Textbox => {
+            ViewCategory::TextBox => {
                 self.view_state.state_textbox.selection_ui(ctx.re_ui, ui);
             }
             ViewCategory::TimeSeries => {}
@@ -208,7 +208,7 @@ impl SpaceView {
                 self.view_state.ui_text(ctx, ui, &scene);
             }
 
-            ViewCategory::Textbox => {
+            ViewCategory::TextBox => {
                 let mut scene = view_text_box::SceneTextBox::default();
                 scene.load(ctx, &query);
                 self.view_state.ui_textbox(ctx, ui, &scene);

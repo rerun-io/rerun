@@ -709,7 +709,7 @@ fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
         ViewCategory::TimeSeries => Some(crate::ui::view_time_series::HELP_TEXT),
         ViewCategory::BarChart => Some(crate::ui::view_bar_chart::HELP_TEXT),
         ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text()),
-        ViewCategory::Text | ViewCategory::Textbox | ViewCategory::Tensor => None,
+        ViewCategory::Text | ViewCategory::TextBox | ViewCategory::Tensor => None,
     };
 
     if let Some(help_text) = help_text {
