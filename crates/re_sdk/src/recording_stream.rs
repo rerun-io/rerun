@@ -1133,17 +1133,7 @@ mod tests {
                 msgs
             };
 
-            // First message should be a set_recording_info resulting from the original sink swap
-            // to in-memory mode.
-            match msgs.pop().unwrap() {
-                LogMsg::BeginRecordingMsg(msg) => {
-                    assert!(msg.row_id != RowId::ZERO);
-                    similar_asserts::assert_eq!(rec_info, msg.info);
-                }
-                _ => panic!("expected BeginRecordingMsg"),
-            }
-
-            // The underlying batcher is never flushing: there's nothing else.
+            // The underlying batcher is never flushing. So there's nothing.
             assert!(msgs.pop().is_none());
         }
 
@@ -1158,6 +1148,16 @@ mod tests {
                 msgs.reverse();
                 msgs
             };
+
+            // First message should be a set_recording_info resulting from the original sink swap
+            // to in-memory mode.
+            match msgs.pop().unwrap() {
+                LogMsg::BeginRecordingMsg(msg) => {
+                    assert!(msg.row_id != RowId::ZERO);
+                    similar_asserts::assert_eq!(rec_info, msg.info);
+                }
+                _ => panic!("expected BeginRecordingMsg"),
+            }
 
             // The batched table itself, which was sent as a result of the explicit flush above.
             match msgs.pop().unwrap() {
