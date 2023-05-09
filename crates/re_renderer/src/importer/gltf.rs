@@ -21,10 +21,17 @@ pub fn load_gltf_from_buffer(
     lifetime: ResourceLifeTime,
     ctx: &mut RenderContext,
 ) -> anyhow::Result<Vec<MeshInstance>> {
-    let (doc, buffers, images) = gltf::import_slice(buffer)?;
+    crate::profile_function!();
+
+    let (doc, buffers, images) = {
+        crate::profile_scope!("gltf::import_slice");
+        gltf::import_slice(buffer)?
+    };
 
     let mut images_as_textures = Vec::with_capacity(images.len());
     for (_index, image) in images.into_iter().enumerate() {
+        crate::profile_scope!("image");
+
         let (format, data) = if let Some(format) = map_format(image.format) {
             (format, image.pixels)
         } else {
@@ -33,7 +40,7 @@ pub fn load_gltf_from_buffer(
                 re_log::debug!("Converting Rgb8 to Rgba8");
                 (
                     wgpu::TextureFormat::Rgba8UnormSrgb,
-                    Texture2DCreationDesc::convert_rgb8_to_rgba8(&image.pixels),
+                    crate::pad_rgb_to_rgba(&image.pixels, 255),
                 )
             } else {
                 anyhow::bail!("Unsupported texture format {:?}", image.format);
@@ -83,6 +90,8 @@ pub fn load_gltf_from_buffer(
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());
     for ref mesh in doc.meshes() {
+        crate::profile_scope!("mesh");
+
         let re_mesh = import_mesh(
             mesh,
             &buffers,
