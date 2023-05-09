@@ -1392,6 +1392,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             })
             .clicked()
         {
+            #[cfg(not(target_arch = "wasm32"))]
             re_viewer_context::Clipboard::with(|clipboard| {
                 clipboard.set_text(CODE.into());
             });
