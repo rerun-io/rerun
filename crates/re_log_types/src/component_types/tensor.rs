@@ -472,6 +472,38 @@ impl Tensor {
         self.meaning
     }
 
+    /// Query with x, y, channel indices.
+    ///
+    /// Allows to query values for any image like tensor even if it has more or less dimensions than 3.
+    /// (useful for sampling e.g. `N x M x C x 1` tensor which is a valid image)
+    #[inline]
+    pub fn get_image(&self, x: u64, y: u64, channel: u64) -> Option<TensorElement> {
+        match self.shape.len() {
+            1 => {
+                if channel != 0 {
+                    None
+                } else {
+                    self.get(&[x])
+                }
+            }
+            2 => {
+                if channel != 0 {
+                    None
+                } else {
+                    self.get(&[y, x])
+                }
+            }
+            3 => self.get(&[y, x, channel]),
+            4 => self.get(&[y, x, channel, 0]), // Optimization for common case, next case handles this too.
+            dim => self.get(
+                &[x, y, channel]
+                    .into_iter()
+                    .chain(std::iter::repeat(0).take(dim - 3))
+                    .collect::<Vec<u64>>(),
+            ),
+        }
+    }
+
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
