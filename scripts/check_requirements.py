@@ -5,9 +5,14 @@ from glob import glob
 
 
 def main() -> None:
-    print("checking `examples/python/requirements.txt`")
+    failed = False
+
+    print("Checking `examples/python/requirements.txt`...")
     with open("examples/python/requirements.txt") as f:
-        requirements = set(f.read().strip().splitlines())
+        lines = f.read().strip().splitlines()
+        sorted_lines = lines.copy()
+        sorted_lines.sort()
+        requirements = set(lines)
 
     missing = []
     for path in glob("examples/python/*/requirements.txt"):
@@ -16,12 +21,24 @@ def main() -> None:
             missing.append(line)
 
     if len(missing) != 0:
-        print("`examples/python/requirements.txt` is missing the following requirements:")
+        print("\n`examples/python/requirements.txt` is missing the following requirements:")
         for line in missing:
             print(line)
-        exit(1)
+        failed = True
 
-    print("`examples/python/requirements.txt` is not missing any requirements")
+    if lines != sorted_lines:
+        print("\n`examples/python/requirements.txt` is not correctly sorted.")
+        failed = True
+
+    if failed:
+        print("\nHere is what `examples/python/requirements.txt` should contain:")
+        expected = glob("examples/python/*/requirements.txt")
+        expected.sort()
+        for path in expected:
+            print(f"-r {os.path.relpath(path, 'examples/python')}")
+        exit(1)
+    else:
+        print("All clear.")
 
 
 if __name__ == "__main__":
