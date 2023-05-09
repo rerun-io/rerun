@@ -1,6 +1,5 @@
 use egui::Label;
-
-use crate::ViewerContext;
+use re_viewer_context::ViewerContext;
 
 use super::SceneTextbox;
 
