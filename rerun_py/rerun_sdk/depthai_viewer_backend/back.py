@@ -3,6 +3,7 @@ import threading
 from queue import Empty as QueueEmptyException
 from queue import Queue
 from typing import Dict, Tuple
+import time
 
 import depthai as dai
 import numpy as np
@@ -41,6 +42,7 @@ class SelectedDevice:
     id: str
     intrinsic_matrix: Dict[Tuple[int, int], np.ndarray] = {}
     calibration_data: dai.CalibrationHandler = None
+    use_encoding: bool = False
 
     _color: CameraComponent = None
     _left: CameraComponent = None
@@ -106,33 +108,46 @@ class SelectedDevice:
             print("Cam running, closing...")
             self.oak_cam.device.close()
             self.oak_cam = None
+            # Check if the device is available, timeout after 10 seconds
+            timeout_start = time.time()
+            while time.time() - timeout_start < 10:
+                available_devices = [device.getMxId() for device in dai.Device.getAllAvailableDevices()]
+                if self.id in available_devices:
+                    break
             try:
                 self.oak_cam = OakCamera(self.id)
-            except RuntimeError:
+            except RuntimeError as e:
                 print("Failed to create oak camera")
+                print(e)
                 self.oak_cam = None
                 return False, {"message": "Failed to create oak camera"}
+
+        self.use_encoding = self.oak_cam.device.getDeviceInfo().protocol == dai.XLinkProtocol.X_LINK_TCP_IP
+        if self.use_encoding:
+            print("Connected device is PoE: Using encoding...")
+        else:
+            print("Connected device is USB: Not using encoding...")
         if config.color_camera:
             print("Creating color camera")
             self._color = self.oak_cam.create_camera(
-                "color", config.color_camera.resolution, config.color_camera.fps, name="color", encode=True
+                "color", config.color_camera.resolution, config.color_camera.fps, name="color", encode=self.use_encoding
             )
             if config.color_camera.xout_video:
-                self.oak_cam.callback(self._color.out.camera, callbacks.on_color_frame)
+                self.oak_cam.callback(self._color, callbacks.on_color_frame, enable_visualizer=self.use_encoding)
         if config.left_camera:
             print("Creating left camera")
             self._left = self.oak_cam.create_camera(
-                "left", config.left_camera.resolution, config.left_camera.fps, name="left"
+                "left", config.left_camera.resolution, config.left_camera.fps, name="left", encode=self.use_encoding
             )
             if config.left_camera.xout:
-                self.oak_cam.callback(self._left.out.camera, callbacks.on_left_frame)
+                self.oak_cam.callback(self._left, callbacks.on_left_frame, enable_visualizer=self.use_encoding)
         if config.right_camera:
             print("Creating right camera")
             self._right = self.oak_cam.create_camera(
-                "right", config.right_camera.resolution, config.right_camera.fps, name="right"
+                "right", config.right_camera.resolution, config.right_camera.fps, name="right", encode=self.use_encoding
             )
             if config.right_camera.xout:
-                self.oak_cam.callback(self._right, callbacks.on_right_frame)
+                self.oak_cam.callback(self._right, callbacks.on_right_frame, enable_visualizer=self.use_encoding)
         if config.depth:
             print("Creating depth")
             self._stereo = self.oak_cam.create_stereo(left=self._left, right=self._right, name="depth")
@@ -152,13 +167,12 @@ class SelectedDevice:
         if config.imu:
             print("Creating IMU")
             imu = self.oak_cam.create_imu()
-            # TODO(filip): Sdk will handle sensors list on it's own
             sensors = [
-                dai.IMUSensor.ACCELEROMETER,
+                dai.IMUSensor.ACCELEROMETER_RAW,
                 dai.IMUSensor.GYROSCOPE_CALIBRATED,
-                dai.IMUSensor.MAGNETOMETER_CALIBRATED,
-                dai.IMUSensor.ROTATION_VECTOR,
             ]
+            if "BNO" in self.oak_cam.device.getConnectedIMU():
+                sensors.append(dai.IMUSensor.MAGNETOMETER_CALIBRATED)
             imu.config_imu(
                 sensors, report_rate=config.imu.report_rate, batch_report_threshold=config.imu.batch_report_threshold
             )
@@ -183,7 +197,8 @@ class SelectedDevice:
                 self.oak_cam.callback(self._nnet, callback)
         try:
             self.oak_cam.start(blocking=False)
-        except RuntimeError:
+        except RuntimeError as e:
+            print("Couldn't start pipeline: ", e)
             return False, {"message": "Couldn't start pipeline"}
         running = self.oak_cam.running()
         if running:

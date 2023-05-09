@@ -61,7 +61,6 @@ struct Args {
     // /// Example: `16GB`
     // #[clap(long)]
     // memory_limit: Option<String>,
-
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
@@ -294,7 +293,7 @@ async fn run_impl(
 
     #[cfg(feature = "native_viewer")]
     let startup_options = re_viewer::StartupOptions {
-        memory_limit: re_memory::MemoryLimit::parse("200MB").unwrap(),
+        memory_limit: re_memory::MemoryLimit::parse("100MB").unwrap(),
         persist_state: args.persist_state,
     };
 

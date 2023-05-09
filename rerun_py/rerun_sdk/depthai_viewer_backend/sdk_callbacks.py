@@ -63,27 +63,20 @@ class SdkCallbacks:
             return
         rr.log_imu([accel.z, accel.x, accel.y], [gyro.z, gyro.x, gyro.y], self.ahrs.Q, [mag.x, mag.y, mag.z])
 
-    # def on_pointcloud(self, packet: PointcloudPacket):
-    #     # if Topic.PointCloud not in self.store.subscriptions:
-    #     #     return
-    #     colors = cv2.cvtColor(packet.color_frame.getCvFrame(), cv2.COLOR_BGR2RGB).reshape(-1, 3)
-    #     points = packet.points.reshape(-1, 3)
-
-    #     path = EntityPath.RGB_CAMERA_TRANSFORM + "/Point cloud"
-    #     depth = self.store.pipeline_config.depth
-    #     if not depth:
-    #         # Essentially impossible to get here
-    #         return
-    #     if depth.align == dai.CameraBoardSocket.LEFT or depth.align == dai.CameraBoardSocket.RIGHT:
-    #         path = EntityPath.MONO_CAMERA_TRANSFORM + "/Point cloud"
-    #     rr.log_points(path, points, colors=colors)
-
     def on_color_frame(self, frame: FramePacket):
         # Always log pinhole cam and pose (TODO(filip): move somewhere else or not)
         if Topic.ColorImage not in self.store.subscriptions:
             return
         rr.log_rigid3(EntityPath.RGB_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
-        w, h = frame.msg.getWidth(), frame.msg.getHeight()
+        # This is slower, does cv2.imdecode decode the whole image even with cv2.IMREAD_UNCHANGED?
+        # In the future we may want to log an encoded image in the case of a remote viewer, such as robot hub
+        # if frame.msg.getType() == dai.RawImgFrame.Type.BITSTREAM:
+        #     h, w = cv2.imdecode(frame.frame, cv2.IMREAD_UNCHANGED).shape[:2]
+        #     rr.log_image_file(EntityPath.RGB_CAMERA_IMAGE, img_bytes=frame.frame, img_format=rr.ImageFormat.JPEG)
+        # else:
+        #     h, w, _ = frame.frame.shape
+        #     rr.log_image(EntityPath.RGB_CAMERA_IMAGE, cv2.cvtColor(frame.frame, cv2.COLOR_BGR2RGB))
+        h, w, _ = frame.frame.shape
         rr.log_pinhole(
             EntityPath.RGB_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
         )
@@ -92,7 +85,7 @@ class SdkCallbacks:
     def on_left_frame(self, frame: FramePacket):
         if Topic.LeftMono not in self.store.subscriptions:
             return
-        w, h = frame.msg.getWidth(), frame.msg.getHeight()
+        h, w = frame.frame.shape
         rr.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         rr.log_pinhole(
             EntityPath.LEFT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
@@ -102,7 +95,7 @@ class SdkCallbacks:
     def on_right_frame(self, frame: FramePacket):
         if Topic.RightMono not in self.store.subscriptions:
             return
-        w, h = frame.msg.getWidth(), frame.msg.getHeight()
+        h, w = frame.frame.shape
         rr.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         rr.log_pinhole(
             EntityPath.RIGHT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
