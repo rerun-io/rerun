@@ -93,25 +93,8 @@ class Viewer:
                 f"--ws-server-port={self.ws_server_port}",
             ]
 
-        process = subprocess.Popen(
-            args,
-            bufsize=1,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
-        )
-        assert process.stdout is not None
-
-        # wait for process to start
-        # we look for the message "Hosting a SDK server over TCP" in its standard output
-        started = False
-        while not started and process.poll() is None:
-            line = process.stdout.readline()
-            if "Hosting a SDK server over TCP" in line:
-                started = True
-            sys.stdout.write(line)
-
-        self.process = process
+        self.process = subprocess.Popen(args)
+        time.sleep(1)
         return self
 
     def __enter__(self) -> "Viewer":
