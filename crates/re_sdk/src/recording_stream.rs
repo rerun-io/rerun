@@ -620,7 +620,7 @@ impl RecordingStream {
             return;
         };
 
-        // TODO(xxx): Adding a timeline to something timeless would suddenly make it not
+        // TODO(#2074): Adding a timeline to something timeless would suddenly make it not
         // timeless... so for now it cannot even have a tick :/
         //
         // NOTE: We're incrementing the current tick still.
