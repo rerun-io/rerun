@@ -1345,16 +1345,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui_dock"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f86bdfe987f753ffcdf896932f09babfc63580b21e1899c304166f0befc85c8"
-dependencies = [
- "egui",
- "serde",
-]
-
-[[package]]
 name = "egui_extras"
 version = "0.21.0"
 source = "git+https://github.com/emilk/egui?rev=e9fa6c8ff68a0257ce0f2801446ba701917b7ae9#e9fa6c8ff68a0257ce0f2801446ba701917b7ae9"
@@ -1383,7 +1373,6 @@ dependencies = [
 [[package]]
 name = "egui_tile_tree"
 version = "0.1.0-alpha.1"
-source = "git+https://github.com/rerun-io/egui_tile_tree?rev=4589ef321ecbe08ae6ec2a101c2255b233b2d6d0#4589ef321ecbe08ae6ec2a101c2255b233b2d6d0"
 dependencies = [
  "egui",
  "getrandom",
@@ -4082,7 +4071,6 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "eframe",
  "egui",
- "egui_dock",
  "egui_extras",
  "egui_tile_tree",
  "image",
@@ -4108,8 +4096,8 @@ dependencies = [
  "eframe",
  "egui",
  "egui-wgpu",
- "egui_dock",
  "egui_extras",
+ "egui_tile_tree",
  "enumset",
  "glam",
  "half 2.2.1",
@@ -6339,7 +6327,3 @@ dependencies = [
  "quote",
  "syn 1.0.103",
 ]
-
-[[patch.unused]]
-name = "egui_tile_tree"
-version = "0.1.0-alpha.1"

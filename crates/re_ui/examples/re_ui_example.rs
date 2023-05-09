@@ -363,6 +363,8 @@ impl egui_tile_tree::Behavior<Tab> for MyTileTreeBehavior {
         format!("This is tab {pane}").into()
     }
 
+    // Styling:
+
     fn tab_outline_stroke(
         &self,
         _visuals: &egui::Visuals,

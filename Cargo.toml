@@ -65,9 +65,9 @@ ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
 egui = { version = "0.21.0", features = ["extra_debug_asserts", "log"] }
-egui_dock = "0.4"
 egui_extras = { version = "0.21.0", features = ["log"] }
-egui_tile_tree = { git = "https://github.com/rerun-io/egui_tile_tree", rev = "4589ef321ecbe08ae6ec2a101c2255b233b2d6d0" }
+# egui_tile_tree = { git = "https://github.com/rerun-io/egui_tile_tree", rev = "f5e5207c1faa9e9cab4317a674d225611bc82c72" }
+egui_tile_tree = { path = "../egui_tile_tree" }
 egui-wgpu = "0.21.0"
 emath = "0.21.0"
 enumset = "1.0.12"
@@ -138,3 +138,5 @@ emath = { git = "https://github.com/emilk/egui", rev = "e9fa6c8ff68a0257ce0f2801
 # Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726
 wgpu = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
 wgpu-core = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
+
+egui_tile_tree = { path = "../egui_tile_tree" }
