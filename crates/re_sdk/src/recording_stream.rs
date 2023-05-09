@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
@@ -319,6 +319,7 @@ pub struct RecordingStream {
 
 struct RecordingStreamInner {
     info: RecordingInfo,
+    tick: AtomicI64,
 
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
     /// therefore the `Drop` implementation is guaranteed that no more data can come in while it's
@@ -385,6 +386,7 @@ impl RecordingStreamInner {
 
         Ok(RecordingStreamInner {
             info,
+            tick: AtomicI64::new(0),
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
@@ -580,6 +582,7 @@ impl RecordingStream {
         // fail.
 
         this.cmds_tx.send(Command::RecordMsg(msg)).ok();
+        this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Records a [`re_log_types::PathOp`].
@@ -611,11 +614,20 @@ impl RecordingStream {
     /// Internally, incoming [`DataRow`]s are automatically coalesced into larger [`DataTable`]s to
     /// optimize for transport.
     #[inline]
-    pub fn record_row(&self, row: DataRow) {
+    pub fn record_row(&self, mut row: DataRow) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to record_row() ignored");
             return;
         };
+
+        // TODO(#2074): Adding a timeline to something timeless would suddenly make it not
+        // timeless... so for now it cannot even have a tick :/
+        //
+        // NOTE: We're incrementing the current tick still.
+        let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if !row.timepoint().is_timeless() {
+            row.timepoint.insert(Timeline::log_tick(), tick.into());
+        }
 
         this.batcher.push_row(row);
     }
