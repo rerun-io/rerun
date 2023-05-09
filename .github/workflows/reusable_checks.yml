@@ -256,6 +256,7 @@ jobs:
         uses: baptiste0928/cargo-install@v1
         with:
           crate: taplo-cli
+          args: --locked
 
       - name: Taplo check
         run: |
