@@ -1096,6 +1096,21 @@ mod tests {
     }
 
     #[test]
+    fn lazy_recording_info() {
+        let rec_stream = RecordingStreamBuilder::new("lazy_recording_info")
+            .enabled(true)
+            .batcher_config(DataTableBatcherConfig::ALWAYS)
+            .buffered()
+            .unwrap();
+
+        let storage = rec_stream.memory();
+        let msgs = storage.take();
+
+        // Nothing should have been sent if we didn't log anything
+        assert!(msgs.is_empty());
+    }
+
+    #[test]
     fn flush_hierarchy() {
         let (rec_stream, storage) = RecordingStreamBuilder::new("flush_hierarchy")
             .enabled(true)
