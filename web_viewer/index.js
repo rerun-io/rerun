@@ -18,7 +18,7 @@ function load_wasm() {
   // initialization and return to us a promise when it's done.
 
   console.debug("loading wasm…");
-  wasm_bindgen("./re_viewer_bg.wasm").then(on_wasm_loaded).catch(on_wasm_error);
+  wasm_bindgen("/re_viewer_bg.wasm").then(on_wasm_loaded).catch(on_wasm_error);
 }
 
 function on_wasm_loaded() {
@@ -84,32 +84,9 @@ function on_app_started(handle) {
 }
 
 function determine_url() {
-  // If a 'url' is provided as a url-param, use it.
-  // Although `web.rs` can also parse the url-param itself,
-  // it won't do so if we pass in a non-null url. We could
-  // arguably return null here instead and achieve the same
-  // behavior, but as long as we've queried it anyways, we
-  // may as well just pass it in for consistency.
-
-  const url_params = new URLSearchParams(window.location.search);
-
-  let url = url_params.get("url");
-
-  if (url) {
-    return url;
-  }
-
-  // Otherwise, look up an rrd in the data path.
-
-  // The expected data path is the current pathname relocated to inside of "/data" with the
-  // index.html stripped off if it's present.
-  // exa: 'https://app.rerun.io/version/v4.0.0/index.html' -> '/data/version/v4.0.0/'
-  let data_path = "/data/" + window.location.pathname.replace(/index\.html$/, "") + "/";
-
-  const rrd_file = url_params.get("file") || "colmap_fiat.rrd";
-
-  // Normalize the extra slashes from the url
-  return (data_path + rrd_file).replace(/\/{2,}/g, "/");
+  // strip `index.html`, normalize two slashes
+  let url = window.location.pathname.replace(/index\.html$/, "") + "/data.rrd";
+  return url.replace(/\/{2,}/g, "/");
 }
 
 function on_wasm_error(error) {
@@ -133,4 +110,16 @@ function on_wasm_error(error) {
             Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
     </p>`;
 }
+
+function navigate_to_example(name) {
+  if (window.location.pathname.includes("/examples/")) {
+    window.location.href = window.location.pathname.replace(/\/examples\/\w+/, `/examples/${name}`);
+  } else {
+    window.location.href = `./examples/${name}`;
+  }
+}
+
+document
+  .querySelector("#examples")
+  .addEventListener("change", ({ target }) => target.value && navigate_to_example(target.value));
 

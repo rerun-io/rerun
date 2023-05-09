@@ -38,6 +38,39 @@ canvas {
   transform: translate(-50%, 0%);
 }
 
+.header {
+  z-index: 1000;
+  position: absolute;
+  left: 64px;
+  height: 44px;
+
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.header > a {
+  background: unset;
+  padding: 10px;
+}
+
+.header > a > img {
+  max-height: 100%;
+}
+
+.examples {
+  position: relative;
+  top: 12px;
+}
+
+.examples > select {
+  border: none;
+  border-radius: 6px;
+  background-color: #212628;
+  color: #cad8de;
+  padding: 2px 5px;
+}
+
 .centered {
   margin-right: auto;
   margin-left: auto;
@@ -91,3 +124,4 @@ a {
     transform: rotate(360deg);
   }
 }
+
