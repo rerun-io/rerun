@@ -20,7 +20,7 @@ use crate::Component;
 #[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq, Eq)]
 pub struct TextBox {
     // TODO(jleibs): Support options for advanced styling. HTML? Markdown?
-    pub body: String,
+    pub body: String, // TODO(#1887): avoid allocations
 }
 
 impl TextBox {
