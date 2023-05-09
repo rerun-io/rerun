@@ -20,13 +20,20 @@ all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
+[[bin]]
+# For the `rerun` binary, always add the `native_viewer` feature.
+# See https://github.com/rerun-io/rerun/issues/1997
+name = "rerun"
+required-features = ["native_viewer"]
+
+
 [features]
 default = [
+  # We omit `native_viewer` to improve the default compile times.
   "analytics",
   "demo",
   "glam",
   "image",
-  "native_viewer",
   "server",
   "sdk",
 ]
@@ -75,6 +82,7 @@ web_viewer = [
   "dep:webbrowser",
   "re_ws_comms/server",
 ]
+
 
 [dependencies]
 re_build_info.workspace = true
