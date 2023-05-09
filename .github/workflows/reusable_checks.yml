@@ -253,9 +253,9 @@ jobs:
           save-if: false
 
       - name: Install taplo-cli
-        uses: baptiste0928/cargo-install@v1
+        uses: taiki-e/install-action@v2
         with:
-          crate: taplo-cli
+          tool: taplo-cli
 
       - name: Taplo check
         run: |
