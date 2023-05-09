@@ -9,13 +9,14 @@
 -r minimal/requirements.txt
 -r mp_pose/requirements.txt
 -r multiprocessing/requirements.txt
+-r multithreading/requirements.txt
 -r notebook/requirements.txt
 -r nyud/requirements.txt
 -r objectron/requirements.txt
 -r opencv_canny/requirements.txt
 -r plots/requirements.txt
--r ros/requirements.txt
 -r raw_mesh/requirements.txt
+-r ros/requirements.txt
 -r segment_anything/requirements.txt
 -r stable_diffusion/requirements.txt
 -r text_logging/requirements.txt
