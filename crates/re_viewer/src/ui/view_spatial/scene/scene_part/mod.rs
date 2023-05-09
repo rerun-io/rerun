@@ -25,9 +25,7 @@ pub(crate) use meshes::MeshPart;
 
 pub(crate) use points2d::Points2DPart;
 pub(crate) use points3d::Points3DPart;
-use re_log_types::{
-    component_types::{ClassId, ColorRGBA, KeypointId, Radius},
-};
+use re_log_types::component_types::{ClassId, ColorRGBA, KeypointId, Radius};
 
 use super::{EntityDepthOffsets, SceneSpatial};
 use crate::{
