@@ -552,13 +552,15 @@ fn tensor_pixel_value_ui(
 
     let text = if let Some([_, _, channel]) = tensor.image_height_width_channels() {
         match channel {
-            1 => tensor.get_image(x, y, 0).map(|v| format!("Val: {v}")),
+            1 => tensor
+                .get_with_image_coords(x, y, 0)
+                .map(|v| format!("Val: {v}")),
             3 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let (Some(r), Some(g), Some(b)) = (
-                    tensor.get_image(x, y, 0),
-                    tensor.get_image(x, y, 1),
-                    tensor.get_image(x, y, 2),
+                    tensor.get_with_image_coords(x, y, 0),
+                    tensor.get_with_image_coords(x, y, 1),
+                    tensor.get_with_image_coords(x, y, 2),
                 ) {
                     match (r, g, b) {
                         (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
@@ -573,10 +575,10 @@ fn tensor_pixel_value_ui(
             4 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let (Some(r), Some(g), Some(b), Some(a)) = (
-                    tensor.get_image(x, y, 0),
-                    tensor.get_image(x, y, 1),
-                    tensor.get_image(x, y, 2),
-                    tensor.get_image(x, y, 3),
+                    tensor.get_with_image_coords(x, y, 0),
+                    tensor.get_with_image_coords(x, y, 1),
+                    tensor.get_with_image_coords(x, y, 2),
+                    tensor.get_with_image_coords(x, y, 3),
                 ) {
                     match (r, g, b, a) {
                         (

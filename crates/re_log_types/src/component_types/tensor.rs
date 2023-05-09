@@ -468,30 +468,39 @@ impl Tensor {
     /// Allows to query values for any image like tensor even if it has more or less dimensions than 3.
     /// (useful for sampling e.g. `N x M x C x 1` tensor which is a valid image)
     #[inline]
-    pub fn get_image(&self, x: u64, y: u64, channel: u64) -> Option<TensorElement> {
+    pub fn get_with_image_coords(&self, x: u64, y: u64, channel: u64) -> Option<TensorElement> {
         match self.shape.len() {
             1 => {
-                if channel != 0 {
-                    None
-                } else {
+                if y == 0 && channel == 0 {
                     self.get(&[x])
+                } else {
+                    None
                 }
             }
             2 => {
-                if channel != 0 {
-                    None
-                } else {
+                if channel == 0 {
                     self.get(&[y, x])
+                } else {
+                    None
                 }
             }
             3 => self.get(&[y, x, channel]),
-            4 => self.get(&[y, x, channel, 0]), // Optimization for common case, next case handles this too.
-            dim => self.get(
-                &[x, y, channel]
-                    .into_iter()
-                    .chain(std::iter::repeat(0).take(dim - 3))
-                    .collect::<Vec<u64>>(),
-            ),
+            4 => {
+                // Optimization for common case, next case handles this too.
+                if self.shape[3].size == 1 {
+                    self.get(&[y, x, channel, 0])
+                } else {
+                    None
+                }
+            }
+            dim => self.image_height_width_channels().and_then(|_| {
+                self.get(
+                    &[x, y, channel]
+                        .into_iter()
+                        .chain(std::iter::repeat(0).take(dim - 3))
+                        .collect::<Vec<u64>>(),
+                )
+            }),
         }
     }
 
