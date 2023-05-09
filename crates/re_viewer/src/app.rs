@@ -1369,8 +1369,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
     } else {
         const CODE: &str = "use re_memory::AccountingAllocator;\n\
                     #[global_allocator]\n\
-                    static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =\n    \
-                        AccountingAllocator::new(mimalloc::MiMalloc);";
+                    static GLOBAL: AccountingAllocator<std::alloc::System> =\n    \
+                        AccountingAllocator::new(std::alloc::System);";
 
         #[allow(clippy::blocks_in_if_conditions)]
         if ui
