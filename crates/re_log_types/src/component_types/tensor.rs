@@ -400,6 +400,8 @@ impl Tensor {
     }
 
     /// Returns the shape of the tensor with all trailing dimensions of size 1 ignored.
+    ///
+    /// If all dimension sizes are one, this returns only the first dimension.
     #[inline]
     pub fn shape_short(&self) -> &[TensorDimension] {
         self.shape
