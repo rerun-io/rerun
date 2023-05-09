@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 # Fully qualified to avoid circular import
 import rerun.log.extension_components
 from rerun import bindings
-from rerun.components.experimental.textbox import TextboxArray
+from rerun.components.experimental.text_box import TextBoxArray
 from rerun.components.instance import InstanceArray
 from rerun.log.log_decorator import log_decorator
 
@@ -38,7 +38,7 @@ def log_text_box(
     splats: Dict[str, Any] = {}
 
     if text:
-        instanced["rerun.textbox"] = TextboxArray.from_bodies([(text,)])
+        instanced["rerun.text_box"] = TextBoxArray.from_bodies([(text,)])
     else:
         logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
 

@@ -1,18 +1,18 @@
 use egui::Label;
 use re_viewer_context::ViewerContext;
 
-use super::SceneTextbox;
+use super::SceneTextBox;
 
 // --- Main view ---
 
 #[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct ViewTextboxState {
+pub struct ViewTextBoxState {
     monospace: bool,
     word_wrap: bool,
 }
 
-impl ViewTextboxState {
+impl ViewTextBoxState {
     pub fn selection_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         crate::profile_function!();
 
@@ -28,11 +28,11 @@ impl ViewTextboxState {
     }
 }
 
-pub(crate) fn view_textbox(
+pub(crate) fn view_text_box(
     _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewTextboxState,
-    scene: &SceneTextbox,
+    state: &mut ViewTextBoxState,
+    scene: &SceneTextBox,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -49,7 +49,7 @@ pub(crate) fn view_textbox(
                 ui.add(Label::new(text).wrap(state.word_wrap));
             } else {
                 ui.label(format!(
-                    "Unepxected number of text entries: {}. Limit your query to 1.",
+                    "Unexpected number of text entries: {}. Limit your query to 1.",
                     scene.text_entries.len()
                 ));
             }

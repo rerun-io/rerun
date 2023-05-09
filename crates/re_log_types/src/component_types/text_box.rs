@@ -2,7 +2,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::Component;
 
-/// A text element intended to be displayed in a textbox
+/// A text element intended to be displayed in a text-box
 ///
 /// ```
 /// use re_log_types::component_types::Textbox;
@@ -10,7 +10,7 @@ use crate::Component;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
-///     Textbox::data_type(),
+///     TextBox::data_type(),
 ///     DataType::Struct(vec![
 ///         Field::new("body", DataType::Utf8, false),
 ///     ])
@@ -18,12 +18,12 @@ use crate::Component;
 /// ```
 // TODO(jleibs): Should this be reconciled with the `TextEntry` component?
 #[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq, Eq)]
-pub struct Textbox {
+pub struct TextBox {
     // TODO(jleibs): Support options for advanced styling. HTML? Markdown?
     pub body: String,
 }
 
-impl Textbox {
+impl TextBox {
     #[inline]
     pub fn new(body: impl Into<String>) -> Self {
         Self { body: body.into() }
@@ -35,9 +35,9 @@ impl Textbox {
     }
 }
 
-impl Component for Textbox {
+impl Component for TextBox {
     #[inline]
     fn name() -> crate::ComponentName {
-        "rerun.textbox".into()
+        "rerun.text_box".into()
     }
 }
