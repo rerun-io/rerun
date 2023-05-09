@@ -5,7 +5,7 @@ use crate::Component;
 /// A text element intended to be displayed in a text-box
 ///
 /// ```
-/// use re_log_types::component_types::Textbox;
+/// use re_log_types::component_types::TextBox;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
