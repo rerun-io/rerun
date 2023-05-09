@@ -1366,6 +1366,36 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             format_number(gpu_resource_stats.num_textures),
             format_number(gpu_resource_stats.num_buffers),
         ));
+    } else {
+        const CODE: &str = "use re_memory::AccountingAllocator;\n\
+                    #[global_allocator]\n\
+                    static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =\n    \
+                        AccountingAllocator::new(mimalloc::MiMalloc);";
+
+        #[allow(clippy::blocks_in_if_conditions)]
+        if ui
+            .add(
+                egui::Label::new(
+                    egui::RichText::new("N/A MiB")
+                        .monospace()
+                        .color(ui.visuals().weak_text_color()),
+                )
+                .sense(egui::Sense::click()),
+            )
+            .on_hover_ui(|ui| {
+                ui.label(
+                    "The Rerun viewer was not configured to run with an AccountingAllocator,\n\
+                    consider adding the following to your code's main entrypoint:",
+                );
+                ui.code(CODE);
+                ui.label("(left-click to paste to clipboard)");
+            })
+            .clicked()
+        {
+            re_viewer_context::Clipboard::with(|clipboard| {
+                clipboard.set_text(CODE.into());
+            });
+        }
     }
 }
 
