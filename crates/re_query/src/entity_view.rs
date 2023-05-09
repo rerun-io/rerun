@@ -112,7 +112,7 @@ impl ComponentWithInstances {
 
         let arrow_ref = self.values.as_arrow_ref();
         (arrow_ref.len() > offset)
-            .then(|| arrow_ref.slice(offset, 1))
+            .then(|| arrow_ref.sliced(offset, 1))
             .or_else(|| {
                 re_log::error_once!("found corrupt cell -- mismatched number of instances");
                 None
