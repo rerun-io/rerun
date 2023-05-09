@@ -421,7 +421,7 @@ impl Tensor {
         self.shape.len()
     }
 
-    /// If this tensor is shaped as an image, return the height, width, and channels/depth of it.
+    /// If the tensor can be interpreted as an image, return the height, width, and channels/depth of it.
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
         let shape_short = self.shape_short();
 
@@ -448,24 +448,9 @@ impl Tensor {
         }
     }
 
+    /// Returns true if the tensor can be interpreted as an image.
     pub fn is_shaped_like_an_image(&self) -> bool {
-        let shape_short = self.shape_short();
-
-        match shape_short.len() {
-            1 => {
-                // Special case: Nx1 and Nx1x1 tensors are treated as Nx1 grey images.
-                self.shape.len() == 2 || self.shape.len() == 3
-            }
-            2 => true,
-            3 => {
-                matches!(
-                    shape_short.last().unwrap().size,
-                    // rgb, rgba
-                    3 | 4
-                )
-            }
-            _ => false,
-        }
+        self.image_height_width_channels().is_some()
     }
 
     #[inline]
