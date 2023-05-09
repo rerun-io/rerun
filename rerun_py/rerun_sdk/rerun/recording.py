@@ -48,6 +48,11 @@ class MemoryRecording:
         # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
         presentation_id = "".join(random.choice(string.ascii_letters) for i in range(6))
 
+        # TODO(jleibs): flush the specific recording instead of all recordings
+        # This is more evidence we we want this to be a handle to the stream and not just
+        # the storage.
+        bindings.flush()
+
         base64_data = base64.b64encode(self.storage.get_rrd_as_bytes()).decode("utf-8")
 
         html_template = f"""
