@@ -8,8 +8,8 @@ use re_log_types::{
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge, AnnotationMap, Annotations, SceneQuery, TensorDecodeCache, TensorStats,
-    TensorStatsCache, UiVerbosity, ViewerContext,
+    gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiVerbosity,
+    ViewerContext,
 };
 
 use super::EntityDataUi;
@@ -33,7 +33,16 @@ impl EntityDataUi for Tensor {
 
         match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
             Ok(decoded) => {
-                tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
+                let annotations = crate::annotations(ctx, query, entity_path);
+                tensor_ui(
+                    ctx,
+                    ui,
+                    verbosity,
+                    entity_path,
+                    &annotations,
+                    self,
+                    &decoded,
+                );
             }
             Err(err) => {
                 ui.label(ctx.re_ui.error_text(err.to_string()));
@@ -47,21 +56,20 @@ fn tensor_ui(
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     entity_path: &re_data_store::EntityPath,
-    query: &re_arrow_store::LatestAtQuery,
+    annotations: &Annotations,
     _encoded_tensor: &Tensor,
     tensor: &DecodedTensor,
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
     let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
-    let annotations = annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
     let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
         &tensor_stats,
-        &annotations,
+        annotations,
     )
     .ok();
 
@@ -129,7 +137,7 @@ fn tensor_ui(
                             response,
                             tensor,
                             &tensor_stats,
-                            &annotations,
+                            annotations,
                             tensor.meter,
                             &debug_name,
                             image_rect,
@@ -159,24 +167,6 @@ fn tensor_ui(
             });
         }
     }
-}
-
-fn annotations(
-    ctx: &mut ViewerContext<'_>,
-    query: &re_arrow_store::LatestAtQuery,
-    entity_path: &re_data_store::EntityPath,
-) -> std::sync::Arc<Annotations> {
-    let mut annotation_map = AnnotationMap::default();
-    let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
-    let entity_props_map = re_data_store::EntityPropertyMap::default();
-    let scene_query = SceneQuery {
-        entity_paths: &entity_paths,
-        timeline: query.timeline,
-        latest_at: query.at,
-        entity_props_map: &entity_props_map,
-    };
-    annotation_map.load(ctx, &scene_query);
-    annotation_map.find(entity_path)
 }
 
 fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
