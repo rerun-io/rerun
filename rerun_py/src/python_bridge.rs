@@ -395,6 +395,26 @@ impl PyMemorySinkStorage {
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
+
+    fn reset_data(&mut self) {
+        let data_stream = global_data_stream();
+
+        if data_stream.is_none() {
+            no_active_recording("memory");
+        };
+
+        self.recording = data_stream.as_ref().map(|s| s.memory());
+    }
+
+    fn reset_blueprint(&mut self) {
+        let bp_stream = global_blueprint_stream();
+
+        if bp_stream.is_none() {
+            no_active_blueprint("memory");
+        };
+
+        self.blueprint = bp_stream.as_ref().map(|s| s.memory());
+    }
 }
 
 #[cfg(feature = "web_viewer")]

@@ -17,6 +17,14 @@ class MemoryRecording:
     def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
 
+    def reset_data(self) -> None:
+        """Reset the data in the MemoryRecording."""
+        self.storage.reset_data()
+
+    def reset_blueprint(self) -> None:
+        """Reset the blueprint in the MemoryRecording."""
+        self.storage.reset_blueprint()
+
     def as_html(
         self,
         width: int = DEFAULT_WIDTH,
