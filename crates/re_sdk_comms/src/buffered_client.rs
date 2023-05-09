@@ -191,16 +191,25 @@ fn msg_encode(
                 if let Ok(msg_msg) = msg_msg {
                     let packet_msg = match &msg_msg {
                         MsgMsg::LogMsg(log_msg) => {
-                            let packet = crate::encode_log_msg(log_msg);
-                            re_log::trace!("Encoded message of size {}", packet.len());
-                            PacketMsg::Packet(packet)
+                            match re_log_encoding::encoder::encode_to_bytes(std::iter::once(log_msg)) {
+                                Ok(packet) => {
+                                    re_log::trace!("Encoded message of size {}", packet.len());
+                                    Some(PacketMsg::Packet(packet))
+                                }
+                                Err(err) => {
+                                    re_log::error_once!("Failed to encode log message: {err}");
+                                    None
+                                }
+                            }
                         }
-                        MsgMsg::Flush => PacketMsg::Flush,
+                        MsgMsg::Flush => Some(PacketMsg::Flush),
                     };
 
-                    if packet_tx.send(packet_msg).is_err() {
-                        re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
-                        return;
+                    if let Some(packet_msg) = packet_msg {
+                        if packet_tx.send(packet_msg).is_err() {
+                            re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
+                            return;
+                        }
                     }
                     if msg_drop_tx.send(msg_msg).is_err() {
                         re_log::error!("Failed to send message to msg_drop thread. Likely a shutdown race-condition");

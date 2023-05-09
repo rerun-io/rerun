@@ -4131,6 +4131,7 @@ dependencies = [
  "document-features",
  "rand",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_smart_channel",
  "tokio",
