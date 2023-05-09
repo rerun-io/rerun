@@ -605,6 +605,7 @@ tensor_type!(f64, F64);
 // but the bytemuck casts add a bit of complexity here.
 impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, half::f16> {
     type Error = TensorCastError;
+
     fn try_from(value: &'a Tensor) -> Result<Self, Self::Error> {
         let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
         if let TensorData::F16(data) = &value.data {
@@ -615,8 +616,10 @@ impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, half::f16> {
         }
     }
 }
+
 impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>> for Tensor {
     type Error = TensorCastError;
+
     fn try_from(view: ::ndarray::ArrayView<'a, half::f16, D>) -> Result<Self, Self::Error> {
         let shape = view
             .shape()
@@ -649,8 +652,10 @@ impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>
         }
     }
 }
+
 impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor {
     type Error = TensorCastError;
+
     fn try_from(value: ndarray::Array<half::f16, D>) -> Result<Self, Self::Error> {
         let shape = value
             .shape()
