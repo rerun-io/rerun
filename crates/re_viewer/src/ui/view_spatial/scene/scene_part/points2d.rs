@@ -8,7 +8,7 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
-    ui::view_spatial::{SceneSpatial, UiLabel, UiLabelTarget},
+    ui::view_spatial::{scene::EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
 };
 
 use super::{
@@ -61,6 +61,7 @@ impl Points2DPart {
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
+        depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
@@ -107,6 +108,7 @@ impl Points2DPart {
                 .primitives
                 .points
                 .batch("2d points")
+                .depth_offset(depth_offset)
                 .flags(
                     re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
                         | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
@@ -171,6 +173,7 @@ impl ScenePart for Points2DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("Points2DPart");
 
@@ -205,6 +208,7 @@ impl ScenePart for Points2DPart {
                         ent_path,
                         world_from_obj,
                         entity_highlight,
+                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.points),
                     )?;
                 }
                 Ok(())

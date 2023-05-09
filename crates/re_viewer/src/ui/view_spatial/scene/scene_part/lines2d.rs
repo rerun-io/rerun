@@ -9,7 +9,7 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
-    ui::view_spatial::SceneSpatial,
+    ui::view_spatial::{scene::EntityDepthOffsets, SceneSpatial},
 };
 
 use super::{instance_key_to_picking_id, ScenePart};
@@ -23,6 +23,7 @@ impl Lines2DPart {
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
+        depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;
 
@@ -33,6 +34,7 @@ impl Lines2DPart {
             .primitives
             .line_strips
             .batch("lines 2d")
+            .depth_offset(depth_offset)
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -76,6 +78,7 @@ impl ScenePart for Lines2DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("Lines2DPart");
 
@@ -106,6 +109,7 @@ impl ScenePart for Lines2DPart {
                         ent_path,
                         world_from_obj,
                         entity_highlight,
+                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.lines2d),
                     )?;
                 }
                 Ok(())

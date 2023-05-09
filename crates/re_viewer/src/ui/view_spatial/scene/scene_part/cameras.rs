@@ -15,7 +15,7 @@ use crate::{
         space_info::query_view_coordinates, SpaceViewHighlights, SpaceViewOutlineMasks,
         TransformCache,
     },
-    ui::view_spatial::{SceneSpatial, SpaceCamera3D},
+    ui::view_spatial::{scene::EntityDepthOffsets, SceneSpatial, SpaceCamera3D},
 };
 
 use super::{instance_path_hash_for_picking, ScenePart};
@@ -190,6 +190,7 @@ impl ScenePart for CamerasPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("CamerasPart");
 

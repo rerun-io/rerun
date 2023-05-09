@@ -10,7 +10,8 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 use crate::{
     misc::{SpaceViewHighlights, TransformCache},
     ui::view_spatial::{
-        scene::scene_part::instance_path_hash_for_picking, SceneSpatial, UiLabel, UiLabelTarget,
+        scene::{scene_part::instance_path_hash_for_picking, EntityDepthOffsets},
+        SceneSpatial, UiLabel, UiLabelTarget,
     },
 };
 
@@ -25,6 +26,7 @@ impl Boxes2DPart {
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
         highlights: &SpaceViewHighlights,
+        depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;
 
@@ -37,6 +39,7 @@ impl Boxes2DPart {
             .primitives
             .line_strips
             .batch("2d boxes")
+            .depth_offset(depth_offset)
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -105,6 +108,7 @@ impl ScenePart for Boxes2DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("Boxes2DPart");
 
@@ -136,6 +140,7 @@ impl ScenePart for Boxes2DPart {
                         ent_path,
                         world_from_obj,
                         highlights,
+                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.box2d),
                     )?;
                 }
                 Ok(())
