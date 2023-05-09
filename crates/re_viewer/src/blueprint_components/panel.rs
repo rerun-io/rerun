@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use re_data_store::ComponentName;
-use re_log_types::{Component, EntityPath};
+use re_log_types::Component;
 
 /// A Panel component
 /// TODO(jleibs): Some serde back here might be nice

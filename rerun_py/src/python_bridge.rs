@@ -164,6 +164,12 @@ fn no_active_recording(origin: &str) {
     );
 }
 
+fn no_active_blueprint(origin: &str) {
+    re_log::warn_once!(
+        "No active blueprint - call to {origin}() ignored (have you called rr.init()?)",
+    );
+}
+
 // --- Init ---
 
 #[pyfunction]
@@ -171,8 +177,6 @@ fn no_active_recording(origin: &str) {
     application_id,
     recording_id=None,
     application_path=None,
-    init_logging=true,
-    init_blueprint=false,
     append_blueprint=false,
     default_enabled=true,
 ))]
@@ -182,8 +186,6 @@ fn init(
     application_id: String,
     recording_id: Option<String>,
     application_path: Option<PathBuf>,
-    init_logging: bool,
-    init_blueprint: bool,
     append_blueprint: bool,
     default_enabled: bool,
 ) -> PyResult<()> {
@@ -217,33 +219,25 @@ fn init(
     };
 
     let mut data_stream = global_data_stream();
-    *data_stream = if init_logging {
-        RecordingStreamBuilder::new(application_id.clone())
-            .is_official_example(is_official_example)
-            .recording_id(recording_id)
-            .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
-            .default_enabled(default_enabled)
-            .buffered()
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .into()
-    } else {
-        None
-    };
+    *data_stream = RecordingStreamBuilder::new(application_id.clone())
+        .is_official_example(is_official_example)
+        .recording_id(recording_id)
+        .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+        .default_enabled(default_enabled)
+        .buffered()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .into();
 
     let mut bp_ctx = global_blueprint_stream();
-    *bp_ctx = if init_blueprint {
-        RecordingStreamBuilder::new(application_id)
-            .is_official_example(is_official_example)
-            .recording_id(blueprint_id)
-            .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
-            .blueprint()
-            .default_enabled(default_enabled)
-            .buffered()
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .into()
-    } else {
-        None
-    };
+    *bp_ctx = RecordingStreamBuilder::new(application_id)
+        .is_official_example(is_official_example)
+        .recording_id(blueprint_id)
+        .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+        .blueprint()
+        .default_enabled(default_enabled)
+        .buffered()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .into();
 
     Ok(())
 }
@@ -322,21 +316,26 @@ fn shutdown(py: Python<'_>) {
 
 #[pyfunction]
 fn connect(addr: Option<String>) -> PyResult<()> {
+    let data_stream = global_data_stream();
+    let Some(data_stream) = data_stream.as_ref() else {
+        no_active_recording("connect");
+        return Ok(());
+    };
+
+    let bp_stream = global_blueprint_stream();
+    let Some(bp_stream) = bp_stream.as_ref() else {
+        no_active_blueprint("connect");
+        return Ok(());
+    };
+
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
         rerun::default_server_addr()
     };
 
-    if let Some(data_stream) = global_data_stream().as_ref() {
-        re_log::info!("Connecting the logging stream");
-        data_stream.connect(addr);
-    }
-
-    if let Some(bp_stream) = global_blueprint_stream().as_ref() {
-        re_log::info!("Connecting the blueprint stream");
-        bp_stream.connect(addr);
-    }
+    data_stream.connect(addr);
+    bp_stream.connect(addr);
 
     Ok(())
 }
@@ -357,9 +356,20 @@ fn save(path: &str) -> PyResult<()> {
 /// Create an in-memory rrd file
 #[pyfunction]
 fn memory_recording() -> PyMemorySinkStorage {
+    let data_stream = global_data_stream();
+    let bp_stream = global_blueprint_stream();
+
+    if data_stream.is_none() {
+        no_active_recording("memory");
+    };
+
+    if bp_stream.is_none() {
+        no_active_blueprint("memory");
+    };
+
     PyMemorySinkStorage {
-        recording: global_data_stream().as_ref().map(|s| s.memory()),
-        blueprint: global_blueprint_stream().as_ref().map(|s| s.memory()),
+        recording: data_stream.as_ref().map(|s| s.memory()),
+        blueprint: bp_stream.as_ref().map(|s| s.memory()),
     }
 }
 
@@ -410,6 +420,7 @@ fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyR
 
         let _guard = enter_tokio_runtime();
 
+        // TODO(jleibs): --serve also needs to support blueprints
         data_stream.set_sink(
             rerun::web_viewer::new_sink(
                 open_browser,
@@ -443,11 +454,11 @@ fn disconnect(py: Python<'_>) {
     // cleanup a python object.
     py.allow_threads(|| {
         if let Some(data_stream) = global_data_stream().as_ref() {
-            re_log::info!("Disconnecting the data stream");
+            re_log::debug!("Disconnecting the data stream");
             data_stream.disconnect();
         };
         if let Some(bp_stream) = global_blueprint_stream().as_ref() {
-            re_log::info!("Disconnecting the blueprint stream");
+            re_log::debug!("Disconnecting the blueprint stream");
             bp_stream.disconnect();
         }
     });
