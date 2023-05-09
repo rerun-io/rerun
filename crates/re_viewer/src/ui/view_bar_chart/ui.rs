@@ -11,10 +11,30 @@ use super::SceneBarChart;
 
 // ---
 
-pub(crate) const HELP_TEXT: &str = "\
-    Pan by dragging, or scroll (+ shift = horizontal).\n\
-    Box zooming: Right click to zoom in and zoom out using a selection.\n\
-    Reset view with double-click.";
+pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    let horizontal_modifier = egui::Modifiers::SHIFT;
+    let zoom_modifier = egui::Modifiers::CTRL;
+    let select_zoom = egui::PointerButton::Secondary;
+
+    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+
+    layout.add("Pan by dragging, or scroll (+ ");
+    layout.add(horizontal_modifier);
+    layout.add(" for horizontal).\n");
+
+    layout.add("Zoom with pinch gesture or scroll + ");
+    layout.add(zoom_modifier);
+    layout.add(".\n");
+
+    layout.add("Drag ");
+    layout.add(select_zoom);
+    layout.add(" to zoom in/out using a selection.\n\n");
+
+    layout.add_button_text("double-click");
+    layout.add(" to reset the view.");
+
+    layout.layout_job.into()
+}
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct BarChartState;

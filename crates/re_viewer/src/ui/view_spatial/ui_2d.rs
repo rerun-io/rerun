@@ -203,9 +203,21 @@ impl View2DState {
     }
 }
 
-pub const HELP_TEXT_2D: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
-    Drag to pan.\n\
-    Double-click to reset the view.";
+pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    let zoom_scroll_modifier = egui::Modifiers::COMMAND;
+
+    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+
+    layout.add(zoom_scroll_modifier);
+    layout.add(" + scroll to zoom.\n");
+
+    layout.add("Drag to pan.\n");
+
+    layout.add_button_text("double-click");
+    layout.add(" to reset the view.");
+
+    layout.layout_job.into()
+}
 
 /// Create the outer 2D view, which consists of a scrollable region
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_3d`

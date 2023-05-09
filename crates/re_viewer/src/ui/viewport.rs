@@ -704,11 +704,11 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     }
 }
 
-fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
+fn help_text_ui(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, space_view: &SpaceView) {
     let help_text = match space_view.category {
-        ViewCategory::TimeSeries => Some(crate::ui::view_time_series::HELP_TEXT),
-        ViewCategory::BarChart => Some(crate::ui::view_bar_chart::HELP_TEXT),
-        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text()),
+        ViewCategory::TimeSeries => Some(crate::ui::view_time_series::help_text(re_ui)),
+        ViewCategory::BarChart => Some(crate::ui::view_bar_chart::help_text(re_ui)),
+        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text(re_ui)),
         ViewCategory::Text | ViewCategory::Tensor => None,
     };
 
@@ -760,7 +760,7 @@ fn space_view_options_ui(
             }
 
             // Show help last, since not all space views have help text
-            help_text_ui(ui, space_view);
+            help_text_ui(ui, ctx.re_ui, space_view);
 
             // Put a frame so that the buttons cover any labels they intersect with:
             let rect = ui.min_rect().expand2(egui::vec2(1.0, -2.0));

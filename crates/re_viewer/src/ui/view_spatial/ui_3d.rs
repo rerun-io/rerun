@@ -238,18 +238,55 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
-    Drag with secondary mouse button to pan.\n\
-    Drag with middle mouse button (or primary mouse button + holding ALT/OPTION) to roll the view.\n\
-    Scroll to zoom.\n\
-    \n\
-    While hovering the 3D view, navigate with WSAD and QE.\n\
-    CTRL slows down, SHIFT speeds up.\n\
-    \n\
-    Double-click an object to focus the view on it.\n\
-    For cameras, you can restore the view again with Escape.\n\
-    \n\
-    Double-click on empty space to reset the view.";
+pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    let pan_mouse = egui::PointerButton::Secondary;
+    let roll_mouse = egui::PointerButton::Middle;
+    let roll_mouse_alt = egui::PointerButton::Primary;
+    let roll_modifier = egui::Modifiers::ALT;
+    let speed_up = egui::Modifiers::SHIFT;
+    let slow_down = egui::Modifiers::CTRL;
+    let restore_key = egui::Key::Escape;
+
+    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+
+    layout.add("Drag to rotate.\n");
+
+    layout.add("Drag with ");
+    layout.add(pan_mouse);
+    layout.add(" to pan.\n");
+
+    layout.add("Drag with ");
+    layout.add(roll_mouse);
+    layout.add(" ( ");
+    layout.add(roll_mouse_alt);
+    layout.add(" + holding ");
+    layout.add(roll_modifier);
+    layout.add(" ) to roll the view.\n");
+
+    layout.add("Scroll or pinch to zoom.\n\n");
+
+    layout.add("While hovering the 3D view, navigate with ");
+    layout.add_button_text("WASD");
+    layout.add(" and ");
+    layout.add_button_text("QE");
+    layout.add("\n");
+
+    layout.add(slow_down);
+    layout.add(" slows down, ");
+    layout.add(speed_up);
+    layout.add(" speeds up\n\n");
+
+    layout.add_button_text("double-click");
+    layout.add(" an object to focus the view on it.\n");
+    layout.add("For cameras, you can restore the view again with ");
+    layout.add(restore_key);
+    layout.add(" .\n\n");
+
+    layout.add_button_text("double-click");
+    layout.add(" on empty space to reset the view.");
+
+    layout.layout_job.into()
+}
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
 #[allow(clippy::too_many_arguments)]
