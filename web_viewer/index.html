@@ -1,290 +1,58 @@
 <!DOCTYPE html>
 <!-- The version of index.html that will be served by app.rerun.io -->
 <html>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-<!-- Disable zooming: -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <!-- Disable zooming: -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 
-<head>
+  <head>
     <link rel="icon" href="favicon.svg" />
     <title>rerun viewer</title>
-    <style>
-        html {
-            /* Remove touch delay: */
-            touch-action: manipulation;
-        }
+    <link rel="stylesheet" href="index.css" />
+  </head>
 
-        body {
-            /* Light mode background color for what is not covered by the egui canvas,
-            or where the egui canvas is translucent. */
-            background: #909090;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            body {
-                /* Dark mode background color for what is not covered by the egui canvas,
-                or where the egui canvas is translucent. */
-                background: #404040;
-            }
-        }
-
-        /* Allow canvas to fill entire web page: */
-        html,
-        body {
-            overflow: hidden;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: 100%;
-            width: 100%;
-        }
-
-        /* Position canvas in center-top: */
-        canvas {
-            margin-right: auto;
-            margin-left: auto;
-            display: block;
-            position: absolute;
-            top: 0%;
-            left: 50%;
-            transform: translate(-50%, 0%);
-        }
-
-        .centered {
-            margin-right: auto;
-            margin-left: auto;
-            display: block;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #f0f0f0;
-            font-size: 24px;
-            font-family: Ubuntu-Light, Helvetica, sans-serif;
-            text-align: center;
-        }
-
-        a {
-            display: inline-block;
-            background: white;
-            color: black;
-            padding: .75rem 1rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        /* ---------------------------------------------- */
-        /* Loading animation from https://loading.io/css/ */
-        .lds-dual-ring {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-        }
-
-        .lds-dual-ring:after {
-            content: " ";
-            display: block;
-            width: 24px;
-            height: 24px;
-            margin: 0px;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            border-color: #fff transparent #fff transparent;
-            animation: lds-dual-ring 1.2s linear infinite;
-        }
-
-        @keyframes lds-dual-ring {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-    </style>
-</head>
-
-<body>
+  <body>
     <!-- The Wasm code will resize the canvas dynamically -->
     <canvas id="the_canvas_id"></canvas>
-    <div class="centered" id="mobile_text" style="visibility:hidden">
-        <p style="font-size:16px">
-            Rerun is not yet supported on mobile browsers.
-        </p>
-        <p style="font-size:16px">
-            <a href="#" id="try_anyways">Try anyways</a>
-        </p>
+    <div class="centered" id="mobile_text" style="visibility: hidden">
+      <p style="font-size: 16px">Rerun is not yet supported on mobile browsers.</p>
+      <p style="font-size: 16px">
+        <a href="#" id="try_anyways">Try anyways</a>
+      </p>
     </div>
     <div class="centered" id="center_text">
-        <p style="font-size:16px">
-            Loading…
-        </p>
-        <div class="lds-dual-ring"></div>
+      <p style="font-size: 16px">Loading…</p>
+      <div class="lds-dual-ring"></div>
     </div>
 
-    <script src="https://fifteen-thirtyeight.rerun.io/script.js" data-site="QKMCQFTQ" defer></script>
+    <script
+      src="https://fifteen-thirtyeight.rerun.io/script.js"
+      data-site="QKMCQFTQ"
+      defer
+    ></script>
 
     <script>
-        // The `--no-modules`-generated JS from `wasm-bindgen` attempts to use
-        // `WebAssembly.instantiateStreaming` to instantiate the wasm module,
-        // but this doesn't work with `file://` urls. This example is frequently
-        // viewed by simply opening `index.html` in a browser (with a `file://`
-        // url), so it would fail if we were to call this function!
-        //
-        // Work around this for now by deleting the function to ensure that the
-        // `no_modules.js` script doesn't have access to it. You won't need this
-        // hack when deploying over HTTP.
+      // The `--no-modules`-generated JS from `wasm-bindgen` attempts to use
+      // `WebAssembly.instantiateStreaming` to instantiate the wasm module,
+      // but this doesn't work with `file://` urls. This example is frequently
+      // viewed by simply opening `index.html` in a browser (with a `file://`
+      // url), so it would fail if we were to call this function!
+      //
+      // Work around this for now by deleting the function to ensure that the
+      // `no_modules.js` script doesn't have access to it. You won't need this
+      // hack when deploying over HTTP.
+      if (window.location.protocol.startsWith("file")) {
         delete WebAssembly.instantiateStreaming;
+      }
     </script>
 
     <!-- this is the JS generated by the `wasm-bindgen` CLI tool -->
     <script src="re_viewer.js"></script>
 
-    <script>
-        // On mobile platforms show a warning, but provide a link to try anyways
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-            document.querySelector('#center_text').style.visibility = 'hidden';
-            document.querySelector('#mobile_text').style.visibility = 'visible';
-            document.querySelector('#try_anyways').addEventListener('click', function (event) {
-                event.preventDefault();
-                document.querySelector('#center_text').style.visibility = 'visible';
-                document.querySelector('#mobile_text').style.visibility = 'hidden';
-                load_wasm();
-            });
-        } else {
-            load_wasm();
-        }
-
-        function load_wasm() {
-            // We'll defer our execution until the wasm is ready to go.
-            // Here we tell bindgen the path to the wasm file so it can start
-            // initialization and return to us a promise when it's done.
-
-            console.debug("loading wasm…");
-            wasm_bindgen("./re_viewer_bg.wasm")
-                .then(on_wasm_loaded)
-                .catch(on_wasm_error);
-        }
-
-
-        function on_wasm_loaded() {
-            // WebGPU version is currently only supported on browsers with WebGPU support, there is no dynamic fallback to WebGL.
-            if (wasm_bindgen.is_webgpu_build() && typeof navigator.gpu === 'undefined') {
-                console.debug("`navigator.gpu` is undefined. This indicates lack of WebGPU support.");
-                document.getElementById("center_text").innerHTML = `
-                <p>
-                    Missing WebGPU support.
-                </p>
-                <p style="font-size:18px">
-                    This version of Rerun requires WebGPU support which is not available in your browser.
-                    Either try a different browser or use the WebGL version of Rerun.
-                </p>`;
-                return;
-            }
-
-            console.debug("Wasm loaded. Starting app…");
-
-            // This call installs a bunch of callbacks and then returns:
-            let handle = new wasm_bindgen.WebHandle("the_canvas_id", determine_url());
-            handle.then(on_app_started).catch(on_wasm_error);
-        }
-
-        function on_app_started(handle) {
-            // Call `handle.destroy()` to stop. Uncomment to quick result:
-            // setTimeout(() => { handle.destroy(); handle.free()) }, 2000)
-
-            console.debug("App started.");
-            document.getElementById("center_text").innerHTML = '';
-
-            if (window.location !== window.parent.location) {
-                window.parent.postMessage("READY", "*");
-            }
-
-            function check_for_panic() {
-                if (handle.has_panicked()) {
-                    console.error("Rerun has crashed");
-
-                    // Rerun already logs the panic message and callstack, but you
-                    // can access them like this if you want to show them in the html:
-                    // console.error(`${handle.panic_message()}`);
-                    // console.error(`${handle.panic_callstack()}`);
-
-                    document.getElementById("the_canvas_id").remove();
-                    document.getElementById("center_text").innerHTML = `
-                        <p>
-                            Rerun has crashed.
-                        </p>
-                        <p style="font-size:14px">
-                            See the console for details.
-                        </p>
-                        <p style="font-size:14px">
-                            Reload the page to try again.
-                        </p>`;
-                } else {
-                    let delay_ms = 1000;
-                    setTimeout(check_for_panic, delay_ms);
-                }
-            }
-
-            check_for_panic();
-        }
-
-        function determine_url() {
-            // If a 'url' is provided as a url-param, use it.
-            // Although `web.rs` can also parse the url-param itself,
-            // it won't do so if we pass in a non-null url. We could
-            // arguably return null here instead and achieve the same
-            // behavior, but as long as we've queried it anyways, we
-            // may as well just pass it in for consistency.
-
-            const url_params = new URLSearchParams(window.location.search);
-
-            let url = url_params.get('url');
-
-            if (url) {
-                return url;
-            }
-
-            // Otherwise, look up an rrd in the data path.
-
-            // The expected data path is the current pathname relocated to inside of "/data" with the
-            // index.html stripped off if it's present.
-            // exa: 'https://app.rerun.io/version/v4.0.0/index.html' -> '/data/version/v4.0.0/'
-            let data_path = '/data/' + window.location.pathname.replace(/index\.html$/, '') + '/';
-
-            const rrd_file = url_params.get('file') || 'colmap_fiat.rrd';
-
-            // Normalize the extra slashes from the url
-            return (data_path + rrd_file).replace(/\/{2,}/g, '/');
-        }
-
-        function on_wasm_error(error) {
-            console.error("Failed to start: " + error);
-
-            let render_backend_name = "WebGPU/WebGL";
-            try {
-                render_backend_name = wasm_bindgen.is_webgpu_build() ? "WebGPU" : "WebGL";
-            } catch (e) {
-                // loading the wasm probably failed.
-            }
-
-            document.getElementById("center_text").innerHTML = `
-                <p>
-                    An error occurred during loading:
-                </p>
-                <p style="font-family:Courier New">
-                    ${error}
-                </p>
-                <p style="font-size:14px">
-                        Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
-                </p>`;
-        }
-    </script>
-</body>
-
+    <script src="index.js"></script>
+  </body>
 </html>
 
 <!-- Powered by egui: https://github.com/emilk/egui/ -->
+
