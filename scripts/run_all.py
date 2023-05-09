@@ -122,6 +122,7 @@ class Viewer:
 
 
 def run_sdk_build() -> None:
+    print("Building Python SDK…")
     returncode = subprocess.Popen(
         [
             "maturin",
@@ -136,6 +137,7 @@ def run_sdk_build() -> None:
 
 
 def run_viewer_build() -> None:
+    print("Building rerun…")
     returncode = subprocess.Popen(
         [
             "cargo",
