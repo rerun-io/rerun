@@ -57,7 +57,6 @@ __all__ = [
     "log_segmentation_image",
     "log_tensor",
     "log_text_entry",
-    "log_textbox",
     "log_unknown_transform",
     "log_view_coordinates",
     "LogLevel",

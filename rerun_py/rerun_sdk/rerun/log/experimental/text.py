@@ -31,7 +31,7 @@ def log_text_box(
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
-        Whether the textbox should be timeless.
+        Whether the text-box should be timeless.
     """
 
     instanced: Dict[str, Any] = {}
