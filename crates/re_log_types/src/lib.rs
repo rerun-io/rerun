@@ -117,6 +117,11 @@ impl RecordingId {
     pub fn from_uuid(uuid: uuid::Uuid) -> Self {
         Self(Arc::new(uuid.to_string()))
     }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
 }
 
 impl std::fmt::Display for RecordingId {
@@ -164,6 +169,10 @@ impl ApplicationId {
     /// Currently: `"unknown_app_id"`.
     pub fn unknown() -> Self {
         Self("unknown_app_id".to_owned())
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 

@@ -498,8 +498,9 @@ impl eframe::App for App {
 
         let this_frame_blueprint_id = self.state.selected_blueprint_id.clone();
 
-        // TODO(jleibs): This is gross but make sure that the default db that we
-        // create for the blueprint is correctly marked as a blueprint
+        // TODO(jleibs): If the blueprint doesn't exist this probably means we are
+        // initializing a new default-blueprint for the application in question.
+        // Make sure it's marked as a blueprint, and also enable AutoSpaceViews.
         let blueprint_db = self
             .log_dbs
             .entry(this_frame_blueprint_id.clone())
@@ -509,7 +510,7 @@ impl eframe::App for App {
                 blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
                     row_id: re_log_types::RowId::random(),
                     info: re_log_types::RecordingInfo {
-                        application_id: "Initial Blueprint".into(),
+                        application_id: this_frame_blueprint_id.as_str().into(),
                         recording_id: self.state.selected_blueprint_id.clone(),
                         is_official_example: false,
                         started: re_log_types::Time::from_seconds_since_epoch(0.0),
@@ -743,6 +744,12 @@ impl App {
                         re_log_types::RecordingType::Data => {
                             re_log::debug!("Opening a new recording: {:?}", msg.info);
                             self.state.selected_rec_id = msg.info.recording_id.clone();
+
+                            // TODO(jleibs): Select most-recent blueprint for the application-id
+                            // The default blueprint uses the application-id as the recording-id
+                            self.state.selected_blueprint_id =
+                                msg.info.application_id.clone().to_string().into();
+
                             true
                         }
                         re_log_types::RecordingType::Blueprint => {
@@ -1704,11 +1711,15 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
             .map_or(false, |ri| ri.recording_type == RecordingType::Blueprint)
     }) {
         let info = if let Some(rec_info) = log_db.recording_info() {
-            format!(
-                "{} - {}",
-                rec_info.application_id,
-                rec_info.started.format()
-            )
+            if rec_info.application_id.as_str() == rec_info.recording_id.as_str() {
+                format!("{} - Default Blueprint", rec_info.application_id,)
+            } else {
+                format!(
+                    "{} - {}",
+                    rec_info.application_id,
+                    rec_info.started.format()
+                )
+            }
         } else {
             "<UNKNOWN>".to_owned()
         };
