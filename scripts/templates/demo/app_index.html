@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!-- The version of index.html that will be served by app.rerun.io -->
+<html>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+  <!-- Disable zooming: -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+
+  <head>
+    <link rel="icon" href="/favicon.svg" />
+    <title>rerun viewer</title>
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+
+  <body>
+    <!-- The Wasm code will resize the canvas dynamically -->
+    <canvas id="the_canvas_id"></canvas>
+    <div class="centered" id="mobile_text" style="visibility: hidden">
+      <p style="font-size: 16px">Rerun is not yet supported on mobile browsers.</p>
+      <p style="font-size: 16px">
+        <a href="#" id="try_anyways">Try anyways</a>
+      </p>
+    </div>
+    <div class="centered" id="center_text">
+      <p style="font-size: 16px">Loading…</p>
+      <div class="lds-dual-ring"></div>
+    </div>
+
+    <script
+      src="https://fifteen-thirtyeight.rerun.io/script.js"
+      data-site="QKMCQFTQ"
+      defer
+    ></script>
+
+    <script>
+      window.location.href = "/examples/colmap";
+    </script>
+  </body>
+</html>
+
+<!-- Powered by egui: https://github.com/emilk/egui/ -->
+
