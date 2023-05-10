@@ -10,17 +10,6 @@ impl Clipboard {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))] // only used sometimes
-    pub fn set_text(&mut self, text: String) {
-        if let Some(clipboard) = &mut self.arboard {
-            if let Err(err) = clipboard.set_text(text) {
-                re_log::error!("Failed to copy text to clipboard: {err}",);
-            } else {
-                re_log::info!("Text copied to clipboard");
-            }
-        }
-    }
-
     pub fn set_image(&mut self, size: [usize; 2], rgba_unmultiplied: &[u8]) {
         let [width, height] = size;
         assert_eq!(width * height * 4, rgba_unmultiplied.len());

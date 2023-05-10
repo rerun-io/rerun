@@ -45,7 +45,6 @@ fn start_puffin_viewer() {
 
     if let Err(err) = child {
         let cmd = format!("cargo install puffin_viewer && puffin_viewer --url {url}",);
-        re_viewer_context::Clipboard::with(|clipboard| clipboard.set_text(cmd.clone()));
         re_log::warn!("Failed to start puffin_viewer: {err}. Try connecting manually with:  {cmd}");
 
         rfd::MessageDialog::new()
