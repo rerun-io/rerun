@@ -279,7 +279,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
@@ -301,7 +301,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
@@ -335,7 +335,13 @@ fn general_texture_creation_desc_from_tensor<'a>(
                     TextureFormat::Rgba32Float,
                 ),
 
-                // TensorData::F16(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F16(buf) => (
+                    pad_and_cast(
+                        buf,
+                        re_log_types::external::arrow2::types::f16::from_f32(1.0),
+                    ),
+                    TextureFormat::Rgba16Float,
+                ),
                 TensorData::F32(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba32Float),
                 TensorData::F64(buf) => (
                     pad_and_narrow_and_cast(buf, 1.0, |x: f64| x as f32),
@@ -362,7 +368,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 

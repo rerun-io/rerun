@@ -269,6 +269,7 @@ pub fn tensor_summary_ui_grid_contents(
         | re_log_types::component_types::TensorData::I16(_)
         | re_log_types::component_types::TensorData::I32(_)
         | re_log_types::component_types::TensorData::I64(_)
+        | re_log_types::component_types::TensorData::F16(_)
         | re_log_types::component_types::TensorData::F32(_)
         | re_log_types::component_types::TensorData::F64(_) => {}
         re_log_types::component_types::TensorData::JPEG(jpeg_bytes) => {

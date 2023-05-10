@@ -124,6 +124,11 @@ impl ArrowDeserialize for TensorId {
 ///                 false
 ///             ),
 ///             Field::new(
+///                 "F16",
+///                 DataType::List(Box::new(Field::new("item", DataType::Float16, false))),
+///                 false
+///             ),
+///             Field::new(
 ///                 "F32",
 ///                 DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
 ///                 false
@@ -153,8 +158,7 @@ pub enum TensorData {
     I32(Buffer<i32>),
     I64(Buffer<i64>),
     // ---
-    // TODO(#854): Native F16 support for arrow tensors
-    //F16(Vec<arrow2::types::f16>),
+    F16(Buffer<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
     JPEG(Buffer<u8>),
@@ -171,6 +175,7 @@ impl TensorData {
             Self::I16(_) => TensorDataType::I16,
             Self::I32(_) => TensorDataType::I32,
             Self::I64(_) => TensorDataType::I64,
+            Self::F16(_) => TensorDataType::F16,
             Self::F32(_) => TensorDataType::F32,
             Self::F64(_) => TensorDataType::F64,
         }
@@ -186,6 +191,7 @@ impl TensorData {
             Self::I16(buf) => buf.len(),
             Self::I32(buf) => buf.len(),
             Self::I64(buf) => buf.len(),
+            Self::F16(buf) => buf.len(),
             Self::F32(buf) => buf.len(),
             Self::F64(buf) => buf.len(),
         }
@@ -205,6 +211,7 @@ impl TensorData {
             | Self::I16(_)
             | Self::I32(_)
             | Self::I64(_)
+            | Self::F16(_)
             | Self::F32(_)
             | Self::F64(_) => false,
 
@@ -224,6 +231,7 @@ impl std::fmt::Debug for TensorData {
             Self::I16(_) => write!(f, "I16({} bytes)", self.size_in_bytes()),
             Self::I32(_) => write!(f, "I32({} bytes)", self.size_in_bytes()),
             Self::I64(_) => write!(f, "I64({} bytes)", self.size_in_bytes()),
+            Self::F16(_) => write!(f, "F16({} bytes)", self.size_in_bytes()),
             Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
             Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
             Self::JPEG(_) => write!(f, "JPEG({} bytes)", self.size_in_bytes()),
@@ -463,6 +471,7 @@ impl Tensor {
             TensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
             TensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
             TensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
+            TensorData::F16(buf) => Some(TensorElement::F16(buf[offset])),
             TensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
             TensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
             TensorData::JPEG(_) => None, // Too expensive to unpack here.
@@ -498,11 +507,6 @@ pub enum TensorCastError {
 
     #[error("ndarray Array is not contiguous and in standard order")]
     NotContiguousStdOrder,
-
-    #[error(
-        "tensors do not currently support f16 data (https://github.com/rerun-io/rerun/issues/854)"
-    )]
-    F16NotSupported,
 }
 
 macro_rules! tensor_type {
@@ -591,15 +595,93 @@ tensor_type!(i16, I16);
 tensor_type!(i32, I32);
 tensor_type!(i64, I64);
 
+tensor_type!(arrow2::types::f16, F16);
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
-// TODO(#854) Switch back to `tensor_type!` once we have F16 tensors
+// Manual expansion of tensor_type! macro for `half::f16` types. We need to do this
+// because arrow uses its own half type. The two use the same underlying representation
+// but are still distinct types. `half::f16`, however, is more full-featured and
+// generally a better choice to use when converting to ndarray.
+// ==========================================
+// TODO(jleibs): would be nice to support this with the macro definition as well
+// but the bytemuck casts add a bit of complexity here.
 impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, half::f16> {
     type Error = TensorCastError;
 
-    fn try_from(_: &'a Tensor) -> Result<Self, Self::Error> {
-        Err(TensorCastError::F16NotSupported)
+    fn try_from(value: &'a Tensor) -> Result<Self, Self::Error> {
+        let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
+        if let TensorData::F16(data) = &value.data {
+            ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
+                .map_err(|err| TensorCastError::BadTensorShape { source: err })
+        } else {
+            Err(TensorCastError::TypeMismatch)
+        }
+    }
+}
+
+impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>> for Tensor {
+    type Error = TensorCastError;
+
+    fn try_from(view: ::ndarray::ArrayView<'a, half::f16, D>) -> Result<Self, Self::Error> {
+        let shape = view
+            .shape()
+            .iter()
+            .map(|dim| TensorDimension {
+                size: *dim as u64,
+                name: None,
+            })
+            .collect();
+        match view.to_slice() {
+            Some(slice) => Ok(Tensor {
+                tensor_id: TensorId::random(),
+                shape,
+                data: TensorData::F16(Vec::from(bytemuck::cast_slice(slice)).into()),
+                meaning: TensorDataMeaning::Unknown,
+                meter: None,
+            }),
+            None => Ok(Tensor {
+                tensor_id: TensorId::random(),
+                shape,
+                data: TensorData::F16(
+                    view.iter()
+                        .map(|f| arrow2::types::f16::from_bits(f.to_bits()))
+                        .collect::<Vec<_>>()
+                        .into(),
+                ),
+                meaning: TensorDataMeaning::Unknown,
+                meter: None,
+            }),
+        }
+    }
+}
+
+impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor {
+    type Error = TensorCastError;
+
+    fn try_from(value: ndarray::Array<half::f16, D>) -> Result<Self, Self::Error> {
+        let shape = value
+            .shape()
+            .iter()
+            .map(|dim| TensorDimension {
+                size: *dim as u64,
+                name: None,
+            })
+            .collect();
+        value
+            .is_standard_layout()
+            .then(|| Tensor {
+                tensor_id: TensorId::random(),
+                shape,
+                data: TensorData::F16(
+                    bytemuck::cast_slice(value.into_raw_vec().as_slice())
+                        .to_vec()
+                        .into(),
+                ),
+                meaning: TensorDataMeaning::Unknown,
+                meter: None,
+            })
+            .ok_or(TensorCastError::NotContiguousStdOrder)
     }
 }
 
@@ -883,6 +965,7 @@ impl TryFrom<Tensor> for DecodedTensor {
             | TensorData::I16(_)
             | TensorData::I32(_)
             | TensorData::I64(_)
+            | TensorData::F16(_)
             | TensorData::F32(_)
             | TensorData::F64(_) => Ok(Self(tensor)),
 
@@ -972,6 +1055,7 @@ impl DecodedTensor {
             | TensorData::I16(_)
             | TensorData::I32(_)
             | TensorData::I64(_)
+            | TensorData::F16(_)
             | TensorData::F32(_)
             | TensorData::F64(_) => Ok(Self(maybe_encoded_tensor)),
 
