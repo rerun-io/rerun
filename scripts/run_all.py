@@ -12,6 +12,22 @@ from types import TracebackType
 from typing import Any, List, Optional, Tuple, Type
 
 
+def start_process(args: List[str], cwd: str, wait: bool) -> Any:
+    process = subprocess.Popen(
+        args,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if wait:
+        returncode = process.wait()
+        if returncode != 0:
+            print(process.communicate()[0].decode("utf-8").rstrip())
+            print(f"process exited with error code {returncode}")
+            exit(returncode)
+    return process
+
+
 def run_py_example(path: str, viewer_port: Optional[int] = None, wait: bool = True, save: Optional[str] = None) -> Any:
     args = ["python3", "main.py", "--num-frames=30", "--steps=200"]
     if save is not None:
@@ -19,29 +35,19 @@ def run_py_example(path: str, viewer_port: Optional[int] = None, wait: bool = Tr
     if viewer_port is not None:
         args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
 
-    process = subprocess.Popen(
+    return start_process(
         args,
         cwd=path,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        wait=wait,
     )
-    if wait:
-        returncode = process.wait()
-        assert returncode == 0, f"process exited with error code {returncode}"
-    return process
 
 
 def run_saved_example(path: str, wait: bool = True) -> Any:
-    process = subprocess.Popen(
+    return start_process(
         ["cargo", "run", "-p", "rerun", "--all-features", "--", "out.rrd"],
         cwd=path,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        wait=wait,
     )
-    if wait:
-        returncode = process.wait()
-        assert returncode == 0, f"process exited with error code {returncode}"
-    return process
 
 
 def get_free_port() -> int:
