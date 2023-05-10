@@ -24,6 +24,7 @@ pub mod view_spatial;
 // ----
 
 pub(crate) use self::blueprint::Blueprint;
+pub(crate) use self::blueprint_sync::store_one_component;
 // TODO(jleibs) should we avoid leaking this?
 pub use self::space_view::{item_ui, SpaceView};
 

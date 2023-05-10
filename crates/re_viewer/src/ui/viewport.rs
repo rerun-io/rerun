@@ -45,28 +45,10 @@ pub struct Viewport {
     pub(crate) maximized: Option<SpaceViewId>,
 
     /// Set to `true` the first time the user messes around with the viewport blueprint.
-    /// Before this is set we automatically add new spaces to the viewport
-    /// when they show up in the data.
     pub(crate) has_been_user_edited: bool,
-}
 
-impl PartialEq for Viewport {
-    fn eq(&self, other: &Self) -> bool {
-        // Terrible hack since egui_dock::Tree does not implement PartialEq:
-        // This could likely be improved using a crate like `serde_diff`, but we already
-        // have the dep on `rmp_serde`, and hopefully this just goes away when we move
-        // to `egui_tiles`.
-        let mut tree_buff_self = Vec::new();
-        rmp_serde::encode::write_named(&mut tree_buff_self, &self.trees).unwrap();
-        let mut tree_buff_other = Vec::new();
-        rmp_serde::encode::write_named(&mut tree_buff_other, &other.trees).unwrap();
-
-        self.space_views == other.space_views
-            && self.visible == other.visible
-            && tree_buff_self == tree_buff_other
-            && self.maximized == other.maximized
-            && self.has_been_user_edited == other.has_been_user_edited
-    }
+    /// Whether or not space views should be created automatically.
+    pub(crate) auto_space_views: bool,
 }
 
 impl Viewport {
@@ -74,11 +56,11 @@ impl Viewport {
     pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
         crate::profile_function!();
 
-        let mut blueprint = Self::default();
+        let mut viewport = Self::default();
         for space_view in default_created_space_views(ctx, spaces_info) {
-            blueprint.add_space_view(space_view);
+            viewport.add_space_view(space_view);
         }
-        blueprint
+        viewport
     }
 
     pub(crate) fn space_view_ids(&self) -> impl Iterator<Item = &SpaceViewId> + '_ {
@@ -100,6 +82,7 @@ impl Viewport {
             trees,
             maximized,
             has_been_user_edited,
+            auto_space_views: _,
         } = self;
 
         *has_been_user_edited = true;
@@ -384,7 +367,7 @@ impl Viewport {
             space_view.on_frame_start(ctx, spaces_info);
         }
 
-        if !self.has_been_user_edited {
+        if self.auto_space_views {
             for space_view_candidate in default_created_space_views(ctx, spaces_info) {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.add_space_view(space_view_candidate);

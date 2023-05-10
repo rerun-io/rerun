@@ -68,19 +68,19 @@ __all__ = [
 ]
 
 
-# TOD(jleibs): docstrings
+# TODO(jleibs): docstrings
 def add_space_view(*args, **kwargs) -> None:
     bindings.add_space_view(*args, **kwargs)
 
 
-# TOD(jleibs): docstrings
+# TODO(jleibs): docstrings
 def set_panel(*args, **kwargs) -> None:
     bindings.set_panel(*args, **kwargs)
 
 
-# TOD(jleibs): docstrings
-def enable_heuristics(*args, **kwargs) -> None:
-    bindings.enable_heuristics(*args, **kwargs)
+# TODO(jleibs): docstrings
+def set_auto_space_views(*args, **kwargs) -> None:
+    bindings.set_auto_space_views(*args, **kwargs)
 
 
 # If `True`, we raise exceptions on use error (wrong parameter types etc).

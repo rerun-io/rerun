@@ -14,7 +14,11 @@ use pyo3::{
 use re_log_types::DataRow;
 use rerun::{
     external::re_viewer::{
-        blueprint_components::{PanelState, SpaceViewComponent, ViewportComponent},
+        blueprint_components::{
+            panel::PanelState,
+            space_view::SpaceViewComponent,
+            viewport::{AutoSpaceViews, VIEWPORT_PATH},
+        },
         SpaceView, ViewCategory,
     },
     log::{PathOp, RowId},
@@ -153,7 +157,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // blueprint
     m.add_function(wrap_pyfunction!(set_panel, m)?)?;
     m.add_function(wrap_pyfunction!(add_space_view, m)?)?;
-    m.add_function(wrap_pyfunction!(enable_heuristics, m)?)?;
+    m.add_function(wrap_pyfunction!(set_auto_space_views, m)?)?;
 
     Ok(())
 }
@@ -1221,30 +1225,24 @@ fn add_space_view(name: &str, space_path: &str, entity_paths: Vec<&str>) {
 }
 
 #[pyfunction]
-fn enable_heuristics() {
-    if let Some(bp_ctx) = global_blueprint_stream().as_ref() {
-        set_user_edited(bp_ctx, false);
+fn set_auto_space_views(enabled: bool) {
+    let bp_stream = global_blueprint_stream();
+    let Some(bp_stream) = bp_stream.as_ref() else {
+        no_active_recording("set_auto_space_views");
+        return;
     };
-}
 
-fn set_user_edited(bp_stream: &RecordingStream, user_edited: bool) {
     // TODO(jleibs) timeless? Something else?
     let timepoint = time(true, bp_stream);
 
-    let viewport = ViewportComponent {
-        space_view_keys: Default::default(),
-        visible: Default::default(),
-        trees: Default::default(),
-        maximized: None,
-        has_been_user_edited: user_edited,
-    };
+    let enable_auto_space = AutoSpaceViews(enabled);
 
     let row = DataRow::from_cells1(
         RowId::random(),
-        ViewportComponent::VIEWPORT,
+        VIEWPORT_PATH,
         timepoint,
         1,
-        [viewport].as_slice(),
+        [enable_auto_space].as_slice(),
     );
 
     record_row(bp_stream, row);

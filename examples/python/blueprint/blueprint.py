@@ -6,15 +6,15 @@ import rerun as rr
 def main() -> None:
     parser = argparse.ArgumentParser(description="Different options for how we might use blueprint")
     parser.add_argument("--append", action="store_true", help="Append to the blueprint instead of overwriting it")
-    parser.add_argument("--enable-heuristics", action="store_true", help="Enable heuristics for the blueprint")
+    parser.add_argument("--auto-space-views", action="store_true", help="Automatically add space views based on heuristics")
 
     args = parser.parse_args()
 
     rr.init("Space", append_blueprint=args.append)
     rr.connect()
 
-    if args.enable_heuristics:
-        rr.enable_heuristics()
+    if args.auto_space_views:
+        rr.set_auto_space_views(True)
 
     rr.set_panel("blueprint_panel", expanded=False)
     rr.set_panel("selection_panel", expanded=False)

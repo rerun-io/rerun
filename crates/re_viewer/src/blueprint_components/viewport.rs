@@ -7,39 +7,57 @@ pub use re_viewer_context::SpaceViewId;
 
 use crate::ui::VisibilitySet;
 
-#[derive(Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
-pub struct ViewportComponent {
-    #[arrow_field(type = "SerdeField<VisibilitySet>")]
-    pub space_view_keys: std::collections::BTreeSet<SpaceViewId>,
-    #[arrow_field(type = "SerdeField<VisibilitySet>")]
-    pub visible: VisibilitySet,
-    #[arrow_field(type = "SerdeField<HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>>")]
-    pub trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
-    #[arrow_field(type = "Option<SerdeField<SpaceViewId>>")]
-    pub maximized: Option<SpaceViewId>,
-    pub has_been_user_edited: bool,
-}
+pub const VIEWPORT_PATH: &str = "viewport";
 
-impl Default for ViewportComponent {
-    fn default() -> Self {
-        Self {
-            space_view_keys: Default::default(),
-            visible: Default::default(),
-            trees: Default::default(),
-            maximized: Default::default(),
-            has_been_user_edited: true,
-        }
+#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[arrow_field(transparent)]
+pub struct AutoSpaceViews(pub bool);
+
+impl Component for AutoSpaceViews {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.auto_space_views".into()
     }
 }
 
-impl ViewportComponent {
-    // TODO(jleibs): Can we make this an EntityPath instead?
-    pub const VIEWPORT: &str = "viewport";
-}
+#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[arrow_field(transparent)]
+pub struct SpaceViewVisibility(
+    #[arrow_field(type = "SerdeField<VisibilitySet>")] pub VisibilitySet,
+);
 
-impl Component for ViewportComponent {
+impl Component for SpaceViewVisibility {
     #[inline]
     fn name() -> ComponentName {
-        "rerun.blueprint.viewport".into()
+        "rerun.blueprint.space_view_visibility".into()
+    }
+}
+
+#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[arrow_field(transparent)]
+pub struct SpaceViewMaximized(
+    #[arrow_field(type = "Option<SerdeField<SpaceViewId>>")] pub Option<SpaceViewId>,
+);
+
+impl Component for SpaceViewMaximized {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.maximized".into()
+    }
+}
+
+#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+pub struct ViewportLayout {
+    #[arrow_field(type = "SerdeField<std::collections::BTreeSet<SpaceViewId>>")]
+    pub space_view_keys: std::collections::BTreeSet<SpaceViewId>,
+    #[arrow_field(type = "SerdeField<HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>>")]
+    pub trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
+    pub has_been_user_edited: bool,
+}
+
+impl Component for ViewportLayout {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.viewport_layout".into()
     }
 }
