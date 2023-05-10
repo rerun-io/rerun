@@ -113,21 +113,20 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
                     );
 
                     fn is_plane_similar(a: macaw::Plane3, b: macaw::Plane3) -> bool {
-                        a.normal.dot(b.normal) >= 0.99 && (a.d - b.d) >= 0.01
+                        a.normal.dot(b.normal) > 0.99 && (a.d - b.d).abs() < 0.01
                     }
                     let has_same_depth_offset = rectangle_group.last().map_or(true, |last_image| {
                         last_image.textured_rect.options.depth_offset
                             == image.textured_rect.options.depth_offset
                     });
 
-                    // Are the image planes too unsimilar? Then this is a new group.
-                    if !rectangle_group.is_empty()
-                        && (!is_plane_similar(prev_plane, cur_plane) || !has_same_depth_offset)
-                    {
+                    // If the planes are similar, add them to the same group, otherwise start a new group.
+                    if has_same_depth_offset && is_plane_similar(prev_plane, cur_plane) {
+                        rectangle_group.push(image);
+                    } else {
                         let previous_group = std::mem::replace(&mut rectangle_group, vec![image]);
                         return Some(previous_group);
                     }
-                    rectangle_group.push(image);
                 }
                 if !rectangle_group.is_empty() {
                     Some(rectangle_group.drain(..).collect())
