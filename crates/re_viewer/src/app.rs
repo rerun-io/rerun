@@ -1425,7 +1425,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
                 consider adding the following to your code's main entrypoint:",
             );
             ui.code(CODE);
-            ui.label("(left-click to copy to clipboard)");
+            ui.label("(click to copy to clipboard)");
         });
     }
 }
