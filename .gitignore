@@ -20,3 +20,6 @@ perf.data*
 
 # Screenshots from samples etc.
 screenshot*.png
+
+# Web demo app build
+web_demo
