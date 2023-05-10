@@ -541,17 +541,17 @@ fn tensor_pixel_value_ui(
         }
     });
 
-    let text = match tensor.num_dim() {
-        2 => tensor.get(&[y, x]).map(|v| format!("Val: {v}")),
-        3 => match tensor.shape()[2].size {
-            0 => Some("Cannot preview 0-size channel".to_owned()),
-            1 => tensor.get(&[y, x, 0]).map(|v| format!("Val: {v}")),
+    let text = if let Some([_, _, channel]) = tensor.image_height_width_channels() {
+        match channel {
+            1 => tensor
+                .get_with_image_coords(x, y, 0)
+                .map(|v| format!("Val: {v}")),
             3 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let (Some(r), Some(g), Some(b)) = (
-                    tensor.get(&[y, x, 0]),
-                    tensor.get(&[y, x, 1]),
-                    tensor.get(&[y, x, 2]),
+                    tensor.get_with_image_coords(x, y, 0),
+                    tensor.get_with_image_coords(x, y, 1),
+                    tensor.get_with_image_coords(x, y, 2),
                 ) {
                     match (r, g, b) {
                         (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
@@ -566,10 +566,10 @@ fn tensor_pixel_value_ui(
             4 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let (Some(r), Some(g), Some(b), Some(a)) = (
-                    tensor.get(&[y, x, 0]),
-                    tensor.get(&[y, x, 1]),
-                    tensor.get(&[y, x, 2]),
-                    tensor.get(&[y, x, 3]),
+                    tensor.get_with_image_coords(x, y, 0),
+                    tensor.get_with_image_coords(x, y, 1),
+                    tensor.get_with_image_coords(x, y, 2),
+                    tensor.get_with_image_coords(x, y, 3),
                 ) {
                     match (r, g, b, a) {
                         (
@@ -586,9 +586,13 @@ fn tensor_pixel_value_ui(
                     None
                 }
             }
-            channels => Some(format!("Cannot preview {channels}-channel image")),
-        },
-        dims => Some(format!("Cannot preview {dims}-dimensional image")),
+            channel => Some(format!("Cannot preview {channel}-size channel image")),
+        }
+    } else {
+        Some(format!(
+            "Cannot preview tensors with a shape of {:?}",
+            tensor.shape()
+        ))
     };
 
     if let Some(text) = text {

@@ -407,48 +407,116 @@ impl Tensor {
         self.shape.as_slice()
     }
 
+    /// Returns the shape of the tensor with all trailing dimensions of size 1 ignored.
+    ///
+    /// If all dimension sizes are one, this returns only the first dimension.
+    #[inline]
+    pub fn shape_short(&self) -> &[TensorDimension] {
+        if self.shape.is_empty() {
+            &self.shape
+        } else {
+            self.shape
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, dim)| dim.size != 1)
+                .map_or(&self.shape[0..1], |(i, _)| &self.shape[..(i + 1)])
+        }
+    }
+
     #[inline]
     pub fn num_dim(&self) -> usize {
         self.shape.len()
     }
 
-    /// If this tensor is shaped as an image, return the height, width, and channels/depth of it.
+    /// If the tensor can be interpreted as an image, return the height, width, and channels/depth of it.
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
-        if self.shape.len() == 2 {
-            Some([self.shape[0].size, self.shape[1].size, 1])
-        } else if self.shape.len() == 3 {
-            let channels = self.shape[2].size;
-            // gray, rgb, rgba
-            if matches!(channels, 1 | 3 | 4) {
-                Some([self.shape[0].size, self.shape[1].size, channels])
-            } else {
-                None
+        let shape_short = self.shape_short();
+
+        match shape_short.len() {
+            1 => {
+                // Special case: Nx1(x1x1x...) tensors are treated as Nx1 grey images.
+                if self.shape.len() >= 2 {
+                    Some([shape_short[0].size, 1, 1])
+                } else {
+                    None
+                }
             }
-        } else {
-            None
+            2 => Some([shape_short[0].size, shape_short[1].size, 1]),
+            3 => {
+                let channels = shape_short[2].size;
+                if matches!(channels, 3 | 4) {
+                    // rgb, rgba
+                    Some([shape_short[0].size, shape_short[1].size, channels])
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 
+    /// Returns true if the tensor can be interpreted as an image.
     pub fn is_shaped_like_an_image(&self) -> bool {
-        self.num_dim() == 2
-            || self.num_dim() == 3 && {
-                matches!(
-                    self.shape.last().unwrap().size,
-                    // gray, rgb, rgba
-                    1 | 3 | 4
-                )
-            }
+        self.image_height_width_channels().is_some()
     }
 
+    /// Returns true if either all dimensions have size 1 or only a single dimension has a size larger than 1.
+    ///
+    /// Empty tensors return false.
     #[inline]
     pub fn is_vector(&self) -> bool {
-        let shape = &self.shape;
-        shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
+        if self.shape.is_empty() {
+            false
+        } else {
+            self.shape.iter().filter(|dim| dim.size > 1).count() <= 1
+        }
     }
 
     #[inline]
     pub fn meaning(&self) -> TensorDataMeaning {
         self.meaning
+    }
+
+    /// Query with x, y, channel indices.
+    ///
+    /// Allows to query values for any image like tensor even if it has more or less dimensions than 3.
+    /// (useful for sampling e.g. `N x M x C x 1` tensor which is a valid image)
+    #[inline]
+    pub fn get_with_image_coords(&self, x: u64, y: u64, channel: u64) -> Option<TensorElement> {
+        match self.shape.len() {
+            1 => {
+                if y == 0 && channel == 0 {
+                    self.get(&[x])
+                } else {
+                    None
+                }
+            }
+            2 => {
+                if channel == 0 {
+                    self.get(&[y, x])
+                } else {
+                    None
+                }
+            }
+            3 => self.get(&[y, x, channel]),
+            4 => {
+                // Optimization for common case, next case handles this too.
+                if self.shape[3].size == 1 {
+                    self.get(&[y, x, channel, 0])
+                } else {
+                    None
+                }
+            }
+            dim => self.image_height_width_channels().and_then(|_| {
+                self.get(
+                    &[x, y, channel]
+                        .into_iter()
+                        .chain(std::iter::repeat(0).take(dim - 3))
+                        .collect::<Vec<u64>>(),
+                )
+            }),
+        }
     }
 
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
@@ -1163,4 +1231,120 @@ fn test_arrow() {
     let array: Box<dyn arrow2::array::Array> = tensors_in.iter().try_into_arrow().unwrap();
     let tensors_out: Vec<Tensor> = TryIntoCollection::try_into_collection(array).unwrap();
     assert_eq!(tensors_in, tensors_out);
+}
+
+#[test]
+fn test_tensor_shape_utilities() {
+    fn generate_tensor_from_shape(sizes: &[u64]) -> Tensor {
+        let shape = sizes
+            .iter()
+            .map(|&size| TensorDimension { size, name: None })
+            .collect();
+        let num_elements = sizes.iter().fold(0, |acc, &size| acc * size);
+        let data = (0..num_elements).map(|i| i as u32).collect::<Vec<_>>();
+
+        Tensor {
+            tensor_id: TensorId(std::default::Default::default()),
+            shape,
+            data: TensorData::U32(data.into()),
+            meaning: TensorDataMeaning::Unknown,
+            meter: None,
+        }
+    }
+
+    // Empty tensor.
+    {
+        let tensor = generate_tensor_from_shape(&[]);
+
+        assert_eq!(tensor.image_height_width_channels(), None);
+        assert_eq!(tensor.shape_short(), tensor.shape());
+        assert!(!tensor.is_vector());
+        assert!(!tensor.is_shaped_like_an_image());
+    }
+
+    // Single dimension tensors.
+    for shape in [vec![4], vec![1]] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), None);
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..1]);
+        assert!(tensor.is_vector());
+        assert!(!tensor.is_shaped_like_an_image());
+    }
+
+    // Single element, but it might be interpreted as a 1x1 grey image!
+    for shape in [
+        vec![1, 1],
+        vec![1, 1, 1],
+        vec![1, 1, 1, 1],
+        vec![1, 1, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([1, 1, 1]));
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..1]);
+        assert!(tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+    // Color/Grey 2x4 images
+    for shape in [
+        vec![4, 2],
+        vec![4, 2, 1],
+        vec![4, 2, 1, 1],
+        vec![4, 2, 3],
+        vec![4, 2, 3, 1, 1],
+        vec![4, 2, 4],
+        vec![4, 2, 4, 1, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+        let channels = shape.get(2).cloned().unwrap_or(1);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([4, 2, channels]));
+        assert_eq!(
+            tensor.shape_short(),
+            &tensor.shape()[0..(2 + (channels != 1) as usize)]
+        );
+        assert!(!tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+
+    // Grey 1x4 images
+    for shape in [
+        vec![4, 1],
+        vec![4, 1, 1],
+        vec![4, 1, 1, 1],
+        vec![4, 1, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([4, 1, 1]));
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..1]);
+        assert!(tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+
+    // Grey 4x1 images
+    for shape in [
+        vec![1, 4],
+        vec![1, 4, 1],
+        vec![1, 4, 1, 1],
+        vec![1, 4, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([1, 4, 1]));
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..2]);
+        assert!(tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+
+    // Non images & non vectors without trailing dimensions
+    for shape in [vec![4, 2, 5], vec![1, 1, 1, 2, 4]] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), None);
+        assert_eq!(tensor.shape_short(), tensor.shape());
+        assert!(!tensor.is_vector());
+        assert!(!tensor.is_shaped_like_an_image());
+    }
 }
