@@ -29,6 +29,8 @@ mod data_table_batcher;
 #[cfg(feature = "serde")]
 pub mod serde_field;
 
+use std::sync::Arc;
+
 pub use self::arrow_msg::ArrowMsg;
 pub use self::component::{Component, DeserializableComponent, SerializableComponent};
 pub use self::component_types::context;
@@ -88,39 +90,32 @@ macro_rules! impl_into_enum {
 // ----------------------------------------------------------------------------
 
 /// A unique id per recording (a stream of [`LogMsg`]es).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RecordingId(uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for RecordingId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derived_hash_with_manual_eq)]
-impl std::hash::Hash for RecordingId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
+pub struct RecordingId(Arc<String>);
 
 impl Default for RecordingId {
     fn default() -> Self {
-        Self::ZERO
+        Self::unknown()
     }
 }
 
 impl RecordingId {
-    /// The recording id:s given to recordings that don't have an ID.
-    pub const ZERO: RecordingId = RecordingId(uuid::Uuid::nil());
+    const UNKNOWN: &str = "UNKNOWN";
+
+    #[inline]
+    pub fn unknown() -> Self {
+        RecordingId::UNKNOWN.into()
+    }
 
     #[inline]
     pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
+        Self(Arc::new(uuid::Uuid::new_v4().to_string()))
     }
 
     #[inline]
     pub fn from_uuid(uuid: uuid::Uuid) -> Self {
-        Self(uuid)
+        Self(Arc::new(uuid.to_string()))
     }
 }
 
@@ -130,11 +125,15 @@ impl std::fmt::Display for RecordingId {
     }
 }
 
-impl std::str::FromStr for RecordingId {
-    type Err = <uuid::Uuid as std::str::FromStr>::Err;
+impl From<&str> for RecordingId {
+    fn from(s: &str) -> Self {
+        Self(Arc::new(s.to_owned()))
+    }
+}
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse().map(Self)
+impl From<String> for RecordingId {
+    fn from(s: String) -> Self {
+        Self(Arc::new(s))
     }
 }
 

@@ -186,11 +186,7 @@ fn init(
     });
 
     let recording_id = if let Some(recording_id) = recording_id {
-        recording_id.parse().map_err(|_err| {
-            PyTypeError::new_err(format!(
-                "Invalid recording id - expected a UUID, got {recording_id:?}"
-            ))
-        })?
+        recording_id.into()
     } else {
         default_recording_id(py)
     };
