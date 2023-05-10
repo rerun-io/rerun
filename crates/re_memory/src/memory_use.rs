@@ -49,17 +49,11 @@ impl std::ops::Sub for MemoryUse {
 /// Working Set on Windows.
 #[cfg(not(target_arch = "wasm32"))]
 fn bytes_resident() -> Option<i64> {
-    // On Linux this can be very slow, 8ms or so
-    // https://github.com/Arc-blroth/memory-stats/issues/2
-    if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
-        memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
-    } else {
-        None
-    }
+    memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
 }
 
 #[cfg(target_arch = "wasm32")]
 fn bytes_resident() -> Option<i64> {
-    // blocked on https://github.com/Arc-blroth/memory-stats/issues/1 and https://github.com/rustwasm/wasm-bindgen/issues/3159
+    // blocked on https://github.com/Arc-blroth/memory-stats/issues/1
     None
 }
