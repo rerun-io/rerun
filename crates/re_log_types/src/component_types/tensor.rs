@@ -453,9 +453,16 @@ impl Tensor {
         self.image_height_width_channels().is_some()
     }
 
+    /// Returns true if either all dimensions have size 1 or only a single dimension has a size larger than 1.
+    ///
+    /// Empty tensors return false.
     #[inline]
     pub fn is_vector(&self) -> bool {
-        self.shape_short().len() == 1
+        if self.shape.is_empty() {
+            false
+        } else {
+            self.shape.iter().filter(|dim| dim.size > 1).count() <= 1
+        }
     }
 
     #[inline]
@@ -1243,12 +1250,12 @@ fn test_tensor_shape_utilities() {
 
         assert_eq!(tensor.image_height_width_channels(), Some([1, 4, 1]));
         assert_eq!(tensor.shape_short(), &tensor.shape()[0..2]);
-        assert!(!tensor.is_vector());
+        assert!(tensor.is_vector());
         assert!(tensor.is_shaped_like_an_image());
     }
 
     // Non images & non vectors without trailing dimensions
-    for shape in [vec![4, 2, 5], vec![1, 1, 1, 1, 4]] {
+    for shape in [vec![4, 2, 5], vec![1, 1, 1, 2, 4]] {
         let tensor = generate_tensor_from_shape(&shape);
 
         assert_eq!(tensor.image_height_width_channels(), None);
