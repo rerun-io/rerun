@@ -133,7 +133,7 @@ fn data_store_dump_filtered() {
 
 fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore) {
     let timeline_frame_nr = Timeline::new_sequence("frame_nr");
-    let timeline_log_time = Timeline::new_temporal("log_time");
+    let timeline_log_time = Timeline::log_time();
     let frame1: TimeInt = 1.into();
     let frame2: TimeInt = 2.into();
     let frame3: TimeInt = 3.into();

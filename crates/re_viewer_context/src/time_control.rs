@@ -375,7 +375,7 @@ impl TimeControl {
                 return; // it's valid
             }
         }
-        if let Some(timeline) = default_time_line(times_per_timeline.timelines()) {
+        if let Some(timeline) = default_timeline(times_per_timeline.timelines()) {
             self.timeline = *timeline;
         } else {
             self.timeline = Default::default();
@@ -519,13 +519,13 @@ fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
 }
 
 /// Pick the timeline that should be the default, prioritizing user-defined ones.
-fn default_time_line<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Option<&'a Timeline> {
+fn default_timeline<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Option<&'a Timeline> {
     let mut log_time_timeline = None;
 
     for timeline in timelines {
-        if timeline.name().as_str() == "log_time" {
+        if timeline == &Timeline::log_time() {
             log_time_timeline = Some(timeline);
-        } else {
+        } else if timeline != &Timeline::log_tick() {
             return Some(timeline); // user timeline - always prefer!
         }
     }
