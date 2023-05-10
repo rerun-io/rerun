@@ -692,7 +692,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let num_space_views = tiles.tiles.values().filter(|tile| tile.is_pane()).count();
 
-        ui.add_space(4.0); // margin within the frame
+        ui.add_space(8.0); // margin within the frame
 
         if *self.maximized == Some(space_view_id) {
             // Show minimize-button:
