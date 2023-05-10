@@ -1416,7 +1416,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
                  code's main entrypoint:",
             );
             ui.code(CODE);
-            ui.label("(left-click to copy to clipboard)");
+            ui.label("(click to copy to clipboard)");
         });
     } else {
         click_to_copy(ui, "N/A MiB", |ui| {
