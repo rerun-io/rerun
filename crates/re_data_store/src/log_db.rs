@@ -186,9 +186,9 @@ impl LogDb {
 
     pub fn recording_id(&self) -> RecordingId {
         if let Some(msg) = &self.recording_msg {
-            msg.info.recording_id
+            msg.info.recording_id.clone()
         } else {
-            RecordingId::ZERO
+            RecordingId::unknown()
         }
     }
 

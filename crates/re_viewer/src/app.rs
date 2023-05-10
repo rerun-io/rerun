@@ -4,7 +4,6 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use instant::Instant;
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -71,7 +70,7 @@ pub struct App {
     rx: Receiver<LogMsg>,
 
     /// Where the logs are stored.
-    log_dbs: IntMap<RecordingId, LogDb>,
+    log_dbs: HashMap<RecordingId, LogDb>,
 
     /// What is serialized
     state: AppState,
@@ -225,7 +224,7 @@ impl App {
     fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
         self.state
             .recording_configs
-            .get(&self.state.selected_rec_id)
+            .get(&self.state.selected_rec_id.clone())
             // is there an active loop selection?
             .and_then(|rec_cfg| {
                 rec_cfg
@@ -358,11 +357,11 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let rec_id = self.state.selected_rec_id;
-        let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) else {return;};
+        let rec_id = &self.state.selected_rec_id;
+        let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else {return;};
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
-        let Some(log_db) = self.log_dbs.get(&rec_id) else { return };
+        let Some(log_db) = self.log_dbs.get(rec_id) else { return };
         let times_per_timeline = log_db.times_per_timeline();
 
         match command {
@@ -497,13 +496,13 @@ impl eframe::App for App {
             main_panel_frame.inner_margin = 1.0.into();
         }
 
-        let this_frame_blueprint_id = self.state.selected_blueprint_id;
+        let this_frame_blueprint_id = self.state.selected_blueprint_id.clone();
 
         // TODO(jleibs): This is gross but make sure that the default db that we
         // create for the blueprint is correctly marked as a blueprint
         let blueprint_db = self
             .log_dbs
-            .entry(this_frame_blueprint_id)
+            .entry(this_frame_blueprint_id.clone())
             .or_insert_with(|| {
                 let mut blueprint_db = LogDb::default();
 
@@ -511,7 +510,7 @@ impl eframe::App for App {
                     row_id: re_log_types::RowId::random(),
                     info: re_log_types::RecordingInfo {
                         application_id: "Initial Blueprint".into(),
-                        recording_id: self.state.selected_blueprint_id,
+                        recording_id: self.state.selected_blueprint_id.clone(),
                         is_official_example: false,
                         started: re_log_types::Time::from_seconds_since_epoch(0.0),
                         recording_source: re_log_types::RecordingSource::Other("viewer".to_owned()),
@@ -550,11 +549,14 @@ impl eframe::App for App {
                     &blueprint_stats,
                 );
 
-                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+                let log_db = self
+                    .log_dbs
+                    .entry(self.state.selected_rec_id.clone())
+                    .or_default();
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
-                    self.state.selected_rec_id,
+                    self.state.selected_rec_id.clone(),
                     self.rx.source(),
                     log_db,
                 )
@@ -737,36 +739,23 @@ impl App {
                             re_log::warn!("Received recording with unknown type");
                             false
                         }
+                        // TODO(jleibs): This needs to be replaced with tab-switching
                         re_log_types::RecordingType::Data => {
                             re_log::debug!("Opening a new recording: {:?}", msg.info);
-                            self.state.selected_rec_id = msg.info.recording_id;
+                            self.state.selected_rec_id = msg.info.recording_id.clone();
                             true
                         }
                         re_log_types::RecordingType::Blueprint => {
-                            if msg.info.recording_id == RecordingId::APPEND_BLUEPRINT {
-                                re_log::debug!("New append-only blueprint; not changing selection");
-                                // Continue at this point because we don't want to insert the begin-recording
-                                // message into the log_db.
-                                continue;
-                            } else {
-                                re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                                self.state.selected_blueprint_id = msg.info.recording_id;
-                                true
-                            }
+                            re_log::debug!("Opening a new blueprint: {:?}", msg.info);
+                            self.state.selected_blueprint_id = msg.info.recording_id.clone();
+                            true
                         }
                     }
                 } else {
                     false
                 };
 
-                // TODO(jleibs): Experimental support for appending to the existing blueprint
-                let log_db = if *recording_id == RecordingId::APPEND_BLUEPRINT {
-                    self.log_dbs
-                        .entry(self.state.selected_blueprint_id)
-                        .or_default()
-                } else {
-                    self.log_dbs.entry(*recording_id).or_default()
-                };
+                let log_db = self.log_dbs.entry(recording_id.clone()).or_default();
 
                 if log_db.data_source.is_none() {
                     log_db.data_source = Some(self.rx.source().clone());
@@ -868,7 +857,7 @@ impl App {
 
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
-        let selected_rec_id = self.state.selected_rec_id;
+        let selected_rec_id = self.state.selected_rec_id.clone();
 
         self.state = Default::default();
         self.state.selected_rec_id = selected_rec_id;
@@ -887,12 +876,14 @@ impl App {
     }
 
     fn log_db(&mut self) -> &mut LogDb {
-        self.log_dbs.entry(self.state.selected_rec_id).or_default()
+        self.log_dbs
+            .entry(self.state.selected_rec_id.clone())
+            .or_default()
     }
 
     fn blueprint_db(&mut self) -> &mut LogDb {
         self.log_dbs
-            .entry(self.state.selected_blueprint_id)
+            .entry(self.state.selected_blueprint_id.clone())
             .or_default()
     }
 
@@ -988,7 +979,7 @@ struct AppState {
     selected_blueprint_id: RecordingId,
 
     /// Configuration for the current recording (found in [`LogDb`]).
-    recording_configs: IntMap<RecordingId, RecordingConfig>,
+    recording_configs: HashMap<RecordingId, RecordingConfig>,
 
     /// Which view panel is currently being shown
     panel_selection: PanelSelection,
@@ -1034,8 +1025,12 @@ impl AppState {
             viewport_state,
         } = self;
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, *selected_rec_id, data_source, log_db);
+        let rec_cfg = recording_config_entry(
+            recording_configs,
+            selected_rec_id.clone(),
+            data_source,
+            log_db,
+        );
 
         let mut ctx = ViewerContext {
             app_options: options,
@@ -2013,7 +2008,7 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
 }
 
 fn recording_config_entry<'cfgs>(
-    configs: &'cfgs mut IntMap<RecordingId, RecordingConfig>,
+    configs: &'cfgs mut HashMap<RecordingId, RecordingConfig>,
     id: RecordingId,
     data_source: &'_ re_smart_channel::Source,
     log_db: &'_ LogDb,

@@ -211,17 +211,14 @@ fn init(
     });
 
     let recording_id = if let Some(recording_id) = recording_id {
-        recording_id.parse().map_err(|_err| {
-            PyTypeError::new_err(format!(
-                "Invalid recording id - expected a UUID, got {recording_id:?}"
-            ))
-        })?
+        recording_id.into()
     } else {
         default_recording_id(py, "data")
     };
 
     let blueprint_id = if append_blueprint {
-        RecordingId::APPEND_BLUEPRINT
+        // If the blueprint is "append" then we use the app-id as the recording-id
+        application_id.clone().into()
     } else {
         default_recording_id(py, "blueprint")
     };
