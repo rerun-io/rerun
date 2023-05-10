@@ -465,32 +465,14 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
 fn height_width_depth(tensor: &Tensor) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
 
-    let mut shape = tensor.shape_short();
-
-    // Handle 1x1 and 1x1x1 images.
-    if shape.len() == 1 {
-        shape = tensor.shape();
-    }
-
-    anyhow::ensure!(
-        shape.len() == 2 || shape.len() == 3,
-        "Expected a 2D or 3D tensor, got {shape:?}",
-    );
+    let Some([height, width, channel]) = tensor.image_height_width_channels() else {
+        anyhow::bail!("Tensor is not an image");
+    };
 
     let [height, width] = [
-        u32::try_from(shape[0].size).context("tensor too large")?,
-        u32::try_from(shape[1].size).context("tensor too large")?,
+        u32::try_from(height).context("Image height is too large")?,
+        u32::try_from(width).context("Image width is too large")?,
     ];
-    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
 
-    anyhow::ensure!(
-        depth == 1 || depth == 3 || depth == 4,
-        "Expected depth of 1,3,4 (gray, RGB, RGBA), found {depth:?}. Tensor shape: {shape:?}"
-    );
-    debug_assert!(
-        tensor.is_shaped_like_an_image(),
-        "We should make the same checks above, but with actual error messages"
-    );
-
-    Ok([height, width, depth as u32])
+    Ok([height, width, channel as u32])
 }
