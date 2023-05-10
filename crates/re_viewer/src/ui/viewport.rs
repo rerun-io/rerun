@@ -39,7 +39,7 @@ pub struct Viewport {
     /// One for each combination of what views are visible.
     /// So if a user toggles the visibility of one SpaceView, we
     /// switch which layout we are using. This is somewhat hacky.
-    trees: HashMap<VisibilitySet, egui_tile_tree::Tree<SpaceViewId>>,
+    trees: HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>,
 
     /// Show one tab as maximized?
     maximized: Option<SpaceViewId>,
@@ -619,13 +619,13 @@ struct TabViewer<'a, 'b> {
     maximized: &'a mut Option<SpaceViewId>,
 }
 
-impl<'a, 'b> egui_tile_tree::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
+impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     fn pane_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _tile_id: egui_tile_tree::TileId,
+        _tile_id: egui_tiles::TileId,
         space_view_id: &mut SpaceViewId,
-    ) -> egui_tile_tree::UiResponse {
+    ) -> egui_tiles::UiResponse {
         crate::profile_function!();
 
         let highlights =
@@ -665,12 +665,12 @@ impl<'a, 'b> egui_tile_tree::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     fn on_tab_button(
         &mut self,
-        tiles: &egui_tile_tree::Tiles<SpaceViewId>,
-        tile_id: egui_tile_tree::TileId,
+        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        tile_id: egui_tiles::TileId,
         button_response: &egui::Response,
     ) {
         if button_response.clicked() {
-            if let Some(egui_tile_tree::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
+            if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
                 self.ctx
                     .set_single_selection(Item::SpaceView(*space_view_id));
             }
@@ -679,13 +679,13 @@ impl<'a, 'b> egui_tile_tree::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     fn top_bar_rtl_ui(
         &mut self,
-        tiles: &egui_tile_tree::Tiles<SpaceViewId>,
+        tiles: &egui_tiles::Tiles<SpaceViewId>,
         ui: &mut egui::Ui,
-        _tile_id: egui_tile_tree::TileId,
-        tabs: &egui_tile_tree::Tabs,
+        _tile_id: egui_tiles::TileId,
+        tabs: &egui_tiles::Tabs,
     ) {
         let Some(active) = tiles.get(tabs.active) else { return; };
-        let egui_tile_tree::Tile::Pane(space_view_id) = active else { return; };
+        let egui_tiles::Tile::Pane(space_view_id) = active else { return; };
         let space_view_id = *space_view_id;
 
         let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
@@ -729,7 +729,7 @@ impl<'a, 'b> egui_tile_tree::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     fn tab_outline_stroke(
         &self,
         _visuals: &egui::Visuals,
-        _tile_id: egui_tile_tree::TileId,
+        _tile_id: egui_tiles::TileId,
         _active: bool,
     ) -> egui::Stroke {
         egui::Stroke::NONE
@@ -741,8 +741,8 @@ impl<'a, 'b> egui_tile_tree::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 
     /// What are the rules for simplifying the tree?
-    fn simplification_options(&self) -> egui_tile_tree::SimplificationOptions {
-        egui_tile_tree::SimplificationOptions {
+    fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
+        egui_tiles::SimplificationOptions {
             all_panes_must_have_tabs: true,
             ..Default::default()
         }
@@ -780,9 +780,9 @@ fn space_view_ui(
 
 // ----------------------------------------------------------------------------
 
-fn focus_tab(tree: &mut egui_tile_tree::Tree<SpaceViewId>, tab: &SpaceViewId) {
+fn focus_tab(tree: &mut egui_tiles::Tree<SpaceViewId>, tab: &SpaceViewId) {
     tree.make_active(|tile| match tile {
-        egui_tile_tree::Tile::Pane(space_view_id) => space_view_id == tab,
-        egui_tile_tree::Tile::Container(_) => false,
+        egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
+        egui_tiles::Tile::Container(_) => false,
     });
 }

@@ -44,5 +44,5 @@ eframe = { workspace = true, optional = true, default-features = false }
 
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
-egui_tile_tree.workspace = true
+egui_tiles.workspace = true
 re_log.workspace = true

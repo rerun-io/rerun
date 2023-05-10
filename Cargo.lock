@@ -1371,13 +1371,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui_tile_tree"
+name = "egui_tiles"
 version = "0.1.0-alpha.1"
+source = "git+https://github.com/rerun-io/egui_tiles?rev=9a6ed5852a0d2f3b18db0c7b8fb1b1bf904b0a51#9a6ed5852a0d2f3b18db0c7b8fb1b1bf904b0a51"
 dependencies = [
  "egui",
  "getrandom",
  "itertools",
  "log",
+ "nohash-hasher",
  "rand",
  "serde",
 ]
@@ -4072,7 +4074,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui_extras",
- "egui_tile_tree",
+ "egui_tiles",
  "image",
  "parking_lot 0.12.1",
  "re_log",
@@ -4097,7 +4099,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_extras",
- "egui_tile_tree",
+ "egui_tiles",
  "enumset",
  "glam",
  "half 2.2.1",

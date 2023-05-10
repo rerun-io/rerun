@@ -48,7 +48,7 @@ pub(crate) fn tree_from_space_views(
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
     space_views: &HashMap<SpaceViewId, SpaceView>,
-) -> egui_tile_tree::Tree<SpaceViewId> {
+) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
         .iter()
         .filter(|(space_view_id, _space_view)| visible.contains(space_view_id))
@@ -91,32 +91,32 @@ pub(crate) fn tree_from_space_views(
         .collect_vec();
 
     if space_make_infos.is_empty() {
-        egui_tile_tree::Tree::empty()
+        egui_tiles::Tree::empty()
     } else {
-        let mut tiles = egui_tile_tree::Tiles::default();
+        let mut tiles = egui_tiles::Tiles::default();
         // Users often organize by path prefix, so we start by splitting along that
         let layout = layout_by_path_prefix(viewport_size, &mut space_make_infos);
         let root = tree_from_split(&mut tiles, &layout);
-        egui_tile_tree::Tree::new(root, tiles)
+        egui_tiles::Tree::new(root, tiles)
     }
 }
 
 fn tree_from_split(
-    tiles: &mut egui_tile_tree::Tiles<SpaceViewId>,
+    tiles: &mut egui_tiles::Tiles<SpaceViewId>,
     split: &LayoutSplit,
-) -> egui_tile_tree::TileId {
+) -> egui_tiles::TileId {
     match split {
         LayoutSplit::LeftRight(left, fraction, right) => {
-            let container = egui_tile_tree::Linear::new_binary(
-                egui_tile_tree::LinearDir::Horizontal,
+            let container = egui_tiles::Linear::new_binary(
+                egui_tiles::LinearDir::Horizontal,
                 [tree_from_split(tiles, left), tree_from_split(tiles, right)],
                 *fraction,
             );
             tiles.insert_container(container)
         }
         LayoutSplit::TopBottom(top, fraction, bottom) => {
-            let container = egui_tile_tree::Linear::new_binary(
-                egui_tile_tree::LinearDir::Vertical,
+            let container = egui_tiles::Linear::new_binary(
+                egui_tiles::LinearDir::Vertical,
                 [tree_from_split(tiles, top), tree_from_split(tiles, bottom)],
                 *fraction,
             );

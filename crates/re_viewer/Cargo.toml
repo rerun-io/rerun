@@ -78,7 +78,7 @@ eframe = { workspace = true, default-features = false, features = [
 ] }
 egui.workspace = true
 egui_extras.workspace = true
-egui_tile_tree.workspace = true
+egui_tiles.workspace = true
 egui-wgpu.workspace = true
 enumset.workspace = true
 glam = { workspace = true, features = [

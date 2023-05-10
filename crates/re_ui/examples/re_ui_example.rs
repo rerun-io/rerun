@@ -36,7 +36,7 @@ pub struct ExampleApp {
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
-    tree: egui_tile_tree::Tree<Tab>,
+    tree: egui_tiles::Tree<Tab>,
 
     left_panel: bool,
     right_panel: bool,
@@ -56,7 +56,7 @@ impl ExampleApp {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).unwrap();
 
-        let tree = egui_tile_tree::Tree::new_tabs(vec![1, 2, 3]);
+        let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
 
         Self {
             re_ui,
@@ -337,7 +337,7 @@ fn selection_buttons(ui: &mut egui::Ui) {
     });
 }
 
-fn tabs_ui(ui: &mut egui::Ui, tree: &mut egui_tile_tree::Tree<Tab>) {
+fn tabs_ui(ui: &mut egui::Ui, tree: &mut egui_tiles::Tree<Tab>) {
     tree.ui(&mut MyTileTreeBehavior {}, ui);
 }
 
@@ -345,13 +345,13 @@ pub type Tab = i32;
 
 struct MyTileTreeBehavior {}
 
-impl egui_tile_tree::Behavior<Tab> for MyTileTreeBehavior {
+impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
     fn pane_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _tile_id: egui_tile_tree::TileId,
+        _tile_id: egui_tiles::TileId,
         _pane: &mut Tab,
-    ) -> egui_tile_tree::UiResponse {
+    ) -> egui_tiles::UiResponse {
         egui::warn_if_debug_build(ui);
         ui.label("Hover me for a tooltip")
             .on_hover_text("This is a tooltip");
@@ -368,7 +368,7 @@ impl egui_tile_tree::Behavior<Tab> for MyTileTreeBehavior {
     fn tab_outline_stroke(
         &self,
         _visuals: &egui::Visuals,
-        _tile_id: egui_tile_tree::TileId,
+        _tile_id: egui_tiles::TileId,
         _active: bool,
     ) -> egui::Stroke {
         egui::Stroke::NONE
@@ -380,8 +380,8 @@ impl egui_tile_tree::Behavior<Tab> for MyTileTreeBehavior {
     }
 
     /// What are the rules for simplifying the tree?
-    fn simplification_options(&self) -> egui_tile_tree::SimplificationOptions {
-        egui_tile_tree::SimplificationOptions {
+    fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
+        egui_tiles::SimplificationOptions {
             all_panes_must_have_tabs: true,
             ..Default::default()
         }
