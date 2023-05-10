@@ -14,7 +14,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    rr.init("Space", init_blueprint=True, init_logging=args.init_logging, append_blueprint=args.append)
+    rr.init("Space", init_logging=args.init_logging, add_to_app_default_blueprint=args.append, spawn=True)
     rr.connect()
 
     if args.auto_space_views:
@@ -23,7 +23,7 @@ def main() -> None:
     rr.set_panel("blueprint_panel", expanded=False)
     rr.set_panel("selection_panel", expanded=False)
     rr.set_panel("timeline_panel", expanded=False)
-    rr.add_space_view("earth-centric", "transforms3d/sun/planet", ["transforms3d/sun", "transforms3d/sun/planet"])
+    rr.add_space_view("moon-centric", "transforms3d/sun/planet/moon", ["transforms3d/sun/planet", "transforms3d/sun/planet/moon"])
 
 
 if __name__ == "__main__":

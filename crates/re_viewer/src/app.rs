@@ -9,7 +9,7 @@ use poll_promise::Promise;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{BeginRecordingMsg, EntityPath, LogMsg, RecordingId, RecordingType, TimePoint};
+use re_log_types::{BeginRecordingMsg, LogMsg, RecordingId, RecordingType};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -18,8 +18,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    blueprint_components::viewport::{AutoSpaceViews, VIEWPORT_PATH},
-    ui::{store_one_component, Blueprint, ViewportState},
+    ui::{Blueprint, ViewportState},
     viewer_analytics::ViewerAnalytics,
 };
 
@@ -518,12 +517,6 @@ impl eframe::App for App {
                         recording_type: RecordingType::Blueprint,
                     },
                 });
-
-                // For an initial blueprint, default to `AutoSpaceViews(true)`
-                let entity_path = EntityPath::from(VIEWPORT_PATH);
-                let timepoint = TimePoint::timeless();
-                let component = AutoSpaceViews(true);
-                store_one_component(&mut blueprint_db, &entity_path, &timepoint, component);
 
                 blueprint_db
             });
@@ -1711,7 +1704,7 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
             .map_or(false, |ri| ri.recording_type == RecordingType::Blueprint)
     }) {
         let info = if let Some(rec_info) = log_db.recording_info() {
-            if rec_info.application_id.as_str() == rec_info.recording_id.as_str() {
+            if rec_info.is_app_default_blueprint() {
                 format!("{} - Default Blueprint", rec_info.application_id,)
             } else {
                 format!(

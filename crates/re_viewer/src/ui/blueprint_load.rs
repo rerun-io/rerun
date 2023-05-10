@@ -76,7 +76,14 @@ fn load_viewport(
         &VIEWPORT_PATH.into(),
         &query,
     )
-    .unwrap_or_default();
+    .unwrap_or_else(|| {
+        // Only enable auto-space-views if this is the app-default blueprint
+        AutoSpaceViews(
+            blueprint_db
+                .recording_info()
+                .map_or(false, |ri| ri.is_app_default_blueprint()),
+        )
+    });
 
     let space_view_visibility = query_latest_single::<SpaceViewVisibility>(
         &blueprint_db.entity_db,

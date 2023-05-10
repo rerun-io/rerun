@@ -76,3 +76,5 @@ for i in range(0, 6 * 120):
             rotation_q,
         ),
     )
+
+rr.add_space_view("earth-centric", "transforms3d/sun/planet", ["transforms3d/sun", "transforms3d/sun/planet"])

@@ -134,8 +134,8 @@ def init(
     recording_id: Optional[str] = None,
     spawn: bool = False,
     init_logging: bool = True,
-    init_blueprint: bool = False,
-    append_blueprint: bool = False,
+    init_blueprint: bool = True,
+    add_to_app_default_blueprint: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
 ) -> None:
@@ -177,8 +177,8 @@ def init(
         Should we initialize the logging for this application?
     init_blueprint
         Should we initialize the blueprint for this application?
-    append_blueprint
-        Should the blueprint append to the existing blueprint instead of replacing it?
+    add_to_app_default_blueprint
+        Should the blueprint append to the existing app-default blueprint instead instead of creating a new one.
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types etc).
         If `False`, errors are logged as warnings instead.
@@ -220,7 +220,7 @@ def init(
         application_path=application_path,
         init_logging=init_logging,
         init_blueprint=init_blueprint,
-        append_blueprint=append_blueprint,
+        add_to_app_default_blueprint=add_to_app_default_blueprint,
         default_enabled=default_enabled,
     )
 

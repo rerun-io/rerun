@@ -52,6 +52,22 @@ impl SpaceViewId {
         Self(uuid::Uuid::new_v4())
     }
 
+    pub fn random_from_str(s: &str) -> Self {
+        // TODO(jleibs): This is overkill; we can probably get away with 64-bit ids.
+        use rand::{Rng as _, SeedableRng as _};
+        use std::hash::{Hash as _, Hasher as _};
+
+        let salt: u64 = 0x307b_e149_0a3a_5552;
+
+        let mut hasher = std::collections::hash_map::DefaultHasher::default();
+        salt.hash(&mut hasher);
+        s.hash(&mut hasher);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
+        let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
+
+        Self(uuid)
+    }
+
     pub fn gpu_readback_id(self) -> re_renderer::GpuReadbackIdentifier {
         re_log_types::hash::Hash64::hash(self).hash64()
     }

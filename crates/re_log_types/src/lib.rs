@@ -260,6 +260,14 @@ pub struct RecordingInfo {
     pub recording_type: RecordingType,
 }
 
+impl RecordingInfo {
+    /// Whether this `RecordingInfo` is the default used when a user is not explicitly
+    /// creating their own blueprint.
+    pub fn is_app_default_blueprint(&self) -> bool {
+        self.application_id.as_str() == self.recording_id.as_str()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct PythonVersion {

@@ -17,7 +17,7 @@ use rerun::{
         blueprint_components::{
             panel::PanelState,
             space_view::SpaceViewComponent,
-            viewport::{AutoSpaceViews, VIEWPORT_PATH},
+            viewport::{AutoSpaceViews, SpaceViewId, VIEWPORT_PATH},
         },
         SpaceView, ViewCategory,
     },
@@ -182,8 +182,8 @@ fn no_active_blueprint(origin: &str) {
     recording_id=None,
     application_path=None,
     init_logging=true,
-    init_blueprint=false,
-    append_blueprint=false,
+    init_blueprint=true,
+    add_to_app_default_blueprint=true,
     default_enabled=true,
 ))]
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
@@ -194,7 +194,7 @@ fn init(
     application_path: Option<PathBuf>,
     init_logging: bool,
     init_blueprint: bool,
-    append_blueprint: bool,
+    add_to_app_default_blueprint: bool,
     default_enabled: bool,
 ) -> PyResult<()> {
     // The sentinel file we use to identify the official examples directory.
@@ -216,8 +216,8 @@ fn init(
         default_recording_id(py, "data")
     };
 
-    let blueprint_id = if append_blueprint {
-        // If the blueprint is "append" then we use the app-id as the recording-id
+    let blueprint_id = if add_to_app_default_blueprint {
+        // The "app-default" blueprint uses the application id as the blueprint-id.
         application_id.clone().into()
     } else {
         default_recording_id(py, "blueprint")
@@ -1192,6 +1192,11 @@ fn add_space_view(name: &str, space_path: &str, entity_paths: Vec<&str>) {
             .map(|s| s.into())
             .collect::<Vec<_>>(),
     );
+
+    // Choose the space-view id deterministically from the name; this means the user
+    // can run the application multiple times and get sane behavior.
+    space_view.id = SpaceViewId::random_from_str(name);
+
     space_view.display_name = name.into();
     space_view.entities_determined_by_user = true;
 
