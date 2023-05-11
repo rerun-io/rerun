@@ -87,11 +87,16 @@ fn load_viewport(
         query_timeless_single::<ViewportLayout>(&blueprint_db.entity_db, &VIEWPORT_PATH.into())
             .unwrap_or_default();
 
-    // TODO(jleibs): Can this be done as a partition operation without the clone?
-    let mut known_space_views = space_views.clone();
-    known_space_views.retain(|k, _| viewport_layout.space_view_keys.contains(k));
-    let mut unknown_space_views = space_views;
-    unknown_space_views.retain(|k, _| !viewport_layout.space_view_keys.contains(k));
+    let unknown_space_views: HashMap<_, _> = space_views
+        .iter()
+        .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
+        .map(|(k, v)| (*k, v.clone()))
+        .collect();
+
+    let known_space_views: HashMap<_, _> = space_views
+        .into_iter()
+        .filter(|(k, _)| viewport_layout.space_view_keys.contains(k))
+        .collect();
 
     let mut viewport = Viewport {
         space_views: known_space_views,
