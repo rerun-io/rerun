@@ -67,7 +67,7 @@ def build_wasm() -> None:
 
 
 def copy_wasm() -> None:
-    files = ["re_viewer_bg.wasm", "re_viewer_debug_bg.wasm", "re_viewer.js", "re_viewer_debug.js"]
+    files = ["re_viewer_bg.wasm", "re_viewer.js"]
     for file in files:
         shutil.copyfile(
             os.path.join("web_viewer", file),
