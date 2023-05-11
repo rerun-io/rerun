@@ -382,10 +382,13 @@ impl PyMemorySinkStorage {
     fn get_sinks_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
         // TODO(jleibs) book-keep the right handles to flush here
         flush(py);
-        // Note: send the blueprint first so that there is no race-condition related to
-        // data-recording causing the default blueprint to load.
+        // Note: even though it seems like sending the blueprint first
+        // would be preferable, the current behavior is sending the recording
+        // will always switch us back to the default blueprint. This behavior
+        // needs to be sorted out in general but sending the blueprint last
+        // causes us to switch to the right blueprint.
         rerun::sink::concat_memory_sinks_as_bytes(
-            &[&self.blueprint, &self.recording]
+            &[&self.recording, &self.blueprint]
                 .iter()
                 .filter_map(|s| s.as_ref())
                 .collect_vec(),
