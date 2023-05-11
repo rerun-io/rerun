@@ -3724,6 +3724,7 @@ name = "re_build_build_info"
 version = "0.6.0-alpha.0"
 dependencies = [
  "anyhow",
+ "glob",
  "time",
 ]
 

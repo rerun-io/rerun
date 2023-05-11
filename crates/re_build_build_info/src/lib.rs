@@ -33,6 +33,8 @@ use std::process::Command;
 
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 pub fn export_env_vars() {
+    rebuild_if_any_source_changed();
+
     // target triple
     set_env("RE_BUILD_TARGET_TRIPLE", &std::env::var("TARGET").unwrap());
     set_env("RE_BUILD_GIT_HASH", &git_hash().unwrap_or_default());
@@ -146,4 +148,43 @@ fn rust_version() -> anyhow::Result<(String, String)> {
         rustc_version.unwrap_or_else(|| "unknown".to_owned()),
         llvm_version.unwrap_or_else(|| "unknown".to_owned()),
     ))
+}
+
+/// During local development it is useful if the version string (especially build date)
+/// gets updated whenever the binary is re-linked (e.g. when a dependency changes).
+// This is a hack to achieve an approximation of that.
+// See https://github.com/rerun-io/rerun/issues/2086 for more.
+fn rebuild_if_any_source_changed() {
+    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+        return;
+    }
+
+    // Mapping to cargo:rerun-if-changed with glob support
+    fn rerun_if_changed(path: &str) {
+        // Workaround for windows verbatim paths not working with glob.
+        // Issue: https://github.com/rust-lang/glob/issues/111
+        // Fix: https://github.com/rust-lang/glob/pull/112
+        // Fixed on upstream, but no release containing the fix as of writing.
+        let path = path.trim_start_matches(r"\\?\");
+
+        for path in glob::glob(path).unwrap() {
+            println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
+        }
+    }
+
+    // This is a very aproximative hack with a few shortcomings:
+    // 1) It will rebuild even when an unrelated crate changes.
+    // 2) It will not rebuild when an external dependency changes (e.g. a `path` depdnency)
+    // 3) It only catche some file types.
+    // For a more robutst depedency change detection system, see crates/re_web_viewer_server/build.rs
+
+    let workspace_dir = format!(
+        "{}/../..",
+        std::env::current_dir().unwrap().to_string_lossy()
+    );
+    assert!(std::path::Path::new(&format!("{workspace_dir}/Cargo.toml")).exists());
+
+    rerun_if_changed(&format!("{workspace_dir}/**/Cargo.toml"));
+    rerun_if_changed(&format!("{workspace_dir}/crates/**/*.rs"));
+    rerun_if_changed(&format!("{workspace_dir}/crates/**/*.wgsl"));
 }
