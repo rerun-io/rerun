@@ -101,11 +101,9 @@ impl Default for RecordingId {
 }
 
 impl RecordingId {
-    const UNKNOWN: &str = "UNKNOWN";
-
     #[inline]
     pub fn unknown() -> Self {
-        RecordingId::UNKNOWN.into()
+        "UNKNOWN".into()
     }
 
     #[inline]
