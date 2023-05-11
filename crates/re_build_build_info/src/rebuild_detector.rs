@@ -24,12 +24,17 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
     pkgs.track_implicit_dep(pkg_name, &mut files_to_watch);
 
     for path in &files_to_watch {
-        println!("cargo:rerun-if-changed={}", path.to_string_lossy());
+        rerun_if_file_changed(path);
     }
 }
 
-// Mapping to cargo:rerun-if-changed with glob support
-fn rerun_if_changed(path: &str, files_to_watch: &mut HashSet<PathBuf>) {
+fn rerun_if_file_changed(path: &std::path::Path) {
+    // Make sure the file exists, otherwise we'll be rebuilding all the time.
+    assert!(path.exists(), "Failed to find {path:?}");
+    println!("cargo:rerun-if-changed={}", path.to_string_lossy());
+}
+
+fn rerun_if_changed_glob(path: &str, files_to_watch: &mut HashSet<PathBuf>) {
     // Workaround for windows verbatim paths not working with glob.
     // Issue: https://github.com/rust-lang/glob/issues/111
     // Fix: https://github.com/rust-lang/glob/pull/112
@@ -77,9 +82,9 @@ impl<'a> Packages<'a> {
 
             // NOTE: Since we track the cargo manifest, past this point we only need to
             // account for locally patched dependencies.
-            rerun_if_changed(path.join("Cargo.toml").as_ref(), files_to_watch);
-            rerun_if_changed(path.join("**/*.rs").as_ref(), files_to_watch);
-            rerun_if_changed(path.join("**/*.wgsl").as_ref(), files_to_watch);
+            rerun_if_changed_glob(path.join("Cargo.toml").as_ref(), files_to_watch);
+            rerun_if_changed_glob(path.join("**/*.rs").as_ref(), files_to_watch);
+            rerun_if_changed_glob(path.join("**/*.wgsl").as_ref(), files_to_watch);
         }
 
         // Track all direct and indirect dependencies of that root package
@@ -108,8 +113,8 @@ impl<'a> Packages<'a> {
                 let mut dep_path = dep_pkg.manifest_path.clone();
                 dep_path.pop();
 
-                rerun_if_changed(dep_path.join("Cargo.toml").as_ref(), files_to_watch); // manifest too!
-                rerun_if_changed(dep_path.join("**/*.rs").as_ref(), files_to_watch);
+                rerun_if_changed_glob(dep_path.join("Cargo.toml").as_ref(), files_to_watch); // manifest too!
+                rerun_if_changed_glob(dep_path.join("**/*.rs").as_ref(), files_to_watch);
             }
 
             if tracked.insert(dep_pkg.id.clone()) {

@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 fn rerun_if_changed(path: &str) {
-    // assert!(std::path::Path::new(path).exists(), "Failed to find {path}"); // TODO
-
+    // Make sure the file exists, otherwise we'll be rebuilding all the time.
+    assert!(std::path::Path::new(path).exists(), "Failed to find {path}");
     println!("cargo:rerun-if-changed={path}");
 }
 
@@ -30,7 +30,7 @@ fn main() {
     // Rebuild the web-viewer Wasm,
     // because the web_server library bundles it with `include_bytes!`.
 
-    rerun_if_changed("../../web_viewer/favicon.ico");
+    rerun_if_changed("../../web_viewer/favicon.svg");
     rerun_if_changed("../../web_viewer/index.html");
     rerun_if_changed("../../web_viewer/sw.js");
 
