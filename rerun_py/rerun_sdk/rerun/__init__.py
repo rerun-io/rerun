@@ -69,17 +69,17 @@ __all__ = [
 
 
 # TODO(jleibs): docstrings
-def add_space_view(*args, **kwargs) -> None:
+def add_space_view(*args: str, **kwargs: int) -> None:
     bindings.add_space_view(*args, **kwargs)
 
 
 # TODO(jleibs): docstrings
-def set_panel(*args, **kwargs) -> None:
+def set_panel(*args: str, **kwargs: int) -> None:
     bindings.set_panel(*args, **kwargs)
 
 
 # TODO(jleibs): docstrings
-def set_auto_space_views(*args, **kwargs) -> None:
+def set_auto_space_views(*args: str, **kwargs: int) -> None:
     bindings.set_auto_space_views(*args, **kwargs)
 
 
