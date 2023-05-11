@@ -16,11 +16,12 @@ from jinja2 import Template
 
 
 class Example:
-    def __init__(self, name: str, title: str, description: str):
+    def __init__(self, name: str, title: str, description: str, build_args: List[str]):
         self.path = os.path.join("examples/python", name, "main.py")
         self.name = name
         self.source_url = f"https://github.com/rerun-io/rerun/tree/main/examples/python/{self.name}/main.py"
         self.title = title
+        self.build_args = build_args
 
         segments = [f"<p>{segment}</p>" for segment in description.split("\n\n")]
         self.description = "".join(segments)
@@ -38,7 +39,8 @@ class Example:
                 "--num-frames=30",
                 "--steps=200",
                 f"--save={out_dir}/data.rrd",
-            ],
+            ]
+            + self.build_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
@@ -95,6 +97,7 @@ def collect_examples() -> List[Example]:
             name,
             title=EXAMPLES[name]["title"],
             description=EXAMPLES[name]["description"],
+            build_args=EXAMPLES[name]["build_args"].split(" "),
         )
         if example.supports_save():
             examples.append(example)
@@ -186,18 +189,21 @@ EXAMPLES = {
         This is a swiss-army-knife example showing the usage of most of the Rerun SDK APIs.
         The data logged is static and meaningless.
         """,
+        "build_args": "",
     },
     "car": {
         "title": "Car",
         "description": """
         A very simple 2D car is drawn using OpenCV, and a depth image is simulated and logged as a point cloud.
         """,
+        "build_args": "",
     },
     "clock": {
         "title": "Clock",
         "description": """
         An example visualizing an analog clock with hour, minute and seconds hands using Rerun Arrow3D primitives.
         """,
+        "build_args": "",
     },
     "colmap": {
         "title": "COLMAP",
@@ -212,6 +218,7 @@ EXAMPLES = {
         and we use Rerun to visualize the individual camera frames, estimated camera poses,
         and resulting point clouds over time.
         """,
+        "build_args": "--resize=800x600",
     },
     "dicom": {
         "title": "Dicom",
@@ -219,6 +226,7 @@ EXAMPLES = {
         Example using a <a href="https://en.wikipedia.org/wiki/DICOM" target="_blank">DICOM</a> MRI scan.
         This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
         """,
+        "build_args": "",
     },
     "plots": {
         "title": "Plots",
@@ -226,6 +234,7 @@ EXAMPLES = {
         This example demonstrates how to log simple plots with the Rerun SDK.
         Charts can be created from 1-dimensional tensors, or from time-varying scalars.
         """,
+        "build_args": "",
     },
     "raw_mesh": {
         "title": "Raw Mesh",
@@ -233,6 +242,7 @@ EXAMPLES = {
         This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups")
         and their transform hierarchy. Simple material properties are supported.
         """,
+        "build_args": "",
     },
     "text_logging": {
         "title": "Text Logging",
@@ -242,6 +252,7 @@ EXAMPLES = {
         Rerun is able to act as a Python logging handler, and can show all your Python log messages
         in the viewer next to your other data.
         """,
+        "build_args": "",
     },
 }
 
