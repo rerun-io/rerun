@@ -17,7 +17,6 @@ import os
 import cv2
 import numpy as np
 import rerun as rr
-from scipy.spatial.transform import Rotation
 
 
 def run_segmentation() -> None:
@@ -238,7 +237,6 @@ def transforms_rigid_3d() -> None:
     for i in range(0, 6 * 120):
         time = i / 120.0
         rr.set_time_seconds("sim_time", time)
-        rotation_q = [0, 0, 0, 1]
 
         rr.log_affine3(
             "transforms3d/sun/planet",
@@ -252,7 +250,8 @@ def transforms_rigid_3d() -> None:
             ),
         )
         rr.log_affine3(
-            "transforms3d/sun/planet/moon", child_from_parent=rr.TranslationRotationScale3D(
+            "transforms3d/sun/planet/moon",
+            child_from_parent=rr.TranslationRotationScale3D(
                 [
                     math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
                     math.sin(time * rotation_speed_moon) * planet_to_moon_distance,

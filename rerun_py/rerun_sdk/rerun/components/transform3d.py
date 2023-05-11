@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -159,7 +158,9 @@ def build_struct_array_from_axis_angle_rotation(
     )
 
 
-def build_union_array_from_rotation(rotation: npt.ArrayLike | RotationAxisAngle | None, type: pa.DenseUnionType):
+def build_union_array_from_rotation(
+    rotation: npt.ArrayLike | RotationAxisAngle | None, type: pa.DenseUnionType
+) -> pa.UnionArray:
     if rotation is None:
         rotation_discriminant = "Identity"
         rotation = pa.array([False])
@@ -179,7 +180,7 @@ def build_union_array_from_rotation(rotation: npt.ArrayLike | RotationAxisAngle 
     return build_dense_union(type, rotation_discriminant, rotation)
 
 
-def build_union_array_from_scale(scale: npt.ArrayLike | float | None, type: pa.DenseUnionType):
+def build_union_array_from_scale(scale: npt.ArrayLike | float | None, type: pa.DenseUnionType) -> pa.UnionArray:
     if scale is None:
         scale_discriminant = "Unit"
         scale = pa.array([False])
@@ -215,12 +216,6 @@ def build_struct_array_from_translation_rotation_scale(
 
 
 class Transform3DArray(pa.ExtensionArray):  # type: ignore[misc]
-    def affine3d_from_numpy(transform: Sequence[npt.ArrayLike, npt.ArrayLike], direction: TransformDirection):
-        """Build a `Transform3DArray` with a single element from numpy arrays."""
-
-        TranslationMatrix3x3(transform[0], transform[1])
-        return Transform3DArray.from_transform()
-
     def from_transform(transform: DirectedAffine3D | UnknownTransform | Pinhole) -> Transform3DArray:
         """Build a `Transform3DArray` from a single transform."""
 
