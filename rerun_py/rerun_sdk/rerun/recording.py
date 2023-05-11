@@ -21,9 +21,9 @@ class MemoryRecording:
         """Reset the data in the MemoryRecording."""
         self.storage.reset_data()
 
-    def reset_blueprint(self) -> None:
+    def reset_blueprint(self, add_to_app_default_blueprint=False) -> None:
         """Reset the blueprint in the MemoryRecording."""
-        self.storage.reset_blueprint()
+        self.storage.reset_blueprint(add_to_app_default_blueprint)
 
     def as_html(
         self,

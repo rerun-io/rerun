@@ -11,7 +11,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_log_types::DataRow;
+use re_log_types::{DataRow, RecordingInfo};
 use rerun::{
     external::re_viewer::{
         blueprint_components::{
@@ -382,7 +382,8 @@ impl PyMemorySinkStorage {
     fn get_sinks_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
         // TODO(jleibs) book-keep the right handles to flush here
         flush(py);
-        // Encode blueprint first to avoid auto-blueprint behavior
+        // Note: send the blueprint first so that there is no race-condition related to
+        // data-recording causing the default blueprint to load.
         rerun::sink::concat_memory_sinks_as_bytes(
             &[&self.blueprint, &self.recording]
                 .iter()
@@ -403,14 +404,51 @@ impl PyMemorySinkStorage {
         self.recording = data_stream.as_ref().map(|s| s.memory());
     }
 
-    fn reset_blueprint(&mut self) {
-        let bp_stream = global_blueprint_stream();
+    fn reset_blueprint(
+        &mut self,
+        add_to_app_default_blueprint: bool,
+        py: Python<'_>,
+    ) -> PyResult<()> {
+        let mut bp_stream = global_blueprint_stream();
 
         if bp_stream.is_none() {
             no_active_blueprint("memory");
         };
 
+        // TODO(jleibs): this is a pretty big pain just to reset the recording-id to avoid being
+        // the default-application.
+        if let Some(origin_bp_stream) = bp_stream.as_ref() {
+            if let Some(rec_info) = &mut origin_bp_stream.recording_info() {
+                let RecordingInfo {
+                    application_id,
+                    recording_id: _,
+                    is_official_example,
+                    started: _,
+                    recording_source: _,
+                    recording_type: _,
+                } = rec_info;
+
+                let blueprint_id = if add_to_app_default_blueprint {
+                    rec_info.application_id.as_str().into()
+                } else {
+                    default_recording_id(py, "blueprint")
+                };
+
+                *bp_stream = RecordingStreamBuilder::new(application_id.clone())
+                    .is_official_example(*is_official_example)
+                    .recording_id(blueprint_id)
+                    .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+                    .blueprint()
+                    .default_enabled(true)
+                    .buffered()
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                    .into();
+            }
+        }
+
         self.blueprint = bp_stream.as_ref().map(|s| s.memory());
+
+        Ok(())
     }
 }
 

@@ -6,7 +6,7 @@ use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
     component_types::InstanceKey, ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath,
     DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp,
-    RecordingId, RecordingInfo, RowId, TimePoint, Timeline,
+    RecordingId, RecordingInfo, RecordingType, RowId, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -182,6 +182,12 @@ impl LogDb {
 
     pub fn recording_info(&self) -> Option<&RecordingInfo> {
         self.recording_msg().map(|msg| &msg.info)
+    }
+
+    pub fn recording_type(&self) -> RecordingType {
+        self.recording_msg()
+            .map(|msg| msg.info.recording_type)
+            .unwrap_or(RecordingType::Unknown)
     }
 
     pub fn recording_id(&self) -> RecordingId {

@@ -497,33 +497,40 @@ impl eframe::App for App {
 
         let this_frame_blueprint_id = self.state.selected_blueprint_id.clone();
 
-        // TODO(jleibs): If the blueprint doesn't exist this probably means we are
-        // initializing a new default-blueprint for the application in question.
-        // Make sure it's marked as a blueprint, and also enable AutoSpaceViews.
-        let blueprint_db = self
-            .log_dbs
-            .entry(this_frame_blueprint_id.clone())
-            .or_insert_with(|| {
-                let mut blueprint_db = LogDb::default();
+        // Materialize the blueprint from the DB if the selected blueprint id isn't
+        // the default one.
+        let blueprint_snapshot = if this_frame_blueprint_id == Default::default() {
+            Default::default()
+        } else {
+            // TODO(jleibs): If the blueprint doesn't exist this probably means we are
+            // initializing a new default-blueprint for the application in question.
+            // Make sure it's marked as a blueprint, and also enable AutoSpaceViews.
+            let blueprint_db = self
+                .log_dbs
+                .entry(this_frame_blueprint_id.clone())
+                .or_insert_with(|| {
+                    let mut blueprint_db = LogDb::default();
 
-                blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
-                    row_id: re_log_types::RowId::random(),
-                    info: re_log_types::RecordingInfo {
-                        application_id: this_frame_blueprint_id.as_str().into(),
-                        recording_id: self.state.selected_blueprint_id.clone(),
-                        is_official_example: false,
-                        started: re_log_types::Time::from_seconds_since_epoch(0.0),
-                        recording_source: re_log_types::RecordingSource::Other("viewer".to_owned()),
-                        recording_type: RecordingType::Blueprint,
-                    },
+                    blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
+                        row_id: re_log_types::RowId::random(),
+                        info: re_log_types::RecordingInfo {
+                            application_id: this_frame_blueprint_id.as_str().into(),
+                            recording_id: self.state.selected_blueprint_id.clone(),
+                            is_official_example: false,
+                            started: re_log_types::Time::from_seconds_since_epoch(0.0),
+                            recording_source: re_log_types::RecordingSource::Other(
+                                "viewer".to_owned(),
+                            ),
+                            recording_type: RecordingType::Blueprint,
+                        },
+                    });
+
+                    blueprint_db
                 });
+            Blueprint::from_db(egui_ctx, blueprint_db)
+        };
 
-                blueprint_db
-            });
-
-        // Materialize the blueprint from the DB and save a snapshot so we
-        // can diff it at the end of the frame.
-        let blueprint_snapshot = Blueprint::from_db(egui_ctx, blueprint_db);
+        // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
 
         egui::CentralPanel::default()
@@ -606,9 +613,12 @@ impl eframe::App for App {
             frame_start.elapsed().as_secs_f32(),
         );
 
-        let blueprint_db = self.log_dbs.get_mut(&this_frame_blueprint_id).unwrap();
+        // If this wasn't the default blueprint, save it back
+        if this_frame_blueprint_id != Default::default() {
+            let blueprint_db = self.log_dbs.get_mut(&this_frame_blueprint_id).unwrap();
 
-        blueprint.process_updates(&blueprint_snapshot, blueprint_db);
+            blueprint.process_updates(&blueprint_snapshot, blueprint_db);
+        }
     }
 }
 
@@ -786,7 +796,12 @@ impl App {
         self.log_dbs.retain(|_, log_db| !log_db.is_default());
 
         if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
-            self.state.selected_rec_id = self.log_dbs.keys().next().cloned().unwrap_or_default();
+            self.state.selected_rec_id = self
+                .log_dbs
+                .iter()
+                .find(|(_, db)| db.recording_type() == RecordingType::Data)
+                .map(|(id, _)| id.clone())
+                .unwrap_or_default();
         }
 
         self.state
@@ -976,6 +991,7 @@ struct AppState {
     cache: Caches,
 
     selected_rec_id: RecordingId,
+    #[serde(skip)]
     selected_blueprint_id: RecordingId,
 
     /// Configuration for the current recording (found in [`LogDb`]).
