@@ -74,14 +74,19 @@ pub struct DataBlueprintTree {
 // Manually implement PartialEq since slotmap doesn't
 impl PartialEq for DataBlueprintTree {
     fn eq(&self, other: &Self) -> bool {
-        self.groups
-            .iter()
-            .zip(other.groups.iter())
-            .all(|(x, y)| x == y)
-            && self.path_to_group == other.path_to_group
-            && self.entity_paths == other.entity_paths
-            && self.root_group_handle == other.root_group_handle
-            && self.data_blueprints == other.data_blueprints
+        let Self {
+            groups,
+            path_to_group,
+            entity_paths,
+            root_group_handle,
+            data_blueprints,
+        } = self;
+
+        groups.iter().zip(other.groups.iter()).all(|(x, y)| x == y)
+            && *path_to_group == other.path_to_group
+            && *entity_paths == other.entity_paths
+            && *root_group_handle == other.root_group_handle
+            && *data_blueprints == other.data_blueprints
     }
 }
 
