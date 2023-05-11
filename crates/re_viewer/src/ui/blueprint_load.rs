@@ -108,7 +108,7 @@ fn load_viewport(
     };
     // TODO(jleibs): It seems we shouldn't call this until later, after we've created
     // the snapshot. Doing this here means we are mutating the state before it goes
-    // into the snapshot. For example, for example, even there's no visibility in the
+    // into the snapshot. For example, even if there's no visibility in the
     // store, this will end up with default-visibility, which then *won't* be saved back.
     for (_, view) in unknown_space_views {
         viewport.add_space_view(view);
