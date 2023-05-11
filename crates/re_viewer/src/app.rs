@@ -420,6 +420,12 @@ impl App {
         if *this_frame_blueprint_id == Default::default() {
             Default::default()
         } else {
+            #[cfg(not(target_arch = "wasm32"))]
+            let started = re_log_types::Time::now();
+
+            #[cfg(target_arch = "wasm32")]
+            let started = re_log_types::Time::from_seconds_since_epoch(0.0);
+
             // TODO(jleibs): If the blueprint doesn't exist this probably means we are
             // initializing a new default-blueprint for the application in question.
             // Make sure it's marked as a blueprint.
@@ -435,7 +441,7 @@ impl App {
                             application_id: this_frame_blueprint_id.as_str().into(),
                             recording_id: self.state.selected_blueprint_id.clone(),
                             is_official_example: false,
-                            started: re_log_types::Time::now(),
+                            started,
                             recording_source: re_log_types::RecordingSource::Other(
                                 "viewer".to_owned(),
                             ),
