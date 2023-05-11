@@ -23,7 +23,7 @@ jobs:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: '--no-default-features --features extension-module'
-      WHEEL_ARTIFACT_NAME: ''
+      WHEEL_ARTIFACT_NAME: linux-wheel
       RRD_ARTIFACT_NAME: linux-rrd-fast
     secrets: inherit
 
@@ -49,10 +49,12 @@ jobs:
   
   build-web-demo-adhoc:
     name: 'Build Web Demo'
+    needs: [min-test-wheel]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
       EXTRA_FLAGS: ${{ github.event.inputs.EXTRA_FLAGS }}
+      WHEEL_ARTIFACT_NAME: linux-wheel
     secrets: inherit
     
   upload-web-demo:

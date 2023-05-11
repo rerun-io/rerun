@@ -33,7 +33,7 @@ class Example:
         os.makedirs(out_dir, exist_ok=True)
         process = subprocess.run(
             [
-                "python",
+                "python3",
                 in_path,
                 "--num-frames=30",
                 "--steps=200",
@@ -158,7 +158,7 @@ def main() -> None:
 
 BASE_PATH = "web_demo"
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
-# When adding examples, add their requirements to `requirements-demo.txt`
+# When adding examples, add their requirements to `requirements-web-demo.txt`
 EXAMPLES = {
     "api_demo": {
         "title": "API Demo",

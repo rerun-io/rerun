@@ -239,11 +239,13 @@ jobs:
 
   build-web-demo:
     name: 'Build Web Demo'
+    needs: [min-test-wheel]
     if: ${{ github.event.inputs.BUILD_WEB_DEMO == 'true'}}
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
+      WHEEL_ARTIFACT_NAME: linux-wheel
     secrets: inherit
 
   upload-web-demo:

@@ -52,9 +52,11 @@ jobs:
 
   build-web-demo:
     name: 'Build Web Demo'
+    needs: [build-linux]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
+      WHEEL_ARTIFACT_NAME: linux-wheel
     secrets: inherit
 
   upload-web-demo:

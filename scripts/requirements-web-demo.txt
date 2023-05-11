@@ -1,3 +1,4 @@
+-r ../rerun_py/requirements-build.txt
 -r ../examples/python/api_demo/requirements.txt
 -r ../examples/python/car/requirements.txt
 -r ../examples/python/clock/requirements.txt

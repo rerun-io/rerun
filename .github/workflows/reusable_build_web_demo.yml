@@ -6,6 +6,9 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      WHEEL_ARTIFACT_NAME:
+        required: true
+        type: string
       RELEASE_VERSION:
         required: false
         type: string
@@ -20,6 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  PYTHON_VERSION: "3.8"
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
@@ -51,6 +55,34 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: false
 
+      # Sccache will cache everything else
+      # See: https://github.com/marketplace/actions/sccache-action
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Download Wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
+          path: wheel
+      
+      - name: Install dependencies for examples/python
+        run: |
+          pip install -r scripts/requirements-web-demo.txt
+          pip install Jinja2
+
+      - name: Install built wheel
+        shell: bash
+        run: |
+          pip install --find-links wheel rerun-sdk
+
+      - name: Verify built wheel version
+        shell: bash
+        run: |
+          python3 -m rerun --version
+          which rerun
+          rerun --version
+
       - name: Patch Cargo.toml for pre-release
         if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
         # After patching the pre-release version, run cargo update.
@@ -73,11 +105,6 @@ jobs:
             echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
             exit 1
           fi
-      
-      - name: Install dependencies for examples/python
-        run: |
-          pip install -r scripts/requirements-demo.txt
-          pip install Jinja2
 
       - name: Build web demo
         run: |
