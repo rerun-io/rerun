@@ -1348,6 +1348,36 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+    const CODE: &str = "use re_memory::AccountingAllocator;\n\
+                        #[global_allocator]\n\
+                        static GLOBAL: AccountingAllocator<std::alloc::System> =\n    \
+                            AccountingAllocator::new(std::alloc::System);";
+
+    fn click_to_copy(
+        ui: &mut egui::Ui,
+        text: impl Into<String>,
+        add_contents_on_hover: impl FnOnce(&mut egui::Ui),
+    ) {
+        #[allow(clippy::blocks_in_if_conditions)]
+        let text = text.into();
+        if ui
+            .add(
+                egui::Label::new(
+                    egui::RichText::new(text)
+                        .monospace()
+                        .color(ui.visuals().weak_text_color()),
+                )
+                .sense(egui::Sense::click()),
+            )
+            .on_hover_ui(|ui| add_contents_on_hover(ui))
+            .clicked()
+        {
+            ui.ctx().output_mut(|o| o.copied_text = CODE.to_owned());
+        }
+    }
+
+    let mem = re_memory::MemoryUse::capture();
+
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         // we use monospace so the width doesn't fluctuate as the numbers change.
 
@@ -1366,6 +1396,34 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             format_number(gpu_resource_stats.num_textures),
             format_number(gpu_resource_stats.num_buffers),
         ));
+    } else if let Some(rss) = mem.resident {
+        let bytes_used_text = re_format::format_bytes(rss as _);
+        click_to_copy(ui, &bytes_used_text, |ui| {
+            ui.label(format!(
+                "Rerun Viewer is using {} of Resident memory (RSS),\n\
+                plus {} of GPU memory in {} textures and {} buffers.",
+                bytes_used_text,
+                re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
+                format_number(gpu_resource_stats.num_textures),
+                format_number(gpu_resource_stats.num_buffers),
+            ));
+            ui.label(
+                "To get more accurate memory reportings, consider configuring your Rerun \n\
+                 viewer to use an AccountingAllocator by adding the following to your \n\
+                 code's main entrypoint:",
+            );
+            ui.code(CODE);
+            ui.label("(click to copy to clipboard)");
+        });
+    } else {
+        click_to_copy(ui, "N/A MiB", |ui| {
+            ui.label(
+                "The Rerun viewer was not configured to run with an AccountingAllocator,\n\
+                consider adding the following to your code's main entrypoint:",
+            );
+            ui.code(CODE);
+            ui.label("(click to copy to clipboard)");
+        });
     }
 }
 

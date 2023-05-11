@@ -121,8 +121,8 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc, TextureDesc,
     },
-    Color32, DebugLabel, LineStripSeriesBuilder, OutlineMaskPreference, PickingLayerObjectId,
-    PickingLayerProcessor,
+    Color32, DebugLabel, DepthOffset, LineStripSeriesBuilder, OutlineMaskPreference,
+    PickingLayerObjectId, PickingLayerProcessor,
 };
 
 use super::{
@@ -174,7 +174,9 @@ pub mod gpu_data {
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 5],
+        pub depth_offset: wgpu_buffer_types::F32RowPadded,
+
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
 }
 
@@ -272,6 +274,9 @@ pub struct LineBatchInfo {
 
     /// Picking object id that applies for the entire batch.
     pub picking_object_id: PickingLayerObjectId,
+
+    /// Depth offset applied after projection.
+    pub depth_offset: DepthOffset,
 }
 
 /// Style information for a line strip.
@@ -368,6 +373,7 @@ impl LineDrawData {
                 overall_outline_mask_ids: OutlineMaskPreference::NONE,
                 picking_object_id: PickingLayerObjectId::default(),
                 additional_outline_mask_ids_vertex_ranges: Vec::new(),
+                depth_offset: 0,
             }]
         } else {
             batches
@@ -620,6 +626,7 @@ impl LineDrawData {
                             .unwrap_or_default()
                             .into(),
                         picking_object_id: batch_info.picking_object_id,
+                        depth_offset: (batch_info.depth_offset as f32).into(),
                         end_padding: Default::default(),
                     }),
             );
@@ -640,6 +647,7 @@ impl LineDrawData {
                                     world_from_obj: batch_info.world_from_obj.into(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     picking_object_id: batch_info.picking_object_id,
+                                    depth_offset: (batch_info.depth_offset as f32).into(),
                                     end_padding: Default::default(),
                                 })
                         })

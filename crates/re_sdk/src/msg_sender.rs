@@ -1,7 +1,6 @@
 use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RowId};
 
 use crate::{
-    components::Transform3D,
     log::DataCell,
     time::{Time, TimeInt, TimePoint, Timeline},
     Component, EntityPath, RecordingStream, SerializableComponent,
@@ -16,6 +15,10 @@ pub enum MsgSenderError {
     /// Instance keys cannot be splatted
     #[error("Instance keys cannot be splatted")]
     SplattedInstanceKeys,
+
+    /// Number of instances across components don't match
+    #[error("Instance keys cannot be splatted")]
+    MismatchNumberOfInstances,
 
     /// [`InstanceKey`] with a [`u64::MAX`] was found, but is reserved for Rerun internals.
     #[error("InstanceKey(u64::MAX) is reserved for Rerun internals")]
@@ -165,9 +168,18 @@ impl MsgSender {
 
         let num_instances = cell.num_instances();
 
-        // If this is the first appended collection, it gets to decide the row-length (i.e. number
-        // of instances) of all future collections.
-        if self.num_instances.is_none() {
+        if let Some(cur_num_instances) = self.num_instances {
+            if cur_num_instances != num_instances {
+                if num_instances == 1 {
+                    self.splatted.push(cell);
+                    return Ok(self);
+                } else {
+                    return Err(MsgSenderError::MismatchNumberOfInstances);
+                }
+            }
+        } else {
+            // If this is the first appended collection, it gets to decide the row-length
+            // (i.e. number of instances) of all future collections.
             self.num_instances = Some(num_instances);
         }
 
@@ -223,14 +235,12 @@ impl MsgSender {
             return Ok(()); // silently drop the message
         }
 
-        let [row_standard, row_transforms, row_splats] = self.into_rows();
+        let [row_standard, row_splats] = self.into_rows();
 
-        if let Some(row_transforms) = row_transforms {
-            rec_stream.record_row(row_transforms);
-        }
         if let Some(row_splats) = row_splats {
             rec_stream.record_row(row_splats);
         }
+
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in msg_standard, see(#1215).
         if let Some(row_standard) = row_standard {
@@ -240,7 +250,7 @@ impl MsgSender {
         Ok(())
     }
 
-    fn into_rows(self) -> [Option<DataRow>; 3] {
+    fn into_rows(self) -> [Option<DataRow>; 2] {
         let Self {
             entity_path,
             timepoint,
@@ -257,59 +267,22 @@ impl MsgSender {
         // clear current timepoint if marked as timeless
         let timepoint = if timeless { [].into() } else { timepoint };
 
-        // separate transforms from the rest
-        // TODO(cmc): just use `Vec::drain_filter` once it goes stable...
-        let mut all_cells: Vec<_> = instanced.into_iter().map(Some).collect();
-        let standard_cells: Vec<_> = all_cells
-            .iter_mut()
-            .filter(|cell| cell.as_ref().unwrap().component_name() != Transform3D::name())
-            .map(|cell| cell.take().unwrap())
-            .collect();
-        let transform_cells: Vec<_> = all_cells
-            .iter_mut()
-            .filter(|cell| {
-                cell.as_ref()
-                    .map_or(false, |cell| cell.component_name() == Transform3D::name())
-            })
-            .map(|cell| cell.take().unwrap())
-            .collect();
-        debug_assert!(all_cells.into_iter().all(|cell| cell.is_none()));
-
-        // sanity check: transforms can't handle multiple instances
-        let num_transform_instances = transform_cells
-            .get(0)
-            .map_or(0, |cell| cell.num_instances());
-        if num_transform_instances > 1 {
-            re_log::warn!("detected Transform component with multiple instances");
-        }
-
-        let mut rows = [(); 3].map(|_| None);
+        let mut rows = [(); 2].map(|_| None);
 
         // Standard
-        rows[0] = (!standard_cells.is_empty()).then(|| {
+        rows[0] = (!instanced.is_empty()).then(|| {
             DataRow::from_cells(
                 RowId::random(),
                 timepoint.clone(),
                 entity_path.clone(),
                 num_instances.unwrap_or(0),
-                standard_cells,
-            )
-        });
-
-        // Transforms
-        rows[1] = (!transform_cells.is_empty()).then(|| {
-            DataRow::from_cells(
-                RowId::random(),
-                timepoint.clone(),
-                entity_path.clone(),
-                num_transform_instances,
-                transform_cells,
+                instanced,
             )
         });
 
         // Splats
         // TODO(#1629): unsplit splats once new data cells are in
-        rows[2] = (!splatted.is_empty()).then(|| {
+        rows[1] = (!splatted.is_empty()).then(|| {
             splatted.push(DataCell::from_native(&[InstanceKey::SPLAT]));
             DataRow::from_cells(RowId::random(), timepoint, entity_path, 1, splatted)
         });
@@ -326,9 +299,8 @@ mod tests {
 
     #[test]
     fn empty() {
-        let [standard, transforms, splats] = MsgSender::new("some/path").into_rows();
+        let [standard, splats] = MsgSender::new("some/path").into_rows();
         assert!(standard.is_none());
-        assert!(transforms.is_none());
         assert!(splats.is_none());
     }
 
@@ -341,7 +313,7 @@ mod tests {
         let transform = vec![components::Transform3D::Affine3D(Default::default())];
         let color = components::ColorRGBA::from_rgb(255, 0, 255);
 
-        let [standard, transforms, splats] = MsgSender::new("some/path")
+        let [standard, splats] = MsgSender::new("some/path")
             .with_component(&labels)?
             .with_component(&transform)?
             .with_splat(color)?
@@ -355,16 +327,12 @@ mod tests {
         }
 
         {
-            let transforms = transforms.unwrap();
-            let idx = transforms
-                .find_cell(&components::Transform3D::name())
-                .unwrap();
-            let cell = &transforms.cells[idx];
-            assert!(cell.num_instances() == 1);
-        }
-
-        {
             let splats = splats.unwrap();
+
+            let idx = splats.find_cell(&components::Transform3D::name()).unwrap();
+            let cell = &splats.cells[idx];
+            assert!(cell.num_instances() == 1);
+
             let idx = splats.find_cell(&components::ColorRGBA::name()).unwrap();
             let cell = &splats.cells[idx];
             assert!(cell.num_instances() == 1);
@@ -396,7 +364,7 @@ mod tests {
             .with_time(my_timeline, 2);
         assert!(!sender.timepoint.is_empty()); // not yet
 
-        let [standard, _, _] = sender.into_rows();
+        let [standard, _] = sender.into_rows();
         assert!(standard.unwrap().timepoint.is_empty());
 
         Ok(())
@@ -421,6 +389,57 @@ mod tests {
             .with_splat(components::InstanceKey(42));
 
         assert!(matches!(res, Err(MsgSenderError::SplattedInstanceKeys)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn num_instances_mismatch() -> Result<(), MsgSenderError> {
+        // 1 for 1 -- fine
+        {
+            MsgSender::new("some/path")
+                .with_component([components::Label("label1".into())].as_slice())?
+                .with_component([components::ColorRGBA::from_rgb(1, 1, 1)].as_slice())?;
+        }
+
+        // 3 for 1 -- fine, implicit splat
+        {
+            MsgSender::new("some/path")
+                .with_component(
+                    [
+                        components::Label("label1".into()),
+                        components::Label("label2".into()),
+                        components::Label("label3".into()),
+                    ]
+                    .as_slice(),
+                )?
+                .with_component([components::ColorRGBA::from_rgb(1, 1, 1)].as_slice())?;
+        }
+
+        // 3 for 2 -- nope, makes no sense
+        {
+            let res = MsgSender::new("some/path")
+                .with_component(
+                    [
+                        components::Label("label1".into()),
+                        components::Label("label2".into()),
+                        components::Label("label3".into()),
+                    ]
+                    .as_slice(),
+                )?
+                .with_component(
+                    [
+                        components::ColorRGBA::from_rgb(1, 1, 1),
+                        components::ColorRGBA::from_rgb(1, 1, 1),
+                    ]
+                    .as_slice(),
+                );
+
+            assert!(matches!(
+                res,
+                Err(MsgSenderError::MismatchNumberOfInstances)
+            ));
+        }
 
         Ok(())
     }

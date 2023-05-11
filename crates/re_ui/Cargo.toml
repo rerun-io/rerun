@@ -23,10 +23,9 @@ all-features = true
 
 
 [features]
-default = ["eframe", "egui_dock"]
+default = ["eframe"]
 
 eframe = ["dep:eframe"]
-egui_dock = ["dep:egui_dock"]
 
 
 [dependencies]
@@ -42,8 +41,8 @@ sublime_fuzzy = "0.7"
 
 ## Optional dependencies:
 eframe = { workspace = true, optional = true, default-features = false }
-egui_dock = { workspace = true, optional = true, features = ["serde"] }
 
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
+egui_tiles.workspace = true
 re_log.workspace = true

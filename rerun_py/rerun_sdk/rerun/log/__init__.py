@@ -11,6 +11,7 @@ __all__ = [
     "bounding_box",
     "camera",
     "error_utils",
+    "experimental",
     "file",
     "image",
     "lines",

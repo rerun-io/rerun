@@ -8,8 +8,8 @@ use re_log_types::{
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge, AnnotationMap, Annotations, SceneQuery, TensorDecodeCache, TensorStats,
-    TensorStatsCache, UiVerbosity, ViewerContext,
+    gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiVerbosity,
+    ViewerContext,
 };
 
 use super::EntityDataUi;
@@ -33,7 +33,16 @@ impl EntityDataUi for Tensor {
 
         match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
             Ok(decoded) => {
-                tensor_ui(ctx, ui, verbosity, entity_path, query, self, &decoded);
+                let annotations = crate::annotations(ctx, query, entity_path);
+                tensor_ui(
+                    ctx,
+                    ui,
+                    verbosity,
+                    entity_path,
+                    &annotations,
+                    self,
+                    &decoded,
+                );
             }
             Err(err) => {
                 ui.label(ctx.re_ui.error_text(err.to_string()));
@@ -47,21 +56,20 @@ fn tensor_ui(
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     entity_path: &re_data_store::EntityPath,
-    query: &re_arrow_store::LatestAtQuery,
+    annotations: &Annotations,
     _encoded_tensor: &Tensor,
     tensor: &DecodedTensor,
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
     let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
-    let annotations = annotations(ctx, query, entity_path);
     let debug_name = entity_path.to_string();
     let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
         &tensor_stats,
-        &annotations,
+        annotations,
     )
     .ok();
 
@@ -129,7 +137,7 @@ fn tensor_ui(
                             response,
                             tensor,
                             &tensor_stats,
-                            &annotations,
+                            annotations,
                             tensor.meter,
                             &debug_name,
                             image_rect,
@@ -159,24 +167,6 @@ fn tensor_ui(
             });
         }
     }
-}
-
-fn annotations(
-    ctx: &mut ViewerContext<'_>,
-    query: &re_arrow_store::LatestAtQuery,
-    entity_path: &re_data_store::EntityPath,
-) -> std::sync::Arc<Annotations> {
-    let mut annotation_map = AnnotationMap::default();
-    let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
-    let entity_props_map = re_data_store::EntityPropertyMap::default();
-    let scene_query = SceneQuery {
-        entity_paths: &entity_paths,
-        timeline: query.timeline,
-        latest_at: query.at,
-        entity_props_map: &entity_props_map,
-    };
-    annotation_map.load(ctx, &scene_query);
-    annotation_map.find(entity_path)
 }
 
 fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
@@ -279,13 +269,14 @@ pub fn tensor_summary_ui_grid_contents(
         | re_log_types::component_types::TensorData::I16(_)
         | re_log_types::component_types::TensorData::I32(_)
         | re_log_types::component_types::TensorData::I64(_)
+        | re_log_types::component_types::TensorData::F16(_)
         | re_log_types::component_types::TensorData::F32(_)
         | re_log_types::component_types::TensorData::F64(_) => {}
         re_log_types::component_types::TensorData::JPEG(jpeg_bytes) => {
             re_ui.grid_left_hand_label(ui, "Encoding");
             ui.label(format!(
                 "{} JPEG",
-                re_format::format_bytes(jpeg_bytes.num_bytes() as _),
+                re_format::format_bytes(jpeg_bytes.len() as _),
             ));
             ui.end_row();
         }
@@ -550,17 +541,17 @@ fn tensor_pixel_value_ui(
         }
     });
 
-    let text = match tensor.num_dim() {
-        2 => tensor.get(&[y, x]).map(|v| format!("Val: {v}")),
-        3 => match tensor.shape()[2].size {
-            0 => Some("Cannot preview 0-size channel".to_owned()),
-            1 => tensor.get(&[y, x, 0]).map(|v| format!("Val: {v}")),
+    let text = if let Some([_, _, channel]) = tensor.image_height_width_channels() {
+        match channel {
+            1 => tensor
+                .get_with_image_coords(x, y, 0)
+                .map(|v| format!("Val: {v}")),
             3 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let (Some(r), Some(g), Some(b)) = (
-                    tensor.get(&[y, x, 0]),
-                    tensor.get(&[y, x, 1]),
-                    tensor.get(&[y, x, 2]),
+                    tensor.get_with_image_coords(x, y, 0),
+                    tensor.get_with_image_coords(x, y, 1),
+                    tensor.get_with_image_coords(x, y, 2),
                 ) {
                     match (r, g, b) {
                         (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
@@ -575,10 +566,10 @@ fn tensor_pixel_value_ui(
             4 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let (Some(r), Some(g), Some(b), Some(a)) = (
-                    tensor.get(&[y, x, 0]),
-                    tensor.get(&[y, x, 1]),
-                    tensor.get(&[y, x, 2]),
-                    tensor.get(&[y, x, 3]),
+                    tensor.get_with_image_coords(x, y, 0),
+                    tensor.get_with_image_coords(x, y, 1),
+                    tensor.get_with_image_coords(x, y, 2),
+                    tensor.get_with_image_coords(x, y, 3),
                 ) {
                     match (r, g, b, a) {
                         (
@@ -595,9 +586,13 @@ fn tensor_pixel_value_ui(
                     None
                 }
             }
-            channels => Some(format!("Cannot preview {channels}-channel image")),
-        },
-        dims => Some(format!("Cannot preview {dims}-dimensional image")),
+            channel => Some(format!("Cannot preview {channel}-size channel image")),
+        }
+    } else {
+        Some(format!(
+            "Cannot preview tensors with a shape of {:?}",
+            tensor.shape()
+        ))
     };
 
     if let Some(text) = text {

@@ -6,6 +6,7 @@ from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
+from rerun import experimental
 from rerun.log import log_cleared
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
@@ -31,6 +32,7 @@ __all__ = [
     "LoggingHandler",
     "bindings",
     "ImageFormat",
+    "experimental",
     "log_annotation_context",
     "log_arrow",
     "log_cleared",

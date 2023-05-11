@@ -5,8 +5,8 @@ use crate::{
     renderer::{
         LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags, LineStripInfo, LineVertex,
     },
-    Color32, DebugLabel, OutlineMaskPreference, PickingLayerInstanceId, PickingLayerObjectId,
-    RenderContext, Size,
+    Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
+    PickingLayerObjectId, RenderContext, Size,
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
@@ -70,6 +70,7 @@ impl LineStripSeriesBuilder {
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: PickingLayerObjectId::default(),
+            depth_offset: 0,
         });
 
         LineBatchBuilder(self)
@@ -160,6 +161,13 @@ impl<'a> LineBatchBuilder<'a> {
     /// Sets the picking object id for every element in the batch.
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
         self.batch_mut().picking_object_id = picking_object_id;
+        self
+    }
+
+    /// Sets the depth offset for the entire batch.
+    #[inline]
+    pub fn depth_offset(mut self, depth_offset: DepthOffset) -> Self {
+        self.batch_mut().depth_offset = depth_offset;
         self
     }
 

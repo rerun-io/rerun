@@ -1071,15 +1071,19 @@ impl DataTable {
 
         let table_id = TableId::random();
 
-        let timepoint = |frame_nr: i64| {
-            if timeless {
+        let mut tick = 0i64;
+        let mut timepoint = |frame_nr: i64| {
+            let tp = if timeless {
                 TimePoint::timeless()
             } else {
                 TimePoint::from([
-                    (Timeline::new_temporal("log_time"), Time::now().into()),
+                    (Timeline::log_time(), Time::now().into()),
+                    (Timeline::log_tick(), tick.into()),
                     (Timeline::new_sequence("frame_nr"), frame_nr.into()),
                 ])
-            }
+            };
+            tick += 1;
+            tp
         };
 
         let row0 = {
@@ -1165,7 +1169,7 @@ fn data_table_sizes_basics() {
         2_690_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow("some_bools".into(), cell.to_arrow().slice(1, 1)),
+        DataCell::from_arrow("some_bools".into(), cell.to_arrow().sliced(1, 1)),
         10_000,    // num_rows
         2_690_064, // expected_num_bytes
     );
@@ -1182,7 +1186,7 @@ fn data_table_sizes_basics() {
         2_840_064,    // expected_num_bytes
     );
     expect(
-        DataCell::from_arrow("some_u64s".into(), cell.to_arrow().slice(1, 1)),
+        DataCell::from_arrow("some_u64s".into(), cell.to_arrow().sliced(1, 1)),
         10_000,    // num_rows
         2_680_064, // expected_num_bytes
     );
@@ -1205,7 +1209,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Label::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         2_950_064, // expected_num_bytes
@@ -1229,7 +1233,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Point2D::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         5_100_064, // expected_num_bytes
@@ -1253,7 +1257,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Point2D::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         3_920_064, // expected_num_bytes
@@ -1289,7 +1293,7 @@ fn data_table_sizes_basics() {
     expect(
         DataCell::from_arrow(
             crate::component_types::Point2D::name(),
-            cell.to_arrow().slice(1, 1),
+            cell.to_arrow().sliced(1, 1),
         ),
         10_000,    // num_rows
         5_560_064, // expected_num_bytes

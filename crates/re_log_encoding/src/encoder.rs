@@ -1,5 +1,7 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
+// TODO(1316): switch to using lz4flex - see https://github.com/rerun-io/rerun/issues/1316#issuecomment-1510967893
+
 use std::io::Write as _;
 
 use re_log_types::LogMsg;
@@ -19,6 +21,24 @@ pub enum EncodeError {
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
 }
+
+// ----------------------------------------------------------------------------
+
+pub fn encode_to_bytes<'a>(
+    msgs: impl IntoIterator<Item = &'a LogMsg>,
+) -> Result<Vec<u8>, EncodeError> {
+    let mut bytes: Vec<u8> = vec![];
+    {
+        let mut encoder = Encoder::new(std::io::Cursor::new(&mut bytes))?;
+        for msg in msgs {
+            encoder.append(msg)?;
+        }
+        encoder.finish()?;
+    }
+    Ok(bytes)
+}
+
+// ----------------------------------------------------------------------------
 
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
 pub struct Encoder<W: std::io::Write> {

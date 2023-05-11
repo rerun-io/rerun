@@ -8,7 +8,7 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
     misc::{MeshCache, SpaceViewHighlights, TransformCache},
-    ui::view_spatial::{MeshSource, SceneSpatial},
+    ui::view_spatial::{scene::EntityDepthOffsets, MeshSource, SceneSpatial},
 };
 
 use super::{instance_path_hash_for_picking, ScenePart};
@@ -69,6 +69,7 @@ impl ScenePart for MeshPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("MeshPart");
 

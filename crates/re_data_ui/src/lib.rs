@@ -148,6 +148,27 @@ impl DataUi for PathOp {
 
 // ---------------------------------------------------------------------------
 
+pub fn annotations(
+    ctx: &mut ViewerContext<'_>,
+    query: &re_arrow_store::LatestAtQuery,
+    entity_path: &re_data_store::EntityPath,
+) -> std::sync::Arc<re_viewer_context::Annotations> {
+    crate::profile_function!();
+    let mut annotation_map = re_viewer_context::AnnotationMap::default();
+    let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
+    let entity_props_map = re_data_store::EntityPropertyMap::default();
+    let scene_query = re_viewer_context::SceneQuery {
+        entity_paths: &entity_paths,
+        timeline: query.timeline,
+        latest_at: query.at,
+        entity_props_map: &entity_props_map,
+    };
+    annotation_map.load(ctx, &scene_query);
+    annotation_map.find(entity_path)
+}
+
+// ---------------------------------------------------------------------------
+
 /// Profiling macro for feature "puffin"
 #[doc(hidden)]
 #[macro_export]

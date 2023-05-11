@@ -4,86 +4,280 @@
 
 import argparse
 import os
+import socket
 import subprocess
 import time
 from glob import glob
-from typing import Any, List
+from types import TracebackType
+from typing import Any, List, Optional, Tuple, Type
 
 
-def run_py_example(path: str, args: List[str] = []) -> None:
+def start_process(args: List[str], cwd: str, wait: bool) -> Any:
     process = subprocess.Popen(
-        ["python3", "main.py", "--num-frames=30", "--steps=200"] + args,
-        cwd=path,
-    )
-    returncode = process.wait()
-    print(f"process exited with error code {returncode}")
-
-
-def run_saved_example(path: str, args: List[str] = []) -> None:
-    process = subprocess.Popen(
-        ["cargo", "run", "-p", "rerun", "--all-features", "--", "out.rrd"] + args,
-        cwd=path,
-    )
-    returncode = process.wait()
-    print(f"process exited with error code {returncode}")
-
-
-def collect_examples() -> List[str]:
-    return [os.path.dirname(entry) for entry in glob("examples/python/**/main.py")]
-
-
-def start_viewer(args: List[str] = []) -> Any:
-    process = subprocess.Popen(
-        ["cargo", "run", "-p", "rerun", "--all-features", "--"] + args,
+        args,
+        cwd=cwd,
         stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
-    time.sleep(1)  # give it a moment to start
+    if wait:
+        returncode = process.wait()
+        if returncode != 0:
+            print(process.communicate()[0].decode("utf-8").rstrip())
+            print(f"process exited with error code {returncode}")
+            exit(returncode)
     return process
 
 
-def run_build() -> None:
-    process = subprocess.Popen(
-        ["maturin", "develop", "--manifest-path", "rerun_py/Cargo.toml", '--extras="tests"'],
+def run_py_example(path: str, viewer_port: Optional[int] = None, wait: bool = True, save: Optional[str] = None) -> Any:
+    args = ["python3", "main.py", "--num-frames=30", "--steps=200"]
+    if save is not None:
+        args += [f"--save={save}"]
+    if viewer_port is not None:
+        args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
+
+    return start_process(
+        args,
+        cwd=path,
+        wait=wait,
     )
-    returncode = process.wait()
+
+
+def run_saved_example(path: str, wait: bool = True) -> Any:
+    return start_process(
+        ["cargo", "run", "-p", "rerun", "--all-features", "--", "out.rrd"],
+        cwd=path,
+        wait=wait,
+    )
+
+
+def get_free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("", 0))
+        return int(s.getsockname()[1])
+
+
+def collect_examples(fast: bool) -> List[str]:
+    if fast:
+        # cherry picked
+        return [
+            "examples/python/api_demo",
+            "examples/python/car",
+            "examples/python/clock",
+            "examples/python/colmap",
+            "examples/python/deep_sdf",
+            "examples/python/dicom",
+            "examples/python/nyud",
+            "examples/python/plots",
+            "examples/python/raw_mesh",
+            "examples/python/text_logging",
+        ]
+    else:
+        return [os.path.dirname(entry) for entry in glob("examples/python/**/main.py")]
+
+
+def print_example_output(path: str, example: Any) -> None:
+    print(f"\nExample {path}:\n{example.communicate()[0].decode('utf-8').rstrip()}")
+
+
+class Viewer:
+    should_close: bool
+    web: bool
+    sdk_port: int  # where the logging SDK sends the log stream (where the server receives)
+    web_viewer_port: int  # the HTTP port where we serve the web viewer
+    ws_server_port: int  # the WebSocket port where we serve the log stream
+    process: Optional[Any]
+
+    def __init__(self, close: bool = False, web: bool = False):
+        self.should_close = close
+        self.web = web
+        self.sdk_port = get_free_port()
+        self.web_viewer_port = get_free_port()
+        self.ws_server_port = get_free_port()
+        self.process = None
+
+    def close(self) -> None:
+        if self.process is not None and self.should_close:
+            self.process.kill()
+        self.process = None
+
+    def start(self) -> "Viewer":
+        print(f"\nStarting viewer on {'web ' if self.web else ''}port {self.sdk_port}")
+        args = ["./target/debug/rerun", f"--port={self.sdk_port}"]
+        if self.web:
+            args += [
+                "--web-viewer",
+                f"--web-viewer-port={self.web_viewer_port}",
+                f"--ws-server-port={self.ws_server_port}",
+            ]
+
+        self.process = subprocess.Popen(args)
+        time.sleep(1)
+        return self
+
+    def __enter__(self) -> "Viewer":
+        self.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        self.close()
+
+
+def run_sdk_build() -> None:
+    print("Building Python SDK…")
+    returncode = subprocess.Popen(
+        [
+            "maturin",
+            "develop",
+            "--manifest-path",
+            "rerun_py/Cargo.toml",
+            '--extras="tests"',
+            "--quiet",
+        ],
+    ).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
+
+
+def run_viewer_build() -> None:
+    print("Building rerun…")
+    returncode = subprocess.Popen(
+        [
+            "cargo",
+            "build",
+            "-p",
+            "rerun",
+            "--all-features",
+            "--quiet",
+        ]
+    ).wait()
+    assert returncode == 0, f"process exited with error code {returncode}"
+
+
+def run_web(examples: List[str], separate: bool) -> None:
+    if not separate:
+        with Viewer(close=True, web=True) as viewer:
+            for path in examples:
+                example = run_py_example(path, viewer_port=viewer.sdk_port)
+                print_example_output(path, example)
+        return
+
+    entries: List[Tuple[str, Any, Any]] = []
+    # start all examples in parallel
+    for path in examples:
+        # each example gets its own viewer
+        viewer = Viewer(web=True).start()
+        example = run_py_example(path, viewer_port=viewer.sdk_port, wait=False)
+        entries.append((path, viewer, example))
+
+    # wait for examples to finish logging
+    for entry in entries:
+        _, _, example = entry
+        example.wait()
+
+    # give servers/viewers a moment to finish loading data
+    time.sleep(5)
+
+    # shut down servers/viewers
+    for entry in entries:
+        path, viewer, example = entry
+        print_example_output(path, example)
+        viewer.close()
+
+
+def run_save(examples: List[str]) -> None:
+    for path in examples:
+        example = run_py_example(path, save="out.rrd")
+        print_example_output(path, example)
+
+
+def run_load(examples: List[str], separate: bool, close: bool) -> None:
+    if not separate:
+        # run all examples sequentially
+        for path in examples:
+            # each one must be closed for the next one to start running
+            example = run_saved_example(path)
+            print_example_output(path, example)
+        return
+
+    entries: List[Tuple[str, Any]] = []
+    for path in examples:
+        example = run_saved_example(path, wait=False)
+        entries.append((path, example))
+
+    for entry in entries:
+        path, example = entry
+        print_example_output(path, example)
+        if close:
+            example.kill()
+
+
+def run_native(examples: List[str], separate: bool, close: bool) -> None:
+    if not separate:
+        # run all examples sequentially in a single viewer
+        with Viewer(close) as viewer:
+            for path in examples:
+                example = run_py_example(path, viewer_port=viewer.sdk_port, wait=True)
+                print_example_output(path, example)
+        return
+
+    cleanup: List[Tuple[Any, Any]] = []
+    # start all examples in parallel
+    for path in examples:
+        # each example gets its own viewer
+        viewer = Viewer().start()
+        example = run_py_example(path, viewer.sdk_port, False)
+        cleanup.append((viewer, example))
+
+    # wait for all processes to finish, and close the viewers if requested
+    for pair in cleanup:
+        viewer, example = pair
+        print_example_output(path, example)
+        if close:
+            viewer.close()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Runs all examples.")
-    parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK")
-    parser.add_argument("--web", action="store_true", help="Run all examples in a web viewer.")
+    parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK.")
+    parser.add_argument("--web", action="store_true", help="Run examples in a web viewer.")
     parser.add_argument(
         "--save",
         action="store_true",
-        help="Run all examples, save them to disk as rrd, then view them natively.",
+        help="Run examples and save them to disk as rrd.",
     )
+    parser.add_argument(
+        "--load", action="store_true", help="Run examples using rrd files previously saved via `--save`."
+    )
+    parser.add_argument("--fast", action="store_true", help="Run only examples which complete quickly.")
+    parser.add_argument("--separate", action="store_true", help="Run each example in a separate viewer.")
+    parser.add_argument("--close", action="store_true", help="Close the viewer after running all examples.")
 
     args = parser.parse_args()
 
-    examples = collect_examples()
+    examples = collect_examples(args.fast)
 
     if not args.skip_build:
-        run_build()
+        run_sdk_build()
+    run_viewer_build()
 
     if args.web:
-        viewer = start_viewer(["--web-viewer"])
-        for example in examples:
-            run_py_example(example, ["--connect"])
-        viewer.kill()
-    elif args.save:
-        viewer = start_viewer()
-        for example in examples:
-            run_py_example(example, ["--save", "out.rrd"])
-        viewer.kill()
+        run_web(examples, separate=args.separate)
+        return
 
-        for example in examples:
-            run_saved_example(example)
-    else:
-        viewer = start_viewer()
-        for example in examples:
-            run_py_example(example)
-        viewer.kill()
+    if args.save:
+        run_save(examples)
+        if not args.load:
+            return
+
+    if args.load:
+        run_load(examples, separate=args.separate, close=args.close)
+        return
+
+    run_native(examples, separate=args.separate, close=args.close)
 
 
 if __name__ == "__main__":

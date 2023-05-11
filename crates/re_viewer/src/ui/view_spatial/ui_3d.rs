@@ -240,7 +240,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
     Drag with secondary mouse button to pan.\n\
-    Drag with middle mouse button (or primary mouse button + holding SHIFT) to roll the view.\n\
+    Drag with middle mouse button (or primary mouse button + holding ALT/OPTION) to roll the view.\n\
     Scroll to zoom.\n\
     \n\
     While hovering the 3D view, navigate with WSAD and QE.\n\

@@ -223,7 +223,6 @@ impl TensorDataTypeTrait for f64 {
 
 /// The data that can be stored in a [`crate::component_types::Tensor`].
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorElement {
     /// Unsigned 8 bit integer.
     ///
@@ -257,7 +256,7 @@ pub enum TensorElement {
     ///
     /// Uses the standard IEEE 754-2008 binary16 format.
     /// Set <https://en.wikipedia.org/wiki/Half-precision_floating-point_format>.
-    F16(f16),
+    F16(arrow2::types::f16),
 
     /// 32-bit floating point number.
     F32(f32),
@@ -280,7 +279,7 @@ impl TensorElement {
             Self::I32(value) => *value as _,
             Self::I64(value) => *value as _,
 
-            Self::F16(value) => value.to_f64(),
+            Self::F16(value) => value.to_f32() as _,
             Self::F32(value) => *value as _,
             Self::F64(value) => *value,
         }
@@ -305,7 +304,7 @@ impl TensorElement {
             Self::I32(value) => u16::try_from(*value).ok(),
             Self::I64(value) => u16::try_from(*value).ok(),
 
-            Self::F16(value) => u16_from_f64(value.to_f64()),
+            Self::F16(value) => u16_from_f64(value.to_f32() as f64),
             Self::F32(value) => u16_from_f64(*value as f64),
             Self::F64(value) => u16_from_f64(*value),
         }

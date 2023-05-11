@@ -7,8 +7,6 @@ use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, Ar
 use crate::Component;
 use crate::{TensorDataType, TensorElement};
 
-use super::arrow_convert_shims::BinaryBuffer;
-
 // ----------------------------------------------------------------------------
 
 /// A unique id per [`Tensor`].
@@ -126,6 +124,11 @@ impl ArrowDeserialize for TensorId {
 ///                 false
 ///             ),
 ///             Field::new(
+///                 "F16",
+///                 DataType::List(Box::new(Field::new("item", DataType::Float16, false))),
+///                 false
+///             ),
+///             Field::new(
 ///                 "F32",
 ///                 DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
 ///                 false
@@ -145,7 +148,7 @@ impl ArrowDeserialize for TensorId {
 #[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
-    U8(BinaryBuffer),
+    U8(Buffer<u8>),
     U16(Buffer<u16>),
     U32(Buffer<u32>),
     U64(Buffer<u64>),
@@ -155,11 +158,10 @@ pub enum TensorData {
     I32(Buffer<i32>),
     I64(Buffer<i64>),
     // ---
-    // TODO(#854): Native F16 support for arrow tensors
-    //F16(Vec<arrow2::types::f16>),
+    F16(Buffer<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
-    JPEG(BinaryBuffer),
+    JPEG(Buffer<u8>),
 }
 
 impl TensorData {
@@ -173,6 +175,7 @@ impl TensorData {
             Self::I16(_) => TensorDataType::I16,
             Self::I32(_) => TensorDataType::I32,
             Self::I64(_) => TensorDataType::I64,
+            Self::F16(_) => TensorDataType::F16,
             Self::F32(_) => TensorDataType::F32,
             Self::F64(_) => TensorDataType::F64,
         }
@@ -180,7 +183,7 @@ impl TensorData {
 
     pub fn size_in_bytes(&self) -> usize {
         match self {
-            Self::U8(buf) | Self::JPEG(buf) => buf.0.len(),
+            Self::U8(buf) | Self::JPEG(buf) => buf.len(),
             Self::U16(buf) => buf.len(),
             Self::U32(buf) => buf.len(),
             Self::U64(buf) => buf.len(),
@@ -188,6 +191,7 @@ impl TensorData {
             Self::I16(buf) => buf.len(),
             Self::I32(buf) => buf.len(),
             Self::I64(buf) => buf.len(),
+            Self::F16(buf) => buf.len(),
             Self::F32(buf) => buf.len(),
             Self::F64(buf) => buf.len(),
         }
@@ -207,6 +211,7 @@ impl TensorData {
             | Self::I16(_)
             | Self::I32(_)
             | Self::I64(_)
+            | Self::F16(_)
             | Self::F32(_)
             | Self::F64(_) => false,
 
@@ -226,6 +231,7 @@ impl std::fmt::Debug for TensorData {
             Self::I16(_) => write!(f, "I16({} bytes)", self.size_in_bytes()),
             Self::I32(_) => write!(f, "I32({} bytes)", self.size_in_bytes()),
             Self::I64(_) => write!(f, "I64({} bytes)", self.size_in_bytes()),
+            Self::F16(_) => write!(f, "F16({} bytes)", self.size_in_bytes()),
             Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
             Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
             Self::JPEG(_) => write!(f, "JPEG({} bytes)", self.size_in_bytes()),
@@ -401,48 +407,116 @@ impl Tensor {
         self.shape.as_slice()
     }
 
+    /// Returns the shape of the tensor with all trailing dimensions of size 1 ignored.
+    ///
+    /// If all dimension sizes are one, this returns only the first dimension.
+    #[inline]
+    pub fn shape_short(&self) -> &[TensorDimension] {
+        if self.shape.is_empty() {
+            &self.shape
+        } else {
+            self.shape
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, dim)| dim.size != 1)
+                .map_or(&self.shape[0..1], |(i, _)| &self.shape[..(i + 1)])
+        }
+    }
+
     #[inline]
     pub fn num_dim(&self) -> usize {
         self.shape.len()
     }
 
-    /// If this tensor is shaped as an image, return the height, width, and channels/depth of it.
+    /// If the tensor can be interpreted as an image, return the height, width, and channels/depth of it.
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
-        if self.shape.len() == 2 {
-            Some([self.shape[0].size, self.shape[1].size, 1])
-        } else if self.shape.len() == 3 {
-            let channels = self.shape[2].size;
-            // gray, rgb, rgba
-            if matches!(channels, 1 | 3 | 4) {
-                Some([self.shape[0].size, self.shape[1].size, channels])
-            } else {
-                None
+        let shape_short = self.shape_short();
+
+        match shape_short.len() {
+            1 => {
+                // Special case: Nx1(x1x1x...) tensors are treated as Nx1 grey images.
+                if self.shape.len() >= 2 {
+                    Some([shape_short[0].size, 1, 1])
+                } else {
+                    None
+                }
             }
-        } else {
-            None
+            2 => Some([shape_short[0].size, shape_short[1].size, 1]),
+            3 => {
+                let channels = shape_short[2].size;
+                if matches!(channels, 3 | 4) {
+                    // rgb, rgba
+                    Some([shape_short[0].size, shape_short[1].size, channels])
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 
+    /// Returns true if the tensor can be interpreted as an image.
     pub fn is_shaped_like_an_image(&self) -> bool {
-        self.num_dim() == 2
-            || self.num_dim() == 3 && {
-                matches!(
-                    self.shape.last().unwrap().size,
-                    // gray, rgb, rgba
-                    1 | 3 | 4
-                )
-            }
+        self.image_height_width_channels().is_some()
     }
 
+    /// Returns true if either all dimensions have size 1 or only a single dimension has a size larger than 1.
+    ///
+    /// Empty tensors return false.
     #[inline]
     pub fn is_vector(&self) -> bool {
-        let shape = &self.shape;
-        shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
+        if self.shape.is_empty() {
+            false
+        } else {
+            self.shape.iter().filter(|dim| dim.size > 1).count() <= 1
+        }
     }
 
     #[inline]
     pub fn meaning(&self) -> TensorDataMeaning {
         self.meaning
+    }
+
+    /// Query with x, y, channel indices.
+    ///
+    /// Allows to query values for any image like tensor even if it has more or less dimensions than 3.
+    /// (useful for sampling e.g. `N x M x C x 1` tensor which is a valid image)
+    #[inline]
+    pub fn get_with_image_coords(&self, x: u64, y: u64, channel: u64) -> Option<TensorElement> {
+        match self.shape.len() {
+            1 => {
+                if y == 0 && channel == 0 {
+                    self.get(&[x])
+                } else {
+                    None
+                }
+            }
+            2 => {
+                if channel == 0 {
+                    self.get(&[y, x])
+                } else {
+                    None
+                }
+            }
+            3 => self.get(&[y, x, channel]),
+            4 => {
+                // Optimization for common case, next case handles this too.
+                if self.shape[3].size == 1 {
+                    self.get(&[y, x, channel, 0])
+                } else {
+                    None
+                }
+            }
+            dim => self.image_height_width_channels().and_then(|_| {
+                self.get(
+                    &[x, y, channel]
+                        .into_iter()
+                        .chain(std::iter::repeat(0).take(dim - 3))
+                        .collect::<Vec<u64>>(),
+                )
+            }),
+        }
     }
 
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
@@ -465,6 +539,7 @@ impl Tensor {
             TensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
             TensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
             TensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
+            TensorData::F16(buf) => Some(TensorElement::F16(buf[offset])),
             TensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
             TensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
             TensorData::JPEG(_) => None, // Too expensive to unpack here.
@@ -500,11 +575,6 @@ pub enum TensorCastError {
 
     #[error("ndarray Array is not contiguous and in standard order")]
     NotContiguousStdOrder,
-
-    #[error(
-        "tensors do not currently support f16 data (https://github.com/rerun-io/rerun/issues/854)"
-    )]
-    F16NotSupported,
 }
 
 macro_rules! tensor_type {
@@ -593,15 +663,93 @@ tensor_type!(i16, I16);
 tensor_type!(i32, I32);
 tensor_type!(i64, I64);
 
+tensor_type!(arrow2::types::f16, F16);
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
-// TODO(#854) Switch back to `tensor_type!` once we have F16 tensors
+// Manual expansion of tensor_type! macro for `half::f16` types. We need to do this
+// because arrow uses its own half type. The two use the same underlying representation
+// but are still distinct types. `half::f16`, however, is more full-featured and
+// generally a better choice to use when converting to ndarray.
+// ==========================================
+// TODO(jleibs): would be nice to support this with the macro definition as well
+// but the bytemuck casts add a bit of complexity here.
 impl<'a> TryFrom<&'a Tensor> for ::ndarray::ArrayViewD<'a, half::f16> {
     type Error = TensorCastError;
 
-    fn try_from(_: &'a Tensor) -> Result<Self, Self::Error> {
-        Err(TensorCastError::F16NotSupported)
+    fn try_from(value: &'a Tensor) -> Result<Self, Self::Error> {
+        let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
+        if let TensorData::F16(data) = &value.data {
+            ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
+                .map_err(|err| TensorCastError::BadTensorShape { source: err })
+        } else {
+            Err(TensorCastError::TypeMismatch)
+        }
+    }
+}
+
+impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>> for Tensor {
+    type Error = TensorCastError;
+
+    fn try_from(view: ::ndarray::ArrayView<'a, half::f16, D>) -> Result<Self, Self::Error> {
+        let shape = view
+            .shape()
+            .iter()
+            .map(|dim| TensorDimension {
+                size: *dim as u64,
+                name: None,
+            })
+            .collect();
+        match view.to_slice() {
+            Some(slice) => Ok(Tensor {
+                tensor_id: TensorId::random(),
+                shape,
+                data: TensorData::F16(Vec::from(bytemuck::cast_slice(slice)).into()),
+                meaning: TensorDataMeaning::Unknown,
+                meter: None,
+            }),
+            None => Ok(Tensor {
+                tensor_id: TensorId::random(),
+                shape,
+                data: TensorData::F16(
+                    view.iter()
+                        .map(|f| arrow2::types::f16::from_bits(f.to_bits()))
+                        .collect::<Vec<_>>()
+                        .into(),
+                ),
+                meaning: TensorDataMeaning::Unknown,
+                meter: None,
+            }),
+        }
+    }
+}
+
+impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor {
+    type Error = TensorCastError;
+
+    fn try_from(value: ndarray::Array<half::f16, D>) -> Result<Self, Self::Error> {
+        let shape = value
+            .shape()
+            .iter()
+            .map(|dim| TensorDimension {
+                size: *dim as u64,
+                name: None,
+            })
+            .collect();
+        value
+            .is_standard_layout()
+            .then(|| Tensor {
+                tensor_id: TensorId::random(),
+                shape,
+                data: TensorData::F16(
+                    bytemuck::cast_slice(value.into_raw_vec().as_slice())
+                        .to_vec()
+                        .into(),
+                ),
+                meaning: TensorDataMeaning::Unknown,
+                meter: None,
+            })
+            .ok_or(TensorCastError::NotContiguousStdOrder)
     }
 }
 
@@ -885,6 +1033,7 @@ impl TryFrom<Tensor> for DecodedTensor {
             | TensorData::I16(_)
             | TensorData::I32(_)
             | TensorData::I64(_)
+            | TensorData::F16(_)
             | TensorData::F32(_)
             | TensorData::F64(_) => Ok(Self(tensor)),
 
@@ -974,12 +1123,13 @@ impl DecodedTensor {
             | TensorData::I16(_)
             | TensorData::I32(_)
             | TensorData::I64(_)
+            | TensorData::F16(_)
             | TensorData::F32(_)
             | TensorData::F64(_) => Ok(Self(maybe_encoded_tensor)),
 
             TensorData::JPEG(buf) => {
                 use image::io::Reader as ImageReader;
-                let mut reader = ImageReader::new(std::io::Cursor::new(buf.0.as_slice()));
+                let mut reader = ImageReader::new(std::io::Cursor::new(buf.as_slice()));
                 reader.set_format(image::ImageFormat::Jpeg);
                 let img = {
                     crate::profile_scope!("decode_jpeg");
@@ -1081,4 +1231,120 @@ fn test_arrow() {
     let array: Box<dyn arrow2::array::Array> = tensors_in.iter().try_into_arrow().unwrap();
     let tensors_out: Vec<Tensor> = TryIntoCollection::try_into_collection(array).unwrap();
     assert_eq!(tensors_in, tensors_out);
+}
+
+#[test]
+fn test_tensor_shape_utilities() {
+    fn generate_tensor_from_shape(sizes: &[u64]) -> Tensor {
+        let shape = sizes
+            .iter()
+            .map(|&size| TensorDimension { size, name: None })
+            .collect();
+        let num_elements = sizes.iter().fold(0, |acc, &size| acc * size);
+        let data = (0..num_elements).map(|i| i as u32).collect::<Vec<_>>();
+
+        Tensor {
+            tensor_id: TensorId(std::default::Default::default()),
+            shape,
+            data: TensorData::U32(data.into()),
+            meaning: TensorDataMeaning::Unknown,
+            meter: None,
+        }
+    }
+
+    // Empty tensor.
+    {
+        let tensor = generate_tensor_from_shape(&[]);
+
+        assert_eq!(tensor.image_height_width_channels(), None);
+        assert_eq!(tensor.shape_short(), tensor.shape());
+        assert!(!tensor.is_vector());
+        assert!(!tensor.is_shaped_like_an_image());
+    }
+
+    // Single dimension tensors.
+    for shape in [vec![4], vec![1]] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), None);
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..1]);
+        assert!(tensor.is_vector());
+        assert!(!tensor.is_shaped_like_an_image());
+    }
+
+    // Single element, but it might be interpreted as a 1x1 grey image!
+    for shape in [
+        vec![1, 1],
+        vec![1, 1, 1],
+        vec![1, 1, 1, 1],
+        vec![1, 1, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([1, 1, 1]));
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..1]);
+        assert!(tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+    // Color/Grey 2x4 images
+    for shape in [
+        vec![4, 2],
+        vec![4, 2, 1],
+        vec![4, 2, 1, 1],
+        vec![4, 2, 3],
+        vec![4, 2, 3, 1, 1],
+        vec![4, 2, 4],
+        vec![4, 2, 4, 1, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+        let channels = shape.get(2).cloned().unwrap_or(1);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([4, 2, channels]));
+        assert_eq!(
+            tensor.shape_short(),
+            &tensor.shape()[0..(2 + (channels != 1) as usize)]
+        );
+        assert!(!tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+
+    // Grey 1x4 images
+    for shape in [
+        vec![4, 1],
+        vec![4, 1, 1],
+        vec![4, 1, 1, 1],
+        vec![4, 1, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([4, 1, 1]));
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..1]);
+        assert!(tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+
+    // Grey 4x1 images
+    for shape in [
+        vec![1, 4],
+        vec![1, 4, 1],
+        vec![1, 4, 1, 1],
+        vec![1, 4, 1, 1, 1],
+    ] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), Some([1, 4, 1]));
+        assert_eq!(tensor.shape_short(), &tensor.shape()[0..2]);
+        assert!(tensor.is_vector());
+        assert!(tensor.is_shaped_like_an_image());
+    }
+
+    // Non images & non vectors without trailing dimensions
+    for shape in [vec![4, 2, 5], vec![1, 1, 1, 2, 4]] {
+        let tensor = generate_tensor_from_shape(&shape);
+
+        assert_eq!(tensor.image_height_width_channels(), None);
+        assert_eq!(tensor.shape_short(), tensor.shape());
+        assert!(!tensor.is_vector());
+        assert!(!tensor.is_shaped_like_an_image());
+    }
 }

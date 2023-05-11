@@ -279,7 +279,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
@@ -301,7 +301,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
@@ -335,7 +335,13 @@ fn general_texture_creation_desc_from_tensor<'a>(
                     TextureFormat::Rgba32Float,
                 ),
 
-                // TensorData::F16(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F16(buf) => (
+                    pad_and_cast(
+                        buf,
+                        re_log_types::external::arrow2::types::f16::from_f32(1.0),
+                    ),
+                    TextureFormat::Rgba16Float,
+                ),
                 TensorData::F32(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba32Float),
                 TensorData::F64(buf) => (
                     pad_and_narrow_and_cast(buf, 1.0, |x: f64| x as f32),
@@ -362,7 +368,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 
@@ -465,27 +471,14 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
 fn height_width_depth(tensor: &Tensor) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
 
-    let shape = &tensor.shape();
-
-    anyhow::ensure!(
-        shape.len() == 2 || shape.len() == 3,
-        "Expected a 2D or 3D tensor, got {shape:?}",
-    );
+    let Some([height, width, channel]) = tensor.image_height_width_channels() else {
+        anyhow::bail!("Tensor is not an image");
+    };
 
     let [height, width] = [
-        u32::try_from(shape[0].size).context("tensor too large")?,
-        u32::try_from(shape[1].size).context("tensor too large")?,
+        u32::try_from(height).context("Image height is too large")?,
+        u32::try_from(width).context("Image width is too large")?,
     ];
-    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
 
-    anyhow::ensure!(
-        depth == 1 || depth == 3 || depth == 4,
-        "Expected depth of 1,3,4 (gray, RGB, RGBA), found {depth:?}. Tensor shape: {shape:?}"
-    );
-    debug_assert!(
-        tensor.is_shaped_like_an_image(),
-        "We should make the same checks above, but with actual error messages"
-    );
-
-    Ok([height, width, depth as u32])
+    Ok([height, width, channel as u32])
 }

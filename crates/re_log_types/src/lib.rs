@@ -36,6 +36,7 @@ pub use self::component_types::coordinates;
 pub use self::component_types::AnnotationContext;
 pub use self::component_types::Arrow3D;
 pub use self::component_types::DecodedTensor;
+pub use self::component_types::DrawOrder;
 pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::component_types::{Tensor, ViewCoordinates};
 pub use self::data::*;

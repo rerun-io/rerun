@@ -9,9 +9,12 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 use crate::{
     misc::{SpaceViewHighlights, SpaceViewOutlineMasks, TransformCache},
     ui::view_spatial::{
-        scene::scene_part::{
-            instance_key_to_picking_id, instance_path_hash_for_picking,
-            process_annotations_and_keypoints, process_colors, process_radii,
+        scene::{
+            scene_part::{
+                instance_key_to_picking_id, instance_path_hash_for_picking,
+                process_annotations_and_keypoints, process_colors, process_radii,
+            },
+            EntityDepthOffsets,
         },
         SceneSpatial, UiLabel, UiLabelTarget,
     },
@@ -173,6 +176,7 @@ impl ScenePart for Points3DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _depth_offsets: &EntityDepthOffsets,
     ) {
         crate::profile_scope!("Points3DPart");
 

@@ -8,7 +8,6 @@ use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, Ar
 
 use crate::Component;
 
-use super::arrow_convert_shims::BinaryBuffer;
 use super::{FieldError, Vec4D};
 
 // ----------------------------------------------------------------------------
@@ -262,7 +261,7 @@ pub struct EncodedMesh3D {
 
     pub format: MeshFormat,
 
-    pub bytes: BinaryBuffer,
+    pub bytes: Buffer<u8>,
 
     /// four columns of an affine transformation matrix
     pub transform: [[f32; 3]; 4],
@@ -275,7 +274,7 @@ pub struct EncodedMesh3DArrow {
 
     pub format: MeshFormat,
 
-    pub bytes: BinaryBuffer,
+    pub bytes: Buffer<u8>,
 
     #[arrow_field(type = "arrow2_convert::field::FixedSizeVec<f32, 12>")]
     pub transform: Vec<f32>,

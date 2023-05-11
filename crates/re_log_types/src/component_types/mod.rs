@@ -17,12 +17,12 @@ use lazy_static::lazy_static;
 use crate::Component;
 
 mod arrow;
-mod arrow_convert_shims;
 mod bbox;
 mod class_id;
 mod color;
 pub mod context;
 pub mod coordinates;
+mod draw_order;
 mod instance_key;
 mod keypoint_id;
 mod label;
@@ -36,6 +36,7 @@ mod rect;
 mod scalar;
 mod size;
 mod tensor;
+mod text_box;
 mod text_entry;
 mod transform3d;
 mod vec;
@@ -46,6 +47,7 @@ pub use class_id::ClassId;
 pub use color::ColorRGBA;
 pub use context::{AnnotationContext, AnnotationInfo, ClassDescription};
 pub use coordinates::ViewCoordinates;
+pub use draw_order::DrawOrder;
 pub use instance_key::InstanceKey;
 pub use keypoint_id::KeypointId;
 pub use label::Label;
@@ -64,6 +66,7 @@ pub use tensor::{
 };
 #[cfg(feature = "image")]
 pub use tensor::{TensorImageLoadError, TensorImageSaveError};
+pub use text_box::TextBox;
 pub use text_entry::TextEntry;
 pub use transform3d::{
     Affine3D, Angle, AxisAngleRotation, DirectedAffine3D, Pinhole, Rotation3D, Scale3D,
@@ -73,7 +76,7 @@ pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 25] = [
+    static ref FIELDS: [Field; 26] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),
         <Box3D as Component>::field(),
@@ -95,6 +98,7 @@ lazy_static! {
         <Size3D as Component>::field(),
         <Tensor as Component>::field(),
         <TextEntry as Component>::field(),
+        <TextBox as Component>::field(),
         <Transform3D as Component>::field(),
         <Vec2D as Component>::field(),
         <Vec3D as Component>::field(),

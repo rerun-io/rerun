@@ -107,10 +107,16 @@ impl ComponentWithInstances {
             0
         } else {
             // Otherwise binary search to find the offset of the instance
-            keys.binary_search(&instance_key.0).ok()? as u32
+            keys.binary_search(&instance_key.0).ok()?
         };
 
-        Some(self.values.as_arrow_ref().slice(offset as _, 1))
+        let arrow_ref = self.values.as_arrow_ref();
+        (arrow_ref.len() > offset)
+            .then(|| arrow_ref.sliced(offset, 1))
+            .or_else(|| {
+                re_log::error_once!("found corrupt cell -- mismatched number of instances");
+                None
+            })
     }
 
     /// Produce a `ComponentWithInstances` from native component types
