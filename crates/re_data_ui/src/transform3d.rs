@@ -35,7 +35,8 @@ impl DataUi for DirectedAffine3D {
     ) {
         match verbosity {
             UiVerbosity::Small => {
-                ui.label("Rigid 3D transform").on_hover_ui(|ui| {
+                // TODO(andreas): Preview some information.
+                ui.label("Affine 3D transform").on_hover_ui(|ui| {
                     self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
             }

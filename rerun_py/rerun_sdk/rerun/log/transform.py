@@ -6,6 +6,7 @@ Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/s
 from typing import Any, Dict, Optional, Tuple
 
 import numpy.typing as npt
+from deprecated import deprecated
 
 from rerun import bindings
 from rerun.components.transform3d import (
@@ -16,7 +17,6 @@ from rerun.components.transform3d import (
     TranslationRotationScale3D,
     UnknownTransform,
 )
-from rerun.log import _to_sequence
 from rerun.log.error_utils import _send_warning
 from rerun.log.log_decorator import log_decorator
 
@@ -154,6 +154,7 @@ def log_affine3(
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
+@deprecated(version="0.6.0", reason="Use log_affine3 instead and, if xyz was set, log_view_coordinates")
 @log_decorator
 def log_rigid3(
     entity_path: str,
@@ -206,23 +207,20 @@ def log_rigid3(
     if parent_from_child and child_from_parent:
         raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
 
-    # TODO:
     if parent_from_child:
-        (t, q) = parent_from_child
-        bindings.log_rigid3(
+        log_affine3(
             entity_path,
-            parent_from_child=True,
-            rotation_q=_to_sequence(q),
-            translation=_to_sequence(t),
+            parent_from_child=TranslationRotationScale3D(
+                translation=parent_from_child[0], rotation=parent_from_child[1]
+            ),
             timeless=timeless,
         )
     elif child_from_parent:
-        (t, q) = child_from_parent
-        bindings.log_rigid3(
+        log_affine3(
             entity_path,
-            parent_from_child=False,
-            rotation_q=_to_sequence(q),
-            translation=_to_sequence(t),
+            child_from_parent=TranslationRotationScale3D(
+                translation=child_from_parent[0], rotation=child_from_parent[1]
+            ),
             timeless=timeless,
         )
     else:
