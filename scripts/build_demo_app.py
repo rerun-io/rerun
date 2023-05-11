@@ -53,11 +53,23 @@ class Example:
             return "script_add_args" in f.read()
 
 
-def copy_static_assets() -> None:
+def copy_static_assets(examples: List[Example]) -> None:
+    # copy root
     src = os.path.join(SCRIPT_PATH, "demo_assets/static")
-    dst = os.path.join(BASE_PATH)
-    logging.info(f"Copying static assets from {src} to {dst}")
+    dst = BASE_PATH
+    logging.info(f"\nCopying static assets from {src} to {dst}")
     shutil.copytree(src, dst, dirs_exist_ok=True)
+
+    # copy examples
+    for example in examples:
+        src = os.path.join(SCRIPT_PATH, "demo_assets/static")
+        dst = os.path.join(BASE_PATH, f"examples/{example.name}")
+        shutil.copytree(
+            src,
+            dst,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("index.html"),
+        )
 
 
 def build_wasm() -> None:
@@ -66,13 +78,14 @@ def build_wasm() -> None:
     subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--debug"])
 
 
-def copy_wasm() -> None:
+def copy_wasm(examples: List[Example]) -> None:
     files = ["re_viewer_bg.wasm", "re_viewer.js"]
-    for file in files:
-        shutil.copyfile(
-            os.path.join("web_viewer", file),
-            os.path.join(BASE_PATH, file),
-        )
+    for example in examples:
+        for file in files:
+            shutil.copyfile(
+                os.path.join("web_viewer", file),
+                os.path.join(BASE_PATH, f"examples/{example.name}", file),
+            )
 
 
 def collect_examples() -> List[Example]:
@@ -140,14 +153,14 @@ def main() -> None:
     for arg in unknown:
         logging.warning(f"unknown arg: {arg}")
 
-    copy_static_assets()
     if not args.skip_wasm_build:
         build_wasm()
-    copy_wasm()
 
     examples = collect_examples()
     save_examples_rrd(examples)
     render_examples(examples)
+    copy_static_assets(examples)
+    copy_wasm(examples)
 
     if args.serve:
         serve_files()
@@ -156,8 +169,9 @@ def main() -> None:
             try:
                 logging.info("Press enter to reload static files")
                 input()
-                copy_static_assets()
                 render_examples(examples)
+                copy_static_assets(examples)
+                copy_wasm(examples)
             except KeyboardInterrupt:
                 break
 

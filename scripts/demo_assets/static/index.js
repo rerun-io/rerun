@@ -18,7 +18,7 @@ function load_wasm() {
   // initialization and return to us a promise when it's done.
 
   console.debug("loading wasm…");
-  wasm_bindgen("/re_viewer_bg.wasm").then(on_wasm_loaded).catch(on_wasm_error);
+  wasm_bindgen("re_viewer_bg.wasm").then(on_wasm_loaded).catch(on_wasm_error);
 }
 
 function on_wasm_loaded() {
@@ -85,9 +85,10 @@ function on_app_started(handle) {
 }
 
 function determine_url() {
-  // strip `index.html`, normalize two slashes
-  let url = window.location.pathname.replace(/index\.html$/, "") + "/data.rrd";
-  return url.replace(/\/{2,}/g, "/");
+  const base = window.location.pathname.endsWith("/")
+    ? window.location.pathname.slice(0, -1)
+    : window.location.pathname;
+  return base + "/data.rrd";
 }
 
 function on_wasm_error(error) {
@@ -110,14 +111,6 @@ function on_wasm_error(error) {
     <p style="font-size:14px">
             Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
     </p>`;
-}
-
-function navigate_to_example(name) {
-  if (window.location.pathname.includes("/examples/")) {
-    window.location.href = window.location.pathname.replace(/\/examples\/\w+/, `/examples/${name}`);
-  } else {
-    window.location.href = `./examples/${name}`;
-  }
 }
 
 // open/close dropdown
