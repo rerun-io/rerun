@@ -24,14 +24,14 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
     pkgs.track_implicit_dep(pkg_name, &mut files_to_watch);
 
     for path in &files_to_watch {
-        rerun_if_file_changed(path);
+        rerun_if_changed(path);
     }
 }
 
-fn rerun_if_file_changed(path: &std::path::Path) {
+fn rerun_if_changed(path: &std::path::Path) {
     // Make sure the file exists, otherwise we'll be rebuilding all the time.
     assert!(path.exists(), "Failed to find {path:?}");
-    println!("cargo:rerun-if-changed={}", path.to_string_lossy());
+    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
 }
 
 fn rerun_if_changed_glob(path: &str, files_to_watch: &mut HashSet<PathBuf>) {

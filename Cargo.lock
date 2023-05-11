@@ -3951,7 +3951,6 @@ dependencies = [
  "enumset",
  "getrandom",
  "glam",
- "glob",
  "gltf",
  "half 2.2.1",
  "image",
