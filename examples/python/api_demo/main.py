@@ -392,6 +392,8 @@ def main() -> None:
         if args.split_recordings:
             with rr.script_setup(args, f"api_demo/{args.demo}"):
                 demos[args.demo]()
+        else:
+            demos[args.demo]()
 
     rr.script_teardown(args)
 
