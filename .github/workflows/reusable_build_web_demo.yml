@@ -25,7 +25,6 @@ env:
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 jobs:
-
   rs-build-web-viewer:
     name: Build Web Demo
     permissions:
@@ -51,7 +50,7 @@ jobs:
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
-      
+
       - name: Install dependencies for examples/python
         run: |
           pip install -r scripts/requirements-web-demo.txt
@@ -60,7 +59,8 @@ jobs:
       - name: Install built wheel
         shell: bash
         run: |
-          pip install --find-links wheel rerun-sdk
+          pip uninstall rerun-sdk
+          pip install rerun-sdk --no-index --find-links wheel
 
       - name: Verify built wheel version
         shell: bash
@@ -78,3 +78,4 @@ jobs:
         with:
           name: web_demo
           path: web_demo
+
