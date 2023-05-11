@@ -142,9 +142,9 @@ impl TimeControl {
                     .or_insert_with(|| TimeState::new(full_range.min));
 
                 if self.looping == Looping::Off && state.time >= full_range.max {
-                    // Don't pause or rewind, just stop moving time forward
-                    // until we receive more data!
-                    // This is important for "live view".
+                    // We've reached the end - stop playing.
+                    state.time = full_range.max.into();
+                    self.pause();
                     return;
                 }
 
