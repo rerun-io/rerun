@@ -135,6 +135,35 @@ impl From<String> for RecordingId {
     }
 }
 
+impl RecordingId {
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl AsRef<str> for RecordingId {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::borrow::Borrow<str> for RecordingId {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::ops::Deref for RecordingId {
+    type Target = str;
+    #[inline]
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// The user-chosen name of the application doing the logging.
