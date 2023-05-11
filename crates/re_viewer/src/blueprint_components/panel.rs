@@ -13,14 +13,14 @@ pub struct PanelState {
 impl PanelState {
     // TODO(jleibs): Would be nice if this could be a const EntityPath but making
     // the hash const is a bit of a pain.
-    pub const BLUEPRINT_PANEL: &str = "blueprint_panel";
-    pub const SELECTION_PANEL: &str = "selection_panel";
-    pub const TIMELINE_PANEL: &str = "timeline_panel";
+    pub const BLUEPRINT_VIEW: &str = "blueprint_view";
+    pub const SELECTION_VIEW: &str = "selection_view";
+    pub const TIMELINE_VIEW: &str = "timeline_view";
 }
 
 impl Component for PanelState {
     #[inline]
     fn name() -> ComponentName {
-        "rerun.blueprint.panel".into()
+        "rerun.blueprint.panel_view".into()
     }
 }

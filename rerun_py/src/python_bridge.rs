@@ -156,7 +156,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
 
     // blueprint
-    m.add_function(wrap_pyfunction!(set_panel, m)?)?;
+    m.add_function(wrap_pyfunction!(set_panels, m)?)?;
     m.add_function(wrap_pyfunction!(add_space_view, m)?)?;
     m.add_function(wrap_pyfunction!(set_auto_space_views, m)?)?;
 
@@ -1197,6 +1197,16 @@ fn log_cleared(entity_path: &str, recursive: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
+fn set_panels(
+    blueprint_view_expanded: Option<bool>,
+    selection_view_expanded: Option<bool>,
+    timeline_view_expanded: Option<bool>,
+) {
+    blueprint_view_expanded.map(|expanded| set_panel(PanelState::BLUEPRINT_VIEW, expanded));
+    selection_view_expanded.map(|expanded| set_panel(PanelState::SELECTION_VIEW, expanded));
+    timeline_view_expanded.map(|expanded| set_panel(PanelState::TIMELINE_VIEW, expanded));
+}
+
 fn set_panel(entity_path: &str, expanded: bool) -> PyResult<()> {
     let bp_ctx = global_blueprint_stream();
     let Some(bp_ctx) = bp_ctx.as_ref() else {

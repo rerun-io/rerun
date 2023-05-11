@@ -38,9 +38,7 @@ def main() -> None:
         if args.auto_space_views:
             rr.set_auto_space_views(True)
 
-        rr.set_panel("blueprint_panel", expanded=False)
-        rr.set_panel("selection_panel", expanded=False)
-        rr.set_panel("timeline_panel", expanded=False)
+        rr.set_panels(all_expanded=False)
 
         rr.add_space_view("overlaid", "/", ["image", "rect/0", "rect/1"])
 

@@ -49,19 +49,19 @@ impl Blueprint {
         // Update the panel states
         sync_panel_expanded(
             blueprint_db,
-            PanelState::BLUEPRINT_PANEL,
+            PanelState::BLUEPRINT_VIEW,
             self.blueprint_panel_expanded,
             snapshot.blueprint_panel_expanded,
         );
         sync_panel_expanded(
             blueprint_db,
-            PanelState::SELECTION_PANEL,
+            PanelState::SELECTION_VIEW,
             self.selection_panel_expanded,
             snapshot.selection_panel_expanded,
         );
         sync_panel_expanded(
             blueprint_db,
-            PanelState::TIMELINE_PANEL,
+            PanelState::TIMELINE_VIEW,
             self.time_panel_expanded,
             snapshot.time_panel_expanded,
         );

@@ -74,8 +74,18 @@ def add_space_view(name: str, space_path: str, entity_paths: List[str]) -> None:
 
 
 # TODO(jleibs): docstrings
-def set_panel(entity_path: str, expanded: bool) -> None:
-    bindings.set_panel(entity_path, expanded)
+def set_panels(
+    *,
+    all_expanded: Optional[bool] = None,
+    blueprint_view_expanded: Optional[bool] = None,
+    selection_view_expanded: Optional[bool] = None,
+    timeline_view_expanded: Optional[bool] = None,
+) -> None:
+    bindings.set_panels(
+        blueprint_view_expanded=blueprint_view_expanded or all_expanded,
+        selection_view_expanded=selection_view_expanded or all_expanded,
+        timeline_view_expanded=timeline_view_expanded or all_expanded,
+    )
 
 
 # TODO(jleibs): docstrings
