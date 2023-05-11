@@ -134,7 +134,7 @@ def main() -> None:
         action="store_true",
         help="Serve the app on this port after building [default: 8080]",
     )
-    parser.add_argument("--skip-wasm-build", action="store_true", help="Skip the web viewer WASM build")
+    parser.add_argument("--skip-wasm-build", action="store_true", help="Skip the web viewer Wasm build")
 
     args, unknown = parser.parse_known_args()
     for arg in unknown:
