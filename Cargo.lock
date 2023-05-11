@@ -4184,13 +4184,12 @@ dependencies = [
 name = "re_web_viewer_server"
 version = "0.6.0-alpha.0"
 dependencies = [
- "cargo_metadata",
  "ctrlc",
  "document-features",
  "futures-util",
- "glob",
  "hyper",
  "re_analytics",
+ "re_build_build_info",
  "re_build_web_viewer",
  "re_log",
  "thiserror",
