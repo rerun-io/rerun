@@ -4,9 +4,7 @@ use crate::Component;
 
 use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 
-// TODO: More docs.
-
-/// 3D scaling factor.
+/// 3D scaling factor, part of an affine transform.
 ///
 /// ```
 /// use re_log_types::component_types::{Scale3D, Vec3D};
@@ -70,7 +68,21 @@ impl From<Scale3D> for glam::Vec3 {
     }
 }
 
-// TODO:
+/// Angle in either radians or degrees.
+///
+/// ```
+/// use re_log_types::component_types::Angle;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field, UnionMode};
+///
+/// assert_eq!(
+///     Angle::data_type(),
+///     DataType::Union(vec![
+///         Field::new("Radians", DataType::Float32, false),
+///         Field::new("Degrees", DataType::Float32, false),
+///     ], None, UnionMode::Dense),
+/// );
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")]
@@ -80,6 +92,7 @@ pub enum Angle {
 }
 
 impl Angle {
+    /// Angle in radians independent of the underlying representation.
     #[inline]
     pub fn radians(&self) -> f32 {
         match self {
@@ -88,6 +101,7 @@ impl Angle {
         }
     }
 
+    /// Angle in degrees independent of the underlying representation.
     #[inline]
     pub fn degrees(&self) -> f32 {
         match self {
@@ -97,11 +111,31 @@ impl Angle {
     }
 }
 
-// TODO:
+/// 3D rotation represented by a rotation around a given axis.
+///
+/// ```
+/// use re_log_types::component_types::{RotationAxisAngle, Angle, Vec3D};
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field, UnionMode};
+///
+/// assert_eq!(
+///     RotationAxisAngle::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("axis", Vec3D::data_type(), false),
+///         Field::new("angle", Angle::data_type(), false),
+///     ]),
+/// );
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RotationAxisAngle {
+    /// Axis to rotate around.
+    ///
+    /// This is not required to be normalized.
+    /// If normalization fails (typically because the vector is length zero), the rotation is silently ignored.
     pub axis: Vec3D,
+
+    /// How much to rotate around the axis.
     pub angle: Angle,
 }
 
@@ -119,14 +153,17 @@ impl RotationAxisAngle {
 impl From<RotationAxisAngle> for glam::Quat {
     #[inline]
     fn from(val: RotationAxisAngle) -> Self {
-        glam::Quat::from_axis_angle(val.axis.into(), val.angle.radians())
+        let axis: glam::Vec3 = val.axis.into();
+        axis.try_normalize()
+            .map(|axis| glam::Quat::from_axis_angle(axis, val.angle.radians()))
+            .unwrap_or_default()
     }
 }
 
-/// 3D rotation.
+/// A 3D rotation.
 ///
 /// ```
-/// use re_log_types::component_types::{Quaternion, Rotation3D};
+/// use re_log_types::component_types::{Quaternion, Rotation3D, RotationAxisAngle};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
@@ -135,6 +172,7 @@ impl From<RotationAxisAngle> for glam::Quat {
 ///     DataType::Union(vec![
 ///         Field::new("Identity", DataType::Boolean, false),
 ///         Field::new("Quaternion", Quaternion::data_type(), false),
+///         Field::new("AxisAngle", RotationAxisAngle::data_type(), false),
 ///     ], None, UnionMode::Dense),
 /// );
 /// ```
@@ -224,12 +262,12 @@ impl TranslationMatrix3x3 {
 /// Representation of an affine transform via separate translation, rotation & scale.
 ///
 /// ```
-/// use re_log_types::component_types::{TranslationRotationScale, Rotation3D, Scale3D, Vec3D};
+/// use re_log_types::component_types::{TranslationRotationScale3D, Rotation3D, Scale3D, Vec3D};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
 /// assert_eq!(
-///     TranslationRotationScale::data_type(),
+///     TranslationRotationScale3D::data_type(),
 ///     DataType::Struct(vec![
 ///         Field::new("translation", Vec3D::data_type(), false),
 ///         Field::new("rotation", Rotation3D::data_type(), false),
@@ -298,15 +336,15 @@ impl From<Scale3D> for TranslationRotationScale3D {
 /// Representation of a 3D affine transform.
 ///
 /// ```
-/// use re_log_types::component_types::{Affine3DRepresentation, TranslationMatrix3x3, TranslationRotationScale};
+/// use re_log_types::component_types::{Affine3D, TranslationMatrix3x3, TranslationRotationScale3D};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
 /// assert_eq!(
-///     Affine3DRepresentation::data_type(),
+///     Affine3D::data_type(),
 ///     DataType::Union(vec![
 ///         Field::new("TranslationMatrix3x3", TranslationMatrix3x3::data_type(), false),
-///         Field::new("TranslationRotationScale", TranslationRotationScale::data_type(), false),
+///         Field::new("TranslationRotationScale", TranslationRotationScale3D::data_type(), false),
 ///     ], None, UnionMode::Dense),
 /// );
 /// ```
@@ -316,7 +354,7 @@ impl From<Scale3D> for TranslationRotationScale3D {
 pub enum Affine3D {
     TranslationMatrix3x3(TranslationMatrix3x3),
     TranslationRotationScale(TranslationRotationScale3D),
-    // TODO: Raw 4x4 matrix.
+    // TODO(andreas): Raw 4x4 matrix.
 }
 
 impl Affine3D {
@@ -448,7 +486,19 @@ impl From<Affine3D> for glam::Affine3A {
 
 /// An affine transform between two 3D spaces, represented in a given direction.
 ///
-/// TODO: doctest
+/// ```
+/// use re_log_types::component_types::{Affine3D, DirectedAffine3D};
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field, UnionMode};
+///
+/// assert_eq!(
+///     DirectedAffine3D::data_type(),
+///     DataType::Union(vec![
+///         Field::new("ChildFromParent", Affine3D::data_type(), false),
+///         Field::new("ParentFromChild", Affine3D::data_type(), false),
+///     ], None, UnionMode::Dense),
+/// );
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")]
