@@ -69,18 +69,18 @@ __all__ = [
 
 
 # TODO(jleibs): docstrings
-def add_space_view(*args: str, **kwargs: int) -> None:
-    bindings.add_space_view(*args, **kwargs)
+def add_space_view(name: str, space_path: str, entity_paths: list[str]) -> None:
+    bindings.add_space_view(name, space_path, entity_paths)
 
 
 # TODO(jleibs): docstrings
-def set_panel(*args: str, **kwargs: int) -> None:
-    bindings.set_panel(*args, **kwargs)
+def set_panel(entity_path: str, expanded: bool) -> None:
+    bindings.set_panel(entity_path, expanded)
 
 
 # TODO(jleibs): docstrings
-def set_auto_space_views(*args: str, **kwargs: int) -> None:
-    bindings.set_auto_space_views(*args, **kwargs)
+def set_auto_space_views(enabled: bool) -> None:
+    bindings.set_auto_space_views(enabled)
 
 
 # If `True`, we raise exceptions on use error (wrong parameter types etc).
