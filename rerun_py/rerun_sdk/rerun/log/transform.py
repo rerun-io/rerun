@@ -161,9 +161,7 @@ def log_affine3(
         direction = TransformDirection.ChildFromParent
         transform = child_from_parent
 
-    instanced: Dict[str, Any] = {}
-    instanced["rerun.transform3d"] = Transform3DArray.from_transform(DirectedAffine3D(transform, direction))
-
+    instanced = {"rerun.transform3d": Transform3DArray.from_transform(DirectedAffine3D(transform, direction))}
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 

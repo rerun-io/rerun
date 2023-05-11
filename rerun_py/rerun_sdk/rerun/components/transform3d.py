@@ -33,10 +33,7 @@ class UnknownTransform:
 class Pinhole:
     """Camera perspective projection (a.k.a. intrinsics)."""
 
-    # Column-major projection matrix.
-    #
-    # Child from parent.
-    # Image coordinates from camera view coordinates.
+    # Row-major intrinsics matrix for projecting from camera space to image space.
     image_from_cam: npt.ArrayLike
 
     # Pixel resolution (usually integers) of child image space. Width and height.
@@ -104,26 +101,26 @@ class RotationAxisAngle:
     """3D rotation angle in radians. Only one of `degrees` or `radians` should be set."""
 
 
-def translation_to_fixed_size_array(
-    translation: npt.ArrayLike | None, struct_type: pa.StructType
-) -> pa.FixedSizeListArray:
+def normalize_matrix3(matrix: npt.ArrayLike) -> np.array:
+    matrix = np.eye(3) if matrix is None else matrix
+    # Rerun is column major internally, need to transpose!
+    return np.array(matrix, dtype=np.float32).transpose().flatten()
+
+
+def normalize_translation(translation: npt.ArrayLike | None) -> np.array:
     translation = (0, 0, 0) if translation is None else translation
-    return pa.FixedSizeListArray.from_arrays(
-        np.array(translation, dtype=np.float32).flatten(), type=struct_type["translation"].type
-    )
+    return np.array(translation, dtype=np.float32).flatten()
 
 
 def build_struct_array_from_translation_mat3(
     translation_mat3: TranslationMatrix3x3, type: pa.StructType
 ) -> pa.StructArray:
-    translation = translation_to_fixed_size_array(translation_mat3.translation, type)
-
-    matrix = np.eye(3) if translation_mat3.matrix is None else translation_mat3.matrix
-    matrix = np.array(matrix, dtype=np.float32).flatten()
+    translation = normalize_translation(translation_mat3.translation, type)
+    matrix = normalize_matrix3(translation_mat3.matrix)
 
     return pa.StructArray.from_arrays(
         [
-            translation,
+            pa.FixedSizeListArray.from_arrays(translation, type=type["translation"].type),
             pa.FixedSizeListArray.from_arrays(matrix, type=type["matrix"].type),
         ],
         fields=list(type),
@@ -200,14 +197,13 @@ def build_union_array_from_scale(scale: npt.ArrayLike | float | None, type: pa.D
 def build_struct_array_from_translation_rotation_scale(
     transform: TranslationRotationScale3D, type: pa.StructType
 ) -> pa.StructArray:
-    translation = translation_to_fixed_size_array(transform.translation, type)
-
+    translation = normalize_translation(transform.translation)
     rotation = build_union_array_from_rotation(transform.rotation, type["rotation"].type)
     scale = build_union_array_from_scale(transform.scale, type["scale"].type)
 
     return pa.StructArray.from_arrays(
         [
-            translation,
+            pa.FixedSizeListArray.from_arrays(translation, type=type["translation"].type),
             rotation,
             scale,
         ],
@@ -247,6 +243,21 @@ class Transform3DArray(pa.ExtensionArray):  # type: ignore[misc]
             )
             transform3d = build_dense_union(
                 directed_affine3d_union_type, discriminant=discriminant_affine3d_direction, child=directed_affine3d
+            )
+        elif isinstance(transform, Pinhole):
+            discriminant_transform3d = "Pinhole"
+            pinhole_type = union_discriminant_type(Transform3DType.storage_type, discriminant_transform3d)
+
+            image_from_cam = normalize_matrix3(transform.image_from_cam)
+            resolution = (
+                None if transform.resolution is None else np.array(transform.resolution, dtype=np.float32).flatten()
+            )
+            transform3d = pa.StructArray.from_arrays(
+                [
+                    pa.FixedSizeListArray.from_arrays(image_from_cam, type=pinhole_type["image_from_cam"].type),
+                    pa.FixedSizeListArray.from_arrays(resolution, type=pinhole_type["resolution"].type),
+                ],
+                fields=list(pinhole_type),
             )
         else:
             raise ValueError(f"Unknown transform type: {transform}")

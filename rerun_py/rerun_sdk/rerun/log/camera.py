@@ -1,7 +1,7 @@
-import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.components.transform3d import Pinhole, Transform3DArray
 from rerun.log.log_decorator import log_decorator
 
 __all__ = [
@@ -61,10 +61,5 @@ def log_pinhole(
 
     """
 
-    # Transform arrow handling happens inside the python bridge
-    bindings.log_pinhole(
-        entity_path,
-        resolution=[width, height],
-        child_from_parent=np.asarray(child_from_parent).T.tolist(),
-        timeless=timeless,
-    )
+    instanced = {"rerun.transform3d": Transform3DArray.from_transform(Pinhole(child_from_parent, [width, height]))}
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

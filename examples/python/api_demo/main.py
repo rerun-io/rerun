@@ -101,6 +101,9 @@ def transform_test() -> None:
         "transform_test/scale_vector",
         parent_from_child=rr.TranslationRotationScale3D(scale=(1, 2, 3)),
     )
+    # TODO: test scale for real
+    # TODO: test skew for real
+    # TODO: test mat3x3 for real
 
 
 def run_2d_lines() -> None:
