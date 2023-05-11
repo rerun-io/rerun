@@ -7,6 +7,7 @@ from rerun import bindings
 from rerun.log.error_utils import _send_warning
 from rerun.log.log_decorator import log_decorator
 from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_image",
@@ -22,6 +23,7 @@ def log_image(
     *,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a gray or color image.
@@ -46,8 +48,14 @@ def log_image(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the image will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     image = _to_numpy(image)
 
@@ -58,14 +66,16 @@ def log_image(
     interpretable_as_image = True
     # Catch some errors early:
     if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
-        _send_warning(f"Expected image, got array of shape {shape}", 1)
+        _send_warning(f"Expected image, got array of shape {shape}", 1, recording=recording)
         interpretable_as_image = False
 
     if num_non_empty_dims == 3:
         depth = shape[-1]
         if depth not in (1, 3, 4):
             _send_warning(
-                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {shape}", 1
+                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {shape}",
+                1,
+                recording=recording,
             )
             interpretable_as_image = False
 
@@ -73,7 +83,7 @@ def log_image(
     if interpretable_as_image and num_non_empty_dims != len(shape):
         image = np.squeeze(image)
 
-    _log_tensor(entity_path, image, ext=ext, timeless=timeless)
+    _log_tensor(entity_path, image, ext=ext, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -84,6 +94,7 @@ def log_depth_image(
     meter: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a depth image.
@@ -108,8 +119,14 @@ def log_depth_image(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the image will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     image = _to_numpy(image)
 
@@ -123,8 +140,10 @@ def log_depth_image(
 
     # Catch some errors early:
     if num_non_empty_dims != 2:
-        _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1)
-        _log_tensor(entity_path, image, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
+        _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1, recording=recording)
+        _log_tensor(
+            entity_path, image, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth, recording=recording
+        )
     else:
         # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
         if num_non_empty_dims != len(shape):
@@ -136,6 +155,7 @@ def log_depth_image(
             ext=ext,
             timeless=timeless,
             meaning=bindings.TensorDataMeaning.Depth,
+            recording=recording,
         )
 
 
@@ -146,6 +166,7 @@ def log_segmentation_image(
     *,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log an image made up of integer class-ids.
@@ -169,8 +190,13 @@ def log_segmentation_image(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the image will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     image = np.array(image, copy=False)
     if image.dtype not in (np.dtype("uint8"), np.dtype("uint16")):
@@ -183,12 +209,14 @@ def log_segmentation_image(
         _send_warning(
             f"Expected single channel image, got array of shape {image.shape}. Can't interpret as segmentation image.",
             1,
+            recording=recording,
         )
         _log_tensor(
             entity_path,
             tensor=image,
             ext=ext,
             timeless=timeless,
+            recording=recording,
         )
     else:
         # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
@@ -200,4 +228,5 @@ def log_segmentation_image(
             meaning=bindings.TensorDataMeaning.ClassId,
             ext=ext,
             timeless=timeless,
+            recording=recording,
         )

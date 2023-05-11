@@ -20,6 +20,7 @@ from rerun.log import (
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "RectFormat",
@@ -39,6 +40,7 @@ def log_rect(
     class_id: Optional[int] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a 2D rectangle.
@@ -63,8 +65,13 @@ def log_rect(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
          If true, the rect will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
@@ -93,11 +100,21 @@ def log_rect(
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(
+            entity_path,
+            components=splats,
+            timeless=timeless,
+            recording=recording,
+        )
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(
+            entity_path,
+            components=instanced,
+            timeless=timeless,
+            recording=recording,
+        )
 
 
 @log_decorator
@@ -112,6 +129,7 @@ def log_rects(
     class_ids: OptionalClassIds = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log multiple 2D rectangles.
@@ -150,8 +168,13 @@ def log_rects(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
             If true, the rects will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     # Treat None the same as []
     if np.any(rects):  # type: ignore[arg-type]
@@ -198,7 +221,17 @@ def log_rects(
 
     if comps[1]:
         comps[1]["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(
+            entity_path,
+            components=comps[1],
+            timeless=timeless,
+            recording=recording,
+        )
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(
+        entity_path,
+        components=comps[0],
+        timeless=timeless,
+        recording=recording,
+    )

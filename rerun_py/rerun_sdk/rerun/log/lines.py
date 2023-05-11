@@ -12,6 +12,7 @@ from rerun.components.radius import RadiusArray
 from rerun.log import Color, _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_path",
@@ -29,8 +30,11 @@ def log_path(
     color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
-    log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
+    log_line_strip(
+        entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless, recording=recording
+    )
 
 
 @log_decorator
@@ -42,6 +46,7 @@ def log_line_strip(
     color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     r"""
     Log a line strip through 2D or 3D space.
@@ -70,8 +75,13 @@ def log_line_strip(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the path will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if positions is not None:
         positions = np.require(positions, dtype="float32")
@@ -101,11 +111,11 @@ def log_line_strip(
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -117,6 +127,7 @@ def log_line_segments(
     color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     r"""
     Log many 2D or 3D line segments.
@@ -144,8 +155,13 @@ def log_line_segments(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the line segments will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if positions is None:
         positions = np.require([], dtype="float32")
@@ -187,8 +203,8 @@ def log_line_segments(
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)

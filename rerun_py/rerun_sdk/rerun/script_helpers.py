@@ -21,6 +21,7 @@ rr.script_teardown(args)
 from argparse import ArgumentParser, Namespace
 
 import rerun as rr
+from rerun.recording_stream import RecordingStream
 
 
 def script_add_args(parser: ArgumentParser) -> None:
@@ -53,7 +54,9 @@ def script_add_args(parser: ArgumentParser) -> None:
 def script_setup(
     args: Namespace,
     application_id: str,
-) -> None:
+    make_default: bool = True,
+    make_thread_default: bool = True,
+) -> RecordingStream:
     """
     Run common Rerun script setup actions. Connect to the viewer if necessary.
 
@@ -63,21 +66,35 @@ def script_setup(
         The parsed arguments from `parser.parse_args()`.
     application_id : str
         The application ID to use for the viewer.
+    make_default : bool
+        If true (the default), the newly initialized recording will replace the current
+        active one (if any) in the global scope.
+    make_thread_default : bool
+        If true (the default), the newly initialized recording will replace the current
+        active one (if any) in the thread-local scope.
 
     """
-    rr.init(application_id=application_id, default_enabled=True, strict=True)
+    rec = rr.init(
+        application_id=application_id,
+        default_enabled=True,
+        strict=True,
+        make_default=make_default,
+        make_thread_default=make_thread_default,
+    )
 
     if args.serve:
-        rr.serve()
+        rec.serve()
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
+        rec.connect(args.addr)
     elif args.save is not None:
-        rr.save(args.save)
+        rec.save(args.save)
     elif not args.headless:
-        rr.spawn()
+        rec.spawn()
+
+    return rec
 
 
 def script_teardown(args: Namespace) -> None:

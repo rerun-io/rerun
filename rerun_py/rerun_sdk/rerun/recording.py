@@ -29,6 +29,8 @@ class MemoryRecording:
 
         For use in contexts such as Jupyter notebooks.
 
+        ⚠️ This will do a blocking flush of the current sink before returning!
+
         Parameters
         ----------
         width : int

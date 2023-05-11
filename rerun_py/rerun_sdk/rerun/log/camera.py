@@ -1,8 +1,11 @@
+from typing import Optional
+
 import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_pinhole",
@@ -17,6 +20,7 @@ def log_pinhole(
     width: int,
     height: int,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a perspective camera model.
@@ -58,6 +62,10 @@ def log_pinhole(
         Height of the image in pixels.
     timeless:
         If true, the camera will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
 
@@ -67,4 +75,5 @@ def log_pinhole(
         resolution=[width, height],
         child_from_parent=np.asarray(child_from_parent).T.tolist(),
         timeless=timeless,
+        recording=recording,
     )

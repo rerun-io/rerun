@@ -9,6 +9,7 @@
 // ----------------
 // Private modules:
 
+mod global;
 mod log_sink;
 mod msg_sender;
 mod recording_stream;
@@ -16,6 +17,7 @@ mod recording_stream;
 // -------------
 // Public items:
 
+pub use self::global::RecordingType;
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 

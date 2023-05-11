@@ -8,6 +8,7 @@ import numpy.typing as npt
 
 from rerun import bindings
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "MeshFormat",
@@ -48,6 +49,7 @@ def log_mesh_file(
     *,
     transform: Optional[npt.ArrayLike] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
@@ -76,8 +78,14 @@ def log_mesh_file(
         Optional 3x4 affine transform matrix applied to the mesh
     timeless:
         If true, the mesh will be timeless (default: False)
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
@@ -85,7 +93,7 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
+    bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless, recording=recording)
 
 
 @log_decorator
@@ -96,6 +104,7 @@ def log_image_file(
     img_path: Optional[Path] = None,
     img_format: Optional[ImageFormat] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log an image file given its contents or path on disk.
@@ -118,12 +127,23 @@ def log_image_file(
         Format of the image file.
     timeless:
         If true, the image will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge
     bindings.log_image_file(
-        entity_path, img_bytes=img_bytes, img_path=img_path, img_format=img_format, timeless=timeless
+        entity_path,
+        img_bytes=img_bytes,
+        img_path=img_path,
+        img_format=img_format,
+        timeless=timeless,
+        recording=recording,
     )

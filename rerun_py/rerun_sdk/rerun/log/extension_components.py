@@ -9,6 +9,7 @@ import rerun.log.error_utils
 from rerun import bindings
 from rerun.components.instance import InstanceArray
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "_add_extension_components",
@@ -69,6 +70,7 @@ def log_extension_components(
     *,
     identifiers: Optional[Sequence[int]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log an arbitrary collection of extension components.
@@ -108,8 +110,13 @@ def log_extension_components(
         Optional identifiers for each component. If provided, must be the same length as the components.
     timeless:
         If true, the components will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     identifiers_np = np.array((), dtype="uint64")
     if identifiers:
@@ -129,8 +136,8 @@ def log_extension_components(
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
