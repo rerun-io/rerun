@@ -26,7 +26,7 @@ use rerun::{
         re_log_types::external::{arrow2, arrow2_convert},
     },
     time::{Time, TimePoint, TimeType, Timeline},
-    transform::{Affine3D, Angle, AxisAngleRotation},
+    transform::{Affine3D, Angle, RotationAxisAngle},
     Component, ComponentName, EntityPath, MsgSender, RecordingStream,
 };
 
@@ -43,7 +43,7 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_timepoint(sim_time(0 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Transform3D::Affine3D(
-            Affine3D::from_rotation(AxisAngleRotation::new(glam::Vec3::Z, Angle::Degrees(180.0)))
+            Affine3D::from_rotation(RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)))
                 .parent_from_child(),
         )])?
         .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
@@ -57,7 +57,7 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Transform3D::Affine3D(
             Affine3D::from_translation_rotation(
                 Vec3D::new(1.0, 0.0, 0.0),
-                AxisAngleRotation::new(glam::Vec3::Z, Angle::Degrees(180.0)),
+                RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
             )
             .parent_from_child(),
         )])?
@@ -616,7 +616,7 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
                         (time * rotation_speed_planet).cos() * sun_to_planet_distance,
                         0.0,
                     ),
-                    AxisAngleRotation::new(glam::Vec3::X, Angle::Degrees(20.0)),
+                    RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
                 )
                 .parent_from_child(),
             )])?

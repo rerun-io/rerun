@@ -84,7 +84,7 @@ class TranslationRotationScale3D:
     translation: npt.ArrayLike | None = None
     """3D translation vector, applied last."""
 
-    rotation: npt.ArrayLike | AxisAngleRotation3D | None = None
+    rotation: npt.ArrayLike | RotationAxisAngle | None = None
     """3D rotation, represented as a (xyzw) quaternion or axis + angle, applied second."""
 
     scale: npt.ArrayLike | float | None = None
@@ -92,7 +92,7 @@ class TranslationRotationScale3D:
 
 
 @dataclass
-class AxisAngleRotation3D:
+class RotationAxisAngle:
     """3D rotation expressed via a rotation axis and angle."""
 
     axis: npt.ArrayLike
@@ -132,12 +132,12 @@ def build_struct_array_from_translation_mat3(
 
 
 def build_struct_array_from_axis_angle_rotation(
-    rotation: AxisAngleRotation3D, axis_angle_type: pa.StructType
+    rotation: RotationAxisAngle, axis_angle_type: pa.StructType
 ) -> pa.StructArray:
     if rotation.degrees is None and rotation.radians is None:
-        raise ValueError("AxisAngleRotation3D must have either degrees or radians set")
+        raise ValueError("RotationAxisAngle must have either degrees or radians set")
     if rotation.degrees is not None and rotation.radians is not None:
-        raise ValueError("AxisAngleRotation3D must have either degrees or radians set, not both")
+        raise ValueError("RotationAxisAngle must have either degrees or radians set, not both")
 
     axis = np.array(rotation.axis, dtype=np.float32).flatten()
     axis = pa.FixedSizeListArray.from_arrays(axis, type=axis_angle_type["axis"].type)
@@ -159,11 +159,11 @@ def build_struct_array_from_axis_angle_rotation(
     )
 
 
-def build_union_array_from_rotation(rotation: npt.ArrayLike | AxisAngleRotation3D | None, type: pa.DenseUnionType):
+def build_union_array_from_rotation(rotation: npt.ArrayLike | RotationAxisAngle | None, type: pa.DenseUnionType):
     if rotation is None:
         rotation_discriminant = "Identity"
         rotation = pa.array([False])
-    elif isinstance(rotation, AxisAngleRotation3D):
+    elif isinstance(rotation, RotationAxisAngle):
         rotation_discriminant = "AxisAngle"
         axis_angle_type = union_discriminant_type(type, rotation_discriminant)
         rotation = build_struct_array_from_axis_angle_rotation(rotation, axis_angle_type)

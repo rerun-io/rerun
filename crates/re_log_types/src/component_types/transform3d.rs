@@ -100,12 +100,12 @@ impl Angle {
 // TODO:
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct AxisAngleRotation {
+pub struct RotationAxisAngle {
     pub axis: Vec3D,
     pub angle: Angle,
 }
 
-impl AxisAngleRotation {
+impl RotationAxisAngle {
     #[inline]
     pub fn new<V: Into<Vec3D>>(axis: V, angle: Angle) -> Self {
         Self {
@@ -116,9 +116,9 @@ impl AxisAngleRotation {
 }
 
 #[cfg(feature = "glam")]
-impl From<AxisAngleRotation> for glam::Quat {
+impl From<RotationAxisAngle> for glam::Quat {
     #[inline]
-    fn from(val: AxisAngleRotation) -> Self {
+    fn from(val: RotationAxisAngle) -> Self {
         glam::Quat::from_axis_angle(val.axis.into(), val.angle.radians())
     }
 }
@@ -150,7 +150,7 @@ pub enum Rotation3D {
     Quaternion(Quaternion),
 
     /// Rotation defined with an axis and an angle.
-    AxisAngle(AxisAngleRotation),
+    AxisAngle(RotationAxisAngle),
 }
 
 impl From<Quaternion> for Rotation3D {
@@ -160,9 +160,9 @@ impl From<Quaternion> for Rotation3D {
     }
 }
 
-impl From<AxisAngleRotation> for Rotation3D {
+impl From<RotationAxisAngle> for Rotation3D {
     #[inline]
-    fn from(r: AxisAngleRotation) -> Self {
+    fn from(r: RotationAxisAngle) -> Self {
         Self::AxisAngle(r)
     }
 }

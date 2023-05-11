@@ -7,7 +7,7 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun import experimental
-from rerun.components.transform3d import AxisAngleRotation3D, TranslationMatrix3x3, TranslationRotationScale3D
+from rerun.components.transform3d import RotationAxisAngle, TranslationMatrix3x3, TranslationRotationScale3D
 from rerun.log import log_cleared
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
@@ -35,7 +35,7 @@ __all__ = [
     "ImageFormat",
     "TranslationMatrix3x3",
     "TranslationRotationScale3D",
-    "AxisAngleRotation3D",
+    "RotationAxisAngle",
     "experimental",
     "log_annotation_context",
     "log_arrow",

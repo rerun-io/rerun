@@ -130,7 +130,7 @@ def log_affine3(
     ```
     rr.log_affine3(
         "world/z_rotated_object",
-        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.AxisAngleRotation3D((0, 0, 1), degree=20)),
+        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle((0, 0, 1), degree=20)),
     )
     rr.log_affine3(
         "world/scaled_object",

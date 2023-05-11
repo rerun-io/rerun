@@ -79,7 +79,7 @@ pub mod components {
 /// Transform helpers, for use with [`components::Transform3D`].
 pub mod transform {
     pub use re_log_types::component_types::{
-        Affine3D, Angle, AxisAngleRotation, DirectedAffine3D, Pinhole, Rotation3D, Scale3D,
+        Affine3D, Angle, DirectedAffine3D, Pinhole, Rotation3D, RotationAxisAngle, Scale3D,
         TranslationMatrix3x3, TranslationRotationScale3D,
     };
 }

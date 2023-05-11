@@ -92,7 +92,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
             .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
             .with_component(&[Transform3D::Affine3D(
                 rerun::transform::Affine3D::from_rotation(
-                    rerun::transform::AxisAngleRotation::new(
+                    rerun::transform::RotationAxisAngle::new(
                         glam::Vec3::Z,
                         rerun::transform::Angle::Radians(time / 4.0 * TAU),
                     ),

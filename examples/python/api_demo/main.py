@@ -88,11 +88,11 @@ def transform_test() -> None:
     )
     rr.log_affine3(
         "transform_test/axis_angle_degrees_only",
-        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.AxisAngleRotation3D((0, 1, 0), degrees=10)),
+        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle((0, 1, 0), degrees=10)),
     )
     rr.log_affine3(
         "transform_test/axis_angle_radians_only",
-        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.AxisAngleRotation3D((0, 0, 1), radians=1)),
+        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle((0, 0, 1), radians=1)),
     )
     rr.log_affine3(
         "transform_test/scale_uniform_only",
@@ -240,26 +240,24 @@ def transforms_rigid_3d() -> None:
         rr.set_time_seconds("sim_time", time)
         rotation_q = [0, 0, 0, 1]
 
-        rr.log_rigid3(
+        rr.log_affine3(
             "transforms3d/sun/planet",
-            parent_from_child=(
+            parent_from_child=rr.TranslationRotationScale3D(
                 [
                     math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
                     math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
                     0.0,
                 ],
-                Rotation.from_euler("x", 20, degrees=True).as_quat(),
+                rr.RotationAxisAngle((1, 0, 0), degrees=20),
             ),
         )
-        rr.log_rigid3(
-            "transforms3d/sun/planet/moon",
-            child_from_parent=(
+        rr.log_affine3(
+            "transforms3d/sun/planet/moon", child_from_parent=rr.TranslationRotationScale3D(
                 [
                     math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
                     math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
                     0.0,
-                ],
-                rotation_q,
+                ]
             ),
         )
 

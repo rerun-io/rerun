@@ -1,5 +1,5 @@
 use re_log_types::component_types::{
-    Affine3D, Angle, AxisAngleRotation, DirectedAffine3D, Pinhole, Rotation3D, Scale3D,
+    Affine3D, Angle, DirectedAffine3D, Pinhole, Rotation3D, RotationAxisAngle, Scale3D,
     Transform3D, TranslationMatrix3x3, TranslationRotationScale3D, Vec3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -145,7 +145,7 @@ impl DataUi for Rotation3D {
                 // TODO(andreas): Better formatting for quaternions.
                 ui.label(format!("{q:?}"));
             }
-            Rotation3D::AxisAngle(AxisAngleRotation { axis, angle }) => {
+            Rotation3D::AxisAngle(RotationAxisAngle { axis, angle }) => {
                 egui::Grid::new("axis_angle").num_columns(2).show(ui, |ui| {
                     ui.label("axis");
                     axis.data_ui(ctx, ui, verbosity, query);
