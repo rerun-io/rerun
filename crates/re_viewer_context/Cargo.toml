@@ -36,7 +36,6 @@ lazy_static.workspace = true
 macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
-rand = { version = "0.8", features = ["std_rng"] }
 serde = "1"
 slotmap.workspace = true
 thiserror.workspace = true

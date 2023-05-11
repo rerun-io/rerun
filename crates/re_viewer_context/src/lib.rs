@@ -18,6 +18,8 @@ mod viewer_context;
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
 
+use std::hash::BuildHasher;
+
 pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSING_ANNOTATIONS};
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
@@ -52,18 +54,27 @@ impl SpaceViewId {
         Self(uuid::Uuid::new_v4())
     }
 
-    pub fn random_from_str(s: &str) -> Self {
-        // TODO(jleibs): This is overkill; we can probably get away with 64-bit ids.
-        use rand::{Rng as _, SeedableRng as _};
+    pub fn hashed_from_str(s: &str) -> Self {
         use std::hash::{Hash as _, Hasher as _};
 
-        let salt: u64 = 0x307b_e149_0a3a_5552;
+        let salt1: u64 = 0x307b_e149_0a3a_5552;
+        let salt2: u64 = 0x6651_522f_f510_13a4;
 
-        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        salt.hash(&mut hasher);
-        s.hash(&mut hasher);
-        let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
-        let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
+        let hash1 = {
+            let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
+            salt1.hash(&mut hasher);
+            s.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        let hash2 = {
+            let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
+            salt2.hash(&mut hasher);
+            s.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        let uuid = uuid::Uuid::from_u64_pair(hash1, hash2);
 
         Self(uuid)
     }

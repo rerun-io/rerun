@@ -4167,7 +4167,6 @@ dependencies = [
  "ndarray",
  "nohash-hasher",
  "puffin",
- "rand",
  "re_arrow_store",
  "re_data_store",
  "re_log",

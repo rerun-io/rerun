@@ -1253,7 +1253,7 @@ fn add_space_view(name: &str, space_path: &str, entity_paths: Vec<&str>) {
 
     // Choose the space-view id deterministically from the name; this means the user
     // can run the application multiple times and get sane behavior.
-    space_view.id = SpaceViewId::random_from_str(name);
+    space_view.id = SpaceViewId::hashed_from_str(name);
 
     space_view.display_name = name.into();
     space_view.entities_determined_by_user = true;
