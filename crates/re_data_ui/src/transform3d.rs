@@ -1,6 +1,6 @@
 use re_log_types::component_types::{
     Affine3D, Angle, AxisAngleRotation, DirectedAffine3D, Pinhole, Rotation3D, Scale3D,
-    Transform3D, TranslationMatrix3x3, TranslationRotationScale3D,
+    Transform3D, TranslationMatrix3x3, TranslationRotationScale3D, Vec3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
@@ -103,11 +103,13 @@ impl DataUi for TranslationRotationScale3D {
         egui::Grid::new("translation_rotation_scale")
             .num_columns(2)
             .show(ui, |ui| {
-                // TODO(andreas): Should we skip zero translations?
                 // Unlike Rotation/Scale, we don't have a value that indicates that nothing was logged.
-                ui.label("translation");
-                translation.data_ui(ctx, ui, verbosity, query);
-                ui.end_row();
+                // We still skip zero translations though since they are typically not logged explicitly.
+                if !translation.eq(&Vec3D::ZERO) {
+                    ui.label("translation");
+                    translation.data_ui(ctx, ui, verbosity, query);
+                    ui.end_row();
+                }
 
                 // Skip identity rotations as they typically aren't logged explicitly.
                 if !matches!(rotation, Rotation3D::Identity) {
@@ -204,9 +206,11 @@ impl DataUi for TranslationMatrix3x3 {
         egui::Grid::new("translation_rotation_scale")
             .num_columns(2)
             .show(ui, |ui| {
-                ui.label("translation");
-                translation.data_ui(ctx, ui, verbosity, query);
-                ui.end_row();
+                if !translation.eq(&Vec3D::ZERO) {
+                    ui.label("translation");
+                    translation.data_ui(ctx, ui, verbosity, query);
+                    ui.end_row();
+                }
 
                 ui.label("matrix");
                 matrix.data_ui(ctx, ui, verbosity, query);
