@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use anyhow::Context as _;
-use instant::Instant;
+use web_time::Instant;
 
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
@@ -73,7 +73,7 @@ pub fn split_resolution(
 pub struct Time {
     start_time: Instant,
     last_draw_time: Instant,
-    pub last_frame_duration: instant::Duration,
+    pub last_frame_duration: web_time::Duration,
 }
 
 impl Time {
@@ -179,7 +179,7 @@ impl<E: Example + 'static> Application<E> {
             time: Time {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
-                last_frame_duration: instant::Duration::from_secs(0),
+                last_frame_duration: web_time::Duration::from_secs(0),
             },
 
             example,

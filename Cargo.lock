@@ -3833,7 +3833,6 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "criterion",
  "ehttp",
- "instant",
  "js-sys",
  "mimalloc",
  "parking_lot 0.12.1",
@@ -3849,6 +3848,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "web-time",
  "zstd",
 ]
 
@@ -3868,7 +3868,6 @@ dependencies = [
  "glam",
  "half 2.2.1",
  "image",
- "instant",
  "itertools",
  "lazy_static",
  "macaw",
@@ -3891,6 +3890,7 @@ dependencies = [
  "time",
  "typenum",
  "uuid",
+ "web-time",
 ]
 
 [[package]]
@@ -3900,7 +3900,6 @@ dependencies = [
  "ahash 0.8.2",
  "backtrace",
  "emath",
- "instant",
  "itertools",
  "memory-stats",
  "nohash-hasher",
@@ -3911,6 +3910,7 @@ dependencies = [
  "smallvec",
  "sysinfo",
  "wasm-bindgen",
+ "web-time",
 ]
 
 [[package]]
@@ -3954,7 +3954,6 @@ dependencies = [
  "gltf",
  "half 2.2.1",
  "image",
- "instant",
  "itertools",
  "log",
  "macaw",
@@ -3979,6 +3978,7 @@ dependencies = [
  "walkdir",
  "wasm-bindgen-futures",
  "web-sys",
+ "web-time",
  "wgpu",
  "wgpu-core",
  "winit",
@@ -4030,7 +4030,7 @@ name = "re_smart_channel"
 version = "0.6.0-alpha.0"
 dependencies = [
  "crossbeam",
- "instant",
+ "web-time",
 ]
 
 [[package]]
@@ -4063,9 +4063,9 @@ dependencies = [
  "criterion",
  "document-features",
  "getrandom",
- "instant",
  "once_cell",
  "serde",
+ "web-time",
 ]
 
 [[package]]
@@ -4105,7 +4105,6 @@ dependencies = [
  "glam",
  "half 2.2.1",
  "image",
- "instant",
  "itertools",
  "lazy_static",
  "macaw",
@@ -4143,6 +4142,7 @@ dependencies = [
  "vec1",
  "wasm-bindgen-futures",
  "web-sys",
+ "web-time",
  "wgpu",
  "winapi",
 ]
@@ -5729,6 +5729,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e33b99f4b23ba3eec1a53ac264e35a755f00e966e0065077d6027c0f575b0b97"
 dependencies = [
  "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19353897b48e2c4d849a2d73cb0aeb16dc2be4e00c565abfc11eb65a806e47de"
+dependencies = [
+ "js-sys",
+ "once_cell",
  "wasm-bindgen",
 ]
 

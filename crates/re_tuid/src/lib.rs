@@ -119,15 +119,15 @@ impl Tuid {
 #[inline]
 fn monotonic_nanos_since_epoch() -> u64 {
     // This can maybe be optimized
-    use instant::Instant;
     use once_cell::sync::Lazy;
+    use web_time::Instant;
 
     static START_TIME: Lazy<(u64, Instant)> = Lazy::new(|| (nanos_since_epoch(), Instant::now()));
     START_TIME.0 + START_TIME.1.elapsed().as_nanos() as u64
 }
 
 fn nanos_since_epoch() -> u64 {
-    if let Ok(duration_since_epoch) = instant::SystemTime::UNIX_EPOCH.elapsed() {
+    if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
         let mut nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
 
         if cfg!(target_arch = "wasm32") {

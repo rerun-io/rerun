@@ -65,7 +65,7 @@ document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools = { workspace = true }
-instant = { version = "0.1" }
+web-time = "0.2.0"
 lazy_static.workspace = true
 ndarray.workspace = true
 nohash-hasher = "0.2"

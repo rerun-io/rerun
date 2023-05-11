@@ -5,7 +5,7 @@ use std::sync::{
     Arc,
 };
 
-use instant::Instant;
+use web_time::Instant;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 

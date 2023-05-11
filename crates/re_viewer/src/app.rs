@@ -2,9 +2,9 @@ use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
 use egui::NumExt as _;
-use instant::Instant;
 use itertools::Itertools as _;
 use poll_promise::Promise;
+use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
@@ -83,7 +83,7 @@ pub struct App {
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 
-    latest_queue_interest: instant::Instant,
+    latest_queue_interest: web_time::Instant,
 
     /// Measures how long a frame takes to paint
     frame_time_history: egui::util::History<f32>,
@@ -141,7 +141,7 @@ impl App {
             memory_panel: Default::default(),
             memory_panel_open: false,
 
-            latest_queue_interest: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+            latest_queue_interest: web_time::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -692,7 +692,7 @@ impl App {
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
         crate::profile_function!();
 
-        let start = instant::Instant::now();
+        let start = web_time::Instant::now();
 
         while let Ok(msg) = self.rx.try_recv() {
             // All messages except [`LogMsg::GoodBye`] should have an associated recording id
@@ -722,7 +722,7 @@ impl App {
                     self.analytics.on_open_recording(log_db);
                 }
 
-                if start.elapsed() > instant::Duration::from_millis(10) {
+                if start.elapsed() > web_time::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                     break; // don't block the main thread for too long
                 }
@@ -1447,7 +1447,7 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
         && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
     {
         // we use this to avoid flicker
-        app.latest_queue_interest = instant::Instant::now();
+        app.latest_queue_interest = web_time::Instant::now();
     }
 
     if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
