@@ -410,6 +410,44 @@ impl App {
                 );
             });
     }
+
+    // Materialize the blueprint from the DB if the selected blueprint id isn't the default one.
+    fn load_or_create_blueprint(
+        &mut self,
+        this_frame_blueprint_id: &RecordingId,
+        egui_ctx: &egui::Context,
+    ) -> Blueprint {
+        if *this_frame_blueprint_id == Default::default() {
+            Default::default()
+        } else {
+            // TODO(jleibs): If the blueprint doesn't exist this probably means we are
+            // initializing a new default-blueprint for the application in question.
+            // Make sure it's marked as a blueprint.
+            let blueprint_db = self
+                .log_dbs
+                .entry(this_frame_blueprint_id.clone())
+                .or_insert_with(|| {
+                    let mut blueprint_db = LogDb::default();
+
+                    blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
+                        row_id: re_log_types::RowId::random(),
+                        info: re_log_types::RecordingInfo {
+                            application_id: this_frame_blueprint_id.as_str().into(),
+                            recording_id: self.state.selected_blueprint_id.clone(),
+                            is_official_example: false,
+                            started: re_log_types::Time::now(),
+                            recording_source: re_log_types::RecordingSource::Other(
+                                "viewer".to_owned(),
+                            ),
+                            recording_type: RecordingType::Blueprint,
+                        },
+                    });
+
+                    blueprint_db
+                });
+            Blueprint::from_db(egui_ctx, blueprint_db)
+        }
+    }
 }
 
 impl eframe::App for App {
@@ -497,38 +535,7 @@ impl eframe::App for App {
 
         let this_frame_blueprint_id = self.state.selected_blueprint_id.clone();
 
-        // Materialize the blueprint from the DB if the selected blueprint id isn't
-        // the default one.
-        let blueprint_snapshot = if this_frame_blueprint_id == Default::default() {
-            Default::default()
-        } else {
-            // TODO(jleibs): If the blueprint doesn't exist this probably means we are
-            // initializing a new default-blueprint for the application in question.
-            // Make sure it's marked as a blueprint, and also enable AutoSpaceViews.
-            let blueprint_db = self
-                .log_dbs
-                .entry(this_frame_blueprint_id.clone())
-                .or_insert_with(|| {
-                    let mut blueprint_db = LogDb::default();
-
-                    blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
-                        row_id: re_log_types::RowId::random(),
-                        info: re_log_types::RecordingInfo {
-                            application_id: this_frame_blueprint_id.as_str().into(),
-                            recording_id: self.state.selected_blueprint_id.clone(),
-                            is_official_example: false,
-                            started: re_log_types::Time::from_seconds_since_epoch(0.0),
-                            recording_source: re_log_types::RecordingSource::Other(
-                                "viewer".to_owned(),
-                            ),
-                            recording_type: RecordingType::Blueprint,
-                        },
-                    });
-
-                    blueprint_db
-                });
-            Blueprint::from_db(egui_ctx, blueprint_db)
-        };
+        let blueprint_snapshot = self.load_or_create_blueprint(&this_frame_blueprint_id, egui_ctx);
 
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
