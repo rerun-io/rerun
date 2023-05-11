@@ -158,6 +158,7 @@ def main() -> None:
 
 BASE_PATH = "web_demo"
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
+# When adding examples, add their requirements to `requirements-demo.txt`
 EXAMPLES = {
     "api_demo": {
         "title": "API Demo",

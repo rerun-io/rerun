@@ -1,0 +1,9 @@
+-r ../examples/python/api_demo/requirements.txt
+-r ../examples/python/car/requirements.txt
+-r ../examples/python/clock/requirements.txt
+-r ../examples/python/colmap/requirements.txt
+-r ../examples/python/deep_sdf/requirements.txt
+-r ../examples/python/dicom/requirements.txt
+-r ../examples/python/plots/requirements.txt
+-r ../examples/python/raw_mesh/requirements.txt
+-r ../examples/python/text_logging/requirements.txt
