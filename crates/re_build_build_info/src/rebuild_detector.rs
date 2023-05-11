@@ -13,6 +13,11 @@ use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 /// This will work even if the package depends on crates that are outside of the workspace,
 /// included with `path = …`
 pub fn rebuild_if_crate_changed(pkg_name: &str) {
+    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
+        // Only run if we are in the rerun workspace, not on users machines.
+        return;
+    }
+
     let metadata = MetadataCommand::new()
         .features(CargoOpt::AllFeatures)
         .exec()
@@ -26,6 +31,16 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
     for path in &files_to_watch {
         rerun_if_changed(path);
     }
+}
+
+fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::VarError> {
+    println!("cargo:rerun-if-env-changed={env_var_name}");
+    std::env::var(env_var_name)
+}
+
+fn is_tracked_env_var_set(env_var_name: &str) -> bool {
+    let var = get_and_track_env_var(env_var_name).map(|v| v.to_lowercase());
+    var == Ok("1".to_owned()) || var == Ok("yes".to_owned()) || var == Ok("true".to_owned())
 }
 
 fn rerun_if_changed(path: &std::path::Path) {
