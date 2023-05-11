@@ -143,15 +143,7 @@ pub fn sync_viewport(
         store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 
-    // Terrible hack since egui_tiles::Tree does not implement PartialEq:
-    // This could likely be improved using a crate like `serde_diff`, but we already
-    // have the dep on `rmp_serde`, and hopefully this just goes away when we move
-    // to `egui_tiles`.
-    let mut tree_buff_viewport = Vec::new();
-    rmp_serde::encode::write_named(&mut tree_buff_viewport, &viewport.trees).unwrap();
-    let mut tree_buff_snapshot = Vec::new();
-    rmp_serde::encode::write_named(&mut tree_buff_snapshot, &snapshot.trees).unwrap();
-    if tree_buff_viewport != tree_buff_snapshot
+    if viewport.trees != snapshot.trees
         || viewport.has_been_user_edited != snapshot.has_been_user_edited
     {
         let component = ViewportLayout {
