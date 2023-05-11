@@ -82,17 +82,18 @@ def script_setup(
         make_thread_default=make_thread_default,
     )
 
+    # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
     if args.serve:
-        rec.serve()
+        rec.serve()  # type: ignore[attr-defined]
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rec.connect(args.addr)
+        rec.connect(args.addr)  # type: ignore[attr-defined]
     elif args.save is not None:
-        rec.save(args.save)
+        rec.save(args.save)  # type: ignore[attr-defined]
     elif not args.headless:
-        rec.spawn()
+        rec.spawn()  # type: ignore[attr-defined]
 
     return rec
 

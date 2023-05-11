@@ -20,28 +20,26 @@ class RecordingStream:
 
     def __init__(self, inner: bindings.PyRecordingStream) -> None:
         self.inner = inner
-        self._prev = None
+        self._prev: Optional["RecordingStream"] = None
 
-    def __enter__(self):
+    def __enter__(self):  # type: ignore[no-untyped-def]
         self._prev = set_thread_local_data_recording(self)
         return self
 
-    def __exit__(self, type, value, traceback):
-        self._prev = set_thread_local_data_recording(self._prev)
+    def __exit__(self, type, value, traceback):  # type: ignore[no-untyped-def]
+        self._prev = set_thread_local_data_recording(self._prev)  # type: ignore[arg-type]
 
-    def to_native(self):
+    # NOTE: The type is a string because we cannot reference `RecordingStream` yet at this point.
+    def to_native(self: Optional["RecordingStream"]) -> Optional[bindings.PyRecordingStream]:
         return self.inner if self is not None else None
 
-    def __del__(self):
+    def __del__(self):  # type: ignore[no-untyped-def]
         recording = RecordingStream.to_native(self)
         bindings.flush(blocking=False, recording=recording)
 
 
-def init(funcs):
-    """
-    Adds the given functions as methods to the `RecordingStream` class, making sure to inject
-    `recording=self` in the argument list.
-    """
+def _patch(funcs):  # type: ignore[no-untyped-def]
+    """Adds the given functions as methods to the `RecordingStream` class; injects `recording=self` in passing."""
     import functools
     import os
     from typing import Any
@@ -53,16 +51,16 @@ def init(funcs):
         return
 
     # NOTE: Python's closures capture by reference... make sure to copy `fn` early.
-    def eager_wrap(fn):
+    def eager_wrap(fn):  # type: ignore[no-untyped-def]
         @functools.wraps(fn)
-        def wrapper(self, *args: Any, **kwargs: Any) -> Any:
+        def wrapper(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
             kwargs["recording"] = self
             return fn(*args, **kwargs)
 
         return wrapper
 
     for fn in funcs:
-        wrapper = eager_wrap(fn)
+        wrapper = eager_wrap(fn)  # type: ignore[no-untyped-call]
         setattr(RecordingStream, fn.__name__, wrapper)
 
 
@@ -140,7 +138,7 @@ def get_recording_id(
     return str(rec_id) if rec_id is not None else None
 
 
-init([is_enabled, get_application_id, get_recording_id])
+_patch([is_enabled, get_application_id, get_recording_id])  # type: ignore[no-untyped-call]
 
 # ---
 

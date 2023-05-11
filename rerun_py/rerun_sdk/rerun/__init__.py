@@ -37,22 +37,25 @@ from rerun.recording_stream import (
 )
 
 # --- Init RecordingStream class ---
-from rerun.recording_stream import init as recording_stream_init
+from rerun.recording_stream import _patch as recording_stream_patch
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 from rerun.sinks import connect, disconnect, memory_recording, save, serve, spawn
 from rerun.time import reset_time, set_time_nanos, set_time_seconds, set_time_sequence
 
 # Inject all relevant methods into the `RecordingStream` class.
 # We need to do this from here to avoid circular import issues.
-recording_stream_init(
+recording_stream_patch(
     [connect, save, disconnect, memory_recording, serve, spawn]
     + [set_time_sequence, set_time_seconds, set_time_nanos, reset_time]
     + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
-)
+)  # type: ignore[no-untyped-call]
 
 # ---
 
 __all__ = [
+    # init
+    "init",
+    "rerun_shutdown",
     # recordings
     "RecordingStream",
     "get_application_id",
@@ -62,6 +65,18 @@ __all__ = [
     "set_global_data_recording",
     "get_thread_local_data_recording",
     "set_thread_local_data_recording",
+    # time
+    "reset_time",
+    "set_time_nanos",
+    "set_time_seconds",
+    "set_time_sequence",
+    # sinks
+    "connect",
+    "disconnect",
+    "memory_recording",
+    "save",
+    "serve",
+    "spawn",
     # log functions
     "log_annotation_context",
     "log_arrow",

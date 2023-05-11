@@ -14,6 +14,7 @@ import logging
 import math
 import os
 import threading
+from typing import Callable
 
 import cv2
 import numpy as np
@@ -314,7 +315,7 @@ def run_image_tensors() -> None:
         rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
 
 
-def spawn_demo(demo: object, rec: RecordingStream):
+def spawn_demo(demo: Callable[[], None], rec: RecordingStream) -> None:
     with rec:
         demo()
 
