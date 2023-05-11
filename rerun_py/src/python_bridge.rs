@@ -455,7 +455,11 @@ struct PyMemorySinkStorage {
 impl PyMemorySinkStorage {
     /// This will do a blocking flush before returning!
     fn get_rrd_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
-        self.rec.flush_blocking();
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            self.rec.flush_blocking();
+        });
+
         self.inner
             .rrd_as_bytes()
             .map(|bytes| PyBytes::new(py, bytes.as_slice()))
