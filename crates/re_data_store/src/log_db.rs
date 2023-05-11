@@ -186,8 +186,7 @@ impl LogDb {
 
     pub fn recording_type(&self) -> RecordingType {
         self.recording_msg()
-            .map(|msg| msg.info.recording_type)
-            .unwrap_or(RecordingType::Unknown)
+            .map_or(RecordingType::Unknown, |msg| msg.info.recording_type)
     }
 
     pub fn recording_id(&self) -> RecordingId {
