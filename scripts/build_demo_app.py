@@ -60,11 +60,13 @@ def copy_static_assets() -> None:
     shutil.copytree(src, dst, dirs_exist_ok=True)
 
 
-def build_and_copy_wasm() -> None:
+def build_wasm() -> None:
     logging.info("")
     subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
     subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--debug"])
 
+
+def copy_wasm() -> None:
     files = ["re_viewer_bg.wasm", "re_viewer_debug_bg.wasm", "re_viewer.js", "re_viewer_debug.js"]
     for file in files:
         shutil.copyfile(
@@ -132,13 +134,17 @@ def main() -> None:
         action="store_true",
         help="Serve the app on this port after building [default: 8080]",
     )
+    parser.add_argument("--skip-wasm-build", action="store_true", help="Skip the web viewer WASM build")
 
     args, unknown = parser.parse_known_args()
     for arg in unknown:
         logging.warning(f"unknown arg: {arg}")
 
     copy_static_assets()
-    build_and_copy_wasm()
+    if not args.skip_wasm_build:
+        build_wasm()
+    copy_wasm()
+
     examples = collect_examples()
     save_examples_rrd(examples)
     render_examples(examples)

@@ -49,7 +49,6 @@ uploaded anywhere.
     `reusable_build_and_test_wheels.yml`
   - `UPLOAD_COMMIT_OVERRIDE` - If set, will replace the value of `<commit>`. This is necessary because we want pull
 - [reusable_build_web_demo.yml](reusable_build_web.yml) - This job builds the assets uploaded to `demo.rerun.io`.
-  - `RELEASE_VERSION` - If producing a release, the version number. This must match the version in `Cargo.toml`.
 - [reusable_upload_web_demo.yml](reusable_upload_web_demo.yml) - This job uploads the `demo.rerun.io` assets to google cloud. By default this
   only uploads to: `demo.rerun.io/commit/<commit>/`
   - `MARK_PRERELEASE_FOR_MAINLINE` - If true, then the web assets will go to `demo.rerun.io/prelease/

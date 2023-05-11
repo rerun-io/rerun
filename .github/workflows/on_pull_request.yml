@@ -46,7 +46,7 @@ jobs:
 
   build-web-demo:
     name: 'Build Web Demo'
-    needs: [min-test-wheel]
+    needs: [min-test-wheel, build-web]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -55,7 +55,7 @@ jobs:
 
   upload-web-demo:
     name: 'Upload Web Demo'
-    needs: [min-test-wheel, build-web-demo]
+    needs: [build-web-demo]
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}

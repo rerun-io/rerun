@@ -52,7 +52,7 @@ jobs:
 
   build-web-demo:
     name: 'Build Web Demo'
-    needs: [build-linux]
+    needs: [build-linux, build-web]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
@@ -61,7 +61,7 @@ jobs:
 
   upload-web-demo:
     name: 'Upload Web'
-    needs: [build-linux, build-web-demo]
+    needs: [build-web-demo]
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}

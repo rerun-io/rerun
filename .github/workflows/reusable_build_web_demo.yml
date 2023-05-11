@@ -9,14 +9,6 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: true
         type: string
-      RELEASE_VERSION:
-        required: false
-        type: string
-        default: 'prerelease'
-      EXTRA_FLAGS:
-        required: false
-        type: string
-        default: ''
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-web-demo
@@ -48,17 +40,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
+      - name: Download Web Viewer
+        uses: actions/download-artifact@v3
         with:
-          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: false
-
-      # Sccache will cache everything else
-      # See: https://github.com/marketplace/actions/sccache-action
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+          name: web_viewer
+          path: web_viewer
 
       - name: Download Wheel
         uses: actions/download-artifact@v3
@@ -83,32 +69,9 @@ jobs:
           which rerun
           rerun --version
 
-      - name: Patch Cargo.toml for pre-release
-        if: ${{ inputs.RELEASE_VERSION == 'prerelease' }}
-        # After patching the pre-release version, run cargo update.
-        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
-        run: |
-          python3 scripts/version_util.py --patch_prerelease
-          cargo update -w
-
-      - name: Store the expected version
-        # Find the current cargo version and store it in the output: `expected_version`
-        shell: bash
-        id: expected_version
-        run: |
-          echo "EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
-
-      - name: Check the expected version
-        if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
-        run: |
-          if [ "${{steps.expected_version.outputs.EXPECTED_VERSION}}" != "${{inputs.RELEASE_VERSION}}" ]; then
-            echo "Error: EXPECTED_VERSION (${{steps.expected_version.outputs.EXPECTED_VERSION}}) does not match RELEASE_VERSION (${{inputs.RELEASE_VERSION}})"
-            exit 1
-          fi
-
       - name: Build web demo
         run: |
-          python3 scripts/build_demo_app.py
+          python3 scripts/build_demo_app.py --skip-wasm-build
 
       - name: Upload web demo assets
         uses: actions/upload-artifact@v3

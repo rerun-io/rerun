@@ -49,17 +49,16 @@ jobs:
   
   build-web-demo-adhoc:
     name: 'Build Web Demo'
-    needs: [min-test-wheel]
+    needs: [min-test-wheel, build-web-adhoc]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
-      EXTRA_FLAGS: ${{ github.event.inputs.EXTRA_FLAGS }}
       WHEEL_ARTIFACT_NAME: linux-wheel
     secrets: inherit
     
   upload-web-demo:
     name: 'Upload Web Demo'
-    needs: [min-test-wheel, build-web-adhoc]
+    needs: [build-web-demo-adhoc]
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: adhoc-web-${{ github.event.inputs.ADHOC_NAME }}
