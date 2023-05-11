@@ -7,6 +7,7 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun import experimental
+from rerun.components.transform3d import AxisAngleRotation3D, TranslationMatrix3x3, TranslationRotationScale3D
 from rerun.log import log_cleared
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
@@ -22,7 +23,7 @@ from rerun.log.rects import RectFormat, log_rect, log_rects
 from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import LoggingHandler, LogLevel
-from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
+from rerun.log.transform import log_affine3, log_rigid3, log_unknown_transform, log_view_coordinates
 from rerun.recording import MemoryRecording
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 
@@ -32,6 +33,9 @@ __all__ = [
     "LoggingHandler",
     "bindings",
     "ImageFormat",
+    "TranslationMatrix3x3",
+    "TranslationRotationScale3D",
+    "AxisAngleRotation3D",
     "experimental",
     "log_annotation_context",
     "log_arrow",
@@ -56,7 +60,9 @@ __all__ = [
     "log_scalar",
     "log_segmentation_image",
     "log_tensor",
-    "log_affine3_translation_matrix" "log_text_entry",
+    "log_affine3",
+    "log_affine3_translation_matrix",
+    "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
     "LogLevel",

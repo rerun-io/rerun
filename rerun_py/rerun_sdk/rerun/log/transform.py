@@ -13,6 +13,7 @@ from rerun.components.transform3d import (
     Transform3DArray,
     TransformDirection,
     TranslationMatrix3x3,
+    TranslationRotationScale3D,
     UnknownTransform,
 )
 from rerun.log import _to_sequence
@@ -110,11 +111,11 @@ def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
 
 
 @log_decorator
-def log_affine3_translation_matrix(
+def log_affine3(
     entity_path: str,
     *,
-    parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
-    child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
+    parent_from_child: Optional[TranslationMatrix3x3 | TranslationRotationScale3D] = None,
+    child_from_parent: Optional[TranslationMatrix3x3 | TranslationRotationScale3D] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -148,9 +149,7 @@ def log_affine3_translation_matrix(
         transform = child_from_parent
 
     instanced: Dict[str, Any] = {}
-    instanced["rerun.transform3d"] = Transform3DArray.from_transform(
-        DirectedAffine3D(TranslationMatrix3x3(transform[0], transform[1]), direction)
-    )
+    instanced["rerun.transform3d"] = Transform3DArray.from_transform(DirectedAffine3D(transform, direction))
 
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 

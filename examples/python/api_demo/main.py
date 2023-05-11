@@ -76,13 +76,31 @@ def run_segmentation() -> None:
 
 def transform_test() -> None:
     rr.log_unknown_transform("transform_test/unknown", timeless=True)
-    rr.log_affine3_translation_matrix(
-        "transform_test/parent_from_child_mat3",
-        parent_from_child=((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
-    )
-    rr.log_affine3_translation_matrix(
+    rr.log_affine3(
         "transform_test/child_from_parent_mat3",
-        child_from_parent=((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
+        child_from_parent=rr.TranslationMatrix3x3((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
+    )
+    rr.log_affine3("transform_test/parent_from_child_mat3", parent_from_child=rr.TranslationMatrix3x3((123, 456, 789)))
+    rr.log_affine3("transform_test/empty_translation_mat3", parent_from_child=rr.TranslationMatrix3x3())
+    rr.log_affine3("transform_test/translation_only", parent_from_child=rr.TranslationRotationScale3D((1, 2, 3)))
+    rr.log_affine3(
+        "transform_test/quaternion_only", parent_from_child=rr.TranslationRotationScale3D(rotation=(0, 0, 0, 1))
+    )
+    rr.log_affine3(
+        "transform_test/axis_angle_degrees_only",
+        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.AxisAngleRotation3D((0, 0, 0), degrees=10)),
+    )
+    rr.log_affine3(
+        "transform_test/axis_angle_radians_only",
+        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.AxisAngleRotation3D((0, 0, 0), radians=1)),
+    )
+    rr.log_affine3(
+        "transform_test/scale_uniform_only",
+        parent_from_child=rr.TranslationRotationScale3D(scale=2),
+    )
+    rr.log_affine3(
+        "transform_test/scale_vector",
+        parent_from_child=rr.TranslationRotationScale3D(scale=(1,2,3)),
     )
 
 

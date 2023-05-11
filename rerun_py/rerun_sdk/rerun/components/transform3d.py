@@ -8,7 +8,12 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory, build_dense_union
+from rerun.components import (
+    REGISTERED_COMPONENT_NAMES,
+    ComponentTypeFactory,
+    build_dense_union,
+    union_discriminant_type,
+)
 
 __all__ = [
     "Transform3DArray",
@@ -20,6 +25,7 @@ __all__ = [
 class UnknownTransform:
     """
     We don't know the transform, but it is likely/potentially non-identity.
+
     Maybe the user intend to set the transform later.
     """
 
@@ -64,39 +70,148 @@ class TransformDirection(Enum):
 class TranslationMatrix3x3:
     """Representation of a affine transform via a 3x3 translation matrix paired with a translation."""
 
-    translation: npt.ArrayLike
-    """3D translation vector, applied after the matrix."""
+    translation: npt.ArrayLike | None = None
+    """3D translation vector, applied after the matrix. Uses (0, 0, 0) if not set."""
 
-    matrix: npt.ArrayLike
-    """The column-major 3x3 matrix for scale, rotation & skew matrix."""
+    matrix: npt.ArrayLike | None = None
+    """The column-major 3x3 matrix for scale, rotation & skew matrix. Uses identity if not set."""
 
 
 @dataclass
 class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
 
-    translation: Sequence[float] | None
+    translation: npt.ArrayLike | None = None
     """3D translation vector, applied last."""
 
-    rotation: Sequence[float] | AxisAngleRotation3D | None
+    rotation: npt.ArrayLike | AxisAngleRotation3D | None = None
     """3D rotation, represented as a (xyzw) quaternion or axis + angle, applied second."""
 
-    scale: Sequence[float] | None
-    """3D scaling scalar or 3D vector (may be none), applied first."""
+    scale: npt.ArrayLike | float | None = None
+    """3D scaling either a 3D vector, scalar or None. Applied first."""
 
 
 @dataclass
 class AxisAngleRotation3D:
     """3D rotation expressed via a rotation axis and angle."""
 
-    axis: Sequence[float]
+    axis: npt.ArrayLike
     """3D rotation axis."""
 
-    angle: float
-    """3D rotation angle, either in radians or degree."""
+    degrees: float | None = None
+    """3D rotation angle in degrees. Only one of `degrees` or `radians` should be set."""
 
-    is_degree: bool
-    """Whether the angle is in degree or radians, (None implies radian)."""
+    radians: float | None = None
+    """3D rotation angle in radians. Only one of `degrees` or `radians` should be set."""
+
+
+def translation_to_fixed_size_array(
+    translation: npt.ArrayLike | None, struct_type: pa.StructType
+) -> pa.FixedSizeListArray:
+    translation = (0, 0, 0) if translation is None else translation
+    return pa.FixedSizeListArray.from_arrays(
+        np.array(translation, dtype=np.float32).flatten(), type=struct_type["translation"].type
+    )
+
+
+def build_struct_array_from_translation_mat3(
+    translation_mat3: TranslationMatrix3x3, type: pa.StructType
+) -> pa.StructArray:
+    translation = translation_to_fixed_size_array(translation_mat3.translation, type)
+
+    matrix = np.eye(3) if translation_mat3.matrix is None else translation_mat3.matrix
+    matrix = np.array(matrix, dtype=np.float32).flatten()
+
+    return pa.StructArray.from_arrays(
+        [
+            translation,
+            pa.FixedSizeListArray.from_arrays(matrix, type=type["matrix"].type),
+        ],
+        fields=list(type),
+    )
+
+
+def build_struct_array_from_axis_angle_rotation(
+    rotation: AxisAngleRotation3D, axis_angle_type: pa.StructType
+) -> pa.StructArray:
+    if rotation.degrees is None and rotation.radians is None:
+        raise ValueError("AxisAngleRotation3D must have either degrees or radians set")
+    if rotation.degrees is not None and rotation.radians is not None:
+        raise ValueError("AxisAngleRotation3D must have either degrees or radians set, not both")
+
+    axis = np.array(rotation.axis, dtype=np.float32).flatten()
+    axis = pa.FixedSizeListArray.from_arrays(axis, type=axis_angle_type["axis"].type)
+
+    if rotation.degrees is not None:
+        angle = pa.array([rotation.degrees], type=pa.float32())
+        angle_variant = "Degrees"
+    else:
+        angle = pa.array([rotation.radians], type=pa.float32())
+        angle_variant = "Radians"
+    angle = build_dense_union(axis_angle_type["angle"].type, angle_variant, angle)
+
+    return pa.StructArray.from_arrays(
+        [
+            axis,
+            angle,
+        ],
+        fields=list(axis_angle_type),
+    )
+
+
+def build_union_array_from_rotation(rotation: npt.ArrayLike | AxisAngleRotation3D | None, type: pa.DenseUnionType):
+    if rotation is None:
+        rotation_discriminant = "Identity"
+        rotation = pa.array([False])
+    elif isinstance(rotation, AxisAngleRotation3D):
+        rotation_discriminant = "AxisAngle"
+        axis_angle_type = union_discriminant_type(type, rotation_discriminant)
+        rotation = build_struct_array_from_axis_angle_rotation(rotation, axis_angle_type)
+    else:
+        rotation_discriminant = "Quaternion"
+        rotation = np.array(rotation, dtype=np.float32).flatten()
+        if len(rotation) != 4:
+            raise ValueError(f"Quaternion must have 4 elements, got {len(rotation)}")
+        rotation = pa.FixedSizeListArray.from_arrays(
+            rotation, type=union_discriminant_type(type, rotation_discriminant)
+        )
+
+    return build_dense_union(type, rotation_discriminant, rotation)
+
+
+def build_union_array_from_scale(scale: npt.ArrayLike | float | None, type: pa.DenseUnionType):
+    if scale is None:
+        scale_discriminant = "Unit"
+        scale = pa.array([False])
+    elif np.isscalar(scale):
+        scale_discriminant = "Uniform"
+        scale = pa.array([scale], type=pa.float32())
+    else:
+        scale_discriminant = "ThreeD"
+        scale = np.array(scale, dtype=np.float32).flatten()
+        if len(scale) != 3:
+            raise ValueError(f"Scale vector must have 3 elements, got {len(scale)}")
+        scale = pa.FixedSizeListArray.from_arrays(scale, type=union_discriminant_type(type, scale_discriminant))
+
+    return build_dense_union(type, scale_discriminant, scale)
+
+
+def build_struct_array_from_translation_rotation_scale(
+    transform: TranslationRotationScale3D, type: pa.StructType
+) -> pa.StructArray:
+    translation = translation_to_fixed_size_array(transform.translation, type)
+
+    rotation = build_union_array_from_rotation(transform.rotation, type["rotation"].type)
+    scale = build_union_array_from_scale(transform.scale, type["scale"].type)
+
+    return pa.StructArray.from_arrays(
+        [
+            translation,
+            rotation,
+            scale,
+        ],
+        fields=list(type),
+    )
 
 
 class Transform3DArray(pa.ExtensionArray):  # type: ignore[misc]
@@ -116,38 +231,27 @@ class Transform3DArray(pa.ExtensionArray):  # type: ignore[misc]
             discriminant_transform3d = "Affine3D"
             discriminant_affine3d_direction = transform.direction.name
 
-            directed_affine3d_union_type = Transform3DType.storage_type[1]
-            affine3d_union_type = directed_affine3d_union_type.type[0]  # both [0] and [1] are the same type
+            directed_affine3d_union_type = union_discriminant_type(
+                Transform3DType.storage_type, discriminant_transform3d
+            )
+            affine3d_union_type = directed_affine3d_union_type[0].type  # both [0] and [1] are the same type
 
             if isinstance(transform.affine3d, TranslationMatrix3x3):
-                translation_matrix3x3_type = affine3d_union_type.type[0]
-                discriminant_affine3d = translation_matrix3x3_type.name
-
-                translation = np.array(transform.affine3d.translation, dtype=np.float32).flatten()
-                matrix = np.array(transform.affine3d.matrix, dtype=np.float32).flatten()
-                affine3d = pa.StructArray.from_arrays(
-                    [
-                        pa.FixedSizeListArray.from_arrays(
-                            translation, type=translation_matrix3x3_type.type["translation"].type
-                        ),
-                        pa.FixedSizeListArray.from_arrays(matrix, type=translation_matrix3x3_type.type["matrix"].type),
-                    ],
-                    fields=list(translation_matrix3x3_type.type),
-                )
+                discriminant_affine3d = "TranslationMatrix3x3"
+                repr_type = union_discriminant_type(affine3d_union_type, discriminant_affine3d)
+                affine3d = build_struct_array_from_translation_mat3(transform.affine3d, repr_type)
             elif isinstance(transform.affine3d, TranslationRotationScale3D):
-                translation_matrix3x3_type = affine3d_union_type.type[1]
-                discriminant_affine3d = translation_matrix3x3_type.name
-
-                discriminant_affine3d = "TranslationRotationScale3D"
-                raise NotImplementedError("TranslationRotationScale3D")
+                discriminant_affine3d = "TranslationRotationScale"
+                repr_type = union_discriminant_type(affine3d_union_type, discriminant_affine3d)
+                affine3d = build_struct_array_from_translation_rotation_scale(transform.affine3d, repr_type)
             else:
                 raise ValueError(f"Unknown affine transform representation: {transform.affine3d}")
 
             directed_affine3d = build_dense_union(
-                affine3d_union_type.type, discriminant=discriminant_affine3d, child=affine3d
+                affine3d_union_type, discriminant=discriminant_affine3d, child=affine3d
             )
             transform3d = build_dense_union(
-                directed_affine3d_union_type.type, discriminant=discriminant_affine3d_direction, child=directed_affine3d
+                directed_affine3d_union_type, discriminant=discriminant_affine3d_direction, child=directed_affine3d
             )
         else:
             raise ValueError(f"Unknown transform type: {transform}")

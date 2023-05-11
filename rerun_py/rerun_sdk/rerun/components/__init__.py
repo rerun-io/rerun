@@ -64,6 +64,11 @@ def ComponentTypeFactory(name: str, array_cls: type[pa.ExtensionArray], field: p
     return cast(Type[pa.ExtensionType], component_type)
 
 
+def union_discriminant_type(data_type: pa.DenseUnionType, discriminant: str) -> pa.DataType:
+    """Return the data type of the given discriminant."""
+    return next(f.type for f in list(data_type) if f.name == discriminant)
+
+
 def build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa.Array) -> pa.UnionArray:
     """
     Build a dense UnionArray given the `data_type`, a discriminant, and the child value array.
