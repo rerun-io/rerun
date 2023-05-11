@@ -24,7 +24,7 @@ use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110 // TODO:
+#[arrow_field(type = "dense")]
 pub enum Scale3D {
     /// Unit scale, meaning no scaling.
     #[default]
@@ -73,7 +73,7 @@ impl From<Scale3D> for glam::Vec3 {
 // TODO:
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+#[arrow_field(type = "dense")]
 pub enum Angle {
     Radians(f32),
     Degrees(f32),
@@ -140,7 +140,7 @@ impl From<AxisAngleRotation> for glam::Quat {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+#[arrow_field(type = "dense")]
 pub enum Rotation3D {
     /// No rotation.
     #[default]
@@ -187,7 +187,9 @@ impl From<glam::Quat> for Rotation3D {
     }
 }
 
-/// TODO:
+/// Representation of a affine transform via a 3x3 translation matrix paired with a translation.
+///
+/// First applies the matrix, then the translation.
 ///
 /// ```
 /// use re_log_types::component_types::{TranslationMatrix3x3, Vec3D, Mat3x3};
@@ -205,7 +207,10 @@ impl From<glam::Quat> for Rotation3D {
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TranslationMatrix3x3 {
+    /// 3D translation, applied after the matrix.
     pub translation: Vec3D,
+
+    /// 3x3 matrix for scale, rotation & skew.
     pub matrix: Mat3x3,
 }
 
@@ -216,7 +221,7 @@ impl TranslationMatrix3x3 {
     };
 }
 
-/// TODO:
+/// Representation of an affine transform via separate translation, rotation & scale.
 ///
 /// ```
 /// use re_log_types::component_types::{TranslationRotationScale, Rotation3D, Scale3D, Vec3D};
@@ -235,8 +240,13 @@ impl TranslationMatrix3x3 {
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TranslationRotationScale3D {
+    /// 3D translation vector, applied last.
     pub translation: Vec3D,
+
+    /// 3D rotation, applied second.
     pub rotation: Rotation3D,
+
+    /// 3D scale, applied first.
     pub scale: Scale3D,
 }
 
@@ -285,7 +295,7 @@ impl From<Scale3D> for TranslationRotationScale3D {
     }
 }
 
-/// TODO:
+/// Representation of a 3D affine transform.
 ///
 /// ```
 /// use re_log_types::component_types::{Affine3DRepresentation, TranslationMatrix3x3, TranslationRotationScale};
@@ -300,10 +310,9 @@ impl From<Scale3D> for TranslationRotationScale3D {
 ///     ], None, UnionMode::Dense),
 /// );
 /// ```
-
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+#[arrow_field(type = "dense")]
 pub enum Affine3D {
     TranslationMatrix3x3(TranslationMatrix3x3),
     TranslationRotationScale(TranslationRotationScale3D),
@@ -437,11 +446,17 @@ impl From<Affine3D> for glam::Affine3A {
     }
 }
 
+/// An affine transform between two 3D spaces, represented in a given direction.
+///
+/// TODO: doctest
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "dense")] // TODO: Should be dense, requires this fix https://github.com/DataEngineeringLabs/arrow2-convert/pull/110
+#[arrow_field(type = "dense")]
 pub enum DirectedAffine3D {
+    /// The transform maps from the parent space to the child space.
     ChildFromParent(Affine3D),
+
+    /// The transform maps from the child space to the parent space.
     ParentFromChild(Affine3D),
 }
 
@@ -592,7 +607,7 @@ impl Pinhole {
 /// A 3D transform between two spaces.
 ///
 /// ```
-/// use re_log_types::component_types::{Transform3D, Affine3D, Pinhole};
+/// use re_log_types::component_types::{Transform3D, DirectedAffine3D, Pinhole};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
@@ -601,7 +616,7 @@ impl Pinhole {
 ///     DataType::Union(
 ///        vec![
 ///            Field::new("Unknown", DataType::Boolean, false),
-///            Field::new("Affine3D", Affine3D::data_type(), false),
+///            Field::new("Affine3D", DirectedAffine3D::data_type(), false),
 ///            Field::new("Pinhole", Pinhole::data_type(), false),
 ///        ],
 ///        None,
@@ -617,6 +632,8 @@ pub enum Transform3D {
     /// Maybe the user intend to set the transform later.
     Unknown,
 
+    /// Affine transform between two 3D spaces.
+    ///
     /// For example: the parent is a 3D world space, the child a camera space.
     Affine3D(DirectedAffine3D),
 

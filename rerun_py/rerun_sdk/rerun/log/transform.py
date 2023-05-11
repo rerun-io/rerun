@@ -3,11 +3,18 @@ Methods for logging transforms on entity paths.
 
 Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/spaces-and-transforms)
 """
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.components.transform3d import (
+    DirectedAffine3D,
+    Transform3DArray,
+    TransformDirection,
+    TranslationMatrix3x3,
+    UnknownTransform,
+)
 from rerun.log import _to_sequence
 from rerun.log.error_utils import _send_warning
 from rerun.log.log_decorator import log_decorator
@@ -97,7 +104,55 @@ def log_view_coordinates(
 def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
     """Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate."""
 
-    bindings.log_unknown_transform(entity_path, timeless=timeless)
+    instanced: Dict[str, Any] = {}
+    instanced["rerun.transform3d"] = Transform3DArray.from_transform(UnknownTransform())
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+
+@log_decorator
+def log_affine3_translation_matrix(
+    entity_path: str,
+    *,
+    parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
+    child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
+    timeless: bool = False,
+) -> None:
+    """
+    Log an affine 3D transform between this entity and the parent.
+
+    Set either `parent_from_child` or `child_from_parent` to a tuple of `(translation_xyz, matrix3x3)`.
+
+    The matrix is a 3x3 matrix column major matrix which can express rotation, scale and shear.
+
+    Parameters
+    ----------
+    entity_path:
+        Path of the *child* space in the space hierarchy.
+    parent_from_child:
+        A tuple of `(translation_xyz, matrix3x3)` mapping points in the child space to the parent space.
+    child_from_parent:
+        the inverse of `parent_from_child`
+    timeless:
+        If true, the transform will be timeless (default: False).
+
+    """
+
+    if parent_from_child and child_from_parent:
+        raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
+
+    if parent_from_child:
+        direction = TransformDirection.ParentFromChild
+        transform = parent_from_child
+    elif child_from_parent:
+        direction = TransformDirection.ChildFromParent
+        transform = child_from_parent
+
+    instanced: Dict[str, Any] = {}
+    instanced["rerun.transform3d"] = Transform3DArray.from_transform(
+        DirectedAffine3D(TranslationMatrix3x3(transform[0], transform[1]), direction)
+    )
+
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
 
 
 @log_decorator
@@ -152,6 +207,7 @@ def log_rigid3(
     if parent_from_child and child_from_parent:
         raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
 
+    # TODO:
     if parent_from_child:
         (t, q) = parent_from_child
         bindings.log_rigid3(

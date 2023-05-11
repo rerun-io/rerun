@@ -74,6 +74,18 @@ def run_segmentation() -> None:
     rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
 
 
+def transform_test() -> None:
+    rr.log_unknown_transform("transform_test/unknown", timeless=True)
+    rr.log_affine3_translation_matrix(
+        "transform_test/parent_from_child_mat3",
+        parent_from_child=((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
+    )
+    rr.log_affine3_translation_matrix(
+        "transform_test/child_from_parent_mat3",
+        child_from_parent=((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
+    )
+
+
 def run_2d_lines() -> None:
     import numpy as np
 
@@ -324,7 +336,8 @@ def main() -> None:
         "rects": run_rects,
         "segmentation": run_segmentation,
         "text": run_text_logs,
-        "transforms_3d": transforms_rigid_3d,
+        "transforms_rigid_3d": transforms_rigid_3d,
+        "transform_test": transform_test,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
@@ -342,7 +355,7 @@ def main() -> None:
         print(f"Running {args.demo} demos…")
         for name, demo in demos.items():
             # Some demos are just a bit… too much
-            if args.demo == "most" and name in ["image_tensors"]:
+            if args.demo == "most" and name in ["image_tensors", "transform_test"]:
                 continue
 
             logging.info(f"Starting {name}")
