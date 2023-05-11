@@ -15,7 +15,7 @@ use super::{Blueprint, SpaceView, Viewport};
 
 // Resolving and applying updates
 impl Blueprint {
-    pub fn process_updates(&self, snapshot: &Self, blueprint_db: &mut re_data_store::LogDb) {
+    pub fn sync_changes_to_store(&self, snapshot: &Self, blueprint_db: &mut re_data_store::LogDb) {
         // Update the panel states
         sync_panel_expanded(
             blueprint_db,

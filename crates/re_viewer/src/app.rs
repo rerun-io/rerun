@@ -617,7 +617,7 @@ impl eframe::App for App {
         if this_frame_blueprint_id != Default::default() {
             let blueprint_db = self.log_dbs.get_mut(&this_frame_blueprint_id).unwrap();
 
-            blueprint.process_updates(&blueprint_snapshot, blueprint_db);
+            blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
         }
     }
 }
