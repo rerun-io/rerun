@@ -199,15 +199,6 @@ EXAMPLES = {
         and resulting point clouds over time.
         """,
     },
-    "deep_sdf": {
-        "title": "Deep SDF",
-        "description": """
-        Generate Signed Distance Fields for arbitrary meshes using both traditional methods
-        as well as the one described in the
-        <a href="https://arxiv.org/abs/1901.05103" target="_blank">DeepSDF paper</a>,
-        and visualize the results using the Rerun SDK.
-        """,
-    },
     "dicom": {
         "title": "Dicom",
         "description": """
