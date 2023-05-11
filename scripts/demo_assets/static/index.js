@@ -49,6 +49,7 @@ function on_app_started(handle) {
 
   console.debug("App started.");
   document.getElementById("center_text").innerHTML = "";
+  document.getElementById("header_bar").classList.add("visible");
 
   if (window.location !== window.parent.location) {
     window.parent.postMessage("READY", "*");
@@ -119,7 +120,27 @@ function navigate_to_example(name) {
   }
 }
 
-document
-  .querySelector("#examples")
-  .addEventListener("change", ({ target }) => target.value && navigate_to_example(target.value));
+// open/close dropdown
+document.querySelector("#examples").addEventListener("click", () => {
+  const body = document.querySelector(".dropdown-body");
+  if (!body) return;
+  if (body.classList.contains("visible")) {
+    body.classList.remove("visible");
+  } else {
+    body.classList.add("visible");
+  }
+});
+
+// close dropdowns by clicking outside of it
+document.body.addEventListener("click", (event) => {
+  const body = document.querySelector(".dropdown-body");
+  if (!body) return;
+
+  const is_dropdown = (element) =>
+    element instanceof HTMLElement && element.classList.contains("dropdown");
+
+  if (!event.composedPath().find(is_dropdown)) {
+    body.classList.remove("visible");
+  }
+});
 

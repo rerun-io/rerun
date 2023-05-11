@@ -38,37 +38,153 @@ canvas {
   transform: translate(-50%, 0%);
 }
 
+* {
+  font-family: "Inter", sans-serif;
+  color: #f0f0f0;
+}
+
 .header {
   z-index: 1000;
   position: absolute;
-  left: 64px;
+  transform: translate(-50%, 0);
+  left: 50%;
   height: 44px;
 
   display: flex;
   flex-direction: row;
   gap: 4px;
 }
-
-.header > a {
-  background: unset;
-  padding: 10px;
-}
-
-.header > a > img {
-  max-height: 100%;
+.header:not(.visible) {
+  display: none;
 }
 
 .examples {
   position: relative;
-  top: 12px;
+  top: 11px;
 }
 
-.examples > select {
+.example-description {
+  margin-top: 6px;
+  height: 40px;
+  border: none;
+  border-radius: 33%;
+}
+.example-description:hover > .example-description-body {
+  display: flex;
+}
+.example-description:hover > .example-description-icon {
+  background: #404040;
+  border: none;
+  border-radius: 50%;
+}
+.example-description-icon {
+  display: flex;
+  justify-content: center;
+  padding: 6px;
+  width: 20px;
+  height: 20px;
+}
+.example-description-body {
+  display: none;
+
+  flex-direction: column;
+  gap: 3px;
+
+  position: absolute;
+  top: 100%;
+
+  background: #1c2123;
   border: none;
   border-radius: 6px;
-  background-color: #212628;
-  color: #cad8de;
+  padding: 12px;
+
+  width: 280px;
+}
+.example-description-body > p {
+  margin: 0;
+}
+
+a.icon-link {
+  margin: 5px;
+  padding: 5px;
+}
+a.icon-link:hover {
+  background: #404040;
+  border: none;
+  border-radius: 50%;
+}
+img.icon {
+  max-height: 100%;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown-title {
+  display: flex;
+  gap: 2px;
+  user-select: none;
+  cursor: pointer;
+
+  background: #141414;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 5px 2px 8px;
+
+  font-style: normal;
+  font-weight: 435;
+  font-size: 14px;
+  line-height: 16px;
+}
+.dropdown-title > img {
+  width: 16px;
+  height: 16px;
+}
+.dropdown-title:hover {
+  background: #404040;
+}
+.dropdown-title:active {
+  background: #404040;
+}
+
+.dropdown-body {
+  display: none;
+
+  flex-direction: column;
+  gap: 3px;
+
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+  background: #1c2123;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+
+  user-select: none;
+
+  width: 120px;
+}
+.dropdown-body.visible {
+  display: flex;
+}
+
+.dropdown-entry {
   padding: 2px 5px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+}
+.dropdown-entry:hover {
+  background: #404040;
+}
+
+a.flat-link {
+  text-decoration: none;
 }
 
 .centered {
@@ -85,7 +201,7 @@ canvas {
   text-align: center;
 }
 
-a {
+a.button {
   display: inline-block;
   background: white;
   color: black;
