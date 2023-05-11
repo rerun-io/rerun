@@ -1,6 +1,7 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
-    DataRow, DeserializableComponent, EntityPath, RowId, SerializableComponent, TimePoint,
+    DataRow, DeserializableComponent, EntityPath, RowId, SerializableComponent, TimeInt, TimePoint,
+    Timeline,
 };
 
 use crate::{log_db::EntityDb, LogDb};
@@ -38,6 +39,21 @@ where
     }
 
     component
+}
+
+/// Get the latest value for a given [`re_log_types::Component`] assuming it is timeless.
+///
+/// This assumes that the row we get from the store only contains a single instance for this
+/// component; it will log a warning otherwise.
+pub fn query_timeless_single<C: DeserializableComponent>(
+    entity_db: &EntityDb,
+    entity_path: &EntityPath,
+) -> Option<C>
+where
+    for<'b> &'b C::ArrayType: IntoIterator,
+{
+    let query = re_arrow_store::LatestAtQuery::new(Timeline::default(), TimeInt::MAX);
+    query_latest_single(entity_db, entity_path, &query)
 }
 
 // ----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 use ahash::HashMap;
-use re_arrow_store::{TimeInt, Timeline};
-use re_data_store::{query_latest_single, EntityPath};
+
+use re_data_store::{query_timeless_single, EntityPath};
 use re_viewer_context::SpaceViewId;
 
 use crate::blueprint_components::{
@@ -51,58 +51,41 @@ impl Blueprint {
 }
 
 fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::LogDb) -> Option<bool> {
-    let query = re_arrow_store::LatestAtQuery::new(Timeline::default(), TimeInt::MAX);
-
-    query_latest_single::<PanelState>(&blueprint_db.entity_db, path, &query).map(|p| p.expanded)
+    query_timeless_single::<PanelState>(&blueprint_db.entity_db, path).map(|p| p.expanded)
 }
 
 fn load_space_view(path: &EntityPath, blueprint_db: &re_data_store::LogDb) -> Option<SpaceView> {
-    let query = re_arrow_store::LatestAtQuery::new(Timeline::default(), TimeInt::MAX);
-
-    query_latest_single::<SpaceViewComponent>(&blueprint_db.entity_db, path, &query)
-        .map(|c| c.space_view)
+    query_timeless_single::<SpaceViewComponent>(&blueprint_db.entity_db, path).map(|c| c.space_view)
 }
 
 fn load_viewport(
     blueprint_db: &re_data_store::LogDb,
     space_views: HashMap<SpaceViewId, SpaceView>,
 ) -> Viewport {
-    let query = re_arrow_store::LatestAtQuery::new(Timeline::default(), TimeInt::MAX);
+    let auto_space_views =
+        query_timeless_single::<AutoSpaceViews>(&blueprint_db.entity_db, &VIEWPORT_PATH.into())
+            .unwrap_or_else(|| {
+                // Only enable auto-space-views if this is the app-default blueprint
+                AutoSpaceViews(
+                    blueprint_db
+                        .recording_info()
+                        .map_or(false, |ri| ri.is_app_default_blueprint()),
+                )
+            });
 
-    let auto_space_views = query_latest_single::<AutoSpaceViews>(
+    let space_view_visibility = query_timeless_single::<SpaceViewVisibility>(
         &blueprint_db.entity_db,
         &VIEWPORT_PATH.into(),
-        &query,
-    )
-    .unwrap_or_else(|| {
-        // Only enable auto-space-views if this is the app-default blueprint
-        AutoSpaceViews(
-            blueprint_db
-                .recording_info()
-                .map_or(false, |ri| ri.is_app_default_blueprint()),
-        )
-    });
-
-    let space_view_visibility = query_latest_single::<SpaceViewVisibility>(
-        &blueprint_db.entity_db,
-        &VIEWPORT_PATH.into(),
-        &query,
     )
     .unwrap_or_default();
 
-    let space_view_maximized = query_latest_single::<SpaceViewMaximized>(
-        &blueprint_db.entity_db,
-        &VIEWPORT_PATH.into(),
-        &query,
-    )
-    .unwrap_or_default();
+    let space_view_maximized =
+        query_timeless_single::<SpaceViewMaximized>(&blueprint_db.entity_db, &VIEWPORT_PATH.into())
+            .unwrap_or_default();
 
-    let viewport_layout: ViewportLayout = query_latest_single::<ViewportLayout>(
-        &blueprint_db.entity_db,
-        &VIEWPORT_PATH.into(),
-        &query,
-    )
-    .unwrap_or_default();
+    let viewport_layout: ViewportLayout =
+        query_timeless_single::<ViewportLayout>(&blueprint_db.entity_db, &VIEWPORT_PATH.into())
+            .unwrap_or_default();
 
     // TODO(jleibs): Can this be done as a partition operation without the clone?
     let mut known_space_views = space_views.clone();
