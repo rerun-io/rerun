@@ -111,6 +111,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // init
     m.add_function(wrap_pyfunction!(init, m)?)?;
+    m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
@@ -304,6 +305,12 @@ authkey = multiprocessing.current_process().authkey
     let authkey = locals.get_item("authkey").unwrap();
     let authkey: &PyBytes = authkey.downcast().unwrap();
     authkey.as_bytes().to_vec()
+}
+
+/// Return a verbose version string
+#[pyfunction]
+fn version() -> String {
+    re_build_info::build_info!().to_string()
 }
 
 /// Is logging enabled in the global recording?

@@ -101,11 +101,9 @@ impl Default for RecordingId {
 }
 
 impl RecordingId {
-    const UNKNOWN: &str = "UNKNOWN";
-
     #[inline]
     pub fn unknown() -> Self {
-        RecordingId::UNKNOWN.into()
+        "UNKNOWN".into()
     }
 
     #[inline]
@@ -116,11 +114,6 @@ impl RecordingId {
     #[inline]
     pub fn from_uuid(uuid: uuid::Uuid) -> Self {
         Self(Arc::new(uuid.to_string()))
-    }
-
-    #[inline]
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
     }
 }
 
@@ -139,6 +132,35 @@ impl From<&str> for RecordingId {
 impl From<String> for RecordingId {
     fn from(s: String) -> Self {
         Self(Arc::new(s))
+    }
+}
+
+impl RecordingId {
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl AsRef<str> for RecordingId {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::borrow::Borrow<str> for RecordingId {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::ops::Deref for RecordingId {
+    type Target = str;
+    #[inline]
+    fn deref(&self) -> &str {
+        self.as_str()
     }
 }
 
