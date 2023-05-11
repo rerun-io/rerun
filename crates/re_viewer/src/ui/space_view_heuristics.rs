@@ -127,6 +127,11 @@ fn is_interesting_space_view_not_at_root(
     false
 }
 
+/// Function to create the non data space views. Configuration panel and blueprint panel.
+fn create_blueprint_and_selection_space_view() {
+    // let mut config_viewport =
+}
+
 /// List out all space views we generate by default for the available data.
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,

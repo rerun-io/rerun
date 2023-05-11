@@ -248,7 +248,7 @@ impl PartialEq for DeviceConfig {
 }
 
 #[inline]
-fn bool_true() -> bool {
+const fn bool_true() -> bool {
     true
 }
 
@@ -368,8 +368,8 @@ fn default_neural_networks() -> Vec<AiModel> {
     vec![
         AiModel::default(),
         AiModel {
-            path: String::from("yolo-v3-tiny-tf"),
-            display_name: String::from("Yolo (tiny)"),
+            path: String::from("yolov8n_coco_640x352"),
+            display_name: String::from("Yolo V8"),
         },
         AiModel {
             path: String::from("mobilenet-ssd"),
@@ -449,6 +449,20 @@ pub mod entity_paths {
 }
 
 impl State {
+    pub fn only_runtime_configs_changed(
+        old_config: &DeviceConfig,
+        new_config: &DeviceConfig,
+    ) -> bool {
+        let any_runtime_conf_changed = old_config.depth.is_some()
+            && new_config.depth.is_some()
+            && old_config.depth != new_config.depth; // || others to be added
+        any_runtime_conf_changed
+            && old_config.left_camera == new_config.left_camera
+            && old_config.right_camera == new_config.right_camera
+            && old_config.color_camera == new_config.color_camera
+            && old_config.ai_model == new_config.ai_model
+    }
+
     /// Should the space view be added to the UI based on the new subscriptions (a subscription change occurred)
     fn create_entity_paths_from_subscriptions(
         &mut self,
@@ -635,7 +649,7 @@ impl State {
                     re_log::debug!("Setting devices...");
                     self.devices_available = Some(devices);
                 }
-                WsMessageData::Pipeline(config) => {
+                WsMessageData::Pipeline((config, runtime_only)) => {
                     let mut subs = self.subscriptions.clone();
                     if config.depth.is_some() {
                         subs.push(ChannelId::DepthImage);
@@ -663,7 +677,7 @@ impl State {
                     self.selected_device = device;
                     self.backend_comms.set_subscriptions(&self.subscriptions);
                     self.backend_comms
-                        .set_pipeline(&self.applied_device_config.config);
+                        .set_pipeline(&self.applied_device_config.config, false);
                     self.applied_device_config.update_in_progress = true;
                 }
                 WsMessageData::Error(error) => {
@@ -672,7 +686,7 @@ impl State {
                     match error.action {
                         ErrorAction::None => (),
                         ErrorAction::FullReset => {
-                            self.set_device("".into());
+                            self.set_device(String::new());
                         }
                     }
                 }
@@ -684,7 +698,7 @@ impl State {
             if poll_instant.elapsed().as_secs() < 2 {
                 return;
             }
-            if self.selected_device.id == "" {
+            if self.selected_device.id.is_empty() {
                 self.backend_comms.get_devices();
             }
             self.poll_instant = Some(Instant::now());
@@ -701,14 +715,13 @@ impl State {
         self.backend_comms.set_device(device_id);
     }
 
-    pub fn set_device_config(&mut self, config: &mut DeviceConfig) {
-        // Don't try to set pipeline in ws not connected or device not selected
+    pub fn set_device_config(&mut self, config: &mut DeviceConfig, runtime_only: bool) {
+        // Don't try to set pipeline in ws not connected
         if !self
             .backend_comms
             .ws
             .connected
             .load(std::sync::atomic::Ordering::SeqCst)
-            || self.selected_device.id == ""
         {
             return;
         }
@@ -717,9 +730,18 @@ impl State {
         if !config.depth_enabled {
             config.depth = None;
         }
-        self.backend_comms.set_pipeline(&config);
-        re_log::info!("Creating pipeline...");
-        self.applied_device_config.update_in_progress = true;
+        if self.selected_device.id.is_empty() {
+            self.applied_device_config.config = config.clone();
+            return;
+        }
+        self.backend_comms.set_pipeline(config, runtime_only);
+        if runtime_only {
+            self.applied_device_config.config = config.clone();
+            self.applied_device_config.update_in_progress = false;
+        } else {
+            re_log::info!("Creating pipeline...");
+            self.applied_device_config.update_in_progress = true;
+        }
     }
 }
 

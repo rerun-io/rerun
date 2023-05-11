@@ -57,258 +57,326 @@ impl<'a, 'b> DepthaiTabs<'a, 'b> {
     pub fn tree() -> Tree<String> {
         let config_tab = "Configuration".to_string();
         let imu_tab = "IMU".to_string();
-        let tree = Tree::new(vec![config_tab, imu_tab]);
-        tree
+        Tree::new(vec![config_tab, imu_tab])
     }
 
     fn device_configuration_ui(&mut self, ui: &mut egui::Ui) {
         // re_log::info!("pipeline_state: {:?}", pipeline_state);
         let mut device_config = self.ctx.depthai_state.modified_device_config.config.clone();
-        let available_size = ui.available_size();
+        let primary_700 = self.ctx.re_ui.design_tokens.primary_700;
+        let gray_900 = self.ctx.re_ui.design_tokens.gray_900;
         egui::ScrollArea::both()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
+                let mut style = ui.style_mut().clone();
+                style.spacing.scroll_bar_inner_margin = 0.0;
+                ui.set_style(style);
                 egui::Frame {
-                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                    fill: self.ctx.re_ui.design_tokens.gray_50,
+                    inner_margin: egui::Margin::symmetric(30.0, 21.0),
                     ..Default::default()
                 }
                 .show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.collapsing("Color Camera", |ui| {
-                            ui.vertical(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label("Resolution: ");
-                                    egui::ComboBox::from_id_source("color_camera_resolution")
-                                        .selected_text(format!(
-                                            "{}",
-                                            device_config.color_camera.resolution
-                                        ))
-                                        .width(100.0)
-                                        .show_ui(ui, |ui| {
-                                            for res in self
-                                                .ctx
-                                                .depthai_state
-                                                .selected_device
-                                                .supported_color_resolutions
-                                                .iter()
-                                            {
-                                                ui.selectable_value(
-                                                    &mut device_config.color_camera.resolution,
-                                                    *res,
-                                                    format!("{res}"),
-                                                );
-                                            }
-                                        });
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.label("FPS: ");
-                                    ui.add(egui::DragValue::new(
-                                        &mut device_config.color_camera.fps,
-                                    ));
-                                });
-                                ui.checkbox(
-                                    &mut device_config.color_camera.stream_enabled,
-                                    "Stream",
-                                );
-                            });
-                        });
-                        ui.collapsing("Left Mono Camera", |ui| {
-                            ui.vertical(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label("Resolution: ");
-                                    egui::ComboBox::from_id_source("left_camera_resolution")
-                                        .width(70.0)
-                                        .selected_text(format!(
-                                            "{}",
-                                            device_config.left_camera.resolution
-                                        ))
-                                        .show_ui(ui, |ui| {
-                                            for res in self
-                                                .ctx
-                                                .depthai_state
-                                                .selected_device
-                                                .supported_left_mono_resolutions
-                                                .iter()
-                                            {
-                                                ui.selectable_value(
-                                                    &mut device_config.left_camera.resolution,
-                                                    *res,
-                                                    format!("{res}"),
-                                                );
-                                            }
-                                        });
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.label("FPS: ");
-                                    ui.add(egui::DragValue::new(
-                                        &mut device_config.left_camera.fps,
-                                    ));
-                                });
-                                ui.checkbox(
-                                    &mut device_config.left_camera.stream_enabled,
-                                    "Stream",
-                                );
-                            });
-                        });
-                        ui.collapsing("Right Mono Camera", |ui| {
-                            ui.vertical(|ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label("Resolution: ");
-                                    egui::ComboBox::from_id_source("right_camera_resolution")
-                                        .width(70.0)
-                                        .selected_text(format!(
-                                            "{}",
-                                            device_config.right_camera.resolution
-                                        ))
-                                        .show_ui(ui, |ui| {
-                                            for res in self
-                                                .ctx
-                                                .depthai_state
-                                                .selected_device
-                                                .supported_right_mono_resolutions
-                                                .iter()
-                                            {
-                                                ui.selectable_value(
-                                                    &mut device_config.right_camera.resolution,
-                                                    *res,
-                                                    format!("{res}"),
-                                                );
-                                            }
-                                        });
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.label("FPS: ");
-                                    ui.add(egui::DragValue::new(
-                                        &mut device_config.right_camera.fps,
-                                    ));
-                                });
-                                ui.checkbox(
-                                    &mut device_config.right_camera.stream_enabled,
-                                    "Stream",
-                                );
-                            });
-                        });
-                        ui.checkbox(&mut device_config.depth_enabled, "Depth");
-
-                        let mut depth = device_config.depth.unwrap_or_default();
-                        if depth.align == depthai::BoardSocket::RGB && !depth.lr_check {
-                            depth.align = depthai::BoardSocket::AUTO;
-                        }
-                        ui.collapsing("Depth settings", |ui| {
-                            ui.vertical(|ui| {
-                                ui.checkbox(&mut depth.lr_check, "LR Check");
-                                ui.horizontal(|ui| {
-                                    ui.label("Align to: ");
-                                    egui::ComboBox::from_id_source("depth_align_combo")
-                                        .width(100.0)
-                                        .selected_text(format!("{:?}", depth.align))
-                                        .show_ui(ui, |ui| {
-                                            for align in depthai::BoardSocket::iter() {
-                                                if align == depthai::BoardSocket::RGB
-                                                    && !depth.lr_check
-                                                {
-                                                    continue;
-                                                }
-                                                ui.selectable_value(
-                                                    &mut depth.align,
-                                                    align,
-                                                    format!("{:?}", align),
-                                                );
-                                            }
-                                        });
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.label("Median Filter: ");
-                                    egui::ComboBox::from_id_source("median_filter_combo")
-                                        .width(100.0)
-                                        .selected_text(format!("{:?}", depth.median))
-                                        .show_ui(ui, |ui| {
-                                            for filter in depthai::DepthMedianFilter::iter() {
-                                                ui.selectable_value(
-                                                    &mut depth.median,
-                                                    filter,
-                                                    format!("{:?}", filter),
-                                                );
-                                            }
-                                        });
-                                });
-
-                                ui.horizontal(|ui| {
-                                    ui.label("LR Threshold: ");
-                                    ui.add(
-                                        egui::DragValue::new(&mut depth.lrc_threshold)
-                                            .clamp_range(0..=10),
-                                    );
-                                });
-
-                                ui.checkbox(&mut depth.extended_disparity, "Extended Disparity");
-                                ui.checkbox(&mut depth.subpixel_disparity, "Subpixel Disparity");
-                                ui.horizontal(|ui| {
-                                    ui.label("Sigma: ");
-                                    ui.add(
-                                        egui::DragValue::new(&mut depth.sigma)
-                                            .clamp_range(0..=65535),
-                                    );
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.label("Confidence: ");
-                                    ui.add(
-                                        egui::DragValue::new(&mut depth.confidence)
-                                            .clamp_range(0..=255),
-                                    )
-                                });
-                            });
-                        });
-
+                    ui.horizontal(|ui| {
                         ui.vertical(|ui| {
-                            ui.label("AI Model:");
-                            egui::ComboBox::from_id_source("ai_model_selection")
-                                .width(120.0)
-                                .selected_text(format!("{}", device_config.ai_model.display_name))
-                                .show_ui(ui, |ui| {
-                                    for nn in self.ctx.depthai_state.neural_networks.iter() {
-                                        ui.selectable_value(
-                                            &mut device_config.ai_model,
-                                            nn.clone(),
-                                            &nn.display_name,
+                            ui.collapsing(
+                                egui::RichText::new("Color Camera").color(primary_700),
+                                |ui| {
+                                    ui.vertical(|ui| {
+                                        ui.set_width(config_ui_width);
+                                        self.ctx.re_ui.labeled_combo_box(
+                                            ui,
+                                            "Resolution",
+                                            format!("{}", device_config.color_camera.resolution),
+                                            false,
+                                            |ui| {
+                                                for res in &self
+                                                    .ctx
+                                                    .depthai_state
+                                                    .selected_device
+                                                    .supported_color_resolutions
+                                                {
+                                                    ui.selectable_value(
+                                                        &mut device_config.color_camera.resolution,
+                                                        *res,
+                                                        format!("{res}"),
+                                                    );
+                                                }
+                                            },
                                         );
-                                    }
-                                });
-                        });
-                        device_config.depth = Some(depth);
-                        self.ctx.depthai_state.modified_device_config.config =
-                            device_config.clone();
-                        ui.horizontal(|ui| {
-                            let apply_enabled = device_config
-                                != self.ctx.depthai_state.applied_device_config.config
-                                && !self.ctx.depthai_state.selected_device.id.is_empty();
+                                        self.ctx.re_ui.labeled_dragvalue(
+                                            ui,
+                                            "FPS",
+                                            &mut device_config.color_camera.fps,
+                                            0..=120,
+                                        );
+                                        self.ctx.re_ui.labeled_checkbox(
+                                            ui,
+                                            "Stream",
+                                            &mut device_config.color_camera.stream_enabled,
+                                        );
+                                    });
+                                },
+                            );
+                            ui.collapsing(
+                                egui::RichText::new("Left Mono Camera").color(primary_700),
+                                |ui| {
+                                    ui.vertical(|ui| {
+                                        ui.set_width(config_ui_width);
+                                        self.ctx.re_ui.labeled_combo_box(
+                                            ui,
+                                            "Resolution",
+                                            format!("{}", device_config.left_camera.resolution),
+                                            false,
+                                            |ui| {
+                                                for res in &self
+                                                    .ctx
+                                                    .depthai_state
+                                                    .selected_device
+                                                    .supported_left_mono_resolutions
+                                                {
+                                                    ui.selectable_value(
+                                                        &mut device_config.left_camera.resolution,
+                                                        *res,
+                                                        format!("{res}"),
+                                                    );
+                                                }
+                                            },
+                                        );
+                                        self.ctx.re_ui.labeled_dragvalue(
+                                            ui,
+                                            "FPS",
+                                            &mut device_config.left_camera.fps,
+                                            0..=120,
+                                        );
+                                        self.ctx.re_ui.labeled_checkbox(
+                                            ui,
+                                            "Stream",
+                                            &mut device_config.left_camera.stream_enabled,
+                                        );
+                                    })
+                                },
+                            );
 
-                            ui.add_enabled_ui(apply_enabled, |ui| {
-                                ui.scope(|ui| {
-                                    let mut style = ui.style_mut().clone();
-                                    if apply_enabled {
-                                        let color = self.ctx.re_ui.design_tokens.primary_bg_color;
-                                        let hover_color =
-                                            self.ctx.re_ui.design_tokens.primary_hover_bg_color;
-                                        style.visuals.widgets.hovered.bg_fill = hover_color;
-                                        style.visuals.widgets.hovered.weak_bg_fill = hover_color;
-                                        style.visuals.widgets.inactive.bg_fill = color;
-                                        style.visuals.widgets.inactive.weak_bg_fill = color;
-                                        style.visuals.widgets.inactive.fg_stroke.color =
-                                            egui::Color32::WHITE;
-                                        style.visuals.widgets.hovered.fg_stroke.color =
-                                            egui::Color32::WHITE;
-                                    }
-                                    style.spacing.button_padding = egui::Vec2::new(24.0, 2.0);
-                                    ui.set_style(style);
-                                    if ui.button("Apply").clicked() {
+                            ui.collapsing(
+                                egui::RichText::new("Right Mono Camera").color(primary_700),
+                                |ui| {
+                                    ui.vertical(|ui| {
+                                        ui.set_width(config_ui_width);
+                                        self.ctx.re_ui.labeled_combo_box(
+                                            ui,
+                                            "Resolution",
+                                            format!("{}", device_config.right_camera.resolution),
+                                            false,
+                                            |ui| {
+                                                for res in &self
+                                                    .ctx
+                                                    .depthai_state
+                                                    .selected_device
+                                                    .supported_right_mono_resolutions
+                                                {
+                                                    ui.selectable_value(
+                                                        &mut device_config.right_camera.resolution,
+                                                        *res,
+                                                        format!("{res}"),
+                                                    );
+                                                }
+                                            },
+                                        );
+                                        self.ctx.re_ui.labeled_dragvalue(
+                                            ui,
+                                            "FPS",
+                                            &mut device_config.right_camera.fps,
+                                            0..=120,
+                                        );
+                                        self.ctx.re_ui.labeled_checkbox(
+                                            ui,
+                                            "Stream",
+                                            &mut device_config.right_camera.stream_enabled,
+                                        );
+                                    })
+                                },
+                            );
+
+                            // This is a hack, I wanted AI settings at the bottom, but some depth settings names
+                            // are too long and it messes up the width of the ui layout somehow.
+                            ui.collapsing(
+                                egui::RichText::new("AI settings").color(primary_700),
+                                |ui| {
+                                    ui.vertical(|ui| {
+                                        ui.set_width(config_ui_width);
+                                        self.ctx.re_ui.labeled_combo_box(
+                                            ui,
+                                            "AI Model",
+                                            device_config.ai_model.display_name.clone(),
+                                            false,
+                                            |ui| {
+                                                for nn in &self.ctx.depthai_state.neural_networks {
+                                                    ui.selectable_value(
+                                                        &mut device_config.ai_model,
+                                                        nn.clone(),
+                                                        &nn.display_name,
+                                                    );
+                                                }
+                                            },
+                                        );
+                                    });
+                                },
+                            );
+
+                            let mut depth = device_config.depth.unwrap_or_default();
+                            if depth.align == depthai::BoardSocket::RGB && !depth.lr_check {
+                                depth.align = depthai::BoardSocket::AUTO;
+                            }
+
+                            ui.collapsing(
+                                egui::RichText::new("Depth settings").color(primary_700),
+                                |ui| {
+                                    ui.vertical(|ui| {
+                                        ui.set_width(config_ui_width);
+                                        self.ctx.re_ui.labeled_checkbox(
+                                            ui,
+                                            "LR Check",
+                                            &mut depth.lr_check,
+                                        );
+                                        self.ctx.re_ui.labeled_combo_box(
+                                            ui,
+                                            "Align to",
+                                            format!("{:?}", depth.align),
+                                            false,
+                                            |ui| {
+                                                for align in depthai::BoardSocket::iter() {
+                                                    if align == depthai::BoardSocket::RGB
+                                                        && !depth.lr_check
+                                                    {
+                                                        continue;
+                                                    }
+                                                    ui.selectable_value(
+                                                        &mut depth.align,
+                                                        align,
+                                                        format!("{align:?}"),
+                                                    );
+                                                }
+                                            },
+                                        );
+                                        self.ctx.re_ui.labeled_combo_box(
+                                            ui,
+                                            "Median Filter",
+                                            format!("{:?}", depth.median),
+                                            false,
+                                            |ui| {
+                                                for filter in depthai::DepthMedianFilter::iter() {
+                                                    ui.selectable_value(
+                                                        &mut depth.median,
+                                                        filter,
+                                                        format!("{filter:?}"),
+                                                    );
+                                                }
+                                            },
+                                        );
+                                        self.ctx.re_ui.labeled_dragvalue(
+                                            ui,
+                                            "LR Threshold",
+                                            &mut depth.lrc_threshold,
+                                            0..=10,
+                                        );
+                                        self.ctx.re_ui.labeled_checkbox(
+                                            ui,
+                                            "Extended Disparity",
+                                            &mut depth.extended_disparity,
+                                        );
+                                        self.ctx.re_ui.labeled_checkbox(
+                                            ui,
+                                            "Subpixel Disparity",
+                                            &mut depth.subpixel_disparity,
+                                        );
+                                        self.ctx.re_ui.labeled_dragvalue(
+                                            ui,
+                                            "Sigma",
+                                            &mut depth.sigma,
+                                            0..=65535,
+                                        );
+                                        self.ctx.re_ui.labeled_dragvalue(
+                                            ui,
+                                            "Confidence",
+                                            &mut depth.confidence,
+                                            0..=255,
+                                        );
+                                        self.ctx.re_ui.labeled_toggle_switch(
+                                            ui,
+                                            "Depth enabled",
+                                            &mut device_config.depth_enabled,
+                                        );
+                                    });
+                                },
+                            );
+
+                            device_config.depth = Some(depth);
+                            self.ctx.depthai_state.modified_device_config.config =
+                                device_config.clone();
+                            ui.vertical(|ui| {
+                                ui.horizontal(|ui| {
+                                    let only_runtime_configs_changed =
+                                        depthai::State::only_runtime_configs_changed(
+                                            &self.ctx.depthai_state.applied_device_config.config,
+                                            &device_config,
+                                        );
+                                    let apply_enabled = !only_runtime_configs_changed
+                                        && device_config
+                                            != self.ctx.depthai_state.applied_device_config.config
+                                        && !self.ctx.depthai_state.selected_device.id.is_empty();
+                                    if !apply_enabled && only_runtime_configs_changed {
                                         self.ctx
                                             .depthai_state
-                                            .set_device_config(&mut device_config);
+                                            .set_device_config(&mut device_config, true);
                                     }
+                                    if self.ctx.depthai_state.selected_device.id.is_empty() {
+                                        self.ctx
+                                            .depthai_state
+                                            .set_device_config(&mut device_config, false);
+                                    }
+
+                                    ui.add_enabled_ui(apply_enabled, |ui| {
+                                        ui.scope(|ui| {
+                                            let mut style = ui.style_mut().clone();
+                                            if apply_enabled {
+                                                let color =
+                                                    self.ctx.re_ui.design_tokens.primary_bg_color;
+                                                let hover_color = self
+                                                    .ctx
+                                                    .re_ui
+                                                    .design_tokens
+                                                    .primary_hover_bg_color;
+                                                style.visuals.widgets.hovered.bg_fill = hover_color;
+                                                style.visuals.widgets.hovered.weak_bg_fill =
+                                                    hover_color;
+                                                style.visuals.widgets.inactive.bg_fill = color;
+                                                style.visuals.widgets.inactive.weak_bg_fill = color;
+                                                style.visuals.widgets.inactive.fg_stroke.color =
+                                                    egui::Color32::WHITE;
+                                                style.visuals.widgets.hovered.fg_stroke.color =
+                                                    egui::Color32::WHITE;
+                                            }
+                                            style.spacing.button_padding =
+                                                egui::Vec2::new(24.0, 4.0);
+                                            ui.set_style(style);
+                                            if ui
+                                                .add_sized(
+                                                    [config_ui_width, re_ui::ReUi::box_height()],
+                                                    egui::Button::new("Apply"),
+                                                )
+                                                .clicked()
+                                            {
+                                                self.ctx
+                                                    .depthai_state
+                                                    .set_device_config(&mut device_config, false);
+                                            }
+                                        });
+                                    });
                                 });
                             });
                         });
+                        ui.add_space(ui.available_width());
                     });
                 });
             });
@@ -364,7 +432,7 @@ impl<'a, 'b> DepthaiTabs<'a, 'b> {
                 ui.horizontal(|ui| {
                     for axis in XYZ::iter() {
                         ui.add_sized([max_width / 3.0, 150.0], |ui: &mut egui::Ui| {
-                            Plot::new(format!("{:?} ({axis:?})", kind))
+                            Plot::new(format!("{kind:?} ({axis:?})"))
                                 .allow_drag(false)
                                 .allow_zoom(false)
                                 .allow_scroll(false)
@@ -489,6 +557,8 @@ impl Default for SelectionPanel {
     }
 }
 
+const config_ui_width: f32 = 224.0;
+
 impl SelectionPanel {
     #[allow(clippy::unused_self)]
     pub fn show_panel(
@@ -531,81 +601,88 @@ impl SelectionPanel {
                         if !combo_device.is_empty() && available_devices.is_empty() {
                             available_devices.push(combo_device.clone());
                         }
-                        ui.vertical(|ui| {
-                            ui.horizontal(|ui| {
-                                ui.label("Device: ");
-                                egui::ComboBox::from_id_source("device")
-                                    .width(70.0)
-                                    .selected_text(if !combo_device.is_empty() {
-                                        combo_device.clone().to_string()
-                                    } else {
-                                        "No device selected".to_string()
-                                    })
-                                    .show_ui(ui, |ui| {
-                                        if ui
-                                            .selectable_value(
-                                                &mut combo_device,
-                                                "".to_string(),
-                                                "No device",
-                                            )
-                                            .changed()
-                                        {
-                                            ctx.depthai_state.set_device(combo_device.clone());
-                                        }
-                                        for device in available_devices {
+                        ui.add_sized(
+                            [ui.available_width(), re_ui::ReUi::box_height()],
+                            |ui: &mut egui::Ui| {
+                                ui.horizontal(|ui| {
+                                    ctx.re_ui.labeled_combo_box(
+                                        ui,
+                                        "Device",
+                                        if !combo_device.is_empty() {
+                                            combo_device.clone()
+                                        } else {
+                                            "No device selected".to_owned()
+                                        },
+                                        true,
+                                        |ui: &mut egui::Ui| {
                                             if ui
                                                 .selectable_value(
                                                     &mut combo_device,
-                                                    device.clone().to_string(),
-                                                    device.to_string(),
+                                                    String::new(),
+                                                    "No device",
                                                 )
                                                 .changed()
                                             {
                                                 ctx.depthai_state.set_device(combo_device.clone());
                                             }
-                                        }
-                                    });
-                            });
+                                            for device in available_devices {
+                                                if ui
+                                                    .selectable_value(
+                                                        &mut combo_device,
+                                                        device.clone(),
+                                                        device,
+                                                    )
+                                                    .changed()
+                                                {
+                                                    ctx.depthai_state
+                                                        .set_device(combo_device.clone());
+                                                }
+                                            }
+                                        },
+                                    );
+                                })
+                                .response
+                            },
+                        );
 
-                            if ctx.depthai_state.applied_device_config.update_in_progress {
-                                ui.add_sized([ui.available_width(), 10.0], |ui: &mut egui::Ui| {
-                                    ui.with_layout(
-                                        egui::Layout::left_to_right(egui::Align::Center),
-                                        |ui| ui.add(egui::Spinner::new()),
-                                    )
-                                    .response
-                                });
-                                // The following lines are a hack to force the top panel to resize to a usable size
-                                // after updating the device config, when updating set min height to 10 then detect if
-                                // it's 10 the config has been updated, set the panel to be of size 200.0, then in the next frame
-                                // set min height to 20.0 so user can still resize the panel to be very small
-                                self.current_device_config_panel_min_height = 10.0;
-                                return;
-                            } else if self.current_device_config_panel_min_height == 10.0 {
-                                self.current_device_config_panel_min_height =
-                                    self.device_config_panel_height;
-                            } else {
-                                self.current_device_config_panel_min_height = 20.0;
-                            }
-                            let mut imu_tab_visible = false;
-                            let unsubscribe_from_imu = !self.imu_tab_visible;
-                            DockArea::new(&mut self.depthai_tabs)
-                                .id(egui::Id::new("depthai_tabs"))
-                                .style(re_ui::egui_dock_style(ui.style()))
-                                .show_inside(
-                                    ui,
-                                    &mut DepthaiTabs {
-                                        ctx,
-                                        accel_history: &mut self.accel_history,
-                                        gyro_history: &mut self.gyro_history,
-                                        magnetometer_history: &mut self.magnetometer_history,
-                                        now: self.start_time.elapsed().as_nanos() as f64 / 1e9,
-                                        unsubscribe_from_imu,
-                                        imu_visible: &mut imu_tab_visible,
-                                    },
-                                );
-                            self.imu_tab_visible = imu_tab_visible;
-                        });
+                        if ctx.depthai_state.applied_device_config.update_in_progress {
+                            ui.add_sized([config_ui_width, 10.0], |ui: &mut egui::Ui| {
+                                ui.with_layout(
+                                    egui::Layout::left_to_right(egui::Align::Center),
+                                    |ui| ui.add(egui::Spinner::new()),
+                                )
+                                .response
+                            });
+                            // The following lines are a hack to force the top panel to resize to a usable size
+                            // after updating the device config, when updating set min height to 10 then detect if
+                            // it's 10 the config has been updated, set the panel to be of size 200.0, then in the next frame
+                            // set min height to 20.0 so user can still resize the panel to be very small
+                            self.current_device_config_panel_min_height = 10.0;
+                            return;
+                        } else if self.current_device_config_panel_min_height == 10.0 {
+                            self.current_device_config_panel_min_height =
+                                self.device_config_panel_height;
+                        } else {
+                            self.current_device_config_panel_min_height = 20.0;
+                        }
+                        let mut imu_tab_visible = false;
+                        let unsubscribe_from_imu = !self.imu_tab_visible;
+                        DockArea::new(&mut self.depthai_tabs)
+                            .id(egui::Id::new("depthai_tabs"))
+                            .style(re_ui::egui_dock_style(ui.style()))
+                            .show_inside(
+                                ui,
+                                &mut DepthaiTabs {
+                                    ctx,
+                                    accel_history: &mut self.accel_history,
+                                    gyro_history: &mut self.gyro_history,
+                                    magnetometer_history: &mut self.magnetometer_history,
+                                    now: self.start_time.elapsed().as_nanos() as f64 / 1e9,
+                                    unsubscribe_from_imu,
+                                    imu_visible: &mut imu_tab_visible,
+                                },
+                            );
+                        self.imu_tab_visible = imu_tab_visible;
                     })
                     .response
                     .rect;

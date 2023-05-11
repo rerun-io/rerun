@@ -15,7 +15,7 @@ mod viewer_analytics;
 
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};
 use re_log_types::PythonVersion;
-pub(crate) use ui::{memory_panel, selection_panel, time_panel, UiVerbosity};
+pub(crate) use ui::{bottom_panel, memory_panel, selection_panel, time_panel, UiVerbosity};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;

@@ -14,9 +14,8 @@ use crate::{
 
 use super::{
     space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::all_possible_space_views,
-    view_category::ViewCategory,
-    SpaceView, SpaceViewId,
+    space_view_heuristics::all_possible_space_views, view_category::ViewCategory, SpaceView,
+    SpaceViewId,
 };
 
 // ----------------------------------------------------------------------------
@@ -266,7 +265,6 @@ impl Viewport {
                 self.add_space_view(space_view_candidate);
             }
         }
-
     }
 
     fn should_auto_add_space_view(&self, space_view_candidate: &SpaceView) -> bool {
@@ -538,6 +536,8 @@ fn visibility_button_ui(
 }
 
 // ----------------------------------------------------------------------------
+
+struct ViewportView {}
 
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,

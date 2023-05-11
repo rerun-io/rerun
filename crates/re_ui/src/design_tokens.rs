@@ -19,6 +19,9 @@ pub struct DesignTokens {
     pub error_hover_bg_color: egui::Color32,
     pub primary_bg_color: egui::Color32,
     pub primary_hover_bg_color: egui::Color32,
+    pub gray_50: egui::Color32,
+    pub gray_900: egui::Color32,
+    pub primary_700: egui::Color32,
 }
 
 impl DesignTokens {
@@ -107,11 +110,11 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     }
 
     {
-        // Turn off strokes around buttons:
-        egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
-        egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
-        egui_style.visuals.widgets.active.bg_stroke = Default::default();
-        egui_style.visuals.widgets.open.bg_stroke = Default::default();
+        let border_color = get_global_color(&json, "{Global.Color.Gray.200}");
+        egui_style.visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, border_color);
+        egui_style.visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, border_color);
+        egui_style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, border_color);
+        egui_style.visuals.widgets.open.bg_stroke = egui::Stroke::new(1.0, border_color);
     }
 
     {
@@ -156,13 +159,14 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // Add stripes to grids and tables?
     egui_style.visuals.striped = false;
     egui_style.visuals.indent_has_left_vline = false;
-    egui_style.spacing.button_padding = egui::Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
+    egui_style.spacing.button_padding = egui::Vec2::new(12.0, 4.0); // Makes the icons in the blueprint panel align
     egui_style.spacing.indent = 14.0; // From figma
 
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
 
     egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
 
+    egui_style.spacing.icon_width = 18.0; // Checkbox width and height
     egui_style.spacing.scroll_bar_inner_margin = 2.0;
     egui_style.spacing.scroll_bar_width = 6.0;
     egui_style.spacing.scroll_bar_outer_margin = 2.0;
@@ -191,6 +195,9 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         error_hover_bg_color: get_global_color(&json, "{Global.Color.Error.300}"),
         primary_bg_color: get_global_color(&json, "{Global.Color.Primary.Default}"),
         primary_hover_bg_color: get_global_color(&json, "{Global.Color.Primary.500}"),
+        gray_50: get_global_color(&json, "{Global.Color.Gray.50}"),
+        gray_900: get_global_color(&json, "{Global.Color.Gray.900}"),
+        primary_700: get_global_color(&json, "{Global.Color.Primary.700}"),
     }
 }
 

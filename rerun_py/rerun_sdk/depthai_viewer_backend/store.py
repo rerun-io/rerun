@@ -18,7 +18,7 @@ class Action(Enum):
 class Store:
     pipeline_config: PipelineConfiguration = PipelineConfiguration()
     subscriptions: List[Topic] = []
-    on_update_pipeline: Callable[[], Tuple[bool, str]] = None
+    on_update_pipeline: Callable[[bool], Tuple[bool, str]] = None
     on_select_device: Callable[[str], Tuple[bool, str]] = None
     on_reset: Callable[[], Tuple[bool, str]] = None
 
@@ -28,7 +28,7 @@ class Store:
                 if self.on_update_pipeline:
                     old_pipeline_config = self.pipeline_config
                     self.pipeline_config = kwargs.get("pipeline_config")
-                    success, message = self.on_update_pipeline()
+                    success, message = self.on_update_pipeline(kwargs.get("runtime_only"))
                     if success:
                         return success, message
                     self.pipeline_config = old_pipeline_config

@@ -18,8 +18,8 @@ impl Blueprint {
     pub fn new(egui_ctx: &egui::Context) -> Self {
         let screen_size = egui_ctx.screen_rect().size();
         Self {
-            blueprint_panel_expanded: screen_size.x > 750.0,
-            selection_panel_expanded: screen_size.x > 1000.0,
+            blueprint_panel_expanded: true,
+            selection_panel_expanded: true,
             time_panel_expanded: screen_size.y > 600.0,
             viewport: Default::default(),
         }

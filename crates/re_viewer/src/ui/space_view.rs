@@ -86,14 +86,18 @@ impl SpaceView {
             ep if ep.hash() == depthai::entity_paths::RGB_PINHOLE_CAMERA.hash() => {
                 "Color camera (2D)".into()
             }
-            ep if ep.hash() == depthai::entity_paths::COLOR_CAM_3D.hash() => "Color camera (3D)".into(),
+            ep if ep.hash() == depthai::entity_paths::COLOR_CAM_3D.hash() => {
+                "Color camera (3D)".into()
+            }
             ep if ep.hash() == depthai::entity_paths::RIGHT_PINHOLE_CAMERA.hash() => {
                 "Right mono camera (2D)".into()
             }
             ep if ep.hash() == depthai::entity_paths::LEFT_PINHOLE_CAMERA.hash() => {
                 "Left mono camera (2D)".into()
             }
-            ep if ep.hash() == depthai::entity_paths::MONO_CAM_3D.hash() => "Mono cameras (3D)".into(),
+            ep if ep.hash() == depthai::entity_paths::MONO_CAM_3D.hash() => {
+                "Mono cameras (3D)".into()
+            }
             _ => {
                 is_depthai_spaceview = false;
                 if let Some(entity_path_part) = space_path.iter().last() {

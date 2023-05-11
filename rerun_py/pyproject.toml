@@ -9,7 +9,7 @@ dependencies = [
   "pyarrow==10.0.1",
   "ahrs",
   "depthai==2.21.2.0",
-  "depthai-sdk==1.9.5",
+  "depthai-sdk==1.9.5", # Atm latest develop is required
   "websockets",
   "pydantic",
 ]

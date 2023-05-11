@@ -103,8 +103,12 @@ class SelectedDevice:
         )
         return device_properties
 
-    def update_pipeline(self, config: PipelineConfiguration, callbacks: "SdkCallbacks") -> Tuple[bool, str]:
+    def update_pipeline(
+        self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
+    ) -> Tuple[bool, str]:
         if self.oak_cam.running():
+            if runtime_only:
+                return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
             print("Cam running, closing...")
             self.oak_cam.device.close()
             self.oak_cam = None
@@ -192,7 +196,7 @@ class SelectedDevice:
             else:
                 self._nnet = self.oak_cam.create_nn(config.ai_model.path, self._color)
                 callback = callbacks.on_detections
-                if config.ai_model.path == "yolo-v3-tiny-tf":
+                if config.ai_model.path == "yolov8n_coco_640x352":
                     callback = callbacks.on_yolo_packet
                 self.oak_cam.callback(self._nnet, callback)
         try:
@@ -275,12 +279,14 @@ class DepthaiViewerBack:
             exit(-1)
             # return False, {"message": "Failed to get device properties", "device_properties": {}}
 
-    def update_pipeline(self) -> bool:
+    def update_pipeline(self, runtime_only: bool) -> bool:
         if not self._device:
             print("No device selected, can't update pipeline!")
             return False, {"message": "No device selected, can't update pipeline!"}
         print("Updating pipeline...")
-        started, message = self._device.update_pipeline(self.store.pipeline_config, callbacks=self.sdk_callbacks)
+        started, message = self._device.update_pipeline(
+            self.store.pipeline_config, runtime_only, callbacks=self.sdk_callbacks
+        )
         if not started:
             self.set_device(None)
         return started, {"message": message}

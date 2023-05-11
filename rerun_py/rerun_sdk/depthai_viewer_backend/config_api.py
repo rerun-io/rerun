@@ -41,6 +41,23 @@ class MessageType:
     ERROR = "Error"  # Error message
 
 
+class ErrorAction:
+    NONE = None
+    FULL_RESET = "FullReset"
+
+
+
+def error(message: str, action: ErrorAction) -> str:
+    """Create an error message to send via ws"""
+    return json.dumps({
+        "type": MessageType.ERROR,
+        "data": {
+            "action": action,
+            "message": message
+        }
+    })
+
+
 async def ws_api(websocket: WebSocketServerProtocol):
     while True:
         message = None
@@ -74,26 +91,33 @@ async def ws_api(websocket: WebSocketServerProtocol):
                 await websocket.send(json.dumps({"type": MessageType.SUBSCRIPTIONS, "data": active_subscriptions}))
             elif message_type == MessageType.PIPELINE:
                 data = message.get("data", {})
-                pipeline_config = PipelineConfiguration(**data.get("Pipeline", {}))
+                pipeline_config_json, runtime_only = data.get("Pipeline", ({}, False))
+                pipeline_config = PipelineConfiguration(**pipeline_config_json)
                 print("Pipeline config: ", pipeline_config)
 
-                success, result = dispatch_action(Action.UPDATE_PIPELINE, pipeline_config=pipeline_config)
+                success, result = dispatch_action(
+                    Action.UPDATE_PIPELINE, pipeline_config=pipeline_config, runtime_only=runtime_only
+                )
+                if runtime_only:
+                    # Send a full reset if setting a runtime config fails.
+                    # Don't send pipeline config to save bandwidth.
+                    if not success:
+                        await websocket.send(error("Failed to set runtime config", ErrorAction.FULL_RESET))
+                    continue
                 if success:
                     active_config: PipelineConfiguration = dispatch_action(Action.GET_PIPELINE)
                     print("Active config: ", active_config)
                     await websocket.send(
                         json.dumps(
-                            {"type": MessageType.PIPELINE, "data": active_config.to_json() if active_config else None}
+                            {
+                                "type": MessageType.PIPELINE,
+                                "data": (active_config.to_json(), False) if active_config else None,
+                            }
                         )
                     )
                 else:
                     await websocket.send(
-                        json.dumps(
-                            {
-                                "type": MessageType.ERROR,
-                                "data": {"action": "FullReset", "message": result.get("message", "Unknown error")},
-                            }
-                        )
+                        error("Unknown error", ErrorAction.FULL_RESET)
                     )
             elif message_type == MessageType.DEVICES:
                 await websocket.send(
@@ -119,14 +143,7 @@ async def ws_api(websocket: WebSocketServerProtocol):
                         json.dumps({"type": MessageType.DEVICE, "data": result.get("device_properties", {})})
                     )
                 else:
-                    await websocket.send(
-                        json.dumps(
-                            {
-                                "type": MessageType.ERROR,
-                                "data": {"action": "FullReset", "message": result.get("message", "Unknown error")},
-                            }
-                        )
-                    )
+                    await websocket.send(error("Unknown error", ErrorAction.FULL_RESET))
 
             else:
                 print("Unknown message type: ", message_type)

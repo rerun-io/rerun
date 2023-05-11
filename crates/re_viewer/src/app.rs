@@ -326,20 +326,10 @@ impl App {
             Command::ToggleBlueprintPanel => {
                 let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.blueprint_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.blueprint_panel_expanded {
-                    blueprint.selection_panel_expanded = false;
-                }
             }
             Command::ToggleSelectionPanel => {
                 let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.selection_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.selection_panel_expanded {
-                    blueprint.blueprint_panel_expanded = false;
-                }
             }
             Command::ToggleTimePanel => {
                 self.blueprint_mut(egui_ctx).time_panel_expanded ^= true;
@@ -1028,7 +1018,10 @@ struct AppState {
     panel_selection: PanelSelection,
 
     selection_panel: crate::selection_panel::SelectionPanel,
+
     time_panel: crate::time_panel::TimePanel,
+
+    bottom_panel: crate::bottom_panel::BottomPanel,
 
     selected_device: depthai::DeviceId,
     depthai_state: depthai::State,
@@ -1060,6 +1053,7 @@ impl AppState {
             blueprints,
             selection_panel,
             time_panel,
+            bottom_panel,
             selected_device,
             depthai_state,
             #[cfg(not(target_arch = "wasm32"))]
@@ -1090,6 +1084,7 @@ impl AppState {
             .or_insert_with(|| Blueprint::new(ui.ctx()));
         // Hide time panel for now, reuse for recordings in the future
         // time_panel.show_panel(&mut ctx, blueprint, ui);
+        // bottom_panel.show_panel(&mut ctx, blueprint, ui);
         selection_panel.show_panel(&mut ctx, ui, blueprint);
 
         let central_panel_frame = egui::Frame {

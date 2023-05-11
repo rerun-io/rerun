@@ -103,8 +103,8 @@ pub(crate) fn default_tree_from_space_views(
                 LayoutSplit::Leaf(spaces)
             } else {
                 // Split space views:
-                // - Color stream available: Split left 3d right 2d on top,
-                // - if mono available split it bellow into 3d left and both 2d in a tab group on the right
+                // - Color stream available: Split top 3d, bottom 2d
+                // - if mono available split it right from color streams into 3d top and both 2d in a tab group on the bottom
                 let mut top_left_spaces = Vec::new();
                 let mut top_right_spaces = Vec::new();
                 let mut bottom_left_spaces = Vec::new();
@@ -124,12 +124,12 @@ pub(crate) fn default_tree_from_space_views(
 
                 let color_empty = top_left_spaces.is_empty() && top_right_spaces.is_empty();
                 let mono_empty = bottom_left_spaces.is_empty() && bottom_right_spaces.is_empty();
-                let mut color_split = LayoutSplit::LeftRight(
+                let mut color_split = LayoutSplit::TopBottom(
                     LayoutSplit::Leaf(top_left_spaces.clone()).into(),
                     0.5,
                     LayoutSplit::Leaf(top_right_spaces.clone()).into(),
                 );
-                let mut mono_split = LayoutSplit::LeftRight(
+                let mut mono_split = LayoutSplit::TopBottom(
                     LayoutSplit::Leaf(bottom_left_spaces.clone()).into(),
                     0.5,
                     LayoutSplit::Leaf(bottom_right_spaces.clone()).into(),
@@ -148,7 +148,7 @@ pub(crate) fn default_tree_from_space_views(
                     } else if bottom_right_spaces.is_empty() {
                         mono_split = LayoutSplit::Leaf(bottom_left_spaces);
                     }
-                    LayoutSplit::TopBottom(color_split.into(), 0.5, mono_split.into())
+                    LayoutSplit::LeftRight(color_split.into(), 0.5, mono_split.into())
                 } else if color_empty && !mono_empty {
                     mono_split
                 } else {

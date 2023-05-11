@@ -12,6 +12,7 @@ from depthai_sdk.classes.packets import (
     IMUPacket,
     # PointcloudPacket,
     TwoStagePacket,
+    _Detection
 )
 from rerun.components.rect2d import RectFormat
 
@@ -124,29 +125,24 @@ class SdkCallbacks:
     def _detections_to_rects_colors_labels(
         self, packet: DetectionPacket, labels_dict: Union[Dict, None] = None
     ) -> Tuple[List, List, List]:
-        h, w, _ = packet.frame.shape
         rects = []
         colors = []
         labels = []
-        for detection in packet.img_detections.detections:
+        for detection in packet.detections:
             rects.append(
-                [
-                    max(detection.xmin, 0) * w,
-                    max(detection.ymin, 0) * h,
-                    min(detection.xmax, 1) * w,
-                    min(detection.ymax, 1) * h,
-                ]
+                self._rect_from_detection(detection)
             )
             colors.append([0, 255, 0])
-            label = ""
-            if labels_dict is not None:
-                label += labels_dict[detection.label] + ", "
-            label += str(int(detection.confidence * 100)) + "%"
+            label = detection.label
+            # Open model zoo models output label index
+            if labels_dict is not None and isinstance(label, int):
+                label += labels_dict[label]
+            label += ", " + str(int(detection.img_detection.confidence * 100)) + "%"
             labels.append(label)
         return rects, colors, labels
 
     def on_yolo_packet(self, packet: DetectionPacket):
-        rects, colors, labels = self._detections_to_rects_colors_labels(packet, classification_labels.YOLO_TINY_LABELS)
+        rects, colors, labels = self._detections_to_rects_colors_labels(packet)
         rr.log_rects(EntityPath.DETECTIONS, rects=rects, colors=colors, labels=labels, rect_format=RectFormat.XYXY)
 
     def on_age_gender_packet(self, packet: TwoStagePacket):
@@ -156,20 +152,20 @@ class SdkCallbacks:
             gender_str = "Woman" if gender[0] > gender[1] else "Man"
             label = f"{gender_str}, {age}"
             color = [255, 0, 0] if gender[0] > gender[1] else [0, 0, 255]
-            x0, y0, x1, y1 = det.get_bbox()
             # TODO(filip): maybe use rr.log_annotation_context to log class colors for detections
             rr.log_rect(
                 EntityPath.DETECTION,
-                [
-                    x0 * packet.frame.shape[1],
-                    y0 * packet.frame.shape[0],
-                    x1 * packet.frame.shape[1],
-                    y1 * packet.frame.shape[0],
-                ],
+                self._rect_from_detection(det),
                 rect_format=RectFormat.XYXY,
                 color=color,
                 label=label,
             )
+
+    def _rect_from_detection(self, detection: _Detection):
+        return [
+            *detection.bottom_right,
+            *detection.top_left,
+        ]
 
     def on_mobilenet_ssd_packet(self, packet: DetectionPacket):
         rects, colors, labels = self._detections_to_rects_colors_labels(packet, classification_labels.MOBILENET_LABELS)

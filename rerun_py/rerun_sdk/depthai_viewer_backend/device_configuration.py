@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict
 
 import depthai as dai
 from depthai_sdk.previews import Previews as QueueNames
@@ -105,29 +105,32 @@ class DepthConfiguration(BaseModel):
             v["align"] = getattr(dai.CameraBoardSocket, v["align"])
         return super().__init__(**v)
 
-    def requires_rebuild(self, other: "DepthConfiguration") -> bool:
-        dont_require_rebuild = {"lrc_threshold", "sigma", "dct", "median"}
-        return len(dont_require_rebuild - self._get_modified_fields(other)) != 0
-
-    def _get_modified_fields(self, other: "DepthConfiguration") -> set[str]:
-        fields = set()
-        if self.dct != other.dct:
-            fields.add("dct")
-        if self.median != other.median:
-            fields.add("median")
-        if self.lr_check != other.lr_check:
-            fields.add("lr_check")
-        if self.lrc_threshold != other.lrc_threshold:
-            fields.add("lrc_threshold")
-        if self.extended_disparity != other.extended_disparity:
-            fields.add("extended_disparity")
-        if self.subpixel_disparity != other.subpixel_disparity:
-            fields.add("subpixel_disparity")
-        if self.align != other.align:
-            fields.add("align")
-        if self.sigma != other.sigma:
-            fields.add("sigma")
-        return fields
+    def to_runtime_controls(self) -> Dict:
+        return {
+            "algorithm_control": {
+                "align": "RECTIFIED_LEFT"
+                if self.align == dai.CameraBoardSocket.LEFT
+                else "RECTIFIED_RIGHT"
+                if self.align == dai.CameraBoardSocket.RIGHT
+                else "CENTER",
+                "lr_check": self.lr_check,
+                "lrc_check_threshold": self.lrc_threshold,
+                "extended": self.extended_disparity,
+                "subpixel": self.subpixel_disparity,
+            },
+            "postprocessing": {
+                "median": {
+                    dai.StereoDepthConfig.MedianFilter.MEDIAN_OFF: 0,
+                    dai.StereoDepthConfig.MedianFilter.KERNEL_3x3: 3,
+                    dai.StereoDepthConfig.MedianFilter.KERNEL_5x5: 5,
+                    dai.StereoDepthConfig.MedianFilter.KERNEL_7x7: 7,
+                }[self.median],
+                "bilateral_sigma": self.sigma,
+            },
+            "cost_matching": {
+                "confidence_threshold": self.confidence,
+            },
+        }
 
     @property
     def out_queue_name(self) -> str:

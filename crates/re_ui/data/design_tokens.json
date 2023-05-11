@@ -3,7 +3,7 @@
     "Color": {
       "Surface": {
         "Default": {
-          "value": "{Global.Color.Gray.50}",
+          "value": "{Global.Color.White}",
           "type": "color",
           "description": "Background color for most UI surfaces in Rerun"
         },
@@ -15,7 +15,7 @@
       },
       "Action": {
         "Default": {
-          "value": "{Global.Color.Gray.200}",
+          "value": "{Global.Color.White}",
           "type": "color",
           "description": "Background color for UI elements like buttons and selects"
         },
@@ -35,7 +35,7 @@
           "description": "Background color for suppressed UI elements, like a select that is currently showing a menu"
         },
         "Inactive": {
-          "value": "{Global.Color.Gray.200}",
+          "value": "{Global.Color.White}",
           "type": "color",
           "description": "Background color for inactive buttons and such"
         }
@@ -1274,7 +1274,7 @@
           "type": "color"
         },
         "Hover": {
-          "value": "#c1dcf9",
+          "value": "#f6fcfe",
           "type": "color"
         }
       },
