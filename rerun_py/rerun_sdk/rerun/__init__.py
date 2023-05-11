@@ -2,7 +2,7 @@
 
 import atexit
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
@@ -69,7 +69,7 @@ __all__ = [
 
 
 # TODO(jleibs): docstrings
-def add_space_view(name: str, space_path: str, entity_paths: list[str]) -> None:
+def add_space_view(name: str, space_path: str, entity_paths: List[str]) -> None:
     bindings.add_space_view(name, space_path, entity_paths)
 
 
