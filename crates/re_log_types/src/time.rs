@@ -7,10 +7,22 @@ use time::OffsetDateTime;
 pub struct Time(i64);
 
 impl Time {
+    // NOTE: Even though `instant` should work on wasm, `elapsed` is broken.
+    // See: https://github.com/sebcrozet/instant/issues/49
+    // We would like to switch to `web-time`, but that's broken in a different way
+    // See issues in: https://github.com/rerun-io/rerun/pull/2093
+    //
+    // So we implement what elapsed is supposed to do ourselves.
     #[inline]
     pub fn now() -> Self {
+        /*
         let nanos_since_epoch = instant::SystemTime::UNIX_EPOCH
             .elapsed()
+            .expect("Expected system clock to be set to after 1970")
+            .as_nanos() as _;
+        */
+        let nanos_since_epoch = instant::SystemTime::now()
+            .duration_since(instant::SystemTime::UNIX_EPOCH)
             .expect("Expected system clock to be set to after 1970")
             .as_nanos() as _;
         Self(nanos_since_epoch)
