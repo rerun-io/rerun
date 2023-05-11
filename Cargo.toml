@@ -65,8 +65,8 @@ ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.21.0"
 eframe = { version = "0.21.3", default-features = false }
 egui = { version = "0.21.0", features = ["extra_debug_asserts", "log"] }
-egui_dock = "0.4"
 egui_extras = { version = "0.21.0", features = ["log"] }
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "9a6ed5852a0d2f3b18db0c7b8fb1b1bf904b0a51" }
 egui-wgpu = "0.21.0"
 emath = "0.21.0"
 enumset = "1.0.12"
@@ -125,13 +125,13 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # TODO(andreas/emilk): Update to a stable egui version
-# wgpu 0.16 support, device configuration dependent on adapter
-ecolor = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
-eframe = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
-egui = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
-emath = { git = "https://github.com/emilk/egui", rev = "f76eefb98d23cbf71989255aafe75a07d343f6ed" }
+# wgpu 0.16 support, device configuration dependent on adapter, and some additions to help egui_tiles
+ecolor = { git = "https://github.com/emilk/egui", rev = "e9fa6c8ff68a0257ce0f2801446ba701917b7ae9" }
+eframe = { git = "https://github.com/emilk/egui", rev = "e9fa6c8ff68a0257ce0f2801446ba701917b7ae9" }
+egui = { git = "https://github.com/emilk/egui", rev = "e9fa6c8ff68a0257ce0f2801446ba701917b7ae9" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e9fa6c8ff68a0257ce0f2801446ba701917b7ae9" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "e9fa6c8ff68a0257ce0f2801446ba701917b7ae9" }
+emath = { git = "https://github.com/emilk/egui", rev = "e9fa6c8ff68a0257ce0f2801446ba701917b7ae9" }
 
 # TODO(andreas): Either work around this issue in wgpu-egui (never discard command buffers) or wait for wgpu patch release.
 # Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726
