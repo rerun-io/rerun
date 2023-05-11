@@ -3868,6 +3868,7 @@ dependencies = [
  "glam",
  "half 2.2.1",
  "image",
+ "instant",
  "itertools",
  "lazy_static",
  "macaw",
