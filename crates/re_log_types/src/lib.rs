@@ -252,12 +252,30 @@ pub struct BeginRecordingMsg {
     pub info: RecordingInfo,
 }
 
+/// What type of `Recording` this is.
+///
+/// `Data` recordings contain user-data logged via `log_` API calls.
+/// `Blueprint` recordings describe how that data is laid out.
+///
+/// Both of these types can go over the same stream and be stored in the
+/// same datastore, but the viewer wants to treat them very differently.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum RecordingType {
     Unknown,
     Data,
     Blueprint,
+}
+
+impl std::fmt::Display for RecordingType {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unknown => "Unknown".fmt(f),
+            Self::Data => "Data".fmt(f),
+            Self::Blueprint => "Blueprint".fmt(f),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -74,6 +74,7 @@ impl SpaceViewId {
 }
 
 impl std::fmt::Display for SpaceViewId {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:#}", self.0)
     }
