@@ -44,12 +44,19 @@ pub struct ViewTensorState {
     tensor: Option<DecodedTensor>,
 }
 
-// Manually implement PartialEq so we aren't comparing the tensor
+// TODO(#2089): TManually implement PartialEq so we aren't comparing the serde-skipped tensor
 impl PartialEq for ViewTensorState {
     fn eq(&self, other: &Self) -> bool {
-        self.slice == other.slice
-            && self.color_mapping == other.color_mapping
-            && self.texture_settings == other.texture_settings
+        let Self {
+            slice,
+            color_mapping,
+            texture_settings,
+            tensor: _, // serde-skip
+        } = self;
+
+        *slice == other.slice
+            && *color_mapping == other.color_mapping
+            && *texture_settings == other.texture_settings
     }
 }
 
