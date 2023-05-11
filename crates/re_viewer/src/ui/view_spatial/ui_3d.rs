@@ -80,6 +80,7 @@ impl PartialEq for View3DState {
         //&& self.space_camera == other.space_camera
     }
 }
+
 impl Default for View3DState {
     fn default() -> Self {
         Self {
