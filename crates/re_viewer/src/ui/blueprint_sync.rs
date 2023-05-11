@@ -1,8 +1,6 @@
 use arrow2_convert::field::ArrowField;
-use re_data_store::LogDb;
-use re_log_types::{
-    Component, DataCell, DataRow, EntityPath, RowId, SerializableComponent, TimePoint,
-};
+use re_data_store::store_one_component;
+use re_log_types::{Component, DataCell, DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::SpaceViewId;
 
 use crate::blueprint_components::{
@@ -14,34 +12,6 @@ use crate::blueprint_components::{
 };
 
 use super::{Blueprint, SpaceView, Viewport};
-
-// TODO(jleibs): Put this somewhere more global
-pub fn store_one_component<C: SerializableComponent>(
-    log_db: &mut LogDb,
-    entity_path: &EntityPath,
-    timepoint: &TimePoint,
-    component: C,
-) {
-    let mut row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path.clone(),
-        timepoint.clone(),
-        1,
-        [component].as_slice(),
-    );
-    row.compute_all_size_bytes();
-
-    match log_db.entity_db.try_add_data_row(&row) {
-        Ok(()) => {}
-        Err(err) => {
-            re_log::warn_once!(
-                "Failed to store component {}.{}: {err}",
-                entity_path,
-                C::name(),
-            );
-        }
-    }
-}
 
 // Resolving and applying updates
 impl Blueprint {

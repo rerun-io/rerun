@@ -1,7 +1,4 @@
-use re_arrow_store::LatestAtQuery;
-use re_log_types::{DeserializableComponent, EntityPath};
-
-use crate::log_db::EntityDb;
+use re_log_types::EntityPath;
 
 #[cfg(feature = "serde")]
 use crate::EditableAutoValue;
@@ -187,39 +184,4 @@ impl Default for ColorMapper {
     fn default() -> Self {
         Self::Colormap(Colormap::default())
     }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Get the latest value for a given [`re_log_types::Component`].
-///
-/// This assumes that the row we get from the store only contains a single instance for this
-/// component; it will log a warning otherwise.
-pub fn query_latest_single<C: DeserializableComponent>(
-    entity_db: &EntityDb,
-    entity_path: &EntityPath,
-    query: &LatestAtQuery,
-) -> Option<C>
-where
-    for<'b> &'b C::ArrayType: IntoIterator,
-{
-    crate::profile_function!();
-
-    // Although it would be nice to use the `re_query` helpers for this, we would need to move
-    // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
-    // single components this is easy enough.
-    let data_store = &entity_db.data_store;
-
-    let (_, cells) = data_store.latest_at(query, entity_path, C::name(), &[C::name()])?;
-    let cell = cells.get(0)?.as_ref()?;
-
-    let mut iter = cell.try_to_native::<C>().ok()?;
-
-    let component = iter.next();
-
-    if iter.next().is_some() {
-        re_log::warn_once!("Unexpected batch for {} at: {}", C::name(), entity_path);
-    }
-
-    component
 }
