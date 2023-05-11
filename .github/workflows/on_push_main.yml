@@ -50,6 +50,22 @@ jobs:
       MARK_PRERELEASE_FOR_MAINLINE: true
     secrets: inherit
 
+  build-web-demo:
+    name: 'Build Web Demo'
+    uses: ./.github/workflows/reusable_build_web_demo.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
+  upload-web-demo:
+    name: 'Upload Web'
+    needs: [build-linux, build-web-demo]
+    uses: ./.github/workflows/reusable_upload_web_demo.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      MARK_PRERELEASE_FOR_MAINLINE: true
+    secrets: inherit
+
   build-linux:
     needs: [checks]
     name: 'Linux: Build/Test Wheels'
