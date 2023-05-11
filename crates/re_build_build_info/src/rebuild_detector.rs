@@ -7,7 +7,7 @@ use std::{
 
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 
-/// Call from `build.rs` to trigger a rebuild whenever any source file of the given packge
+/// Call from `build.rs` to trigger a rebuild whenever any source file of the given package
 /// _or any of its dependencies_ changes, recursively.
 ///
 /// This will work even if the package depends on crates that are outside of the workspace,

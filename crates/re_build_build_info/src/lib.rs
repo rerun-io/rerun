@@ -37,8 +37,6 @@ pub use rebuild_detector::rebuild_if_crate_changed;
 
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 pub fn export_env_vars() {
-    // rebuild_if_any_source_changed();
-
     // target triple
     set_env("RE_BUILD_TARGET_TRIPLE", &std::env::var("TARGET").unwrap());
     set_env("RE_BUILD_GIT_HASH", &git_hash().unwrap_or_default());
