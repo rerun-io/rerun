@@ -125,6 +125,19 @@ def log_affine3(
 
     The matrix is a 3x3 matrix column major matrix which can express rotation, scale and shear.
 
+    Example
+    -------
+    ```
+    rr.log_affine3(
+        "world/z_rotated_object",
+        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.AxisAngleRotation3D((0, 0, 1), degree=20)),
+    )
+    rr.log_affine3(
+        "world/scaled_object",
+        parent_from_child=rr.TranslationRotationScale3D(scale=2),
+    )
+    ```
+
     Parameters
     ----------
     entity_path:
