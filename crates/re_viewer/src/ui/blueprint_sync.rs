@@ -173,7 +173,7 @@ pub fn sync_viewport(
         store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 
-    // Terrible hack since egui_dock::Tree does not implement PartialEq:
+    // Terrible hack since egui_tiles::Tree does not implement PartialEq:
     // This could likely be improved using a crate like `serde_diff`, but we already
     // have the dep on `rmp_serde`, and hopefully this just goes away when we move
     // to `egui_tiles`.

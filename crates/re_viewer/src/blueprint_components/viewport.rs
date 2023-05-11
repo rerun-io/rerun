@@ -50,8 +50,8 @@ impl Component for SpaceViewMaximized {
 pub struct ViewportLayout {
     #[arrow_field(type = "SerdeField<std::collections::BTreeSet<SpaceViewId>>")]
     pub space_view_keys: std::collections::BTreeSet<SpaceViewId>,
-    #[arrow_field(type = "SerdeField<HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>>")]
-    pub trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
+    #[arrow_field(type = "SerdeField<HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>>")]
+    pub trees: HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>,
     pub has_been_user_edited: bool,
 }
 
