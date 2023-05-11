@@ -107,11 +107,11 @@ def render_examples(examples: List[Example]) -> None:
             f.write(template.render(example=example, examples=examples))
 
 
-def serve_files(port: int) -> None:
+def serve_files() -> None:
     def serve() -> None:
-        logging.info(f"\nServing examples at http://localhost:{port}/")
+        logging.info("\nServing examples at http://localhost:8080/")
         server = http.server.HTTPServer(
-            server_address=("127.0.0.1", port),
+            server_address=("127.0.0.1", 8080),
             RequestHandlerClass=partial(
                 http.server.SimpleHTTPRequestHandler,
                 directory=BASE_PATH,
@@ -129,10 +129,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build and/or serve `demo.rerun.io`")
     parser.add_argument(
         "--serve",
-        type=int,
-        default=8080,
-        action="store",
-        nargs="?",
+        action="store_true",
         help="Serve the app on this port after building [default: 8080]",
     )
 
@@ -146,10 +143,8 @@ def main() -> None:
     save_examples_rrd(examples)
     render_examples(examples)
 
-    if "serve" in args:
-        port = args.serve or 8080
-
-        serve_files(port)
+    if args.serve:
+        serve_files()
 
         while True:
             try:
