@@ -29,6 +29,27 @@ pub enum MsgSenderError {
     PackingError(#[from] DataTableError),
 }
 
+/// Errors from [`MsgSender::from_file_path`]
+#[derive(thiserror::Error, Debug)]
+pub enum FromFileError {
+    #[error(transparent)]
+    FileRead(#[from] std::io::Error),
+
+    #[error(transparent)]
+    MsgSender(#[from] MsgSenderError),
+
+    #[cfg(feature = "image")]
+    #[error(transparent)]
+    TensorImageLoad(#[from] re_log_types::component_types::TensorImageLoadError),
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Unsupported file extension '{extension}' for file {path:?}. To load image files, make sure you compile with the 'image' feature")]
+    UnknownExtension {
+        extension: String,
+        path: std::path::PathBuf,
+    },
+}
+
 /// Facilitates building and sending component payloads with the Rerun SDK.
 ///
 /// ```ignore
@@ -99,6 +120,65 @@ impl MsgSender {
             num_instances: None,
             instanced: Vec::new(),
             splatted: Vec::new(),
+        }
+    }
+
+    /// Read the file at the given path and log it.
+    ///
+    /// Supported file extensions are:
+    ///  * `glb`, `gltf`, `obj`: encoded meshes, leaving it to the viewer to decode
+    ///  * `jpg`, `jpeg`: encoded JPEG, leaving it to the viewer to decode. Requires the `image` feature.
+    ///  * `png` and other image formats: decoded here. Requires the `image` feature.
+    ///
+    /// All other extensions will return an error.
+    pub fn from_file_path(file_path: &std::path::Path) -> Result<Self, FromFileError> {
+        let load_mesh = |ent_path, format| -> Result<Self, FromFileError> {
+            let mesh = crate::components::EncodedMesh3D {
+                mesh_id: crate::components::MeshId::random(),
+                format,
+                bytes: std::fs::read(file_path)?.into(),
+                transform: [
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                    [0.0, 0.0, 0.0],
+                ],
+            };
+
+            let msg_sender =
+                Self::new(ent_path).with_component(&[crate::components::Mesh3D::Encoded(mesh)])?;
+            Ok(msg_sender)
+        };
+
+        let ent_path = re_log_types::EntityPath::new(vec![re_log_types::EntityPathPart::Index(
+            re_log_types::Index::String(file_path.to_string_lossy().to_string()),
+        )]);
+
+        let extension = file_path
+            .extension()
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+            .to_string_lossy()
+            .to_string();
+
+        match extension.as_str() {
+            "glb" => load_mesh(ent_path, crate::components::MeshFormat::Glb),
+            "glft" => load_mesh(ent_path, crate::components::MeshFormat::Gltf),
+            "obj" => load_mesh(ent_path, crate::components::MeshFormat::Obj),
+
+            #[cfg(feature = "image")]
+            _ => {
+                // Assume and image (there are so many image extensions):
+                let tensor = re_log_types::component_types::Tensor::from_image_file(file_path)?;
+                let msg_sender = Self::new(ent_path).with_component(&[tensor])?;
+                Ok(msg_sender)
+            }
+
+            #[cfg(not(feature = "image"))]
+            _ => Err(FromFileError::UnknownExtension {
+                extension,
+                path: file_path.to_owned(),
+            }),
         }
     }
 
