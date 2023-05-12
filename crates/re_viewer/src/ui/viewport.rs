@@ -684,7 +684,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
     ) {
-        let Some(active) = tiles.get(tabs.active) else { return; };
+        let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else { return; };
         let egui_tiles::Tile::Pane(space_view_id) = active else { return; };
         let space_view_id = *space_view_id;
 

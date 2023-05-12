@@ -118,7 +118,7 @@ fn log_messages() {
         );
         let table_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(
-            recording_id,
+            recording_id.clone(),
             table.to_arrow_msg().unwrap(),
         ));
         let log_msg_bytes = live_bytes() - used_bytes_start;
