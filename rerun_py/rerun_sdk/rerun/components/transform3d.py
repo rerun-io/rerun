@@ -103,19 +103,23 @@ class RotationAxisAngle:
 
 def normalize_matrix3(matrix: npt.ArrayLike) -> np.array:
     matrix = np.eye(3) if matrix is None else matrix
+    if matrix.shape != (3, 3):
+        raise ValueError(f"Expected 3x3 matrix, shape was instead {matrix.shape}")
     # Rerun is column major internally, need to transpose!
     return np.array(matrix, dtype=np.float32).transpose().flatten()
 
 
 def normalize_translation(translation: npt.ArrayLike | None) -> np.array:
     translation = (0, 0, 0) if translation is None else translation
+    if translation.size != 3:
+        raise ValueError(f"Expected three dimensional translation vector, shape was instead {translation.shape}")
     return np.array(translation, dtype=np.float32).flatten()
 
 
 def build_struct_array_from_translation_mat3(
     translation_mat3: TranslationMatrix3x3, type: pa.StructType
 ) -> pa.StructArray:
-    translation = normalize_translation(translation_mat3.translation, type)
+    translation = normalize_translation(translation_mat3.translation)
     matrix = normalize_matrix3(translation_mat3.matrix)
 
     return pa.StructArray.from_arrays(

@@ -81,8 +81,14 @@ def build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa
         idx = [f.name for f in list(data_type)].index(discriminant)
         type_ids = pa.array([idx] * len(child), type=pa.int8())
         value_offsets = pa.array(range(len(child)), type=pa.int32())
+
         children = [pa.nulls(0, type=f.type) for f in list(data_type)]
-        children[idx] = child
+        try:
+            children[idx] = child.cast(data_type[idx].type, safe=False)
+        except:
+            # Since we're having issues with nullability in union types (see below), the cast sometimes fails but can be skipped.
+            children[idx] = child
+
         return pa.Array.from_buffers(
             type=data_type,
             length=len(child),
