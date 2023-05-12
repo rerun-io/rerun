@@ -459,7 +459,7 @@ fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::L
 
     re_log::info!("Receiving messages into a LogDb…");
 
-    let mut db = re_data_store::LogDb::default();
+    let mut db: Option<re_data_store::LogDb> = None;
 
     let mut num_messages = 0;
 
@@ -469,14 +469,22 @@ fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::L
         match rx.recv_timeout(timeout) {
             Ok(msg) => {
                 re_log::info_once!("Received first message.");
-                let is_goodbye = matches!(msg, re_log_types::LogMsg::Goodbye(_));
-                db.add(&msg)?;
+                let is_goodbye = matches!(msg, re_log_types::LogMsg::Goodbye(_, _));
+
+                let mut_db =
+                    db.get_or_insert_with(|| re_data_store::LogDb::new(msg.recording_id().clone()));
+
+                mut_db.add(&msg)?;
                 num_messages += 1;
                 if is_goodbye {
-                    db.entity_db.data_store.sanity_check()?;
+                    mut_db.entity_db.data_store.sanity_check()?;
                     anyhow::ensure!(0 < num_messages, "No messages received");
                     re_log::info!("Successfully ingested {num_messages} messages.");
-                    return Ok(db);
+                    if let Some(db) = db {
+                        return Ok(db);
+                    } else {
+                        anyhow::bail!("logdb never initialized");
+                    }
                 }
             }
             Err(RecvTimeoutError::Timeout) => {

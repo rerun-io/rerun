@@ -4,8 +4,8 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
+    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -44,6 +44,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// ```
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
+    recording_type: RecordingType,
     recording_id: Option<RecordingId>,
     recording_source: Option<RecordingSource>,
 
@@ -74,6 +75,7 @@ impl RecordingStreamBuilder {
 
         Self {
             application_id,
+            recording_type: RecordingType::Data,
             recording_id: None,
             recording_source: None,
 
@@ -199,10 +201,11 @@ impl RecordingStreamBuilder {
     pub fn connect(self, addr: std::net::SocketAddr) -> RecordingStreamResult<RecordingStream> {
         let (enabled, recording_info, batcher_config) = self.into_args();
         if enabled {
+            let recording_id = recording_info.recording_id.clone();
             RecordingStream::new(
                 recording_info,
                 batcher_config,
-                Box::new(crate::log_sink::TcpSink::new(addr)),
+                Box::new(crate::log_sink::TcpSink::new(recording_id, addr)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -246,6 +249,7 @@ impl RecordingStreamBuilder {
     pub fn into_args(self) -> (bool, RecordingInfo, DataTableBatcherConfig) {
         let Self {
             application_id,
+            recording_type,
             recording_id,
             recording_source,
             default_enabled,
@@ -255,7 +259,7 @@ impl RecordingStreamBuilder {
         } = self;
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
-        let recording_id = recording_id.unwrap_or_else(RecordingId::random);
+        let recording_id = recording_id.unwrap_or(RecordingId::random(recording_type));
         let recording_source = recording_source.unwrap_or_else(|| RecordingSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
@@ -732,7 +736,12 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self, addr: std::net::SocketAddr) {
-        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr)));
+        let Some(recording_id) = self.recording_info().map(|ri| ri.recording_id.clone())
+        else {
+            return;
+        };
+
+        self.set_sink(Box::new(crate::log_sink::TcpSink::new(recording_id, addr)));
     }
 
     /// Swaps the underlying sink for a [`crate::sink::MemorySink`] sink and returns the associated
