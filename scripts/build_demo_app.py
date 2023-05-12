@@ -32,7 +32,7 @@ class Example:
 
         logging.info(f"Running {in_path}, outputting to {out_dir}")
         os.makedirs(out_dir, exist_ok=True)
-        process = subprocess.run(
+        subprocess.run(
             [
                 "python3",
                 in_path,
@@ -41,14 +41,8 @@ class Example:
                 f"--save={out_dir}/data.rrd",
             ]
             + self.build_args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            check=True,
         )
-
-        if process.returncode != 0:
-            output = process.stdout.decode("utf-8").strip()
-            logging.error(f"Running {in_path} failed:\n{output}")
-            exit(process.returncode)
 
     def supports_save(self) -> bool:
         with open(self.path) as f:
@@ -77,7 +71,6 @@ def copy_static_assets(examples: List[Example]) -> None:
 def build_wasm() -> None:
     logging.info("")
     subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
-    subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--debug"])
 
 
 def copy_wasm(examples: List[Example]) -> None:
