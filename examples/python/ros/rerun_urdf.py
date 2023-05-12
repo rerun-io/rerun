@@ -38,12 +38,13 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
         # Log the transform between this node and its direct parent (if it has one!).
         if parent:
             world_from_mesh = node_data[0]
-            t = trimesh.transformations.translation_from_matrix(world_from_mesh)
-            q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
-            # `trimesh` stores quaternions in `wxyz` format, rerun needs `xyzw`
-            # TODO(jleibs): Remove conversion once [#883](https://github.com/rerun-io/rerun/issues/883) is closed
-            q = np.array([q[1], q[2], q[3], q[0]])
-            rr.log_rigid3(path, parent_from_child=(t, q), timeless=timeless)
+            rr.log_affine3(
+                path,
+                parent_from_child=trimesh.transformations.translation_from_matrix(
+                    world_from_mesh, world_from_mesh[0:3, 0:3]
+                ),
+                timeless=timeless,
+            )
 
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))

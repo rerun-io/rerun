@@ -24,11 +24,11 @@ def log_car_data() -> None:
         rr.set_time_sequence("frame_nr", sample.frame_idx)
 
         # Log the camera pose:
-        rr.log_rigid3(
+        rr.log_affine3(
             "world/camera",
-            parent_from_child=(sample.camera.position, sample.camera.rotation_q),
-            xyz="RDF",  # X=Right, Y=Down, Z=Forward
+            parent_from_child=rr.TranslationRotationScale3D(sample.camera.position, sample.camera.rotation_q),
         )
+        rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
         rr.log_pinhole(

@@ -12,7 +12,6 @@ import numpy as np
 import rerun as rr
 from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp, interleave
-from scipy.spatial.transform import Rotation
 
 _, unknown = __import__("argparse").ArgumentParser().parse_known_args()
 [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
@@ -43,10 +42,7 @@ for i in range(400):
     colors = [[int(bounce_lerp(80, 230, times[n] * 2))] for n in range(NUM_POINTS)]
     rr.log_points("dna/structure/scaffolding/beads", beads, radii=0.06, colors=np.repeat(colors, 3, axis=-1))
 
-    rr.log_rigid3(
+    rr.log_affine3(
         "dna/structure",
-        parent_from_child=(
-            [0, 0, 0],
-            Rotation.from_euler("z", time / 4.0 * tau).as_quat(),
-        ),
+        parent_from_child=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau),
     )

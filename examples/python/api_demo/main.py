@@ -87,11 +87,11 @@ def transform_test() -> None:
     )
     rr.log_affine3(
         "transform_test/axis_angle_degrees_only",
-        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle((0, 1, 0), degrees=10)),
+        parent_from_child=rr.RotationAxisAngle((0, 1, 0), degrees=10),
     )
     rr.log_affine3(
         "transform_test/axis_angle_radians_only",
-        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle((0, 0, 1), radians=1)),
+        parent_from_child=rr.RotationAxisAngle((0, 0, 1), radians=1),
     )
     rr.log_affine3(
         "transform_test/scale_uniform_only",

@@ -11,6 +11,7 @@ from deprecated import deprecated
 from rerun import bindings
 from rerun.components.transform3d import (
     DirectedAffine3D,
+    RotationAxisAngle,
     Transform3DArray,
     TransformDirection,
     TranslationMatrix3x3,
@@ -24,6 +25,7 @@ __all__ = [
     "log_view_coordinates",
     "log_unknown_transform",
     "log_rigid3",
+    "log_affine3",
 ]
 
 
@@ -114,8 +116,8 @@ def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
 def log_affine3(
     entity_path: str,
     *,
-    parent_from_child: Optional[TranslationMatrix3x3 | TranslationRotationScale3D] = None,
-    child_from_parent: Optional[TranslationMatrix3x3 | TranslationRotationScale3D] = None,
+    parent_from_child: Optional[TranslationMatrix3x3 | TranslationRotationScale3D | RotationAxisAngle] = None,
+    child_from_parent: Optional[TranslationMatrix3x3 | TranslationRotationScale3D | RotationAxisAngle] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -128,13 +130,15 @@ def log_affine3(
     Example
     -------
     ```
-    rr.log_affine3(
-        "world/z_rotated_object",
-        parent_from_child=rr.TranslationRotationScale3D(rotation=rr.RotationAxisAngle((0, 0, 1), degree=20)),
-    )
+    # log scale followed by translation along the Y-axis
     rr.log_affine3(
         "world/scaled_object",
-        parent_from_child=rr.TranslationRotationScale3D(scale=2),
+        parent_from_child=rr.TranslationRotationScale3D([0.0, 1.0, 0.0] scale=2),
+    )
+    # log a rotation around the z axis.
+    rr.log_affine3(
+        "world/z_rotated_object",
+        parent_from_child=rr.RotationAxisAngle((0, 0, 1), degree=20),
     )
     ```
 
@@ -160,6 +164,9 @@ def log_affine3(
     elif child_from_parent:
         direction = TransformDirection.ChildFromParent
         transform = child_from_parent
+
+    if isinstance(transform, RotationAxisAngle):
+        transform = TranslationRotationScale3D(rotation=transform)
 
     instanced = {"rerun.transform3d": Transform3DArray.from_transform(DirectedAffine3D(transform, direction))}
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
