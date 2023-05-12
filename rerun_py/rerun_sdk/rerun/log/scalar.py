@@ -94,7 +94,7 @@ def log_scalar(
         will have differently colored segments as appropriate.
         If all points within a single entity path (i.e. a line) share the same
         color, then this color will be used as the line color in the plot legend.
-        Otherwise, the line will appear grey in the legend.
+        Otherwise, the line will appear gray in the legend.
     radius:
         An optional radius for the point.
 

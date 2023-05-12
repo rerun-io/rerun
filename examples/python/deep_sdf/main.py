@@ -67,7 +67,7 @@ def get_mesh_format(mesh: Trimesh) -> rr.MeshFormat:
     try:
         return {
             ".glb": rr.MeshFormat.GLB,
-            # ".gltf": MeshFormat.GLTF,
+            # ".gltf": rr.MeshFormat.GLTF,
             ".obj": rr.MeshFormat.OBJ,
         }[ext]
     except Exception:
@@ -104,15 +104,14 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
     bs2 = mesh_to_sdf.scale_to_unit_sphere(mesh).bounding_sphere
     mesh_format = get_mesh_format(mesh)
 
-    with open(path, mode="rb") as file:
-        scale = bs2.scale / bs1.scale
-        center = bs2.center - bs1.center * scale
-        rr.log_mesh_file(
-            "world/mesh",
-            mesh_format,
-            file.read(),
-            transform=np.array([[scale, 0, 0, center[0]], [0, scale, 0, center[1]], [0, 0, scale, center[2]]]),
-        )
+    scale = bs2.scale / bs1.scale
+    center = bs2.center - bs1.center * scale
+    rr.log_mesh_file(
+        "world/mesh",
+        mesh_format,
+        mesh_path=path,
+        transform=np.array([[scale, 0, 0, center[0]], [0, scale, 0, center[1]], [0, 0, scale, center[2]]]),
+    )
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:

@@ -40,19 +40,25 @@ class ImageFormat(Enum):
     JPEG = "jpeg"
     """JPEG format."""
 
+    PNG = "png"
+    """PNG format."""
+
 
 @log_decorator
 def log_mesh_file(
     entity_path: str,
     mesh_format: MeshFormat,
-    mesh_file: bytes,
     *,
+    mesh_bytes: Optional[bytes] = None,
+    mesh_path: Optional[Path] = None,
     transform: Optional[npt.ArrayLike] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
+
+    You must pass either `mesh_bytes` or `mesh_path`.
 
     You can also use [`rerun.log_mesh`] to log raw mesh data.
 
@@ -72,8 +78,10 @@ def log_mesh_file(
         Path to the mesh in the space hierarchy
     mesh_format:
         Format of the mesh file
-    mesh_file:
-        Contents of the mesh file
+    mesh_bytes:
+        Content of an mesh file, e.g. a `.glb`.
+    mesh_path:
+        Path to an mesh file, e.g. a `.glb`.
     transform:
         Optional 3x4 affine transform matrix applied to the mesh
     timeless:
@@ -93,7 +101,15 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless, recording=recording)
+    bindings.log_mesh_file(
+        entity_path,
+        mesh_format=mesh_format.value,
+        mesh_bytes=mesh_bytes,
+        mesh_path=mesh_path,
+        transform=transform,
+        timeless=timeless,
+        recording=recording,
+    )
 
 
 @log_decorator
@@ -109,11 +125,15 @@ def log_image_file(
     """
     Log an image file given its contents or path on disk.
 
-    Only JPEGs are supported right now.
-
     You must pass either `img_bytes` or `img_path`.
 
-    If no `img_format` is specified, we will try and guess it.
+    Only JPEGs and PNGs are supported right now.
+
+    JPEGs will be stored compressed, saving memory,
+    whilst PNGs will currently be decoded before they are logged.
+    This may change in the future.
+
+    If no `img_format` is specified, rerun will try to guess it.
 
     Parameters
     ----------

@@ -10,6 +10,7 @@ use wgpu::TextureFormat;
 
 use re_log_types::component_types::{DecodedTensor, Tensor, TensorData};
 use re_renderer::{
+    pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
@@ -78,8 +79,11 @@ fn color_tensor_to_gpu(
                 TextureFormat::Rgba8UnormSrgb,
             ),
             (4, TensorData::U8(buf)) => (
-                // TODO(emilk): premultiply alpha
-                cast_slice_to_cow(buf.as_slice()),
+                // We pre-multiply on the CPU because we currently use hardware texture filtering
+                // in `rectangle_fs.wgsl`, and pre-multiplication needs to happen before filtering.
+                // If we switched our shader to always do software filtering we could do the pre-multiplication
+                // on the GPU instead, saving us some time here!
+                premultiply_alpha(buf.as_slice()).into(),
                 TextureFormat::Rgba8UnormSrgb,
             ),
 
@@ -425,29 +429,9 @@ fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
     bytes.into()
 }
 
-fn pad_to_four_elements<T: Copy>(data: &[T], pad: T) -> Vec<T> {
-    crate::profile_function!();
-    if cfg!(debug_assertions) {
-        // fastest version in debug builds.
-        // 5x faster in debug builds, but 2x slower in release
-        let mut padded = vec![pad; data.len() / 3 * 4];
-        for i in 0..(data.len() / 3) {
-            padded[4 * i] = data[3 * i];
-            padded[4 * i + 1] = data[3 * i + 1];
-            padded[4 * i + 2] = data[3 * i + 2];
-        }
-        padded
-    } else {
-        // fastest version in optimized builds
-        data.chunks_exact(3)
-            .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], pad])
-            .collect()
-    }
-}
-
 fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
     crate::profile_function!();
-    let padded: Vec<T> = pad_to_four_elements(data, pad);
+    let padded: Vec<T> = pad_rgb_to_rgba(data, pad);
     let bytes: Vec<u8> = pod_collect_to_vec(&padded);
     bytes.into()
 }
@@ -464,6 +448,15 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
         .flat_map(|chunk| [narrow(chunk[0]), narrow(chunk[1]), narrow(chunk[2]), pad])
         .collect();
     pod_collect_to_vec(&floats).into()
+}
+
+fn premultiply_alpha(rgba: &[u8]) -> Vec<u8> {
+    crate::profile_function!();
+    rgba.chunks_exact(4)
+        .flat_map(|rgba| {
+            egui::Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]).to_array()
+        })
+        .collect()
 }
 
 // ----------------------------------------------------------------------------;

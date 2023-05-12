@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, collections::HashMap, io::Cursor, path::PathBuf};
+use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
 use itertools::izip;
 use pyo3::{
@@ -948,14 +948,16 @@ fn log_meshes(
 fn log_mesh_file(
     entity_path_str: &str,
     mesh_format: &str,
-    bytes: &[u8],
     transform: numpy::PyReadonlyArray2<'_, f32>,
     timeless: bool,
+    mesh_bytes: Option<Vec<u8>>,
+    mesh_path: Option<PathBuf>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else { return Ok(()); };
 
     let entity_path = parse_entity_path(entity_path_str)?;
+
     let format = match mesh_format {
         "GLB" => MeshFormat::Glb,
         "GLTF" => MeshFormat::Gltf,
@@ -967,7 +969,18 @@ fn log_mesh_file(
             )));
         }
     };
-    let bytes: Vec<u8> = bytes.into();
+
+    let mesh_bytes = match (mesh_bytes, mesh_path) {
+        (Some(mesh_bytes), None) => mesh_bytes,
+        (None, Some(mesh_path)) => std::fs::read(mesh_path)?,
+        (None, None) => Err(PyTypeError::new_err(
+            "log_mesh_file: You must pass either mesh_bytes or mesh_path",
+        ))?,
+        (Some(_), Some(_)) => Err(PyTypeError::new_err(
+            "log_mesh_file: You must pass either mesh_bytes or mesh_path, but not both!",
+        ))?,
+    };
+
     let transform = if transform.is_empty() {
         [
             [1.0, 0.0, 0.0], // col 0
@@ -998,7 +1011,7 @@ fn log_mesh_file(
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
         format,
-        bytes: bytes.into(),
+        bytes: mesh_bytes.into(),
         transform,
     });
 
@@ -1058,45 +1071,10 @@ fn log_image_file(
         }
     };
 
-    use image::ImageDecoder as _;
-    let (w, h) = match img_format {
-        image::ImageFormat::Jpeg => {
-            use image::codecs::jpeg::JpegDecoder;
-            let jpeg = JpegDecoder::new(Cursor::new(&img_bytes))
-                .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-
-            let color_format = jpeg.color_type();
-            if !matches!(color_format, image::ColorType::Rgb8) {
-                // TODO(emilk): support gray-scale jpeg aswell
-                return Err(PyTypeError::new_err(format!(
-                    "Unsupported color format {color_format:?}. \
-                    Expected one of: RGB8"
-                )));
-            }
-
-            jpeg.dimensions()
-        }
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Unsupported image format {img_format:?}. \
-                Expected one of: JPEG"
-            )))
-        }
-    };
+    let tensor = Tensor::from_image_bytes(img_bytes, img_format)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
 
     let time_point = time(timeless, &recording);
-
-    let tensor = re_log_types::component_types::Tensor {
-        tensor_id: TensorId::random(),
-        shape: vec![
-            TensorDimension::height(h as _),
-            TensorDimension::width(w as _),
-            TensorDimension::depth(3),
-        ],
-        data: re_log_types::component_types::TensorData::JPEG(img_bytes.into()),
-        meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
-        meter: None,
-    };
 
     let row = DataRow::from_cells1(
         RowId::random(),

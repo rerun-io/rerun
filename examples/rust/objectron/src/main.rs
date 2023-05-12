@@ -154,7 +154,7 @@ fn log_baseline_objects(
 
 fn log_video_frame(rec_stream: &RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
-    let tensor = rerun::components::Tensor::tensor_from_jpeg_file(image_path)?;
+    let tensor = rerun::components::Tensor::from_jpeg_file(&image_path)?;
 
     MsgSender::new("world/camera/video")
         .with_timepoint(ar_frame.timepoint.clone())
