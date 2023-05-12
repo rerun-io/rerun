@@ -115,7 +115,7 @@ impl Default for TimeControl {
 impl TimeControl {
     /// Move the time forward (if playing), and perhaps pause if we've reached the end.
     #[must_use]
-    pub fn move_time(
+    pub fn update(
         &mut self,
         times_per_timeline: &TimesPerTimeline,
         stable_dt: f32,

@@ -1029,11 +1029,10 @@ impl AppState {
             // so we have one frame to see the first data before we move the time.
             let dt = ui.ctx().input(|i| i.stable_dt);
             let more_data_is_coming = rx.is_connected();
-            let needs_repaint = ctx.rec_cfg.time_ctrl.move_time(
-                log_db.times_per_timeline(),
-                dt,
-                more_data_is_coming,
-            );
+            let needs_repaint =
+                ctx.rec_cfg
+                    .time_ctrl
+                    .update(log_db.times_per_timeline(), dt, more_data_is_coming);
             if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
                 ui.ctx().request_repaint();
             }
