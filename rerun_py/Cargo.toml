@@ -48,6 +48,9 @@ rerun = { workspace = true, features = ["analytics", "server", "sdk"] }
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 
+# TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
+re_viewer = { workspace = true }
+
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 document-features = "0.2"
 glam.workspace = true

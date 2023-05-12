@@ -11,16 +11,17 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use re_viewer::{
+    blueprint_components::{
+        panel::PanelState,
+        space_view::SpaceViewComponent,
+        viewport::{AutoSpaceViews, SpaceViewId, VIEWPORT_PATH},
+    },
+    SpaceView, ViewCategory,
+};
+
 use re_log_types::{DataRow, RecordingInfo};
 use rerun::{
-    external::re_viewer::{
-        blueprint_components::{
-            panel::PanelState,
-            space_view::SpaceViewComponent,
-            viewport::{AutoSpaceViews, SpaceViewId, VIEWPORT_PATH},
-        },
-        SpaceView, ViewCategory,
-    },
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::TimePoint,
