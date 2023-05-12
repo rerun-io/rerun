@@ -44,13 +44,16 @@ class ImageFormat(Enum):
 def log_mesh_file(
     entity_path: str,
     mesh_format: MeshFormat,
-    mesh_file: bytes,
     *,
+    mesh_bytes: Optional[bytes] = None,
+    mesh_path: Optional[Path] = None,
     transform: Optional[npt.ArrayLike] = None,
     timeless: bool = False,
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
+
+    You must pass either `mesh_bytes` or `mesh_path`.
 
     You can also use [`rerun.log_mesh`] to log raw mesh data.
 
@@ -70,8 +73,10 @@ def log_mesh_file(
         Path to the mesh in the space hierarchy
     mesh_format:
         Format of the mesh file
-    mesh_file:
-        Contents of the mesh file
+    mesh_bytes:
+        Content of an mesh file, e.g. a `.glb`.
+    mesh_path:
+        Path to an mesh file, e.g. a `.glb`.
     transform:
         Optional 3x4 affine transform matrix applied to the mesh
     timeless:
@@ -85,7 +90,14 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
+    bindings.log_mesh_file(
+        entity_path,
+        mesh_format=mesh_format.value,
+        mesh_bytes=mesh_bytes,
+        mesh_path=mesh_path,
+        transform=transform,
+        timeless=timeless,
+    )
 
 
 @log_decorator
