@@ -851,12 +851,11 @@ impl Tensor {
         };
 
         let img_format = if let Some(extension) = path.extension() {
-            image::ImageFormat::from_extension(extension).ok_or_else(|| {
-                TensorImageLoadError::UnknownExtension {
-                    extension: extension.to_string_lossy().to_string(),
-                    path: path.to_owned(),
-                }
-            })?
+            if let Some(format) = image::ImageFormat::from_extension(extension) {
+                format
+            } else {
+                image::guess_format(&img_bytes)?
+            }
         } else {
             image::guess_format(&img_bytes)?
         };
