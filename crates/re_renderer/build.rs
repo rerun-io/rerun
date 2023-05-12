@@ -20,17 +20,10 @@ use walkdir::{DirEntry, WalkDir};
 
 // ---
 
-// Mapping to cargo:rerun-if-changed with glob support
-fn rerun_if_changed(path: &str) {
-    // Workaround for windows verbatim paths not working with glob.
-    // Issue: https://github.com/rust-lang/glob/issues/111
-    // Fix: https://github.com/rust-lang/glob/pull/112
-    // Fixed on upstream, but no release containing the fix as of writing.
-    let path = path.trim_start_matches(r"\\?\");
-
-    for path in glob::glob(path).unwrap() {
-        println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
-    }
+fn rerun_if_changed(path: &std::path::Path) {
+    // Make sure the file exists, otherwise we'll be rebuilding all the time.
+    assert!(path.exists(), "Failed to find {path:?}");
+    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
 }
 
 // ---
@@ -200,7 +193,7 @@ pub fn init() {
     );
 
     for entry in entries {
-        rerun_if_changed(entry.path().to_string_lossy().as_ref());
+        rerun_if_changed(entry.path());
 
         // The relative path to get from the current shader file to `workspace_shaders.rs`.
         // We must make sure to pass relative paths to `include_str`!
