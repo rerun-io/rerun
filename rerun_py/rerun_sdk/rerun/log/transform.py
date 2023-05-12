@@ -3,7 +3,7 @@ Methods for logging transforms on entity paths.
 
 Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/spaces-and-transforms)
 """
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy.typing as npt
 from deprecated import deprecated
@@ -116,8 +116,8 @@ def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
 def log_affine3(
     entity_path: str,
     *,
-    parent_from_child: Optional[TranslationMatrix3x3 | TranslationRotationScale3D | RotationAxisAngle] = None,
-    child_from_parent: Optional[TranslationMatrix3x3 | TranslationRotationScale3D | RotationAxisAngle] = None,
+    parent_from_child: Optional[Union[TranslationMatrix3x3, TranslationRotationScale3D, RotationAxisAngle]] = None,
+    child_from_parent: Optional[Union[TranslationMatrix3x3, TranslationRotationScale3D, RotationAxisAngle]] = None,
     timeless: bool = False,
 ) -> None:
     """

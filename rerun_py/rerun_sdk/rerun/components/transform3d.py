@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +38,7 @@ class Pinhole:
     image_from_cam: npt.ArrayLike
 
     # Pixel resolution (usually integers) of child image space. Width and height.
-    resolution: npt.ArrayLike | None
+    resolution: Union[npt.ArrayLike, None]
 
 
 @dataclass
@@ -66,10 +67,10 @@ class TransformDirection(Enum):
 class TranslationMatrix3x3:
     """Representation of a affine transform via a 3x3 translation matrix paired with a translation."""
 
-    translation: npt.ArrayLike | None = None
+    translation: Union[npt.ArrayLike, None] = None
     """3D translation vector, applied after the matrix. Uses (0, 0, 0) if not set."""
 
-    matrix: npt.ArrayLike | None = None
+    matrix: Union[npt.ArrayLike, None] = None
     """The column-major 3x3 matrix for scale, rotation & skew matrix. Uses identity if not set."""
 
 
@@ -77,13 +78,13 @@ class TranslationMatrix3x3:
 class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
 
-    translation: npt.ArrayLike | None = None
+    translation: Union[npt.ArrayLike, None] = None
     """3D translation vector, applied last."""
 
-    rotation: npt.ArrayLike | RotationAxisAngle | None = None
+    rotation: Union[npt.ArrayLike, RotationAxisAngle, None] = None
     """3D rotation, represented as a (xyzw) quaternion or axis + angle, applied second."""
 
-    scale: npt.ArrayLike | float | None = None
+    scale: Union[npt.ArrayLike, float, None] = None
     """3D scaling either a 3D vector, scalar or None. Applied first."""
 
 
@@ -99,14 +100,14 @@ class RotationAxisAngle:
     If normalization fails (typically because the vector is length zero), the rotation is silently ignored.
     """
 
-    degrees: float | None = None
+    degrees: Union[float, None] = None
     """3D rotation angle in degrees. Only one of `degrees` or `radians` should be set."""
 
-    radians: float | None = None
+    radians: Union[float, None] = None
     """3D rotation angle in radians. Only one of `degrees` or `radians` should be set."""
 
 
-def normalize_matrix3(matrix: npt.ArrayLike | None) -> npt.ArrayLike:
+def normalize_matrix3(matrix: Union[npt.ArrayLike, None]) -> npt.ArrayLike:
     matrix = np.eye(3) if matrix is None else matrix
     matrix = np.array(matrix, dtype=np.float32, order="F")
     if matrix.shape != (3, 3):
@@ -115,7 +116,7 @@ def normalize_matrix3(matrix: npt.ArrayLike | None) -> npt.ArrayLike:
     return matrix.flatten(order="F")
 
 
-def normalize_translation(translation: npt.ArrayLike | None) -> npt.ArrayLike:
+def normalize_translation(translation: Union[npt.ArrayLike, None]) -> npt.ArrayLike:
     translation = (0, 0, 0) if translation is None else translation
     translation = np.array(translation, dtype=np.float32).flatten()
     if translation.size != 3:
