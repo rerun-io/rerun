@@ -78,6 +78,10 @@ fn color_tensor_to_gpu(
                 TextureFormat::Rgba8UnormSrgb,
             ),
             (4, TensorData::U8(buf)) => (
+                // We pre-multiply on the CPU because we currently use hardware texture filtering
+                // in `rectangle_fs.wgsl`, and pre-multiplication needs to happen before filtering.
+                // If we switched our shader to always do software filtering we could do the pre-multiplication
+                // on the GPU instead, saving us some time here!
                 premultiply_alpha(buf.as_slice()).into(),
                 TextureFormat::Rgba8UnormSrgb,
             ),
