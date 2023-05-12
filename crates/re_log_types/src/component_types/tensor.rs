@@ -835,7 +835,6 @@ impl Tensor {
 
 #[cfg(feature = "image")]
 impl Tensor {
-    #[cfg(not(target_arch = "wasm32"))]
     /// Construct a tensor from the contents of an image file on disk.
     ///
     /// JPEGs will be kept encoded, left to the viewer to decode on-the-fly.
