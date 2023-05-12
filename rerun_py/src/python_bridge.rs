@@ -1000,16 +1000,8 @@ fn log_image_file(
         }
     };
 
-    let tensor = match img_format {
-        image::ImageFormat::Jpeg => Tensor::from_jpeg_bytes(img_bytes)
-            .map_err(|err| PyTypeError::new_err(err.to_string()))?,
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Unsupported image format {img_format:?}. \
-                Expected one of: JPEG"
-            )))
-        }
-    };
+    let tensor = Tensor::from_image_bytes(img_bytes, img_format)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
 
     let time_point = time(timeless, data_stream);
 
