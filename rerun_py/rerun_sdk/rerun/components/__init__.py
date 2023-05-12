@@ -85,8 +85,9 @@ def build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa
         children = [pa.nulls(0, type=f.type) for f in list(data_type)]
         try:
             children[idx] = child.cast(data_type[idx].type, safe=False)
-        except:
-            # Since we're having issues with nullability in union types (see below), the cast sometimes fails but can be skipped.
+        except pa.ArrowInvalid:
+            # Since we're having issues with nullability in union types (see below),
+            # the cast sometimes fails but can be skipped.
             children[idx] = child
 
         return pa.Array.from_buffers(

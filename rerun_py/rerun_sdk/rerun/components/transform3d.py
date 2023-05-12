@@ -92,7 +92,12 @@ class RotationAxisAngle:
     """3D rotation expressed via a rotation axis and angle."""
 
     axis: npt.ArrayLike
-    """3D rotation axis."""
+    """
+    Axis to rotate around.
+
+    This is not required to be normalized.
+    If normalization fails (typically because the vector is length zero), the rotation is silently ignored.
+    """
 
     degrees: float | None = None
     """3D rotation angle in degrees. Only one of `degrees` or `radians` should be set."""
@@ -101,19 +106,21 @@ class RotationAxisAngle:
     """3D rotation angle in radians. Only one of `degrees` or `radians` should be set."""
 
 
-def normalize_matrix3(matrix: npt.ArrayLike) -> np.array:
+def normalize_matrix3(matrix: npt.ArrayLike | None) -> npt.ArrayLike:
     matrix = np.eye(3) if matrix is None else matrix
+    matrix = np.array(matrix, dtype=np.float32, order="F")
     if matrix.shape != (3, 3):
         raise ValueError(f"Expected 3x3 matrix, shape was instead {matrix.shape}")
-    # Rerun is column major internally, need to transpose!
-    return np.array(matrix, dtype=np.float32).transpose().flatten()
+    # Rerun is column major internally, tell numpy to use Fortran order which is just that.
+    return matrix.flatten(order="F")
 
 
-def normalize_translation(translation: npt.ArrayLike | None) -> np.array:
+def normalize_translation(translation: npt.ArrayLike | None) -> npt.ArrayLike:
     translation = (0, 0, 0) if translation is None else translation
+    translation = np.array(translation, dtype=np.float32).flatten()
     if translation.size != 3:
         raise ValueError(f"Expected three dimensional translation vector, shape was instead {translation.shape}")
-    return np.array(translation, dtype=np.float32).flatten()
+    return translation
 
 
 def build_struct_array_from_translation_mat3(

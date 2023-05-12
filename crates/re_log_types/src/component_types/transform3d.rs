@@ -248,7 +248,7 @@ pub struct TranslationMatrix3x3 {
     /// 3D translation, applied after the matrix.
     pub translation: Vec3D,
 
-    /// 3x3 matrix for scale, rotation & skew.
+    /// 3x3 matrix for scale, rotation & shear.
     pub matrix: Mat3x3,
 }
 
