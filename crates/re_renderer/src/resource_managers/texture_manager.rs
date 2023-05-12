@@ -86,15 +86,6 @@ pub struct Texture2DCreationDesc<'a> {
     //generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
 }
 
-impl<'a> Texture2DCreationDesc<'a> {
-    pub fn convert_rgb8_to_rgba8(rgb_pixels: &[u8]) -> Vec<u8> {
-        rgb_pixels
-            .chunks_exact(3)
-            .flat_map(|color| [color[0], color[1], color[2], 255])
-            .collect()
-    }
-}
-
 // TODO(andreas): Move this to texture pool.
 #[derive(thiserror::Error, Debug)]
 pub enum TextureCreationError {
