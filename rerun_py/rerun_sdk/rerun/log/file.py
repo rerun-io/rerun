@@ -39,6 +39,9 @@ class ImageFormat(Enum):
     JPEG = "jpeg"
     """JPEG format."""
 
+    PNG = "png"
+    """PNG format."""
+
 
 @log_decorator
 def log_mesh_file(
@@ -112,11 +115,15 @@ def log_image_file(
     """
     Log an image file given its contents or path on disk.
 
-    Only JPEGs are supported right now.
-
     You must pass either `img_bytes` or `img_path`.
 
-    If no `img_format` is specified, we will try and guess it.
+    Only JPEGs and PNGs are supported right now.
+
+    JPEGs will be stored compressed, saving memory,
+    whilst PNGs will currently be decoded before they are logged.
+    This may change in the future.
+
+    If no `img_format` is specified, rerun will try to guess it.
 
     Parameters
     ----------

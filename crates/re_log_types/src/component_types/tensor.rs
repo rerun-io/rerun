@@ -776,6 +776,13 @@ pub enum TensorImageLoadError {
         expected: Vec<TensorDimension>,
         found: Vec<TensorDimension>,
     },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Unsupported file extension '{extension}' for file {path:?}")]
+    UnknownExtension {
+        extension: String,
+        path: std::path::PathBuf,
+    },
 }
 
 #[cfg(feature = "image")]
@@ -828,21 +835,79 @@ impl Tensor {
 
 #[cfg(feature = "image")]
 impl Tensor {
+    /// Construct a tensor from the contents of an image file on disk.
+    ///
+    /// JPEGs will be kept encoded, left to the viewer to decode on-the-fly.
+    /// Other images types will be decoded directly.
+    ///
+    /// Requires the `image` feature.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn from_image_file(path: &std::path::Path) -> Result<Self, TensorImageLoadError> {
+        crate::profile_function!(path.to_string_lossy());
+
+        let img_bytes = {
+            crate::profile_scope!("fs::read");
+            std::fs::read(path)?
+        };
+
+        let img_format = if let Some(extension) = path.extension() {
+            if let Some(format) = image::ImageFormat::from_extension(extension) {
+                format
+            } else {
+                image::guess_format(&img_bytes)?
+            }
+        } else {
+            image::guess_format(&img_bytes)?
+        };
+
+        Self::from_image_bytes(img_bytes, img_format)
+    }
+
     /// Construct a tensor from the contents of a JPEG file on disk.
     ///
     /// Requires the `image` feature.
     #[cfg(not(target_arch = "wasm32"))]
+    pub fn from_jpeg_file(path: &std::path::Path) -> Result<Self, TensorImageLoadError> {
+        crate::profile_function!(path.to_string_lossy());
+        let jpeg_bytes = {
+            crate::profile_scope!("fs::read");
+            std::fs::read(path)?
+        };
+        Self::from_jpeg_bytes(jpeg_bytes)
+    }
+
+    #[deprecated = "Renamed 'from_jpeg_file'"]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn tensor_from_jpeg_file(
         image_path: impl AsRef<std::path::Path>,
     ) -> Result<Self, TensorImageLoadError> {
-        let jpeg_bytes = std::fs::read(image_path)?;
-        Self::tensor_from_jpeg_bytes(jpeg_bytes)
+        Self::from_jpeg_file(image_path.as_ref())
+    }
+
+    /// Construct a tensor from the contents of an image file.
+    ///
+    /// JPEGs will be kept encoded, left to the viewer to decode on-the-fly.
+    /// Other images types will be decoded directly.
+    ///
+    /// Requires the `image` feature.
+    pub fn from_image_bytes(
+        bytes: Vec<u8>,
+        format: image::ImageFormat,
+    ) -> Result<Self, TensorImageLoadError> {
+        crate::profile_function!(format!("{format:?}"));
+        if format == image::ImageFormat::Jpeg {
+            Self::from_jpeg_bytes(bytes)
+        } else {
+            let image = image::load_from_memory_with_format(&bytes, format)?;
+            Self::from_image(image)
+        }
     }
 
     /// Construct a tensor from the contents of a JPEG file.
     ///
     /// Requires the `image` feature.
-    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
+    pub fn from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
+        crate::profile_function!();
         use image::ImageDecoder as _;
         let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
         if jpeg.color_type() != image::ColorType::Rgb8 {
@@ -864,6 +929,12 @@ impl Tensor {
             meaning: TensorDataMeaning::Unknown,
             meter: None,
         })
+    }
+
+    #[deprecated = "Renamed 'from_jpeg_bytes'"]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn tensor_from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
+        Self::from_jpeg_bytes(jpeg_bytes)
     }
 
     /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
@@ -1059,6 +1130,8 @@ impl DecodedTensor {
     pub fn from_dynamic_image(
         image: image::DynamicImage,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
+        crate::profile_function!();
+
         let (w, h) = (image.width(), image.height());
 
         let (depth, data) = match image {
