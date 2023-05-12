@@ -304,7 +304,7 @@ fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
 
     // Add several overlapping images.
-    // Large dark grey in the background
+    // Large dark gray in the background
     let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64);
     MsgSender::new("2d_layering/background")
         .with_timepoint(sim_time(1.0))

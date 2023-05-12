@@ -435,7 +435,7 @@ impl Tensor {
 
         match shape_short.len() {
             1 => {
-                // Special case: Nx1(x1x1x...) tensors are treated as Nx1 grey images.
+                // Special case: Nx1(x1x1x...) tensors are treated as Nx1 gray images.
                 if self.shape.len() >= 2 {
                     Some([shape_short[0].size, 1, 1])
                 } else {
@@ -1272,7 +1272,7 @@ fn test_tensor_shape_utilities() {
         assert!(!tensor.is_shaped_like_an_image());
     }
 
-    // Single element, but it might be interpreted as a 1x1 grey image!
+    // Single element, but it might be interpreted as a 1x1 gray image!
     for shape in [
         vec![1, 1],
         vec![1, 1, 1],
@@ -1286,7 +1286,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_vector());
         assert!(tensor.is_shaped_like_an_image());
     }
-    // Color/Grey 2x4 images
+    // Color/Gray 2x4 images
     for shape in [
         vec![4, 2],
         vec![4, 2, 1],
@@ -1308,7 +1308,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_shaped_like_an_image());
     }
 
-    // Grey 1x4 images
+    // Gray 1x4 images
     for shape in [
         vec![4, 1],
         vec![4, 1, 1],
@@ -1323,7 +1323,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_shaped_like_an_image());
     }
 
-    // Grey 4x1 images
+    // Gray 4x1 images
     for shape in [
         vec![1, 4],
         vec![1, 4, 1],
