@@ -71,6 +71,8 @@ jobs:
           rerun --version
 
       - name: Build web demo
+        env:
+          COMMIT_HASH: ${{ github.env.GITHUB_SHA }}
         run: |
           python3 scripts/build_demo_app.py --skip-wasm-build
 

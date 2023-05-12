@@ -16,10 +16,17 @@ from jinja2 import Template
 
 
 class Example:
-    def __init__(self, name: str, title: str, description: str, build_args: List[str]):
+    def __init__(
+        self,
+        name: str,
+        title: str,
+        description: str,
+        commit: str,
+        build_args: List[str],
+    ):
         self.path = os.path.join("examples/python", name, "main.py")
         self.name = name
-        self.source_url = f"https://github.com/rerun-io/rerun/tree/main/examples/python/{self.name}/main.py"
+        self.source_url = f"https://github.com/rerun-io/rerun/tree/{commit}/examples/python/{self.name}/main.py"
         self.title = title
         self.build_args = build_args
 
@@ -84,12 +91,15 @@ def copy_wasm(examples: List[Example]) -> None:
 
 
 def collect_examples() -> List[Example]:
+    commit = os.environ.get("COMMIT_HASH") or "main"
+    logging.info(f"Commit hash: {commit}")
     examples = []
     for name in EXAMPLES.keys():
         example = Example(
             name,
             title=EXAMPLES[name]["title"],
             description=EXAMPLES[name]["description"],
+            commit=commit,
             build_args=EXAMPLES[name]["build_args"].split(" "),
         )
         if example.supports_save():
