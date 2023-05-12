@@ -146,8 +146,8 @@ impl TimeControl {
                     // at this point but only if we know we're guaranteed not to get any more data.
                     // because we progressively load RRD files this is actually tricky to get right.
                     //
-                    // See the details in the comment here:
-                    // https://github.com/rerun-io/rerun/issues/2077#issuecomment-1545773200
+                    // See the details in the PR here:
+                    // https://github.com/rerun-io/rerun/pull/2103
 
                     // Don't pause or rewind, just stop moving time forward
                     // until we receive more data!
