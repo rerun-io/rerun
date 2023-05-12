@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, io::Cursor, path::PathBuf};
+use std::{borrow::Cow, path::PathBuf};
 
 use itertools::izip;
 use pyo3::{
@@ -1000,24 +1000,9 @@ fn log_image_file(
         }
     };
 
-    use image::ImageDecoder as _;
-    let (w, h) = match img_format {
-        image::ImageFormat::Jpeg => {
-            use image::codecs::jpeg::JpegDecoder;
-            let jpeg = JpegDecoder::new(Cursor::new(&img_bytes))
-                .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-
-            let color_format = jpeg.color_type();
-            if !matches!(color_format, image::ColorType::Rgb8) {
-                // TODO(emilk): support gray-scale jpeg aswell
-                return Err(PyTypeError::new_err(format!(
-                    "Unsupported color format {color_format:?}. \
-                    Expected one of: RGB8"
-                )));
-            }
-
-            jpeg.dimensions()
-        }
+    let tensor = match img_format {
+        image::ImageFormat::Jpeg => Tensor::from_jpeg_bytes(img_bytes)
+            .map_err(|err| PyTypeError::new_err(err.to_string()))?,
         _ => {
             return Err(PyTypeError::new_err(format!(
                 "Unsupported image format {img_format:?}. \
@@ -1027,18 +1012,6 @@ fn log_image_file(
     };
 
     let time_point = time(timeless, data_stream);
-
-    let tensor = re_log_types::component_types::Tensor {
-        tensor_id: TensorId::random(),
-        shape: vec![
-            TensorDimension::height(h as _),
-            TensorDimension::width(w as _),
-            TensorDimension::depth(3),
-        ],
-        data: re_log_types::component_types::TensorData::JPEG(img_bytes.into()),
-        meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
-        meter: None,
-    };
 
     let row = DataRow::from_cells1(
         RowId::random(),
