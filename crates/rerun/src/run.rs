@@ -583,6 +583,7 @@ fn native_viewer_connect_to_ws_url(
     Ok(())
 }
 
+#[allow(clippy::needless-pass-by-value)] // false positive on some feature flags
 fn load_file_to_channel_at(
     recording_id: re_log_types::RecordingId,
     path: &std::path::Path,
