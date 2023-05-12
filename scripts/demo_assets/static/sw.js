@@ -2,6 +2,8 @@ var cacheName = 'rerun-viewer-pwa';
 var filesToCache = [
   './',
   './index.html',
+  './index.js',
+  './index.css',
   './re_viewer.js',
   './re_viewer_bg.wasm',
 ];
