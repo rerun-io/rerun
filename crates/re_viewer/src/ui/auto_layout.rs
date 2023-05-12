@@ -48,9 +48,7 @@ pub(crate) fn tree_from_space_views(
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
     space_views: &HashMap<SpaceViewId, SpaceView>,
-) -> egui_dock::Tree<SpaceViewId> {
-    let mut tree = egui_dock::Tree::new(vec![]);
-
+) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
         .iter()
         .filter(|(space_view_id, _space_view)| visible.contains(space_view_id))
@@ -76,8 +74,10 @@ pub(crate) fn tree_from_space_views(
                         super::view_spatial::SpatialNavigationMode::ThreeD => None,
                     }
                 }
-                ViewCategory::Tensor | ViewCategory::TimeSeries => Some(1.0), // Not sure if we should do `None` here.
-                ViewCategory::Text => Some(2.0),                              // Make text logs wide
+                ViewCategory::TextBox | ViewCategory::Tensor | ViewCategory::TimeSeries => {
+                    Some(1.0)
+                } // Not sure if we should do `None` here.
+                ViewCategory::Text => Some(2.0), // Make text logs wide
                 ViewCategory::BarChart => None,
             };
 
@@ -90,35 +90,39 @@ pub(crate) fn tree_from_space_views(
         })
         .collect_vec();
 
-    if !space_make_infos.is_empty() {
+    if space_make_infos.is_empty() {
+        egui_tiles::Tree::empty()
+    } else {
+        let mut tiles = egui_tiles::Tiles::default();
         // Users often organize by path prefix, so we start by splitting along that
         let layout = layout_by_path_prefix(viewport_size, &mut space_make_infos);
-        tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
+        let root = tree_from_split(&mut tiles, &layout);
+        egui_tiles::Tree::new(root, tiles)
     }
-
-    tree
 }
 
 fn tree_from_split(
-    tree: &mut egui_dock::Tree<SpaceViewId>,
-    parent: egui_dock::NodeIndex,
+    tiles: &mut egui_tiles::Tiles<SpaceViewId>,
     split: &LayoutSplit,
-) {
+) -> egui_tiles::TileId {
     match split {
         LayoutSplit::LeftRight(left, fraction, right) => {
-            let [left_ni, right_ni] = tree.split_right(parent, *fraction, vec![]);
-            tree_from_split(tree, left_ni, left);
-            tree_from_split(tree, right_ni, right);
+            let container = egui_tiles::Linear::new_binary(
+                egui_tiles::LinearDir::Horizontal,
+                [tree_from_split(tiles, left), tree_from_split(tiles, right)],
+                *fraction,
+            );
+            tiles.insert_container(container)
         }
         LayoutSplit::TopBottom(top, fraction, bottom) => {
-            let [top_ni, bottom_ni] = tree.split_below(parent, *fraction, vec![]);
-            tree_from_split(tree, top_ni, top);
-            tree_from_split(tree, bottom_ni, bottom);
+            let container = egui_tiles::Linear::new_binary(
+                egui_tiles::LinearDir::Vertical,
+                [tree_from_split(tiles, top), tree_from_split(tiles, bottom)],
+                *fraction,
+            );
+            tiles.insert_container(container)
         }
-        LayoutSplit::Leaf(space_info) => {
-            tree.set_focused_node(parent);
-            tree.push_to_focused_leaf(space_info.id);
-        }
+        LayoutSplit::Leaf(space_info) => tiles.insert_pane(space_info.id),
     }
 }
 

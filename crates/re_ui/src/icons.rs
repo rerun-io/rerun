@@ -56,6 +56,11 @@ pub const SPACE_VIEW_TEXT: Icon = Icon::new(
     "spaceview_text",
     include_bytes!("../data/icons/spaceview_text.png"),
 );
+// TODO(jleibs): Differentiate icon?
+pub const SPACE_VIEW_TEXTBOX: Icon = Icon::new(
+    "spaceview_text",
+    include_bytes!("../data/icons/spaceview_text.png"),
+);
 pub const SPACE_VIEW_3D: Icon = Icon::new(
     "spaceview_3d",
     include_bytes!("../data/icons/spaceview_3d.png"),

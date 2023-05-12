@@ -36,6 +36,7 @@ mod rect;
 mod scalar;
 mod size;
 mod tensor;
+mod text_box;
 mod text_entry;
 mod transform;
 mod vec;
@@ -65,13 +66,14 @@ pub use tensor::{
 };
 #[cfg(feature = "image")]
 pub use tensor::{TensorImageLoadError, TensorImageSaveError};
+pub use text_box::TextBox;
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};
 pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 25] = [
+    static ref FIELDS: [Field; 26] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),
         <Box3D as Component>::field(),
@@ -93,6 +95,7 @@ lazy_static! {
         <Size3D as Component>::field(),
         <Tensor as Component>::field(),
         <TextEntry as Component>::field(),
+        <TextBox as Component>::field(),
         <Transform as Component>::field(),
         <Vec2D as Component>::field(),
         <Vec3D as Component>::field(),

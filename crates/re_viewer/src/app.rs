@@ -4,7 +4,6 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use instant::Instant;
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -67,7 +66,7 @@ pub struct App {
     rx: Receiver<LogMsg>,
 
     /// Where the logs are stored.
-    log_dbs: IntMap<RecordingId, LogDb>,
+    log_dbs: HashMap<RecordingId, LogDb>,
 
     /// What is serialized
     state: AppState,
@@ -345,11 +344,11 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let rec_id = self.state.selected_rec_id;
-        let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) else {return;};
+        let rec_id = &self.state.selected_rec_id;
+        let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else {return;};
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
-        let Some(log_db) = self.log_dbs.get(&rec_id) else { return };
+        let Some(log_db) = self.log_dbs.get(rec_id) else { return };
         let times_per_timeline = log_db.times_per_timeline();
 
         match command {
@@ -510,7 +509,10 @@ impl eframe::App for App {
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
-                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+                let log_db = self
+                    .log_dbs
+                    .entry(self.state.selected_rec_id.clone())
+                    .or_default();
                 let selected_app_id = log_db
                     .recording_info()
                     .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -524,7 +526,7 @@ impl eframe::App for App {
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
-                    self.state.selected_rec_id,
+                    self.state.selected_rec_id.clone(),
                     self.rx.source(),
                     log_db,
                 )
@@ -697,13 +699,13 @@ impl App {
             if let Some(recording_id) = msg.recording_id() {
                 let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
                     re_log::debug!("Opening a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id;
+                    self.state.selected_rec_id = msg.info.recording_id.clone();
                     true
                 } else {
                     false
                 };
 
-                let log_db = self.log_dbs.entry(*recording_id).or_default();
+                let log_db = self.log_dbs.entry(recording_id.clone()).or_default();
 
                 if log_db.data_source.is_none() {
                     log_db.data_source = Some(self.rx.source().clone());
@@ -823,7 +825,7 @@ impl App {
 
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
-        let selected_rec_id = self.state.selected_rec_id;
+        let selected_rec_id = self.state.selected_rec_id.clone();
 
         self.state = Default::default();
         self.state.selected_rec_id = selected_rec_id;
@@ -842,7 +844,9 @@ impl App {
     }
 
     fn log_db(&mut self) -> &mut LogDb {
-        self.log_dbs.entry(self.state.selected_rec_id).or_default()
+        self.log_dbs
+            .entry(self.state.selected_rec_id.clone())
+            .or_default()
     }
 
     fn show_log_db(&mut self, log_db: LogDb) {
@@ -936,7 +940,7 @@ struct AppState {
     selected_rec_id: RecordingId,
 
     /// Configuration for the current recording (found in [`LogDb`]).
-    recording_configs: IntMap<RecordingId, RecordingConfig>,
+    recording_configs: HashMap<RecordingId, RecordingConfig>,
 
     blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
 
@@ -977,8 +981,12 @@ impl AppState {
                 profiler: _,
         } = self;
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, *selected_rec_id, data_source, log_db);
+        let rec_cfg = recording_config_entry(
+            recording_configs,
+            selected_rec_id.clone(),
+            data_source,
+            log_db,
+        );
         let selected_app_id = log_db
             .recording_info()
             .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -1932,7 +1940,7 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
 }
 
 fn recording_config_entry<'cfgs>(
-    configs: &'cfgs mut IntMap<RecordingId, RecordingConfig>,
+    configs: &'cfgs mut HashMap<RecordingId, RecordingConfig>,
     id: RecordingId,
     data_source: &'_ re_smart_channel::Source,
     log_db: &'_ LogDb,
