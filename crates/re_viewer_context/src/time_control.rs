@@ -142,6 +142,13 @@ impl TimeControl {
                     .or_insert_with(|| TimeState::new(full_range.min));
 
                 if self.looping == Looping::Off && state.time >= full_range.max {
+                    // TODO(https://github.com/rerun-io/rerun/issues/2077): We could like to pause
+                    // at this point but only if we know we're guaranteed not to get any more data.
+                    // because we progressively load RRD files this is actually tricky to get right.
+                    //
+                    // See the details in the comment here:
+                    // https://github.com/rerun-io/rerun/issues/2077#issuecomment-1545773200
+
                     // Don't pause or rewind, just stop moving time forward
                     // until we receive more data!
                     // This is important for "live view".
