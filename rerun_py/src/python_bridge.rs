@@ -871,9 +871,10 @@ fn log_meshes(
 fn log_mesh_file(
     entity_path_str: &str,
     mesh_format: &str,
-    bytes: &[u8],
     transform: numpy::PyReadonlyArray2<'_, f32>,
     timeless: bool,
+    mesh_bytes: Option<Vec<u8>>,
+    mesh_path: Option<PathBuf>,
 ) -> PyResult<()> {
     let data_stream = global_data_stream();
     let Some(data_stream) = data_stream.as_ref() else {
@@ -882,6 +883,7 @@ fn log_mesh_file(
     };
 
     let entity_path = parse_entity_path(entity_path_str)?;
+
     let format = match mesh_format {
         "GLB" => MeshFormat::Glb,
         "GLTF" => MeshFormat::Gltf,
@@ -893,7 +895,18 @@ fn log_mesh_file(
             )));
         }
     };
-    let bytes: Vec<u8> = bytes.into();
+
+    let mesh_bytes = match (mesh_bytes, mesh_path) {
+        (Some(mesh_bytes), None) => mesh_bytes,
+        (None, Some(mesh_path)) => std::fs::read(mesh_path)?,
+        (None, None) => Err(PyTypeError::new_err(
+            "log_mesh_file: You must pass either mesh_bytes or mesh_path",
+        ))?,
+        (Some(_), Some(_)) => Err(PyTypeError::new_err(
+            "log_mesh_file: You must pass either mesh_bytes or mesh_path, but not both!",
+        ))?,
+    };
+
     let transform = if transform.is_empty() {
         [
             [1.0, 0.0, 0.0], // col 0
@@ -924,7 +937,7 @@ fn log_mesh_file(
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
         format,
-        bytes: bytes.into(),
+        bytes: mesh_bytes.into(),
         transform,
     });
 
