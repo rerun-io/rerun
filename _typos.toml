@@ -2,6 +2,17 @@
 # install:  cargo install typos-cli
 # run:      typos
 
+[files]
+extend-exclude = [
+  "_typos.toml",
+  "crates/re_ui/data/design_tokens.json",
+  "crates/re_ui/src/design_tokens.rs",
+]
+
+
 [default.extend-words]
 lod = "lod" # level-of-detail
 teh = "teh" # part of @teh-cmc
+
+# American English:
+grey = "gray"
