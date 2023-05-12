@@ -3,6 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use re_data_store::TimesPerTimeline;
 use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType, Timeline};
 
+use crate::NeedsRepaint;
+
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub struct TimeView {
@@ -112,11 +114,17 @@ impl Default for TimeControl {
 
 impl TimeControl {
     /// Update the current time
-    pub fn move_time(&mut self, times_per_timeline: &TimesPerTimeline, stable_dt: f32) {
+    #[must_use]
+    pub fn move_time(
+        &mut self,
+        times_per_timeline: &TimesPerTimeline,
+        stable_dt: f32,
+        more_data_is_coming: bool,
+    ) -> NeedsRepaint {
         self.select_a_valid_timeline(times_per_timeline);
 
         let Some(full_range) = self.full_range(times_per_timeline) else {
-            return;
+            return NeedsRepaint::No; // we have no data on this timeline yet, so bail
         };
 
         match self.play_state() {
@@ -132,6 +140,7 @@ impl TimeControl {
                         full_range.min
                     })
                 });
+                NeedsRepaint::No
             }
             PlayState::Playing => {
                 let dt = stable_dt.min(0.1) * self.speed;
@@ -141,11 +150,17 @@ impl TimeControl {
                     .entry(self.timeline)
                     .or_insert_with(|| TimeState::new(full_range.min));
 
-                if self.looping == Looping::Off && state.time >= full_range.max {
-                    // We've reached the end - stop playing.
+                if self.looping == Looping::Off && full_range.max <= state.time {
+                    // We've reached the end o the data
                     state.time = full_range.max.into();
-                    self.pause();
-                    return;
+
+                    if more_data_is_coming {
+                        // then let's wait for it without pausing!
+                        return NeedsRepaint::No; // ui will wake up where more data arrives
+                    } else {
+                        self.pause();
+                        return NeedsRepaint::No;
+                    }
                 }
 
                 let loop_range = match self.looping {
@@ -166,10 +181,12 @@ impl TimeControl {
                 }
 
                 if let Some(loop_range) = loop_range {
-                    if state.time > loop_range.max {
-                        state.time = loop_range.min;
+                    if loop_range.max < state.time {
+                        state.time = loop_range.min; // loop!
                     }
                 }
+
+                NeedsRepaint::Yes
             }
             PlayState::Following => {
                 // Set the time to the max:
@@ -181,7 +198,7 @@ impl TimeControl {
                         entry.get_mut().time = full_range.max.into();
                     }
                 }
-                // no need for request_repaint - we already repaint when new data arrives
+                NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
             }
         }
     }
