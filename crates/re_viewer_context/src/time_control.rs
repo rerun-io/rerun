@@ -151,7 +151,7 @@ impl TimeControl {
                     .or_insert_with(|| TimeState::new(full_range.min));
 
                 if self.looping == Looping::Off && full_range.max <= state.time {
-                    // We've reached the end o the data
+                    // We've reached the end of the data
                     state.time = full_range.max.into();
 
                     if more_data_is_coming {
