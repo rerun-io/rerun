@@ -113,7 +113,7 @@ impl Default for TimeControl {
 }
 
 impl TimeControl {
-    /// Update the current time
+    /// Move the time forward (if playing), and perhaps pause if we've reached the end.
     #[must_use]
     pub fn move_time(
         &mut self,
@@ -156,7 +156,7 @@ impl TimeControl {
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
-                        return NeedsRepaint::No; // ui will wake up where more data arrives
+                        return NeedsRepaint::No; // ui will wake up when more data arrives
                     } else {
                         self.pause();
                         return NeedsRepaint::No;
