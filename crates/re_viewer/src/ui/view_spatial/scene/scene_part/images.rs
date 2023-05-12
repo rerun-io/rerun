@@ -5,7 +5,7 @@ use itertools::Itertools;
 use re_data_store::{query_latest_single, EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning, Transform3D},
-    Component, DecodedTensor,
+    Component, DecodedTensor, DrawOrder,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
@@ -113,21 +113,21 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
                     );
 
                     fn is_plane_similar(a: macaw::Plane3, b: macaw::Plane3) -> bool {
-                        a.normal.dot(b.normal) >= 0.99 && (a.d - b.d) >= 0.01
+                        a.normal.dot(b.normal) > 0.99 && (a.d - b.d).abs() < 0.01
                     }
-                    let has_same_depth_offset = rectangle_group.last().map_or(true, |last_image| {
-                        last_image.textured_rect.options.depth_offset
-                            == image.textured_rect.options.depth_offset
-                    });
 
-                    // Are the image planes too unsimilar? Then this is a new group.
-                    if !rectangle_group.is_empty()
-                        && (!is_plane_similar(prev_plane, cur_plane) || !has_same_depth_offset)
-                    {
+                    // Use draw order, not depth offset since depth offset might change when draw order does not.
+                    let has_same_draw_order = rectangle_group
+                        .last()
+                        .map_or(true, |last_image| last_image.draw_order == image.draw_order);
+
+                    // If the planes are similar, add them to the same group, otherwise start a new group.
+                    if has_same_draw_order && is_plane_similar(prev_plane, cur_plane) {
+                        rectangle_group.push(image);
+                    } else {
                         let previous_group = std::mem::replace(&mut rectangle_group, vec![image]);
                         return Some(previous_group);
                     }
-                    rectangle_group.push(image);
                 }
                 if !rectangle_group.is_empty() {
                     Some(rectangle_group.drain(..).collect())
@@ -150,8 +150,9 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
             let opacity = if idx == 0 {
                 1.0
             } else {
+                // avoid precision problems in framebuffer
                 1.0 / total_num_images.at_most(20) as f32
-            }; // avoid precision problems in framebuffer
+            };
             image.textured_rect.options.multiplicative_tint = image
                 .textured_rect
                 .options
@@ -181,9 +182,10 @@ impl ImagesPart {
         crate::profile_function!();
 
         // Instance ids of tensors refer to entries inside the tensor.
-        for (tensor, color) in itertools::izip!(
+        for (tensor, color, draw_order) in itertools::izip!(
             entity_view.iter_primary()?,
-            entity_view.iter_component::<ColorRGBA>()?
+            entity_view.iter_component::<ColorRGBA>()?,
+            entity_view.iter_component::<DrawOrder>()?
         ) {
             crate::profile_scope!("loop_iter");
             let Some(tensor) = tensor else { continue; };
@@ -251,6 +253,7 @@ impl ImagesPart {
                     ent_path: ent_path.clone(),
                     tensor,
                     textured_rect,
+                    draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
                 });
             }
         }
@@ -401,13 +404,18 @@ impl ScenePart for ImagesPart {
                 continue;
             };
 
-            match query_primary_with_history::<Tensor, 3>(
+            match query_primary_with_history::<Tensor, 4>(
                 &ctx.log_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
-                [Tensor::name(), InstanceKey::name(), ColorRGBA::name()],
+                [
+                    Tensor::name(),
+                    InstanceKey::name(),
+                    ColorRGBA::name(),
+                    DrawOrder::name(),
+                ],
             )
             .and_then(|entities| {
                 for entity in entities {
