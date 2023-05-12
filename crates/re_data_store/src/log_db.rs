@@ -160,7 +160,7 @@ impl EntityDb {
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
 pub struct LogDb {
-    /// The recording id for this log.
+    /// The [`RecordingId`] for this log.
     recording_id: RecordingId,
 
     /// All [`EntityPathOpMsg`]s ever received.
