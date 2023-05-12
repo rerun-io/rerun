@@ -50,7 +50,7 @@ glam = ["re_sdk?/glam"]
 global_session = ["re_sdk?/global_session"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
-image = ["re_log_types/image"]
+image = ["re_log_types/image", "re_sdk?/image"]
 
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
