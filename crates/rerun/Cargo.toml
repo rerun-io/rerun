@@ -105,8 +105,10 @@ webbrowser = { version = "0.8", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
-mimalloc.workspace = true
 ctrlc.workspace = true
+mimalloc.workspace = true
+puffin.workspace = true
+rayon.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # Native unix dependencies:
