@@ -44,7 +44,7 @@ class RecordingStream:
     Micro-batching using both space and time triggers (whichever comes first) is done automatically
     in a dedicated background thread.
 
-    You can configure the frequence of the batches using the following environment variables:
+    You can configure the frequency of the batches using the following environment variables:
 
     - `RERUN_FLUSH_TICK_SECS`:
         Flush frequency in seconds (default: `0.05` (50ms)).
