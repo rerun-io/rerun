@@ -188,9 +188,7 @@ fn default_created_space_views_from_candidates(
                     &[],
                 ) {
                     for tensor in entity_view.iter_primary_flattened() {
-                        if tensor.is_shaped_like_an_image() {
-                            debug_assert!(matches!(tensor.shape.len(), 2 | 3));
-
+                        if let Some([height, width, _]) = tensor.image_height_width_channels() {
                             if query_latest_single::<re_log_types::DrawOrder>(
                                 entity_db,
                                 entity_path,
@@ -205,9 +203,8 @@ fn default_created_space_views_from_candidates(
                                     .push(entity_path.clone());
                             } else {
                                 // Otherwise, distinguish buckets by image size.
-                                let dim = (tensor.shape[0].size, tensor.shape[1].size);
                                 images_by_bucket
-                                    .entry(ImageBucketing::BySize(dim))
+                                    .entry(ImageBucketing::BySize((height, width)))
                                     .or_default()
                                     .push(entity_path.clone());
                             }

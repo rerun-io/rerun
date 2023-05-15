@@ -36,7 +36,7 @@ pub struct ExampleApp {
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
-    tree: egui_dock::Tree<Tab>,
+    tree: egui_tiles::Tree<Tab>,
 
     left_panel: bool,
     right_panel: bool,
@@ -56,7 +56,7 @@ impl ExampleApp {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).unwrap();
 
-        let tree = egui_dock::Tree::new(vec![1, 2, 3]);
+        let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
 
         Self {
             re_ui,
@@ -337,27 +337,53 @@ fn selection_buttons(ui: &mut egui::Ui) {
     });
 }
 
-fn tabs_ui(ui: &mut egui::Ui, tree: &mut egui_dock::Tree<Tab>) {
-    let mut my_tab_viewer = MyTabViewer {};
-    egui_dock::DockArea::new(tree)
-        .style(re_ui::egui_dock_style(ui.style()))
-        .show_inside(ui, &mut my_tab_viewer);
+fn tabs_ui(ui: &mut egui::Ui, tree: &mut egui_tiles::Tree<Tab>) {
+    tree.ui(&mut MyTileTreeBehavior {}, ui);
 }
 
 pub type Tab = i32;
 
-struct MyTabViewer {}
+struct MyTileTreeBehavior {}
 
-impl egui_dock::TabViewer for MyTabViewer {
-    type Tab = Tab;
-
-    fn ui(&mut self, ui: &mut egui::Ui, _tab: &mut Self::Tab) {
+impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
+    fn pane_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _tile_id: egui_tiles::TileId,
+        _pane: &mut Tab,
+    ) -> egui_tiles::UiResponse {
         egui::warn_if_debug_build(ui);
         ui.label("Hover me for a tooltip")
             .on_hover_text("This is a tooltip");
+
+        Default::default()
     }
 
-    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-        format!("This is tab {tab}").into()
+    fn tab_title_for_pane(&mut self, pane: &Tab) -> egui::WidgetText {
+        format!("This is tab {pane}").into()
+    }
+
+    // Styling:
+
+    fn tab_outline_stroke(
+        &self,
+        _visuals: &egui::Visuals,
+        _tile_id: egui_tiles::TileId,
+        _active: bool,
+    ) -> egui::Stroke {
+        egui::Stroke::NONE
+    }
+
+    /// The height of the bar holding tab titles.
+    fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
+        re_ui::ReUi::title_bar_height()
+    }
+
+    /// What are the rules for simplifying the tree?
+    fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
+        egui_tiles::SimplificationOptions {
+            all_panes_must_have_tabs: true,
+            ..Default::default()
+        }
     }
 }

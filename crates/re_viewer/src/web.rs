@@ -89,10 +89,10 @@ impl WebHandle {
                         );
                         let egui_ctx = cc.egui_ctx.clone();
                         re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
-                            Arc::new(move |msg| {
+                            Some(Arc::new(move |msg| {
                                 egui_ctx.request_repaint(); // wake up ui thread
                                 tx.send(msg).ok();
-                            }),
+                            })),
                         );
 
                         Box::new(crate::App::from_receiver(

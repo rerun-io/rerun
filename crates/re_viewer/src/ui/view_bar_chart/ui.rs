@@ -104,6 +104,9 @@ pub(crate) fn view_bar_chart(
                         instance_key,
                         data.iter().copied().map(|v| v as f64),
                     ),
+                    component_types::TensorData::F16(data) => {
+                        create_bar_chart(ent_path, instance_key, data.iter().map(|f| f.to_f32()))
+                    }
                     component_types::TensorData::F32(data) => {
                         create_bar_chart(ent_path, instance_key, data.iter().copied())
                     }

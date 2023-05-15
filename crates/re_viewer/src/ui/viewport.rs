@@ -39,7 +39,7 @@ pub struct Viewport {
     /// One for each combination of what views are visible.
     /// So if a user toggles the visibility of one SpaceView, we
     /// switch which layout we are using. This is somewhat hacky.
-    trees: HashMap<VisibilitySet, egui_dock::Tree<SpaceViewId>>,
+    trees: HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>,
 
     /// Show one tab as maximized?
     maximized: Option<SpaceViewId>,
@@ -422,8 +422,6 @@ impl Viewport {
             return;
         }
 
-        self.trees.retain(|_, tree| is_tree_valid(tree));
-
         if let Some(space_view_id) = self.maximized {
             if !self.space_views.contains_key(&space_view_id) {
                 self.maximized = None; // protect against bad deserialized data
@@ -448,57 +446,15 @@ impl Viewport {
                 )
             });
 
-        let num_space_views = tree.num_tabs();
-        if num_space_views == 0 {
-            return;
-        }
-
-        let mut tab_viewer = TabViewer {
-            ctx,
-            space_views: &mut self.space_views,
-        };
-
         ui.scope(|ui| {
-            // we need a scope, because egui_dock unfortunately messes with the ui clip rect
-
+            let mut tab_viewer = TabViewer {
+                ctx,
+                space_views: &mut self.space_views,
+                maximized: &mut self.maximized,
+            };
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
-
-            egui_dock::DockArea::new(tree)
-                .style(re_ui::egui_dock_style(ui.style()))
-                .show_inside(ui, &mut tab_viewer);
+            tree.ui(&mut tab_viewer, ui);
         });
-
-        // Two passes so we avoid borrowing issues:
-        let tab_bars = tree
-            .iter()
-            .filter_map(|node| {
-                let egui_dock::Node::Leaf {
-                        rect,
-                        viewport,
-                        tabs,
-                        active,
-                    } = node else {
-                        return None;
-                    };
-
-                let space_view_id = tabs.get(active.0)?;
-
-                // `rect` includes the tab area, while `viewport` is just the tab body.
-                // so the tab bar rect is:
-                let tab_bar_rect =
-                    egui::Rect::from_x_y_ranges(rect.x_range(), rect.top()..=viewport.top());
-
-                // rect/viewport can be invalid for the first frame
-                tab_bar_rect
-                    .is_finite()
-                    .then_some((*space_view_id, tab_bar_rect))
-            })
-            .collect_vec();
-
-        for (space_view_id, tab_bar_rect) in tab_bars {
-            // rect/viewport can be invalid for the first frame
-            space_view_options_ui(ctx, ui, self, tab_bar_rect, space_view_id, num_space_views);
-        }
     }
 
     pub fn add_new_spaceview_button_ui(
@@ -660,12 +616,16 @@ fn visibility_button_ui(
 struct TabViewer<'a, 'b> {
     ctx: &'a mut ViewerContext<'b>,
     space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
+    maximized: &'a mut Option<SpaceViewId>,
 }
 
-impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
-    type Tab = SpaceViewId;
-
-    fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
+impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
+    fn pane_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _tile_id: egui_tiles::TileId,
+        space_view_id: &mut SpaceViewId,
+    ) -> egui_tiles::UiResponse {
         crate::profile_function!();
 
         let highlights =
@@ -676,18 +636,24 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .expect("Should have been populated beforehand");
 
         space_view_ui(self.ctx, ui, space_view, &highlights);
+
+        Default::default()
     }
 
-    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+    fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
         let space_view = self
             .space_views
-            .get_mut(tab)
+            .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
 
         let mut text =
             egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()));
 
-        if self.ctx.selection().contains(&Item::SpaceView(*tab)) {
+        if self
+            .ctx
+            .selection()
+            .contains(&Item::SpaceView(*space_view_id))
+        {
             // Show that it is selected:
             let egui_ctx = &self.ctx.re_ui.egui_ctx;
             let selection_bg_color = egui_ctx.style().visuals.selection.bg_fill;
@@ -697,9 +663,88 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
         text
     }
 
-    fn on_tab_button(&mut self, tab: &mut Self::Tab, response: &egui::Response) {
-        if response.clicked() {
-            self.ctx.set_single_selection(Item::SpaceView(*tab));
+    fn on_tab_button(
+        &mut self,
+        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        tile_id: egui_tiles::TileId,
+        button_response: &egui::Response,
+    ) {
+        if button_response.clicked() {
+            if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
+                self.ctx
+                    .set_single_selection(Item::SpaceView(*space_view_id));
+            }
+        }
+    }
+
+    fn top_bar_rtl_ui(
+        &mut self,
+        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        ui: &mut egui::Ui,
+        _tile_id: egui_tiles::TileId,
+        tabs: &egui_tiles::Tabs,
+    ) {
+        let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else { return; };
+        let egui_tiles::Tile::Pane(space_view_id) = active else { return; };
+        let space_view_id = *space_view_id;
+
+        let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
+
+        let num_space_views = tiles.tiles.values().filter(|tile| tile.is_pane()).count();
+
+        ui.add_space(8.0); // margin within the frame
+
+        if *self.maximized == Some(space_view_id) {
+            // Show minimize-button:
+            if self
+                .ctx
+                .re_ui
+                .small_icon_button(ui, &re_ui::icons::MINIMIZE)
+                .on_hover_text("Restore - show all spaces")
+                .clicked()
+            {
+                *self.maximized = None;
+            }
+        } else if num_space_views > 1 {
+            // Show maximize-button:
+            if self
+                .ctx
+                .re_ui
+                .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
+                .on_hover_text("Maximize Space View")
+                .clicked()
+            {
+                *self.maximized = Some(space_view_id);
+                self.ctx
+                    .set_single_selection(Item::SpaceView(space_view_id));
+            }
+        }
+
+        // Show help last, since not all space views have help text
+        help_text_ui(ui, self.ctx.re_ui, space_view);
+    }
+
+    // Styling:
+
+    fn tab_outline_stroke(
+        &self,
+        _visuals: &egui::Visuals,
+        _tile_id: egui_tiles::TileId,
+        _active: bool,
+    ) -> egui::Stroke {
+        egui::Stroke::NONE
+    }
+
+    /// The height of the bar holding tab titles.
+    fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
+        re_ui::ReUi::title_bar_height()
+    }
+
+    /// What are the rules for simplifying the tree?
+    fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
+        egui_tiles::SimplificationOptions {
+            all_panes_must_have_tabs: true,
+            ..Default::default()
         }
     }
 }
@@ -709,71 +754,12 @@ fn help_text_ui(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, space_view: &SpaceView) 
         ViewCategory::TimeSeries => Some(crate::ui::view_time_series::help_text(re_ui)),
         ViewCategory::BarChart => Some(crate::ui::view_bar_chart::help_text(re_ui)),
         ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text(re_ui)),
-        ViewCategory::Text | ViewCategory::Tensor => None,
+        ViewCategory::TextBox | ViewCategory::Text | ViewCategory::Tensor => None,
     };
 
     if let Some(help_text) = help_text {
         crate::misc::help_hover_button(ui).on_hover_text(help_text);
     }
-}
-
-/// Shown in the right of the tab panel
-fn space_view_options_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    viewport: &mut Viewport,
-    tab_bar_rect: egui::Rect,
-    space_view_id: SpaceViewId,
-    num_space_views: usize,
-) {
-    let Some(space_view) = viewport.space_views.get(&space_view_id) else { return; };
-
-    let tab_bar_rect = tab_bar_rect.shrink2(egui::vec2(4.0, 0.0)); // Add some side margin outside the frame
-
-    ui.allocate_ui_at_rect(tab_bar_rect, |ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let where_to_put_background = ui.painter().add(egui::Shape::Noop);
-
-            ui.add_space(4.0); // margin within the frame
-
-            if viewport.maximized == Some(space_view_id) {
-                // Show minimize-button:
-                if ctx
-                    .re_ui
-                    .small_icon_button(ui, &re_ui::icons::MINIMIZE)
-                    .on_hover_text("Restore - show all spaces")
-                    .clicked()
-                {
-                    viewport.maximized = None;
-                }
-            } else if num_space_views > 1 {
-                // Show maximize-button:
-                if ctx
-                    .re_ui
-                    .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
-                    .on_hover_text("Maximize Space View")
-                    .clicked()
-                {
-                    viewport.maximized = Some(space_view_id);
-                    ctx.set_single_selection(Item::SpaceView(space_view_id));
-                }
-            }
-
-            // Show help last, since not all space views have help text
-            help_text_ui(ui, ctx.re_ui, space_view);
-
-            // Put a frame so that the buttons cover any labels they intersect with:
-            let rect = ui.min_rect().expand2(egui::vec2(1.0, -2.0));
-            ui.painter().set(
-                where_to_put_background,
-                egui::Shape::rect_filled(
-                    rect,
-                    0.0,
-                    re_ui::egui_dock_style(ui.style()).tab_bar_background_color,
-                ),
-            );
-        });
-    });
 }
 
 fn space_view_ui(
@@ -794,17 +780,9 @@ fn space_view_ui(
 
 // ----------------------------------------------------------------------------
 
-fn focus_tab(tree: &mut egui_dock::Tree<SpaceViewId>, tab: &SpaceViewId) {
-    if let Some((node_index, tab_index)) = tree.find_tab(tab) {
-        tree.set_focused_node(node_index);
-        tree.set_active_tab(node_index, tab_index);
-    }
-}
-
-fn is_tree_valid(tree: &egui_dock::Tree<SpaceViewId>) -> bool {
-    tree.iter().all(|node| match node {
-        egui_dock::Node::Vertical { rect: _, fraction }
-        | egui_dock::Node::Horizontal { rect: _, fraction } => fraction.is_finite(),
-        _ => true,
-    })
+fn focus_tab(tree: &mut egui_tiles::Tree<SpaceViewId>, tab: &SpaceViewId) {
+    tree.make_active(|tile| match tile {
+        egui_tiles::Tile::Pane(space_view_id) => space_view_id == tab,
+        egui_tiles::Tile::Container(_) => false,
+    });
 }

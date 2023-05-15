@@ -10,6 +10,7 @@ use wgpu::TextureFormat;
 
 use re_log_types::component_types::{DecodedTensor, Tensor, TensorData};
 use re_renderer::{
+    pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
@@ -78,8 +79,11 @@ fn color_tensor_to_gpu(
                 TextureFormat::Rgba8UnormSrgb,
             ),
             (4, TensorData::U8(buf)) => (
-                // TODO(emilk): premultiply alpha
-                cast_slice_to_cow(buf.as_slice()),
+                // We pre-multiply on the CPU because we currently use hardware texture filtering
+                // in `rectangle_fs.wgsl`, and pre-multiplication needs to happen before filtering.
+                // If we switched our shader to always do software filtering we could do the pre-multiplication
+                // on the GPU instead, saving us some time here!
+                premultiply_alpha(buf.as_slice()).into(),
                 TextureFormat::Rgba8UnormSrgb,
             ),
 
@@ -279,7 +283,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
 
@@ -301,7 +305,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
 
@@ -335,7 +339,13 @@ fn general_texture_creation_desc_from_tensor<'a>(
                     TextureFormat::Rgba32Float,
                 ),
 
-                // TensorData::F16(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F16(buf) => (
+                    pad_and_cast(
+                        buf,
+                        re_log_types::external::arrow2::types::f16::from_f32(1.0),
+                    ),
+                    TextureFormat::Rgba16Float,
+                ),
                 TensorData::F32(buf) => (pad_and_cast(buf, 1.0), TextureFormat::Rgba32Float),
                 TensorData::F64(buf) => (
                     pad_and_narrow_and_cast(buf, 1.0, |x: f64| x as f32),
@@ -362,7 +372,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorData::I32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Sint),
                 TensorData::I64(buf) => (narrow_i64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 
-                // TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float), TODO(#854)
+                TensorData::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float),
                 TensorData::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
                 TensorData::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
 
@@ -419,29 +429,9 @@ fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
     bytes.into()
 }
 
-fn pad_to_four_elements<T: Copy>(data: &[T], pad: T) -> Vec<T> {
-    crate::profile_function!();
-    if cfg!(debug_assertions) {
-        // fastest version in debug builds.
-        // 5x faster in debug builds, but 2x slower in release
-        let mut padded = vec![pad; data.len() / 3 * 4];
-        for i in 0..(data.len() / 3) {
-            padded[4 * i] = data[3 * i];
-            padded[4 * i + 1] = data[3 * i + 1];
-            padded[4 * i + 2] = data[3 * i + 2];
-        }
-        padded
-    } else {
-        // fastest version in optimized builds
-        data.chunks_exact(3)
-            .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], pad])
-            .collect()
-    }
-}
-
 fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
     crate::profile_function!();
-    let padded: Vec<T> = pad_to_four_elements(data, pad);
+    let padded: Vec<T> = pad_rgb_to_rgba(data, pad);
     let bytes: Vec<u8> = pod_collect_to_vec(&padded);
     bytes.into()
 }
@@ -460,32 +450,28 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
     pod_collect_to_vec(&floats).into()
 }
 
+fn premultiply_alpha(rgba: &[u8]) -> Vec<u8> {
+    crate::profile_function!();
+    rgba.chunks_exact(4)
+        .flat_map(|rgba| {
+            egui::Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]).to_array()
+        })
+        .collect()
+}
+
 // ----------------------------------------------------------------------------;
 
 fn height_width_depth(tensor: &Tensor) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
 
-    let shape = &tensor.shape();
-
-    anyhow::ensure!(
-        shape.len() == 2 || shape.len() == 3,
-        "Expected a 2D or 3D tensor, got {shape:?}",
-    );
+    let Some([height, width, channel]) = tensor.image_height_width_channels() else {
+        anyhow::bail!("Tensor is not an image");
+    };
 
     let [height, width] = [
-        u32::try_from(shape[0].size).context("tensor too large")?,
-        u32::try_from(shape[1].size).context("tensor too large")?,
+        u32::try_from(height).context("Image height is too large")?,
+        u32::try_from(width).context("Image width is too large")?,
     ];
-    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
 
-    anyhow::ensure!(
-        depth == 1 || depth == 3 || depth == 4,
-        "Expected depth of 1,3,4 (gray, RGB, RGBA), found {depth:?}. Tensor shape: {shape:?}"
-    );
-    debug_assert!(
-        tensor.is_shaped_like_an_image(),
-        "We should make the same checks above, but with actual error messages"
-    );
-
-    Ok([height, width, depth as u32])
+    Ok([height, width, channel as u32])
 }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
@@ -319,6 +319,7 @@ pub struct RecordingStream {
 
 struct RecordingStreamInner {
     info: RecordingInfo,
+    tick: AtomicI64,
 
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
     /// therefore the `Drop` implementation is guaranteed that no more data can come in while it's
@@ -385,6 +386,7 @@ impl RecordingStreamInner {
 
         Ok(RecordingStreamInner {
             info,
+            tick: AtomicI64::new(0),
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
@@ -514,7 +516,7 @@ fn forwarding_thread(
                     continue;
                 }
             };
-            sink.send(LogMsg::ArrowMsg(info.recording_id, table));
+            sink.send(LogMsg::ArrowMsg(info.recording_id.clone(), table));
         }
 
         select! {
@@ -532,7 +534,7 @@ fn forwarding_thread(
                         continue;
                     }
                 };
-                sink.send(LogMsg::ArrowMsg(info.recording_id, table));
+                sink.send(LogMsg::ArrowMsg(info.recording_id.clone(), table));
             }
             recv(cmds_rx) -> res => {
                 let Ok(cmd) = res else {
@@ -580,6 +582,7 @@ impl RecordingStream {
         // fail.
 
         this.cmds_tx.send(Command::RecordMsg(msg)).ok();
+        this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Records a [`re_log_types::PathOp`].
@@ -597,7 +600,7 @@ impl RecordingStream {
         };
 
         self.record_msg(LogMsg::EntityPathOpMsg(
-            this.info.recording_id,
+            this.info.recording_id.clone(),
             re_log_types::EntityPathOpMsg {
                 row_id: re_log_types::RowId::random(),
                 time_point: timepoint,
@@ -611,11 +614,20 @@ impl RecordingStream {
     /// Internally, incoming [`DataRow`]s are automatically coalesced into larger [`DataTable`]s to
     /// optimize for transport.
     #[inline]
-    pub fn record_row(&self, row: DataRow) {
+    pub fn record_row(&self, mut row: DataRow) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to record_row() ignored");
             return;
         };
+
+        // TODO(#2074): Adding a timeline to something timeless would suddenly make it not
+        // timeless... so for now it cannot even have a tick :/
+        //
+        // NOTE: We're incrementing the current tick still.
+        let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if !row.timepoint().is_timeless() {
+            row.timepoint.insert(Timeline::log_tick(), tick.into());
+        }
 
         this.batcher.push_row(row);
     }
@@ -770,15 +782,15 @@ struct ThreadInfo {
 }
 
 impl ThreadInfo {
-    fn thread_now(rid: RecordingId) -> TimePoint {
+    fn thread_now(rid: &RecordingId) -> TimePoint {
         Self::with(|ti| ti.now(rid))
     }
 
-    fn set_thread_time(rid: RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
+    fn set_thread_time(rid: &RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
         Self::with(|ti| ti.set_time(rid, timeline, time_int));
     }
 
-    fn reset_thread_time(rid: RecordingId) {
+    fn reset_thread_time(rid: &RecordingId) {
         Self::with(|ti| ti.reset_time(rid));
     }
 
@@ -796,25 +808,25 @@ impl ThreadInfo {
         })
     }
 
-    fn now(&self, rid: RecordingId) -> TimePoint {
-        let mut timepoint = self.timepoints.get(&rid).cloned().unwrap_or_default();
+    fn now(&self, rid: &RecordingId) -> TimePoint {
+        let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
         timepoint.insert(Timeline::log_time(), Time::now().into());
         timepoint
     }
 
-    fn set_time(&mut self, rid: RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
+    fn set_time(&mut self, rid: &RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
         if let Some(time_int) = time_int {
             self.timepoints
-                .entry(rid)
+                .entry(rid.clone())
                 .or_default()
                 .insert(timeline, time_int);
-        } else if let Some(timepoint) = self.timepoints.get_mut(&rid) {
+        } else if let Some(timepoint) = self.timepoints.get_mut(rid) {
             timepoint.remove(&timeline);
         }
     }
 
-    fn reset_time(&mut self, rid: RecordingId) {
-        if let Some(timepoint) = self.timepoints.get_mut(&rid) {
+    fn reset_time(&mut self, rid: &RecordingId) {
+        if let Some(timepoint) = self.timepoints.get_mut(rid) {
             *timepoint = TimePoint::default();
         }
     }
@@ -828,7 +840,7 @@ impl RecordingStream {
             return TimePoint::default();
         };
 
-        ThreadInfo::thread_now(this.info.recording_id)
+        ThreadInfo::thread_now(&this.info.recording_id)
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -845,7 +857,7 @@ impl RecordingStream {
         };
 
         ThreadInfo::set_thread_time(
-            this.info.recording_id,
+            &this.info.recording_id,
             Timeline::new(timeline, TimeType::Sequence),
             sequence.map(TimeInt::from),
         );
@@ -865,7 +877,7 @@ impl RecordingStream {
         };
 
         ThreadInfo::set_thread_time(
-            this.info.recording_id,
+            &this.info.recording_id,
             Timeline::new(timeline, TimeType::Time),
             seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
         );
@@ -885,7 +897,7 @@ impl RecordingStream {
         };
 
         ThreadInfo::set_thread_time(
-            this.info.recording_id,
+            &this.info.recording_id,
             Timeline::new(timeline, TimeType::Time),
             ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
         );
@@ -902,7 +914,7 @@ impl RecordingStream {
             return;
         };
 
-        ThreadInfo::reset_thread_time(this.info.recording_id);
+        ThreadInfo::reset_thread_time(&this.info.recording_id);
     }
 }
 

@@ -2,7 +2,8 @@ use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_data_store::{EntityPath, LogDb, Timeline};
 use re_log_types::{
     component_types::{
-        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TextEntry,
+        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TextBox,
+        TextEntry,
     },
     Arrow3D, Component, Mesh3D, Transform,
 };
@@ -16,6 +17,9 @@ pub enum ViewCategory {
     //
     /// Text log view (text over time)
     Text,
+
+    /// Single textbox element
+    TextBox,
 
     /// Time series plot (scalar over time)
     TimeSeries,
@@ -35,6 +39,7 @@ impl ViewCategory {
     pub fn icon(self) -> &'static re_ui::Icon {
         match self {
             ViewCategory::Text => &re_ui::icons::SPACE_VIEW_TEXT,
+            ViewCategory::TextBox => &re_ui::icons::SPACE_VIEW_TEXTBOX,
             ViewCategory::TimeSeries => &re_ui::icons::SPACE_VIEW_SCATTERPLOT,
             ViewCategory::BarChart => &re_ui::icons::SPACE_VIEW_HISTOGRAM,
             ViewCategory::Spatial => &re_ui::icons::SPACE_VIEW_3D,
@@ -47,6 +52,7 @@ impl std::fmt::Display for ViewCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             ViewCategory::Text => "Text",
+            ViewCategory::TextBox => "Text Box",
             ViewCategory::TimeSeries => "Time Series",
             ViewCategory::BarChart => "Bar Chart",
             ViewCategory::Spatial => "Spatial",
@@ -77,6 +83,8 @@ pub fn categorize_entity_path(
     {
         if component == TextEntry::name() {
             set.insert(ViewCategory::Text);
+        } else if component == TextBox::name() {
+            set.insert(ViewCategory::TextBox);
         } else if component == Scalar::name() {
             set.insert(ViewCategory::TimeSeries);
         } else if component == Point2D::name()

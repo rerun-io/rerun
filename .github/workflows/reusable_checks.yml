@@ -281,6 +281,10 @@ jobs:
       - name: Check for too large files
         run: |
           ./scripts/check_large_files.sh
+      
+      - name: Check Python example requirements
+        run: |
+          ./scripts/check_requirements.py
 
 # ---------------------------------------------------------------------------
 

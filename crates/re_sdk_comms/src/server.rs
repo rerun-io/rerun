@@ -151,25 +151,25 @@ async fn run_client(
         packet.resize(packet_size as usize, 0_u8);
         stream.read_exact(&mut packet).await?;
 
-        re_log::trace!("Received log message of size {packet_size}.");
+        re_log::trace!("Received packet of size {packet_size}.");
 
         congestion_manager.register_latency(tx.latency_sec());
 
-        let msg = crate::decode_log_msg(&packet)?;
+        for msg in re_log_encoding::decoder::decode_bytes(&packet)? {
+            if matches!(msg, LogMsg::Goodbye(_)) {
+                re_log::debug!("Received goodbye message.");
+                tx.send(msg)?;
+                return Ok(());
+            }
 
-        if matches!(msg, LogMsg::Goodbye(_)) {
-            re_log::debug!("Received goodbye message.");
-            tx.send(msg)?;
-            return Ok(());
-        }
-
-        if congestion_manager.should_send(&msg) {
-            tx.send(msg)?;
-        } else {
-            re_log::warn_once!(
-                "Input latency is over the max ({} s) - dropping packets.",
-                options.max_latency_sec
-            );
+            if congestion_manager.should_send(&msg) {
+                tx.send(msg)?;
+            } else {
+                re_log::warn_once!(
+                    "Input latency is over the max ({} s) - dropping packets.",
+                    options.max_latency_sec
+                );
+            }
         }
     }
 }

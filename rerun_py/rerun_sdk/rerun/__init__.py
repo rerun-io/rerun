@@ -6,6 +6,7 @@ from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
+from rerun import experimental
 from rerun.log import log_cleared
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
@@ -31,6 +32,7 @@ __all__ = [
     "LoggingHandler",
     "bindings",
     "ImageFormat",
+    "experimental",
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
@@ -197,6 +199,15 @@ def init(
 
     if spawn:
         _spawn()
+
+
+def version() -> str:
+    """
+    Returns a verbose version string of the Rerun SDK.
+
+    Example: `rerun_py 0.6.0-alpha.0 [rustc 1.69.0 (84c898d65 2023-04-16), LLVM 15.0.7] aarch64-apple-darwin main bd8a072, built 2023-05-11T08:25:17Z`
+    """  # noqa: E501 line too long
+    return bindings.version()  # type: ignore[no-any-return]
 
 
 def is_enabled() -> bool:

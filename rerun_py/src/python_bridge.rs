@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, io::Cursor, path::PathBuf};
+use std::{borrow::Cow, path::PathBuf};
 
 use itertools::izip;
 use pyo3::{
@@ -103,6 +103,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // init
     m.add_function(wrap_pyfunction!(init, m)?)?;
+    m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
@@ -185,11 +186,7 @@ fn init(
     });
 
     let recording_id = if let Some(recording_id) = recording_id {
-        recording_id.parse().map_err(|_err| {
-            PyTypeError::new_err(format!(
-                "Invalid recording id - expected a UUID, got {recording_id:?}"
-            ))
-        })?
+        recording_id.into()
     } else {
         default_recording_id(py)
     };
@@ -255,6 +252,12 @@ authkey = multiprocessing.current_process().authkey
     let authkey = locals.get_item("authkey").unwrap();
     let authkey: &PyBytes = authkey.downcast().unwrap();
     authkey.as_bytes().to_vec()
+}
+
+/// Return a verbose version string
+#[pyfunction]
+fn version() -> String {
+    re_build_info::build_info!().to_string()
 }
 
 /// Is logging enabled in the global recording?
@@ -868,9 +871,10 @@ fn log_meshes(
 fn log_mesh_file(
     entity_path_str: &str,
     mesh_format: &str,
-    bytes: &[u8],
     transform: numpy::PyReadonlyArray2<'_, f32>,
     timeless: bool,
+    mesh_bytes: Option<Vec<u8>>,
+    mesh_path: Option<PathBuf>,
 ) -> PyResult<()> {
     let data_stream = global_data_stream();
     let Some(data_stream) = data_stream.as_ref() else {
@@ -879,6 +883,7 @@ fn log_mesh_file(
     };
 
     let entity_path = parse_entity_path(entity_path_str)?;
+
     let format = match mesh_format {
         "GLB" => MeshFormat::Glb,
         "GLTF" => MeshFormat::Gltf,
@@ -890,7 +895,18 @@ fn log_mesh_file(
             )));
         }
     };
-    let bytes: Vec<u8> = bytes.into();
+
+    let mesh_bytes = match (mesh_bytes, mesh_path) {
+        (Some(mesh_bytes), None) => mesh_bytes,
+        (None, Some(mesh_path)) => std::fs::read(mesh_path)?,
+        (None, None) => Err(PyTypeError::new_err(
+            "log_mesh_file: You must pass either mesh_bytes or mesh_path",
+        ))?,
+        (Some(_), Some(_)) => Err(PyTypeError::new_err(
+            "log_mesh_file: You must pass either mesh_bytes or mesh_path, but not both!",
+        ))?,
+    };
+
     let transform = if transform.is_empty() {
         [
             [1.0, 0.0, 0.0], // col 0
@@ -921,7 +937,7 @@ fn log_mesh_file(
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
         format,
-        bytes: bytes.into(),
+        bytes: mesh_bytes.into(),
         transform,
     });
 
@@ -984,45 +1000,10 @@ fn log_image_file(
         }
     };
 
-    use image::ImageDecoder as _;
-    let (w, h) = match img_format {
-        image::ImageFormat::Jpeg => {
-            use image::codecs::jpeg::JpegDecoder;
-            let jpeg = JpegDecoder::new(Cursor::new(&img_bytes))
-                .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-
-            let color_format = jpeg.color_type();
-            if !matches!(color_format, image::ColorType::Rgb8) {
-                // TODO(emilk): support gray-scale jpeg aswell
-                return Err(PyTypeError::new_err(format!(
-                    "Unsupported color format {color_format:?}. \
-                    Expected one of: RGB8"
-                )));
-            }
-
-            jpeg.dimensions()
-        }
-        _ => {
-            return Err(PyTypeError::new_err(format!(
-                "Unsupported image format {img_format:?}. \
-                Expected one of: JPEG"
-            )))
-        }
-    };
+    let tensor = Tensor::from_image_bytes(img_bytes, img_format)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
 
     let time_point = time(timeless, data_stream);
-
-    let tensor = re_log_types::component_types::Tensor {
-        tensor_id: TensorId::random(),
-        shape: vec![
-            TensorDimension::height(h as _),
-            TensorDimension::width(w as _),
-            TensorDimension::depth(3),
-        ],
-        data: re_log_types::component_types::TensorData::JPEG(img_bytes.into()),
-        meaning: re_log_types::component_types::TensorDataMeaning::Unknown,
-        meter: None,
-    };
 
     let row = DataRow::from_cells1(
         RowId::random(),

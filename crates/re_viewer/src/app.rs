@@ -4,7 +4,6 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use instant::Instant;
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -67,7 +66,7 @@ pub struct App {
     rx: Receiver<LogMsg>,
 
     /// Where the logs are stored.
-    log_dbs: IntMap<RecordingId, LogDb>,
+    log_dbs: HashMap<RecordingId, LogDb>,
 
     /// What is serialized
     state: AppState,
@@ -345,11 +344,11 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let rec_id = self.state.selected_rec_id;
-        let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) else {return;};
+        let rec_id = &self.state.selected_rec_id;
+        let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else {return;};
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
-        let Some(log_db) = self.log_dbs.get(&rec_id) else { return };
+        let Some(log_db) = self.log_dbs.get(rec_id) else { return };
         let times_per_timeline = log_db.times_per_timeline();
 
         match command {
@@ -510,7 +509,10 @@ impl eframe::App for App {
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
-                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+                let log_db = self
+                    .log_dbs
+                    .entry(self.state.selected_rec_id.clone())
+                    .or_default();
                 let selected_app_id = log_db
                     .recording_info()
                     .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -524,7 +526,7 @@ impl eframe::App for App {
 
                 recording_config_entry(
                     &mut self.state.recording_configs,
-                    self.state.selected_rec_id,
+                    self.state.selected_rec_id.clone(),
                     self.rx.source(),
                     log_db,
                 )
@@ -552,7 +554,7 @@ impl eframe::App for App {
                             log_db,
                             &self.re_ui,
                             &self.component_ui_registry,
-                            self.rx.source(),
+                            &self.rx,
                         );
                     }
 
@@ -697,13 +699,13 @@ impl App {
             if let Some(recording_id) = msg.recording_id() {
                 let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
                     re_log::debug!("Opening a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id;
+                    self.state.selected_rec_id = msg.info.recording_id.clone();
                     true
                 } else {
                     false
                 };
 
-                let log_db = self.log_dbs.entry(*recording_id).or_default();
+                let log_db = self.log_dbs.entry(recording_id.clone()).or_default();
 
                 if log_db.data_source.is_none() {
                     log_db.data_source = Some(self.rx.source().clone());
@@ -823,7 +825,7 @@ impl App {
 
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
-        let selected_rec_id = self.state.selected_rec_id;
+        let selected_rec_id = self.state.selected_rec_id.clone();
 
         self.state = Default::default();
         self.state.selected_rec_id = selected_rec_id;
@@ -842,7 +844,9 @@ impl App {
     }
 
     fn log_db(&mut self) -> &mut LogDb {
-        self.log_dbs.entry(self.state.selected_rec_id).or_default()
+        self.log_dbs
+            .entry(self.state.selected_rec_id.clone())
+            .or_default()
     }
 
     fn show_log_db(&mut self, log_db: LogDb) {
@@ -936,7 +940,7 @@ struct AppState {
     selected_rec_id: RecordingId,
 
     /// Configuration for the current recording (found in [`LogDb`]).
-    recording_configs: IntMap<RecordingId, RecordingConfig>,
+    recording_configs: HashMap<RecordingId, RecordingConfig>,
 
     blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
 
@@ -960,7 +964,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
-        data_source: &re_smart_channel::Source,
+        rx: &Receiver<LogMsg>,
     ) {
         crate::profile_function!();
 
@@ -977,8 +981,12 @@ impl AppState {
                 profiler: _,
         } = self;
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, *selected_rec_id, data_source, log_db);
+        let rec_cfg = recording_config_entry(
+            recording_configs,
+            selected_rec_id.clone(),
+            rx.source(),
+            log_db,
+        );
         let selected_app_id = log_db
             .recording_info()
             .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -1016,12 +1024,18 @@ impl AppState {
                     .blueprint_panel_and_viewport(&mut ctx, ui),
             });
 
-        // move time last, so we get to see the first data first!
-        ctx.rec_cfg
-            .time_ctrl
-            .move_time(log_db.times_per_timeline(), ui.ctx().input(|i| i.stable_dt));
-        if ctx.rec_cfg.time_ctrl.play_state() == PlayState::Playing {
-            ui.ctx().request_repaint();
+        {
+            // We move the time at the very end of the frame,
+            // so we have one frame to see the first data before we move the time.
+            let dt = ui.ctx().input(|i| i.stable_dt);
+            let more_data_is_coming = rx.is_connected();
+            let needs_repaint =
+                ctx.rec_cfg
+                    .time_ctrl
+                    .update(log_db.times_per_timeline(), dt, more_data_is_coming);
+            if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
+                ui.ctx().request_repaint();
+            }
         }
 
         if WATERMARK {
@@ -1348,6 +1362,36 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+    const CODE: &str = "use re_memory::AccountingAllocator;\n\
+                        #[global_allocator]\n\
+                        static GLOBAL: AccountingAllocator<std::alloc::System> =\n    \
+                            AccountingAllocator::new(std::alloc::System);";
+
+    fn click_to_copy(
+        ui: &mut egui::Ui,
+        text: impl Into<String>,
+        add_contents_on_hover: impl FnOnce(&mut egui::Ui),
+    ) {
+        #[allow(clippy::blocks_in_if_conditions)]
+        let text = text.into();
+        if ui
+            .add(
+                egui::Label::new(
+                    egui::RichText::new(text)
+                        .monospace()
+                        .color(ui.visuals().weak_text_color()),
+                )
+                .sense(egui::Sense::click()),
+            )
+            .on_hover_ui(|ui| add_contents_on_hover(ui))
+            .clicked()
+        {
+            ui.ctx().output_mut(|o| o.copied_text = CODE.to_owned());
+        }
+    }
+
+    let mem = re_memory::MemoryUse::capture();
+
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         // we use monospace so the width doesn't fluctuate as the numbers change.
 
@@ -1366,6 +1410,34 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             format_number(gpu_resource_stats.num_textures),
             format_number(gpu_resource_stats.num_buffers),
         ));
+    } else if let Some(rss) = mem.resident {
+        let bytes_used_text = re_format::format_bytes(rss as _);
+        click_to_copy(ui, &bytes_used_text, |ui| {
+            ui.label(format!(
+                "Rerun Viewer is using {} of Resident memory (RSS),\n\
+                plus {} of GPU memory in {} textures and {} buffers.",
+                bytes_used_text,
+                re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
+                format_number(gpu_resource_stats.num_textures),
+                format_number(gpu_resource_stats.num_buffers),
+            ));
+            ui.label(
+                "To get more accurate memory reportings, consider configuring your Rerun \n\
+                 viewer to use an AccountingAllocator by adding the following to your \n\
+                 code's main entrypoint:",
+            );
+            ui.code(CODE);
+            ui.label("(click to copy to clipboard)");
+        });
+    } else {
+        click_to_copy(ui, "N/A MiB", |ui| {
+            ui.label(
+                "The Rerun viewer was not configured to run with an AccountingAllocator,\n\
+                consider adding the following to your code's main entrypoint:",
+            );
+            ui.code(CODE);
+            ui.label("(click to copy to clipboard)");
+        });
     }
 }
 
@@ -1874,7 +1946,7 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
 }
 
 fn recording_config_entry<'cfgs>(
-    configs: &'cfgs mut IntMap<RecordingId, RecordingConfig>,
+    configs: &'cfgs mut HashMap<RecordingId, RecordingConfig>,
     id: RecordingId,
     data_source: &'_ re_smart_channel::Source,
     log_db: &'_ LogDb,
