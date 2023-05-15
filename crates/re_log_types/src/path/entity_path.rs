@@ -97,6 +97,16 @@ impl EntityPath {
         Self::from(parts)
     }
 
+    /// Treat the file path as one opaque string.
+    ///
+    /// The file path separators will NOT become splits in the new path.
+    /// The returned path will only have one part.
+    pub fn from_file_path(file_path: &std::path::Path) -> Self {
+        Self::new(vec![EntityPathPart::Index(crate::Index::String(
+            file_path.to_string_lossy().to_string(),
+        ))])
+    }
+
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &EntityPathPart> {
         self.path.iter()

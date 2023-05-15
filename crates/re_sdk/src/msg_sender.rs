@@ -29,74 +29,6 @@ pub enum MsgSenderError {
     PackingError(#[from] DataTableError),
 }
 
-/// Errors from [`MsgSender::from_file_path`]
-#[derive(thiserror::Error, Debug)]
-pub enum FromFileError {
-    #[error(transparent)]
-    FileRead(#[from] std::io::Error),
-
-    #[error(transparent)]
-    DataCellError(#[from] re_log_types::DataCellError),
-
-    #[cfg(feature = "image")]
-    #[error(transparent)]
-    TensorImageLoad(#[from] re_log_types::component_types::TensorImageLoadError),
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Unsupported file extension '{extension}' for file {path:?}. To load image files, make sure you compile with the 'image' feature")]
-    UnknownExtension {
-        extension: String,
-        path: std::path::PathBuf,
-    },
-}
-
-fn data_cell_from_mesh_file_path(
-    file_path: &std::path::Path,
-    format: crate::components::MeshFormat,
-) -> Result<DataCell, FromFileError> {
-    let mesh = crate::components::EncodedMesh3D {
-        mesh_id: crate::components::MeshId::random(),
-        format,
-        bytes: std::fs::read(file_path)?.into(),
-        transform: [
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [0.0, 0.0, 0.0],
-        ],
-    };
-    let mesh = crate::components::Mesh3D::Encoded(mesh);
-    Ok(DataCell::try_from_native(std::iter::once(&mesh))?)
-}
-
-fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell, FromFileError> {
-    let extension = file_path
-        .extension()
-        .unwrap_or_default()
-        .to_ascii_lowercase()
-        .to_string_lossy()
-        .to_string();
-
-    match extension.as_str() {
-        "glb" => data_cell_from_mesh_file_path(file_path, crate::components::MeshFormat::Glb),
-        "glft" => data_cell_from_mesh_file_path(file_path, crate::components::MeshFormat::Gltf),
-        "obj" => data_cell_from_mesh_file_path(file_path, crate::components::MeshFormat::Obj),
-
-        #[cfg(feature = "image")]
-        _ => {
-            // Assume and image (there are so many image extensions):
-            let tensor = re_log_types::component_types::Tensor::from_image_file(file_path)?;
-            Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
-        }
-
-        #[cfg(not(feature = "image"))]
-        _ => Err(FromFileError::UnknownExtension {
-            extension,
-            path: file_path.to_owned(),
-        }),
-    }
-}
-
 /// Facilitates building and sending component payloads with the Rerun SDK.
 ///
 /// ```ignore
@@ -178,11 +110,11 @@ impl MsgSender {
     ///  * `png` and other image formats: decoded here. Requires the `image` feature.
     ///
     /// All other extensions will return an error.
-    pub fn from_file_path(file_path: &std::path::Path) -> Result<Self, FromFileError> {
-        let ent_path = re_log_types::EntityPath::new(vec![re_log_types::EntityPathPart::Index(
-            re_log_types::Index::String(file_path.to_string_lossy().to_string()),
-        )]);
-        let cell = data_cell_from_file_path(file_path)?;
+    pub fn from_file_path(
+        file_path: &std::path::Path,
+    ) -> Result<Self, re_log_types::FromFileError> {
+        let ent_path = re_log_types::EntityPath::from_file_path(file_path);
+        let cell = DataCell::from_file_path(file_path)?;
         Ok(Self {
             num_instances: Some(cell.num_instances()),
             instanced: vec![cell],
