@@ -47,7 +47,7 @@ use parking_lot::Mutex;
 // data and joining a bunch of threads) can end up running at any time depending on what the
 // Python GC is doing, which obviously leads to very bad things :tm:.
 //
-// TODO: clear recordings with refcount = 1
+// TODO(#2116): drop unused recordings
 fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<RecordingId, RecordingStream>> {
     static ALL_RECORDINGS: OnceCell<Mutex<HashMap<RecordingId, RecordingStream>>> = OnceCell::new();
     ALL_RECORDINGS.get_or_init(Default::default).lock()

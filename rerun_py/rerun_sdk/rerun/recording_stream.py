@@ -5,7 +5,6 @@ from rerun import bindings
 # ---
 
 
-# TODO: fill doc
 class RecordingStream:
     """
     A RecordingStream is used to send data to Rerun.
