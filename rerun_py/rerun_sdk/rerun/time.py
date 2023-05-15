@@ -27,7 +27,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int], recording: Optiona
     sequence : int
         The current time on the timeline in integer units.
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -63,7 +63,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float], recording: Optiona
     seconds : float
         The current time on the timeline in seconds.
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -100,7 +100,7 @@ def set_time_nanos(timeline: str, nanos: Optional[int], recording: Optional[Reco
     nanos : int
         The current time on the timeline in nanoseconds.
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -123,7 +123,7 @@ def reset_time(recording: Optional[RecordingStream] = None) -> None:
     Parameters
     ----------
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 

@@ -66,7 +66,7 @@ def log_rect(
     timeless:
          If true, the rect will be timeless (default: False).
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -169,7 +169,7 @@ def log_rects(
     timeless:
             If true, the rects will be timeless (default: False).
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 

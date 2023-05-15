@@ -76,7 +76,7 @@ def log_line_strip(
     timeless:
         If true, the path will be timeless (default: False).
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -156,7 +156,7 @@ def log_line_segments(
     timeless:
         If true, the line segments will be timeless (default: False).
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 

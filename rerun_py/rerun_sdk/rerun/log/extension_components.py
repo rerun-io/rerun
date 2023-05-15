@@ -111,7 +111,7 @@ def log_extension_components(
     timeless:
         If true, the components will be timeless (default: False).
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 

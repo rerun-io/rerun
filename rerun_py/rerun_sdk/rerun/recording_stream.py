@@ -12,9 +12,19 @@ class RecordingStream:
     You can instantiate a RecordingStream by calling either [`rerun.init`][] (to create a global
     recording) or [`rerun.new_recording`][] (for more advanced use cases).
 
+    Multithreading
+    --------------
+
     A RecordingStream can safely be copied and sent to other threads.
     You can also set a recording as the global active one for all threads ([`rerun.set_global_data_recording`][])
     or just for the current thread ([`rerun.set_thread_local_data_recording`][]).
+
+    Similarly, the `with` keyword can be used to temporarily set the active recording for the
+    current thread, e.g.:
+    ```
+    with rec:
+        rr.log_points(...)
+    ```
 
     See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],
     [`rerun.get_thread_local_data_recording`][].
@@ -129,7 +139,7 @@ def get_application_id(
     Parameters
     ----------
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -161,7 +171,7 @@ def get_recording_id(
     Parameters
     ----------
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 

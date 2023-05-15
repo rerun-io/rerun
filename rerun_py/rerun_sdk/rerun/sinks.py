@@ -22,7 +22,7 @@ def connect(addr: Optional[str] = None, recording: Optional[RecordingStream] = N
     addr
         The ip:port to connect to
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -43,7 +43,7 @@ def save(path: str, recording: Optional[RecordingStream] = None) -> None:
     path : str
         The path to save the data to.
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -67,7 +67,7 @@ def disconnect(recording: Optional[RecordingStream] = None) -> None:
     Parameters
     ----------
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -87,7 +87,7 @@ def memory_recording(recording: Optional[RecordingStream] = None) -> MemoryRecor
     Parameters
     ----------
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
@@ -125,7 +125,7 @@ def serve(
     ws_port:
         The port to serve the WebSocket server on (defaults to 9877)
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
@@ -150,7 +150,7 @@ def spawn(port: int = 9876, connect: bool = True, recording: Optional[RecordingS
     connect
         also connect to the viewer and stream logging data to it.
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use if `connect = True`.
+        Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
