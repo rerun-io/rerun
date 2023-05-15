@@ -3,8 +3,8 @@ use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
 use crate::ui::spaceview_controls::{
-    modifier_contains, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-    ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
+    DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
+    SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
 };
 
 use super::SpaceCamera3D;
@@ -308,7 +308,7 @@ impl OrbitEye {
                 || (response.dragged_by(ROLL_MOUSE_ALT)
                     && response
                         .ctx
-                        .input(|i| modifier_contains(i.modifiers, ROLL_MOUSE_MODIFIER)))
+                        .input(|i| i.modifiers.contains(ROLL_MOUSE_MODIFIER)))
             {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
@@ -386,12 +386,12 @@ impl OrbitEye {
             local_movement = local_movement.normalize_or_zero();
 
             let speed = self.orbit_radius
-                * (if modifier_contains(input.modifiers, SPEED_UP_3D_MODIFIER) {
+                * (if input.modifiers.contains(SPEED_UP_3D_MODIFIER) {
                     10.0
                 } else {
                     1.0
                 })
-                * (if modifier_contains(input.modifiers, SLOW_DOWN_3D_MODIFIER) {
+                * (if input.modifiers.contains(SLOW_DOWN_3D_MODIFIER) {
                     0.1
                 } else {
                     1.0
