@@ -1,6 +1,7 @@
 use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
+use anyhow::Context;
 use egui::NumExt as _;
 use instant::Instant;
 use itertools::Itertools as _;
@@ -221,16 +222,18 @@ impl App {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
-        self.state
-            .recording_configs
-            .get(&self.state.selected_rec_id.clone())
-            // is there an active loop selection?
-            .and_then(|rec_cfg| {
-                rec_cfg
-                    .time_ctrl
-                    .loop_selection()
-                    .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
-            })
+        self.state.selected_rec_id.as_ref().and_then(|rec_id| {
+            self.state
+                .recording_configs
+                .get(rec_id)
+                // is there an active loop selection?
+                .and_then(|rec_cfg| {
+                    rec_cfg
+                        .time_ctrl
+                        .loop_selection()
+                        .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
+                })
+        })
     }
 
     fn run_pending_commands(
@@ -323,13 +326,21 @@ impl App {
 
             Command::SelectionPrevious => {
                 let state = &mut self.state;
-                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                if let Some(rec_cfg) = state
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|rec_id| state.recording_configs.get_mut(rec_id))
+                {
                     rec_cfg.selection_state.select_previous();
                 }
             }
             Command::SelectionNext => {
                 let state = &mut self.state;
-                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                if let Some(rec_cfg) = state
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|rec_id| state.recording_configs.get_mut(rec_id))
+                {
                     rec_cfg.selection_state.select_next();
                 }
             }
@@ -356,7 +367,7 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let rec_id = &self.state.selected_rec_id;
+        let Some(rec_id) = &self.state.selected_rec_id else {return;};
         let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else {return;};
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
@@ -387,6 +398,7 @@ impl App {
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_config: &DataStoreConfig,
+        blueprint_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
         blueprint_stats: &DataStoreStats,
     ) {
@@ -405,6 +417,7 @@ impl App {
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
                     store_config,
+                    blueprint_config,
                     store_stats,
                     blueprint_stats,
                 );
@@ -414,38 +427,33 @@ impl App {
     // Materialize the blueprint from the DB if the selected blueprint id isn't the default one.
     fn load_or_create_blueprint(
         &mut self,
-        this_frame_blueprint_id: &RecordingId,
+        this_frame_blueprint_id: Option<&RecordingId>,
         egui_ctx: &egui::Context,
     ) -> Blueprint {
-        if *this_frame_blueprint_id == Default::default() {
-            Default::default()
-        } else {
+        if let Some(blueprint_id) = this_frame_blueprint_id {
             // TODO(jleibs): If the blueprint doesn't exist this probably means we are
             // initializing a new default-blueprint for the application in question.
             // Make sure it's marked as a blueprint.
-            let blueprint_db = self
-                .log_dbs
-                .entry(this_frame_blueprint_id.clone())
-                .or_insert_with(|| {
-                    let mut blueprint_db = LogDb::default();
+            let blueprint_db = self.log_dbs.entry(blueprint_id.clone()).or_insert_with(|| {
+                let mut blueprint_db = LogDb::new(blueprint_id.clone());
 
-                    blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
-                        row_id: re_log_types::RowId::random(),
-                        info: re_log_types::RecordingInfo {
-                            application_id: this_frame_blueprint_id.as_str().into(),
-                            recording_id: self.state.selected_blueprint_id.clone(),
-                            is_official_example: false,
-                            started: re_log_types::Time::now(),
-                            recording_source: re_log_types::RecordingSource::Other(
-                                "viewer".to_owned(),
-                            ),
-                            recording_type: RecordingType::Blueprint,
-                        },
-                    });
-
-                    blueprint_db
+                blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
+                    row_id: re_log_types::RowId::random(),
+                    info: re_log_types::RecordingInfo {
+                        application_id: blueprint_id.as_str().into(),
+                        recording_id: blueprint_id.clone(),
+                        is_official_example: false,
+                        started: re_log_types::Time::now(),
+                        recording_source: re_log_types::RecordingSource::Other("viewer".to_owned()),
+                        recording_type: RecordingType::Blueprint,
+                    },
                 });
+
+                blueprint_db
+            });
             Blueprint::from_db(egui_ctx, blueprint_db)
+        } else {
+            Default::default()
         }
     }
 }
@@ -506,9 +514,25 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_config = self.log_db().entity_db.data_store.config().clone();
-        let store_stats = DataStoreStats::from_store(&self.log_db().entity_db.data_store);
-        let blueprint_stats = DataStoreStats::from_store(&self.blueprint_db().entity_db.data_store);
+        let store_config = self
+            .log_db()
+            .map(|log_db| log_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        let store_stats = self
+            .log_db()
+            .map(|log_db| DataStoreStats::from_store(&log_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        let blueprint_config = self
+            .blueprint_db()
+            .map(|bp_db| bp_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        let blueprint_stats = self
+            .blueprint_db()
+            .map(|bp_db| DataStoreStats::from_store(&bp_db.entity_db.data_store))
+            .unwrap_or_default();
 
         // do first, before doing too many allocations
         self.memory_panel
@@ -535,7 +559,8 @@ impl eframe::App for App {
 
         let this_frame_blueprint_id = self.state.selected_blueprint_id.clone();
 
-        let blueprint_snapshot = self.load_or_create_blueprint(&this_frame_blueprint_id, egui_ctx);
+        let blueprint_snapshot =
+            self.load_or_create_blueprint(this_frame_blueprint_id.as_ref(), egui_ctx);
 
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
@@ -553,25 +578,27 @@ impl eframe::App for App {
                     ui,
                     &gpu_resource_stats,
                     &store_config,
+                    &blueprint_config,
                     &store_stats,
                     &blueprint_stats,
                 );
 
-                let log_db = self
-                    .log_dbs
-                    .entry(self.state.selected_rec_id.clone())
-                    .or_default();
-
-                recording_config_entry(
-                    &mut self.state.recording_configs,
-                    self.state.selected_rec_id.clone(),
-                    self.rx.source(),
-                    log_db,
-                )
-                .selection_state
-                .on_frame_start(|item| blueprint.is_item_valid(item));
-
+                // NOTE: cannot call `.log_db()` due to borrowck shenanigans
+                if let Some(log_db) = self
+                    .state
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|rec_id| self.log_dbs.get(rec_id))
                 {
+                    recording_config_entry(
+                        &mut self.state.recording_configs,
+                        log_db.recording_id().clone(),
+                        self.rx.source(),
+                        log_db,
+                    )
+                    .selection_state
+                    .on_frame_start(|item| blueprint.is_item_valid(item));
+
                     // TODO(andreas): store the re_renderer somewhere else.
                     let egui_renderer = {
                         let render_state = frame.wgpu_render_state().unwrap();
@@ -583,7 +610,7 @@ impl eframe::App for App {
                         .unwrap();
                     render_ctx.begin_frame();
 
-                    if log_db.is_default() {
+                    if log_db.is_empty() {
                         wait_screen_ui(ui, &self.rx);
                     } else {
                         self.state.show(
@@ -593,11 +620,13 @@ impl eframe::App for App {
                             log_db,
                             &self.re_ui,
                             &self.component_ui_registry,
-                            self.rx.source(),
+                            &self.rx,
                         );
-                    }
 
-                    render_ctx.before_submit();
+                        render_ctx.before_submit();
+                    }
+                } else {
+                    wait_screen_ui(ui, &self.rx);
                 }
             });
 
@@ -621,10 +650,10 @@ impl eframe::App for App {
         );
 
         // If this wasn't the default blueprint, save it back
-        if this_frame_blueprint_id != Default::default() {
-            let blueprint_db = self.log_dbs.get_mut(&this_frame_blueprint_id).unwrap();
-
-            blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
+        if let Some(blueprint_id) = this_frame_blueprint_id {
+            if let Some(blueprint_db) = self.log_dbs.get_mut(&blueprint_id) {
+                blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
+            }
         }
     }
 }
@@ -741,58 +770,55 @@ impl App {
         let start = instant::Instant::now();
 
         while let Ok(msg) = self.rx.try_recv() {
-            // All messages except [`LogMsg::GoodBye`] should have an associated recording id
-            if let Some(recording_id) = msg.recording_id() {
-                // NOTE: we may receive BeginRecordingMsg multiple times
-                let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    match msg.info.recording_type {
-                        re_log_types::RecordingType::Unknown => {
-                            re_log::warn!("Received recording with unknown type");
-                            false
-                        }
-                        // TODO(jleibs): This needs to be replaced with tab-switching
-                        re_log_types::RecordingType::Data => {
-                            re_log::debug!("Opening a new recording: {:?}", msg.info);
-                            self.state.selected_rec_id = msg.info.recording_id.clone();
+            let recording_id = msg.recording_id();
 
-                            // TODO(jleibs): Select most-recent blueprint for the application-id
-                            // The default blueprint uses the application-id as the recording-id
-                            self.state.selected_blueprint_id =
-                                msg.info.application_id.clone().to_string().into();
+            let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                match msg.info.recording_id.variant {
+                    RecordingType::Data => {
+                        re_log::debug!("Opening a new recording: {:?}", msg.info);
+                        self.state.selected_rec_id = Some(recording_id.clone());
 
-                            true
-                        }
-                        re_log_types::RecordingType::Blueprint => {
-                            re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                            self.state.selected_blueprint_id = msg.info.recording_id.clone();
-                            true
-                        }
+                        // TODO(jleibs): Select most-recent blueprint for the application-id
+                        // The default blueprint uses the application-id as the recording-id
+                        self.state.selected_blueprint_id = Some(RecordingId::from_string(
+                            RecordingType::Blueprint,
+                            msg.info.application_id.clone().to_string(),
+                        ));
                     }
-                } else {
-                    false
-                };
 
-                let log_db = self.log_dbs.entry(recording_id.clone()).or_default();
-
-                if log_db.data_source.is_none() {
-                    log_db.data_source = Some(self.rx.source().clone());
+                    RecordingType::Blueprint => {
+                        re_log::debug!("Opening a new blueprint: {:?}", msg.info);
+                        self.state.selected_blueprint_id = Some(msg.info.recording_id.clone());
+                    }
                 }
+                true
+            } else {
+                false
+            };
 
-                if let Err(err) = log_db.add(&msg) {
-                    re_log::error!("Failed to add incoming msg: {err}");
-                };
+            let log_db = self
+                .log_dbs
+                .entry(recording_id.clone())
+                .or_insert_with(|| LogDb::new(recording_id.clone()));
 
-                if is_new_recording {
-                    // Do analytics after ingesting the new message,
-                    // because thats when the `log_db.recording_info` is set,
-                    // which we use in the analytics call.
-                    self.analytics.on_open_recording(log_db);
-                }
+            if log_db.data_source.is_none() {
+                log_db.data_source = Some(self.rx.source().clone());
+            }
 
-                if start.elapsed() > instant::Duration::from_millis(10) {
-                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break; // don't block the main thread for too long
-                }
+            if let Err(err) = log_db.add(&msg) {
+                re_log::error!("Failed to add incoming msg: {err}");
+            };
+
+            if is_new_recording {
+                // Do analytics after ingesting the new message,
+                // because thats when the `log_db.recording_info` is set,
+                // which we use in the analytics call.
+                self.analytics.on_open_recording(log_db);
+            }
+
+            if start.elapsed() > instant::Duration::from_millis(10) {
+                egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                break; // don't block the main thread for too long
             }
         }
     }
@@ -800,15 +826,19 @@ impl App {
     fn cleanup(&mut self) {
         crate::profile_function!();
 
-        self.log_dbs.retain(|_, log_db| !log_db.is_default());
+        self.log_dbs.retain(|_, log_db| !log_db.is_empty());
 
-        if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
+        if !self
+            .state
+            .selected_rec_id
+            .as_ref()
+            .map_or(false, |rec_id| self.log_dbs.contains_key(rec_id))
+        {
             self.state.selected_rec_id = self
                 .log_dbs
-                .iter()
-                .find(|(_, db)| db.recording_type() == RecordingType::Data)
-                .map(|(id, _)| id.clone())
-                .unwrap_or_default();
+                .values()
+                .find(|log| log.recording_type() == RecordingType::Data)
+                .map(|log| log.recording_id().clone());
         }
 
         self.state
@@ -892,27 +922,27 @@ impl App {
 
     /// Do we have an open `LogDb` that is non-empty?
     fn log_db_is_nonempty(&self) -> bool {
-        self.log_dbs
-            .get(&self.state.selected_rec_id)
-            .map_or(false, |log_db| !log_db.is_default())
+        self.log_db().map_or(false, |log_db| !log_db.is_empty())
     }
 
-    fn log_db(&mut self) -> &mut LogDb {
-        self.log_dbs
-            .entry(self.state.selected_rec_id.clone())
-            .or_default()
+    fn log_db(&self) -> Option<&LogDb> {
+        self.state
+            .selected_rec_id
+            .as_ref()
+            .and_then(|rec_id| self.log_dbs.get(rec_id))
     }
 
-    fn blueprint_db(&mut self) -> &mut LogDb {
-        self.log_dbs
-            .entry(self.state.selected_blueprint_id.clone())
-            .or_default()
+    fn blueprint_db(&mut self) -> Option<&mut LogDb> {
+        self.state
+            .selected_blueprint_id
+            .as_ref()
+            .and_then(|bp_id| self.log_dbs.get_mut(bp_id))
     }
 
     fn show_log_db(&mut self, log_db: LogDb) {
         self.analytics.on_open_recording(&log_db);
-        self.state.selected_rec_id = log_db.recording_id();
-        self.log_dbs.insert(log_db.recording_id(), log_db);
+        self.state.selected_rec_id = Some(log_db.recording_id().clone());
+        self.log_dbs.insert(log_db.recording_id().clone(), log_db);
     }
 
     fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
@@ -997,9 +1027,10 @@ struct AppState {
     #[serde(skip)]
     cache: Caches,
 
-    selected_rec_id: RecordingId,
     #[serde(skip)]
-    selected_blueprint_id: RecordingId,
+    selected_rec_id: Option<RecordingId>,
+    #[serde(skip)]
+    selected_blueprint_id: Option<RecordingId>,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: HashMap<RecordingId, RecordingConfig>,
@@ -1030,14 +1061,14 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
-        data_source: &re_smart_channel::Source,
+        rx: &Receiver<LogMsg>,
     ) {
         crate::profile_function!();
 
         let Self {
             app_options: options,
             cache,
-            selected_rec_id,
+            selected_rec_id: _,
             selected_blueprint_id: _,
             recording_configs,
             panel_selection,
@@ -1050,8 +1081,8 @@ impl AppState {
 
         let rec_cfg = recording_config_entry(
             recording_configs,
-            selected_rec_id.clone(),
-            data_source,
+            log_db.recording_id().clone(),
+            rx.source(),
             log_db,
         );
 
@@ -1082,12 +1113,18 @@ impl AppState {
                 }
             });
 
-        // move time last, so we get to see the first data first!
-        ctx.rec_cfg
-            .time_ctrl
-            .move_time(log_db.times_per_timeline(), ui.ctx().input(|i| i.stable_dt));
-        if ctx.rec_cfg.time_ctrl.play_state() == PlayState::Playing {
-            ui.ctx().request_repaint();
+        {
+            // We move the time at the very end of the frame,
+            // so we have one frame to see the first data before we move the time.
+            let dt = ui.ctx().input(|i| i.stable_dt);
+            let more_data_is_coming = rx.is_connected();
+            let needs_repaint =
+                ctx.rec_cfg
+                    .time_ctrl
+                    .update(log_db.times_per_timeline(), dt, more_data_is_coming);
+            if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
+                ui.ctx().request_repaint();
+            }
         }
 
         if WATERMARK {
@@ -1312,8 +1349,6 @@ fn top_bar_ui(
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        // From right-to-left:
-
         if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
             ui.add_space(8.0);
             #[cfg(not(target_arch = "wasm32"))]
@@ -1630,6 +1665,12 @@ fn open(app: &mut App) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRangeF)>) {
+    let Some(log_db) = app.log_db() else {
+        // NOTE: Can only happen if saving through the command palette.
+        re_log::error!("No data to save!");
+        return;
+    };
+
     let title = if loop_selection.is_some() {
         "Save loop selection"
     } else {
@@ -1641,7 +1682,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         .set_title(title)
         .save_file()
     {
-        let f = match save_database_to_file(app.log_db(), path, loop_selection) {
+        let f = match save_database_to_file(log_db, path, loop_selection) {
             Ok(f) => f,
             Err(err) => {
                 re_log::error!("File saving failed: {err}");
@@ -1649,8 +1690,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
             }
         };
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
-            // NOTE: Shouldn't even be possible as the "Save" button is already
-            // grayed out at this point... better safe than sorry though.
+            // NOTE: Can only happen if saving through the command palette.
             re_log::error!("File saving failed: {err}");
         }
     }
@@ -1687,10 +1727,10 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 
     ui.style_mut().wrap = Some(false);
-    for log_db in log_dbs.iter().filter(|log| {
-        log.recording_info()
-            .map_or(false, |ri| ri.recording_type == RecordingType::Data)
-    }) {
+    for log_db in log_dbs
+        .iter()
+        .filter(|log| log.recording_type() == RecordingType::Data)
+    {
         let info = if let Some(rec_info) = log_db.recording_info() {
             format!(
                 "{} - {}",
@@ -1701,10 +1741,13 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
             "<UNKNOWN>".to_owned()
         };
         if ui
-            .radio(app.state.selected_rec_id == log_db.recording_id(), info)
+            .radio(
+                app.state.selected_rec_id.as_ref() == Some(log_db.recording_id()),
+                info,
+            )
             .clicked()
         {
-            app.state.selected_rec_id = log_db.recording_id();
+            app.state.selected_rec_id = Some(log_db.recording_id().clone());
         }
     }
 }
@@ -1722,10 +1765,10 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 
     ui.style_mut().wrap = Some(false);
-    for log_db in log_dbs.iter().filter(|log| {
-        log.recording_info()
-            .map_or(false, |ri| ri.recording_type == RecordingType::Blueprint)
-    }) {
+    for log_db in log_dbs
+        .iter()
+        .filter(|log| log.recording_type() == RecordingType::Blueprint)
+    {
         let info = if let Some(rec_info) = log_db.recording_info() {
             if rec_info.is_app_default_blueprint() {
                 format!("{} - Default Blueprint", rec_info.application_id,)
@@ -1741,12 +1784,12 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.selected_blueprint_id == log_db.recording_id(),
+                app.state.selected_blueprint_id.as_ref() == Some(log_db.recording_id()),
                 info,
             )
             .clicked()
         {
-            app.state.selected_blueprint_id = log_db.recording_id();
+            app.state.selected_blueprint_id = Some(log_db.recording_id().clone());
         }
     }
 }
@@ -1930,7 +1973,7 @@ fn save_database_to_file(
 
     let ent_op_msgs = log_db
         .iter_entity_op_msgs()
-        .map(|msg| LogMsg::EntityPathOpMsg(log_db.recording_id(), msg.clone()))
+        .map(|msg| LogMsg::EntityPathOpMsg(log_db.recording_id().clone(), msg.clone()))
         .collect_vec();
 
     let time_filter = time_selection.map(|(timeline, range)| {
@@ -1946,7 +1989,7 @@ fn save_database_to_file(
         .map(|table| {
             table
                 .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(log_db.recording_id(), msg))
+                .map(|msg| LogMsg::ArrowMsg(log_db.recording_id().clone(), msg))
         })
         .collect();
 
@@ -1975,9 +2018,13 @@ fn save_database_to_file(
 fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
     crate::profile_function!();
 
-    let decoder = re_log_encoding::decoder::Decoder::new(read)?;
+    let mut decoder = re_log_encoding::decoder::Decoder::new(read)?;
 
-    let mut log_db = LogDb::default();
+    let first = decoder.next().context("no messages in recording")??;
+
+    let mut log_db = LogDb::new(first.recording_id().clone());
+    log_db.add(&first)?;
+
     for msg in decoder {
         log_db.add(&msg?)?;
     }

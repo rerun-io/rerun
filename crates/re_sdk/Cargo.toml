@@ -27,9 +27,6 @@ demo = []
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["re_log_types/glam"]
 
-## Add the `global_session` method.
-global_session = ["dep:once_cell"]
-
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["re_log_types/image"]
 
@@ -44,11 +41,9 @@ re_sdk_comms = { workspace = true, features = ["client"] }
 ahash.workspace = true
 crossbeam.workspace = true
 document-features = "0.2"
+once_cell = "1.12"
 parking_lot.workspace = true
 thiserror.workspace = true
-
-# Optional dependencies:
-once_cell = { version = "1.12", optional = true }
 
 
 [dev-dependencies]

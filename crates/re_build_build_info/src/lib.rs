@@ -8,6 +8,10 @@ use anyhow::Context as _;
 
 use std::process::Command;
 
+mod rebuild_detector;
+
+pub use rebuild_detector::rebuild_if_crate_changed;
+
 // Situations to consider
 // ----------------------
 //
@@ -66,15 +70,21 @@ pub fn export_env_vars() {
 
     // Make sure we re-run the build script if the branch or commit changes:
     if let Ok(head_path) = git_path("HEAD") {
-        eprintln!("cargo:rerun-if-changed={head_path}"); // Track changes to branch
+        rerun_if_changed(&head_path); // Track changes to branch
         if let Ok(head) = std::fs::read_to_string(&head_path) {
             if let Some(git_file) = head.strip_prefix("ref: ") {
                 if let Ok(path) = git_path(git_file) {
-                    eprintln!("cargo:rerun-if-changed={path}"); // Track changes to commit hash
+                    rerun_if_changed(&path); // Track changes to commit hash
                 }
             }
         }
     }
+}
+
+fn rerun_if_changed(path: &str) {
+    // Make sure the file exists, otherwise we'll be rebuilding all the time.
+    assert!(std::path::Path::new(path).exists(), "Failed to find {path}");
+    println!("cargo:rerun-if-changed={path}");
 }
 
 fn set_env(name: &str, value: &str) {

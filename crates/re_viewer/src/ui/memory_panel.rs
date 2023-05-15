@@ -37,12 +37,14 @@ impl MemoryPanel {
         self.memory_purge_times.push(sec_since_start());
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn ui(
         &self,
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_config: &DataStoreConfig,
+        blueprint_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
         blueprint_stats: &DataStoreStats,
     ) {
@@ -61,6 +63,7 @@ impl MemoryPanel {
                     limit,
                     gpu_resource_stats,
                     store_config,
+                    blueprint_config,
                     store_stats,
                     blueprint_stats,
                 );
@@ -77,6 +80,7 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_config: &DataStoreConfig,
+        blueprint_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
         blueprint_stats: &DataStoreStats,
     ) {
@@ -99,7 +103,7 @@ impl MemoryPanel {
 
         ui.separator();
         ui.collapsing("Blueprint Resources", |ui| {
-            Self::store_stats(ui, store_config, blueprint_stats);
+            Self::store_stats(ui, blueprint_config, blueprint_stats);
         });
     }
 

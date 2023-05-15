@@ -20,11 +20,9 @@ def main() -> None:
 
     if args.blueprint_only:
         # If only using blueprint, it's important to specify init_logging=False
-        rr.init("Blueprint", init_logging=False, add_to_app_default_blueprint=args.append_default, spawn=True)
+        rr.init("myapp", init_logging=False, add_to_app_default_blueprint=args.append_default, spawn=True)
     else:
-        rr.init("Blueprint", add_to_app_default_blueprint=args.append_default, spawn=True)
-
-    rr.connect()
+        rr.init("myapp", add_to_app_default_blueprint=args.append_default, spawn=True)
 
     if not args.blueprint_only:
         img = np.zeros([128, 128, 3], dtype="uint8")
@@ -41,6 +39,11 @@ def main() -> None:
         rr.set_panels(all_expanded=False)
 
         rr.add_space_view("overlaid", "/", ["image", "rect/0", "rect/1"])
+
+    # Workaround https://github.com/rerun-io/rerun/issues/2124
+    import time
+
+    time.sleep(0.1)
 
 
 if __name__ == "__main__":

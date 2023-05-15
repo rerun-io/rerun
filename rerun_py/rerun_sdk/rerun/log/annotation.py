@@ -4,6 +4,7 @@ from typing import Iterable, Optional, Sequence, Tuple, Union
 from rerun import bindings
 from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "AnnotationInfo",
@@ -79,6 +80,7 @@ def log_annotation_context(
     class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
     *,
     timeless: bool = True,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log an annotation context made up of a collection of [ClassDescription][rerun.log.annotation.ClassDescription]s.
@@ -113,8 +115,13 @@ def log_annotation_context(
         A single ClassDescription or a collection of ClassDescriptions.
     timeless:
         If true, the annotation context will be timeless (default: True).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if not isinstance(class_descriptions, Iterable):
         class_descriptions = [class_descriptions]
@@ -152,4 +159,4 @@ def log_annotation_context(
     ]
 
     # AnnotationContext arrow handling happens inside the python bridge
-    bindings.log_annotation_context(entity_path, tuple_class_descriptions, timeless)
+    bindings.log_annotation_context(entity_path, tuple_class_descriptions, timeless, recording=recording)

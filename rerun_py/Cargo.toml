@@ -42,7 +42,7 @@ web_viewer = ["rerun/web_viewer", "dep:re_web_viewer_server", "dep:re_ws_comms"]
 re_build_info.workspace = true
 re_error.workspace = true
 re_log.workspace = true
-re_log_types = { workspace = true, features = ["glam"] }
+re_log_types = { workspace = true, features = ["glam", "image"] }
 re_memory.workspace = true
 rerun = { workspace = true, features = ["analytics", "server", "sdk"] }
 re_web_viewer_server = { workspace = true, optional = true }
@@ -54,7 +54,10 @@ re_viewer = { workspace = true }
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 document-features = "0.2"
 glam.workspace = true
-image = { workspace = true, default-features = false, features = ["jpeg"] }
+image = { workspace = true, default-features = false, features = [
+  "jpeg",
+  "png",
+] }
 itertools = { workspace = true }
 macaw.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
