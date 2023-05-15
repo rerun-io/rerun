@@ -721,7 +721,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         // Show help last, since not all space views have help text
-        help_text_ui(ui, space_view);
+        help_text_ui(ui, self.ctx.re_ui, space_view);
     }
 
     // Styling:
@@ -749,12 +749,12 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 }
 
-fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
+fn help_text_ui(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, space_view: &SpaceView) {
     let help_text = match space_view.category {
-        ViewCategory::TimeSeries => Some(crate::ui::view_time_series::HELP_TEXT),
-        ViewCategory::BarChart => Some(crate::ui::view_bar_chart::HELP_TEXT),
-        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text()),
-        ViewCategory::Text | ViewCategory::TextBox | ViewCategory::Tensor => None,
+        ViewCategory::TimeSeries => Some(crate::ui::view_time_series::help_text(re_ui)),
+        ViewCategory::BarChart => Some(crate::ui::view_bar_chart::help_text(re_ui)),
+        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text(re_ui)),
+        ViewCategory::TextBox | ViewCategory::Text | ViewCategory::Tensor => None,
     };
 
     if let Some(help_text) = help_text {
