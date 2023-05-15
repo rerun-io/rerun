@@ -554,7 +554,7 @@ impl eframe::App for App {
                             log_db,
                             &self.re_ui,
                             &self.component_ui_registry,
-                            self.rx.source(),
+                            &self.rx,
                         );
                     }
 
@@ -964,7 +964,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
-        data_source: &re_smart_channel::Source,
+        rx: &Receiver<LogMsg>,
     ) {
         crate::profile_function!();
 
@@ -984,7 +984,7 @@ impl AppState {
         let rec_cfg = recording_config_entry(
             recording_configs,
             selected_rec_id.clone(),
-            data_source,
+            rx.source(),
             log_db,
         );
         let selected_app_id = log_db
@@ -1024,12 +1024,18 @@ impl AppState {
                     .blueprint_panel_and_viewport(&mut ctx, ui),
             });
 
-        // move time last, so we get to see the first data first!
-        ctx.rec_cfg
-            .time_ctrl
-            .move_time(log_db.times_per_timeline(), ui.ctx().input(|i| i.stable_dt));
-        if ctx.rec_cfg.time_ctrl.play_state() == PlayState::Playing {
-            ui.ctx().request_repaint();
+        {
+            // We move the time at the very end of the frame,
+            // so we have one frame to see the first data before we move the time.
+            let dt = ui.ctx().input(|i| i.stable_dt);
+            let more_data_is_coming = rx.is_connected();
+            let needs_repaint =
+                ctx.rec_cfg
+                    .time_ctrl
+                    .update(log_db.times_per_timeline(), dt, more_data_is_coming);
+            if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
+                ui.ctx().request_repaint();
+            }
         }
 
         if WATERMARK {

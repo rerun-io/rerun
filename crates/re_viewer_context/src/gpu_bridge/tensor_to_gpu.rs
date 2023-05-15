@@ -79,8 +79,11 @@ fn color_tensor_to_gpu(
                 TextureFormat::Rgba8UnormSrgb,
             ),
             (4, TensorData::U8(buf)) => (
-                // TODO(emilk): premultiply alpha
-                cast_slice_to_cow(buf.as_slice()),
+                // We pre-multiply on the CPU because we currently use hardware texture filtering
+                // in `rectangle_fs.wgsl`, and pre-multiplication needs to happen before filtering.
+                // If we switched our shader to always do software filtering we could do the pre-multiplication
+                // on the GPU instead, saving us some time here!
+                premultiply_alpha(buf.as_slice()).into(),
                 TextureFormat::Rgba8UnormSrgb,
             ),
 
@@ -445,6 +448,15 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
         .flat_map(|chunk| [narrow(chunk[0]), narrow(chunk[1]), narrow(chunk[2]), pad])
         .collect();
     pod_collect_to_vec(&floats).into()
+}
+
+fn premultiply_alpha(rgba: &[u8]) -> Vec<u8> {
+    crate::profile_function!();
+    rgba.chunks_exact(4)
+        .flat_map(|rgba| {
+            egui::Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]).to_array()
+        })
+        .collect()
 }
 
 // ----------------------------------------------------------------------------;
