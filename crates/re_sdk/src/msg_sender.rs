@@ -36,7 +36,7 @@ pub enum FromFileError {
     FileRead(#[from] std::io::Error),
 
     #[error(transparent)]
-    MsgSender(#[from] MsgSenderError),
+    DataCellError(#[from] re_log_types::DataCellError),
 
     #[cfg(feature = "image")]
     #[error(transparent)]
@@ -48,6 +48,53 @@ pub enum FromFileError {
         extension: String,
         path: std::path::PathBuf,
     },
+}
+
+fn data_cell_from_mesh_file_path(
+    file_path: &std::path::Path,
+    format: crate::components::MeshFormat,
+) -> Result<DataCell, FromFileError> {
+    let mesh = crate::components::EncodedMesh3D {
+        mesh_id: crate::components::MeshId::random(),
+        format,
+        bytes: std::fs::read(file_path)?.into(),
+        transform: [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0],
+        ],
+    };
+    let mesh = crate::components::Mesh3D::Encoded(mesh);
+    Ok(DataCell::try_from_native(std::iter::once(&mesh))?)
+}
+
+fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell, FromFileError> {
+    let extension = file_path
+        .extension()
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .to_string_lossy()
+        .to_string();
+
+    match extension.as_str() {
+        "glb" => data_cell_from_mesh_file_path(file_path, crate::components::MeshFormat::Glb),
+        "glft" => data_cell_from_mesh_file_path(file_path, crate::components::MeshFormat::Gltf),
+        "obj" => data_cell_from_mesh_file_path(file_path, crate::components::MeshFormat::Obj),
+
+        #[cfg(feature = "image")]
+        _ => {
+            // Assume and image (there are so many image extensions):
+            let tensor = re_log_types::component_types::Tensor::from_image_file(file_path)?;
+            Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
+        }
+
+        #[cfg(not(feature = "image"))]
+        _ => Err(FromFileError::UnknownExtension {
+            extension,
+            path: file_path.to_owned(),
+        }),
+    }
 }
 
 /// Facilitates building and sending component payloads with the Rerun SDK.
@@ -132,54 +179,15 @@ impl MsgSender {
     ///
     /// All other extensions will return an error.
     pub fn from_file_path(file_path: &std::path::Path) -> Result<Self, FromFileError> {
-        let load_mesh = |ent_path, format| -> Result<Self, FromFileError> {
-            let mesh = crate::components::EncodedMesh3D {
-                mesh_id: crate::components::MeshId::random(),
-                format,
-                bytes: std::fs::read(file_path)?.into(),
-                transform: [
-                    [1.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0],
-                    [0.0, 0.0, 1.0],
-                    [0.0, 0.0, 0.0],
-                ],
-            };
-
-            let msg_sender =
-                Self::new(ent_path).with_component(&[crate::components::Mesh3D::Encoded(mesh)])?;
-            Ok(msg_sender)
-        };
-
         let ent_path = re_log_types::EntityPath::new(vec![re_log_types::EntityPathPart::Index(
             re_log_types::Index::String(file_path.to_string_lossy().to_string()),
         )]);
-
-        let extension = file_path
-            .extension()
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-            .to_string_lossy()
-            .to_string();
-
-        match extension.as_str() {
-            "glb" => load_mesh(ent_path, crate::components::MeshFormat::Glb),
-            "glft" => load_mesh(ent_path, crate::components::MeshFormat::Gltf),
-            "obj" => load_mesh(ent_path, crate::components::MeshFormat::Obj),
-
-            #[cfg(feature = "image")]
-            _ => {
-                // Assume and image (there are so many image extensions):
-                let tensor = re_log_types::component_types::Tensor::from_image_file(file_path)?;
-                let msg_sender = Self::new(ent_path).with_component(&[tensor])?;
-                Ok(msg_sender)
-            }
-
-            #[cfg(not(feature = "image"))]
-            _ => Err(FromFileError::UnknownExtension {
-                extension,
-                path: file_path.to_owned(),
-            }),
-        }
+        let cell = data_cell_from_file_path(file_path)?;
+        Ok(Self {
+            num_instances: Some(cell.num_instances()),
+            instanced: vec![cell],
+            ..Self::new(ent_path)
+        })
     }
 
     // --- Time ---
@@ -241,11 +249,14 @@ impl MsgSender {
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
     pub fn with_component<'a, C: SerializableComponent>(
-        mut self,
+        self,
         data: impl IntoIterator<Item = &'a C>,
     ) -> Result<Self, MsgSenderError> {
         let cell = DataCell::try_from_native(data).map_err(DataTableError::from)?;
+        self.with_cell(cell)
+    }
 
+    fn with_cell(mut self, cell: DataCell) -> Result<MsgSender, MsgSenderError> {
         let num_instances = cell.num_instances();
 
         if let Some(cur_num_instances) = self.num_instances {
