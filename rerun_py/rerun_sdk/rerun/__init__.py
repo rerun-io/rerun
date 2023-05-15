@@ -34,6 +34,7 @@ from rerun.recording_stream import (
     get_thread_local_data_recording,
     set_global_data_recording,
     set_thread_local_data_recording,
+    is_enabled,
 )
 
 # --- Init RecordingStream class ---
@@ -144,6 +145,8 @@ def init(
     You must call this function first in order to initialize a global recording.
     Without an active recording, all methods of the SDK will turn into no-ops.
 
+    For more advanced use cases, e.g. multiple recordings setups, see [`rerun.new_recording`][].
+
     Parameters
     ----------
     application_id : str
@@ -201,6 +204,8 @@ def new_recording(
     """
     Creates a new recording with a user-chosen application id (name) that can be used to log data.
 
+    If you only need a single global recording, [`rerun.init`][] might be simpler.
+
     Parameters
     ----------
     application_id : str
@@ -235,6 +240,11 @@ def new_recording(
     default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+
+    Returns
+    -------
+    RecordingStream
+        A handle to the [`rerun.RecordingStream`][]. Use it to log data to Rerun.
 
     """
 

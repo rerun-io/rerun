@@ -9,17 +9,55 @@ class RecordingStream:
     """
     A RecordingStream is used to send data to Rerun.
 
-    You can instantiate a RecordingStream by calling either [`rr.init`][] (to create a global
-    recording) or [`rr.new_recording`][] (for more advanced use cases).
+    You can instantiate a RecordingStream by calling either [`rerun.init`][] (to create a global
+    recording) or [`rerun.new_recording`][] (for more advanced use cases).
 
-    A RecordingStream can safely be copied and to other threads.
+    A RecordingStream can safely be copied and sent to other threads.
+    You can also set a recording as the global active one for all threads ([`rerun.set_global_data_recording`])
+    or just for the current thread ([`rerun.set_thread_local_data_recording`]).
 
-    Todo:
-    ----
-        - batching vars
-        - global, thread-local
-        - explain how this works, list synonyms (rr.get_recording_id(), rec.get_recording_id, etc...)
-        - won't have docs, LSP will suck, etc -> suggest using `help()`
+    See also:
+
+    - [`rerun.get_data_recording`][]
+
+    - [`rerun.get_global_data_recording`][]
+
+    - [`rerun.get_thread_local_data_recording`][]
+
+    Available methods
+    -----------------
+
+    Every function in the Rerun SDK that takes an optional RecordingStream as a parameter can also
+    be called as a method on RecordingStream itself.
+
+    This includes, but isn't limited to:
+
+    - Metadata-related functions:
+        [`rerun.is_enabled`][], [`rerun.get_recording_id`][], ...
+    - Sink-related functions:
+        [`rerun.connect`][], [`rerun.spawn`][], ...
+    - Time-related functions:
+        [`rerun.set_time_seconds`][], [`rerun.set_time_sequence`][], ...
+    - Log-related functions:
+        [`rerun.log_points`][], [`rerun.log_mesh_file`][], ...
+
+    For an exhaustive list, see `help(rerun.RecordingStream)`.
+
+    Micro-batching
+    --------------
+
+    Micro-batching using both space and time triggers (whichever comes first) is done automatically
+    in a dedicated background thread.
+
+    You can configure the frequence of the batches using the following environment variables:
+
+    - `RERUN_FLUSH_TICK_SECS`:
+        Flush frequency in seconds (default: `0.05` (50ms)).
+    - `RERUN_FLUSH_NUM_BYTES`:
+        Flush threshold in bytes (default: `1048576` (1MiB)).
+    - `RERUN_FLUSH_NUM_ROWS`:
+        Flush threshold in number of rows (default: `18446744073709551615` (u64::MAX)).
+
     """
 
     def __init__(self, inner: bindings.PyRecordingStream) -> None:
@@ -161,7 +199,7 @@ def get_data_recording(
     Parameters
     ----------
     recording:
-        Specifies the [`rerun.recording_stream.RecordingStream`][] to use.
+        Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
