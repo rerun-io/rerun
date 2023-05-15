@@ -372,7 +372,7 @@ async fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
-        receive_into_log_db(&rx).map(|_db| ())
+        assert_receive_into_log_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
         Ok(stream_to_rrd(&rx, &rrd_path.into(), &shutdown_bool)?)
     } else if args.web_viewer {
@@ -454,7 +454,8 @@ async fn run_impl(
     }
 }
 
-fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::LogDb> {
+// NOTE: This is only used as part of end-to-end tests.
+fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::LogDb> {
     use re_smart_channel::RecvTimeoutError;
 
     re_log::info!("Receiving messages into a LogDb…");
@@ -477,9 +478,7 @@ fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::L
                 mut_db.add(&msg)?;
                 num_messages += 1;
                 if is_goodbye {
-                    if let Err(err) = mut_db.entity_db.data_store.sanity_check() {
-                        re_log::error!(%err, "data store in a corrupt state");
-                    }
+                    mut_db.entity_db.data_store.sanity_check()?;
                     anyhow::ensure!(0 < num_messages, "No messages received");
                     re_log::info!("Successfully ingested {num_messages} messages.");
                     if let Some(db) = db {
