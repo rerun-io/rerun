@@ -53,8 +53,8 @@ impl<'a> LayoutJobBuilder<'a> {
     /// Append text for a mouse button.
     pub fn add_mouse_button(&mut self, button: egui::PointerButton) {
         self.add_button_text(match button {
-            egui::PointerButton::Primary => "right mouse button",
-            egui::PointerButton::Secondary => "left mouse button",
+            egui::PointerButton::Primary => "left mouse button",
+            egui::PointerButton::Secondary => "right mouse button",
             egui::PointerButton::Middle => "middle mouse button",
             egui::PointerButton::Extra1 => "extra mouse button 1",
             egui::PointerButton::Extra2 => "extra mouse button 2",
