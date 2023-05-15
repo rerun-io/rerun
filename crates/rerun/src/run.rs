@@ -605,7 +605,7 @@ fn load_file_to_channel_at(
         #[cfg(feature = "sdk")]
         {
             let log_msg = re_sdk::MsgSender::from_file_path(path)?.into_log_msg(recording_id)?;
-            tx.send(log_msg).ok();
+            tx.send(log_msg).ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
             Ok(())
         }
 
@@ -629,7 +629,7 @@ fn load_rrd_file_to_channel(
         for msg in decoder {
             match msg {
                 Ok(msg) => {
-                    tx.send(msg).ok();
+                    tx.send(msg).ok(); // .ok(): we're running in a background thread, so who knows if the receiver is still open
                 }
                 Err(err) => {
                     re_log::warn_once!("Failed to decode message in {path:?}: {err}");
