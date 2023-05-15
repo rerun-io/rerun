@@ -13,7 +13,7 @@ pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvErro
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Source {
     /// The source is one or more files on disk.
-    /// This could be `.rrf` files, or `.glb`, `.png`, …
+    /// This could be `.rrd` files, or `.glb`, `.png`, …
     Files { paths: Vec<std::path::PathBuf> },
 
     /// Streaming an `.rrd` file over http.
