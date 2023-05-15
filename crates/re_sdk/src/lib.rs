@@ -17,14 +17,14 @@ mod recording_stream;
 // -------------
 // Public items:
 
-pub use self::global::RecordingType;
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 
 pub use re_sdk_comms::default_server_addr;
 
 pub use re_log_types::{
-    ApplicationId, Component, ComponentName, EntityPath, RecordingId, SerializableComponent,
+    ApplicationId, Component, ComponentName, EntityPath, RecordingId, RecordingType,
+    SerializableComponent,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -157,7 +157,7 @@ pub fn new_recording_info(
 ) -> re_log_types::RecordingInfo {
     re_log_types::RecordingInfo {
         application_id: application_id.into(),
-        recording_id: RecordingId::random(),
+        recording_id: RecordingId::random(RecordingType::Data),
         is_official_example: called_from_official_rust_example(),
         started: re_log_types::Time::now(),
         recording_source: re_log_types::RecordingSource::RustSdk {

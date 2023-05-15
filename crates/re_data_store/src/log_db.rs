@@ -159,8 +159,10 @@ impl EntityDb {
 // ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
-#[derive(Default)]
 pub struct LogDb {
+    /// The [`RecordingId`] for this log.
+    recording_id: RecordingId,
+
     /// All [`EntityPathOpMsg`]s ever received.
     entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
 
@@ -175,6 +177,16 @@ pub struct LogDb {
 }
 
 impl LogDb {
+    pub fn new(recording_id: RecordingId) -> Self {
+        Self {
+            recording_id,
+            entity_op_msgs: Default::default(),
+            data_source: None,
+            recording_msg: None,
+            entity_db: Default::default(),
+        }
+    }
+
     pub fn recording_msg(&self) -> Option<&BeginRecordingMsg> {
         self.recording_msg.as_ref()
     }
@@ -183,12 +195,8 @@ impl LogDb {
         self.recording_msg().map(|msg| &msg.info)
     }
 
-    pub fn recording_id(&self) -> RecordingId {
-        if let Some(msg) = &self.recording_msg {
-            msg.info.recording_id.clone()
-        } else {
-            RecordingId::unknown()
-        }
+    pub fn recording_id(&self) -> &RecordingId {
+        &self.recording_id
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -208,7 +216,7 @@ impl LogDb {
             + self.entity_db.data_store.num_temporal_rows() as usize
     }
 
-    pub fn is_default(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.recording_msg.is_none() && self.num_rows() == 0
     }
 
@@ -227,7 +235,7 @@ impl LogDb {
                 self.entity_db.add_path_op(*row_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
-            LogMsg::Goodbye(_) => {}
+            LogMsg::Goodbye(_, _) => {}
         }
 
         Ok(())
@@ -264,6 +272,7 @@ impl LogDb {
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
+            recording_id: _,
             entity_op_msgs,
             data_source: _,
             recording_msg: _,

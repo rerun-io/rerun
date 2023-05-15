@@ -6,29 +6,9 @@ use std::cell::RefCell;
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 
-use crate::RecordingStream;
+use crate::{RecordingStream, RecordingType};
 
 // ---
-
-// TODO: use Jeremy's
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[allow(missing_docs)]
-pub enum RecordingType {
-    Unknown,
-    Data,
-    Blueprint,
-}
-
-impl std::fmt::Display for RecordingType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            RecordingType::Unknown => "unknown",
-            RecordingType::Data => "data",
-            RecordingType::Blueprint => "blueprint",
-        })
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -128,7 +108,6 @@ impl RecordingStream {
 
     fn get_any(scope: RecordingScope, which: RecordingType) -> Option<RecordingStream> {
         match which {
-            RecordingType::Unknown => None,
             RecordingType::Data => match scope {
                 RecordingScope::Global => GLOBAL_DATA_RECORDING
                     .get_or_init(Default::default)
@@ -156,7 +135,6 @@ impl RecordingStream {
         rec: Option<RecordingStream>,
     ) -> Option<RecordingStream> {
         match which {
-            RecordingType::Unknown => None,
             RecordingType::Data => match scope {
                 RecordingScope::Global => std::mem::replace(
                     &mut *GLOBAL_DATA_RECORDING.get_or_init(Default::default).write(),
@@ -203,7 +181,6 @@ mod tests {
         // nothing is set
         assert!(RecordingStream::get(RecordingType::Data, None).is_none());
         assert!(RecordingStream::get(RecordingType::Blueprint, None).is_none());
-        assert!(RecordingStream::get(RecordingType::Unknown, None).is_none());
 
         // nothing is set -- explicit wins
         let explicit = RecordingStreamBuilder::new("explicit").buffered().unwrap();
@@ -214,10 +191,6 @@ mod tests {
         check_recording_id(
             &explicit,
             RecordingStream::get(RecordingType::Blueprint, explicit.clone().into()),
-        );
-        check_recording_id(
-            &explicit,
-            RecordingStream::get(RecordingType::Unknown, explicit.clone().into()),
         );
 
         let global_data = RecordingStreamBuilder::new("global_data")

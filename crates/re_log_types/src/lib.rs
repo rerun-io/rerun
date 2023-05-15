@@ -89,78 +89,70 @@ macro_rules! impl_into_enum {
 
 // ----------------------------------------------------------------------------
 
+/// What type of `Recording` this is.
+///
+/// `Data` recordings contain user-data logged via `log_` API calls.
+/// `Blueprint` recordings describe how that data is laid out.
+///
+/// Both of these types can go over the same stream and be stored in the
+/// same datastore, but the viewer wants to treat them very differently.
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum RecordingType {
+    Data,
+    Blueprint,
+}
+
+impl std::fmt::Display for RecordingType {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Data => "Data".fmt(f),
+            Self::Blueprint => "Blueprint".fmt(f),
+        }
+    }
+}
+
 /// A unique id per recording (a stream of [`LogMsg`]es).
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RecordingId(Arc<String>);
-
-impl Default for RecordingId {
-    fn default() -> Self {
-        Self::unknown()
-    }
+pub struct RecordingId {
+    variant: RecordingType,
+    id: Arc<String>,
 }
 
 impl RecordingId {
     #[inline]
-    pub fn unknown() -> Self {
-        "UNKNOWN".into()
+    pub fn random(variant: RecordingType) -> Self {
+        Self {
+            variant,
+            id: Arc::new(uuid::Uuid::new_v4().to_string()),
+        }
     }
 
     #[inline]
-    pub fn random() -> Self {
-        Self(Arc::new(uuid::Uuid::new_v4().to_string()))
+    pub fn from_uuid(variant: RecordingType, uuid: uuid::Uuid) -> Self {
+        Self {
+            variant,
+            id: Arc::new(uuid.to_string()),
+        }
     }
 
     #[inline]
-    pub fn from_uuid(uuid: uuid::Uuid) -> Self {
-        Self(Arc::new(uuid.to_string()))
+    pub fn from_string(variant: RecordingType, str: String) -> Self {
+        Self {
+            variant,
+            id: Arc::new(str),
+        }
     }
 }
 
 impl std::fmt::Display for RecordingId {
+    #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl From<&str> for RecordingId {
-    fn from(s: &str) -> Self {
-        Self(Arc::new(s.to_owned()))
-    }
-}
-
-impl From<String> for RecordingId {
-    fn from(s: String) -> Self {
-        Self(Arc::new(s))
-    }
-}
-
-impl RecordingId {
-    #[inline]
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl AsRef<str> for RecordingId {
-    #[inline]
-    fn as_ref(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl std::borrow::Borrow<str> for RecordingId {
-    #[inline]
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl std::ops::Deref for RecordingId {
-    type Target = str;
-    #[inline]
-    fn deref(&self) -> &str {
-        self.as_str()
+        let Self { variant, id } = self;
+        f.write_fmt(format_args!("{variant}:{id}"))?;
+        Ok(())
     }
 }
 
@@ -221,17 +213,17 @@ pub enum LogMsg {
     ArrowMsg(RecordingId, ArrowMsg),
 
     /// Sent when the client shuts down the connection.
-    Goodbye(RowId),
+    Goodbye(RecordingId, RowId),
 }
 
 impl LogMsg {
-    pub fn recording_id(&self) -> Option<&RecordingId> {
+    pub fn recording_id(&self) -> &RecordingId {
         match self {
-            Self::BeginRecordingMsg(msg) => Some(&msg.info.recording_id),
+            Self::BeginRecordingMsg(msg) => &msg.info.recording_id,
             Self::EntityPathOpMsg(recording_id, _) | Self::ArrowMsg(recording_id, _) => {
-                Some(recording_id)
+                recording_id
             }
-            Self::Goodbye(_) => None,
+            Self::Goodbye(recording_id, _) => recording_id,
         }
     }
 }

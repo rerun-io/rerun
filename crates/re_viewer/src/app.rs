@@ -1,6 +1,7 @@
 use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
+use anyhow::Context;
 use egui::NumExt as _;
 use instant::Instant;
 use itertools::Itertools as _;
@@ -218,16 +219,18 @@ impl App {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
-        self.state
-            .recording_configs
-            .get(&self.state.selected_rec_id)
-            // is there an active loop selection?
-            .and_then(|rec_cfg| {
-                rec_cfg
-                    .time_ctrl
-                    .loop_selection()
-                    .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
-            })
+        self.state.selected_rec_id.as_ref().and_then(|rec_id| {
+            self.state
+                .recording_configs
+                .get(rec_id)
+                // is there an active loop selection?
+                .and_then(|rec_cfg| {
+                    rec_cfg
+                        .time_ctrl
+                        .loop_selection()
+                        .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
+                })
+        })
     }
 
     fn run_pending_commands(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
@@ -311,13 +314,21 @@ impl App {
 
             Command::SelectionPrevious => {
                 let state = &mut self.state;
-                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                if let Some(rec_cfg) = state
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|rec_id| state.recording_configs.get_mut(rec_id))
+                {
                     rec_cfg.selection_state.select_previous();
                 }
             }
             Command::SelectionNext => {
                 let state = &mut self.state;
-                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                if let Some(rec_cfg) = state
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|rec_id| state.recording_configs.get_mut(rec_id))
+                {
                     rec_cfg.selection_state.select_next();
                 }
             }
@@ -344,7 +355,7 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let rec_id = &self.state.selected_rec_id;
+        let Some(rec_id) = &self.state.selected_rec_id else {return;};
         let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else {return;};
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
@@ -371,7 +382,7 @@ impl App {
     }
 
     fn selected_app_id(&self) -> ApplicationId {
-        if let Some(log_db) = self.log_dbs.get(&self.state.selected_rec_id) {
+        if let Some(log_db) = self.log_db() {
             log_db
                 .recording_info()
                 .map_or_else(ApplicationId::unknown, |rec_info| {
@@ -474,8 +485,15 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_config = self.log_db().entity_db.data_store.config().clone();
-        let store_stats = DataStoreStats::from_store(&self.log_db().entity_db.data_store);
+        let store_config = self
+            .log_db()
+            .map(|log_db| log_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        let store_stats = self
+            .log_db()
+            .map(|log_db| DataStoreStats::from_store(&log_db.entity_db.data_store))
+            .unwrap_or_default();
 
         // do first, before doing too many allocations
         self.memory_panel.update(&gpu_resource_stats, &store_stats);
@@ -509,31 +527,33 @@ impl eframe::App for App {
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
-                let log_db = self
-                    .log_dbs
-                    .entry(self.state.selected_rec_id.clone())
-                    .or_default();
-                let selected_app_id = log_db
-                    .recording_info()
-                    .map_or_else(ApplicationId::unknown, |rec_info| {
-                        rec_info.application_id.clone()
-                    });
-                let blueprint = self
+                // NOTE: cannot call `.log_db()` due to borrowck shenanigans
+                if let Some(log_db) = self
                     .state
-                    .blueprints
-                    .entry(selected_app_id)
-                    .or_insert_with(|| Blueprint::new(egui_ctx));
-
-                recording_config_entry(
-                    &mut self.state.recording_configs,
-                    self.state.selected_rec_id.clone(),
-                    self.rx.source(),
-                    log_db,
-                )
-                .selection_state
-                .on_frame_start(|item| blueprint.is_item_valid(item));
-
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|rec_id| self.log_dbs.get(rec_id))
                 {
+                    let selected_app_id = log_db
+                        .recording_info()
+                        .map_or_else(ApplicationId::unknown, |rec_info| {
+                            rec_info.application_id.clone()
+                        });
+                    let blueprint = self
+                        .state
+                        .blueprints
+                        .entry(selected_app_id)
+                        .or_insert_with(|| Blueprint::new(egui_ctx));
+
+                    recording_config_entry(
+                        &mut self.state.recording_configs,
+                        log_db.recording_id().clone(),
+                        self.rx.source(),
+                        log_db,
+                    )
+                    .selection_state
+                    .on_frame_start(|item| blueprint.is_item_valid(item));
+
                     // TODO(andreas): store the re_renderer somewhere else.
                     let egui_renderer = {
                         let render_state = frame.wgpu_render_state().unwrap();
@@ -545,7 +565,7 @@ impl eframe::App for App {
                         .unwrap();
                     render_ctx.begin_frame();
 
-                    if log_db.is_default() {
+                    if log_db.is_empty() {
                         wait_screen_ui(ui, &self.rx);
                     } else {
                         self.state.show(
@@ -556,9 +576,11 @@ impl eframe::App for App {
                             &self.component_ui_registry,
                             &self.rx,
                         );
-                    }
 
-                    render_ctx.before_submit();
+                        render_ctx.before_submit();
+                    }
+                } else {
+                    wait_screen_ui(ui, &self.rx);
                 }
             });
 
@@ -695,37 +717,39 @@ impl App {
         let start = instant::Instant::now();
 
         while let Ok(msg) = self.rx.try_recv() {
-            // All messages except [`LogMsg::GoodBye`] should have an associated recording id
-            if let Some(recording_id) = msg.recording_id() {
-                let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::debug!("Opening a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id.clone();
-                    true
-                } else {
-                    false
-                };
+            let recording_id = msg.recording_id();
 
-                let log_db = self.log_dbs.entry(recording_id.clone()).or_default();
+            let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                re_log::debug!("Opening a new recording: {:?}", msg.info);
+                self.state.selected_rec_id = Some(recording_id.clone());
+                true
+            } else {
+                false
+            };
 
-                if log_db.data_source.is_none() {
-                    log_db.data_source = Some(self.rx.source().clone());
-                }
+            let log_db = self
+                .log_dbs
+                .entry(recording_id.clone())
+                .or_insert_with(|| LogDb::new(recording_id.clone()));
 
-                if let Err(err) = log_db.add(&msg) {
-                    re_log::error!("Failed to add incoming msg: {err}");
-                };
+            if log_db.data_source.is_none() {
+                log_db.data_source = Some(self.rx.source().clone());
+            }
 
-                if is_new_recording {
-                    // Do analytics after ingesting the new message,
-                    // because thats when the `log_db.recording_info` is set,
-                    // which we use in the analytics call.
-                    self.analytics.on_open_recording(log_db);
-                }
+            if let Err(err) = log_db.add(&msg) {
+                re_log::error!("Failed to add incoming msg: {err}");
+            };
 
-                if start.elapsed() > instant::Duration::from_millis(10) {
-                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break; // don't block the main thread for too long
-                }
+            if is_new_recording {
+                // Do analytics after ingesting the new message,
+                // because thats when the `log_db.recording_info` is set,
+                // which we use in the analytics call.
+                self.analytics.on_open_recording(log_db);
+            }
+
+            if start.elapsed() > instant::Duration::from_millis(10) {
+                egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                break; // don't block the main thread for too long
             }
         }
     }
@@ -733,10 +757,15 @@ impl App {
     fn cleanup(&mut self) {
         crate::profile_function!();
 
-        self.log_dbs.retain(|_, log_db| !log_db.is_default());
+        self.log_dbs.retain(|_, log_db| !log_db.is_empty());
 
-        if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
-            self.state.selected_rec_id = self.log_dbs.keys().next().cloned().unwrap_or_default();
+        if !self
+            .state
+            .selected_rec_id
+            .as_ref()
+            .map_or(false, |rec_id| self.log_dbs.contains_key(rec_id))
+        {
+            self.state.selected_rec_id = self.log_dbs.keys().next().cloned();
         }
 
         self.state
@@ -838,21 +867,20 @@ impl App {
 
     /// Do we have an open `LogDb` that is non-empty?
     fn log_db_is_nonempty(&self) -> bool {
-        self.log_dbs
-            .get(&self.state.selected_rec_id)
-            .map_or(false, |log_db| !log_db.is_default())
+        self.log_db().map_or(false, |log_db| !log_db.is_empty())
     }
 
-    fn log_db(&mut self) -> &mut LogDb {
-        self.log_dbs
-            .entry(self.state.selected_rec_id.clone())
-            .or_default()
+    fn log_db(&self) -> Option<&LogDb> {
+        self.state
+            .selected_rec_id
+            .as_ref()
+            .and_then(|rec_id| self.log_dbs.get(rec_id))
     }
 
     fn show_log_db(&mut self, log_db: LogDb) {
         self.analytics.on_open_recording(&log_db);
-        self.state.selected_rec_id = log_db.recording_id();
-        self.log_dbs.insert(log_db.recording_id(), log_db);
+        self.state.selected_rec_id = Some(log_db.recording_id().clone());
+        self.log_dbs.insert(log_db.recording_id().clone(), log_db);
     }
 
     fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
@@ -937,7 +965,7 @@ struct AppState {
     #[serde(skip)]
     cache: Caches,
 
-    selected_rec_id: RecordingId,
+    selected_rec_id: Option<RecordingId>,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: HashMap<RecordingId, RecordingConfig>,
@@ -971,7 +999,7 @@ impl AppState {
         let Self {
             app_options: options,
             cache,
-            selected_rec_id,
+            selected_rec_id: _,
             recording_configs,
             panel_selection,
             blueprints,
@@ -983,7 +1011,7 @@ impl AppState {
 
         let rec_cfg = recording_config_entry(
             recording_configs,
-            selected_rec_id.clone(),
+            log_db.recording_id().clone(),
             rx.source(),
             log_db,
         );
@@ -1253,7 +1281,13 @@ fn top_bar_ui(
         input_latency_label_ui(ui, app);
     }
 
-    if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
+    // TODO(jleibs) it's obnoxious we can't use self.log_db() here due to borrow checker
+    if let Some(log_db) = app
+        .state
+        .selected_rec_id
+        .as_ref()
+        .and_then(|rec_id| app.log_dbs.get(rec_id))
+    {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let selected_app_id = log_db
                 .recording_info()
@@ -1586,6 +1620,12 @@ fn open(app: &mut App) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRangeF)>) {
+    let Some(log_db) = app.log_db() else {
+        // NOTE: Can only happen if saving through the command palette.
+        re_log::error!("No data to save!");
+        return;
+    };
+
     let title = if loop_selection.is_some() {
         "Save loop selection"
     } else {
@@ -1597,7 +1637,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         .set_title(title)
         .save_file()
     {
-        let f = match save_database_to_file(app.log_db(), path, loop_selection) {
+        let f = match save_database_to_file(log_db, path, loop_selection) {
             Ok(f) => f,
             Err(err) => {
                 re_log::error!("File saving failed: {err}");
@@ -1605,8 +1645,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
             }
         };
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
-            // NOTE: Shouldn't even be possible as the "Save" button is already
-            // grayed out at this point... better safe than sorry though.
+            // NOTE: Can only happen if saving through the command palette.
             re_log::error!("File saving failed: {err}");
         }
     }
@@ -1654,10 +1693,13 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
             "<UNKNOWN>".to_owned()
         };
         if ui
-            .radio(app.state.selected_rec_id == log_db.recording_id(), info)
+            .radio(
+                app.state.selected_rec_id.as_ref() == Some(log_db.recording_id()),
+                info,
+            )
             .clicked()
         {
-            app.state.selected_rec_id = log_db.recording_id();
+            app.state.selected_rec_id = Some(log_db.recording_id().clone());
         }
     }
 }
@@ -1841,7 +1883,7 @@ fn save_database_to_file(
 
     let ent_op_msgs = log_db
         .iter_entity_op_msgs()
-        .map(|msg| LogMsg::EntityPathOpMsg(log_db.recording_id(), msg.clone()))
+        .map(|msg| LogMsg::EntityPathOpMsg(log_db.recording_id().clone(), msg.clone()))
         .collect_vec();
 
     let time_filter = time_selection.map(|(timeline, range)| {
@@ -1857,7 +1899,7 @@ fn save_database_to_file(
         .map(|table| {
             table
                 .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(log_db.recording_id(), msg))
+                .map(|msg| LogMsg::ArrowMsg(log_db.recording_id().clone(), msg))
         })
         .collect();
 
@@ -1886,9 +1928,13 @@ fn save_database_to_file(
 fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
     crate::profile_function!();
 
-    let decoder = re_log_encoding::decoder::Decoder::new(read)?;
+    let mut decoder = re_log_encoding::decoder::Decoder::new(read)?;
 
-    let mut log_db = LogDb::default();
+    let first = decoder.next().context("no messages in recording")??;
+
+    let mut log_db = LogDb::new(first.recording_id().clone());
+    log_db.add(&first)?;
+
     for msg in decoder {
         log_db.add(&msg?)?;
     }

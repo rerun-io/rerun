@@ -11,7 +11,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_log_types::DataRow;
+use re_log_types::{DataRow, RecordingType};
 use rerun::{
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
@@ -188,7 +188,7 @@ fn init(
     });
 
     let recording_id = if let Some(recording_id) = recording_id {
-        recording_id.into()
+        RecordingId::from_string(RecordingType::Data, recording_id)
     } else {
         default_recording_id(py, &application_id)
     };
@@ -1240,7 +1240,7 @@ fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
     application_id.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
     let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
-    RecordingId::from_uuid(uuid)
+    RecordingId::from_uuid(RecordingType::Data, uuid)
 }
 
 fn authkey(py: Python<'_>) -> Vec<u8> {
