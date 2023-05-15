@@ -7,27 +7,27 @@ use re_log::warn_once;
 use re_log_types::component_types::{self, InstanceKey};
 use re_viewer_context::{auto_color, ViewerContext};
 
+use crate::ui::spaceview_controls::{
+    HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
+};
+
 use super::SceneBarChart;
 
 // ---
 
 pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
-    let horizontal_modifier = egui::Modifiers::SHIFT;
-    let zoom_modifier = egui::Modifiers::CTRL;
-    let select_zoom = egui::PointerButton::Secondary;
-
     let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
 
     layout.add("Pan by dragging, or scroll (+ ");
-    layout.add(horizontal_modifier);
+    layout.add(HORIZONTAL_SCROLL_MODIFIER);
     layout.add(" for horizontal).\n");
 
     layout.add("Zoom with pinch gesture or scroll + ");
-    layout.add(zoom_modifier);
+    layout.add(ZOOM_SCROLL_MODIFIER);
     layout.add(".\n");
 
     layout.add("Drag ");
-    layout.add(select_zoom);
+    layout.add(SELECTION_RECT_ZOOM_BUTTON);
     layout.add(" to zoom in/out using a selection.\n\n");
 
     layout.add_button_text("double-click");

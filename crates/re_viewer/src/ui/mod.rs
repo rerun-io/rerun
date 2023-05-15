@@ -11,6 +11,7 @@ mod view_tensor;
 mod view_text;
 mod view_time_series;
 mod viewport;
+mod spaceview_controls;
 
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;

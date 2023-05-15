@@ -8,36 +8,38 @@ use re_viewer_context::ViewerContext;
 
 use super::SceneTimeSeries;
 use crate::{
-    misc::format_time::next_grid_tick_magnitude_ns, ui::view_time_series::scene::PlotSeriesKind,
+    misc::format_time::next_grid_tick_magnitude_ns,
+    ui::{
+        spaceview_controls::{
+            HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, RESET_VIEW_BUTTON_TEXT,
+            SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
+        },
+        view_time_series::scene::PlotSeriesKind,
+    },
 };
 
 // ---
 
 pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
-    let horizontal_modifier = egui::Modifiers::SHIFT;
-    let zoom_modifier = egui::Modifiers::CTRL;
-    let select_zoom = egui::PointerButton::Secondary;
-    let move_time_cursor = egui::PointerButton::Secondary;
-
     let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
 
     layout.add("Pan by dragging, or scroll (+ ");
-    layout.add(horizontal_modifier);
+    layout.add(HORIZONTAL_SCROLL_MODIFIER);
     layout.add(" for horizontal).\n");
 
     layout.add("Zoom with pinch gesture or scroll + ");
-    layout.add(zoom_modifier);
+    layout.add(ZOOM_SCROLL_MODIFIER);
     layout.add(".\n");
 
     layout.add("Drag ");
-    layout.add(select_zoom);
+    layout.add(SELECTION_RECT_ZOOM_BUTTON);
     layout.add(" to zoom in/out using a selection.\n");
 
     layout.add("Click ");
-    layout.add(move_time_cursor);
+    layout.add(MOVE_TIME_CURSOR_BUTTON);
     layout.add(" to move the time cursor.\n\n");
 
-    layout.add_button_text("double-click");
+    layout.add_button_text(RESET_VIEW_BUTTON_TEXT);
     layout.add(" to reset the view.");
 
     layout.layout_job.into()

@@ -2,6 +2,11 @@ use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
+use crate::ui::spaceview_controls::{
+    modifier_contains, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
+    ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
+};
+
 use super::SpaceCamera3D;
 
 /// An eye in a 3D view.
@@ -299,18 +304,20 @@ impl OrbitEye {
         let mut did_interact = false;
 
         if response.drag_delta().length() > drag_threshold {
-            if response.dragged_by(egui::PointerButton::Middle)
-                || (response.dragged_by(egui::PointerButton::Primary)
-                    && response.ctx.input(|i| i.modifiers.alt))
+            if response.dragged_by(ROLL_MOUSE)
+                || (response.dragged_by(ROLL_MOUSE_ALT)
+                    && response
+                        .ctx
+                        .input(|i| modifier_contains(i.modifiers, ROLL_MOUSE_MODIFIER)))
             {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
                     did_interact = true;
                 }
-            } else if response.dragged_by(egui::PointerButton::Primary) {
+            } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
                 did_interact = true;
-            } else if response.dragged_by(egui::PointerButton::Secondary) {
+            } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
                 self.translate(response.drag_delta());
                 did_interact = true;
             }
@@ -379,8 +386,16 @@ impl OrbitEye {
             local_movement = local_movement.normalize_or_zero();
 
             let speed = self.orbit_radius
-                * (if input.modifiers.shift { 10.0 } else { 1.0 })
-                * (if input.modifiers.ctrl { 0.1 } else { 1.0 });
+                * (if modifier_contains(input.modifiers, SPEED_UP_3D_MODIFIER) {
+                    10.0
+                } else {
+                    1.0
+                })
+                * (if modifier_contains(input.modifiers, SLOW_DOWN_3D_MODIFIER) {
+                    0.1
+                } else {
+                    1.0
+                });
             let world_movement = self.world_from_view_rot * (speed * local_movement);
 
             self.velocity = egui::lerp(

@@ -13,10 +13,17 @@ use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerConte
 
 use crate::{
     misc::SpaceViewHighlights,
-    ui::view_spatial::{
-        ui::{create_labels, outline_config, picking, screenshot_context_menu},
-        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-        SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
+    ui::{
+        spaceview_controls::{
+            DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
+            ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
+            TRACKED_CAMERA_RESTORE_KEY,
+        },
+        view_spatial::{
+            ui::{create_labels, outline_config, picking, screenshot_context_menu},
+            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+            SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
+        },
     },
 };
 
@@ -239,28 +246,22 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 // ----------------------------------------------------------------------------
 
 pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
-    let pan_mouse = egui::PointerButton::Secondary;
-    let roll_mouse = egui::PointerButton::Middle;
-    let roll_mouse_alt = egui::PointerButton::Primary;
-    let roll_modifier = egui::Modifiers::ALT;
-    let speed_up = egui::Modifiers::SHIFT;
-    let slow_down = egui::Modifiers::CTRL;
-    let restore_key = egui::Key::Escape;
-
     let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
 
-    layout.add("Drag to rotate.\n");
+    layout.add("Click and drag ");
+    layout.add(ROTATE3D_BUTTON);
+    layout.add(" to rotate.\n");
 
-    layout.add("Drag with ");
-    layout.add(pan_mouse);
+    layout.add("Click and drag with ");
+    layout.add(DRAG_PAN3D_BUTTON);
     layout.add(" to pan.\n");
 
     layout.add("Drag with ");
-    layout.add(roll_mouse);
+    layout.add(ROLL_MOUSE);
     layout.add(" ( ");
-    layout.add(roll_mouse_alt);
+    layout.add(ROLL_MOUSE_ALT);
     layout.add(" + holding ");
-    layout.add(roll_modifier);
+    layout.add(ROLL_MOUSE_MODIFIER);
     layout.add(" ) to roll the view.\n");
 
     layout.add("Scroll or pinch to zoom.\n\n");
@@ -271,18 +272,18 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.add_button_text("QE");
     layout.add("\n");
 
-    layout.add(slow_down);
+    layout.add(SPEED_UP_3D_MODIFIER);
     layout.add(" slows down, ");
-    layout.add(speed_up);
+    layout.add(SLOW_DOWN_3D_MODIFIER);
     layout.add(" speeds up\n\n");
 
     layout.add_button_text("double-click");
     layout.add(" an object to focus the view on it.\n");
     layout.add("For cameras, you can restore the view again with ");
-    layout.add(restore_key);
+    layout.add(TRACKED_CAMERA_RESTORE_KEY);
     layout.add(" .\n\n");
 
-    layout.add_button_text("double-click");
+    layout.add_button_text(RESET_VIEW_BUTTON_TEXT);
     layout.add(" on empty space to reset the view.");
 
     layout.layout_job.into()
@@ -434,7 +435,7 @@ pub fn view_3d(
     }
 
     // Allow to restore the camera state with escape if a camera was tracked before.
-    if response.hovered() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+    if response.hovered() && ui.input(|i| i.key_pressed(TRACKED_CAMERA_RESTORE_KEY)) {
         if let Some(camera_before_changing_tracked_state) =
             state.state_3d.camera_before_tracked_camera
         {
