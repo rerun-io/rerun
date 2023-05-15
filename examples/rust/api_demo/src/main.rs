@@ -17,6 +17,7 @@ use std::{
     f32::consts::{PI, TAU},
 };
 
+use itertools::Itertools;
 use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, DrawOrder,
@@ -284,23 +285,48 @@ fn demo_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn colored_tensor<F: Fn(usize, usize) -> [u8; 3]>(
+    width: usize,
+    height: usize,
+    pos_to_color: F,
+) -> ndarray::Array3<u8> {
+    let pos_to_color = &pos_to_color; // lambda borrow workaround.
+    ndarray::Array3::from_shape_vec(
+        (height, width, 3),
+        (0..height)
+            .flat_map(|y| (0..width).flat_map(move |x| pos_to_color(x, y)))
+            .collect_vec(),
+    )
+    .unwrap()
+}
+
 fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
 
-    // Add several overlapping images
-    let img = Array::<u8, _>::from_elem((512, 512, 3).f(), 64);
+    // Add several overlapping images.
+    // Large dark gray in the background
+    let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64);
     MsgSender::new("2d_layering/background")
         .with_timepoint(sim_time(1.0))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(0.0)])?
         .send(rec_stream)?;
-    let img = Array::<u8, _>::from_elem((256, 256, 3).f(), 128);
-    MsgSender::new("2d_layering/middle")
+    // Smaller gradient in the middle
+    let img = colored_tensor(256, 256, |x, y| [x as u8, y as u8, 0]);
+    MsgSender::new("2d_layering/middle_red")
         .with_timepoint(sim_time(1.0))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(1.0)])?
         .send(rec_stream)?;
-    let img = Array::<u8, _>::from_elem((128, 128, 3).f(), 255);
+    // Slightly smaller red in the middle, on the same layer as the previous.
+    let img = colored_tensor(192, 192, |_, _| [0, 0, 255]);
+    MsgSender::new("2d_layering/middle_blue")
+        .with_timepoint(sim_time(1.0))
+        .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
+        .with_component(&[DrawOrder(1.0)])?
+        .send(rec_stream)?;
+    // Small white on top.
+    let img = Array::<u8, _>::from_elem((128, 128, 1).f(), 255);
     MsgSender::new("2d_layering/top")
         .with_timepoint(sim_time(1.0))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?

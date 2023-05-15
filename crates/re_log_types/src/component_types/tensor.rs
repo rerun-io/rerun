@@ -1359,7 +1359,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_vector());
         assert!(tensor.is_shaped_like_an_image());
     }
-    // Color/Grey 2x4 images
+    // Color/Gray 2x4 images
     for shape in [
         vec![4, 2],
         vec![4, 2, 1],
@@ -1381,7 +1381,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_shaped_like_an_image());
     }
 
-    // gray 1x4 images
+    // Gray 1x4 images
     for shape in [
         vec![4, 1],
         vec![4, 1, 1],
@@ -1396,7 +1396,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_shaped_like_an_image());
     }
 
-    // gray 4x1 images
+    // Gray 4x1 images
     for shape in [
         vec![1, 4],
         vec![1, 4, 1],
