@@ -9,6 +9,11 @@ class RecordingStream:
     """
     A RecordingStream is used to send data to Rerun.
 
+    You can instantiate a RecordingStream by calling either [`rr.init`][] (to create a global
+    recording) or [`rr.new_recording`][] (for more advanced use cases).
+
+    A RecordingStream can safely be copied and to other threads.
+
     Todo:
     ----
         - batching vars

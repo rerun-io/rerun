@@ -137,7 +137,7 @@ def init(
     spawn: bool = False,
     default_enabled: bool = True,
     strict: bool = False,
-) -> RecordingStream:
+) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -180,7 +180,7 @@ def init(
 
     _strict_mode = strict
 
-    return new_recording(
+    new_recording(
         application_id,
         recording_id,
         True,  # make_default

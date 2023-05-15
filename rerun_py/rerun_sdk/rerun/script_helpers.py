@@ -66,11 +66,13 @@ def script_setup(
         The application ID to use for the viewer.
 
     """
-    rec = rr.init(
+    rr.init(
         application_id=application_id,
         default_enabled=True,
         strict=True,
     )
+
+    rec: RecordingStream = rr.get_global_data_recording()  # type: ignore[assignment]
 
     # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
     if args.serve:
