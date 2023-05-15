@@ -13,16 +13,11 @@ class RecordingStream:
     recording) or [`rerun.new_recording`][] (for more advanced use cases).
 
     A RecordingStream can safely be copied and sent to other threads.
-    You can also set a recording as the global active one for all threads ([`rerun.set_global_data_recording`])
-    or just for the current thread ([`rerun.set_thread_local_data_recording`]).
+    You can also set a recording as the global active one for all threads ([`rerun.set_global_data_recording`][])
+    or just for the current thread ([`rerun.set_thread_local_data_recording`][]).
 
-    See also:
-
-    - [`rerun.get_data_recording`][]
-
-    - [`rerun.get_global_data_recording`][]
-
-    - [`rerun.get_thread_local_data_recording`][]
+    See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],
+    [`rerun.get_thread_local_data_recording`][].
 
     Available methods
     -----------------

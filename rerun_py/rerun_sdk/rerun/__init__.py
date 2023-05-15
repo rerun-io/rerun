@@ -32,9 +32,9 @@ from rerun.recording_stream import (
     get_global_data_recording,
     get_recording_id,
     get_thread_local_data_recording,
+    is_enabled,
     set_global_data_recording,
     set_thread_local_data_recording,
-    is_enabled,
 )
 
 # --- Init RecordingStream class ---
@@ -60,6 +60,7 @@ __all__ = [
     "rerun_shutdown",
     # recordings
     "RecordingStream",
+    "is_enabled",
     "get_application_id",
     "get_recording_id",
     "get_data_recording",
