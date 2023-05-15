@@ -108,6 +108,8 @@ canvas {
 a.icon-link {
   margin: 5px;
   padding: 5px;
+  width: 24.5px;
+  height: 24px;
 }
 a.icon-link:hover {
   background: #404040;
