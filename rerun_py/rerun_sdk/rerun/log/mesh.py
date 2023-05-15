@@ -9,6 +9,7 @@ from rerun.log import (
     _normalize_colors,
 )
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_mesh",
@@ -26,6 +27,7 @@ def log_mesh(
     albedo_factor: Optional[Any] = None,
     vertex_colors: Optional[Colors] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a raw 3D mesh by specifying its vertex positions, and optionally indices, normals and albedo factor.
@@ -74,8 +76,13 @@ def log_mesh(
         If specified, the alpha is considered separate (unmultiplied).
     timeless:
         If true, the mesh will be timeless (default: False)
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     positions = np.asarray(positions, dtype=np.float32).flatten()
 
@@ -97,6 +104,7 @@ def log_mesh(
         normal_buffers=[normals],
         albedo_factors=[albedo_factor],
         timeless=timeless,
+        recording=recording,
     )
 
 
@@ -110,6 +118,7 @@ def log_meshes(
     normal_buffers: Sequence[Optional[npt.ArrayLike]],
     albedo_factors: Sequence[Optional[npt.ArrayLike]],
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log multiple raw 3D meshes by specifying their different buffers and albedo factors.
@@ -133,8 +142,14 @@ def log_meshes(
         An optional sequence of albedo factors, one for each mesh.
     timeless:
         If true, the mesh will be timeless (default: False)
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     position_buffers = [np.asarray(p, dtype=np.float32).flatten() for p in position_buffers]
     if vertex_color_buffers is not None:
@@ -147,7 +162,6 @@ def log_meshes(
         albedo_factors = [np.asarray(af, dtype=np.float32).flatten() if af else None for af in albedo_factors]
 
     # Mesh arrow handling happens inside the python bridge
-
     bindings.log_meshes(
         entity_path,
         position_buffers=position_buffers,
@@ -156,4 +170,5 @@ def log_meshes(
         normal_buffers=normal_buffers,
         albedo_factors=albedo_factors,
         timeless=timeless,
+        recording=recording,
     )

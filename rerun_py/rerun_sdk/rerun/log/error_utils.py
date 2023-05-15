@@ -1,8 +1,10 @@
 import inspect
 import logging
+from typing import Optional
 
 import rerun
 from rerun.log.text_internal import LogLevel, log_text_entry_internal
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "_send_warning",
@@ -15,7 +17,11 @@ def _build_warning_context_string(skip_first: int) -> str:
     return "\n".join(f'File "{frame.filename}", line {frame.lineno}, in {frame.function}' for frame in outer_stack)
 
 
-def _send_warning(message: str, depth_to_user_code: int) -> None:
+def _send_warning(
+    message: str,
+    depth_to_user_code: int,
+    recording: Optional[RecordingStream] = None,
+) -> None:
     """
     Sends a warning about the usage of the Rerun SDK.
 
@@ -29,5 +35,5 @@ def _send_warning(message: str, depth_to_user_code: int) -> None:
 
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 2)
     warning = f"{message}\n{context_descriptor}"
-    log_text_entry_internal("rerun", warning, level=LogLevel.WARN)
+    log_text_entry_internal("rerun", warning, level=LogLevel.WARN, recording=recording)
     logging.warning(warning)

@@ -9,6 +9,7 @@
 // ----------------
 // Private modules:
 
+mod global;
 mod log_sink;
 mod msg_sender;
 mod recording_stream;
@@ -19,11 +20,11 @@ mod recording_stream;
 pub use self::msg_sender::{MsgSender, MsgSenderError};
 pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder};
 
-use re_log_types::RecordingType;
 pub use re_sdk_comms::default_server_addr;
 
 pub use re_log_types::{
-    ApplicationId, Component, ComponentName, EntityPath, RecordingId, SerializableComponent,
+    ApplicationId, Component, ComponentName, EntityPath, RecordingId, RecordingType,
+    SerializableComponent,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -55,7 +56,10 @@ pub mod sink {
 
 /// Things directly related to logging.
 pub mod log {
-    pub use re_log_types::{DataCell, DataRow, DataTable, LogMsg, PathOp, RowId, TableId};
+    pub use re_log_types::{
+        DataCell, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, LogMsg, PathOp,
+        RowId, TableId,
+    };
 }
 
 /// Time-related types.

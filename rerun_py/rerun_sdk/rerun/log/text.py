@@ -10,6 +10,7 @@ from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
 from rerun.log.text_internal import LogLevel
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "LogLevel",
@@ -62,6 +63,7 @@ class LoggingHandler(logging.Handler):
         level = self.LVL2NAME.get(record.levelno)
         if level is None:  # user-defined level
             level = record.levelname
+        # NOTE: will go to the most appropriate recording!
         log_text_entry(objpath, record.getMessage(), level=level)
 
 
@@ -74,6 +76,7 @@ def log_text_entry(
     color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a text entry, with optional level.
@@ -94,8 +97,14 @@ def log_text_entry(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         Whether the text entry should be timeless.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     instanced: Dict[str, Any] = {}
     splats: Dict[str, Any] = {}
@@ -114,8 +123,8 @@ def log_text_entry(
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)

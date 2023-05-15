@@ -7,8 +7,12 @@ from typing import Any, Callable, TypeVar, cast
 import rerun
 from rerun import bindings
 from rerun.log.text_internal import LogLevel, log_text_entry_internal
+from rerun.recording_stream import RecordingStream
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
+
+# Default formatting for the `warnings` package is... non optimal.
+warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING:rerun:{msg}\n"
 
 
 def log_decorator(func: _TFunc) -> _TFunc:
@@ -25,7 +29,8 @@ def log_decorator(func: _TFunc) -> _TFunc:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        if not bindings.is_enabled():
+        recording = RecordingStream.to_native(kwargs.get("recording"))
+        if not bindings.is_enabled(recording):
             # NOTE: use `warnings` which handles runtime deduplication.
             warnings.warn(f"Rerun is disabled - {func.__name__}() call ignored")
             return
@@ -38,7 +43,7 @@ def log_decorator(func: _TFunc) -> _TFunc:
                 return func(*args, **kwargs)
             except Exception as e:
                 warning = "".join(traceback.format_exception(e.__class__, e, e.__traceback__))
-                log_text_entry_internal("rerun", warning, level=LogLevel.WARN)
+                log_text_entry_internal("rerun", warning, level=LogLevel.WARN, recording=recording)
                 logging.warning(f"Ignoring rerun log call: {warning}")
 
     return cast(_TFunc, wrapper)
