@@ -2,7 +2,7 @@ use std::{net::SocketAddr, thread::JoinHandle};
 
 use crossbeam::channel::{select, Receiver, Sender};
 
-use re_log_types::{LogMsg, RecordingId, RowId};
+use re_log_types::LogMsg;
 
 #[derive(Debug, PartialEq, Eq)]
 struct FlushedMsg;
@@ -39,7 +39,6 @@ enum PacketMsg {
 /// The messages are encoded and sent on separate threads
 /// so that calling [`Client::send`] is non-blocking.
 pub struct Client {
-    recording_id: RecordingId,
     msg_tx: Sender<MsgMsg>,
     flushed_rx: Receiver<FlushedMsg>,
     encode_quit_tx: Sender<QuitMsg>,
@@ -52,7 +51,7 @@ pub struct Client {
 
 impl Client {
     /// Connect via TCP to this log server.
-    pub fn new(recording_id: RecordingId, addr: SocketAddr) -> Self {
+    pub fn new(addr: SocketAddr) -> Self {
         re_log::debug!("Connecting to remote {addr}…");
 
         // TODO(emilk): keep track of how much memory is in each pipe
@@ -90,7 +89,6 @@ impl Client {
             .expect("Failed to spawn thread");
 
         Self {
-            recording_id,
             msg_tx,
             flushed_rx,
             encode_quit_tx,
@@ -142,7 +140,6 @@ impl Drop for Client {
     /// Wait until everything has been sent.
     fn drop(&mut self) {
         re_log::debug!("Shutting down the client connection…");
-        self.send(LogMsg::Goodbye(self.recording_id.clone(), RowId::random()));
         self.flush();
         // First shut down the encoder:
         self.encode_quit_tx.send(QuitMsg).ok();

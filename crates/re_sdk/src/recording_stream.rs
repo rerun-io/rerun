@@ -5,7 +5,7 @@ use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
     DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
-    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    RowId, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -201,11 +201,10 @@ impl RecordingStreamBuilder {
     pub fn connect(self, addr: std::net::SocketAddr) -> RecordingStreamResult<RecordingStream> {
         let (enabled, recording_info, batcher_config) = self.into_args();
         if enabled {
-            let recording_id = recording_info.recording_id.clone();
             RecordingStream::new(
                 recording_info,
                 batcher_config,
-                Box::new(crate::log_sink::TcpSink::new(recording_id, addr)),
+                Box::new(crate::log_sink::TcpSink::new(addr)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -340,6 +339,12 @@ impl Drop for RecordingStreamInner {
         // sending data down the pipeline.
         self.batcher.flush_blocking();
         self.cmds_tx.send(Command::PopPendingTables).ok();
+        self.cmds_tx
+            .send(Command::RecordMsg(LogMsg::Goodbye(
+                self.info.recording_id.clone(),
+                RowId::random(),
+            )))
+            .ok();
         self.cmds_tx.send(Command::Shutdown).ok();
         if let Some(handle) = self.batcher_to_sink_handle.take() {
             handle.join().ok();
@@ -736,12 +741,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self, addr: std::net::SocketAddr) {
-        let Some(recording_id) = self.recording_info().map(|ri| ri.recording_id.clone())
-        else {
-            return;
-        };
-
-        self.set_sink(Box::new(crate::log_sink::TcpSink::new(recording_id, addr)));
+        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr)));
     }
 
     /// Swaps the underlying sink for a [`crate::sink::MemorySink`] sink and returns the associated

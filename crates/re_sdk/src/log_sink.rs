@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-use re_log_types::{LogMsg, RecordingId};
+use re_log_types::LogMsg;
 
 /// Where the SDK sends its log messages.
 pub trait LogSink: Send + Sync + 'static {
@@ -145,9 +145,9 @@ impl TcpSink {
     /// Connect to the given address in a background thread.
     /// Retries until successful.
     #[inline]
-    pub fn new(recording_id: RecordingId, addr: std::net::SocketAddr) -> Self {
+    pub fn new(addr: std::net::SocketAddr) -> Self {
         Self {
-            client: re_sdk_comms::Client::new(recording_id, addr),
+            client: re_sdk_comms::Client::new(addr),
         }
     }
 }
