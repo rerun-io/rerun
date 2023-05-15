@@ -9,8 +9,18 @@ pub struct Time(i64);
 impl Time {
     #[inline]
     pub fn now() -> Self {
+        // TODO(https://github.com/rerun-io/rerun/issues/2105): Even though `instant` should work on wasm,
+        // `elapsed` is broken.  See: https://github.com/sebcrozet/instant/issues/49
+        //
+        // For now, we implement what elapsed is supposed to do ourselves.
+        /*
         let nanos_since_epoch = instant::SystemTime::UNIX_EPOCH
             .elapsed()
+            .expect("Expected system clock to be set to after 1970")
+            .as_nanos() as _;
+        */
+        let nanos_since_epoch = instant::SystemTime::now()
+            .duration_since(instant::SystemTime::UNIX_EPOCH)
             .expect("Expected system clock to be set to after 1970")
             .as_nanos() as _;
         Self(nanos_since_epoch)
