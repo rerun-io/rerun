@@ -309,33 +309,14 @@ async fn run_impl(
 
     // Where do we get the data from?
     let rx = if !args.url_or_paths.is_empty() {
-        if 1 < args.url_or_paths.len() {
-            // Load many files:
-            let paths = args
-                .url_or_paths
-                .iter()
-                .map(std::path::PathBuf::from)
-                .collect_vec();
-            let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Files {
-                paths: paths.clone(),
-            });
+        let arguments = args
+            .url_or_paths
+            .into_iter()
+            .map(categorize_argument)
+            .collect_vec();
 
-            let recording_id = re_log_types::RecordingId::random();
-
-            // Load the files in parallel, and log errors.
-            // Failing to log one out of many files is not a big deal.
-            for path in paths {
-                let tx = tx.clone();
-                let recording_id = recording_id.clone();
-                rayon::spawn(move || {
-                    if let Err(err) = load_file_to_channel_at(recording_id, &path, tx) {
-                        re_log::error!("Failed to load {path:?}: {err}");
-                    }
-                });
-            }
-            rx
-        } else {
-            match categorize_argument(args.url_or_paths[0].clone()) {
+        if arguments.len() == 1 {
+            match arguments[0].clone() {
                 ArgumentCategory::RrdHttpUrl(url) => {
                     re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
                 }
@@ -388,6 +369,36 @@ async fn run_impl(
                     }
                 }
             }
+        } else {
+            // Load many files:
+            let mut paths = vec![];
+            for argument in arguments {
+                if let ArgumentCategory::FilePath(path) = argument {
+                    paths.push(path);
+                } else {
+                    // TODO(#2121): Support loading multiple `http://` and `ws://` urls
+                    anyhow::bail!("Can only load a single URL, or multiple files. See https://github.com/rerun-io/rerun/issues/2121");
+                }
+            }
+
+            let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Files {
+                paths: paths.clone(),
+            });
+
+            let recording_id = re_log_types::RecordingId::random();
+
+            // Load the files in parallel, and log errors.
+            // Failing to log one out of many files is not a big deal.
+            for path in paths {
+                let tx = tx.clone();
+                let recording_id = recording_id.clone();
+                rayon::spawn(move || {
+                    if let Err(err) = load_file_to_channel_at(recording_id, &path, tx) {
+                        re_log::error!("Failed to load {path:?}: {err}");
+                    }
+                });
+            }
+            rx
         }
     } else {
         #[cfg(feature = "server")]
@@ -528,6 +539,7 @@ fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::L
     }
 }
 
+#[derive(Clone)]
 enum ArgumentCategory {
     /// A remote RRD file, served over http.
     RrdHttpUrl(String),
