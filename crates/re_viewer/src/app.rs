@@ -527,6 +527,7 @@ impl eframe::App for App {
 
                 self.memory_panel_ui(ui, &gpu_resource_stats, &store_config, &store_stats);
 
+                // NOTE: cannot call `.log_db()` due to borrowck shenanigans
                 if let Some(log_db) = self
                     .state
                     .selected_rec_id
@@ -1620,6 +1621,7 @@ fn open(app: &mut App) {
 #[cfg(not(target_arch = "wasm32"))]
 fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRangeF)>) {
     let Some(log_db) = app.log_db() else {
+        // NOTE: Can only happen if saving through the command palette.
         re_log::error!("No data to save!");
         return;
     };
@@ -1643,8 +1645,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
             }
         };
         if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
-            // NOTE: Shouldn't even be possible as the "Save" button is already
-            // grayed out at this point... better safe than sorry though.
+            // NOTE: Can only happen if saving through the command palette.
             re_log::error!("File saving failed: {err}");
         }
     }

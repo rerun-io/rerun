@@ -477,7 +477,9 @@ fn receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::L
                 mut_db.add(&msg)?;
                 num_messages += 1;
                 if is_goodbye {
-                    mut_db.entity_db.data_store.sanity_check()?;
+                    if let Err(err) = mut_db.entity_db.data_store.sanity_check() {
+                        re_log::error!(%err, "data store in a corrupt state");
+                    }
                     anyhow::ensure!(0 < num_messages, "No messages received");
                     re_log::info!("Successfully ingested {num_messages} messages.");
                     if let Some(db) = db {
