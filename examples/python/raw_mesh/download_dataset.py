@@ -10,10 +10,10 @@ import requests
 
 # TODO(cmc): re-enable obj meshes when we support those on the viewer's side
 AVAILABLE_MESHES: Final = [
-    "buggy",
-    "brain_stem",
     "lantern",
     "avocado",
+    "buggy",
+    "brain_stem",
     # "buddha",
     # "bunny",
     # "dragon",
@@ -31,19 +31,19 @@ def ensure_mesh_downloaded(mesh_name: str) -> Path:
 
 def download_mesh(name: str) -> Path:
     if name == "avocado":
-        return download_glb_sample("avocado")
+        return download_glb_sample("Avocado")
     if name == "brain_stem":
-        return download_glb_sample("brain_stem")
+        return download_glb_sample("BrainStem")
     if name == "buddha":
         return download_mcguire_sample("research", "buddha")
     if name == "buggy":
-        return download_glb_sample("buggy")
+        return download_glb_sample("Buggy")
     if name == "bunny":
         return download_mcguire_sample("research", "bunny")
     if name == "dragon":
         return download_mcguire_sample("research", "dragon")
     if name == "lantern":
-        return download_glb_sample("lantern")
+        return download_glb_sample("Lantern")
     if name == "mori_knob":
         return download_mcguire_sample("common", "mori_knob")
     raise RuntimeError(f"Unknown mesh named: {name}")
@@ -84,13 +84,13 @@ def download_mcguire_sample(package: str, name: str) -> Path:
 
 def download_glb_sample(name: str) -> Path:
     """Downloads a sample glb mesh and returns the path it was downloaded to."""
-    capitalized_name = name.capitalize()
-    url = f"https://github.com/KhronosGroup/glTF-Sample-Models/blob/master/2.0/{capitalized_name}/glTF-Binary/{capitalized_name}.glb?raw=true"  # noqa: E501 line too long
+    url = f"https://github.com/KhronosGroup/glTF-Sample-Models/blob/189f80d/2.0/{name}/glTF-Binary/{name}.glb?raw=true"  # noqa: E501 line too long
 
     def download(url: str, path: Path) -> None:
         if not os.path.exists(path):
             print(f"downloading {url} …")
             resp = requests.get(url)
+            resp.raise_for_status()
             os.makedirs(path.parent, exist_ok=True)
             with open(path, "wb") as f:
                 f.write(resp.content)
