@@ -55,6 +55,7 @@ recording_stream_patch(
 __all__ = [
     # init
     "init",
+    "new_recording",
     "rerun_shutdown",
     # recordings
     "RecordingStream",
@@ -133,8 +134,6 @@ _strict_mode = False
 def init(
     application_id: str,
     recording_id: Optional[str] = None,
-    make_default: bool = True,
-    make_thread_default: bool = True,
     spawn: bool = False,
     default_enabled: bool = True,
     strict: bool = False,
@@ -165,12 +164,6 @@ def init(
         processes to log to the same Rerun instance (and be part of the same recording),
         you will need to manually assign them all the same recording_id.
         Any random UUIDv4 will work, or copy the recording id for the parent process.
-    make_default : bool
-        If true (the default), the newly initialized recording will replace the current
-        active one (if any) in the global scope.
-    make_thread_default : bool
-        If true (the default), the newly initialized recording will replace the current
-        active one (if any) in the thread-local scope.
     spawn : bool
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
@@ -186,6 +179,65 @@ def init(
     """
 
     _strict_mode = strict
+
+    return new_recording(
+        application_id,
+        recording_id,
+        True,  # make_default
+        False,  # make_thread_default
+        spawn,
+        default_enabled,
+    )
+
+
+def new_recording(
+    application_id: str,
+    recording_id: Optional[str] = None,
+    make_default: bool = False,
+    make_thread_default: bool = False,
+    spawn: bool = False,
+    default_enabled: bool = True,
+) -> RecordingStream:
+    """
+    Creates a new recording with a user-chosen application id (name) that can be used to log data.
+
+    Parameters
+    ----------
+    application_id : str
+        Your Rerun recordings will be categorized by this application id, so
+        try to pick a unique one for each application that uses the Rerun SDK.
+
+        For example, if you have one application doing object detection
+        and another doing camera calibration, you could have
+        `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+    recording_id : Optional[str]
+        Set the recording ID that this process is logging to, as a UUIDv4.
+
+        The default recording_id is based on `multiprocessing.current_process().authkey`
+        which means that all processes spawned with `multiprocessing`
+        will have the same default recording_id.
+
+        If you are not using `multiprocessing` and still want several different Python
+        processes to log to the same Rerun instance (and be part of the same recording),
+        you will need to manually assign them all the same recording_id.
+        Any random UUIDv4 will work, or copy the recording id for the parent process.
+    make_default : bool
+        If true (_not_ the default), the newly initialized recording will replace the current
+        active one (if any) in the global scope.
+    make_thread_default : bool
+        If true (_not_ the default), the newly initialized recording will replace the current
+        active one (if any) in the thread-local scope.
+    spawn : bool
+        Spawn a Rerun Viewer and stream logging data to it.
+        Short for calling `spawn` separately.
+        If you don't call this, log events will be buffered indefinitely until
+        you call either `connect`, `show`, or `save`
+    default_enabled
+        Should Rerun logging be on by default?
+        Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+
+    """
+
     application_path = None
 
     # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
@@ -215,7 +267,7 @@ def init(
         pass
 
     recording = RecordingStream(
-        bindings.init(
+        bindings.new_recording(
             application_id=application_id,
             recording_id=recording_id,
             make_default=make_default,

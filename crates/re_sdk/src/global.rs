@@ -82,7 +82,7 @@ impl RecordingStream {
         which: RecordingType,
         rec: Option<RecordingStream>,
     ) -> Option<RecordingStream> {
-        Self::set(RecordingScope::Global, which, rec)
+        Self::set_any(RecordingScope::Global, which, rec)
     }
 
     // --- Thread local ---
@@ -101,7 +101,7 @@ impl RecordingStream {
         which: RecordingType,
         rec: Option<RecordingStream>,
     ) -> Option<RecordingStream> {
-        Self::set(RecordingScope::ThreadLocal, which, rec)
+        Self::set_any(RecordingScope::ThreadLocal, which, rec)
     }
 
     // --- Internal helpers ---
@@ -129,7 +129,7 @@ impl RecordingStream {
         }
     }
 
-    fn set(
+    fn set_any(
         scope: RecordingScope,
         which: RecordingType,
         rec: Option<RecordingStream>,

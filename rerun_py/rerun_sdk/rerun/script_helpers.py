@@ -54,8 +54,6 @@ def script_add_args(parser: ArgumentParser) -> None:
 def script_setup(
     args: Namespace,
     application_id: str,
-    make_default: bool = True,
-    make_thread_default: bool = True,
 ) -> RecordingStream:
     """
     Run common Rerun script setup actions. Connect to the viewer if necessary.
@@ -66,20 +64,12 @@ def script_setup(
         The parsed arguments from `parser.parse_args()`.
     application_id : str
         The application ID to use for the viewer.
-    make_default : bool
-        If true (the default), the newly initialized recording will replace the current
-        active one (if any) in the global scope.
-    make_thread_default : bool
-        If true (the default), the newly initialized recording will replace the current
-        active one (if any) in the thread-local scope.
 
     """
     rec = rr.init(
         application_id=application_id,
         default_enabled=True,
         strict=True,
-        make_default=make_default,
-        make_thread_default=make_thread_default,
     )
 
     # NOTE: mypy thinks these methods don't exist because they're monkey-patched.

@@ -45,7 +45,7 @@ use parking_lot::Mutex;
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
 // data and joining a bunch of threads) can end up running at any time depending on what the
-// Python GC is doing, which obviously leads to very bad things :tm:
+// Python GC is doing, which obviously leads to very bad things :tm:.
 //
 // TODO: clear recordings with refcount = 1
 fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<RecordingId, RecordingStream>> {
@@ -98,7 +98,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     // init
-    m.add_function(wrap_pyfunction!(init, m)?)?;
+    m.add_function(wrap_pyfunction!(new_recording, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
     // recordings
@@ -165,7 +165,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     application_path=None,
     default_enabled=true,
 ))]
-fn init(
+fn new_recording(
     py: Python<'_>,
     application_id: String,
     recording_id: Option<String>,
