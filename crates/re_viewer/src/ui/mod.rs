@@ -5,6 +5,7 @@ mod selection_history_ui;
 mod space_view;
 mod space_view_entity_picker;
 mod space_view_heuristics;
+mod spaceview_controls;
 mod view_bar_chart;
 mod view_category;
 mod view_tensor;
@@ -12,7 +13,6 @@ mod view_text;
 mod view_text_box;
 mod view_time_series;
 mod viewport;
-mod spaceview_controls;
 
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;
