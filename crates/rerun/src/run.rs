@@ -612,7 +612,7 @@ fn load_file_to_channel_at(
         #[cfg(not(feature = "sdk"))]
         {
             _ = recording_id;
-            anyhow::bail!("Unsupported file extension: '{extension}' for path {path:?}. Try enabvling the 'sdk' feature of 'rerun'.");
+            anyhow::bail!("Unsupported file extension: '{extension}' for path {path:?}. Try enabling the 'sdk' feature of 'rerun'.");
         }
     }
 }
