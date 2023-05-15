@@ -130,9 +130,9 @@ def render_examples(examples: List[Example]) -> None:
 
 def serve_files() -> None:
     def serve() -> None:
-        logging.info("\nServing examples at http://localhost:8080/")
+        logging.info("\nServing examples at http://0.0.0.0:8080/")
         server = http.server.HTTPServer(
-            server_address=("127.0.0.1", 8080),
+            server_address=("0.0.0.0", 8080),
             RequestHandlerClass=partial(
                 http.server.SimpleHTTPRequestHandler,
                 directory=BASE_PATH,
