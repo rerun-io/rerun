@@ -105,8 +105,8 @@ impl Viewport {
     pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        egui::ScrollArea::vertical()
-            .auto_shrink([false; 2])
+        egui::ScrollArea::both()
+            .auto_shrink([true, false])
             .show(ui, |ui| {
                 let space_view_ids = self
                     .space_views
