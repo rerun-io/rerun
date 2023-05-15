@@ -311,7 +311,8 @@ async fn run_impl(
     let rx = if !args.url_or_paths.is_empty() {
         let arguments = args
             .url_or_paths
-            .into_iter()
+            .iter()
+            .cloned()
             .map(categorize_argument)
             .collect_vec();
 
