@@ -78,6 +78,8 @@ pub fn get_component_with_instances(
 /// available, they are implicitly treated as an integer sequence of the correct
 /// length.
 ///
+/// If you expect only one instance and have no additional components you can use [`re_data_store::query_latest_single`] instead.
+///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, Component};
