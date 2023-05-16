@@ -222,7 +222,7 @@ def init(
     init_blueprint
         Should we initialize the blueprint for this application?
     add_to_app_default_blueprint
-        Should the blueprint append to the existing app-default blueprint instead instead of creating a new one.
+        Should the blueprint append to the existing app-default blueprint instead of creating a new one.
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types etc).
         If `False`, errors are logged as warnings instead.
