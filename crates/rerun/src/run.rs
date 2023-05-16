@@ -326,7 +326,8 @@ async fn run_impl(
                         re_smart_channel::smart_channel(re_smart_channel::Source::Files {
                             paths: vec![path.clone()],
                         });
-                    let recording_id = re_log_types::RecordingId::random();
+                    let recording_id =
+                        re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
                     load_file_to_channel_at(recording_id, &path, tx)
                         .with_context(|| format!("{path:?}"))?;
                     rx
@@ -386,7 +387,7 @@ async fn run_impl(
                 paths: paths.clone(),
             });
 
-            let recording_id = re_log_types::RecordingId::random();
+            let recording_id = re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
 
             // Load the files in parallel, and log errors.
             // Failing to log one out of many files is not a big deal.
