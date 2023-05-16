@@ -313,7 +313,7 @@ async fn run_impl(
             .url_or_paths
             .iter()
             .cloned()
-            .map(categorize_argument)
+            .map(ArgumentCategory::from_uri)
             .collect_vec();
 
         if arguments.len() == 1 {
@@ -562,23 +562,151 @@ enum ArgumentCategory {
     WebSocketAddr(String),
 }
 
-fn categorize_argument(mut uri: String) -> ArgumentCategory {
-    let path = std::path::Path::new(&uri).to_path_buf();
-
-    if uri.starts_with("file://") || path.exists() {
-        ArgumentCategory::FilePath(path)
-    } else if uri.starts_with("http") {
-        ArgumentCategory::RrdHttpUrl(uri)
-    } else if uri.starts_with("ws") {
-        ArgumentCategory::WebSocketAddr(uri)
-    } else {
-        // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
-        // We could/should connect and see what it is, but for now we just take a wild guess instead:
-        re_log::debug!("Assuming WebSocket endpoint");
-        if !uri.contains("://") {
-            uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+impl ArgumentCategory {
+    pub fn from_uri(mut uri: String) -> ArgumentCategory {
+        fn looks_like_windows_abs_path(path: &str) -> bool {
+            let path = path.as_bytes();
+            // "C:/" etc
+            path.get(1).copied() == Some(b':') && path.get(2).copied() == Some(b'/')
         }
-        ArgumentCategory::WebSocketAddr(uri)
+
+        fn looks_like_a_file_path(uri: &str) -> bool {
+            // How do we distinguish a file path from a web url? "example.zip" could be either.
+
+            if uri.starts_with('/') {
+                return true; // Unix absolute path
+            }
+            if looks_like_windows_abs_path(uri) {
+                return true;
+            }
+
+            // We use a simple heuristic here: if there are multiple dots, it is likely an url,
+            // like "example.com/foo.zip".
+            // If there is only one dot, we treat it as an extension and look it up in a list of common
+            // file extensions:
+
+            let parts = uri.split('.').collect_vec();
+            if parts.len() <= 1 {
+                true // Only one part. Weird. Let's assume it is a file path.
+            } else if parts.len() == 2 {
+                let extension = parts[1];
+                matches!(
+                    extension,
+                    // Our own:
+                    "rrd"
+
+                    // Misc:
+                    | "txt"
+                    | "zip"
+
+                    // Meshes:
+                    | "glb"
+                    | "gltf"
+                    | "obj"
+                    | "ply"
+                    | "stl"
+
+                    // Images:
+                    | "avif"
+                    | "bmp"
+                    | "dds"
+                    | "exr"
+                    | "farbfeld"
+                    | "ff"
+                    | "gif"
+                    | "hdr"
+                    | "ico"
+                    | "jpeg"
+                    | "jpg"
+                    | "pam"
+                    | "pbm"
+                    | "pgm"
+                    | "png"
+                    | "ppm"
+                    | "tga"
+                    | "tif"
+                    | "tiff"
+                    | "webp"
+                )
+            } else {
+                false // Too many dots; assume an url
+            }
+        }
+
+        let path = std::path::Path::new(&uri).to_path_buf();
+
+        if uri.starts_with("file://") || path.exists() {
+            ArgumentCategory::FilePath(path)
+        } else if uri.starts_with("http://")
+            || uri.starts_with("https://")
+            || (uri.starts_with("www.") && uri.ends_with(".rrd"))
+        {
+            ArgumentCategory::RrdHttpUrl(uri)
+        } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
+            ArgumentCategory::WebSocketAddr(uri)
+
+        // Now we are into heuristics territory:
+        } else if looks_like_a_file_path(&uri) {
+            ArgumentCategory::FilePath(path)
+        } else if uri.ends_with(".rrd") {
+            ArgumentCategory::RrdHttpUrl(uri)
+        } else {
+            // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
+            // We could/should connect and see what it is, but for now we just take a wild guess instead:
+            re_log::debug!("Assuming WebSocket endpoint");
+            if !uri.contains("://") {
+                uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
+            }
+            ArgumentCategory::WebSocketAddr(uri)
+        }
+    }
+}
+
+#[test]
+fn test_argument_categorization() {
+    let file = [
+        "file://foo",
+        "foo.rrd",
+        "foo.zip",
+        "/foo/bar/baz",
+        "D:/file",
+    ];
+    let http = [
+        "http://foo.zip",
+        "https://foo.zip",
+        "example.zip/foo.rrd",
+        "www.foo.zip/foo.rrd",
+    ];
+    let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
+
+    for uri in file {
+        assert!(
+            matches!(
+                ArgumentCategory::from_uri(uri.to_owned()),
+                ArgumentCategory::FilePath(_)
+            ),
+            "Expected {uri:?} to be categorized as FilePath"
+        );
+    }
+
+    for uri in http {
+        assert!(
+            matches!(
+                ArgumentCategory::from_uri(uri.to_owned()),
+                ArgumentCategory::RrdHttpUrl(_)
+            ),
+            "Expected {uri:?} to be categorized as RrdHttpUrl"
+        );
+    }
+
+    for uri in ws {
+        assert!(
+            matches!(
+                ArgumentCategory::from_uri(uri.to_owned()),
+                ArgumentCategory::WebSocketAddr(_)
+            ),
+            "Expected {uri:?} to be categorized as WebSocketAddr"
+        );
     }
 }
 
