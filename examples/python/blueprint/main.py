@@ -4,6 +4,7 @@ import argparse
 
 import numpy as np
 import rerun as rr
+import rerun.experimental as rr_exp
 
 
 def main() -> None:
@@ -12,7 +13,7 @@ def main() -> None:
     parser.add_argument("--blueprint-only", action="store_true", help="Only send the blueprint")
     parser.add_argument("--skip-blueprint", action="store_true", help="Don't send the blueprint")
     parser.add_argument(
-        "--append-default", action="store_true", help="Append to the default blueprint instead of replacing it"
+        "--no-append-default", action="store_false", help="Append to the default blueprint instead of replacing it"
     )
     parser.add_argument("--auto-space-views", action="store_true", help="Automatically add space views")
 
@@ -20,9 +21,20 @@ def main() -> None:
 
     if args.blueprint_only:
         # If only using blueprint, it's important to specify init_logging=False
-        rr.init("Blueprint demo", init_logging=False, add_to_app_default_blueprint=args.append_default, spawn=True)
+        rr.init(
+            "Blueprint demo",
+            init_logging=False,
+            exp_init_blueprint=True,
+            exp_add_to_app_default_blueprint=args.no_append_default,
+            spawn=True,
+        )
     else:
-        rr.init("Blueprint demo", add_to_app_default_blueprint=args.append_default, spawn=True)
+        rr.init(
+            "Blueprint demo",
+            exp_init_blueprint=True,
+            exp_add_to_app_default_blueprint=args.no_append_default,
+            spawn=True,
+        )
 
     if not args.blueprint_only:
         img = np.zeros([128, 128, 3], dtype="uint8")
@@ -34,11 +46,11 @@ def main() -> None:
 
     if not args.skip_blueprint:
         if args.auto_space_views:
-            rr.set_auto_space_views(True)
+            rr_exp.set_auto_space_views(True)
 
-        rr.set_panels(all_expanded=False)
+        rr_exp.set_panels(all_expanded=False)
 
-        rr.add_space_view("overlaid", "/", ["image", "rect/0", "rect/1"])
+        rr_exp.add_space_view("overlaid", "/", ["image", "rect/0", "rect/1"])
 
     # Workaround https://github.com/rerun-io/rerun/issues/2124
     import time
