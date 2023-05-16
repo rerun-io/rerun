@@ -1334,6 +1334,9 @@ fn data_table_sizes_unions() {
         );
     }
 
+    // This test uses an artificial enum type to test the union serialization.
+    // The transform type does *not* represent our current transform representation.
+
     // --- Dense ---
 
     #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
@@ -1341,7 +1344,7 @@ fn data_table_sizes_unions() {
     #[arrow_field(type = "dense")]
     enum DenseTransform {
         Unknown,
-        Affine3D(crate::component_types::Transform3DRepr),
+        Transform3D(crate::component_types::Transform3DRepr),
         Pinhole(crate::component_types::Pinhole),
     }
 
@@ -1363,7 +1366,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        51_540_064, // expected_num_bytes
+        51_550_064, // expected_num_bytes
     );
 
     // dense union (varying)
@@ -1371,7 +1374,7 @@ fn data_table_sizes_unions() {
         DataCell::from_native(
             [
                 DenseTransform::Unknown,
-                DenseTransform::Affine3D(
+                DenseTransform::Transform3D(
                     crate::component_types::TranslationAndMat3 {
                         translation: [10.0, 11.0, 12.0].into(),
                         matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
@@ -1387,7 +1390,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        51_530_064, // expected_num_bytes
+        51_540_064, // expected_num_bytes
     );
 
     // --- Sparse ---
@@ -1419,7 +1422,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        54_000_064, // expected_num_bytes
+        53_980_064, // expected_num_bytes
     );
 
     // sparse union (varying)
@@ -1443,6 +1446,6 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        54_010_064, // expected_num_bytes
+        53_990_064, // expected_num_bytes
     );
 }

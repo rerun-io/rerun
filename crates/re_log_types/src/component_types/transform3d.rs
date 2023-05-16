@@ -405,14 +405,13 @@ impl From<Scale3D> for TranslationRotationScale3D {
 /// Rarely used directly, prefer using the underlying representation classes and pass them directly to
 /// [`Transform3D::child_from_parent`] or [`Transform3D::parent_from_child`].
 ///
-/// TODO:
 /// ```
-/// use re_log_types::component_types::{Affine3D, TranslationAndMat3, TranslationRotationScale3D};
+/// use re_log_types::component_types::{Transform3DRepr, TranslationAndMat3, TranslationRotationScale3D};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
 /// assert_eq!(
-///     Affine3D::data_type(),
+///     Transform3DRepr::data_type(),
 ///     DataType::Union(vec![
 ///         Field::new("TranslationAndMat3", TranslationAndMat3::data_type(), false),
 ///         Field::new("TranslationRotationScale", TranslationRotationScale3D::data_type(), false),
@@ -488,18 +487,17 @@ impl From<Transform3DRepr> for glam::Affine3A {
 ///
 /// This component is a "mono-component". See [the crate level docs](crate) for details.
 ///
-/// TODO:
 /// ```
-/// use re_log_types::component_types::{Affine3D, DirectedAffine3D};
+/// use re_log_types::component_types::{Transform3DRepr, Transform3D};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
 /// assert_eq!(
-///     DirectedAffine3D::data_type(),
-///     DataType::Union(vec![
-///         Field::new("ChildFromParent", Affine3D::data_type(), false),
-///         Field::new("ParentFromChild", Affine3D::data_type(), false),
-///     ], None, UnionMode::Dense),
+///     Transform3D::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("transform", Transform3DRepr::data_type(), false),
+///         Field::new("from_parent", DataType::Boolean, false),
+///     ]),
 /// );
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
@@ -519,10 +517,7 @@ impl Transform3D {
         transform: Transform3DRepr::IDENTITY,
         from_parent: false,
     };
-}
 
-#[cfg(feature = "glam")]
-impl Transform3D {
     /// Creates a new transform with a given representation, transforming from the parent space into the child space.
     pub fn parent_from_child<T: Into<Transform3DRepr>>(representation: T) -> Self {
         Self {
@@ -538,7 +533,10 @@ impl Transform3D {
             from_parent: true,
         }
     }
+}
 
+#[cfg(feature = "glam")]
+impl Transform3D {
     #[inline]
     pub fn to_parent_from_child_transform(&self) -> glam::Affine3A {
         let transform: glam::Affine3A = self.transform.into();
@@ -567,30 +565,23 @@ impl Component for Transform3D {
     }
 }
 
-// TODO:
-// #[test]
-// fn test_transform_roundtrip() {
-//     use arrow2::array::Array;
-//     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+#[test]
+fn test_transform_roundtrip() {
+    use arrow2::array::Array;
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
-//     let transforms_in = vec![
-//         Transform3D::Affine3D(Transform3D::ChildFromParent(
-//             TranslationAndMat3 {
-//                 translation: [10.0, 11.0, 12.0].into(),
-//                 matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
-//             }
-//             .into(),
-//         )),
-//         Transform3D::Affine3D(Transform3D::ChildFromParent(
-//             TranslationRotationScale3D {
-//                 translation: [10.0, 11.0, 12.0].into(),
-//                 rotation: Quaternion::new(13.0, 14.0, 15.0, 16.0).into(),
-//                 scale: [17.0, 18.0, 19.0].into(),
-//             }
-//             .into(),
-//         )),
-//     ];
-//     let array: Box<dyn Array> = transforms_in.try_into_arrow().unwrap();
-//     let transforms_out: Vec<Transform3D> = TryIntoCollection::try_into_collection(array).unwrap();
-//     assert_eq!(transforms_in, transforms_out);
-// }
+    let transforms_in = vec![
+        Transform3D::child_from_parent(TranslationAndMat3 {
+            translation: [10.0, 11.0, 12.0].into(),
+            matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
+        }),
+        Transform3D::parent_from_child(TranslationRotationScale3D {
+            translation: [10.0, 11.0, 12.0].into(),
+            rotation: Quaternion::new(13.0, 14.0, 15.0, 16.0).into(),
+            scale: [17.0, 18.0, 19.0].into(),
+        }),
+    ];
+    let array: Box<dyn Array> = transforms_in.try_into_arrow().unwrap();
+    let transforms_out: Vec<Transform3D> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(transforms_in, transforms_out);
+}

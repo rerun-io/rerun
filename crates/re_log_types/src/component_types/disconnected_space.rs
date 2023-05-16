@@ -2,18 +2,21 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::Component;
 
-// TODO:
+/// Specifies that the entity path at which this is logged is disconnected from its parent.
+///
+/// This is useful for specifying that a subgraph is independent of the rest of the scene.
+///
 /// This component is a "mono-component". See [the crate level docs](crate) for details.
 #[derive(Copy, Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct DisconnectedSpace {
-    placeholder: bool,
-}
+#[arrow_field(transparent)]
+#[repr(transparent)]
+pub struct DisconnectedSpace(bool);
 
 impl DisconnectedSpace {
     #[inline]
     pub fn new() -> Self {
-        Self { placeholder: false }
+        Self(false)
     }
 }
 
