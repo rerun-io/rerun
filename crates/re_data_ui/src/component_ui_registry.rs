@@ -51,6 +51,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_log_types::component_types::Mesh3D>(&mut registry);
     // add::<re_log_types::component_types::Point2D>(&mut registry);
     // add::<re_log_types::component_types::Point3D>(&mut registry);
+    add::<re_log_types::component_types::Pinhole>(&mut registry);
     // add::<re_log_types::component_types::Quaternion>(&mut registry);
     // add::<re_log_types::component_types::Radius>(&mut registry);
     add::<re_log_types::component_types::Rect2D>(&mut registry);
