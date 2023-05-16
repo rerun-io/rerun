@@ -356,7 +356,7 @@ mod tests {
             components::Label("label1".into()),
             components::Label("label2".into()),
         ];
-        let transform = vec![components::Transform3D::Affine3D(Default::default())];
+        let transform = vec![components::Transform3D::IDENTITY];
         let color = components::ColorRGBA::from_rgb(255, 0, 255);
 
         let [standard, splats] = MsgSender::new("some/path")

@@ -90,14 +90,11 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
 
         MsgSender::new("dna/structure")
             .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
-            .with_component(&[Transform3D::Affine3D(
-                rerun::transform::Affine3D::from_rotation(
-                    rerun::transform::RotationAxisAngle::new(
-                        glam::Vec3::Z,
-                        rerun::transform::Angle::Radians(time / 4.0 * TAU),
-                    ),
+            .with_component(&[Transform3D::parent_from_child(
+                rerun::transform::RotationAxisAngle::new(
+                    glam::Vec3::Z,
+                    rerun::transform::Angle::Radians(time / 4.0 * TAU),
                 )
-                .parent_from_child(),
             )])?
             .send(rec_stream)?;
     }

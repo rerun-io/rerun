@@ -22,6 +22,7 @@ mod class_id;
 mod color;
 pub mod context;
 pub mod coordinates;
+mod disconnected_space;
 mod draw_order;
 mod instance_key;
 mod keypoint_id;
@@ -29,6 +30,7 @@ mod label;
 mod linestrip;
 mod mat;
 mod mesh3d;
+mod pinhole;
 mod point;
 mod quaternion;
 mod radius;
@@ -47,6 +49,7 @@ pub use class_id::ClassId;
 pub use color::ColorRGBA;
 pub use context::{AnnotationContext, AnnotationInfo, ClassDescription};
 pub use coordinates::ViewCoordinates;
+pub use disconnected_space::DisconnectedSpace;
 pub use draw_order::DrawOrder;
 pub use instance_key::InstanceKey;
 pub use keypoint_id::KeypointId;
@@ -54,6 +57,7 @@ pub use label::Label;
 pub use linestrip::{LineStrip2D, LineStrip3D};
 pub use mat::Mat3x3;
 pub use mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
+pub use pinhole::Pinhole;
 pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use radius::Radius;
@@ -69,8 +73,8 @@ pub use tensor::{TensorImageLoadError, TensorImageSaveError};
 pub use text_box::TextBox;
 pub use text_entry::TextEntry;
 pub use transform3d::{
-    Affine3D, Angle, DirectedAffine3D, Pinhole, Rotation3D, RotationAxisAngle, Scale3D,
-    Transform3D, TranslationMatrix3x3, TranslationRotationScale3D,
+    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
+    TranslationMatrix3x3, TranslationRotationScale3D,
 };
 pub use vec::{Vec2D, Vec3D, Vec4D};
 

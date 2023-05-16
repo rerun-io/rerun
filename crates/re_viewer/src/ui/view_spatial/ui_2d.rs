@@ -2,7 +2,7 @@ use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
 use re_data_store::{query_latest_single, EntityPath, EntityPropertyMap};
-use re_log_types::component_types::{Pinhole, Transform3D};
+use re_log_types::component_types::Pinhole;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
 
@@ -251,15 +251,11 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole = query_latest_single::<Transform3D>(
+    let pinhole = query_latest_single::<Pinhole>(
         &ctx.log_db.entity_db,
         space,
         &ctx.rec_cfg.time_ctrl.current_query(),
-    )
-    .and_then(|transform| match transform {
-        Transform3D::Pinhole(pinhole) => Some(pinhole),
-        _ => None,
-    });
+    );
     let canvas_rect = pinhole
         .and_then(|p| p.resolution())
         .map_or(scene_rect_accum, |res| {

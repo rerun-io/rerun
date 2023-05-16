@@ -17,6 +17,7 @@ mod instance_path;
 mod item;
 pub mod item_ui;
 mod log_msg;
+mod pinhole;
 mod transform3d;
 
 pub use crate::image::{

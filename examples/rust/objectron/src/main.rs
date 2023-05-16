@@ -114,7 +114,7 @@ fn log_baseline_objects(
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
     use rerun::components::{Box3D, ColorRGBA, Label, Transform3D};
-    use rerun::transform::Affine3D;
+    use rerun::transform::TranslationMatrix3x3;
 
     let boxes = objects.iter().filter_map(|object| {
         Some({
@@ -128,9 +128,7 @@ fn log_baseline_objects(
                 let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                Transform3D::Affine3D(
-                    Affine3D::from_translation_matrix(translation, rotation).parent_from_child(),
-                )
+                Transform3D::parent_from_child(TranslationMatrix3x3::new(translation, rotation))
             };
             let label = Label(object.category.clone());
 
@@ -191,20 +189,20 @@ fn log_ar_camera(
     // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);
 
-    use rerun::components::Transform3D;
-    use rerun::transform::{Affine3D, Pinhole};
+    use rerun::components::{Pinhole, Transform3D};
+    use rerun::transform::TranslationRotationScale3D;
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        .with_component(&[Transform3D::Affine3D(
-            Affine3D::from_translation_rotation(translation, rot).parent_from_child(),
+        .with_component(&[Transform3D::parent_from_child(
+            TranslationRotationScale3D::from_translation_rotation(translation, rot),
         )])?
         .send(rec_stream)?;
     MsgSender::new("world/camera/video")
         .with_timepoint(timepoint)
-        .with_component(&[Transform3D::Pinhole(Pinhole {
+        .with_component(&[Pinhole {
             image_from_cam: intrinsics.into(),
             resolution: Some(resolution.into()),
-        })])?
+        }])?
         .send(rec_stream)?;
 
     Ok(())

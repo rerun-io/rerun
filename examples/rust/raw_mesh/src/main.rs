@@ -16,6 +16,7 @@ use rerun::components::{
     ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates,
 };
 use rerun::time::{TimeType, Timeline};
+use rerun::transform::TranslationRotationScale3D;
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
     EntityPath, MsgSender, RecordingStream,
@@ -56,13 +57,11 @@ impl From<GltfPrimitive> for Mesh3D {
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
 impl From<GltfTransform> for Transform3D {
     fn from(transform: GltfTransform) -> Self {
-        rerun::transform::Affine3D::from_translation_rotation_scale(
+        Transform3D::parent_from_child(TranslationRotationScale3D::from_translation_rotation_scale(
             transform.t,
             rerun::components::Quaternion::from_xyzw(transform.r),
             transform.s,
-        )
-        .parent_from_child()
-        .into()
+        ))
     }
 }
 

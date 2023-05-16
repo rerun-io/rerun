@@ -4,10 +4,30 @@ use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
 use re_data_store::{log_db::EntityDb, query_latest_single, EntityPath, EntityTree};
-use re_log_types::{component_types::Transform3D, ViewCoordinates};
+use re_log_types::{
+    component_types::{DisconnectedSpace, Pinhole, Transform3D},
+    ViewCoordinates,
+};
 use re_query::query_entity_with_primary;
 
 use super::UnreachableTransform;
+
+/// Transform connecting two space paths.
+#[derive(Clone, Debug)]
+pub enum SpaceInfoConnection {
+    Disconnected,
+    Transform3D(Transform3D),
+    Pinhole(Pinhole),
+
+    /// TODO(andreas): There will be more combinations in the future, need to figure out how to handle them.
+    Transform3DAndPinhole(Transform3D, Pinhole),
+}
+
+impl SpaceInfoConnection {
+    pub fn is_pinhole(&self) -> bool {
+        matches!(self, Self::Pinhole(_))
+    }
+}
 
 /// Information about one "space".
 ///
@@ -23,10 +43,10 @@ pub struct SpaceInfo {
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
     /// The transform is from parent to child, i.e. the *same* as in its [`Self::child_spaces`] array.
-    parent: Option<(EntityPath, Transform3D)>,
+    parent: Option<(EntityPath, SpaceInfoConnection)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.
-    pub child_spaces: BTreeMap<EntityPath, Transform3D>,
+    pub child_spaces: BTreeMap<EntityPath, SpaceInfoConnection>,
 }
 
 impl SpaceInfo {
@@ -61,19 +81,12 @@ impl SpaceInfo {
                     continue;
                 };
 
-                let is_pinhole = match transform {
-                    Transform3D::Unknown => {
-                        continue;
-                    }
-                    Transform3D::Affine3D(_) => false,
-                    Transform3D::Pinhole(_) => {
-                        // Don't allow nested pinhole
-                        if encountered_pinhole {
-                            continue;
-                        }
-                        true
-                    }
-                };
+                // don't allow nested pinhole
+                let is_pinhole = transform.is_pinhole();
+                if encountered_pinhole && is_pinhole {
+                    continue;
+                }
+
                 visit_descendants_with_reachable_transform_recursively(
                     child_space,
                     space_info_collection,
@@ -112,16 +125,34 @@ impl SpaceInfoCollection {
             tree: &EntityTree,
             query: &LatestAtQuery,
         ) {
-            if let Some(transform) =
-                query_latest_single::<Transform3D>(entity_db, &tree.path, query)
-            {
-                // A set transform (likely non-identity) - create a new space.
+            // Determine how the paths are connected.
+            let transform3d = query_latest_single::<Transform3D>(entity_db, &tree.path, query);
+            let pinhole = query_latest_single::<Pinhole>(entity_db, &tree.path, query);
+            let disconnect = query_latest_single::<DisconnectedSpace>(entity_db, &tree.path, query);
+
+            let connection = if let (Some(transform3d), Some(pinhole)) = (transform3d, pinhole) {
+                Some(SpaceInfoConnection::Transform3DAndPinhole(
+                    transform3d,
+                    pinhole,
+                ))
+            } else if let Some(transform3d) = transform3d {
+                Some(SpaceInfoConnection::Transform3D(transform3d))
+            } else if let Some(pinhole) = pinhole {
+                Some(SpaceInfoConnection::Pinhole(pinhole))
+            } else if disconnect.is_some() {
+                Some(SpaceInfoConnection::Disconnected)
+            } else {
+                None
+            };
+
+            if let Some(connection) = connection {
+                // A set transform - create a new space.
                 parent_space
                     .child_spaces
-                    .insert(tree.path.clone(), transform.clone());
+                    .insert(tree.path.clone(), connection.clone());
 
                 let mut child_space_info = SpaceInfo::new(tree.path.clone());
-                child_space_info.parent = Some((parent_space.path.clone(), transform));
+                child_space_info.parent = Some((parent_space.path.clone(), connection));
                 child_space_info
                     .descendants_without_transform
                     .insert(tree.path.clone()); // spaces includes self
@@ -139,7 +170,7 @@ impl SpaceInfoCollection {
                     .spaces
                     .insert(tree.path.clone(), child_space_info);
             } else {
-                // no transform == identity transform.
+                // no transform == implicit identity transform.
                 parent_space
                     .descendants_without_transform
                     .insert(tree.path.clone()); // spaces includes self
@@ -224,12 +255,15 @@ impl SpaceInfoCollection {
                 &to_reference_space.parent
             };
 
-            if let Some((parent_path, transform)) = parent {
+            if let Some((parent_path, connection)) = parent {
                 // Matches the connectedness requirements in `inverse_transform_at`/`transform_at` in `transform_cache.rs`
-                match transform {
-                    Transform3D::Unknown => Err(UnreachableTransform::UnknownTransform),
-                    Transform3D::Affine3D(_) => Ok(()),
-                    Transform3D::Pinhole(pinhole) => {
+                match connection {
+                    SpaceInfoConnection::Disconnected => {
+                        Err(UnreachableTransform::DisconnectedSpace)
+                    }
+                    SpaceInfoConnection::Transform3D(_) => Ok(()),
+                    SpaceInfoConnection::Transform3DAndPinhole(_, pinhole)
+                    | SpaceInfoConnection::Pinhole(pinhole) => {
                         if encountered_pinhole {
                             Err(UnreachableTransform::NestedPinholeCameras)
                         } else {

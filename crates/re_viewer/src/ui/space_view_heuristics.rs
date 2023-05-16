@@ -5,7 +5,10 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_data_store::{log_db::EntityDb, query_latest_single, ComponentName, EntityPath};
-use re_log_types::{component_types::Tensor, Component};
+use re_log_types::{
+    component_types::{DisconnectedSpace, Pinhole, Tensor},
+    Component,
+};
 use re_viewer_context::ViewerContext;
 
 use crate::{
@@ -93,20 +96,15 @@ fn is_interesting_space_view_not_at_root(
     }
 
     // .. otherwise, spatial views are considered only interesting if they have an interesting transform.
-    // -> If there is no transform or just a rigid transform, it is trivial to display in a root/child-of-root space view.
-    //    If however there is ..
-    //       .. an unknown transform, the children can't be shown otherwise
-    //       .. an pinhole transform, we'd like to see the world from this camera's pov as well!
-    if candidate.category == ViewCategory::Spatial {
-        if let Some(transform) = query_latest_single(entity_db, &candidate.space_path, query) {
-            match transform {
-                re_log_types::component_types::Transform3D::Affine3D(_) => {}
-                re_log_types::component_types::Transform3D::Pinhole(_)
-                | re_log_types::component_types::Transform3D::Unknown => {
-                    return true;
-                }
-            }
-        }
+    // -> If there is ..
+    //    .. a disconnect transform, the children can't be shown otherwise
+    //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
+    if candidate.category == ViewCategory::Spatial
+        && (query_latest_single::<Pinhole>(entity_db, &candidate.space_path, query).is_some()
+            || query_latest_single::<DisconnectedSpace>(entity_db, &candidate.space_path, query)
+                .is_some())
+    {
+        return true;
     }
 
     // Not interesting!

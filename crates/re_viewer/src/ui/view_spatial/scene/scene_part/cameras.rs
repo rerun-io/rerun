@@ -1,6 +1,6 @@
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{InstanceKey, Pinhole, Transform3D},
+    component_types::{InstanceKey, Pinhole},
     coordinates::{Handedness, SignedAxis3},
     ViewCoordinates,
 };
@@ -58,7 +58,7 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        entity_view: &EntityView<Transform3D>,
+        entity_view: &EntityView<Pinhole>,
         ent_path: &EntityPath,
         instance_key: InstanceKey,
         props: &EntityProperties,
@@ -197,17 +197,14 @@ impl ScenePart for CamerasPart {
         for (ent_path, props) in query.iter_entities() {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            match query_entity_with_primary::<Transform3D>(
+            match query_entity_with_primary::<Pinhole>(
                 &ctx.log_db.entity_db.data_store,
                 &query,
                 ent_path,
                 &[],
             )
             .and_then(|entity_view| {
-                entity_view.visit1(|instance_key, transform| {
-                    let Transform3D::Pinhole(pinhole) = transform else {
-                        return;
-                    };
+                entity_view.visit1(|instance_key, pinhole| {
                     let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
                     let view_coordinates = determine_view_coordinates(

@@ -1341,7 +1341,7 @@ fn data_table_sizes_unions() {
     #[arrow_field(type = "dense")]
     enum DenseTransform {
         Unknown,
-        Affine3D(crate::component_types::Affine3D),
+        Affine3D(crate::component_types::Transform3DRepr),
         Pinhole(crate::component_types::Pinhole),
     }
 
@@ -1397,7 +1397,7 @@ fn data_table_sizes_unions() {
     #[arrow_field(type = "sparse")]
     enum SparseTransform {
         Unknown,
-        Affine3D(crate::component_types::Affine3D),
+        Affine3D(crate::component_types::Transform3DRepr),
         Pinhole(crate::component_types::Pinhole),
     }
 

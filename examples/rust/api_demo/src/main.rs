@@ -27,7 +27,7 @@ use rerun::{
         re_log_types::external::{arrow2, arrow2_convert},
     },
     time::{Time, TimePoint, TimeType, Timeline},
-    transform::{Affine3D, Angle, RotationAxisAngle},
+    transform::{Angle, RotationAxisAngle, TranslationRotationScale3D},
     Component, ComponentName, EntityPath, MsgSender, RecordingStream,
 };
 
@@ -43,10 +43,10 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("bbox_demo/bbox")
         .with_timepoint(sim_time(0 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Transform3D::Affine3D(
-            Affine3D::from_rotation(RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)))
-                .parent_from_child(),
-        )])?
+        .with_component(&[Transform3D::parent_from_child(RotationAxisAngle::new(
+            glam::Vec3::Z,
+            Angle::Degrees(180.0),
+        ))])?
         .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
         .with_component(&[Radius(0.005)])?
         .with_component(&[Label("box/t0".to_owned())])?
@@ -55,12 +55,11 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("bbox_demo/bbox")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Transform3D::Affine3D(
-            Affine3D::from_translation_rotation(
+        .with_component(&[Transform3D::parent_from_child(
+            TranslationRotationScale3D::from_translation_rotation(
                 Vec3D::new(1.0, 0.0, 0.0),
                 RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
-            )
-            .parent_from_child(),
+            ),
         )])?
         .with_component(&[ColorRGBA::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
@@ -635,28 +634,26 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
         MsgSender::new("transforms3d/sun/planet")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Transform3D::Affine3D(
-                Affine3D::from_translation_rotation(
+            .with_component(&[Transform3D::parent_from_child(
+                TranslationRotationScale3D::from_translation_rotation(
                     Vec3D::new(
                         (time * rotation_speed_planet).sin() * sun_to_planet_distance,
                         (time * rotation_speed_planet).cos() * sun_to_planet_distance,
                         0.0,
                     ),
                     RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
-                )
-                .parent_from_child(),
+                ),
             )])?
             .send(rec_stream)?;
 
         MsgSender::new("transforms3d/sun/planet/moon")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Transform3D::Affine3D(
-                Affine3D::from_translation(Vec3D::new(
+            .with_component(&[Transform3D::child_from_parent(
+                TranslationRotationScale3D::from_translation(Vec3D::new(
                     (time * rotation_speed_moon).cos() * planet_to_moon_distance,
                     (time * rotation_speed_moon).sin() * planet_to_moon_distance,
                     0.0,
-                ))
-                .child_from_parent(),
+                )),
             )])?
             .send(rec_stream)?;
     }

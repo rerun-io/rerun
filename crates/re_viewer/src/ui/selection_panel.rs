@@ -5,7 +5,7 @@ use re_data_store::{
 };
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::{
-    component_types::{Tensor, TensorDataMeaning, Transform3D},
+    component_types::{Pinhole, Tensor, TensorDataMeaning},
     TimeType,
 };
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
@@ -437,9 +437,7 @@ fn pinhole_props_ui(
     entity_props: &mut EntityProperties,
 ) {
     let query = ctx.current_query();
-    if let Some(Transform3D::Pinhole(_)) =
-        query_latest_single::<Transform3D>(&ctx.log_db.entity_db, entity_path, &query)
-    {
+    if query_latest_single::<Pinhole>(&ctx.log_db.entity_db, entity_path, &query).is_some() {
         ui.label("Image plane distance");
         let mut distance = *entity_props.pinhole_image_plane_distance.get();
         let speed = (distance * 0.05).at_least(0.01);
