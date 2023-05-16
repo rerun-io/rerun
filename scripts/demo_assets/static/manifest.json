@@ -1,0 +1,16 @@
+{
+  "name": "Rerun Viewer",
+  "short_name": "rerun-viewer-pwa",
+  "icons": [
+    {
+      "src": "./icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }
+  ],
+  "lang": "en-US",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "white",
+  "theme_color": "white"
+}
