@@ -143,7 +143,16 @@ pub fn sync_viewport(
         store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 
-    if viewport.trees != snapshot.trees
+    // Note: we can't just check `viewport.trees != snapshot.trees` because the
+    // tree contains serde[skip]'d state that won't match in PartialEq.
+    if viewport.trees.len() != snapshot.trees.len()
+        || !viewport.trees.iter().zip(snapshot.trees.iter()).all(
+            |((left_vis, left_tree), (right_vis, right_tree))| {
+                left_vis == right_vis
+                    && left_tree.root == right_tree.root
+                    && left_tree.tiles.tiles == right_tree.tiles.tiles
+            },
+        )
         || viewport.has_been_user_edited != snapshot.has_been_user_edited
     {
         let component = ViewportLayout {
