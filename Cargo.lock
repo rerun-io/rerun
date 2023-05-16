@@ -4016,7 +4016,6 @@ version = "0.6.0-alpha.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
- "bincode",
  "crossbeam",
  "document-features",
  "rand",
@@ -4097,7 +4096,6 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "cocoa",
- "console_error_panic_hook",
  "eframe",
  "egui",
  "egui-wgpu",
