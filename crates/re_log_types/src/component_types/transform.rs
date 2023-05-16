@@ -195,7 +195,8 @@ impl Pinhole {
 ///
 /// The [`Transform`] component is special, as all instances of
 /// an Entity always share the same transform.
-/// In other words, a [`Transform`] component must always be a splat.
+/// In other words, a [`Transform`] component acts like a splat
+/// (all instances of an entity share the same transform).
 /// This is because each entity must have a unique transform chain,
 /// e.g. the entity `foo/bar/baz` is has the transform that is the product of
 /// `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
