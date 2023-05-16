@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
-use re_log::warn_once;
+use re_error::ResultExt as _;
 use re_log_types::component_types::{self, InstanceKey, Tensor};
 use re_query::query_entity_with_primary;
 use re_viewer_context::{SceneQuery, ViewerContext};
@@ -33,16 +33,13 @@ impl SceneBarChart {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let ent_view =
                 query_entity_with_primary::<component_types::Tensor>(store, &query, ent_path, &[]);
-            let Ok(ent_view) = ent_view else {
-                warn_once!("bar chart query failed for {ent_path:?}");
+            let Some(ent_view) = ent_view.warn_on_err_once(format!("Bar chart query failed for {ent_path:?}")) else {
                 continue;
             };
-            let Ok(instance_keys) = ent_view.iter_instance_keys() else {
-                warn_once!("bar chart query failed for {ent_path:?}");
+            let Some(instance_keys) = ent_view.iter_instance_keys().warn_on_err_once(format!("Bar chart query failed for {ent_path:?}")) else {
                 continue;
             };
-            let Ok(tensors) = ent_view.iter_primary() else {
-                warn_once!("bar chart query failed for {ent_path:?}");
+            let Some(tensors) = ent_view.iter_primary().warn_on_err_once(format!("Bar chart query failed for {ent_path:?}")) else {
                 continue;
             };
 

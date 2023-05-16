@@ -16,5 +16,8 @@ version.workspace = true
 all-features = true
 
 
+[dependencies]
+re_log.workspace = true
+
 [dev-dependencies]
 anyhow.workspace = true
