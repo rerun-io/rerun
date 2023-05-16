@@ -4,6 +4,20 @@ use re_log_types::{serde_field::SerdeField, Component};
 
 use crate::ui::SpaceView;
 
+/// A [`SpaceView`]
+///
+/// ## Example
+/// ```
+/// # use re_viewer::blueprint_components::space_view::SpaceViewComponent;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     SpaceViewComponent::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("space_view", DataType::Binary, false),
+///     ])
+/// );
+/// ```
 #[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct SpaceViewComponent {
     #[arrow_field(type = "SerdeField<SpaceView>")]

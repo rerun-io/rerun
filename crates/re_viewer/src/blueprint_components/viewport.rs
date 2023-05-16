@@ -9,6 +9,18 @@ use crate::ui::VisibilitySet;
 
 pub const VIEWPORT_PATH: &str = "viewport";
 
+/// A flag indicating space views should be automatically populated
+///
+/// ## Example
+/// ```
+/// # use re_viewer::blueprint_components::viewport::AutoSpaceViews;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     AutoSpaceViews::data_type(),
+///     DataType::Boolean
+/// );
+/// ```
 #[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(transparent)]
 pub struct AutoSpaceViews(pub bool);
@@ -20,6 +32,18 @@ impl Component for AutoSpaceViews {
     }
 }
 
+/// The set of currently visible spaces
+///
+/// ## Example
+/// ```
+/// # use re_viewer::blueprint_components::viewport::SpaceViewVisibility;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     SpaceViewVisibility::data_type(),
+///     DataType::Binary
+/// );
+/// ```
 #[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(transparent)]
 pub struct SpaceViewVisibility(
@@ -33,6 +57,18 @@ impl Component for SpaceViewVisibility {
     }
 }
 
+/// Whether a space view is maximized
+///
+/// ## Example
+/// ```
+/// # use re_viewer::blueprint_components::viewport::SpaceViewMaximized;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     SpaceViewMaximized::data_type(),
+///     DataType::Binary
+/// );
+/// ```
 #[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(transparent)]
 pub struct SpaceViewMaximized(
@@ -46,6 +82,22 @@ impl Component for SpaceViewMaximized {
     }
 }
 
+/// The layout of a `Viewport`
+///
+/// ## Example
+/// ```
+/// # use re_viewer::blueprint_components::viewport::ViewportLayout;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     ViewportLayout::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("space_view_keys", DataType::Binary, false),
+///         Field::new("trees", DataType::Binary, false),
+///         Field::new("has_been_user_edited", DataType::Boolean, false),
+///     ])
+/// );
+/// ```
 #[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ViewportLayout {
     #[arrow_field(type = "SerdeField<std::collections::BTreeSet<SpaceViewId>>")]
