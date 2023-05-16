@@ -9,6 +9,12 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: true
         type: string
+      # Each example in the built app contains a link to its source code.
+      # This determines the target commit to link to, and by default
+      # it is the current commit (github.sha)
+      SOURCE_LINK_COMMIT_OVERRIDE:
+        required: false
+        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-web-demo
@@ -70,9 +76,18 @@ jobs:
           which rerun
           rerun --version
 
+      - name: Resolve source link commit hash
+        run: |
+          if [ -z "${{ inputs.SOURCE_LINK_COMMIT_OVERRIDE }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.SOURCE_LINK_COMMIT_OVERRIDE }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+
       - name: Build web demo
         env:
-          COMMIT_HASH: ${{ github.env.GITHUB_SHA }}
+          COMMIT_HASH: ${{ env.SHORT_SHA }}
         run: |
           python3 scripts/build_demo_app.py --skip-wasm-build
 
