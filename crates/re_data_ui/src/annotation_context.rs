@@ -1,7 +1,7 @@
 use egui::{color_picker, Vec2};
 use itertools::Itertools;
 
-use re_log_types::{context::AnnotationInfo, AnnotationContext};
+use re_log_types::{component_types::ClassId, context::AnnotationInfo, AnnotationContext};
 use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -77,8 +77,11 @@ fn annotation_info(
     query: &re_arrow_store::LatestAtQuery,
     keypoint_id: &re_log_types::component_types::KeypointId,
 ) -> Option<re_log_types::context::AnnotationInfo> {
-    let class_id =
-        re_data_store::query_latest_single(&ctx.log_db.entity_db.data_store, entity_path, query)?;
+    let class_id = ctx
+        .log_db
+        .entity_db
+        .data_store
+        .query_latest_component::<ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations
         .class_description(Some(class_id))

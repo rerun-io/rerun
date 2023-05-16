@@ -1,4 +1,3 @@
-#[cfg(feature = "serde")]
 use re_log_types::EntityPath;
 
 #[cfg(feature = "serde")]

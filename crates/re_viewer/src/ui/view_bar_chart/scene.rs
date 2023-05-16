@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{query_latest_single, EntityPath};
+use re_data_store::EntityPath;
 use re_log_types::component_types::{self, Tensor};
 use re_viewer_context::{SceneQuery, ViewerContext};
 
@@ -21,7 +21,7 @@ impl SceneBarChart {
     fn load_tensors(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let data_store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.log_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
             if !props.visible {
@@ -29,8 +29,7 @@ impl SceneBarChart {
             }
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            let tensor =
-                query_latest_single::<component_types::Tensor>(data_store, ent_path, &query);
+            let tensor = store.query_latest_component::<component_types::Tensor>(ent_path, &query);
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
