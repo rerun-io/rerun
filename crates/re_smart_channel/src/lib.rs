@@ -1,7 +1,7 @@
 //! A channel that keeps track of latency and queue length.
 
 use std::sync::{
-    atomic::{AtomicU64, Ordering::Relaxed},
+    atomic::{AtomicBool, AtomicU64, Ordering::Relaxed},
     Arc,
 };
 
@@ -66,7 +66,12 @@ fn smart_channel_with_stats<T: Send>(
         tx,
         stats: stats.clone(),
     };
-    let receiver = Receiver { rx, stats, source };
+    let receiver = Receiver {
+        rx,
+        stats,
+        source,
+        connected: AtomicBool::new(true),
+    };
     (sender, receiver)
 }
 
@@ -123,25 +128,57 @@ pub struct Receiver<T: Send> {
     rx: crossbeam::channel::Receiver<(Instant, T)>,
     stats: Arc<SharedStats>,
     source: Source,
+    connected: AtomicBool,
 }
 
 impl<T: Send> Receiver<T> {
+    /// Are we still connected?
+    ///
+    /// Once false, we will never be connected again: the source has run dry.
+    ///
+    /// This is only updated once one of the receive methods fails.
+    pub fn is_connected(&self) -> bool {
+        self.connected.load(Relaxed)
+    }
+
     pub fn recv(&self) -> Result<T, RecvError> {
-        let (sent, msg) = self.rx.recv()?;
+        let (sent, msg) = match self.rx.recv() {
+            Ok(x) => x,
+            Err(RecvError) => {
+                self.connected.store(false, Relaxed);
+                return Err(RecvError);
+            }
+        };
         let latency_ns = sent.elapsed().as_nanos() as u64;
         self.stats.latency_ns.store(latency_ns, Relaxed);
         Ok(msg)
     }
 
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
-        let (sent, msg) = self.rx.try_recv()?;
+        let (sent, msg) = match self.rx.try_recv() {
+            Ok(x) => x,
+            Err(err) => {
+                if err == TryRecvError::Disconnected {
+                    self.connected.store(false, Relaxed);
+                }
+                return Err(err);
+            }
+        };
         let latency_ns = sent.elapsed().as_nanos() as u64;
         self.stats.latency_ns.store(latency_ns, Relaxed);
         Ok(msg)
     }
 
     pub fn recv_timeout(&self, timeout: std::time::Duration) -> Result<T, RecvTimeoutError> {
-        let (sent, msg) = self.rx.recv_timeout(timeout)?;
+        let (sent, msg) = match self.rx.recv_timeout(timeout) {
+            Ok(x) => x,
+            Err(err) => {
+                if err == RecvTimeoutError::Disconnected {
+                    self.connected.store(false, Relaxed);
+                }
+                return Err(err);
+            }
+        };
         let latency_ns = sent.elapsed().as_nanos() as u64;
         self.stats.latency_ns.store(latency_ns, Relaxed);
         Ok(msg)
@@ -216,4 +253,27 @@ fn test_smart_channel() {
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);
     assert!(tx.latency_ns() > 1_000_000);
+}
+
+#[test]
+fn test_smart_channel_connected() {
+    let (tx1, rx) = smart_channel(Source::Sdk); // whatever source
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    let tx2 = tx1.clone();
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    tx2.send(42).unwrap();
+    assert_eq!(rx.try_recv(), Ok(42));
+    assert!(rx.is_connected());
+
+    drop(tx1);
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    drop(tx2);
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Disconnected));
+    assert!(!rx.is_connected());
 }

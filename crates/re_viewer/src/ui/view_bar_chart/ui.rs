@@ -7,14 +7,34 @@ use re_log::warn_once;
 use re_log_types::component_types::{self, InstanceKey};
 use re_viewer_context::{auto_color, ViewerContext};
 
+use crate::ui::spaceview_controls::{
+    HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
+};
+
 use super::SceneBarChart;
 
 // ---
 
-pub(crate) const HELP_TEXT: &str = "\
-    Pan by dragging, or scroll (+ shift = horizontal).\n\
-    Box zooming: Right click to zoom in and zoom out using a selection.\n\
-    Reset view with double-click.";
+pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+
+    layout.add("Pan by dragging, or scroll (+ ");
+    layout.add(HORIZONTAL_SCROLL_MODIFIER);
+    layout.add(" for horizontal).\n");
+
+    layout.add("Zoom with pinch gesture or scroll + ");
+    layout.add(ZOOM_SCROLL_MODIFIER);
+    layout.add(".\n");
+
+    layout.add("Drag ");
+    layout.add(SELECTION_RECT_ZOOM_BUTTON);
+    layout.add(" to zoom in/out using a selection.\n\n");
+
+    layout.add_button_text("double-click");
+    layout.add(" to reset the view.");
+
+    layout.layout_job.into()
+}
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct BarChartState;

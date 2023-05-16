@@ -5,6 +5,7 @@ mod command_palette;
 mod design_tokens;
 pub mod egui_helpers;
 pub mod icons;
+mod layout_job_builder;
 mod static_image_cache;
 pub mod toasts;
 mod toggle_switch;
@@ -13,6 +14,7 @@ pub use command::Command;
 pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
+pub use layout_job_builder::LayoutJobBuilder;
 pub use static_image_cache::StaticImageCache;
 pub use toggle_switch::toggle_switch;
 
@@ -605,6 +607,24 @@ impl ReUi {
         }
 
         response
+    }
+
+    /// Text format used for regular body.
+    pub fn text_format_body(&self) -> egui::TextFormat {
+        egui::TextFormat::simple(
+            egui::TextStyle::Body.resolve(&self.egui_ctx.style()),
+            self.egui_ctx.style().visuals.text_color(),
+        )
+    }
+
+    /// Text format used for labels referring to keys and buttons.
+    pub fn text_format_key(&self) -> egui::TextFormat {
+        let mut style = egui::TextFormat::simple(
+            egui::TextStyle::Monospace.resolve(&self.egui_ctx.style()),
+            self.egui_ctx.style().visuals.text_color(),
+        );
+        style.background = self.egui_ctx.style().visuals.widgets.noninteractive.bg_fill;
+        style
     }
 }
 

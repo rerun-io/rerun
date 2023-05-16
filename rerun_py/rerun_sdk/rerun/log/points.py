@@ -23,6 +23,7 @@ from rerun.log import (
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_point",
@@ -42,6 +43,7 @@ def log_point(
     keypoint_id: Optional[int] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a 2D or 3D point, with a position and optional color, radii, label, etc.
@@ -83,8 +85,12 @@ def log_point(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the point will be timeless (default: False).
-
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     """
+    recording = RecordingStream.to_native(recording)
 
     if keypoint_id is not None and class_id is None:
         class_id = 0
@@ -122,11 +128,11 @@ def log_point(
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -142,6 +148,7 @@ def log_points(
     keypoint_ids: OptionalKeyPointIds = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log 2D or 3D points, with positions and optional colors, radii, labels, etc.
@@ -189,8 +196,13 @@ def log_points(
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the points will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if keypoint_ids is not None and class_ids is None:
         class_ids = 0
@@ -253,7 +265,7 @@ def log_points(
 
     if comps[1]:
         comps[1]["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless, recording=recording)

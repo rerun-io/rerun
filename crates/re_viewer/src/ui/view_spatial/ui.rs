@@ -431,10 +431,10 @@ impl ViewSpatialState {
         }
     }
 
-    pub fn help_text(&self) -> &str {
+    pub fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
         match *self.nav_mode.get() {
-            SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT_2D,
-            SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT_3D,
+            SpatialNavigationMode::TwoD => super::ui_2d::help_text(re_ui),
+            SpatialNavigationMode::ThreeD => super::ui_3d::help_text(re_ui),
         }
     }
 }
