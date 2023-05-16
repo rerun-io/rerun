@@ -69,10 +69,10 @@ impl Component for SpaceViewVisibility {
 ///     DataType::Binary
 /// );
 /// ```
-#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, Default, Debug, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(transparent)]
 pub struct SpaceViewMaximized(
-    #[arrow_field(type = "Option<SerdeField<SpaceViewId>>")] pub Option<SpaceViewId>,
+    #[arrow_field(type = "SerdeField<Option<SpaceViewId>>")] pub Option<SpaceViewId>,
 );
 
 impl Component for SpaceViewMaximized {
@@ -111,5 +111,19 @@ impl Component for ViewportLayout {
     #[inline]
     fn name() -> ComponentName {
         "rerun.blueprint.viewport_layout".into()
+    }
+}
+
+#[test]
+fn test_maximized_roundtrip() {
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+    for data in [
+        [SpaceViewMaximized(None)],
+        [SpaceViewMaximized(Some(SpaceViewId::random()))],
+    ] {
+        let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();
+        let ret: Vec<SpaceViewMaximized> = array.try_into_collection().unwrap();
+        assert_eq!(&data, ret.as_slice());
     }
 }

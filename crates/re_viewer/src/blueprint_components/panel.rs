@@ -10,8 +10,10 @@ use re_log_types::Component;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
-///     AutoSpaceViews::data_type(),
-///     DataType::Boolean
+///     PanelState::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("expanded", DataType::Boolean, false),
+///     ])
 /// );
 /// ```
 // TODO(jleibs): If we want these accessible from python, they need to
