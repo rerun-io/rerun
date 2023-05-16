@@ -188,7 +188,17 @@ impl MsgSender {
         self.with_cell(cell)
     }
 
-    fn with_cell(mut self, cell: DataCell) -> Result<MsgSender, MsgSenderError> {
+    /// Appends a component collection to the current message.
+    ///
+    /// All component collections stored in the message must have the same row-length (i.e. number
+    /// of instances)!
+    /// The row-length of the first appended collection is used as ground truth.
+    ///
+    /// ⚠ This can only be called once per type of component!
+    /// The SDK does not yet support batch insertions, which are semantically identical to adding
+    /// the same component type multiple times in a single message.
+    /// Doing so will return an error when trying to `send()` the message.
+    pub fn with_cell(mut self, cell: DataCell) -> Result<MsgSender, MsgSenderError> {
         let num_instances = cell.num_instances();
 
         if let Some(cur_num_instances) = self.num_instances {
