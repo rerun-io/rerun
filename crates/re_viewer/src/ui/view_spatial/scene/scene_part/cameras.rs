@@ -4,7 +4,6 @@ use re_log_types::{
     coordinates::{Handedness, SignedAxis3},
     Pinhole, Transform, ViewCoordinates,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::TimeControl;
 use re_viewer_context::{SceneQuery, ViewerContext};
@@ -58,7 +57,6 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        entity_view: &EntityView<Transform>,
         ent_path: &EntityPath,
         instance_key: InstanceKey,
         props: &EntityProperties,
@@ -154,10 +152,11 @@ impl CamerasPart {
 
         let radius = re_renderer::Size::new_points(1.0);
         let color = SceneSpatial::CAMERA_COLOR;
+        let num_instances = 1; // There is only ever one instance of `Transform` per entity.
         let instance_path_for_picking = instance_path_hash_for_picking(
             ent_path,
             instance_key,
-            entity_view.num_instances(),
+            num_instances,
             entity_highlight.any_selection_highlight,
         );
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
@@ -197,42 +196,32 @@ impl ScenePart for CamerasPart {
         for (ent_path, props) in query.iter_entities() {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            match query_entity_with_primary::<Transform>(
-                &ctx.log_db.entity_db.data_store,
-                &query,
+            if let Some(transform) = re_data_store::query_latest_single::<Transform>(
+                &ctx.log_db.entity_db,
                 ent_path,
-                &[],
-            )
-            .and_then(|entity_view| {
-                entity_view.visit1(|instance_key, transform| {
-                    let Transform::Pinhole(pinhole) = transform else {
+                &query,
+            ) {
+                let Transform::Pinhole(pinhole) = transform else {
                         return;
                     };
-                    let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-                    let view_coordinates = determine_view_coordinates(
-                        &ctx.log_db.entity_db,
-                        &ctx.rec_cfg.time_ctrl,
-                        ent_path.clone(),
-                    );
+                let view_coordinates = determine_view_coordinates(
+                    &ctx.log_db.entity_db,
+                    &ctx.rec_cfg.time_ctrl,
+                    ent_path.clone(),
+                );
 
-                    Self::visit_instance(
-                        scene,
-                        &entity_view,
-                        ent_path,
-                        instance_key,
-                        &props,
-                        transforms,
-                        pinhole,
-                        view_coordinates,
-                        entity_highlight,
-                    );
-                })
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
+                Self::visit_instance(
+                    scene,
+                    ent_path,
+                    InstanceKey(0),
+                    &props,
+                    transforms,
+                    pinhole,
+                    view_coordinates,
+                    entity_highlight,
+                );
             }
         }
     }
