@@ -82,6 +82,7 @@ impl PartialEq for DataBlueprintTree {
             data_blueprints,
         } = self;
 
+        // Note: this could fail unexpectedly if slotmap iteration order is unstable.
         groups.iter().zip(other.groups.iter()).all(|(x, y)| x == y)
             && *path_to_group == other.path_to_group
             && *entity_paths == other.entity_paths
