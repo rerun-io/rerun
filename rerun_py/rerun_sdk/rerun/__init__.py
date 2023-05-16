@@ -4,7 +4,7 @@ import atexit
 import logging
 import sys
 from inspect import getmembers, isfunction
-from typing import List, Optional
+from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
