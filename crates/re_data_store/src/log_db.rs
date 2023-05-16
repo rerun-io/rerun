@@ -4,9 +4,9 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
-    component_types::InstanceKey, ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath,
-    DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp,
-    RecordingId, RecordingInfo, RowId, TimePoint, Timeline,
+    component_types::InstanceKey, ArrowMsg, Component as _, ComponentPath, DataCell, DataRow,
+    DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RecordingId,
+    RecordingInfo, RowId, SetRecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -169,8 +169,8 @@ pub struct LogDb {
     /// Set by whomever created this [`LogDb`].
     pub data_source: Option<re_smart_channel::Source>,
 
-    /// Comes in a special message, [`LogMsg::BeginRecordingMsg`].
-    recording_msg: Option<BeginRecordingMsg>,
+    /// Comes in a special message, [`LogMsg::SetRecordingInfo`].
+    recording_msg: Option<SetRecordingInfo>,
 
     /// Where we store the entities.
     pub entity_db: EntityDb,
@@ -187,7 +187,7 @@ impl LogDb {
         }
     }
 
-    pub fn recording_msg(&self) -> Option<&BeginRecordingMsg> {
+    pub fn recording_msg(&self) -> Option<&SetRecordingInfo> {
         self.recording_msg.as_ref()
     }
 
@@ -224,7 +224,7 @@ impl LogDb {
         crate::profile_function!();
 
         match &msg {
-            LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
+            LogMsg::SetRecordingInfo(msg) => self.add_begin_recording_msg(msg),
             LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
                     row_id,
@@ -241,7 +241,7 @@ impl LogDb {
         Ok(())
     }
 
-    fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {
+    fn add_begin_recording_msg(&mut self, msg: &SetRecordingInfo) {
         self.recording_msg = Some(msg.clone());
     }
 

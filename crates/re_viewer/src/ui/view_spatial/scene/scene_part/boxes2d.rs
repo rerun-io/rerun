@@ -54,7 +54,7 @@ impl Boxes2DPart {
                 let instance_hash = instance_path_hash_for_picking(
                     ent_path,
                     instance_key,
-                    entity_view,
+                    entity_view.num_instances(),
                     entity_highlight.any_selection_highlight,
                 );
 
@@ -74,7 +74,7 @@ impl Boxes2DPart {
                     .radius(radius)
                     .picking_instance_id(instance_key_to_picking_id(
                         instance_key,
-                        entity_view,
+                        entity_view.num_instances(),
                         entity_highlight.any_selection_highlight,
                     ));
 

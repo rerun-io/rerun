@@ -7,7 +7,6 @@ use re_log_types::{
     },
     Arrow3D, Component, Mesh3D,
 };
-use re_query::query_entity_with_primary;
 
 #[derive(
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
@@ -102,22 +101,17 @@ pub fn categorize_entity_path(
         } else if component == Tensor::name() {
             let timeline_query = LatestAtQuery::new(timeline, TimeInt::MAX);
 
-            if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
+            if let Some(tensor) = re_data_store::query_latest_single::<Tensor>(
                 &log_db.entity_db.data_store,
-                &timeline_query,
                 entity_path,
-                &[],
+                &timeline_query,
             ) {
-                if let Ok(iter) = entity_view.iter_primary() {
-                    for tensor in iter.flatten() {
-                        if tensor.is_vector() {
-                            set.insert(ViewCategory::BarChart);
-                        } else if tensor.is_shaped_like_an_image() {
-                            set.insert(ViewCategory::Spatial);
-                        } else {
-                            set.insert(ViewCategory::Tensor);
-                        }
-                    }
+                if tensor.is_vector() {
+                    set.insert(ViewCategory::BarChart);
+                } else if tensor.is_shaped_like_an_image() {
+                    set.insert(ViewCategory::Spatial);
+                } else {
+                    set.insert(ViewCategory::Tensor);
                 }
             }
         }

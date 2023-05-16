@@ -6,6 +6,7 @@ use super::{mat::Mat3x3, Vec2D};
 
 /// Camera perspective projection (a.k.a. intrinsics).
 ///
+/// This component is a "mono-component". See [the crate level docs](crate) for details.
 ///
 /// ```
 /// use re_log_types::component_types::Pinhole;

@@ -3,6 +3,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use crate::Component;
 
 // TODO:
+/// This component is a "mono-component". See [the crate level docs](crate) for details.
 #[derive(Copy, Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DisconnectedSpace {

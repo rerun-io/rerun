@@ -437,7 +437,9 @@ fn pinhole_props_ui(
     entity_props: &mut EntityProperties,
 ) {
     let query = ctx.current_query();
-    if query_latest_single::<Pinhole>(&ctx.log_db.entity_db, entity_path, &query).is_some() {
+    if query_latest_single::<Pinhole>(&ctx.log_db.entity_db.data_store, entity_path, &query)
+        .is_some()
+    {
         ui.label("Image plane distance");
         let mut distance = *entity_props.pinhole_image_plane_distance.get();
         let speed = (distance * 0.05).at_least(0.01);
@@ -465,7 +467,8 @@ fn depth_props_ui(
     crate::profile_function!();
 
     let query = ctx.current_query();
-    let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, &query)?;
+    let tensor =
+        query_latest_single::<Tensor>(&ctx.log_db.entity_db.data_store, entity_path, &query)?;
     if tensor.meaning != TensorDataMeaning::Depth {
         return Some(());
     }

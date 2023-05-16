@@ -34,7 +34,7 @@ impl MeshPart {
                 let picking_instance_hash = instance_path_hash_for_picking(
                     ent_path,
                     instance_key,
-                    entity_view,
+                    entity_view.num_instances(),
                     entity_highlight.any_selection_highlight,
                 );
 

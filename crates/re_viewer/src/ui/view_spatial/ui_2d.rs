@@ -252,7 +252,7 @@ pub fn view_2d(
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
     let pinhole = query_latest_single::<Pinhole>(
-        &ctx.log_db.entity_db,
+        &ctx.log_db.entity_db.data_store,
         space,
         &ctx.rec_cfg.time_ctrl.current_query(),
     );

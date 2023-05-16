@@ -94,7 +94,7 @@ impl TransformCache {
         // Child transforms of this space
         transforms.gather_descendants_transforms(
             current_tree,
-            entity_db,
+            &entity_db.data_store,
             &query,
             entity_prop_map,
             glam::Affine3A::IDENTITY,
@@ -118,7 +118,7 @@ impl TransformCache {
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
                 &current_tree.path,
-                entity_db,
+                &entity_db.data_store,
                 &query,
                 // TODO(#1988): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
@@ -139,7 +139,7 @@ impl TransformCache {
             // (skip over everything at and under `current_tree` automatically)
             transforms.gather_descendants_transforms(
                 parent_tree,
-                entity_db,
+                &entity_db.data_store,
                 &query,
                 entity_prop_map,
                 reference_from_ancestor,
@@ -155,7 +155,7 @@ impl TransformCache {
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,
-        entity_db: &EntityDb,
+        data_store: &re_arrow_store::DataStore,
         query: &LatestAtQuery,
         entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Affine3A,
@@ -177,7 +177,7 @@ impl TransformCache {
             let mut encountered_pinhole = encountered_pinhole;
             let reference_from_child = match transform_at(
                 &child_tree.path,
-                entity_db,
+                data_store,
                 query,
                 |p| *entity_properties.get(p).pinhole_image_plane_distance.get(),
                 &mut encountered_pinhole,
@@ -192,7 +192,7 @@ impl TransformCache {
             };
             self.gather_descendants_transforms(
                 child_tree,
-                entity_db,
+                data_store,
                 query,
                 entity_properties,
                 reference_from_child,
@@ -225,12 +225,12 @@ impl TransformCache {
 
 fn transform_at(
     entity_path: &EntityPath,
-    entity_db: &EntityDb,
+    data_store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
-    let pinhole = query_latest_single::<Pinhole>(entity_db, entity_path, query);
+    let pinhole = query_latest_single::<Pinhole>(data_store, entity_path, query);
     if pinhole.is_some() {
         if *encountered_pinhole {
             return Err(UnreachableTransform::NestedPinholeCameras);
@@ -239,7 +239,7 @@ fn transform_at(
         }
     }
 
-    let transform3d = query_latest_single::<Transform3D>(entity_db, entity_path, query)
+    let transform3d = query_latest_single::<Transform3D>(data_store, entity_path, query)
         .map(|transform| transform.to_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
@@ -280,7 +280,7 @@ fn transform_at(
         }
     } else if let Some(pinhole) = pinhole {
         Ok(Some(pinhole))
-    } else if query_latest_single::<DisconnectedSpace>(entity_db, entity_path, query).is_some() {
+    } else if query_latest_single::<DisconnectedSpace>(data_store, entity_path, query).is_some() {
         Err(UnreachableTransform::DisconnectedSpace)
     } else {
         Ok(None)

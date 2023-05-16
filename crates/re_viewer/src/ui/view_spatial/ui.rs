@@ -14,7 +14,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    misc::{space_info::query_view_coordinates, SpaceViewHighlights},
+    misc::SpaceViewHighlights,
     ui::{
         data_blueprint::DataBlueprintTree, space_view::ScreenshotMode, view_spatial::UiLabelTarget,
     },
@@ -167,7 +167,9 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) {
-        if query_latest_single::<Pinhole>(&ctx.log_db.entity_db, entity_path, query).is_some() {
+        if query_latest_single::<Pinhole>(&ctx.log_db.entity_db.data_store, entity_path, query)
+            .is_some()
+        {
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {
                 let scene_size = self.scene_bbox_accum.size().length();
@@ -192,7 +194,8 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) -> Option<()> {
-        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query)?;
+        let tensor =
+            query_latest_single::<Tensor>(&ctx.log_db.entity_db.data_store, entity_path, query)?;
 
         let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
         if properties.backproject_depth.is_auto() {
@@ -391,8 +394,11 @@ impl ViewSpatialState {
 
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates =
-                    query_view_coordinates(&ctx.log_db.entity_db, space, &ctx.current_query());
+                let coordinates = query_latest_single(
+                    &ctx.log_db.entity_db.data_store,
+                    space,
+                    &ctx.current_query(),
+                );
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
                 super::view_3d(
                     ctx,
@@ -741,7 +747,7 @@ pub fn picking(
             || *ent_properties.backproject_depth.get()
         {
             query_latest_single::<Tensor>(
-                &ctx.log_db.entity_db,
+                &ctx.log_db.entity_db.data_store,
                 &instance_path.entity_path,
                 &ctx.current_query(),
             )

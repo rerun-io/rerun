@@ -724,7 +724,7 @@ impl App {
         while let Ok(msg) = self.rx.try_recv() {
             let recording_id = msg.recording_id();
 
-            let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
+            let is_new_recording = if let LogMsg::SetRecordingInfo(msg) = &msg {
                 re_log::debug!("Opening a new recording: {:?}", msg.info);
                 self.state.selected_rec_id = Some(recording_id.clone());
                 true
@@ -1884,7 +1884,7 @@ fn save_database_to_file(
 
     let begin_rec_msg = log_db
         .recording_msg()
-        .map(|msg| LogMsg::BeginRecordingMsg(msg.clone()));
+        .map(|msg| LogMsg::SetRecordingInfo(msg.clone()));
 
     let ent_op_msgs = log_db
         .iter_entity_op_msgs()

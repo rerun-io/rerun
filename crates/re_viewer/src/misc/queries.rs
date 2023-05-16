@@ -11,10 +11,12 @@ pub fn closest_pinhole_transform(
 ) -> Option<EntityPath> {
     crate::profile_function!();
 
+    let data_store = &ctx.log_db.entity_db.data_store;
+
     let mut pinhole_ent_path = None;
     let mut cur_path = Some(entity_path.clone());
     while let Some(path) = cur_path {
-        if query_latest_single::<Pinhole>(&ctx.log_db.entity_db, &path, query).is_some() {
+        if query_latest_single::<Pinhole>(data_store, &path, query).is_some() {
             pinhole_ent_path = Some(path);
             break;
         }

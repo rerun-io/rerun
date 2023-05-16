@@ -486,6 +486,8 @@ impl From<Transform3DRepr> for glam::Affine3A {
 
 /// An affine transform between two 3D spaces, represented in a given direction.
 ///
+/// This component is a "mono-component". See [the crate level docs](crate) for details.
+///
 /// TODO:
 /// ```
 /// use re_log_types::component_types::{Affine3D, DirectedAffine3D};
