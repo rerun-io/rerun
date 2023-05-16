@@ -4,9 +4,9 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
-    component_types::InstanceKey, ArrowMsg, SetRecordingInfo, Component as _, ComponentPath,
-    DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp,
-    RecordingId, RecordingInfo, RowId, TimePoint, Timeline,
+    component_types::InstanceKey, ArrowMsg, Component as _, ComponentPath, DataCell, DataRow,
+    DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RecordingId,
+    RecordingInfo, RowId, SetRecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};

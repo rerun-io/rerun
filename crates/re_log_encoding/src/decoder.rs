@@ -183,8 +183,8 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[test]
 fn test_encode_decode() {
     use re_log_types::{
-        ApplicationId, SetRecordingInfo, LogMsg, RecordingId, RecordingInfo, RecordingSource,
-        RecordingType, RowId, Time,
+        ApplicationId, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType, RowId,
+        SetRecordingInfo, Time,
     };
 
     let messages = vec![LogMsg::SetRecordingInfo(SetRecordingInfo {

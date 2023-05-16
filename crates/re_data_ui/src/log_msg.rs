@@ -1,6 +1,4 @@
-use re_log_types::{
-    ArrowMsg, SetRecordingInfo, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo,
-};
+use re_log_types::{ArrowMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo, SetRecordingInfo};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
