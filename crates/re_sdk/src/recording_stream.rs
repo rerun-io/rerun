@@ -368,7 +368,6 @@ impl RecordingStreamInner {
     ) -> RecordingStreamResult<Self> {
         let batcher = DataTableBatcher::new(batcher_config)?;
 
-        // TODO(cmc): BeginRecordingMsg is a misnomer; it's idempotent.
         {
             re_log::debug!(
                 app_id = %info.application_id,
@@ -376,7 +375,7 @@ impl RecordingStreamInner {
                 "setting recording info",
             );
             sink.send(
-                re_log_types::BeginRecordingMsg {
+                re_log_types::SetRecordingInfo {
                     row_id: re_log_types::RowId::random(),
                     info: info.clone(),
                 }
@@ -432,7 +431,7 @@ impl RecordingStream {
     /// You can create a [`RecordingInfo`] with [`crate::new_recording_info`];
     ///
     /// The [`RecordingInfo`] is immediately sent to the sink in the form of a
-    /// [`re_log_types::BeginRecordingMsg`].
+    /// [`re_log_types::SetRecordingInfo`].
     ///
     /// You can find sinks in [`crate::sink`].
     ///
@@ -493,7 +492,7 @@ fn forwarding_thread(
                         "setting recording info",
                     );
                     new_sink.send(
-                        re_log_types::BeginRecordingMsg {
+                        re_log_types::SetRecordingInfo {
                             row_id: re_log_types::RowId::random(),
                             info: info.clone(),
                         }
@@ -791,6 +790,16 @@ impl RecordingStream {
             return;
         };
 
+        // TODO(cmc): The `Goodbye` message is our last remaining message piece that is neither
+        // idempotent, stateless, nor order insensitive... so make sure to get all the pending
+        // tables into the pipe first.
+
+        // 1. Flush the batcher down the table channel
+        this.batcher.flush_blocking();
+
+        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
+        this.cmds_tx.send(Command::PopPendingTables).ok();
+
         this.cmds_tx
             .send(Command::RecordMsg(LogMsg::Goodbye(
                 this.info.recording_id.clone(),
@@ -988,22 +997,22 @@ mod tests {
         // First message should be a set_recording_info resulting from the original sink swap to
         // buffered mode.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         // Second message should be a set_recording_info resulting from the later sink swap from
         // buffered mode into in-memory mode.
         // This arrives _before_ the data itself since we're using manual flushing.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         // Third message is the batched table itself, which was sent as a result of the implicit
@@ -1053,22 +1062,22 @@ mod tests {
         // First message should be a set_recording_info resulting from the original sink swap to
         // buffered mode.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         // Second message should be a set_recording_info resulting from the later sink swap from
         // buffered mode into in-memory mode.
         // This arrives _before_ the data itself since we're using manual flushing.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         let mut rows = {
@@ -1133,11 +1142,11 @@ mod tests {
             // First message should be a set_recording_info resulting from the original sink swap
             // to in-memory mode.
             match msgs.pop().unwrap() {
-                LogMsg::BeginRecordingMsg(msg) => {
+                LogMsg::SetRecordingInfo(msg) => {
                     assert!(msg.row_id != RowId::ZERO);
                     similar_asserts::assert_eq!(rec_info, msg.info);
                 }
-                _ => panic!("expected BeginRecordingMsg"),
+                _ => panic!("expected SetRecordingInfo"),
             }
 
             // The underlying batcher is never flushing: there's nothing else.

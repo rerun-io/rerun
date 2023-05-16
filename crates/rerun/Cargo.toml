@@ -46,7 +46,7 @@ demo = ["re_sdk?/demo"]
 glam = ["re_sdk?/glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
-image = ["re_log_types/image"]
+image = ["re_log_types/image", "re_sdk?/image"]
 
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
@@ -101,8 +101,10 @@ webbrowser = { version = "0.8", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
-mimalloc.workspace = true
 ctrlc.workspace = true
+mimalloc.workspace = true
+puffin.workspace = true
+rayon.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 # Native unix dependencies:

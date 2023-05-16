@@ -13,10 +13,17 @@ use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerConte
 
 use crate::{
     misc::SpaceViewHighlights,
-    ui::view_spatial::{
-        ui::{create_labels, outline_config, picking, screenshot_context_menu},
-        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-        SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
+    ui::{
+        spaceview_controls::{
+            DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
+            ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
+            TRACKED_CAMERA_RESTORE_KEY,
+        },
+        view_spatial::{
+            ui::{create_labels, outline_config, picking, screenshot_context_menu},
+            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+            SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
+        },
     },
 };
 
@@ -267,18 +274,49 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
-    Drag with secondary mouse button to pan.\n\
-    Drag with middle mouse button (or primary mouse button + holding ALT/OPTION) to roll the view.\n\
-    Scroll to zoom.\n\
-    \n\
-    While hovering the 3D view, navigate with WSAD and QE.\n\
-    CTRL slows down, SHIFT speeds up.\n\
-    \n\
-    Double-click an object to focus the view on it.\n\
-    For cameras, you can restore the view again with Escape.\n\
-    \n\
-    Double-click on empty space to reset the view.";
+pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+
+    layout.add("Click and drag ");
+    layout.add(ROTATE3D_BUTTON);
+    layout.add(" to rotate.\n");
+
+    layout.add("Click and drag with ");
+    layout.add(DRAG_PAN3D_BUTTON);
+    layout.add(" to pan.\n");
+
+    layout.add("Drag with ");
+    layout.add(ROLL_MOUSE);
+    layout.add(" ( ");
+    layout.add(ROLL_MOUSE_ALT);
+    layout.add(" + holding ");
+    layout.add(ROLL_MOUSE_MODIFIER);
+    layout.add(" ) to roll the view.\n");
+
+    layout.add("Scroll or pinch to zoom.\n\n");
+
+    layout.add("While hovering the 3D view, navigate with ");
+    layout.add_button_text("WASD");
+    layout.add(" and ");
+    layout.add_button_text("QE");
+    layout.add("\n");
+
+    layout.add(SPEED_UP_3D_MODIFIER);
+    layout.add(" slows down, ");
+    layout.add(SLOW_DOWN_3D_MODIFIER);
+    layout.add(" speeds up\n\n");
+
+    layout.add_button_text("double-click");
+    layout.add(" an object to focus the view on it.\n");
+    layout.add("For cameras, you can restore the view again with ");
+    layout.add(TRACKED_CAMERA_RESTORE_KEY);
+    layout.add(" .\n\n");
+
+    layout.add_button_text(RESET_VIEW_BUTTON_TEXT);
+    layout.add(" on empty space to reset the view.");
+
+    layout.layout_job.into()
+}
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
 #[allow(clippy::too_many_arguments)]
@@ -426,7 +464,7 @@ pub fn view_3d(
     }
 
     // Allow to restore the camera state with escape if a camera was tracked before.
-    if response.hovered() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+    if response.hovered() && ui.input(|i| i.key_pressed(TRACKED_CAMERA_RESTORE_KEY)) {
         if let Some(camera_before_changing_tracked_state) =
             state.state_3d.camera_before_tracked_camera
         {

@@ -8,18 +8,42 @@ use re_viewer_context::ViewerContext;
 
 use super::SceneTimeSeries;
 use crate::{
-    misc::format_time::next_grid_tick_magnitude_ns, ui::view_time_series::scene::PlotSeriesKind,
+    misc::format_time::next_grid_tick_magnitude_ns,
+    ui::{
+        spaceview_controls::{
+            HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, RESET_VIEW_BUTTON_TEXT,
+            SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
+        },
+        view_time_series::scene::PlotSeriesKind,
+    },
 };
 
 // ---
 
-pub(crate) const HELP_TEXT: &str = "Pan by dragging, or scroll (+ shift = horizontal).\n\
-    Box zooming: Right click to zoom in and zoom out using a selection.\n\
-    Zoom with ctrl / ⌘ + pointer wheel, or with pinch gesture.\n\
-    You can also zoom by dragging a rectangle with the right mouse button.\n\
-    \n\
-    Reset view with double-click.\n\
-    Right click to move the time cursor to the current position.";
+pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+
+    layout.add("Pan by dragging, or scroll (+ ");
+    layout.add(HORIZONTAL_SCROLL_MODIFIER);
+    layout.add(" for horizontal).\n");
+
+    layout.add("Zoom with pinch gesture or scroll + ");
+    layout.add(ZOOM_SCROLL_MODIFIER);
+    layout.add(".\n");
+
+    layout.add("Drag ");
+    layout.add(SELECTION_RECT_ZOOM_BUTTON);
+    layout.add(" to zoom in/out using a selection.\n");
+
+    layout.add("Click ");
+    layout.add(MOVE_TIME_CURSOR_BUTTON);
+    layout.add(" to move the time cursor.\n\n");
+
+    layout.add_button_text(RESET_VIEW_BUTTON_TEXT);
+    layout.add(" to reset the view.");
+
+    layout.layout_job.into()
+}
 
 #[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ViewTimeSeriesState;

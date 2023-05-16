@@ -14,7 +14,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    misc::{space_info::query_view_coordinates, SpaceViewHighlights},
+    misc::SpaceViewHighlights,
     ui::{
         data_blueprint::DataBlueprintTree, space_view::ScreenshotMode, view_spatial::UiLabelTarget,
     },
@@ -193,7 +193,7 @@ impl ViewSpatialState {
     ) {
         if let Some(re_log_types::Transform::Pinhole(_)) =
             query_latest_single::<re_log_types::Transform>(
-                &ctx.log_db.entity_db,
+                &ctx.log_db.entity_db.data_store,
                 entity_path,
                 query,
             )
@@ -222,7 +222,8 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) -> Option<()> {
-        let tensor = query_latest_single::<Tensor>(&ctx.log_db.entity_db, entity_path, query)?;
+        let tensor =
+            query_latest_single::<Tensor>(&ctx.log_db.entity_db.data_store, entity_path, query)?;
 
         let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
         if properties.backproject_depth.is_auto() {
@@ -421,8 +422,11 @@ impl ViewSpatialState {
 
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates =
-                    query_view_coordinates(&ctx.log_db.entity_db, space, &ctx.current_query());
+                let coordinates = query_latest_single(
+                    &ctx.log_db.entity_db.data_store,
+                    space,
+                    &ctx.current_query(),
+                );
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
                 super::view_3d(
                     ctx,
@@ -455,10 +459,10 @@ impl ViewSpatialState {
         }
     }
 
-    pub fn help_text(&self) -> &str {
+    pub fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
         match *self.nav_mode.get() {
-            SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT_2D,
-            SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT_3D,
+            SpatialNavigationMode::TwoD => super::ui_2d::help_text(re_ui),
+            SpatialNavigationMode::ThreeD => super::ui_3d::help_text(re_ui),
         }
     }
 }
@@ -771,7 +775,7 @@ pub fn picking(
             || *ent_properties.backproject_depth.get()
         {
             query_latest_single::<Tensor>(
-                &ctx.log_db.entity_db,
+                &ctx.log_db.entity_db.data_store,
                 &instance_path.entity_path,
                 &ctx.current_query(),
             )

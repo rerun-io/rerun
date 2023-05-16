@@ -1,0 +1,108 @@
+name: Reusable Upload Web Demo
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      ADHOC_NAME:
+        type: string
+        required: false
+        default: ''
+      MARK_PRERELEASE_FOR_MAINLINE:
+        required: false
+        type: boolean
+        default: false
+      MARK_TAGGED_VERSION:
+        required: false
+        type: boolean
+        default: false
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: 'prerelease'
+      # We need this because PRs use a merged commit but we really want
+      # to track uploads based on the source commit.
+      UPLOAD_COMMIT_OVERRIDE:
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-upload-web-demo
+  cancel-in-progress: true
+
+jobs:
+
+  upload-web:
+    name: Upload Web Wemo to Google Cloud
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download web demo assets
+        uses: actions/download-artifact@v3
+        with:
+          name: web_demo
+          path: web_demo
+
+      # Upload the wasm, html etc to a Google cloud bucket:
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        run: |
+          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: "Upload web demo (commit)"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/commit/${{env.SHORT_SHA}}"
+          parent: false
+
+      - name: "Upload web demo (prerelease)"
+        if: inputs.MARK_PRERELEASE_FOR_MAINLINE
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/prerelease"
+          parent: false
+
+      - name: "Upload web demo (tagged)"
+        if: inputs.MARK_TAGGED_VERSION
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/version/${{inputs.RELEASE_VERSION}}"
+          parent: false
+      
+      - name: "Upload web demo (latest)"
+        if: inputs.MARK_TAGGED_VERSION
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/version/latest"
+          parent: false
+
+      - name: "Upload web demo (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/adhoc/${{inputs.ADHOC_NAME}}"
+          parent: false

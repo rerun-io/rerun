@@ -77,7 +77,8 @@ fn annotation_info(
     query: &re_arrow_store::LatestAtQuery,
     keypoint_id: &re_log_types::component_types::KeypointId,
 ) -> Option<re_log_types::context::AnnotationInfo> {
-    let class_id = re_data_store::query_latest_single(&ctx.log_db.entity_db, entity_path, query)?;
+    let class_id =
+        re_data_store::query_latest_single(&ctx.log_db.entity_db.data_store, entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations
         .class_description(Some(class_id))

@@ -340,6 +340,9 @@ pub enum TensorDataMeaning {
 ///
 /// All clones are shallow.
 ///
+/// The `Tensor` component is special, as you can only have one instance of it per entity.
+/// This is because each element in a tensor is considered to be a separate instance.
+///
 /// ## Examples
 ///
 /// ```
@@ -775,13 +778,6 @@ pub enum TensorImageLoadError {
     InvalidMetaData {
         expected: Vec<TensorDimension>,
         found: Vec<TensorDimension>,
-    },
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Unsupported file extension '{extension}' for file {path:?}")]
-    UnknownExtension {
-        extension: String,
-        path: std::path::PathBuf,
     },
 }
 

@@ -8,6 +8,7 @@
 -r dicom/requirements.txt
 -r dna/requirements.txt
 -r minimal/requirements.txt
+-r minimal_options/requirements.txt
 -r mp_pose/requirements.txt
 -r multiprocessing/requirements.txt
 -r multithreading/requirements.txt

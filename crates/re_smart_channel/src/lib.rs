@@ -12,8 +12,10 @@ pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvErro
 /// Where is the messages coming from?
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Source {
-    /// The source if a file on disk
-    File { path: std::path::PathBuf },
+    /// The source is one or more files on disk.
+    /// This could be `.rrd` files, or `.glb`, `.png`, …
+    // TODO(#2121): Remove this
+    Files { paths: Vec<std::path::PathBuf> },
 
     /// Streaming an `.rrd` file over http.
     RrdHttpStream { url: String },
@@ -41,7 +43,7 @@ pub enum Source {
 impl Source {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File { .. } | Self::Sdk | Self::RrdWebEventListener => false,
+            Self::Files { .. } | Self::Sdk | Self::RrdWebEventListener => false,
             Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }
@@ -251,4 +253,27 @@ fn test_smart_channel() {
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);
     assert!(tx.latency_ns() > 1_000_000);
+}
+
+#[test]
+fn test_smart_channel_connected() {
+    let (tx1, rx) = smart_channel(Source::Sdk); // whatever source
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    let tx2 = tx1.clone();
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    tx2.send(42).unwrap();
+    assert_eq!(rx.try_recv(), Ok(42));
+    assert!(rx.is_connected());
+
+    drop(tx1);
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    drop(tx2);
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Disconnected));
+    assert!(!rx.is_connected());
 }

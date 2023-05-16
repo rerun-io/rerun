@@ -182,7 +182,7 @@ impl ViewerAnalytics {
 
         if let Some(data_source) = &log_db.data_source {
             let data_source = match data_source {
-                re_smart_channel::Source::File { .. } => "file", // .rrd
+                re_smart_channel::Source::Files { .. } => "file", // .rrd, .png, .glb, …
                 re_smart_channel::Source::RrdHttpStream { .. } => "http",
                 re_smart_channel::Source::RrdWebEventListener { .. } => "web_event",
                 re_smart_channel::Source::Sdk => "sdk", // show()

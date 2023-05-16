@@ -10,7 +10,7 @@ use poll_promise::Promise;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{ApplicationId, BeginRecordingMsg, LogMsg, RecordingId, RecordingType};
+use re_log_types::{ApplicationId, LogMsg, RecordingId, RecordingType};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -445,7 +445,7 @@ impl App {
             let blueprint_db = self.log_dbs.entry(blueprint_id.clone()).or_insert_with(|| {
                 let mut blueprint_db = LogDb::new(blueprint_id.clone());
 
-                blueprint_db.add_begin_recording_msg(&BeginRecordingMsg {
+                blueprint_db.add_begin_recording_msg(&re_log_types::SetRecordingInfo {
                     row_id: re_log_types::RowId::random(),
                     info: re_log_types::RecordingInfo {
                         application_id: blueprint_id.as_str().into(),
@@ -736,8 +736,13 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
         }
 
         match rx.source() {
-            re_smart_channel::Source::File { path } => {
-                ui.strong(format!("Loading {}…", path.display()));
+            re_smart_channel::Source::Files { paths } => {
+                ui.strong(format!(
+                    "Loading {}…",
+                    paths
+                        .iter()
+                        .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
+                ));
             }
             re_smart_channel::Source::RrdHttpStream { url } => {
                 ui.strong(format!("Loading {url}…"));
@@ -795,7 +800,7 @@ impl App {
         while let Ok(msg) = self.rx.try_recv() {
             let recording_id = msg.recording_id();
 
-            let is_new_recording = if let LogMsg::BeginRecordingMsg(msg) = &msg {
+            let is_new_recording = if let LogMsg::SetRecordingInfo(msg) = &msg {
                 match msg.info.recording_id.variant {
                     RecordingType::Data => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
@@ -1991,7 +1996,7 @@ fn save_database_to_file(
 
     let begin_rec_msg = log_db
         .recording_msg()
-        .map(|msg| LogMsg::BeginRecordingMsg(msg.clone()));
+        .map(|msg| LogMsg::SetRecordingInfo(msg.clone()));
 
     let ent_op_msgs = log_db
         .iter_entity_op_msgs()
@@ -2068,7 +2073,9 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
     match load_file_path_impl(path) {
         Ok(mut new_log_db) => {
             re_log::info!("Loaded {path:?}");
-            new_log_db.data_source = Some(re_smart_channel::Source::File { path: path.into() });
+            new_log_db.data_source = Some(re_smart_channel::Source::Files {
+                paths: vec![path.into()],
+            });
             Some(new_log_db)
         }
         Err(err) => {
@@ -2088,7 +2095,9 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
     match load_rrd_to_log_db(read) {
         Ok(mut log_db) => {
             re_log::info!("Loaded {name:?}");
-            log_db.data_source = Some(re_smart_channel::Source::File { path: name.into() });
+            log_db.data_source = Some(re_smart_channel::Source::Files {
+                paths: vec![name.into()],
+            });
             Some(log_db)
         }
         Err(err) => {
@@ -2121,7 +2130,7 @@ fn new_recording_confg(
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
         // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-        re_smart_channel::Source::File { .. }
+        re_smart_channel::Source::Files { .. }
         | re_smart_channel::Source::RrdHttpStream { .. }
         | re_smart_channel::Source::RrdWebEventListener => PlayState::Playing,
 

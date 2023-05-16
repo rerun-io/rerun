@@ -43,6 +43,7 @@ def main() -> None:
         requirements = [
             "examples/python/api_demo/requirements.txt",
             "examples/python/car/requirements.txt",
+            "examples/python/minimal_options/requirements.txt",
             "examples/python/multithreading/requirements.txt",
             "examples/python/plots/requirements.txt",
             "examples/python/text_logging/requirements.txt",
@@ -61,6 +62,7 @@ def main() -> None:
         # Trivial examples that don't require weird dependencies, or downloading data
         ("examples/python/api_demo/main.py", ["--demo", "all"]),
         ("examples/python/car/main.py", []),
+        ("examples/python/minimal_options/main.py", []),
         ("examples/python/multithreading/main.py", []),
         ("examples/python/plots/main.py", []),
         ("examples/python/text_logging/main.py", []),

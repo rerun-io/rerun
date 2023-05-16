@@ -59,6 +59,9 @@ pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub use self::data_cell::FromFileError;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
 };
@@ -213,7 +216,7 @@ pub enum LogMsg {
     /// A new recording has begun.
     ///
     /// Should usually be the first message sent.
-    BeginRecordingMsg(BeginRecordingMsg),
+    SetRecordingInfo(SetRecordingInfo),
 
     /// Server-backed operation on an [`EntityPath`].
     EntityPathOpMsg(RecordingId, EntityPathOpMsg),
@@ -228,7 +231,7 @@ pub enum LogMsg {
 impl LogMsg {
     pub fn recording_id(&self) -> &RecordingId {
         match self {
-            Self::BeginRecordingMsg(msg) => &msg.info.recording_id,
+            Self::SetRecordingInfo(msg) => &msg.info.recording_id,
             Self::EntityPathOpMsg(recording_id, _) | Self::ArrowMsg(recording_id, _) => {
                 recording_id
             }
@@ -237,14 +240,14 @@ impl LogMsg {
     }
 }
 
-impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
+impl_into_enum!(SetRecordingInfo, LogMsg, SetRecordingInfo);
 
 // ----------------------------------------------------------------------------
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct BeginRecordingMsg {
+pub struct SetRecordingInfo {
     pub row_id: RowId,
     pub info: RecordingInfo,
 }

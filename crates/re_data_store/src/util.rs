@@ -4,7 +4,7 @@ use re_log_types::{
     Timeline,
 };
 
-use crate::{log_db::EntityDb, LogDb};
+use crate::LogDb;
 
 // ----------------------------------------------------------------------------
 
@@ -12,8 +12,10 @@ use crate::{log_db::EntityDb, LogDb};
 ///
 /// This assumes that the row we get from the store only contains a single instance for this
 /// component; it will log a warning otherwise.
+///
+/// This should only be used for "mono-components" such as `Transform` and `Tensor`.
 pub fn query_latest_single<C: DeserializableComponent>(
-    entity_db: &EntityDb,
+    data_store: &re_arrow_store::DataStore,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<C>
@@ -25,7 +27,6 @@ where
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
     // single components this is easy enough.
-    let data_store = &entity_db.data_store;
 
     let (_, cells) = data_store.latest_at(query, entity_path, C::name(), &[C::name()])?;
     let cell = cells.get(0)?.as_ref()?;
@@ -46,14 +47,14 @@ where
 /// This assumes that the row we get from the store only contains a single instance for this
 /// component; it will log a warning otherwise.
 pub fn query_timeless_single<C: DeserializableComponent>(
-    entity_db: &EntityDb,
+    data_store: &re_arrow_store::DataStore,
     entity_path: &EntityPath,
 ) -> Option<C>
 where
     for<'b> &'b C::ArrayType: IntoIterator,
 {
     let query = re_arrow_store::LatestAtQuery::new(Timeline::default(), TimeInt::MAX);
-    query_latest_single(entity_db, entity_path, &query)
+    query_latest_single(data_store, entity_path, &query)
 }
 
 // ----------------------------------------------------------------------------

@@ -13,10 +13,13 @@ use super::{
 };
 use crate::{
     misc::SpaceViewHighlights,
-    ui::view_spatial::{
-        ui::outline_config,
-        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-        SceneSpatial,
+    ui::{
+        spaceview_controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER},
+        view_spatial::{
+            ui::outline_config,
+            ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+            SceneSpatial,
+        },
     },
 };
 
@@ -150,7 +153,7 @@ impl View2DState {
                 }
 
                 // If we are dragging, adjust the center accordingly
-                if response.dragged_by(egui::PointerButton::Primary) {
+                if response.dragged_by(DRAG_PAN2D_BUTTON) {
                     // Adjust center based on drag
                     center -= response.drag_delta() / scale;
                     accepting_scroll = false;
@@ -202,9 +205,21 @@ impl View2DState {
     }
 }
 
-pub const HELP_TEXT_2D: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
-    Drag to pan.\n\
-    Double-click to reset the view.";
+pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+
+    layout.add(ZOOM_SCROLL_MODIFIER);
+    layout.add(" + scroll to zoom.\n");
+
+    layout.add("Click and drag with ");
+    layout.add(DRAG_PAN2D_BUTTON);
+    layout.add(" to pan.\n");
+
+    layout.add_button_text(RESET_VIEW_BUTTON_TEXT);
+    layout.add(" to reset the view.");
+
+    layout.layout_job.into()
+}
 
 /// Create the outer 2D view, which consists of a scrollable region
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_3d`
@@ -236,7 +251,7 @@ pub fn view_2d(
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
     let pinhole = query_latest_single(
-        &ctx.log_db.entity_db,
+        &ctx.log_db.entity_db.data_store,
         space,
         &ctx.rec_cfg.time_ctrl.current_query(),
     )
