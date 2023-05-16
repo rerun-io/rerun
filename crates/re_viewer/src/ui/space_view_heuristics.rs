@@ -49,12 +49,11 @@ fn contains_any_image(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> bool {
-    re_query::query_entity_with_primary::<Tensor>(&entity_db.data_store, query, entity_path, &[])
-        .map_or(false, |entity_view| {
-            entity_view
-                .iter_primary_flattened()
-                .any(|tensor| tensor.is_shaped_like_an_image())
-        })
+    if let Some(tensor) = query_latest_single::<Tensor>(entity_db, entity_path, query) {
+        tensor.is_shaped_like_an_image()
+    } else {
+        false
+    }
 }
 
 fn is_interesting_space_view_at_root(
