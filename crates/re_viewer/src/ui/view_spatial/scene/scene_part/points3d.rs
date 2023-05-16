@@ -96,7 +96,7 @@ impl Points3DPart {
                         instance_path_hash_for_picking(
                             ent_path,
                             instance_key,
-                            entity_view,
+                            entity_view.num_instances(),
                             entity_highlight.any_selection_highlight,
                         )
                     })
@@ -131,7 +131,7 @@ impl Points3DPart {
             let picking_instance_ids = entity_view.iter_instance_keys()?.map(|instance_key| {
                 instance_key_to_picking_id(
                     instance_key,
-                    entity_view,
+                    entity_view.num_instances(),
                     entity_highlight.any_selection_highlight,
                 )
             });

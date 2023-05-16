@@ -157,7 +157,7 @@ impl CamerasPart {
         let instance_path_for_picking = instance_path_hash_for_picking(
             ent_path,
             instance_key,
-            entity_view,
+            entity_view.num_instances(),
             entity_highlight.any_selection_highlight,
         );
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);

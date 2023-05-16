@@ -55,7 +55,7 @@ impl Lines2DPart {
                 .radius(radius)
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
-                    entity_view,
+                    entity_view.num_instances(),
                     entity_highlight.any_selection_highlight,
                 ));
 
