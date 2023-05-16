@@ -90,11 +90,24 @@ def add_space_view(
     entity_paths: List[str],
     blueprint: Optional[RecordingStream] = None,
 ) -> None:
+    """
+    Add a new space view to the blueprint.
+
+    Parameters
+    ----------
+    name : str
+        The name of the space view.
+    space_path : str
+        The anchor point of the space view.
+    entity_paths : List[str]
+        The entities to be shown in the space view.
+    blueprint : Optional[RecordingStream]
+        The blueprint to add the space view to. If None, the default global blueprint is used.
+    """
     blueprint = RecordingStream.to_native(blueprint)
     bindings.add_space_view(name, space_path, entity_paths, blueprint)
 
 
-# TODO(jleibs): docstrings
 def set_panels(
     *,
     all_expanded: Optional[bool] = None,
@@ -103,6 +116,22 @@ def set_panels(
     timeline_view_expanded: Optional[bool] = None,
     blueprint: Optional[RecordingStream] = None,
 ) -> None:
+    """
+    Change the visibility of the view panels.
+
+    Parameters
+    ----------
+    all_expanded : Optional[bool]
+        Expand or collapse all panels.
+    blueprint_view_expanded : Optional[bool]
+        Expand or collapse the blueprint view panel.
+    selection_view_expanded : Optional[bool]
+        Expand or collapse the selection view panel.
+    timeline_view_expanded : Optional[bool]
+        Expand or collapse the timeline view panel.
+    blueprint : Optional[RecordingStream]
+        The blueprint to add the space view to. If None, the default global blueprint is used.
+    """
     blueprint = RecordingStream.to_native(blueprint)
     bindings.set_panels(
         blueprint_view_expanded=blueprint_view_expanded or all_expanded,
@@ -117,5 +146,15 @@ def set_auto_space_views(
     enabled: bool,
     blueprint: Optional[RecordingStream] = None,
 ) -> None:
+    """
+    Change whether or not the blueprint automatically adds space views for all entities.
+
+    Parameters
+    ----------
+    enabled : Optional[bool]
+        Whether or not to automatically add space views for all entities.
+    blueprint : Optional[RecordingStream]
+        The blueprint to add the space view to. If None, the default global blueprint is used.
+    """
     blueprint = RecordingStream.to_native(blueprint)
     bindings.set_auto_space_views(enabled, blueprint)
