@@ -126,8 +126,14 @@ __all__ = [
 
 
 # TODO(jleibs): docstrings
-def add_space_view(name: str, space_path: str, entity_paths: List[str]) -> None:
-    bindings.add_space_view(name, space_path, entity_paths)
+def add_space_view(
+    name: str,
+    space_path: str,
+    entity_paths: List[str],
+    blueprint: Optional[RecordingStream] = None,
+) -> None:
+    blueprint = RecordingStream.to_native(blueprint)
+    bindings.add_space_view(name, space_path, entity_paths, blueprint)
 
 
 # TODO(jleibs): docstrings
@@ -137,17 +143,24 @@ def set_panels(
     blueprint_view_expanded: Optional[bool] = None,
     selection_view_expanded: Optional[bool] = None,
     timeline_view_expanded: Optional[bool] = None,
+    blueprint: Optional[RecordingStream] = None,
 ) -> None:
+    blueprint = RecordingStream.to_native(blueprint)
     bindings.set_panels(
         blueprint_view_expanded=blueprint_view_expanded or all_expanded,
         selection_view_expanded=selection_view_expanded or all_expanded,
         timeline_view_expanded=timeline_view_expanded or all_expanded,
+        blueprint=blueprint,
     )
 
 
 # TODO(jleibs): docstrings
-def set_auto_space_views(enabled: bool) -> None:
-    bindings.set_auto_space_views(enabled)
+def set_auto_space_views(
+    enabled: bool,
+    blueprint: Optional[RecordingStream] = None,
+) -> None:
+    blueprint = RecordingStream.to_native(blueprint)
+    bindings.set_auto_space_views(enabled, blueprint)
 
 
 # If `True`, we raise exceptions on use error (wrong parameter types etc).

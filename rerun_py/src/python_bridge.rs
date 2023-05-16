@@ -4,7 +4,7 @@
 
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
-use itertools::izip;
+use itertools::{izip, Itertools};
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
@@ -528,112 +528,27 @@ struct PyMemorySinkStorage {
 
 #[pymethods]
 impl PyMemorySinkStorage {
-    /*
-    fn get_sinks_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
-        // TODO(jleibs) book-keep the right handles to flush here
-        flush(py);
-        // Note: even though it seems like sending the blueprint first
-        // would be preferable, the current behavior is sending the recording
-        // will always switch us back to the default blueprint. This behavior
-        // needs to be sorted out in general but sending the blueprint last
-        // causes us to switch to the right blueprint.
-        rerun::sink::concat_memory_sinks_as_bytes(
-            &[&self.recording, &self.blueprint]
-                .iter()
-                .filter_map(|s| s.as_ref())
-                .collect_vec(),
-        )
-        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
-    }
-
-    fn reset_data(&mut self) {
-        let data_stream = global_data_stream();
-
-        if data_stream.is_none() {
-            no_active_recording("memory");
-        };
-
-        self.recording = data_stream.as_ref().map(|s| s.memory());
-    }
-
-    fn reset_blueprint(
-        &mut self,
-        add_to_app_default_blueprint: bool,
-        py: Python<'_>,
-    ) -> PyResult<()> {
-        let mut bp_stream = global_blueprint_stream();
-
-        if bp_stream.is_none() {
-            no_active_blueprint("memory");
-        };
-
-        // TODO(jleibs): this is a pretty big pain just to reset the recording-id to avoid being
-        // the default-application.
-        if let Some(origin_bp_stream) = bp_stream.as_ref() {
-            if let Some(rec_info) = &mut origin_bp_stream.recording_info() {
-                let RecordingInfo {
-                    application_id,
-                    recording_id: _,
-                    is_official_example,
-                    started: _,
-                    recording_source: _,
-                    recording_type: _,
-                } = rec_info;
-
-                let blueprint_id = if add_to_app_default_blueprint {
-                    rec_info.application_id.as_str().into()
-                } else {
-                    default_recording_id(py, "blueprint")
-                };
-
-                *bp_stream = RecordingStreamBuilder::new(application_id.clone())
-                    .is_official_example(*is_official_example)
-                    .recording_id(blueprint_id)
-                    .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
-                    .blueprint()
-                    .default_enabled(true)
-                    .buffered()
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-                    .into();
-            }
-        }
-
-        self.blueprint = bp_stream.as_ref().map(|s| s.memory());
-
-        Ok(())
-        */
     /// This will do a blocking flush before returning!
-    fn get_sinks_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+    fn concat_as_bytes<'p>(
+        &self,
+        concat: Option<&PyMemorySinkStorage>,
+        py: Python<'p>,
+    ) -> PyResult<&'p PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             self.rec.flush_blocking();
         });
 
-        let _ = &self.inner;
-
-        Err(PyRuntimeError::new_err("FIX THIS!".to_owned()))
-    }
-
-    /*
-        // Note: even though it seems like sending the blueprint first
-        // would be preferable, the current behavior is sending the recording
-        // will always switch us back to the default blueprint. This behavior
-        // needs to be sorted out in general but sending the blueprint last
-        // causes us to switch to the right blueprint.
-        rerun::sink::concat_memory_sinks_as_bytes(
-            //&[&self.recording, &self.blueprint]
-            [self.inner]
+        MemorySinkStorage::concat_memory_sinks_as_bytes(
+            [Some(&self.inner), concat.map(|c| &c.inner)]
                 .iter()
-                .filter_map(|s| Some(s))
+                .filter_map(|s| *s)
                 .collect_vec()
                 .as_slice(),
         )
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
-
     }
-    */
 }
 
 #[cfg(feature = "web_viewer")]

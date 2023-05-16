@@ -126,24 +126,26 @@ impl MemorySinkStorage {
     }
 }
 
-/// Convert the stored messages into an in-memory Rerun log file.
-#[inline]
-pub fn concat_memory_sinks_as_bytes(
-    sinks: &[&MemorySinkStorage],
-) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
-    let mut buffer = std::io::Cursor::new(Vec::new());
+impl MemorySinkStorage {
+    /// Convert the stored messages into an in-memory Rerun log file.
+    #[inline]
+    pub fn concat_memory_sinks_as_bytes(
+        sinks: &[&Self],
+    ) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+        let mut buffer = std::io::Cursor::new(Vec::new());
 
-    {
-        let mut encoder = re_log_encoding::encoder::Encoder::new(&mut buffer)?;
-        for sink in sinks {
-            for message in sink.read().iter() {
-                encoder.append(message)?;
+        {
+            let mut encoder = re_log_encoding::encoder::Encoder::new(&mut buffer)?;
+            for sink in sinks {
+                for message in sink.read().iter() {
+                    encoder.append(message)?;
+                }
             }
+            encoder.finish()?;
         }
-        encoder.finish()?;
-    }
 
-    Ok(buffer.into_inner())
+        Ok(buffer.into_inner())
+    }
 }
 // ----------------------------------------------------------------------------
 
