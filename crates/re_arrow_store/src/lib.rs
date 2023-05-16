@@ -20,6 +20,7 @@ mod store_arrow;
 mod store_dump;
 mod store_format;
 mod store_gc;
+mod store_helpers;
 mod store_read;
 mod store_sanity;
 mod store_stats;
