@@ -10,7 +10,7 @@ use poll_promise::Promise;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{BeginRecordingMsg, LogMsg, RecordingId, RecordingType};
+use re_log_types::{ApplicationId, BeginRecordingMsg, LogMsg, RecordingId, RecordingType};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -393,6 +393,14 @@ impl App {
         }
     }
 
+    fn selected_app_id(&self) -> Option<ApplicationId> {
+        self.log_db().and_then(|log_db| {
+            log_db
+                .recording_info()
+                .map(|rec_info| rec_info.application_id.clone())
+        })
+    }
+
     fn memory_panel_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -514,6 +522,18 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
+        // Look up the blueprint in use for this frame.
+        // Note that it's important that we save this because it's possible that it will be changed
+        // by the end up the frame (e.g. if the user selects a different recording), but we need it
+        // to save changes back to the correct blueprint at the end.
+        let active_blueprint_id = self.selected_app_id().map(|app_id| {
+            self.state
+                .selected_blueprint_id
+                .get(&app_id)
+                .cloned()
+                .unwrap_or_else(|| RecordingId::from_string(RecordingType::Blueprint, app_id.0))
+        });
+
         let store_config = self
             .log_db()
             .map(|log_db| log_db.entity_db.data_store.config().clone())
@@ -524,13 +544,15 @@ impl eframe::App for App {
             .map(|log_db| DataStoreStats::from_store(&log_db.entity_db.data_store))
             .unwrap_or_default();
 
-        let blueprint_config = self
-            .blueprint_db()
+        let blueprint_config = active_blueprint_id
+            .as_ref()
+            .and_then(|bp_id| self.log_dbs.get_mut(bp_id))
             .map(|bp_db| bp_db.entity_db.data_store.config().clone())
             .unwrap_or_default();
 
-        let blueprint_stats = self
-            .blueprint_db()
+        let blueprint_stats = active_blueprint_id
+            .as_ref()
+            .and_then(|bp_id| self.log_dbs.get_mut(bp_id))
             .map(|bp_db| DataStoreStats::from_store(&bp_db.entity_db.data_store))
             .unwrap_or_default();
 
@@ -557,10 +579,10 @@ impl eframe::App for App {
             main_panel_frame.inner_margin = 1.0.into();
         }
 
-        let this_frame_blueprint_id = self.state.selected_blueprint_id.clone();
+        //self.state.selected_blueprint_id.clone();
 
         let blueprint_snapshot =
-            self.load_or_create_blueprint(this_frame_blueprint_id.as_ref(), egui_ctx);
+            self.load_or_create_blueprint(active_blueprint_id.as_ref(), egui_ctx);
 
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
@@ -604,26 +626,27 @@ impl eframe::App for App {
                         let render_state = frame.wgpu_render_state().unwrap();
                         &mut render_state.renderer.write()
                     };
-                    let render_ctx = egui_renderer
+                    if let Some(render_ctx) = egui_renderer
                         .paint_callback_resources
                         .get_mut::<re_renderer::RenderContext>()
-                        .unwrap();
-                    render_ctx.begin_frame();
+                    {
+                        render_ctx.begin_frame();
 
-                    if log_db.is_empty() {
-                        wait_screen_ui(ui, &self.rx);
-                    } else {
-                        self.state.show(
-                            &mut blueprint,
-                            ui,
-                            render_ctx,
-                            log_db,
-                            &self.re_ui,
-                            &self.component_ui_registry,
-                            &self.rx,
-                        );
+                        if log_db.is_empty() {
+                            wait_screen_ui(ui, &self.rx);
+                        } else {
+                            self.state.show(
+                                &mut blueprint,
+                                ui,
+                                render_ctx,
+                                log_db,
+                                &self.re_ui,
+                                &self.component_ui_registry,
+                                &self.rx,
+                            );
 
-                        render_ctx.before_submit();
+                            render_ctx.before_submit();
+                        }
                     }
                 } else {
                     wait_screen_ui(ui, &self.rx);
@@ -650,7 +673,7 @@ impl eframe::App for App {
         );
 
         // If this wasn't the default blueprint, save it back
-        if let Some(blueprint_id) = this_frame_blueprint_id {
+        if let Some(blueprint_id) = active_blueprint_id {
             if let Some(blueprint_db) = self.log_dbs.get_mut(&blueprint_id) {
                 blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
             }
@@ -777,18 +800,14 @@ impl App {
                     RecordingType::Data => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
                         self.state.selected_rec_id = Some(recording_id.clone());
-
-                        // TODO(jleibs): Select most-recent blueprint for the application-id
-                        // The default blueprint uses the application-id as the recording-id
-                        self.state.selected_blueprint_id = Some(RecordingId::from_string(
-                            RecordingType::Blueprint,
-                            msg.info.application_id.clone().to_string(),
-                        ));
                     }
 
                     RecordingType::Blueprint => {
                         re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        self.state.selected_blueprint_id = Some(msg.info.recording_id.clone());
+                        self.state.selected_blueprint_id.insert(
+                            msg.info.application_id.clone(),
+                            msg.info.recording_id.clone(),
+                        );
                     }
                 }
                 true
@@ -932,13 +951,6 @@ impl App {
             .and_then(|rec_id| self.log_dbs.get(rec_id))
     }
 
-    fn blueprint_db(&mut self) -> Option<&mut LogDb> {
-        self.state
-            .selected_blueprint_id
-            .as_ref()
-            .and_then(|bp_id| self.log_dbs.get_mut(bp_id))
-    }
-
     fn show_log_db(&mut self, log_db: LogDb) {
         self.analytics.on_open_recording(&log_db);
         self.state.selected_rec_id = Some(log_db.recording_id().clone());
@@ -1030,7 +1042,7 @@ struct AppState {
     #[serde(skip)]
     selected_rec_id: Option<RecordingId>,
     #[serde(skip)]
-    selected_blueprint_id: Option<RecordingId>,
+    selected_blueprint_id: HashMap<ApplicationId, RecordingId>,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: HashMap<RecordingId, RecordingConfig>,
@@ -1718,6 +1730,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app
         .log_dbs
         .values()
+        .filter(|log| log.recording_type() == RecordingType::Data)
         .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
         .collect_vec();
 
@@ -1727,10 +1740,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 
     ui.style_mut().wrap = Some(false);
-    for log_db in log_dbs
-        .iter()
-        .filter(|log| log.recording_type() == RecordingType::Data)
-    {
+    for log_db in &log_dbs {
         let info = if let Some(rec_info) = log_db.recording_info() {
             format!(
                 "{} - {}",
@@ -1753,44 +1763,56 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
-    let log_dbs = app
-        .log_dbs
-        .values()
-        .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
-        .collect_vec();
+    if let Some(app_id) = &app.selected_app_id() {
+        let blueprint_dbs = app
+            .log_dbs
+            .values()
+            .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
+            .filter(|log| {
+                log.recording_type() == RecordingType::Blueprint
+                    && log
+                        .recording_info()
+                        .map_or(false, |ri| &ri.application_id == app_id)
+            })
+            .collect_vec();
 
-    if log_dbs.is_empty() {
-        ui.weak("(empty)");
-        return;
-    }
-
-    ui.style_mut().wrap = Some(false);
-    for log_db in log_dbs
-        .iter()
-        .filter(|log| log.recording_type() == RecordingType::Blueprint)
-    {
-        let info = if let Some(rec_info) = log_db.recording_info() {
-            if rec_info.is_app_default_blueprint() {
-                format!("{} - Default Blueprint", rec_info.application_id,)
-            } else {
-                format!(
-                    "{} - {}",
-                    rec_info.application_id,
-                    rec_info.started.format()
-                )
-            }
-        } else {
-            "<UNKNOWN>".to_owned()
-        };
-        if ui
-            .radio(
-                app.state.selected_blueprint_id.as_ref() == Some(log_db.recording_id()),
-                info,
-            )
-            .clicked()
-        {
-            app.state.selected_blueprint_id = Some(log_db.recording_id().clone());
+        if blueprint_dbs.is_empty() {
+            ui.weak("(empty)");
+            return;
         }
+
+        ui.style_mut().wrap = Some(false);
+        for log_db in blueprint_dbs
+            .iter()
+            .filter(|log| log.recording_type() == RecordingType::Blueprint)
+        {
+            let info = if let Some(rec_info) = log_db.recording_info() {
+                if rec_info.is_app_default_blueprint() {
+                    format!("{} - Default Blueprint", rec_info.application_id,)
+                } else {
+                    format!(
+                        "{} - {}",
+                        rec_info.application_id,
+                        rec_info.started.format()
+                    )
+                }
+            } else {
+                "<UNKNOWN>".to_owned()
+            };
+            if ui
+                .radio(
+                    app.state.selected_blueprint_id.get(app_id) == Some(log_db.recording_id()),
+                    info,
+                )
+                .clicked()
+            {
+                app.state
+                    .selected_blueprint_id
+                    .insert(app_id.clone(), log_db.recording_id().clone());
+            }
+        }
+    } else {
+        ui.weak("(no app selected)");
     }
 }
 
