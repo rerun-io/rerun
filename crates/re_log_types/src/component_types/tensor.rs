@@ -341,7 +341,7 @@ pub enum TensorDataMeaning {
 /// All clones are shallow.
 ///
 /// The `Tensor` component is special, as you can only have one instance of it per entity.
-/// This is because each element in a tensor is considered to be a separate component.
+/// This is because each element in a tensor is considered to be a separate instance.
 ///
 /// ## Examples
 ///
