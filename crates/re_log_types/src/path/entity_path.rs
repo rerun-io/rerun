@@ -101,7 +101,7 @@ impl EntityPath {
     ///
     /// The file path separators will NOT become splits in the new path.
     /// The returned path will only have one part.
-    pub fn from_file_path(file_path: &std::path::Path) -> Self {
+    pub fn from_file_path_as_single_string(file_path: &std::path::Path) -> Self {
         Self::new(vec![EntityPathPart::Index(crate::Index::String(
             file_path.to_string_lossy().to_string(),
         ))])

@@ -113,7 +113,7 @@ impl MsgSender {
     pub fn from_file_path(
         file_path: &std::path::Path,
     ) -> Result<Self, re_log_types::FromFileError> {
-        let ent_path = re_log_types::EntityPath::from_file_path(file_path);
+        let ent_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
         let cell = DataCell::from_file_path(file_path)?;
         Ok(Self {
             num_instances: Some(cell.num_instances()),
