@@ -590,7 +590,7 @@ impl DataCellInner {
 // ----------------------------------------------------------------------------
 
 #[cfg(not(target_arch = "wasm32"))]
-/// Errors from [`MsgSender::from_file_path`]
+/// Errors from [`DataCell::from_file_path`]
 #[derive(thiserror::Error, Debug)]
 pub enum FromFileError {
     #[error(transparent)]
