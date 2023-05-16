@@ -1208,11 +1208,11 @@ fn set_panels(
     blueprint: Option<&PyRecordingStream>,
 ) {
     blueprint_view_expanded
-        .map(|expanded| set_panel(PanelState::BLUEPRINT_VIEW, expanded, blueprint));
+        .map(|expanded| set_panel(PanelState::BLUEPRINT_VIEW_PATH, expanded, blueprint));
     selection_view_expanded
-        .map(|expanded| set_panel(PanelState::SELECTION_VIEW, expanded, blueprint));
+        .map(|expanded| set_panel(PanelState::SELECTION_VIEW_PATH, expanded, blueprint));
     timeline_view_expanded
-        .map(|expanded| set_panel(PanelState::TIMELINE_VIEW, expanded, blueprint));
+        .map(|expanded| set_panel(PanelState::TIMELINE_VIEW_PATH, expanded, blueprint));
 }
 
 fn set_panel(

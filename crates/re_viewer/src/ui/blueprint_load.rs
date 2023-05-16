@@ -36,13 +36,19 @@ impl Blueprint {
 
         ret.viewport = load_viewport(blueprint_db, space_views);
 
-        if let Some(expanded) = load_panel_state(&PanelState::BLUEPRINT_VIEW.into(), blueprint_db) {
+        if let Some(expanded) =
+            load_panel_state(&PanelState::BLUEPRINT_VIEW_PATH.into(), blueprint_db)
+        {
             ret.blueprint_panel_expanded = expanded;
         }
-        if let Some(expanded) = load_panel_state(&PanelState::SELECTION_VIEW.into(), blueprint_db) {
+        if let Some(expanded) =
+            load_panel_state(&PanelState::SELECTION_VIEW_PATH.into(), blueprint_db)
+        {
             ret.selection_panel_expanded = expanded;
         }
-        if let Some(expanded) = load_panel_state(&PanelState::TIMELINE_VIEW.into(), blueprint_db) {
+        if let Some(expanded) =
+            load_panel_state(&PanelState::TIMELINE_VIEW_PATH.into(), blueprint_db)
+        {
             ret.time_panel_expanded = expanded;
         }
 
