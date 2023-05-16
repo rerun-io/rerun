@@ -19,7 +19,7 @@ __all__ = [
     "Transform3DArray",
     "Transform3DType",
     "Transform3D",
-    "TranslationMatrix3x3",
+    "TranslationAndMat3",
     "TranslationRotationScale3D",
     "RotationAxisAngle",
 ]
@@ -39,7 +39,7 @@ __all__ = [
 class Transform3D:
     """An affine transform between two 3D spaces, represented in a given direction."""
 
-    transform: TranslationMatrix3x3 | TranslationRotationScale3D
+    transform: TranslationAndMat3 | TranslationRotationScale3D
     """Representation of a 3D transform."""
 
     from_parent: bool = False
@@ -50,7 +50,7 @@ class Transform3D:
 
 
 @dataclass
-class TranslationMatrix3x3:
+class TranslationAndMat3:
     """Representation of a affine transform via a 3x3 translation matrix paired with a translation."""
 
     translation: Union[npt.ArrayLike, None] = None
@@ -102,7 +102,7 @@ def _normalize_translation(translation: Union[npt.ArrayLike, None]) -> npt.Array
 
 
 def build_struct_array_from_translation_mat3(
-    translation_mat3: TranslationMatrix3x3, type: pa.StructType
+    translation_mat3: TranslationAndMat3, type: pa.StructType
 ) -> pa.StructArray:
     translation = _normalize_translation(translation_mat3.translation)
     matrix = _normalize_matrix3(translation_mat3.matrix)
@@ -206,8 +206,8 @@ class Transform3DArray(pa.ExtensionArray):  # type: ignore[misc]
 
         transform_repr_union_type = Transform3DType.storage_type[0].type
 
-        if isinstance(transform.transform, TranslationMatrix3x3):
-            discriminant_affine3d = "TranslationMatrix3x3"
+        if isinstance(transform.transform, TranslationAndMat3):
+            discriminant_affine3d = "TranslationAndMat3"
             repr_type = union_discriminant_type(transform_repr_union_type, discriminant_affine3d)
             transform_repr = build_struct_array_from_translation_mat3(transform.transform, repr_type)
         elif isinstance(transform.transform, TranslationRotationScale3D):

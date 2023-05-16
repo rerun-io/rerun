@@ -79,10 +79,10 @@ def transform_test() -> None:
     rr.log_unknown_transform("transform_test/unknown", timeless=True)
     rr.log_affine3(
         "transform_test/child_from_parent_mat3",
-        child_from_parent=rr.TranslationMatrix3x3((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
+        child_from_parent=rr.TranslationAndMat3((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
     )
-    rr.log_affine3("transform_test/parent_from_child_mat3", parent_from_child=rr.TranslationMatrix3x3((123, 456, 789)))
-    rr.log_affine3("transform_test/empty_translation_mat3", parent_from_child=rr.TranslationMatrix3x3())
+    rr.log_affine3("transform_test/parent_from_child_mat3", parent_from_child=rr.TranslationAndMat3((123, 456, 789)))
+    rr.log_affine3("transform_test/empty_translation_mat3", parent_from_child=rr.TranslationAndMat3())
     rr.log_affine3("transform_test/translation_only", parent_from_child=rr.TranslationRotationScale3D((1, 2, 3)))
     rr.log_affine3(
         "transform_test/quaternion_only", parent_from_child=rr.TranslationRotationScale3D(rotation=(0, 0, 0, 1))

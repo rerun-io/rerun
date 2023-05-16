@@ -9,7 +9,7 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun import experimental
-from rerun.components.transform3d import RotationAxisAngle, TranslationMatrix3x3, TranslationRotationScale3D
+from rerun.components.transform3d import RotationAxisAngle, TranslationAndMat3, TranslationRotationScale3D
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
@@ -124,7 +124,7 @@ __all__ = [
     "script_add_args",
     "script_setup",
     "script_teardown",
-    "TranslationMatrix3x3",
+    "TranslationAndMat3",
     "TranslationRotationScale3D",
     "RotationAxisAngle",
 ]

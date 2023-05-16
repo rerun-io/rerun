@@ -1,6 +1,6 @@
 use re_log_types::component_types::{
     Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
-    TranslationMatrix3x3, TranslationRotationScale3D, Vec3D,
+    TranslationAndMat3, TranslationRotationScale3D, Vec3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
@@ -59,7 +59,7 @@ impl DataUi for Transform3DRepr {
             }
 
             UiVerbosity::All | UiVerbosity::Reduced => match self {
-                Transform3DRepr::TranslationMatrix3x3(translation_matrix) => {
+                Transform3DRepr::TranslationAndMat3(translation_matrix) => {
                     translation_matrix.data_ui(ctx, ui, verbosity, query);
                 }
                 Transform3DRepr::TranslationRotationScale(translation_rotation_scale) => {
@@ -174,7 +174,7 @@ impl DataUi for Scale3D {
     }
 }
 
-impl DataUi for TranslationMatrix3x3 {
+impl DataUi for TranslationAndMat3 {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -182,7 +182,7 @@ impl DataUi for TranslationMatrix3x3 {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let TranslationMatrix3x3 {
+        let TranslationAndMat3 {
             translation,
             matrix,
         } = self;

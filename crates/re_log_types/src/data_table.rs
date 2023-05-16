@@ -1372,7 +1372,7 @@ fn data_table_sizes_unions() {
             [
                 DenseTransform::Unknown,
                 DenseTransform::Affine3D(
-                    crate::component_types::TranslationMatrix3x3 {
+                    crate::component_types::TranslationAndMat3 {
                         translation: [10.0, 11.0, 12.0].into(),
                         matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
                     }
@@ -1428,7 +1428,7 @@ fn data_table_sizes_unions() {
             [
                 SparseTransform::Unknown,
                 SparseTransform::Affine3D(
-                    crate::component_types::TranslationMatrix3x3 {
+                    crate::component_types::TranslationAndMat3 {
                         translation: [10.0, 11.0, 12.0].into(),
                         matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
                     }

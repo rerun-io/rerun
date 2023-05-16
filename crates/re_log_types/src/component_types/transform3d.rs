@@ -230,12 +230,12 @@ impl From<glam::Quat> for Rotation3D {
 /// First applies the matrix, then the translation.
 ///
 /// ```
-/// use re_log_types::component_types::{TranslationMatrix3x3, Vec3D, Mat3x3};
+/// use re_log_types::component_types::{TranslationAndMat3, Vec3D, Mat3x3};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
-///     TranslationMatrix3x3::data_type(),
+///     TranslationAndMat3::data_type(),
 ///     DataType::Struct(vec![
 ///         Field::new("translation", Vec3D::data_type(), false),
 ///         Field::new("matrix", Mat3x3::data_type(), false)
@@ -244,7 +244,7 @@ impl From<glam::Quat> for Rotation3D {
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TranslationMatrix3x3 {
+pub struct TranslationAndMat3 {
     /// 3D translation, applied after the matrix.
     pub translation: Vec3D,
 
@@ -252,13 +252,13 @@ pub struct TranslationMatrix3x3 {
     pub matrix: Mat3x3,
 }
 
-impl TranslationMatrix3x3 {
-    pub const IDENTITY: TranslationMatrix3x3 = TranslationMatrix3x3 {
+impl TranslationAndMat3 {
+    pub const IDENTITY: TranslationAndMat3 = TranslationAndMat3 {
         translation: Vec3D::ZERO,
         matrix: Mat3x3::IDENTITY,
     };
 
-    /// Create a new `TranslationMatrix3x3`.
+    /// Create a new `TranslationAndMat3`.
     #[inline]
     pub fn new<T: Into<Vec3D>, M: Into<Mat3x3>>(translation: T, matrix: M) -> Self {
         Self {
@@ -407,14 +407,14 @@ impl From<Scale3D> for TranslationRotationScale3D {
 ///
 /// TODO:
 /// ```
-/// use re_log_types::component_types::{Affine3D, TranslationMatrix3x3, TranslationRotationScale3D};
+/// use re_log_types::component_types::{Affine3D, TranslationAndMat3, TranslationRotationScale3D};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
 /// assert_eq!(
 ///     Affine3D::data_type(),
 ///     DataType::Union(vec![
-///         Field::new("TranslationMatrix3x3", TranslationMatrix3x3::data_type(), false),
+///         Field::new("TranslationAndMat3", TranslationAndMat3::data_type(), false),
 ///         Field::new("TranslationRotationScale", TranslationRotationScale3D::data_type(), false),
 ///     ], None, UnionMode::Dense),
 /// );
@@ -423,14 +423,14 @@ impl From<Scale3D> for TranslationRotationScale3D {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")]
 pub enum Transform3DRepr {
-    TranslationMatrix3x3(TranslationMatrix3x3),
+    TranslationAndMat3(TranslationAndMat3),
     TranslationRotationScale(TranslationRotationScale3D),
     // TODO(andreas): Raw 4x4 matrix.
 }
 
 impl Transform3DRepr {
     pub const IDENTITY: Transform3DRepr =
-        Transform3DRepr::TranslationMatrix3x3(TranslationMatrix3x3::IDENTITY);
+        Transform3DRepr::TranslationAndMat3(TranslationAndMat3::IDENTITY);
 }
 
 impl Default for Transform3DRepr {
@@ -440,10 +440,10 @@ impl Default for Transform3DRepr {
     }
 }
 
-impl From<TranslationMatrix3x3> for Transform3DRepr {
+impl From<TranslationAndMat3> for Transform3DRepr {
     #[inline]
-    fn from(v: TranslationMatrix3x3) -> Self {
-        Self::TranslationMatrix3x3(v)
+    fn from(v: TranslationAndMat3) -> Self {
+        Self::TranslationAndMat3(v)
     }
 }
 
@@ -466,7 +466,7 @@ impl From<RotationAxisAngle> for Transform3DRepr {
 impl From<Transform3DRepr> for glam::Affine3A {
     fn from(value: Transform3DRepr) -> Self {
         match value {
-            Transform3DRepr::TranslationMatrix3x3(TranslationMatrix3x3 {
+            Transform3DRepr::TranslationAndMat3(TranslationAndMat3 {
                 translation,
                 matrix,
             }) => glam::Affine3A::from_mat3_translation(matrix.into(), translation.into()),
@@ -575,7 +575,7 @@ impl Component for Transform3D {
 
 //     let transforms_in = vec![
 //         Transform3D::Affine3D(Transform3D::ChildFromParent(
-//             TranslationMatrix3x3 {
+//             TranslationAndMat3 {
 //                 translation: [10.0, 11.0, 12.0].into(),
 //                 matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
 //             }

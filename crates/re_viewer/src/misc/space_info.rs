@@ -128,13 +128,15 @@ impl SpaceInfoCollection {
             let disconnect =
                 query_latest_single::<DisconnectedSpace>(&entity_db.data_store, &tree.path, query);
 
-            let connection = if let (Some(transform3d), Some(pinhole)) = (transform3d, pinhole) {
-                Some(SpaceInfoConnection::Transform3DAndPinhole(
-                    transform3d,
-                    pinhole,
-                ))
-            } else if let Some(transform3d) = transform3d {
-                Some(SpaceInfoConnection::Transform3D(transform3d))
+            let connection = if let Some(transform3d) = transform3d {
+                if let Some(pinhole) = pinhole {
+                    Some(SpaceInfoConnection::Transform3DAndPinhole(
+                        transform3d,
+                        pinhole,
+                    ))
+                } else {
+                    Some(SpaceInfoConnection::Transform3D(transform3d))
+                }
             } else if let Some(pinhole) = pinhole {
                 Some(SpaceInfoConnection::Pinhole(pinhole))
             } else if disconnect.is_some() {

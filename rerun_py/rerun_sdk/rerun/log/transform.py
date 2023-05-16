@@ -14,7 +14,7 @@ from rerun.components.transform3d import (
     RotationAxisAngle,
     Transform3D,
     Transform3DArray,
-    TranslationMatrix3x3,
+    TranslationAndMat3,
     TranslationRotationScale3D,
 )
 from rerun.log.error_utils import _send_warning
@@ -154,8 +154,8 @@ def log_unknown_transform(
 def log_affine3(
     entity_path: str,
     *,
-    parent_from_child: Optional[Union[TranslationMatrix3x3, TranslationRotationScale3D, RotationAxisAngle]] = None,
-    child_from_parent: Optional[Union[TranslationMatrix3x3, TranslationRotationScale3D, RotationAxisAngle]] = None,
+    parent_from_child: Optional[Union[TranslationAndMat3, TranslationRotationScale3D, RotationAxisAngle]] = None,
+    child_from_parent: Optional[Union[TranslationAndMat3, TranslationRotationScale3D, RotationAxisAngle]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
 ) -> None:
