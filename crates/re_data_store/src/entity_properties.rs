@@ -195,6 +195,8 @@ impl Default for ColorMapper {
 ///
 /// This assumes that the row we get from the store only contains a single instance for this
 /// component; it will log a warning otherwise.
+///
+/// This should only be used for "mono-components" such as `Transform` and `Tensor`.
 pub fn query_latest_single<C: DeserializableComponent>(
     entity_db: &EntityDb,
     entity_path: &EntityPath,
