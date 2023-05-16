@@ -776,13 +776,6 @@ pub enum TensorImageLoadError {
         expected: Vec<TensorDimension>,
         found: Vec<TensorDimension>,
     },
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Unsupported file extension '{extension}' for file {path:?}")]
-    UnknownExtension {
-        extension: String,
-        path: std::path::PathBuf,
-    },
 }
 
 #[cfg(feature = "image")]

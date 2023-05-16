@@ -4287,6 +4287,8 @@ dependencies = [
  "libc",
  "mimalloc",
  "parking_lot 0.12.1",
+ "puffin",
+ "rayon",
  "re_analytics",
  "re_build_build_info",
  "re_build_info",

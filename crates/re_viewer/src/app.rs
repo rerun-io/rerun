@@ -660,8 +660,13 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
         }
 
         match rx.source() {
-            re_smart_channel::Source::File { path } => {
-                ui.strong(format!("Loading {}…", path.display()));
+            re_smart_channel::Source::Files { paths } => {
+                ui.strong(format!(
+                    "Loading {}…",
+                    paths
+                        .iter()
+                        .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
+                ));
             }
             re_smart_channel::Source::RrdHttpStream { url } => {
                 ui.strong(format!("Loading {url}…"));
@@ -1956,7 +1961,9 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
     match load_file_path_impl(path) {
         Ok(mut new_log_db) => {
             re_log::info!("Loaded {path:?}");
-            new_log_db.data_source = Some(re_smart_channel::Source::File { path: path.into() });
+            new_log_db.data_source = Some(re_smart_channel::Source::Files {
+                paths: vec![path.into()],
+            });
             Some(new_log_db)
         }
         Err(err) => {
@@ -1976,7 +1983,9 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
     match load_rrd_to_log_db(read) {
         Ok(mut log_db) => {
             re_log::info!("Loaded {name:?}");
-            log_db.data_source = Some(re_smart_channel::Source::File { path: name.into() });
+            log_db.data_source = Some(re_smart_channel::Source::Files {
+                paths: vec![name.into()],
+            });
             Some(log_db)
         }
         Err(err) => {
@@ -2009,7 +2018,7 @@ fn new_recording_confg(
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
         // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-        re_smart_channel::Source::File { .. }
+        re_smart_channel::Source::Files { .. }
         | re_smart_channel::Source::RrdHttpStream { .. }
         | re_smart_channel::Source::RrdWebEventListener => PlayState::Playing,
 

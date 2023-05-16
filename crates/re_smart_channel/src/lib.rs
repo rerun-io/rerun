@@ -12,8 +12,10 @@ pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvErro
 /// Where is the messages coming from?
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Source {
-    /// The source if a file on disk
-    File { path: std::path::PathBuf },
+    /// The source is one or more files on disk.
+    /// This could be `.rrd` files, or `.glb`, `.png`, …
+    // TODO(#2121): Remove this
+    Files { paths: Vec<std::path::PathBuf> },
 
     /// Streaming an `.rrd` file over http.
     RrdHttpStream { url: String },
@@ -41,7 +43,7 @@ pub enum Source {
 impl Source {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File { .. } | Self::Sdk | Self::RrdWebEventListener => false,
+            Self::Files { .. } | Self::Sdk | Self::RrdWebEventListener => false,
             Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }

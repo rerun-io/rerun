@@ -59,6 +59,9 @@ pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub use self::data_cell::FromFileError;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
 };
