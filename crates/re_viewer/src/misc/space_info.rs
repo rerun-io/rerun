@@ -5,7 +5,6 @@ use nohash_hasher::IntSet;
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
 use re_data_store::{log_db::EntityDb, query_latest_single, EntityPath, EntityTree};
 use re_log_types::{Transform, ViewCoordinates};
-use re_query::query_entity_with_primary;
 
 use super::UnreachableTransform;
 
@@ -274,18 +273,5 @@ pub fn query_view_coordinates(
     ent_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<re_log_types::ViewCoordinates> {
-    let data_store = &entity_db.data_store;
-
-    let entity_view =
-        query_entity_with_primary::<ViewCoordinates>(data_store, query, ent_path, &[]).ok()?;
-
-    let mut iter = entity_view.iter_primary().ok()?;
-
-    let view_coords = iter.next()?;
-
-    if iter.next().is_some() {
-        re_log::warn_once!("Unexpected batch for ViewCoordinates at: {}", ent_path);
-    }
-
-    view_coords
+    query_latest_single::<ViewCoordinates>(entity_db, ent_path, query)
 }

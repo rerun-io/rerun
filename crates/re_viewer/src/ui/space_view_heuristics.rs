@@ -181,33 +181,27 @@ fn default_created_space_views_from_candidates(
 
             // For this we're only interested in the direct children.
             for entity_path in &candidate.data_blueprint.root_group().entities {
-                if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                    &entity_db.data_store,
-                    &query,
-                    entity_path,
-                    &[],
-                ) {
-                    for tensor in entity_view.iter_primary_flattened() {
-                        if let Some([height, width, _]) = tensor.image_height_width_channels() {
-                            if query_latest_single::<re_log_types::DrawOrder>(
-                                entity_db,
-                                entity_path,
-                                &query,
-                            )
-                            .is_some()
-                            {
-                                // Put everything in the same bucket if it has a draw order.
-                                images_by_bucket
-                                    .entry(ImageBucketing::ExplicitDrawOrder)
-                                    .or_default()
-                                    .push(entity_path.clone());
-                            } else {
-                                // Otherwise, distinguish buckets by image size.
-                                images_by_bucket
-                                    .entry(ImageBucketing::BySize((height, width)))
-                                    .or_default()
-                                    .push(entity_path.clone());
-                            }
+                if let Some(tensor) = query_latest_single::<Tensor>(entity_db, entity_path, &query)
+                {
+                    if let Some([height, width, _]) = tensor.image_height_width_channels() {
+                        if query_latest_single::<re_log_types::DrawOrder>(
+                            entity_db,
+                            entity_path,
+                            &query,
+                        )
+                        .is_some()
+                        {
+                            // Put everything in the same bucket if it has a draw order.
+                            images_by_bucket
+                                .entry(ImageBucketing::ExplicitDrawOrder)
+                                .or_default()
+                                .push(entity_path.clone());
+                        } else {
+                            // Otherwise, distinguish buckets by image size.
+                            images_by_bucket
+                                .entry(ImageBucketing::BySize((height, width)))
+                                .or_default()
+                                .push(entity_path.clone());
                         }
                     }
                 }
