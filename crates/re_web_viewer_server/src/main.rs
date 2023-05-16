@@ -16,6 +16,10 @@ struct Args {
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
     bind: String,
+
+    /// Open the web-viewer in the default browser?
+    #[clap(long)]
+    open: bool,
 }
 
 #[tokio::main]
@@ -41,7 +45,14 @@ async fn main() {
     .expect("Could not create web server");
 
     let port = server.port();
-    eprintln!("Hosting web-viewer on http://{bind_ip}:{port}");
+    let url = format!("http://{bind_ip}:{port}");
+    eprintln!("Hosting web-viewer on {url}");
+
+    if args.open {
+        if let Err(err) = webbrowser::open(&url) {
+            re_log::error!("Could not open web browser: {err}");
+        }
+    }
 
     server.serve(shutdown_rx).await.unwrap();
 }

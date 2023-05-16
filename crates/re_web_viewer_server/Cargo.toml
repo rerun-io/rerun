@@ -46,7 +46,6 @@ analytics = ["dep:re_analytics"]
 [dependencies]
 re_log.workspace = true
 
-clap = { workspace = true, features = ["derive"] } # Only for the main.rs
 ctrlc.workspace = true
 document-features = "0.2"
 futures-util = "0.3"
@@ -56,6 +55,10 @@ tokio = { workspace = true, default-features = false, features = [
   "macros",
   "rt-multi-thread",
 ] }
+
+# Only needed for for main.rs:
+clap = { workspace = true, features = ["derive"] }
+webbrowser = "0.8.3"
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }

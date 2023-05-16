@@ -4196,6 +4196,7 @@ dependencies = [
  "re_log",
  "thiserror",
  "tokio",
+ "webbrowser",
 ]
 
 [[package]]
