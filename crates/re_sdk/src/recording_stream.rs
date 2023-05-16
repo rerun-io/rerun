@@ -783,6 +783,16 @@ impl RecordingStream {
             return;
         };
 
+        // TODO(cmc): The `Goodbye` message is our last remaining message piece that is neither
+        // idempotent, stateless, nor order insensitive... so make sure to get all the pending
+        // tables into the pipe first.
+
+        // 1. Flush the batcher down the table channel
+        this.batcher.flush_blocking();
+
+        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
+        this.cmds_tx.send(Command::PopPendingTables).ok();
+
         this.cmds_tx
             .send(Command::RecordMsg(LogMsg::Goodbye(
                 this.info.recording_id.clone(),
