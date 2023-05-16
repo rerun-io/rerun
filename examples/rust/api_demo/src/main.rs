@@ -313,12 +313,12 @@ fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
     // Smaller gradient in the middle
     let img = colored_tensor(256, 256, |x, y| [x as u8, y as u8, 0]);
-    MsgSender::new("2d_layering/middle_red")
+    MsgSender::new("2d_layering/middle_gradient")
         .with_timepoint(sim_time(1.0))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(1.0)])?
         .send(rec_stream)?;
-    // Slightly smaller red in the middle, on the same layer as the previous.
+    // Slightly smaller blue in the middle, on the same layer as the previous.
     let img = colored_tensor(192, 192, |_, _| [0, 0, 255]);
     MsgSender::new("2d_layering/middle_blue")
         .with_timepoint(sim_time(1.0))
