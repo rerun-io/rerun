@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
 use re_log::warn_once;
-use re_log_types::component_types::{self};
+use re_log_types::component_types;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{SceneQuery, ViewerContext};
 

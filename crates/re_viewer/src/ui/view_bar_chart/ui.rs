@@ -4,7 +4,7 @@ use egui::util::hash;
 
 use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_log_types::component_types::{self, InstanceKey};
+use re_log_types::component_types;
 use re_viewer_context::{auto_color, ViewerContext};
 
 use crate::ui::spaceview_controls::{
@@ -53,10 +53,9 @@ pub(crate) fn view_bar_chart(
         .show(ui, |plot_ui| {
             fn create_bar_chart<N: Into<f64>>(
                 ent_path: &EntityPath,
-                instance_key: &InstanceKey,
                 values: impl Iterator<Item = N>,
             ) -> BarChart {
-                let color = auto_color(hash((ent_path, instance_key)) as _);
+                let color = auto_color(hash(ent_path) as _);
                 let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
                 BarChart::new(
                     values
@@ -64,54 +63,50 @@ pub(crate) fn view_bar_chart(
                         .map(|(i, value)| {
                             Bar::new(i as f64 + 0.5, value.into())
                                 .width(0.95)
-                                .name(format!("{ent_path}[#{instance_key}] #{i}"))
+                                .name(format!("{ent_path} #{i}"))
                                 .fill(fill)
                                 .stroke(egui::Stroke::NONE)
                         })
                         .collect(),
                 )
-                .name(format!("{ent_path}[#{instance_key}]"))
+                .name(ent_path.to_string())
                 .color(color)
             }
 
-            for ((ent_path, instance_key), tensor) in &scene.charts {
+            for (ent_path, tensor) in &scene.charts {
                 let chart = match &tensor.data {
                     component_types::TensorData::U8(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
                     component_types::TensorData::U16(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
                     component_types::TensorData::U32(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
-                    component_types::TensorData::U64(data) => create_bar_chart(
-                        ent_path,
-                        instance_key,
-                        data.iter().copied().map(|v| v as f64),
-                    ),
+                    component_types::TensorData::U64(data) => {
+                        create_bar_chart(ent_path, data.iter().copied().map(|v| v as f64))
+                    }
                     component_types::TensorData::I8(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
                     component_types::TensorData::I16(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
                     component_types::TensorData::I32(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
-                    component_types::TensorData::I64(data) => create_bar_chart(
-                        ent_path,
-                        instance_key,
-                        data.iter().copied().map(|v| v as f64),
-                    ),
+                    component_types::TensorData::I64(data) => {
+                        create_bar_chart(ent_path, data.iter().copied().map(|v| v as f64))
+                    }
                     component_types::TensorData::F16(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().map(|f| f.to_f32()))
+                        create_bar_chart(ent_path, data.iter().map(|f| f.to_f32()))
                     }
                     component_types::TensorData::F32(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
                     component_types::TensorData::F64(data) => {
-                        create_bar_chart(ent_path, instance_key, data.iter().copied())
+                        create_bar_chart(ent_path, data.iter().copied())
                     }
                     component_types::TensorData::JPEG(_) => {
                         warn_once!(

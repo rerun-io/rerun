@@ -193,6 +193,14 @@ impl Pinhole {
 
 /// A transform between two spaces.
 ///
+/// The [`Transform`] component is special, as all instances of
+/// an Entity always share the same transform.
+/// In other words, a [`Transform`] component acts like a splat
+/// (all instances of an entity share the same transform).
+/// This is because each entity must have a unique transform chain,
+/// e.g. the entity `foo/bar/baz` is has the transform that is the product of
+/// `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
+///
 /// ```
 /// use re_log_types::component_types::{Transform, Rigid3, Pinhole};
 /// use arrow2_convert::field::ArrowField;
