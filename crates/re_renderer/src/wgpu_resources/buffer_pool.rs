@@ -60,7 +60,9 @@ impl GpuBufferPool {
     /// For more efficient allocation (faster, less fragmentation) you should sub-allocate buffers whenever possible
     /// either manually or using a higher level allocator.
     pub fn alloc(&self, device: &wgpu::Device, desc: &BufferDesc) -> GpuBuffer {
+        crate::profile_function!();
         self.pool.alloc(desc, |desc| {
+            crate::profile_scope!("create_buffer");
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: desc.label.get(),
                 size: desc.size,

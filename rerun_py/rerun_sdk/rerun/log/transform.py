@@ -20,6 +20,7 @@ from rerun.components.transform3d import (
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_view_coordinates",
@@ -37,6 +38,7 @@ def log_view_coordinates(
     up: str = "",
     right_handed: Optional[bool] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log the view coordinates for an entity.
@@ -87,8 +89,13 @@ def log_view_coordinates(
         If True, the coordinate system is right-handed. If False, it is left-handed.
     timeless:
         If true, the view coordinates will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
     if xyz == "" and up == "":
         _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
         return
@@ -96,16 +103,48 @@ def log_view_coordinates(
         _send_warning("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
         up = ""
     if xyz != "":
-        bindings.log_view_coordinates_xyz(entity_path, xyz, right_handed, timeless)
+        bindings.log_view_coordinates_xyz(
+            entity_path,
+            xyz,
+            right_handed,
+            timeless,
+            recording=recording,
+        )
     else:
         if right_handed is None:
             right_handed = True
-        bindings.log_view_coordinates_up_handedness(entity_path, up, right_handed, timeless)
+        bindings.log_view_coordinates_up_handedness(
+            entity_path,
+            up,
+            right_handed,
+            timeless,
+            recording=recording,
+        )
 
 
 @log_decorator
-def log_unknown_transform(entity_path: str, timeless: bool = False) -> None:
-    """Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate."""
+def log_unknown_transform(
+    entity_path: str,
+    timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
+) -> None:
+    """
+    Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate.
+
+    Parameters
+    ----------
+    entity_path:
+        The path of the affected entity.
+
+    timeless:
+        Log the data as timeless.
+
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    """
+    recording = RecordingStream.to_native(recording)
 
     instanced: Dict[str, Any] = {}
     instanced["rerun.transform3d"] = Transform3DArray.from_transform(UnknownTransform())
@@ -181,6 +220,7 @@ def log_rigid3(
     child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
     xyz: str = "",
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a proper rigid 3D transform between this entity and the parent.
@@ -219,8 +259,13 @@ def log_rigid3(
         This is a convenience for also calling [log_view_coordinates][rerun.log_view_coordinates].
     timeless:
         If true, the transform will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if parent_from_child and child_from_parent:
         raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
@@ -232,6 +277,7 @@ def log_rigid3(
                 translation=parent_from_child[0], rotation=parent_from_child[1]
             ),
             timeless=timeless,
+            recording=recording,
         )
     elif child_from_parent:
         log_affine3(
@@ -240,9 +286,15 @@ def log_rigid3(
                 translation=child_from_parent[0], rotation=child_from_parent[1]
             ),
             timeless=timeless,
+            recording=recording,
         )
     else:
         raise TypeError("Set either parent_from_child or child_from_parent.")
 
     if xyz != "":
-        log_view_coordinates(entity_path, xyz=xyz, timeless=timeless)
+        log_view_coordinates(
+            entity_path,
+            xyz=xyz,
+            timeless=timeless,
+            recording=recording,
+        )

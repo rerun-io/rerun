@@ -777,13 +777,6 @@ pub enum TensorImageLoadError {
         expected: Vec<TensorDimension>,
         found: Vec<TensorDimension>,
     },
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Unsupported file extension '{extension}' for file {path:?}")]
-    UnknownExtension {
-        extension: String,
-        path: std::path::PathBuf,
-    },
 }
 
 #[cfg(feature = "image")]
@@ -1382,7 +1375,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_shaped_like_an_image());
     }
 
-    // gray 1x4 images
+    // Gray 1x4 images
     for shape in [
         vec![4, 1],
         vec![4, 1, 1],
@@ -1397,7 +1390,7 @@ fn test_tensor_shape_utilities() {
         assert!(tensor.is_shaped_like_an_image());
     }
 
-    // gray 4x1 images
+    // Gray 4x1 images
     for shape in [
         vec![1, 4],
         vec![1, 4, 1],

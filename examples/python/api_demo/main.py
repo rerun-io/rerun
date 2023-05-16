@@ -13,6 +13,8 @@ import argparse
 import logging
 import math
 import os
+import threading
+from typing import Callable
 
 import cv2
 import numpy as np
@@ -339,6 +341,11 @@ def run_image_tensors() -> None:
         rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
 
 
+def spawn_demo(demo: Callable[[], None], rec: rr.RecordingStream) -> None:
+    with rec:
+        demo()
+
+
 def main() -> None:
     demos = {
         "2d_lines": run_2d_lines,
@@ -359,25 +366,61 @@ def main() -> None:
     parser.add_argument(
         "--demo", type=str, default="most", help="What demo to run", choices=["most", "all"] + list(demos.keys())
     )
+    parser.add_argument(
+        "--multithread",
+        dest="multithread",
+        action="store_true",
+        help="If specified, each demo will be run from its own python thread",
+    )
+    parser.add_argument(
+        "--split-recordings",
+        dest="split_recordings",
+        action="store_true",
+        help="If specified, each demo will be its own recording",
+    )
 
     rr.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "api_demo")
+    if not args.split_recordings:
+        rec = rr.script_setup(args, "api_demo")
 
     if args.demo in ["most", "all"]:
         print(f"Running {args.demo} demos…")
+
+        threads = []
         for name, demo in demos.items():
             # Some demos are just a bit… too much
             if args.demo == "most" and name in ["image_tensors", "transform_test"]:
                 continue
 
-            logging.info(f"Starting {name}")
-            demo()
+            if args.split_recordings:
+                rec = rr.script_setup(args, f"api_demo/{name}")
+
+            if args.multithread:
+                t = threading.Thread(
+                    target=spawn_demo,
+                    args=(
+                        demo,
+                        rec,
+                    ),
+                )
+                t.start()
+                threads.append(t)
+            else:
+                logging.info(f"Starting {name}")
+                with rec:
+                    demo()
+
+        for t in threads:
+            t.join()
     else:
-        demo = demos[args.demo]
-        demo()
+        if args.split_recordings:
+            with rr.script_setup(args, f"api_demo/{args.demo}"):
+                demos[args.demo]()
+        else:
+            demos[args.demo]()
 
     rr.script_teardown(args)
 

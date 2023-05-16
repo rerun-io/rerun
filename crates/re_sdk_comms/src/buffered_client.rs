@@ -2,7 +2,7 @@ use std::{net::SocketAddr, thread::JoinHandle};
 
 use crossbeam::channel::{select, Receiver, Sender};
 
-use re_log_types::{LogMsg, RowId};
+use re_log_types::LogMsg;
 
 #[derive(Debug, PartialEq, Eq)]
 struct FlushedMsg;
@@ -47,12 +47,6 @@ pub struct Client {
     encode_join: Option<JoinHandle<()>>,
     send_join: Option<JoinHandle<()>>,
     drop_join: Option<JoinHandle<()>>,
-}
-
-impl Default for Client {
-    fn default() -> Self {
-        Self::new(crate::default_server_addr())
-    }
 }
 
 impl Client {
@@ -146,7 +140,6 @@ impl Drop for Client {
     /// Wait until everything has been sent.
     fn drop(&mut self) {
         re_log::debug!("Shutting down the client connection…");
-        self.send(LogMsg::Goodbye(RowId::random()));
         self.flush();
         // First shut down the encoder:
         self.encode_quit_tx.send(QuitMsg).ok();

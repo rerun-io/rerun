@@ -1,4 +1,4 @@
-use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RowId};
+use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId, RowId};
 
 use crate::{
     log::DataCell,
@@ -102,6 +102,26 @@ impl MsgSender {
         }
     }
 
+    /// Read the file at the given path and log it.
+    ///
+    /// Supported file extensions are:
+    ///  * `glb`, `gltf`, `obj`: encoded meshes, leaving it to the viewer to decode
+    ///  * `jpg`, `jpeg`: encoded JPEG, leaving it to the viewer to decode. Requires the `image` feature.
+    ///  * `png` and other image formats: decoded here. Requires the `image` feature.
+    ///
+    /// All other extensions will return an error.
+    pub fn from_file_path(
+        file_path: &std::path::Path,
+    ) -> Result<Self, re_log_types::FromFileError> {
+        let ent_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
+        let cell = DataCell::from_file_path(file_path)?;
+        Ok(Self {
+            num_instances: Some(cell.num_instances()),
+            instanced: vec![cell],
+            ..Self::new(ent_path)
+        })
+    }
+
     // --- Time ---
 
     /// Appends a given `timepoint` to the current message.
@@ -161,11 +181,24 @@ impl MsgSender {
     /// the same component type multiple times in a single message.
     /// Doing so will return an error when trying to `send()` the message.
     pub fn with_component<'a, C: SerializableComponent>(
-        mut self,
+        self,
         data: impl IntoIterator<Item = &'a C>,
     ) -> Result<Self, MsgSenderError> {
         let cell = DataCell::try_from_native(data).map_err(DataTableError::from)?;
+        self.with_cell(cell)
+    }
 
+    /// Appends a component collection to the current message.
+    ///
+    /// All component collections stored in the message must have the same row-length (i.e. number
+    /// of instances)!
+    /// The row-length of the first appended collection is used as ground truth.
+    ///
+    /// ⚠ This can only be called once per type of component!
+    /// The SDK does not yet support batch insertions, which are semantically identical to adding
+    /// the same component type multiple times in a single message.
+    /// Doing so will return an error when trying to `send()` the message.
+    pub fn with_cell(mut self, cell: DataCell) -> Result<MsgSender, MsgSenderError> {
         let num_instances = cell.num_instances();
 
         if let Some(cur_num_instances) = self.num_instances {
@@ -248,6 +281,19 @@ impl MsgSender {
         }
 
         Ok(())
+    }
+
+    /// Turns the current message into a single [`re_log_types::LogMsg`]
+    pub fn into_log_msg(
+        self,
+        recording_id: RecordingId,
+    ) -> Result<re_log_types::LogMsg, DataTableError> {
+        let data_table = re_log_types::DataTable::from_rows(
+            re_log_types::TableId::random(),
+            self.into_rows().into_iter().flatten(),
+        );
+        let arrow_msg = data_table.to_arrow_msg()?;
+        Ok(re_log_types::LogMsg::ArrowMsg(recording_id, arrow_msg))
     }
 
     fn into_rows(self) -> [Option<DataRow>; 2] {
