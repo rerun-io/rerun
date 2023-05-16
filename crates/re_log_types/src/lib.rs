@@ -3,6 +3,20 @@
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!
+//!
+//!
+//!
+//! ## Mono-components
+//!
+//! Some components, mostly transform related ones, are "mono-components".
+//! This means that all instances of an Entity always share the same component.
+//! In other words, a mono-component acts like a splat
+//! (all instances of an entity share the same component).
+//!
+//! This requirement is especially apparent with transforms:
+//! Each entity must have a unique transform chain,
+//! e.g. the entity `foo/bar/baz` is has the transform that is the product of
+//! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
 mod component;
