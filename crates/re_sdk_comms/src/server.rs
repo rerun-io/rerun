@@ -210,7 +210,7 @@ impl CongestionManager {
         #[allow(clippy::match_same_arms)]
         match msg {
             // we don't want to drop any of these
-            LogMsg::BeginRecordingMsg(_)
+            LogMsg::SetRecordingInfo(_)
             | LogMsg::EntityPathOpMsg(_, _)
             | LogMsg::Goodbye(_, _) => true,
 
