@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{query_latest_single, EntityPath};
-use re_log_types::component_types::{self, InstanceKey, Tensor};
+use re_log_types::component_types::{self, Tensor};
 use re_viewer_context::{SceneQuery, ViewerContext};
 
 /// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
 pub struct SceneBarChart {
-    pub charts: BTreeMap<(EntityPath, InstanceKey), Tensor>,
+    pub charts: BTreeMap<EntityPath, Tensor>,
 }
 
 impl SceneBarChart {
@@ -34,10 +34,7 @@ impl SceneBarChart {
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
-                    self.charts.insert(
-                        (ent_path.clone(), InstanceKey(0)),
-                        tensor.clone(), /* shallow */
-                    );
+                    self.charts.insert(ent_path.clone(), tensor.clone()); // shallow clones
                 }
             }
         }
