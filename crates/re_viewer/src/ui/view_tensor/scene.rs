@@ -21,7 +21,7 @@ impl SceneTensor {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(tensor) = re_data_store::query_latest_single::<Tensor>(
-                &ctx.log_db.entity_db,
+                &ctx.log_db.entity_db.data_store,
                 ent_path,
                 &timeline_query,
             ) {

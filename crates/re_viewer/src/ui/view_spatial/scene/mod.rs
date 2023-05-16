@@ -141,7 +141,7 @@ impl SceneSpatial {
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, SmallVec<[_; 4]>>::new();
         for (ent_path, _) in query.iter_entities() {
             if let Some(draw_order) = query_latest_single::<DrawOrder>(
-                &ctx.log_db.entity_db,
+                &ctx.log_db.entity_db.data_store,
                 ent_path,
                 &ctx.rec_cfg.time_ctrl.current_query(),
             ) {

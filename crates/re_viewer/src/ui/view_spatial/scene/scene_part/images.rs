@@ -275,7 +275,7 @@ impl ImagesPart {
         crate::profile_function!();
 
         let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
-            &ctx.log_db.entity_db,
+            &ctx.log_db.entity_db.data_store,
             pinhole_ent_path,
             &ctx.current_query(),
         ) else {

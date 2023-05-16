@@ -101,7 +101,7 @@ pub fn categorize_entity_path(
             let timeline_query = LatestAtQuery::new(timeline, TimeInt::MAX);
 
             if let Some(tensor) = re_data_store::query_latest_single::<Tensor>(
-                &log_db.entity_db,
+                &log_db.entity_db.data_store,
                 entity_path,
                 &timeline_query,
             ) {

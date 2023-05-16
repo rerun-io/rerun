@@ -10,9 +10,8 @@ use re_viewer_context::{SceneQuery, ViewerContext};
 
 use crate::{
     misc::{
-        instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-        space_info::query_view_coordinates, SpaceViewHighlights, SpaceViewOutlineMasks,
-        TransformCache,
+        instance_hash_conversions::picking_layer_id_from_instance_path_hash, SpaceViewHighlights,
+        SpaceViewOutlineMasks, TransformCache,
     },
     ui::view_spatial::{scene::EntityDepthOffsets, SceneSpatial, SpaceCamera3D},
 };
@@ -27,13 +26,13 @@ use super::{instance_path_hash_for_picking, ScenePart};
 ///
 /// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
 fn determine_view_coordinates(
-    entity_db: &re_data_store::log_db::EntityDb,
+    data_store: &re_arrow_store::DataStore,
     time_ctrl: &TimeControl,
     mut entity_path: EntityPath,
 ) -> ViewCoordinates {
     loop {
         if let Some(view_coordinates) =
-            query_view_coordinates(entity_db, &entity_path, &time_ctrl.current_query())
+            re_data_store::query_latest_single(data_store, &entity_path, &time_ctrl.current_query())
         {
             return view_coordinates;
         }
@@ -197,7 +196,7 @@ impl ScenePart for CamerasPart {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(transform) = re_data_store::query_latest_single::<Transform>(
-                &ctx.log_db.entity_db,
+                &ctx.log_db.entity_db.data_store,
                 ent_path,
                 &query,
             ) {
@@ -207,7 +206,7 @@ impl ScenePart for CamerasPart {
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
                 let view_coordinates = determine_view_coordinates(
-                    &ctx.log_db.entity_db,
+                    &ctx.log_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl,
                     ent_path.clone(),
                 );

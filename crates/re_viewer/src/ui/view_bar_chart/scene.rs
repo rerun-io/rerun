@@ -21,7 +21,7 @@ impl SceneBarChart {
     fn load_tensors(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let entity_db = &ctx.log_db.entity_db;
+        let data_store = &ctx.log_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
             if !props.visible {
@@ -30,7 +30,7 @@ impl SceneBarChart {
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let tensor =
-                query_latest_single::<component_types::Tensor>(entity_db, ent_path, &query);
+                query_latest_single::<component_types::Tensor>(data_store, ent_path, &query);
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
