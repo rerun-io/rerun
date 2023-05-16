@@ -174,6 +174,13 @@ impl<T> Service<T> for MakeSvc {
 /// Typed port for use with [`WebViewerServer`]
 pub struct WebViewerServerPort(pub u16);
 
+impl WebViewerServerPort {
+    /// Port to use with [`WebViewerServer::port`] when you want the OS to pick a port for you.
+    ///
+    /// This is defined as `0`.
+    pub const AUTO: Self = Self(0);
+}
+
 impl Default for WebViewerServerPort {
     fn default() -> Self {
         Self(DEFAULT_WEB_VIEWER_SERVER_PORT)
@@ -207,9 +214,17 @@ pub struct WebViewerServer {
 impl WebViewerServer {
     /// Create new [`WebViewerServer`] to host the Rerun Web Viewer on a specified port.
     ///
-    /// A port of 0 will let the OS choose a free port.
-    pub fn new(port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
-        let bind_addr = format!("0.0.0.0:{port}").parse()?;
+    /// [`WebViewerServerPort::AUTO`] will tell the OS choose any free port.
+    ///
+    /// ## Example
+    /// ``` no_run
+    /// let server = WebViewerServer::new("0.0.0.0", WebViewerServerPort::AUTO)?;
+    /// let port = server.port();
+    /// server.serve()?;
+    /// # Ok::<(), rerun_web_viewer::WebViewerServerError>(())
+    /// ```
+    pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
+        let bind_addr = format!("{bind_ip}:{port}").parse()?;
         let server = hyper::Server::try_bind(&bind_addr)
             .map_err(|err| WebViewerServerError::BindFailed(port, err))?
             .serve(MakeSvc);
@@ -259,7 +274,7 @@ impl WebViewerServerHandle {
     pub fn new(requested_port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
 
-        let web_server = WebViewerServer::new(requested_port)?;
+        let web_server = WebViewerServer::new("0.0.0.0", requested_port)?;
 
         let port = web_server.port();
 
