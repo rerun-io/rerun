@@ -1,6 +1,6 @@
 //! TODO(emilk): use tokio instead
 
-use std::time::Instant;
+use std::{time::Instant, io::ErrorKind};
 
 use anyhow::Context;
 use rand::{Rng as _, SeedableRng};
@@ -103,6 +103,12 @@ fn spawn_client(stream: TcpStream, tx: Sender<LogMsg>, options: ServerOptions) {
             re_log::info!("New SDK client connected: {addr_string}");
         }
         if let Err(err) = run_client(stream, &tx, options).await {
+            if let Some(err) = err.downcast_ref::<std::io::Error>() {
+                if err.kind() == ErrorKind::UnexpectedEof {
+                    // Client gracefully severed the connection.
+                    return;
+                }
+            }
             re_log::warn!("Closing connection to client: {err}");
         }
     });
@@ -156,12 +162,6 @@ async fn run_client(
         congestion_manager.register_latency(tx.latency_sec());
 
         for msg in re_log_encoding::decoder::decode_bytes(&packet)? {
-            if matches!(msg, LogMsg::Goodbye(_, _)) {
-                re_log::debug!("Received goodbye message.");
-                tx.send(msg)?;
-                return Ok(());
-            }
-
             if congestion_manager.should_send(&msg) {
                 tx.send(msg)?;
             } else {
@@ -210,9 +210,7 @@ impl CongestionManager {
         #[allow(clippy::match_same_arms)]
         match msg {
             // we don't want to drop any of these
-            LogMsg::SetRecordingInfo(_) | LogMsg::EntityPathOpMsg(_, _) | LogMsg::Goodbye(_, _) => {
-                true
-            }
+            LogMsg::SetRecordingInfo(_) | LogMsg::EntityPathOpMsg(_, _) => true,
 
             LogMsg::ArrowMsg(_, arrow_msg) => self.should_send_time_point(&arrow_msg.timepoint_max),
         }

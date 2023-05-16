@@ -235,7 +235,6 @@ impl LogDb {
                 self.entity_db.add_path_op(*row_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
-            LogMsg::Goodbye(_, _) => {}
         }
 
         Ok(())
