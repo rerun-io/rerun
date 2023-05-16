@@ -6,6 +6,7 @@ from deprecated import deprecated
 
 from rerun import bindings
 from rerun.components.color import ColorRGBAArray
+from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
@@ -44,6 +45,7 @@ def log_line_strip(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Color] = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -71,6 +73,10 @@ def log_line_strip(
         Optional width of the line.
     color:
         Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for lines is 20.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -106,6 +112,9 @@ def log_line_strip(
         radii = _normalize_radii([stroke_width / 2])
         instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
@@ -125,6 +134,7 @@ def log_line_segments(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Color] = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -151,6 +161,10 @@ def log_line_segments(
         Optional width of the line.
     color:
         Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for lines is 20.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -197,6 +211,9 @@ def log_line_segments(
     if stroke_width:
         radii = _normalize_radii([stroke_width / 2])
         splats["rerun.radius"] = RadiusArray.from_numpy(radii)
+
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)

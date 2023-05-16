@@ -21,8 +21,8 @@ use itertools::Itertools;
 use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, DrawOrder,
-        Label, LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3, Tensor,
-        TensorDataMeaning, TextEntry, Transform, Vec3D, ViewCoordinates,
+        Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3,
+        Tensor, TensorDataMeaning, TextEntry, Transform, Vec2D, Vec3D, ViewCoordinates,
     },
     coordinates::SignedAxis3,
     external::{
@@ -303,46 +303,59 @@ fn colored_tensor<F: Fn(usize, usize) -> [u8; 3]>(
 fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
 
+    let time = sim_time(1.0);
+
     // Add several overlapping images.
     // Large dark gray in the background
     let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64);
     MsgSender::new("2d_layering/background")
-        .with_timepoint(sim_time(1.0))
+        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(0.0)])?
         .send(rec_stream)?;
     // Smaller gradient in the middle
     let img = colored_tensor(256, 256, |x, y| [x as u8, y as u8, 0]);
     MsgSender::new("2d_layering/middle_gradient")
-        .with_timepoint(sim_time(1.0))
+        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(1.0)])?
         .send(rec_stream)?;
     // Slightly smaller blue in the middle, on the same layer as the previous.
     let img = colored_tensor(192, 192, |_, _| [0, 0, 255]);
     MsgSender::new("2d_layering/middle_blue")
-        .with_timepoint(sim_time(1.0))
+        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(1.0)])?
         .send(rec_stream)?;
     // Small white on top.
     let img = Array::<u8, _>::from_elem((128, 128, 1).f(), 255);
     MsgSender::new("2d_layering/top")
-        .with_timepoint(sim_time(1.0))
+        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(2.0)])?
         .send(rec_stream)?;
 
-    // Put a rectangle in between
+    // Rectangle in between the top and the middle.
     MsgSender::new("2d_layering/rect_between_top_and_middle")
-        .with_timepoint(sim_time(2.0))
+        .with_timepoint(time.clone())
         .with_component(&[Rect2D::from_xywh(64.0, 64.0, 256.0, 256.0)])?
         .with_component(&[DrawOrder(1.5)])?
         .send(rec_stream)?;
 
+    // Lines behind the rectangle.
+    MsgSender::new("2d_layering/lines_behind_rect")
+        .with_timepoint(time.clone())
+        .with_component(&[LineStrip2D(
+            (0..20)
+                .map(|i| Vec2D([(i * 20) as f32, (i % 2 * 100 + 100) as f32]))
+                .collect(),
+        )])?
+        .with_component(&[DrawOrder(1.25)])?
+        .send(rec_stream)?;
+
     // And some points in front of the rectangle.
     MsgSender::new("2d_layering/points_between_top_and_middle")
-        .with_timepoint(sim_time(1 as _))
+        .with_timepoint(time)
         .with_component(
             &(0..256)
                 .map(|i| Point2D::new(32.0 + (i / 16) as f32 * 16.0, 64.0 + (i % 16) as f32 * 16.0))

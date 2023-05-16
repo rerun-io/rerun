@@ -99,13 +99,13 @@ def run_2d_layering() -> None:
     img = np.full((128, 128), 255, dtype="uint8")
     rr.log_image("2d_layering/top", img, draw_order=2.0)
 
-    # Rectangle in between
-    # TODO:
+    # Rectangle in between the top and the middle.
+    rr.log_rect("2d_layering/rect_between_top_and_middle", (64, 64, 256, 256), draw_order=1.5)
 
-    # Lines across
-    # TODO:
+    # Lines behind the rectangle.
+    rr.log_line_strip("2d_layering/lines_behind_rect", [(i * 20, i % 2 * 100 + 100) for i in range(20)], draw_order=1.25)
 
-    # And some points in front of the rectangle
+    # And some points in front of the rectangle.
     rr.log_points("2d_layering/points_between_top_and_middle",
                     [(32.0 + int(i / 16) * 16.0, 64.0 + (i % 16) * 16.0) for i in range(16 * 16)],
                     draw_order=1.51)

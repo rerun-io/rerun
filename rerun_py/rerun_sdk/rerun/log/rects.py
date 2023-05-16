@@ -6,6 +6,7 @@ import numpy.typing as npt
 from rerun import bindings
 from rerun.components.annotation import ClassIdArray
 from rerun.components.color import ColorRGBAArray
+from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.rect2d import Rect2DArray, RectFormat
@@ -38,6 +39,7 @@ def log_rect(
     color: Optional[Color] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -61,6 +63,10 @@ def log_rect(
         Optional class id for the rectangle.
         The class id provides color and label if not specified explicitly.
         See [rerun.log_annotation_context][]
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for rects is 10.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -95,6 +101,9 @@ def log_rect(
         class_ids = _normalize_ids([class_id])
         instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
@@ -127,6 +136,7 @@ def log_rects(
     colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -164,6 +174,10 @@ def log_rects(
         Optional class ids for the rectangles.
         The class id provides colors and labels if not specified explicitly.
         See [rerun.log_annotation_context][]
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for rects is 10.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -215,6 +229,9 @@ def log_rects(
     if len(class_ids):
         is_splat = len(class_ids) == 1
         comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+
+    if draw_order is not None:
+        comps["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
 
     if ext:
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
