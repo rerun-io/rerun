@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 from typing import Union
 
 import numpy as np
@@ -14,53 +13,40 @@ from rerun.components import (
     build_dense_union,
     union_discriminant_type,
 )
+from rerun.log import _normalize_matrix3
 
 __all__ = [
     "Transform3DArray",
     "Transform3DType",
+    "Transform3D",
+    "TranslationMatrix3x3",
+    "TranslationRotationScale3D",
+    "RotationAxisAngle",
 ]
 
 
+# TODO:
+# @dataclass
+# class UnknownTransform:
+#     """
+#     We don't know the transform, but it is likely/potentially non-identity.
+
+#     Maybe the user intend to set the transform later.
+#     """
+
+
 @dataclass
-class UnknownTransform:
+class Transform3D:
+    """An affine transform between two 3D spaces, represented in a given direction."""
+
+    transform: TranslationMatrix3x3 | TranslationRotationScale3D
+    """Representation of a 3D transform."""
+
+    from_parent: bool = False
     """
-    We don't know the transform, but it is likely/potentially non-identity.
-
-    Maybe the user intend to set the transform later.
+    If True, the transform maps from the parent space to the child space.
+    Otherwise, the transform maps from the child space to the parent space.
     """
-
-
-@dataclass
-class Pinhole:
-    """Camera perspective projection (a.k.a. intrinsics)."""
-
-    # Row-major intrinsics matrix for projecting from camera space to image space.
-    image_from_cam: npt.ArrayLike
-
-    # Pixel resolution (usually integers) of child image space. Width and height.
-    resolution: Union[npt.ArrayLike, None]
-
-
-@dataclass
-class DirectedAffine3D:
-    """An affine transform between two 3D spaces."""
-
-    affine3d: TranslationMatrix3x3 | TranslationRotationScale3D
-    """Representation of an Affine3D transform."""
-
-    direction: TransformDirection
-    """The direction of the transform."""
-
-
-@dataclass
-class TransformDirection(Enum):
-    """Direction of a transform."""
-
-    ChildFromParent = "ChildFromParent"
-    """The transform maps from the parent space to the child space."""
-
-    ParentFromChild = "ParentFromChild"
-    """The transform maps from the child space to the parent space."""
 
 
 @dataclass
@@ -107,16 +93,7 @@ class RotationAxisAngle:
     """3D rotation angle in radians. Only one of `degrees` or `radians` should be set."""
 
 
-def normalize_matrix3(matrix: Union[npt.ArrayLike, None]) -> npt.ArrayLike:
-    matrix = np.eye(3) if matrix is None else matrix
-    matrix = np.array(matrix, dtype=np.float32, order="F")
-    if matrix.shape != (3, 3):
-        raise ValueError(f"Expected 3x3 matrix, shape was instead {matrix.shape}")
-    # Rerun is column major internally, tell numpy to use Fortran order which is just that.
-    return matrix.flatten(order="F")
-
-
-def normalize_translation(translation: Union[npt.ArrayLike, None]) -> npt.ArrayLike:
+def _normalize_translation(translation: Union[npt.ArrayLike, None]) -> npt.ArrayLike:
     translation = (0, 0, 0) if translation is None else translation
     translation = np.array(translation, dtype=np.float32).flatten()
     if translation.size != 3:
@@ -127,8 +104,8 @@ def normalize_translation(translation: Union[npt.ArrayLike, None]) -> npt.ArrayL
 def build_struct_array_from_translation_mat3(
     translation_mat3: TranslationMatrix3x3, type: pa.StructType
 ) -> pa.StructArray:
-    translation = normalize_translation(translation_mat3.translation)
-    matrix = normalize_matrix3(translation_mat3.matrix)
+    translation = _normalize_translation(translation_mat3.translation)
+    matrix = _normalize_matrix3(translation_mat3.matrix)
 
     return pa.StructArray.from_arrays(
         [
@@ -209,7 +186,7 @@ def build_union_array_from_scale(scale: npt.ArrayLike | float | None, type: pa.D
 def build_struct_array_from_translation_rotation_scale(
     transform: TranslationRotationScale3D, type: pa.StructType
 ) -> pa.StructArray:
-    translation = normalize_translation(transform.translation)
+    translation = _normalize_translation(transform.translation)
     rotation = build_union_array_from_rotation(transform.rotation, type["rotation"].type)
     scale = build_union_array_from_scale(transform.scale, type["scale"].type)
 
@@ -224,58 +201,28 @@ def build_struct_array_from_translation_rotation_scale(
 
 
 class Transform3DArray(pa.ExtensionArray):  # type: ignore[misc]
-    def from_transform(transform: DirectedAffine3D | UnknownTransform | Pinhole) -> Transform3DArray:
+    def from_transform(transform: Transform3D) -> Transform3DArray:
         """Build a `Transform3DArray` from a single transform."""
 
-        if isinstance(transform, UnknownTransform):
-            discriminant_transform3d = "Unknown"
-            transform3d = pa.array([False])
-        elif isinstance(transform, DirectedAffine3D):
-            discriminant_transform3d = "Affine3D"
-            discriminant_affine3d_direction = transform.direction.name
+        transform_repr_union_type = Transform3DType.storage_type[0].type
 
-            directed_affine3d_union_type = union_discriminant_type(
-                Transform3DType.storage_type, discriminant_transform3d
-            )
-            affine3d_union_type = directed_affine3d_union_type[0].type  # both [0] and [1] are the same type
-
-            if isinstance(transform.affine3d, TranslationMatrix3x3):
-                discriminant_affine3d = "TranslationMatrix3x3"
-                repr_type = union_discriminant_type(affine3d_union_type, discriminant_affine3d)
-                affine3d = build_struct_array_from_translation_mat3(transform.affine3d, repr_type)
-            elif isinstance(transform.affine3d, TranslationRotationScale3D):
-                discriminant_affine3d = "TranslationRotationScale"
-                repr_type = union_discriminant_type(affine3d_union_type, discriminant_affine3d)
-                affine3d = build_struct_array_from_translation_rotation_scale(transform.affine3d, repr_type)
-            else:
-                raise ValueError(f"Unknown affine transform representation: {transform.affine3d}")
-
-            directed_affine3d = build_dense_union(
-                affine3d_union_type, discriminant=discriminant_affine3d, child=affine3d
-            )
-            transform3d = build_dense_union(
-                directed_affine3d_union_type, discriminant=discriminant_affine3d_direction, child=directed_affine3d
-            )
-        elif isinstance(transform, Pinhole):
-            discriminant_transform3d = "Pinhole"
-            pinhole_type = union_discriminant_type(Transform3DType.storage_type, discriminant_transform3d)
-
-            image_from_cam = normalize_matrix3(transform.image_from_cam)
-            resolution = (
-                None if transform.resolution is None else np.array(transform.resolution, dtype=np.float32).flatten()
-            )
-            transform3d = pa.StructArray.from_arrays(
-                [
-                    pa.FixedSizeListArray.from_arrays(image_from_cam, type=pinhole_type["image_from_cam"].type),
-                    pa.FixedSizeListArray.from_arrays(resolution, type=pinhole_type["resolution"].type),
-                ],
-                fields=list(pinhole_type),
-            )
+        if isinstance(transform.transform, TranslationMatrix3x3):
+            discriminant_affine3d = "TranslationMatrix3x3"
+            repr_type = union_discriminant_type(transform_repr_union_type, discriminant_affine3d)
+            transform_repr = build_struct_array_from_translation_mat3(transform.transform, repr_type)
+        elif isinstance(transform.transform, TranslationRotationScale3D):
+            discriminant_affine3d = "TranslationRotationScale"
+            repr_type = union_discriminant_type(transform_repr_union_type, discriminant_affine3d)
+            transform_repr = build_struct_array_from_translation_rotation_scale(transform.transform, repr_type)
         else:
-            raise ValueError(f"Unknown transform type: {transform}")
+            raise ValueError(f"Unknown transform 3d representation: {transform.transform}")
 
-        storage = build_dense_union(
-            data_type=Transform3DType.storage_type, discriminant=discriminant_transform3d, child=transform3d
+        storage = pa.StructArray.from_arrays(
+            [
+                build_dense_union(transform_repr_union_type, discriminant_affine3d, transform_repr),
+                pa.array([transform.from_parent], type=Transform3DType.storage_type[1].type),
+            ],
+            fields=list(Transform3DType.storage_type),
         )
 
         # TODO(clement) enable extension type wrapper

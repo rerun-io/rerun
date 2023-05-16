@@ -60,3 +60,12 @@ def _normalize_labels(labels: Optional[Union[str, Sequence[str]]]) -> Sequence[s
         return []
     else:
         return labels
+
+
+def _normalize_matrix3(matrix: Union[npt.ArrayLike, None]) -> npt.ArrayLike:
+    matrix = np.eye(3) if matrix is None else matrix
+    matrix = np.array(matrix, dtype=np.float32, order="F")
+    if matrix.shape != (3, 3):
+        raise ValueError(f"Expected 3x3 matrix, shape was instead {matrix.shape}")
+    # Rerun is column major internally, tell numpy to use Fortran order which is just that.
+    return matrix.flatten(order="F")

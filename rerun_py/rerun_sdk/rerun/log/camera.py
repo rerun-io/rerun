@@ -1,10 +1,9 @@
 from typing import Optional
 
-import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.components.transform3d import Pinhole, Transform3DArray
+from rerun.components.pinhole import Pinhole, PinholeArray
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -70,5 +69,5 @@ def log_pinhole(
 
     """
 
-    instanced = {"rerun.transform3d": Transform3DArray.from_transform(Pinhole(child_from_parent, [width, height]))}
+    instanced = {"rerun.pinhole": PinholeArray.from_pinhole(Pinhole(child_from_parent, [width, height]))}
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

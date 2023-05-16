@@ -9,14 +9,13 @@ import numpy.typing as npt
 from deprecated import deprecated
 
 from rerun import bindings
+from rerun.components.disconnected_space import DisconnectedSpaceArray
 from rerun.components.transform3d import (
-    DirectedAffine3D,
     RotationAxisAngle,
+    Transform3D,
     Transform3DArray,
-    TransformDirection,
     TranslationMatrix3x3,
     TranslationRotationScale3D,
-    UnknownTransform,
 )
 from rerun.log.error_utils import _send_warning
 from rerun.log.log_decorator import log_decorator
@@ -147,8 +146,8 @@ def log_unknown_transform(
     recording = RecordingStream.to_native(recording)
 
     instanced: Dict[str, Any] = {}
-    instanced["rerun.transform3d"] = Transform3DArray.from_transform(UnknownTransform())
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+    instanced["rerun.disconnected_transform"] = DisconnectedSpaceArray.single()
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -158,6 +157,7 @@ def log_affine3(
     parent_from_child: Optional[Union[TranslationMatrix3x3, TranslationRotationScale3D, RotationAxisAngle]] = None,
     child_from_parent: Optional[Union[TranslationMatrix3x3, TranslationRotationScale3D, RotationAxisAngle]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log an affine 3D transform between this entity and the parent.
@@ -191,6 +191,10 @@ def log_affine3(
         the inverse of `parent_from_child`
     timeless:
         If true, the transform will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
 
@@ -198,17 +202,17 @@ def log_affine3(
         raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
 
     if parent_from_child:
-        direction = TransformDirection.ParentFromChild
+        from_parent = False
         transform = parent_from_child
     elif child_from_parent:
-        direction = TransformDirection.ChildFromParent
+        from_parent = True
         transform = child_from_parent
 
     if isinstance(transform, RotationAxisAngle):
         transform = TranslationRotationScale3D(rotation=transform)
 
-    instanced = {"rerun.transform3d": Transform3DArray.from_transform(DirectedAffine3D(transform, direction))}
-    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+    instanced = {"rerun.transform3d": Transform3DArray.from_transform(Transform3D(transform, from_parent))}
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 
 @deprecated(version="0.6.0", reason="Use log_affine3 instead and, if xyz was set, log_view_coordinates")

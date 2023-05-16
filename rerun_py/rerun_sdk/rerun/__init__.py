@@ -126,6 +126,7 @@ __all__ = [
     "script_teardown",
     "TranslationMatrix3x3",
     "TranslationRotationScale3D",
+    "RotationAxisAngle",
 ]
 
 
