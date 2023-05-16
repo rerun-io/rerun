@@ -252,3 +252,26 @@ fn test_smart_channel() {
     assert_eq!(rx.len(), 0);
     assert!(tx.latency_ns() > 1_000_000);
 }
+
+#[test]
+fn test_smart_channel_connected() {
+    let (tx1, rx) = smart_channel(Source::Sdk); // whatever source
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    let tx2 = tx1.clone();
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    tx2.send(42).unwrap();
+    assert_eq!(rx.try_recv(), Ok(42));
+    assert!(rx.is_connected());
+
+    drop(tx1);
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
+    assert!(rx.is_connected());
+
+    drop(tx2);
+    assert_eq!(rx.try_recv(), Err(TryRecvError::Disconnected));
+    assert!(!rx.is_connected());
+}
