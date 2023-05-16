@@ -369,7 +369,7 @@ def new_blueprint(
     default_enabled: bool = True,
 ) -> RecordingStream:
     """
-    Creates a new blueprint with a user-chosen application id (name) that can be used to configure the appearance of Rerun.
+    Creates a new blueprint with a user-chosen application id (name) to configure the appearance of Rerun.
 
     If you only need a single global blueprint, [`rerun.init`][] might be simpler.
 
