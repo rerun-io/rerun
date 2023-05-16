@@ -528,7 +528,7 @@ impl eframe::App for App {
         // to save changes back to the correct blueprint at the end.
         let active_blueprint_id = self.selected_app_id().map(|app_id| {
             self.state
-                .selected_blueprint_id
+                .selected_blueprint_by_app
                 .get(&app_id)
                 .cloned()
                 .unwrap_or_else(|| RecordingId::from_string(RecordingType::Blueprint, app_id.0))
@@ -809,7 +809,7 @@ impl App {
 
                     RecordingType::Blueprint => {
                         re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        self.state.selected_blueprint_id.insert(
+                        self.state.selected_blueprint_by_app.insert(
                             msg.info.application_id.clone(),
                             msg.info.recording_id.clone(),
                         );
@@ -1047,7 +1047,7 @@ struct AppState {
     #[serde(skip)]
     selected_rec_id: Option<RecordingId>,
     #[serde(skip)]
-    selected_blueprint_id: HashMap<ApplicationId, RecordingId>,
+    selected_blueprint_by_app: HashMap<ApplicationId, RecordingId>,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: HashMap<RecordingId, RecordingConfig>,
@@ -1086,7 +1086,7 @@ impl AppState {
             app_options: options,
             cache,
             selected_rec_id: _,
-            selected_blueprint_id: _,
+            selected_blueprint_by_app: _,
             recording_configs,
             panel_selection,
             selection_panel,
@@ -1806,13 +1806,13 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
             };
             if ui
                 .radio(
-                    app.state.selected_blueprint_id.get(app_id) == Some(log_db.recording_id()),
+                    app.state.selected_blueprint_by_app.get(app_id) == Some(log_db.recording_id()),
                     info,
                 )
                 .clicked()
             {
                 app.state
-                    .selected_blueprint_id
+                    .selected_blueprint_by_app
                     .insert(app_id.clone(), log_db.recording_id().clone());
             }
         }
