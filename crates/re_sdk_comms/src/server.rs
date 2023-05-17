@@ -1,6 +1,6 @@
 //! TODO(emilk): use tokio instead
 
-use std::{time::Instant, io::ErrorKind};
+use std::{io::ErrorKind, time::Instant};
 
 use anyhow::Context;
 use rand::{Rng as _, SeedableRng};
