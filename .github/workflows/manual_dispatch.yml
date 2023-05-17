@@ -133,7 +133,7 @@ jobs:
     with:
       CONCURRENCY: manual-dispatch-linux-arm-${{ github.run_id}}
       SAVE_CACHE: ${{ github.event.inputs.SAVE_CACHE == 'true' }}
-      PLATFORM: linux
+      PLATFORM: linux-arm
       WHEEL_ARTIFACT_NAME: linux-arm-wheel
       RRD_ARTIFACT_NAME: ''
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
