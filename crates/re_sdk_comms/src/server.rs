@@ -64,13 +64,14 @@ async fn listen_for_new_clients(
 /// }
 /// ```
 pub async fn serve(
+    bind_ip: &str,
     port: u16,
     options: ServerOptions,
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<Receiver<LogMsg>> {
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::TcpServer { port });
 
-    let bind_addr = format!("0.0.0.0:{port}");
+    let bind_addr = format!("{bind_ip}:{port}");
     let listener = TcpListener::bind(&bind_addr).await.with_context(|| {
         format!(
             "Failed to bind TCP address {bind_addr:?}. Another Rerun instance is probably running."

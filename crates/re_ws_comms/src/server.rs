@@ -21,6 +21,7 @@ use crate::{server_url, RerunServerError, RerunServerPort};
 /// Websocket host for relaying [`LogMsg`]s to a web viewer.
 pub struct RerunServer {
     listener: TcpListener,
+    bind_ip: String,
     port: RerunServerPort,
 }
 
@@ -28,9 +29,10 @@ impl RerunServer {
     /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
     /// The websocket will be available at `port`.
     ///
+    /// A `bind_ip` of `"0.0.0.0"` is a good default.
     /// A port of 0 will let the OS choose a free port.
-    pub async fn new(port: RerunServerPort) -> Result<Self, RerunServerError> {
-        let bind_addr = format!("0.0.0.0:{port}");
+    pub async fn new(bind_ip: String, port: RerunServerPort) -> Result<Self, RerunServerError> {
+        let bind_addr = format!("{bind_ip}:{port}");
 
         let listener = TcpListener::bind(&bind_addr)
             .await
@@ -43,7 +45,11 @@ impl RerunServer {
             listener.local_addr()?
         );
 
-        Ok(Self { listener, port })
+        Ok(Self {
+            listener,
+            bind_ip,
+            port,
+        })
     }
 
     /// Accept new connections until we get a message on `shutdown_rx`
@@ -75,7 +81,7 @@ impl RerunServer {
     }
 
     pub fn server_url(&self) -> String {
-        server_url("localhost", self.port)
+        server_url(&self.bind_ip, self.port)
     }
 }
 
@@ -83,6 +89,7 @@ impl RerunServer {
 ///
 /// When dropped, the server will be shut down.
 pub struct RerunServerHandle {
+    bind_ip: String,
     port: RerunServerPort,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
@@ -98,26 +105,33 @@ impl RerunServerHandle {
     /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
     /// Returns a [`RerunServerHandle`] that will shutdown the server when dropped.
     ///
+    /// A `bind_ip` of `"0.0.0.0"` is a good default.
     /// A port of 0 will let the OS choose a free port.
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
     pub fn new(
         rerun_rx: Receiver<LogMsg>,
+        bind_ip: String,
         requested_port: RerunServerPort,
     ) -> Result<Self, RerunServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
 
         let rt = tokio::runtime::Handle::current();
 
+        let bind_ip_clone = bind_ip.clone();
         let ws_server = rt.block_on(tokio::spawn(async move {
-            RerunServer::new(requested_port).await
+            RerunServer::new(bind_ip_clone, requested_port).await
         }))??;
 
         let port = ws_server.port;
 
         tokio::spawn(async move { ws_server.listen(rerun_rx, shutdown_rx).await });
 
-        Ok(Self { port, shutdown_tx })
+        Ok(Self {
+            bind_ip,
+            port,
+            shutdown_tx,
+        })
     }
 
     /// Get the port where the websocket server is listening
@@ -126,7 +140,7 @@ impl RerunServerHandle {
     }
 
     pub fn server_url(&self) -> String {
-        server_url("localhost", self.port)
+        server_url(&self.bind_ip, self.port)
     }
 }
 

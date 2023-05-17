@@ -274,10 +274,13 @@ impl WebViewerServerHandle {
     /// A port of 0 will let the OS choose a free port.
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
-    pub fn new(requested_port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
+    pub fn new(
+        bind_ip: &str,
+        requested_port: WebViewerServerPort,
+    ) -> Result<Self, WebViewerServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
 
-        let web_server = WebViewerServer::new("0.0.0.0", requested_port)?;
+        let web_server = WebViewerServer::new(bind_ip, requested_port)?;
 
         let port = web_server.port();
 

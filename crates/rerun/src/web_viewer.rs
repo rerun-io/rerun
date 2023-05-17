@@ -17,19 +17,21 @@ struct WebViewerSink {
 }
 
 impl WebViewerSink {
+    /// A `bind_ip` of `"0.0.0.0"` is a good default.
     pub fn new(
         open_browser: bool,
+        bind_ip: &str,
         web_port: WebViewerServerPort,
         ws_port: RerunServerPort,
     ) -> anyhow::Result<Self> {
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
 
-        let rerun_server = RerunServerHandle::new(rerun_rx, ws_port)?;
-        let webviewer_server = WebViewerServerHandle::new(web_port)?;
+        let rerun_server = RerunServerHandle::new(rerun_rx, bind_ip.to_owned(), ws_port)?;
+        let webviewer_server = WebViewerServerHandle::new(bind_ip, web_port)?;
 
         let web_port = webviewer_server.port();
         let server_url = rerun_server.server_url();
-        let viewer_url = format!("http://127.0.0.1:{web_port}?url={server_url}");
+        let viewer_url = format!("http://{bind_ip}:{web_port}?url={server_url}");
 
         re_log::info!("Web server is running - view it at {viewer_url}");
         if open_browser {
@@ -53,16 +55,17 @@ impl WebViewerSink {
 /// Note: this does not include the websocket server.
 #[cfg(feature = "web_viewer")]
 pub async fn host_web_viewer(
+    bind_ip: String,
     web_port: WebViewerServerPort,
     open_browser: bool,
     source_url: String,
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<()> {
-    let web_server = re_web_viewer_server::WebViewerServer::new("0.0.0.0", web_port)?;
+    let web_server = re_web_viewer_server::WebViewerServer::new(&bind_ip, web_port)?;
     let port = web_server.port();
     let web_server_handle = web_server.serve(shutdown_rx);
 
-    let viewer_url = format!("http://127.0.0.1:{port}?url={source_url}");
+    let viewer_url = format!("http://{bind_ip}:{port}?url={source_url}");
 
     re_log::info!("Web server is running - view it at {viewer_url}");
     if open_browser {
@@ -100,11 +103,13 @@ impl crate::sink::LogSink for WebViewerSink {
 #[must_use = "the sink must be kept around to keep the servers running"]
 pub fn new_sink(
     open_browser: bool,
+    bind_ip: &str,
     web_port: WebViewerServerPort,
     ws_port: RerunServerPort,
 ) -> anyhow::Result<Box<dyn crate::sink::LogSink>> {
     Ok(Box::new(WebViewerSink::new(
         open_browser,
+        bind_ip,
         web_port,
         ws_port,
     )?))
