@@ -118,19 +118,13 @@ impl App {
             );
         }
 
-        let mut state: AppState = if startup_options.persist_state {
+        let state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
                 .unwrap_or_default()
         } else {
             AppState::default()
         };
-
-        // Forget the blueprint we used for some unknown app,
-        // so we don't reuse it for some unrelated unknown app.
-        // This is in particularly important for `rerun foo.png`
-        // followed by `rerun bar.png`, which both uses the unknow App ID.
-        state.blueprints.remove(&ApplicationId::unknown());
 
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
@@ -399,12 +393,14 @@ impl App {
         }
     }
 
-    fn selected_app_id(&self) -> Option<ApplicationId> {
-        self.log_db().and_then(|log_db| {
-            log_db
-                .recording_info()
-                .map(|rec_info| rec_info.application_id.clone())
-        })
+    fn selected_app_id(&self) -> ApplicationId {
+        self.log_db()
+            .and_then(|log_db| {
+                log_db
+                    .recording_info()
+                    .map(|rec_info| rec_info.application_id.clone())
+            })
+            .unwrap_or(ApplicationId::unknown())
     }
 
     fn memory_panel_ui(
@@ -441,21 +437,23 @@ impl App {
     // Materialize the blueprint from the DB if the selected blueprint id isn't the default one.
     fn load_or_create_blueprint(
         &mut self,
-        this_frame_blueprint_id: Option<&RecordingId>,
+        this_frame_blueprint_id: &RecordingId,
         egui_ctx: &egui::Context,
     ) -> Blueprint {
-        if let Some(blueprint_id) = this_frame_blueprint_id {
-            // TODO(jleibs): If the blueprint doesn't exist this probably means we are
-            // initializing a new default-blueprint for the application in question.
-            // Make sure it's marked as a blueprint.
-            let blueprint_db = self.log_dbs.entry(blueprint_id.clone()).or_insert_with(|| {
-                let mut blueprint_db = LogDb::new(blueprint_id.clone());
+        // TODO(jleibs): If the blueprint doesn't exist this probably means we are
+        // initializing a new default-blueprint for the application in question.
+        // Make sure it's marked as a blueprint.
+        let blueprint_db = self
+            .log_dbs
+            .entry(this_frame_blueprint_id.clone())
+            .or_insert_with(|| {
+                let mut blueprint_db = LogDb::new(this_frame_blueprint_id.clone());
 
                 blueprint_db.add_begin_recording_msg(&re_log_types::SetRecordingInfo {
                     row_id: re_log_types::RowId::random(),
                     info: re_log_types::RecordingInfo {
-                        application_id: blueprint_id.as_str().into(),
-                        recording_id: blueprint_id.clone(),
+                        application_id: this_frame_blueprint_id.as_str().into(),
+                        recording_id: this_frame_blueprint_id.clone(),
                         is_official_example: false,
                         started: re_log_types::Time::now(),
                         recording_source: re_log_types::RecordingSource::Other("viewer".to_owned()),
@@ -465,10 +463,7 @@ impl App {
 
                 blueprint_db
             });
-            Blueprint::from_db(egui_ctx, blueprint_db)
-        } else {
-            Default::default()
-        }
+        Blueprint::from_db(egui_ctx, blueprint_db)
     }
 }
 
@@ -532,13 +527,14 @@ impl eframe::App for App {
         // Note that it's important that we save this because it's possible that it will be changed
         // by the end up the frame (e.g. if the user selects a different recording), but we need it
         // to save changes back to the correct blueprint at the end.
-        let active_blueprint_id = self.selected_app_id().map(|app_id| {
-            self.state
-                .selected_blueprint_by_app
-                .get(&app_id)
-                .cloned()
-                .unwrap_or_else(|| RecordingId::from_string(RecordingType::Blueprint, app_id.0))
-        });
+        let active_blueprint_id = self
+            .state
+            .selected_blueprint_by_app
+            .get(&self.selected_app_id())
+            .cloned()
+            .unwrap_or_else(|| {
+                RecordingId::from_string(RecordingType::Blueprint, self.selected_app_id().0)
+            });
 
         let store_config = self
             .log_db()
@@ -550,15 +546,15 @@ impl eframe::App for App {
             .map(|log_db| DataStoreStats::from_store(&log_db.entity_db.data_store))
             .unwrap_or_default();
 
-        let blueprint_config = active_blueprint_id
-            .as_ref()
-            .and_then(|bp_id| self.log_dbs.get_mut(bp_id))
+        let blueprint_config = self
+            .log_dbs
+            .get_mut(&active_blueprint_id)
             .map(|bp_db| bp_db.entity_db.data_store.config().clone())
             .unwrap_or_default();
 
-        let blueprint_stats = active_blueprint_id
-            .as_ref()
-            .and_then(|bp_id| self.log_dbs.get_mut(bp_id))
+        let blueprint_stats = self
+            .log_dbs
+            .get_mut(&active_blueprint_id)
             .map(|bp_db| DataStoreStats::from_store(&bp_db.entity_db.data_store))
             .unwrap_or_default();
 
@@ -585,8 +581,7 @@ impl eframe::App for App {
             main_panel_frame.inner_margin = 1.0.into();
         }
 
-        let blueprint_snapshot =
-            self.load_or_create_blueprint(active_blueprint_id.as_ref(), egui_ctx);
+        let blueprint_snapshot = self.load_or_create_blueprint(&active_blueprint_id, egui_ctx);
 
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
@@ -677,15 +672,13 @@ impl eframe::App for App {
         );
 
         // If there was a real active blueprint that came from the store, save the changes back.
-        if let Some(blueprint_id) = active_blueprint_id {
-            if let Some(blueprint_db) = self.log_dbs.get_mut(&blueprint_id) {
-                blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
-            } else {
-                // This shouldn't happen because we should have used `active_blueprint_id` to
-                // create this same blueprint in `load_or_create_blueprint`, but we couldn't
-                // keep it around for borrow-checker reasons.
-                re_log::warn_once!("Blueprint unexpectedly missing from store.");
-            }
+        if let Some(blueprint_db) = self.log_dbs.get_mut(&active_blueprint_id) {
+            blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
+        } else {
+            // This shouldn't happen because we should have used `active_blueprint_id` to
+            // create this same blueprint in `load_or_create_blueprint`, but we couldn't
+            // keep it around for borrow-checker reasons.
+            re_log::warn_once!("Blueprint unexpectedly missing from store.");
         }
     }
 }
@@ -1777,56 +1770,53 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
-    if let Some(app_id) = &app.selected_app_id() {
-        let blueprint_dbs = app
-            .log_dbs
-            .values()
-            .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
-            .filter(|log| {
-                log.recording_type() == RecordingType::Blueprint
-                    && log
-                        .recording_info()
-                        .map_or(false, |ri| &ri.application_id == app_id)
-            })
-            .collect_vec();
+    let app_id = app.selected_app_id();
+    let blueprint_dbs = app
+        .log_dbs
+        .values()
+        .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
+        .filter(|log| {
+            log.recording_type() == RecordingType::Blueprint
+                && log
+                    .recording_info()
+                    .map_or(false, |ri| ri.application_id == app_id)
+        })
+        .collect_vec();
 
-        if blueprint_dbs.is_empty() {
-            ui.weak("(empty)");
-            return;
-        }
+    if blueprint_dbs.is_empty() {
+        ui.weak("(empty)");
+        return;
+    }
 
-        ui.style_mut().wrap = Some(false);
-        for log_db in blueprint_dbs
-            .iter()
-            .filter(|log| log.recording_type() == RecordingType::Blueprint)
-        {
-            let info = if let Some(rec_info) = log_db.recording_info() {
-                if rec_info.is_app_default_blueprint() {
-                    format!("{} - Default Blueprint", rec_info.application_id,)
-                } else {
-                    format!(
-                        "{} - {}",
-                        rec_info.application_id,
-                        rec_info.started.format()
-                    )
-                }
+    ui.style_mut().wrap = Some(false);
+    for log_db in blueprint_dbs
+        .iter()
+        .filter(|log| log.recording_type() == RecordingType::Blueprint)
+    {
+        let info = if let Some(rec_info) = log_db.recording_info() {
+            if rec_info.is_app_default_blueprint() {
+                format!("{} - Default Blueprint", rec_info.application_id,)
             } else {
-                "<UNKNOWN>".to_owned()
-            };
-            if ui
-                .radio(
-                    app.state.selected_blueprint_by_app.get(app_id) == Some(log_db.recording_id()),
-                    info,
+                format!(
+                    "{} - {}",
+                    rec_info.application_id,
+                    rec_info.started.format()
                 )
-                .clicked()
-            {
-                app.state
-                    .selected_blueprint_by_app
-                    .insert(app_id.clone(), log_db.recording_id().clone());
             }
+        } else {
+            "<UNKNOWN>".to_owned()
+        };
+        if ui
+            .radio(
+                app.state.selected_blueprint_by_app.get(&app_id) == Some(log_db.recording_id()),
+                info,
+            )
+            .clicked()
+        {
+            app.state
+                .selected_blueprint_by_app
+                .insert(app_id.clone(), log_db.recording_id().clone());
         }
-    } else {
-        ui.weak("(no app selected)");
     }
 }
 
