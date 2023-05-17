@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use crate::{
     allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier},
-    config::HardwareTier,
     context::RenderContext,
     draw_phases::{
         DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
@@ -331,30 +330,11 @@ impl ViewBuilder {
                     // We use infinite reverse-z projection matrix
                     // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
                     // * no need to worry about far plane
-                    //
-                    // There's a pretty big catch though:
-                    // When we're on GLES, the NDC coordinates go from -1 to 1 and are then mapped to 0 to 1 as part of the viewport transformation.
-                    // This means, that if we don't care about this, we'll not only throw away "half" of the space,
-                    // we also have the most precise region around 0 in the wrong spot initially 😱
-                    // Therefore, we pretty much *have* to use a different projection in this case.
-                    // Modern OpenGL has a way to change this to the more common 0 to 1 z-range for NDC
-                    // which is the standard in Metal/Vulkan/DirectX/WebGPU, but WebGL is lacking this.
-                    // see https://registry.khronos.org/OpenGL-Refpages/gl4/html/glClipControl.xhtml
-                    let projection_from_view =
-                        if ctx.shared_renderer_data.config.hardware_tier == HardwareTier::Gles {
-                            glam::Mat4::perspective_rh_gl(
-                                vertical_fov,
-                                aspect_ratio,
-                                near_plane_distance,
-                                100000.0,
-                            )
-                        } else {
-                            glam::Mat4::perspective_infinite_reverse_rh(
-                                vertical_fov,
-                                aspect_ratio,
-                                near_plane_distance,
-                            )
-                        };
+                    let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
+                        vertical_fov,
+                        aspect_ratio,
+                        near_plane_distance,
+                    );
 
                     // Calculate ratio between screen size and screen distance.
                     // Great for getting directions from normalized device coordinates.
@@ -391,8 +371,8 @@ impl ViewBuilder {
                         config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
                     let horizontal_world_size = vertical_world_size * aspect_ratio;
                     // Note that we inverse z (by swapping near and far plane) to be consistent with our perspective projection.
-                    let (left, right, bottom, top, near, far) = match camera_mode {
-                        OrthographicCameraMode::NearPlaneCenter => (
+                    let projection_from_view = match camera_mode {
+                        OrthographicCameraMode::NearPlaneCenter => glam::Mat4::orthographic_rh(
                             -0.5 * horizontal_world_size,
                             0.5 * horizontal_world_size,
                             -0.5 * vertical_world_size,
@@ -400,22 +380,17 @@ impl ViewBuilder {
                             far_plane_distance,
                             0.0,
                         ),
-                        OrthographicCameraMode::TopLeftCornerAndExtendZ => (
-                            0.0,
-                            horizontal_world_size,
-                            vertical_world_size,
-                            0.0,
-                            far_plane_distance,
-                            -far_plane_distance,
-                        ),
+                        OrthographicCameraMode::TopLeftCornerAndExtendZ => {
+                            glam::Mat4::orthographic_rh(
+                                0.0,
+                                horizontal_world_size,
+                                vertical_world_size,
+                                0.0,
+                                far_plane_distance,
+                                -far_plane_distance,
+                            )
+                        }
                     };
-                    let projection_from_view =
-                        if ctx.shared_renderer_data.config.hardware_tier == HardwareTier::Gles {
-                            // See comment on perspective projection for why we need to care about Gles vs non-Gles.
-                            glam::Mat4::orthographic_rh_gl(left, right, bottom, top, near, far)
-                        } else {
-                            glam::Mat4::orthographic_rh(left, right, bottom, top, near, far)
-                        };
 
                     let tan_half_fov = glam::vec2(f32::MAX, f32::MAX);
                     let pixel_world_size_from_camera_distance = vertical_world_size
