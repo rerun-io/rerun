@@ -33,7 +33,7 @@ core_benchmarks_only = []
 [dependencies]
 # Rerun dependencies:
 re_format.workspace = true
-re_log_types.workspace = true
+re_log_types = { workspace = true, features = ["arrow_datagen"] }
 re_log.workspace = true
 
 # External dependencies:
@@ -109,6 +109,10 @@ name = "range_components"
 path = "examples/range_components.rs"
 required-features = ["polars"]
 
+[[test]]
+name = "dump"
+path = "tests/dump.rs"
+required-features = ["polars"]
 
 [[bench]]
 name = "data_store"
