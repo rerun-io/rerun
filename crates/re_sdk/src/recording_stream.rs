@@ -4,8 +4,8 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
+    RowId, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -44,6 +44,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// ```
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
+    recording_type: RecordingType,
     recording_id: Option<RecordingId>,
     recording_source: Option<RecordingSource>,
 
@@ -74,6 +75,7 @@ impl RecordingStreamBuilder {
 
         Self {
             application_id,
+            recording_type: RecordingType::Data,
             recording_id: None,
             recording_source: None,
 
@@ -246,6 +248,7 @@ impl RecordingStreamBuilder {
     pub fn into_args(self) -> (bool, RecordingInfo, DataTableBatcherConfig) {
         let Self {
             application_id,
+            recording_type,
             recording_id,
             recording_source,
             default_enabled,
@@ -255,7 +258,7 @@ impl RecordingStreamBuilder {
         } = self;
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
-        let recording_id = recording_id.unwrap_or_else(RecordingId::random);
+        let recording_id = recording_id.unwrap_or(RecordingId::random(recording_type));
         let recording_source = recording_source.unwrap_or_else(|| RecordingSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
@@ -336,6 +339,13 @@ impl Drop for RecordingStreamInner {
         // sending data down the pipeline.
         self.batcher.flush_blocking();
         self.cmds_tx.send(Command::PopPendingTables).ok();
+        // Announce we're gracefully leaving to the other end.
+        self.cmds_tx
+            .send(Command::RecordMsg(LogMsg::Goodbye(
+                self.info.recording_id.clone(),
+                RowId::random(),
+            )))
+            .ok();
         self.cmds_tx.send(Command::Shutdown).ok();
         if let Some(handle) = self.batcher_to_sink_handle.take() {
             handle.join().ok();
@@ -351,7 +361,6 @@ impl RecordingStreamInner {
     ) -> RecordingStreamResult<Self> {
         let batcher = DataTableBatcher::new(batcher_config)?;
 
-        // TODO(cmc): BeginRecordingMsg is a misnomer; it's idempotent.
         {
             re_log::debug!(
                 app_id = %info.application_id,
@@ -359,7 +368,7 @@ impl RecordingStreamInner {
                 "setting recording info",
             );
             sink.send(
-                re_log_types::BeginRecordingMsg {
+                re_log_types::SetRecordingInfo {
                     row_id: re_log_types::RowId::random(),
                     info: info.clone(),
                 }
@@ -415,7 +424,7 @@ impl RecordingStream {
     /// You can create a [`RecordingInfo`] with [`crate::new_recording_info`];
     ///
     /// The [`RecordingInfo`] is immediately sent to the sink in the form of a
-    /// [`re_log_types::BeginRecordingMsg`].
+    /// [`re_log_types::SetRecordingInfo`].
     ///
     /// You can find sinks in [`crate::sink`].
     ///
@@ -476,7 +485,7 @@ fn forwarding_thread(
                         "setting recording info",
                     );
                     new_sink.send(
-                        re_log_types::BeginRecordingMsg {
+                        re_log_types::SetRecordingInfo {
                             row_id: re_log_types::RowId::random(),
                             info: info.clone(),
                         }
@@ -762,12 +771,35 @@ impl RecordingStream {
         Ok(())
     }
 
-    /// Swaps the underlying sink for a [`crate::sink::BufferedSink`].
+    /// Swaps the underlying sink for a [`crate::sink::BufferedSink`], making sure to first send a
+    /// `Goodbye` message down the sink to let the other end know of the graceful disconnection.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn disconnect(&self) {
+        let Some(this) = &*self.inner else {
+            re_log::warn_once!("Recording disabled - call to disconnect() ignored");
+            return;
+        };
+
+        // TODO(cmc): The `Goodbye` message is our last remaining message piece that is neither
+        // idempotent, stateless, nor order insensitive... so make sure to get all the pending
+        // tables into the pipe first.
+
+        // 1. Flush the batcher down the table channel
+        this.batcher.flush_blocking();
+
+        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
+        this.cmds_tx.send(Command::PopPendingTables).ok();
+
+        this.cmds_tx
+            .send(Command::RecordMsg(LogMsg::Goodbye(
+                this.info.recording_id.clone(),
+                RowId::random(),
+            )))
+            .ok();
+
         self.set_sink(Box::new(crate::sink::BufferedSink::new()));
     }
 }
@@ -958,22 +990,22 @@ mod tests {
         // First message should be a set_recording_info resulting from the original sink swap to
         // buffered mode.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         // Second message should be a set_recording_info resulting from the later sink swap from
         // buffered mode into in-memory mode.
         // This arrives _before_ the data itself since we're using manual flushing.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         // Third message is the batched table itself, which was sent as a result of the implicit
@@ -1023,22 +1055,22 @@ mod tests {
         // First message should be a set_recording_info resulting from the original sink swap to
         // buffered mode.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         // Second message should be a set_recording_info resulting from the later sink swap from
         // buffered mode into in-memory mode.
         // This arrives _before_ the data itself since we're using manual flushing.
         match msgs.pop().unwrap() {
-            LogMsg::BeginRecordingMsg(msg) => {
+            LogMsg::SetRecordingInfo(msg) => {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(rec_info, msg.info);
             }
-            _ => panic!("expected BeginRecordingMsg"),
+            _ => panic!("expected SetRecordingInfo"),
         }
 
         let mut rows = {
@@ -1103,11 +1135,11 @@ mod tests {
             // First message should be a set_recording_info resulting from the original sink swap
             // to in-memory mode.
             match msgs.pop().unwrap() {
-                LogMsg::BeginRecordingMsg(msg) => {
+                LogMsg::SetRecordingInfo(msg) => {
                     assert!(msg.row_id != RowId::ZERO);
                     similar_asserts::assert_eq!(rec_info, msg.info);
                 }
-                _ => panic!("expected BeginRecordingMsg"),
+                _ => panic!("expected SetRecordingInfo"),
             }
 
             // The underlying batcher is never flushing: there's nothing else.

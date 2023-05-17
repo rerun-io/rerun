@@ -6,6 +6,7 @@ import numpy.typing as npt
 from rerun import bindings
 from rerun.components.annotation import ClassIdArray
 from rerun.components.color import ColorRGBAArray
+from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.rect2d import Rect2DArray, RectFormat
@@ -20,6 +21,7 @@ from rerun.log import (
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "RectFormat",
@@ -37,8 +39,10 @@ def log_rect(
     color: Optional[Color] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log a 2D rectangle.
@@ -59,12 +63,21 @@ def log_rect(
         Optional class id for the rectangle.
         The class id provides color and label if not specified explicitly.
         See [rerun.log_annotation_context][]
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for rects is 10.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
          If true, the rect will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if np.any(rect):  # type: ignore[arg-type]
         rects = np.asarray([rect], dtype="float32")
@@ -88,16 +101,29 @@ def log_rect(
         class_ids = _normalize_ids([class_id])
         instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(
+            entity_path,
+            components=splats,
+            timeless=timeless,
+            recording=recording,
+        )
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(
+            entity_path,
+            components=instanced,
+            timeless=timeless,
+            recording=recording,
+        )
 
 
 @log_decorator
@@ -110,8 +136,10 @@ def log_rects(
     colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log multiple 2D rectangles.
@@ -146,12 +174,21 @@ def log_rects(
         Optional class ids for the rectangles.
         The class id provides colors and labels if not specified explicitly.
         See [rerun.log_annotation_context][]
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for rects is 10.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
             If true, the rects will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     # Treat None the same as []
     if np.any(rects):  # type: ignore[arg-type]
@@ -193,12 +230,25 @@ def log_rects(
         is_splat = len(class_ids) == 1
         comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
+    if draw_order is not None:
+        comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+
     if ext:
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
 
     if comps[1]:
         comps[1]["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=comps[1], timeless=timeless)
+        bindings.log_arrow_msg(
+            entity_path,
+            components=comps[1],
+            timeless=timeless,
+            recording=recording,
+        )
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
-    bindings.log_arrow_msg(entity_path, components=comps[0], timeless=timeless)
+    bindings.log_arrow_msg(
+        entity_path,
+        components=comps[0],
+        timeless=timeless,
+        recording=recording,
+    )

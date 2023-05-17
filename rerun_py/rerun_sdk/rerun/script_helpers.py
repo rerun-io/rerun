@@ -21,6 +21,7 @@ rr.script_teardown(args)
 from argparse import ArgumentParser, Namespace
 
 import rerun as rr
+from rerun.recording_stream import RecordingStream
 
 
 def script_add_args(parser: ArgumentParser) -> None:
@@ -53,7 +54,7 @@ def script_add_args(parser: ArgumentParser) -> None:
 def script_setup(
     args: Namespace,
     application_id: str,
-) -> None:
+) -> RecordingStream:
     """
     Run common Rerun script setup actions. Connect to the viewer if necessary.
 
@@ -65,19 +66,28 @@ def script_setup(
         The application ID to use for the viewer.
 
     """
-    rr.init(application_id=application_id, default_enabled=True, strict=True)
+    rr.init(
+        application_id=application_id,
+        default_enabled=True,
+        strict=True,
+    )
 
+    rec: RecordingStream = rr.get_global_data_recording()  # type: ignore[assignment]
+
+    # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
     if args.serve:
-        rr.serve()
+        rec.serve()  # type: ignore[attr-defined]
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rr.connect(args.addr)
+        rec.connect(args.addr)  # type: ignore[attr-defined]
     elif args.save is not None:
-        rr.save(args.save)
+        rec.save(args.save)  # type: ignore[attr-defined]
     elif not args.headless:
-        rr.spawn()
+        rec.spawn()  # type: ignore[attr-defined]
+
+    return rec
 
 
 def script_teardown(args: Namespace) -> None:

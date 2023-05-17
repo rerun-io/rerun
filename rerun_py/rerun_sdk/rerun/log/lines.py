@@ -6,12 +6,14 @@ from deprecated import deprecated
 
 from rerun import bindings
 from rerun.components.color import ColorRGBAArray
+from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
 from rerun.components.radius import RadiusArray
 from rerun.log import Color, _normalize_colors, _normalize_radii
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "log_path",
@@ -29,8 +31,11 @@ def log_path(
     color: Optional[Color] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
-    log_line_strip(entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless)
+    log_line_strip(
+        entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless, recording=recording
+    )
 
 
 @log_decorator
@@ -40,8 +45,10 @@ def log_line_strip(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Color] = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     r"""
     Log a line strip through 2D or 3D space.
@@ -66,12 +73,21 @@ def log_line_strip(
         Optional width of the line.
     color:
         Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for lines is 20.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the path will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if positions is not None:
         positions = np.require(positions, dtype="float32")
@@ -96,16 +112,19 @@ def log_line_strip(
         radii = _normalize_radii([stroke_width / 2])
         instanced["rerun.radius"] = RadiusArray.from_numpy(radii)
 
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -115,8 +134,10 @@ def log_line_segments(
     *,
     stroke_width: Optional[float] = None,
     color: Optional[Color] = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     r"""
     Log many 2D or 3D line segments.
@@ -140,12 +161,21 @@ def log_line_segments(
         Optional width of the line.
     color:
         Optional RGB or RGBA in sRGB gamma-space as either 0-1 floats or 0-255 integers, with separate alpha.
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for lines is 20.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
         If true, the line segments will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    recording = RecordingStream.to_native(recording)
 
     if positions is None:
         positions = np.require([], dtype="float32")
@@ -182,13 +212,16 @@ def log_line_segments(
         radii = _normalize_radii([stroke_width / 2])
         splats["rerun.radius"] = RadiusArray.from_numpy(radii)
 
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
     if splats:
         splats["rerun.instance_key"] = InstanceArray.splat()
-        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=splats, timeless=timeless, recording=recording)
 
     # Always the primary component last so range-based queries will include the other data. See(#1215)
     if instanced:
-        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+        bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)

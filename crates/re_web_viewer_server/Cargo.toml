@@ -56,11 +56,14 @@ tokio = { workspace = true, default-features = false, features = [
   "rt-multi-thread",
 ] }
 
+# Only needed for for main.rs:
+clap = { workspace = true, features = ["derive"] }
+webbrowser = "0.8.3"
+
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
 
 
 [build-dependencies]
-glob = "0.3.0"
-cargo_metadata = "0.15"
+re_build_build_info.workspace = true
 re_build_web_viewer.workspace = true

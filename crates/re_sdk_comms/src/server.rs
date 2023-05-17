@@ -156,7 +156,7 @@ async fn run_client(
         congestion_manager.register_latency(tx.latency_sec());
 
         for msg in re_log_encoding::decoder::decode_bytes(&packet)? {
-            if matches!(msg, LogMsg::Goodbye(_)) {
+            if matches!(msg, LogMsg::Goodbye(_, _)) {
                 re_log::debug!("Received goodbye message.");
                 tx.send(msg)?;
                 return Ok(());
@@ -210,7 +210,7 @@ impl CongestionManager {
         #[allow(clippy::match_same_arms)]
         match msg {
             // we don't want to drop any of these
-            LogMsg::BeginRecordingMsg(_) | LogMsg::EntityPathOpMsg(_, _) | LogMsg::Goodbye(_) => {
+            LogMsg::SetRecordingInfo(_) | LogMsg::EntityPathOpMsg(_, _) | LogMsg::Goodbye(_, _) => {
                 true
             }
 

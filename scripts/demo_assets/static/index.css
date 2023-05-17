@@ -1,0 +1,246 @@
+html {
+  /* Remove touch delay: */
+  touch-action: manipulation;
+}
+
+body {
+  /* Light mode background color for what is not covered by the egui canvas,
+      or where the egui canvas is translucent. */
+  background: #909090;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    /* Dark mode background color for what is not covered by the egui canvas,
+          or where the egui canvas is translucent. */
+    background: #404040;
+  }
+}
+
+/* Allow canvas to fill entire web page: */
+html,
+body {
+  overflow: hidden;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100%;
+  width: 100%;
+}
+
+/* Position canvas in center-top: */
+canvas {
+  margin-right: auto;
+  margin-left: auto;
+  display: block;
+  position: absolute;
+  top: 0%;
+  left: 50%;
+  transform: translate(-50%, 0%);
+}
+
+* {
+  font-family: "Inter", sans-serif;
+  color: #f0f0f0;
+}
+
+.header {
+  z-index: 1000;
+  position: absolute;
+  transform: translate(-50%, 0);
+  left: 50%;
+  height: 44px;
+
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+.header:not(.visible) {
+  display: none;
+}
+
+.examples {
+  position: relative;
+  top: 11px;
+}
+
+.example-description {
+  margin-top: 6px;
+  height: 40px;
+  border: none;
+  border-radius: 33%;
+}
+.example-description:hover > .example-description-body {
+  display: flex;
+}
+.example-description:hover > .example-description-icon {
+  background: #404040;
+  border: none;
+  border-radius: 50%;
+}
+.example-description-icon {
+  display: flex;
+  justify-content: center;
+  padding: 6px;
+  width: 20px;
+  height: 20px;
+  user-select: none;
+}
+.example-description-body {
+  display: none;
+
+  flex-direction: column;
+  gap: 3px;
+
+  position: absolute;
+  top: 100%;
+
+  background: #1c2123;
+  border: none;
+  border-radius: 6px;
+  padding: 12px;
+
+  width: 280px;
+}
+.example-description-body > p {
+  margin: 0;
+}
+
+a.icon-link {
+  margin: 5px;
+  padding: 5px;
+  width: 24.5px;
+  height: 24px;
+}
+a.icon-link:hover {
+  background: #404040;
+  border: none;
+  border-radius: 50%;
+}
+img.icon {
+  max-height: 100%;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown-title {
+  display: flex;
+  gap: 2px;
+  user-select: none;
+  cursor: pointer;
+
+  background: #141414;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 5px 2px 8px;
+
+  font-style: normal;
+  font-weight: 435;
+  font-size: 14px;
+  line-height: 16px;
+}
+.dropdown-title > img {
+  width: 16px;
+  height: 16px;
+}
+.dropdown-title:hover {
+  background: #404040;
+}
+.dropdown-title:active {
+  background: #404040;
+}
+
+.dropdown-body {
+  display: none;
+
+  flex-direction: column;
+  gap: 3px;
+
+  position: absolute;
+  top: 100%;
+  left: 0;
+
+  background: #1c2123;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+
+  user-select: none;
+
+  width: 92px;
+}
+.dropdown-body.visible {
+  display: flex;
+}
+
+.dropdown-entry {
+  padding: 2px 5px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+}
+.dropdown-entry:hover {
+  background: #404040;
+}
+
+a.flat-link {
+  text-decoration: none;
+}
+
+.centered {
+  margin-right: auto;
+  margin-left: auto;
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #f0f0f0;
+  font-size: 24px;
+  font-family: Ubuntu-Light, Helvetica, sans-serif;
+  text-align: center;
+}
+
+a.button {
+  display: inline-block;
+  background: white;
+  color: black;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------- */
+/* Loading animation from https://loading.io/css/ */
+.lds-dual-ring {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+}
+
+.lds-dual-ring:after {
+  content: " ";
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin: 0px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  border-color: #fff transparent #fff transparent;
+  animation: lds-dual-ring 1.2s linear infinite;
+}
+
+@keyframes lds-dual-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+

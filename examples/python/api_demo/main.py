@@ -13,10 +13,13 @@ import argparse
 import logging
 import math
 import os
+import threading
+from typing import Callable
 
 import cv2
 import numpy as np
 import rerun as rr
+from rerun import RecordingStream
 from scipy.spatial.transform import Rotation
 
 
@@ -72,6 +75,44 @@ def run_segmentation() -> None:
         timeless=False,
     )
     rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
+
+
+def run_2d_layering() -> None:
+    rr.set_time_seconds("sim_time", 1)
+
+    # Large gray background.
+    img = np.full((512, 512), 64, dtype="uint8")
+    rr.log_image("2d_layering/background", img, draw_order=0.0)
+
+    # Smaller gradient in the middle.
+    img = np.zeros((256, 256, 3), dtype="uint8")
+    img[:, :, 0] = np.linspace(0, 255, 256, dtype="uint8")
+    img[:, :, 1] = np.linspace(0, 255, 256, dtype="uint8")
+    img[:, :, 1] = img[:, :, 1].transpose()
+    rr.log_image("2d_layering/middle_gradient", img, draw_order=1.0)
+
+    # Slightly smaller blue in the middle, on the same layer as the previous.
+    img = np.full((192, 192, 3), (0, 0, 255), dtype="uint8")
+    rr.log_image("2d_layering/middle_blue", img, draw_order=1.0)
+
+    # Small white on top.
+    img = np.full((128, 128), 255, dtype="uint8")
+    rr.log_image("2d_layering/top", img, draw_order=2.0)
+
+    # Rectangle in between the top and the middle.
+    rr.log_rect("2d_layering/rect_between_top_and_middle", (64, 64, 256, 256), draw_order=1.5)
+
+    # Lines behind the rectangle.
+    rr.log_line_strip(
+        "2d_layering/lines_behind_rect", [(i * 20, i % 2 * 100 + 100) for i in range(20)], draw_order=1.25
+    )
+
+    # And some points in front of the rectangle.
+    rr.log_points(
+        "2d_layering/points_between_top_and_middle",
+        [(32.0 + int(i / 16) * 16.0, 64.0 + (i % 16) * 16.0) for i in range(16 * 16)],
+        draw_order=1.51,
+    )
 
 
 def run_2d_lines() -> None:
@@ -312,6 +353,11 @@ def run_image_tensors() -> None:
         rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
 
 
+def spawn_demo(demo: Callable[[], None], rec: RecordingStream) -> None:
+    with rec:
+        demo()
+
+
 def main() -> None:
     demos = {
         "2d_lines": run_2d_lines,
@@ -325,31 +371,68 @@ def main() -> None:
         "segmentation": run_segmentation,
         "text": run_text_logs,
         "transforms_3d": transforms_rigid_3d,
+        "2d_layering": run_2d_layering,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
         "--demo", type=str, default="most", help="What demo to run", choices=["most", "all"] + list(demos.keys())
     )
+    parser.add_argument(
+        "--multithread",
+        dest="multithread",
+        action="store_true",
+        help="If specified, each demo will be run from its own python thread",
+    )
+    parser.add_argument(
+        "--split-recordings",
+        dest="split_recordings",
+        action="store_true",
+        help="If specified, each demo will be its own recording",
+    )
 
     rr.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "api_demo")
+    if not args.split_recordings:
+        rec = rr.script_setup(args, "api_demo")
 
     if args.demo in ["most", "all"]:
         print(f"Running {args.demo} demos…")
+
+        threads = []
         for name, demo in demos.items():
             # Some demos are just a bit… too much
             if args.demo == "most" and name in ["image_tensors"]:
                 continue
 
-            logging.info(f"Starting {name}")
-            demo()
+            if args.split_recordings:
+                rec = rr.script_setup(args, f"api_demo/{name}")
+
+            if args.multithread:
+                t = threading.Thread(
+                    target=spawn_demo,
+                    args=(
+                        demo,
+                        rec,
+                    ),
+                )
+                t.start()
+                threads.append(t)
+            else:
+                logging.info(f"Starting {name}")
+                with rec:
+                    demo()
+
+        for t in threads:
+            t.join()
     else:
-        demo = demos[args.demo]
-        demo()
+        if args.split_recordings:
+            with rr.script_setup(args, f"api_demo/{args.demo}"):
+                demos[args.demo]()
+        else:
+            demos[args.demo]()
 
     rr.script_teardown(args)
 

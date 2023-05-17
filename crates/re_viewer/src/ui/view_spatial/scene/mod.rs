@@ -10,6 +10,7 @@ use re_log_types::{
 };
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_viewer_context::{auto_color, AnnotationMap, Annotations, SceneQuery, ViewerContext};
+use smallvec::smallvec;
 use smallvec::SmallVec;
 
 use crate::misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache};
@@ -41,6 +42,9 @@ pub struct Image {
 
     /// Textured rectangle for the renderer.
     pub textured_rect: TexturedRect,
+
+    /// Draw order value used.
+    pub draw_order: DrawOrder,
 }
 
 pub enum UiLabelTarget {
@@ -137,7 +141,7 @@ impl SceneSpatial {
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, SmallVec<[_; 4]>>::new();
         for (ent_path, _) in query.iter_entities() {
             if let Some(draw_order) = query_latest_single::<DrawOrder>(
-                &ctx.log_db.entity_db,
+                &ctx.log_db.entity_db.data_store,
                 ent_path,
                 &ctx.rec_cfg.time_ctrl.current_query(),
             ) {
@@ -149,54 +153,64 @@ impl SceneSpatial {
         }
 
         // Push in default draw orders. All of them using the none hash.
-        entities_per_draw_order
-            .entry(DrawOrder::DEFAULT_BOX2D)
-            .or_default()
-            .push(DrawOrderTarget::DefaultBox2D);
-        entities_per_draw_order
-            .entry(DrawOrder::DEFAULT_IMAGE)
-            .or_default()
-            .push(DrawOrderTarget::DefaultImage);
-        entities_per_draw_order
-            .entry(DrawOrder::DEFAULT_LINES2D)
-            .or_default()
-            .push(DrawOrderTarget::DefaultLines2D);
-        entities_per_draw_order
-            .entry(DrawOrder::DEFAULT_POINTS2D)
-            .or_default()
-            .push(DrawOrderTarget::DefaultPoints);
+        entities_per_draw_order.insert(
+            DrawOrder::DEFAULT_BOX2D,
+            smallvec![DrawOrderTarget::DefaultBox2D],
+        );
+        entities_per_draw_order.insert(
+            DrawOrder::DEFAULT_IMAGE,
+            smallvec![DrawOrderTarget::DefaultImage],
+        );
+        entities_per_draw_order.insert(
+            DrawOrder::DEFAULT_LINES2D,
+            smallvec![DrawOrderTarget::DefaultLines2D],
+        );
+        entities_per_draw_order.insert(
+            DrawOrder::DEFAULT_POINTS2D,
+            smallvec![DrawOrderTarget::DefaultPoints],
+        );
 
         // Determine re_renderer draw order from this.
+        //
+        // We give objects with the same `DrawOrder` still a different depth offset
+        // in order to avoid z-fighting artifacts when rendering in 3D.
+        // (for pure 2D this isn't necessary)
+        //
         // We want to be as tightly around 0 as possible.
         let mut offsets = EntityDepthOffsets::default();
-        let mut draw_order = -((entities_per_draw_order.len() / 2) as re_renderer::DepthOffset);
+        let num_entities_with_draw_order: usize = entities_per_draw_order
+            .values()
+            .map(|entities| entities.len())
+            .sum();
+        let mut draw_order = -((num_entities_with_draw_order / 2) as re_renderer::DepthOffset);
         offsets.per_entity = entities_per_draw_order
             .into_values()
-            .flat_map(move |targets| {
-                let pairs = targets
+            .flat_map(|targets| {
+                targets
                     .into_iter()
-                    .filter_map(|target| match target {
-                        DrawOrderTarget::Entity(entity) => Some((entity, draw_order)),
-                        DrawOrderTarget::DefaultBox2D => {
-                            offsets.box2d = draw_order;
-                            None
-                        }
-                        DrawOrderTarget::DefaultLines2D => {
-                            offsets.lines2d = draw_order;
-                            None
-                        }
-                        DrawOrderTarget::DefaultImage => {
-                            offsets.image = draw_order;
-                            None
-                        }
-                        DrawOrderTarget::DefaultPoints => {
-                            offsets.points = draw_order;
-                            None
+                    .filter_map(|target| {
+                        draw_order += 1;
+                        match target {
+                            DrawOrderTarget::Entity(entity) => Some((entity, draw_order)),
+                            DrawOrderTarget::DefaultBox2D => {
+                                offsets.box2d = draw_order;
+                                None
+                            }
+                            DrawOrderTarget::DefaultLines2D => {
+                                offsets.lines2d = draw_order;
+                                None
+                            }
+                            DrawOrderTarget::DefaultImage => {
+                                offsets.image = draw_order;
+                                None
+                            }
+                            DrawOrderTarget::DefaultPoints => {
+                                offsets.points = draw_order;
+                                None
+                            }
                         }
                     })
-                    .collect::<SmallVec<[_; 4]>>();
-                draw_order += 1;
-                pairs
+                    .collect::<SmallVec<[_; 4]>>()
             })
             .collect();
 

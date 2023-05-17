@@ -62,6 +62,12 @@ slotmap::new_key_type! {
     pub struct DataBlueprintGroupHandle;
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NeedsRepaint {
+    Yes,
+    No,
+}
+
 // ---------------------------------------------------------------------------
 
 /// Profiling macro for feature "puffin"

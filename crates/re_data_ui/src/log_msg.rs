@@ -1,6 +1,4 @@
-use re_log_types::{
-    ArrowMsg, BeginRecordingMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo,
-};
+use re_log_types::{ArrowMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo, SetRecordingInfo};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -15,17 +13,17 @@ impl DataUi for LogMsg {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::SetRecordingInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::EntityPathOpMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::Goodbye(_) => {
+            LogMsg::Goodbye(_, _) => {
                 ui.label("Goodbye");
             }
         }
     }
 }
 
-impl DataUi for BeginRecordingMsg {
+impl DataUi for SetRecordingInfo {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -33,8 +31,8 @@ impl DataUi for BeginRecordingMsg {
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        ui.code("BeginRecordingMsg");
-        let BeginRecordingMsg { row_id: _, info } = self;
+        ui.code("SetRecordingInfo");
+        let SetRecordingInfo { row_id: _, info } = self;
         let RecordingInfo {
             application_id,
             recording_id,

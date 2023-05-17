@@ -53,7 +53,7 @@ mod web_event_listener {
     /// var rrd = new Uint8Array(...); // Get an RRD from somewhere
     /// window.postMessage(rrd, "*")
     /// ```
-    pub fn stream_rrd_from_event_listener(on_msg: Arc<dyn Fn(LogMsg) + Send>) {
+    pub fn stream_rrd_from_event_listener(mut on_msg: Option<Arc<dyn Fn(LogMsg) + Send>>) {
         let window = web_sys::window().expect("no global `window` exists");
         let closure =
             Closure::wrap(Box::new(
@@ -62,7 +62,14 @@ mod web_event_listener {
                         let uint8_array = Uint8Array::new(&message_event.data());
                         let result: Vec<u8> = uint8_array.to_vec();
 
-                        crate::stream_rrd_from_http::decode_rrd(result, on_msg.clone());
+                        // On the first incoming message_event, take the on_msg callback
+                        // so that the channel drops dropped when we are done. This is
+                        // necessary to allow the viewer to know that no more data is coming.
+                        // TODO(jleibs): In live-streaming mode we don't want to do this and
+                        // will instead want to clone the arc.
+                        if let Some(on_msg) = on_msg.take() {
+                            crate::stream_rrd_from_http::decode_rrd(result, on_msg);
+                        }
                     }
                     Err(js_val) => {
                         re_log::error!("Incoming event was not a MessageEvent. {:?}", js_val);

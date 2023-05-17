@@ -8,6 +8,7 @@ import numpy.typing as npt
 
 from rerun import bindings
 from rerun.log.log_decorator import log_decorator
+from rerun.recording_stream import RecordingStream
 
 __all__ = [
     "MeshFormat",
@@ -39,18 +40,25 @@ class ImageFormat(Enum):
     JPEG = "jpeg"
     """JPEG format."""
 
+    PNG = "png"
+    """PNG format."""
+
 
 @log_decorator
 def log_mesh_file(
     entity_path: str,
     mesh_format: MeshFormat,
-    mesh_file: bytes,
     *,
+    mesh_bytes: Optional[bytes] = None,
+    mesh_path: Optional[Path] = None,
     transform: Optional[npt.ArrayLike] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
+
+    You must pass either `mesh_bytes` or `mesh_path`.
 
     You can also use [`rerun.log_mesh`] to log raw mesh data.
 
@@ -70,14 +78,22 @@ def log_mesh_file(
         Path to the mesh in the space hierarchy
     mesh_format:
         Format of the mesh file
-    mesh_file:
-        Contents of the mesh file
+    mesh_bytes:
+        Content of an mesh file, e.g. a `.glb`.
+    mesh_path:
+        Path to an mesh file, e.g. a `.glb`.
     transform:
         Optional 3x4 affine transform matrix applied to the mesh
     timeless:
         If true, the mesh will be timeless (default: False)
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     if transform is None:
         transform = np.empty(shape=(0, 0), dtype=np.float32)
@@ -85,7 +101,15 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
 
     # Mesh arrow handling happens inside the python bridge
-    bindings.log_mesh_file(entity_path, mesh_format.value, mesh_file, transform, timeless)
+    bindings.log_mesh_file(
+        entity_path,
+        mesh_format=mesh_format.value,
+        mesh_bytes=mesh_bytes,
+        mesh_path=mesh_path,
+        transform=transform,
+        timeless=timeless,
+        recording=recording,
+    )
 
 
 @log_decorator
@@ -96,15 +120,20 @@ def log_image_file(
     img_path: Optional[Path] = None,
     img_format: Optional[ImageFormat] = None,
     timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
 ) -> None:
     """
     Log an image file given its contents or path on disk.
 
-    Only JPEGs are supported right now.
-
     You must pass either `img_bytes` or `img_path`.
 
-    If no `img_format` is specified, we will try and guess it.
+    Only JPEGs and PNGs are supported right now.
+
+    JPEGs will be stored compressed, saving memory,
+    whilst PNGs will currently be decoded before they are logged.
+    This may change in the future.
+
+    If no `img_format` is specified, rerun will try to guess it.
 
     Parameters
     ----------
@@ -118,12 +147,23 @@ def log_image_file(
         Format of the image file.
     timeless:
         If true, the image will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+
+    recording = RecordingStream.to_native(recording)
 
     img_format = getattr(img_format, "value", None)
 
     # Image file arrow handling happens inside the python bridge
     bindings.log_image_file(
-        entity_path, img_bytes=img_bytes, img_path=img_path, img_format=img_format, timeless=timeless
+        entity_path,
+        img_bytes=img_bytes,
+        img_path=img_path,
+        img_format=img_format,
+        timeless=timeless,
+        recording=recording,
     )
