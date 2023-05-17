@@ -21,8 +21,7 @@ use crate::{server_url, RerunServerError, RerunServerPort};
 /// Websocket host for relaying [`LogMsg`]s to a web viewer.
 pub struct RerunServer {
     listener: TcpListener,
-    bind_ip: String,
-    port: RerunServerPort,
+    local_addr: std::net::SocketAddr,
 }
 
 impl RerunServer {
@@ -38,18 +37,17 @@ impl RerunServer {
             .await
             .map_err(|err| RerunServerError::BindFailed(port, err))?;
 
-        let port = RerunServerPort(listener.local_addr()?.port());
+        let slf = Self {
+            local_addr: listener.local_addr()?,
+            listener,
+        };
 
         re_log::info!(
             "Listening for websocket traffic on {}. Connect with a Rerun Web Viewer.",
-            listener.local_addr()?
+            slf.server_url()
         );
 
-        Ok(Self {
-            listener,
-            bind_ip,
-            port,
-        })
+        Ok(slf)
     }
 
     /// Accept new connections until we get a message on `shutdown_rx`
@@ -80,8 +78,14 @@ impl RerunServer {
         }
     }
 
+    /// Get the local socket addr where the HTTP server is listening
+    pub fn local_addr(&self) -> std::net::SocketAddr {
+        self.local_addr
+    }
+
+    /// Contains the `ws://` or `wss://` prefix.
     pub fn server_url(&self) -> String {
-        server_url(&self.bind_ip, self.port)
+        server_url(&self.local_addr)
     }
 }
 
@@ -89,14 +93,13 @@ impl RerunServer {
 ///
 /// When dropped, the server will be shut down.
 pub struct RerunServerHandle {
-    bind_ip: String,
-    port: RerunServerPort,
+    local_addr: std::net::SocketAddr,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
 impl Drop for RerunServerHandle {
     fn drop(&mut self) {
-        re_log::info!("Shutting down Rerun server on port {}.", self.port);
+        re_log::info!("Shutting down Rerun server on {}", self.server_url());
         self.shutdown_tx.send(()).ok();
     }
 }
@@ -118,29 +121,28 @@ impl RerunServerHandle {
 
         let rt = tokio::runtime::Handle::current();
 
-        let bind_ip_clone = bind_ip.clone();
         let ws_server = rt.block_on(tokio::spawn(async move {
-            RerunServer::new(bind_ip_clone, requested_port).await
+            RerunServer::new(bind_ip, requested_port).await
         }))??;
 
-        let port = ws_server.port;
+        let local_addr = ws_server.local_addr;
 
         tokio::spawn(async move { ws_server.listen(rerun_rx, shutdown_rx).await });
 
         Ok(Self {
-            bind_ip,
-            port,
+            local_addr,
             shutdown_tx,
         })
     }
 
-    /// Get the port where the websocket server is listening
-    pub fn port(&self) -> RerunServerPort {
-        self.port
+    /// Get the local socket addr where the HTTP server is listening
+    pub fn local_addr(&self) -> std::net::SocketAddr {
+        self.local_addr
     }
 
+    /// Contains the `ws://` or `wss://` prefix.
     pub fn server_url(&self) -> String {
-        server_url(&self.bind_ip, self.port)
+        server_url(&self.local_addr)
     }
 }
 

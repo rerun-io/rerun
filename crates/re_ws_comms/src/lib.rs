@@ -76,8 +76,8 @@ impl FromStr for RerunServerPort {
     }
 }
 
-pub fn server_url(hostname: &str, port: RerunServerPort) -> String {
-    format!("{PROTOCOL}://{hostname}:{port}")
+pub fn server_url(local_addr: &std::net::SocketAddr) -> String {
+    format!("{PROTOCOL}://{local_addr}")
 }
 
 const PREFIX: [u8; 4] = *b"RR00";

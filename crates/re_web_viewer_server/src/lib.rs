@@ -247,8 +247,13 @@ impl WebViewerServer {
         Ok(())
     }
 
-    pub fn port(&self) -> WebViewerServerPort {
-        WebViewerServerPort(self.server.local_addr().port())
+    pub fn local_addr(&self) -> std::net::SocketAddr {
+        self.server.local_addr()
+    }
+
+    /// Includes `http://` prefix
+    pub fn server_url(&self) -> String {
+        format!("http://{}", self.local_addr())
     }
 }
 
@@ -256,13 +261,13 @@ impl WebViewerServer {
 ///
 /// When dropped, the server will be shut down.
 pub struct WebViewerServerHandle {
-    port: WebViewerServerPort,
+    local_addr: std::net::SocketAddr,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
 impl Drop for WebViewerServerHandle {
     fn drop(&mut self) {
-        re_log::info!("Shutting down web server on port {}.", self.port);
+        re_log::info!("Shutting down web server on {}", self.server_url());
         self.shutdown_tx.send(()).ok();
     }
 }
@@ -282,17 +287,27 @@ impl WebViewerServerHandle {
 
         let web_server = WebViewerServer::new(bind_ip, requested_port)?;
 
-        let port = web_server.port();
+        let local_addr = web_server.local_addr();
 
         tokio::spawn(async move { web_server.serve(shutdown_rx).await });
 
-        re_log::info!("Started web server on port {}.", port);
+        let slf = Self {
+            local_addr,
+            shutdown_tx,
+        };
 
-        Ok(Self { port, shutdown_tx })
+        re_log::info!("Started web server on {}", slf.server_url());
+
+        Ok(slf)
     }
 
-    /// Get the port where the HTTP server is listening
-    pub fn port(&self) -> WebViewerServerPort {
-        self.port
+    /// Get the local socket addr where the HTTP server is listening
+    pub fn local_addr(&self) -> std::net::SocketAddr {
+        self.local_addr
+    }
+
+    /// Includes `http://` prefix
+    pub fn server_url(&self) -> String {
+        format!("http://{}", self.local_addr)
     }
 }

@@ -29,9 +29,9 @@ impl WebViewerSink {
         let rerun_server = RerunServerHandle::new(rerun_rx, bind_ip.to_owned(), ws_port)?;
         let webviewer_server = WebViewerServerHandle::new(bind_ip, web_port)?;
 
-        let web_port = webviewer_server.port();
-        let server_url = rerun_server.server_url();
-        let viewer_url = format!("http://{bind_ip}:{web_port}?url={server_url}");
+        let http_web_viewer_url = webviewer_server.server_url();
+        let ws_server_url = rerun_server.server_url();
+        let viewer_url = format!("{http_web_viewer_url}?url={ws_server_url}");
 
         re_log::info!("Web server is running - view it at {viewer_url}");
         if open_browser {
@@ -62,12 +62,13 @@ pub async fn host_web_viewer(
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<()> {
     let web_server = re_web_viewer_server::WebViewerServer::new(&bind_ip, web_port)?;
-    let port = web_server.port();
+    let http_web_viewer_url = web_server.server_url();
     let web_server_handle = web_server.serve(shutdown_rx);
 
-    let viewer_url = format!("http://{bind_ip}:{port}?url={source_url}");
+    let viewer_url = format!("{http_web_viewer_url}?url={source_url}");
 
     re_log::info!("Web server is running - view it at {viewer_url}");
+
     if open_browser {
         webbrowser::open(&viewer_url).ok();
     }

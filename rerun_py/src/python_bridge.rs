@@ -1161,7 +1161,7 @@ fn version() -> String {
 fn get_app_url() -> String {
     #[cfg(feature = "web_viewer")]
     if let Some(hosted_assets) = &*global_web_viewer_server() {
-        return format!("http://localhost:{}", hosted_assets.port());
+        return hosted_assets.server_url();
     }
 
     let build_info = re_build_info::build_info!();
