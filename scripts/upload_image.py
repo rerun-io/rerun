@@ -4,14 +4,16 @@
 Upload an image to Google Cloud.
 
 To use this:
+- `pip install -r scripts/requirements-scripts.txt`
 - Install the Google Cloud CLI (https://cloud.google.com/storage/docs/gsutil_install)
 - Set up credentials (https://cloud.google.com/storage/docs/gsutil_install#authenticate)
 """
 
 import argparse
 import hashlib
-import os
-import subprocess
+import mimetypes
+
+from google.cloud import storage
 
 
 def content_hash(path: str) -> str:
@@ -26,12 +28,19 @@ def content_hash(path: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Upload an image.")
-    parser.add_argument("file", type=str, help="Path to the image.")
+    parser.add_argument("path", type=str, help="Path to the image.")
     args = parser.parse_args()
 
-    object_name = content_hash(args.file) + f"_{os.path.basename(args.file)}"
+    hash = content_hash(args.path)
+    object_name = f"{hash}_{args.path}"
 
-    subprocess.check_output(["gsutil", "cp", args.file, f"gs://rerun-static-img/{object_name}"])
+    gcs = storage.Client()
+    bucket = gcs.bucket("rerun-static-img")
+    destination = bucket.blob(object_name)
+    destination.content_type, destination.content_encoding = mimetypes.guess_type(args.path)
+    with open(args.path, "rb") as f:
+        destination.upload_from_file(f)
+
     print(f"https://static.rerun.io/{object_name}")
 
 
