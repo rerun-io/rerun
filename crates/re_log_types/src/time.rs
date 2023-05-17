@@ -155,7 +155,7 @@ impl TryFrom<std::time::SystemTime> for Time {
     }
 }
 
-// On non-wasm32 builds, `instant::SystemTime` is a re-export of `std::time::SystemTime`,
+// On non-wasm32 builds, `web_time::SystemTime` is a re-export of `std::time::SystemTime`,
 // so it's covered by the above `TryFrom`.
 #[cfg(target_arch = "wasm32")]
 impl TryFrom<web_time::SystemTime> for Time {
