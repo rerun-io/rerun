@@ -770,7 +770,7 @@ fn space_view_ui(
 ) {
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {
-            ui.label(ctx.re_ui.warning_text("No time selected"));
+            ui.weak("No time selected");
         });
         return
     };
