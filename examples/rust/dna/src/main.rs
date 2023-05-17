@@ -94,7 +94,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
                 rerun::transform::RotationAxisAngle::new(
                     glam::Vec3::Z,
                     rerun::transform::Angle::Radians(time / 4.0 * TAU),
-                )
+                ),
             )])?
             .send(rec_stream)?;
     }
