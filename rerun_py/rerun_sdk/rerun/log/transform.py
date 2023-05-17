@@ -25,7 +25,7 @@ __all__ = [
     "log_view_coordinates",
     "log_unknown_transform",
     "log_rigid3",
-    "log_affine3",
+    "log_transform3d",
 ]
 
 
@@ -151,33 +151,44 @@ def log_unknown_transform(
 
 
 @log_decorator
-def log_affine3(
+def log_transform3d(
     entity_path: str,
+    transform: Union[TranslationAndMat3, TranslationRotationScale3D, RotationAxisAngle],
     *,
-    parent_from_child: Optional[Union[TranslationAndMat3, TranslationRotationScale3D, RotationAxisAngle]] = None,
-    child_from_parent: Optional[Union[TranslationAndMat3, TranslationRotationScale3D, RotationAxisAngle]] = None,
+    from_parent: bool = False,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
 ) -> None:
     """
-    Log an affine 3D transform between this entity and the parent.
+    Log an (affine) 3D transform between this entity and the parent.
 
-    Set either `parent_from_child` or `child_from_parent` to a tuple of `(translation_xyz, matrix3x3)`.
+    Use one of `TranslationAndMat3`, `TranslationRotationScale3D` or `RotationAxisAngle` to specify the transform.
 
-    The matrix is a 3x3 matrix column major matrix which can express rotation, scale and shear.
+    If `from_parent` is set to `True`, the transformation is from the parent to the child,
+    otherwise it is from the child to the parent.
 
-    Example
-    -------
+    Note that new transforms replace previous, i.e. if you call this function several times on the same path,
+    each new transform will replace the previous one and does not combine with it.
+
+    Examples
+    --------
     ```
     # log scale followed by translation along the Y-axis
-    rr.log_affine3(
-        "world/scaled_object",
-        parent_from_child=rr.TranslationRotationScale3D([0.0, 1.0, 0.0] scale=2),
+    rr.log_transform3d(
+        "world/scaled_and_translated_object",
+        rr.TranslationRotationScale3D([0.0, 1.0, 0.0] scale=2),
     )
+
     # log a rotation around the z axis.
-    rr.log_affine3(
-        "world/z_rotated_object",
-        parent_from_child=rr.RotationAxisAngle((0, 0, 1), degree=20),
+    rr.log_transform3d("world/z_rotated_object", rr.RotationAxisAngle((0, 0, 1), degree=20))
+
+    # log both at once
+    rr.log_transform3d("world/transformed",
+         rr.TranslationRotationScale3D(
+            translation=[0.0, 1.0, 0.0],
+            rotation=rr.RotationAxisAngle((0, 0, 1), degree=20)
+            scale=2
+        )
     )
     ```
 
@@ -185,10 +196,11 @@ def log_affine3(
     ----------
     entity_path:
         Path of the *child* space in the space hierarchy.
-    parent_from_child:
-        A tuple of `(translation_xyz, matrix3x3)` mapping points in the child space to the parent space.
-    child_from_parent:
-        the inverse of `parent_from_child`
+    transform:
+        One of `TranslationAndMat3`, `TranslationRotationScale3D` or `RotationAxisAngle`
+        to specify the transform between this entity and its parent.
+    from_parent:
+        If True, the transform is from the parent to the child, otherwise it is from the child to the parent.
     timeless:
         If true, the transform will be timeless (default: False).
     recording:
@@ -197,17 +209,6 @@ def log_affine3(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-
-    if parent_from_child and child_from_parent:
-        raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
-
-    if parent_from_child:
-        from_parent = False
-        transform = parent_from_child
-    elif child_from_parent:
-        from_parent = True
-        transform = child_from_parent
-
     if isinstance(transform, RotationAxisAngle):
         transform = TranslationRotationScale3D(rotation=transform)
 
@@ -215,7 +216,7 @@ def log_affine3(
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
 
-@deprecated(version="0.6.0", reason="Use log_affine3 instead and, if xyz was set, log_view_coordinates")
+@deprecated(version="0.6.0", reason="Use log_transform3d instead and, if xyz was set, use log_view_coordinates")
 @log_decorator
 def log_rigid3(
     entity_path: str,
@@ -275,20 +276,17 @@ def log_rigid3(
         raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
 
     if parent_from_child:
-        log_affine3(
+        log_transform3d(
             entity_path,
-            parent_from_child=TranslationRotationScale3D(
-                translation=parent_from_child[0], rotation=parent_from_child[1]
-            ),
+            TranslationRotationScale3D(translation=parent_from_child[0], rotation=parent_from_child[1]),
             timeless=timeless,
             recording=recording,
         )
     elif child_from_parent:
-        log_affine3(
+        log_transform3d(
             entity_path,
-            child_from_parent=TranslationRotationScale3D(
-                translation=child_from_parent[0], rotation=child_from_parent[1]
-            ),
+            TranslationRotationScale3D(translation=child_from_parent[0], rotation=child_from_parent[1]),
+            from_parent=True,
             timeless=timeless,
             recording=recording,
         )

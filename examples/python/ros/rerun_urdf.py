@@ -38,11 +38,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
         # Log the transform between this node and its direct parent (if it has one!).
         if parent:
             world_from_mesh = node_data[0]
-            rr.log_affine3(
+            rr.log_transform3d(
                 path,
-                parent_from_child=trimesh.transformations.translation_from_matrix(
-                    world_from_mesh, world_from_mesh[0:3, 0:3]
-                ),
+                trimesh.transformations.translation_from_matrix(world_from_mesh, world_from_mesh[0:3, 0:3]),
                 timeless=timeless,
             )
 

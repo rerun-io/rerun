@@ -141,7 +141,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
     def log_tf_as_affine3(self, path: str, time: Time) -> None:
         """
-        Helper to look up a transform with tf and log using `log_affine3`.
+        Helper to look up a transform with tf and log using `log_transform3d`.
 
         Note: we do the lookup on the client side instead of re-logging the raw transforms until
         Rerun has support for Derived Transforms [#1533](https://github.com/rerun-io/rerun/issues/1533)
@@ -158,7 +158,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
             t = tf.transform.translation
             q = tf.transform.rotation
-            rr.log_affine3(path, parent_from_child=rr.TranslationRotationScale3D([t.x, t.y, t.z], [q.x, q.y, q.z, q.w]))
+            rr.log_transform3d(path, rr.TranslationRotationScale3D([t.x, t.y, t.z], [q.x, q.y, q.z, q.w]))
         except TransformException as ex:
             print("Failed to get transform: {}".format(ex))
 

@@ -24,9 +24,9 @@ def log_car_data() -> None:
         rr.set_time_sequence("frame_nr", sample.frame_idx)
 
         # Log the camera pose:
-        rr.log_affine3(
+        rr.log_transform3d(
             "world/camera",
-            parent_from_child=rr.TranslationRotationScale3D(sample.camera.position, sample.camera.rotation_q),
+            rr.TranslationRotationScale3D(sample.camera.position, sample.camera.rotation_q),
         )
         rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 

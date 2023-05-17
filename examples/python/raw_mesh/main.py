@@ -40,9 +40,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> No
         if parent:
             # TODO(andreas): We should support 4x4 matrices directly
             world_from_mesh = node_data[0]
-            rr.log_affine3(
+            rr.log_transform3d(
                 path,
-                parent_from_child=rr.TranslationAndMat3(
+                rr.TranslationAndMat3(
                     trimesh.transformations.translation_from_matrix(world_from_mesh), world_from_mesh[0:3, 0:3]
                 ),
             )

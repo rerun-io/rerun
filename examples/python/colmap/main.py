@@ -144,10 +144,7 @@ def read_and_log_sparse_reconstruction(
         rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})
 
         # COLMAP's camera transform is "camera from world"
-        rr.log_affine3(
-            "camera",
-            child_from_parent=rr.TranslationRotationScale3D(image.tvec, quat_xyzw),
-        )
+        rr.log_transform3d("camera", rr.TranslationRotationScale3D(image.tvec, quat_xyzw), from_parent=True)
         rr.log_view_coordinates("camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log camera intrinsics

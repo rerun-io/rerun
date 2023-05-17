@@ -42,7 +42,7 @@ for i in range(400):
     colors = [[int(bounce_lerp(80, 230, times[n] * 2))] for n in range(NUM_POINTS)]
     rr.log_points("dna/structure/scaffolding/beads", beads, radii=0.06, colors=np.repeat(colors, 3, axis=-1))
 
-    rr.log_affine3(
+    rr.log_transform3d(
         "dna/structure",
-        parent_from_child=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau),
+        rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau),
     )
