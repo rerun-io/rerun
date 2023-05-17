@@ -1,5 +1,6 @@
 #import <../global_bindings.wgsl>
 #import <../types.wgsl>
+#import <../device_info.wgsl>
 
 fn apply_depth_offset(position: Vec4, offset: f32) -> Vec4 {
     // We're using inverse z, i.e. 0.0 is far, 1.0 is near.
@@ -16,7 +17,17 @@ fn apply_depth_offset(position: Vec4, offset: f32) -> Vec4 {
 
         // 1.0 * eps _should_ be enough, but in practice it causes Z-fighting for unknown reasons.
         // Maybe because of GPU interpolation of vertex coordinates?
-        let eps = 5.0 * f32eps;
+        var eps = 5.0 * f32eps;
+
+        if GLES {
+            // On GLES/WebGL, the NDC clipspace range for depth is from -1 to 1 and y is flipped.
+            // wgpu/Naga counteracts this by patching all vertex shader with:
+            // "gl_Position.yz = vec2(-gl_Position.y, gl_Position.z * 2.0 - gl_Position.w);",
+            // This is great, since it means that we can pretend depth is 0 to 1 as specified by WebGPU.
+            // But it completely messes up depth precision, in particular since we use
+            // an inverse depth projection that tries to make use of the high float precision closer to zero.
+            eps *= 1000.0;
+        }
 
         return Vec4(
             position.xy,

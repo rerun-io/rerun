@@ -201,6 +201,11 @@ impl RenderContext {
                     "@invariant @builtin(position)".to_owned(),
                     "@builtin(position)".to_owned(),
                 ));
+        } else if adapter.get_info().backend == wgpu::Backend::Gl {
+            gpu_resources
+                .shader_modules
+                .shader_text_workaround_replacements
+                .push(("GLES = false".to_owned(), "GLES = true".to_owned()));
         }
 
         RenderContext {
