@@ -95,7 +95,7 @@ results = []
 for event in ["crash-panic", "crash-signal"]:
     params = {
         "properties": json.dumps(properties),
-        "event": "crash-panic",
+        "event": event,
         "orderBy": '["-timestamp"]',
     }
     if args.date_after_included:
@@ -134,7 +134,9 @@ backtraces.sort(key=count_uniques, reverse=True)
 for backtrace, props in backtraces:
     n = count_uniques((backtrace, props))
     event = "panic" if props[0]["event"] == "crash-panic" else "signal"
-    file_line = props[0]["file_line"]
+    file_line = props[0].get("file_line")
+    signal = props[0].get("signal")
+    title = file_line if file_line is not None else signal
 
     timestamps = sorted(list(set([prop["timestamp"] for prop in props])))
     first_occurrence = timestamps[0]
@@ -145,10 +147,10 @@ for backtrace, props in backtraces:
     rerun_versions = sorted(list(set([prop["rerun_version"] for prop in props])))
 
     print(
-        f"## {n} {event} crash(es) in `{file_line}`\n"
+        f"## {n} {event} crash(es) in `{title}`\n"
         "\n"
-        f"- First occurrence: {first_occurrence}\n"
-        f"- Last occurrence: {last_occurrence}\n"
+        f"- First occurrence: `{first_occurrence}`\n"
+        f"- Last occurrence: `{last_occurrence}`\n"
         f"- Affected Rust versions: `{rust_versions}`\n"
         f"- Affected Rerun versions: `{rerun_versions}`\n"
         f"- Affected Targets: `{targets}`\n"
