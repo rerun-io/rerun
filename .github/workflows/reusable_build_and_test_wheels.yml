@@ -173,7 +173,7 @@ jobs:
       - name: Install wasm32 and wasm-bindgen-cli for building the web-viewer Wasm on windows
         if: inputs.platform == 'windows'
         shell: bash
-        run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.84
+        run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.86
 
       # The last step of setup_web.sh, for Windows.
       # Since 'winget' is not available within the GitHub runner, we download the package directly:
