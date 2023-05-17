@@ -73,8 +73,8 @@ pub fn export_env_vars() {
         rerun_if_changed(&head_path); // Track changes to branch
         if let Ok(head) = std::fs::read_to_string(&head_path) {
             if let Some(git_file) = head.strip_prefix("ref: ") {
-                if let Ok(_path) = git_path(git_file) {
-                    //rerun_if_changed(&path); // Track changes to commit hash
+                if let Ok(path) = git_path(git_file) {
+                    rerun_if_changed(&path); // Track changes to commit hash
                 }
             }
         }
