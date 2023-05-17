@@ -103,12 +103,16 @@ def run_2d_layering() -> None:
     rr.log_rect("2d_layering/rect_between_top_and_middle", (64, 64, 256, 256), draw_order=1.5)
 
     # Lines behind the rectangle.
-    rr.log_line_strip("2d_layering/lines_behind_rect", [(i * 20, i % 2 * 100 + 100) for i in range(20)], draw_order=1.25)
+    rr.log_line_strip(
+        "2d_layering/lines_behind_rect", [(i * 20, i % 2 * 100 + 100) for i in range(20)], draw_order=1.25
+    )
 
     # And some points in front of the rectangle.
-    rr.log_points("2d_layering/points_between_top_and_middle",
-                    [(32.0 + int(i / 16) * 16.0, 64.0 + (i % 16) * 16.0) for i in range(16 * 16)],
-                    draw_order=1.51)
+    rr.log_points(
+        "2d_layering/points_between_top_and_middle",
+        [(32.0 + int(i / 16) * 16.0, 64.0 + (i % 16) * 16.0) for i in range(16 * 16)],
+        draw_order=1.51,
+    )
 
 
 def run_2d_lines() -> None:

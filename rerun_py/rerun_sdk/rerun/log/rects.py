@@ -231,7 +231,7 @@ def log_rects(
         comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
     if draw_order is not None:
-        comps["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+        comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
 
     if ext:
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)
