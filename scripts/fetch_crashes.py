@@ -117,15 +117,19 @@ backtraces = defaultdict(list)
 for res in results:
     res["properties"]["timestamp"] = res["timestamp"]
     res["properties"]["event"] = res["event"]
+    res["properties"]["user_id"] = res["distinct_id"]
     backtrace = res["properties"].pop("callstack").encode("utf-8").strip()
     backtraces[backtrace].append(res.pop("properties"))
 
+count_uniques = lambda backtrace: len(set([prop["user_id"] for prop in backtrace[1]]))
+
 backtraces = list(backtraces.items())
-backtraces.sort(key=(lambda x: len(x[1])), reverse=True)
+backtraces.sort(key=count_uniques, reverse=True)
 
 ## Generate reports
 
 for backtrace, props in backtraces:
+    n = count_uniques((backtrace, props))
     event = "panic" if props[0]["event"] == "crash-panic" else "signal"
     file_line = props[0]["file_line"]
 
@@ -138,7 +142,7 @@ for backtrace, props in backtraces:
     rerun_versions = sorted(list(set([prop["rerun_version"] for prop in props])))
 
     print(
-        f"## {len(props)} {event} crash(es) in `{file_line}`\n"
+        f"## {n} {event} crash(es) in `{file_line}`\n"
         "\n"
         f"- First occurrence: {first_occurrence}\n"
         f"- Last occurrence: {last_occurrence}\n"
