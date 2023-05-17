@@ -13,6 +13,7 @@ all = [
     "arrow",
     "box",
     "color",
+    "draw_order",
     "experimental",
     "label",
     "pinhole",

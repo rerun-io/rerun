@@ -80,12 +80,13 @@ pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 28] = [
+    static ref FIELDS: [Field; 29] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),
         <Box3D as Component>::field(),
         <ClassId as Component>::field(),
         <ColorRGBA as Component>::field(),
+        <DrawOrder as Component>::field(),
         <DisconnectedSpace as Component>::field(),
         <InstanceKey as Component>::field(),
         <KeypointId as Component>::field(),

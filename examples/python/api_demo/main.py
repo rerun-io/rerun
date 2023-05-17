@@ -75,6 +75,44 @@ def run_segmentation() -> None:
     rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
 
 
+def run_2d_layering() -> None:
+    rr.set_time_seconds("sim_time", 1)
+
+    # Large gray background.
+    img = np.full((512, 512), 64, dtype="uint8")
+    rr.log_image("2d_layering/background", img, draw_order=0.0)
+
+    # Smaller gradient in the middle.
+    img = np.zeros((256, 256, 3), dtype="uint8")
+    img[:, :, 0] = np.linspace(0, 255, 256, dtype="uint8")
+    img[:, :, 1] = np.linspace(0, 255, 256, dtype="uint8")
+    img[:, :, 1] = img[:, :, 1].transpose()
+    rr.log_image("2d_layering/middle_gradient", img, draw_order=1.0)
+
+    # Slightly smaller blue in the middle, on the same layer as the previous.
+    img = np.full((192, 192, 3), (0, 0, 255), dtype="uint8")
+    rr.log_image("2d_layering/middle_blue", img, draw_order=1.0)
+
+    # Small white on top.
+    img = np.full((128, 128), 255, dtype="uint8")
+    rr.log_image("2d_layering/top", img, draw_order=2.0)
+
+    # Rectangle in between the top and the middle.
+    rr.log_rect("2d_layering/rect_between_top_and_middle", (64, 64, 256, 256), draw_order=1.5)
+
+    # Lines behind the rectangle.
+    rr.log_line_strip(
+        "2d_layering/lines_behind_rect", [(i * 20, i % 2 * 100 + 100) for i in range(20)], draw_order=1.25
+    )
+
+    # And some points in front of the rectangle.
+    rr.log_points(
+        "2d_layering/points_between_top_and_middle",
+        [(32.0 + int(i / 16) * 16.0, 64.0 + (i % 16) * 16.0) for i in range(16 * 16)],
+        draw_order=1.51,
+    )
+
+
 def transform_test() -> None:
     rr.log_unknown_transform("transform_test/unknown", timeless=True)
     rr.log_affine3(
@@ -360,6 +398,7 @@ def main() -> None:
         "text": run_text_logs,
         "transforms_rigid_3d": transforms_rigid_3d,
         "transform_test": transform_test,
+        "2d_layering": run_2d_layering,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
