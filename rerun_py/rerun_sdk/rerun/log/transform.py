@@ -10,6 +10,7 @@ from deprecated import deprecated
 
 from rerun import bindings
 from rerun.components.disconnected_space import DisconnectedSpaceArray
+from rerun.components.quaternion import Quaternion
 from rerun.components.transform3d import (
     RotationAxisAngle,
     Transform3D,
@@ -276,16 +277,22 @@ def log_rigid3(
         raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
 
     if parent_from_child:
+        rotation = None
+        if parent_from_child[1] is not None:
+            rotation = Quaternion(parent_from_child[1])
         log_transform3d(
             entity_path,
-            TranslationRotationScale3D(translation=parent_from_child[0], rotation=parent_from_child[1]),
+            TranslationRotationScale3D(translation=parent_from_child[0], rotation=rotation),
             timeless=timeless,
             recording=recording,
         )
     elif child_from_parent:
+        rotation = None
+        if child_from_parent[1] is not None:
+            rotation = Quaternion(child_from_parent[1])
         log_transform3d(
             entity_path,
-            TranslationRotationScale3D(translation=child_from_parent[0], rotation=child_from_parent[1]),
+            TranslationRotationScale3D(translation=child_from_parent[0], rotation=rotation),
             from_parent=True,
             timeless=timeless,
             recording=recording,

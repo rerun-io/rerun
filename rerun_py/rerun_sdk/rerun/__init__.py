@@ -9,6 +9,7 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun import experimental
+from rerun.components.quaternion import Quaternion
 from rerun.components.transform3d import RotationAxisAngle, TranslationAndMat3, TranslationRotationScale3D
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
@@ -127,6 +128,7 @@ __all__ = [
     "TranslationAndMat3",
     "TranslationRotationScale3D",
     "RotationAxisAngle",
+    "Quaternion",
 ]
 
 

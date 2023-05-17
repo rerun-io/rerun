@@ -3,13 +3,22 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attr import dataclass
 
 from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
-__all__ = [
-    "QuaternionArray",
-    "QuaternionType",
-]
+__all__ = ["QuaternionArray", "QuaternionType", "Quaternion"]
+
+
+@dataclass
+class Quaternion:
+    """3D rotation expressed via a Quaternion."""
+
+    xyzw: npt.ArrayLike
+    """
+    Quaternion given as a 4-element array of floats in the order (x, y, z, w).
+    """
+    # TODO(andreas): Other representations.
 
 
 class QuaternionArray(pa.ExtensionArray):  # type: ignore[misc]

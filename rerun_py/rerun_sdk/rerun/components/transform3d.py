@@ -13,6 +13,7 @@ from rerun.components import (
     build_dense_union,
     union_discriminant_type,
 )
+from rerun.components.quaternion import Quaternion
 from rerun.log import _normalize_matrix3
 
 __all__ = [
@@ -67,8 +68,8 @@ class TranslationRotationScale3D:
     translation: Union[npt.ArrayLike, None] = None
     """3D translation vector, applied last."""
 
-    rotation: Union[npt.ArrayLike, RotationAxisAngle, None] = None
-    """3D rotation, represented as a (xyzw) quaternion or axis + angle, applied second."""
+    rotation: Union[Quaternion, RotationAxisAngle, None] = None
+    """3D rotation, represented as a quaternion or axis + angle, applied second."""
 
     scale: Union[npt.ArrayLike, float, None] = None
     """3D scaling either a 3D vector, scalar or None. Applied first."""
@@ -145,25 +146,25 @@ def build_struct_array_from_axis_angle_rotation(
 
 
 def build_union_array_from_rotation(
-    rotation: npt.ArrayLike | RotationAxisAngle | None, type: pa.DenseUnionType
+    rotation: Quaternion | RotationAxisAngle | None, type: pa.DenseUnionType
 ) -> pa.UnionArray:
     if rotation is None:
         rotation_discriminant = "Identity"
-        rotation = pa.array([False])
+        stored_rotation = pa.array([False])
     elif isinstance(rotation, RotationAxisAngle):
         rotation_discriminant = "AxisAngle"
         axis_angle_type = union_discriminant_type(type, rotation_discriminant)
-        rotation = build_struct_array_from_axis_angle_rotation(rotation, axis_angle_type)
-    else:
+        stored_rotation = build_struct_array_from_axis_angle_rotation(rotation, axis_angle_type)
+    elif isinstance(rotation, Quaternion):
         rotation_discriminant = "Quaternion"
-        rotation = np.array(rotation, dtype=np.float32).flatten()
-        if len(rotation) != 4:
-            raise ValueError(f"Quaternion must have 4 elements, got {len(rotation)}")
-        rotation = pa.FixedSizeListArray.from_arrays(
-            rotation, type=union_discriminant_type(type, rotation_discriminant)
+        np_rotation = np.array(rotation.xyzw, dtype=np.float32).flatten()
+        stored_rotation = pa.FixedSizeListArray.from_arrays(
+            np_rotation, type=union_discriminant_type(type, rotation_discriminant)
         )
+    else:
+        raise ValueError(f"Unknown 3d rotation representation: {rotation}")
 
-    return build_dense_union(type, rotation_discriminant, rotation)
+    return build_dense_union(type, rotation_discriminant, stored_rotation)
 
 
 def build_union_array_from_scale(scale: npt.ArrayLike | float | None, type: pa.DenseUnionType) -> pa.UnionArray:

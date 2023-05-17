@@ -123,7 +123,9 @@ def transform_test() -> None:
     rr.log_transform3d("transform_test/parent_from_child_mat3", rr.TranslationAndMat3((123, 456, 789)))
     rr.log_transform3d("transform_test/empty_translation_mat3", rr.TranslationAndMat3())
     rr.log_transform3d("transform_test/translation_only", rr.TranslationRotationScale3D((1, 2, 3)))
-    rr.log_transform3d("transform_test/quaternion_only", rr.TranslationRotationScale3D(rotation=(0, 0, 0, 1)))
+    rr.log_transform3d(
+        "transform_test/quaternion_only", rr.TranslationRotationScale3D(rotation=rr.Quaternion(xyzw=(0, 0, 0, 1)))
+    )
     rr.log_transform3d(
         "transform_test/axis_angle_degrees_only",
         rr.RotationAxisAngle((0, 1, 0), degrees=10),
