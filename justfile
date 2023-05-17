@@ -139,3 +139,6 @@ download-design-tokens:
 # Update the results of `insta` snapshot regression tests
 update-insta-tests:
     cargo test; cargo insta review
+
+upload *ARGS:
+    python3 "scripts/upload_image.py" {{ARGS}}

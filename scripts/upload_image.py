@@ -10,7 +10,6 @@ To use this:
 
 import argparse
 import hashlib
-import logging
 import os
 import subprocess
 
@@ -26,19 +25,14 @@ def content_hash(path: str) -> str:
 
 
 def main() -> None:
-    logging.getLogger().addHandler(logging.StreamHandler())
-    logging.getLogger().setLevel("INFO")
-
     parser = argparse.ArgumentParser(description="Upload an image.")
     parser.add_argument("file", type=str, help="Path to the image.")
-
-    args, unknown = parser.parse_known_args()
-    for arg in unknown:
-        logging.warning(f"unknown arg: {arg}")
+    args = parser.parse_args()
 
     object_name = content_hash(args.file) + f"_{os.path.basename(args.file)}"
 
     subprocess.check_output(["gsutil", "cp", args.file, f"gs://rerun-static-img/{object_name}"])
+    print(f"https://static.rerun.io/{object_name}")
 
 
 if __name__ == "__main__":
