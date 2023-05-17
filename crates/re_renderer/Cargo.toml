@@ -83,10 +83,10 @@ wgpu-core.workspace = true
 # For examples:
 [dev-dependencies]
 image = { workspace = true, default-features = false, features = ["png"] }
-instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 pollster = "0.3"
 rand = "0.8"
+web-time.workspace = true
 winit = "0.28.1"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 

@@ -6,6 +6,7 @@ import numpy.typing as npt
 from rerun import bindings
 from rerun.components.annotation import ClassIdArray
 from rerun.components.color import ColorRGBAArray
+from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.point import Point2DArray, Point3DArray
@@ -41,6 +42,7 @@ def log_point(
     label: Optional[str] = None,
     class_id: Optional[int] = None,
     keypoint_id: Optional[int] = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -81,6 +83,10 @@ def log_point(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for 2D points is 30.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -123,6 +129,9 @@ def log_point(
         class_ids = _normalize_ids([class_id])
         instanced["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
+
     if ext:
         _add_extension_components(instanced, splats, ext, None)
 
@@ -146,6 +155,7 @@ def log_points(
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -192,6 +202,10 @@ def log_points(
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
         See [rerun.log_annotation_context][]
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for 2D points is 30.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -259,6 +273,9 @@ def log_points(
     if len(keypoint_ids):
         is_splat = len(keypoint_ids) == 1
         comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+
+    if draw_order is not None:
+        comps[True]["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
 
     if ext:
         _add_extension_components(comps[0], comps[1], ext, identifiers_np)

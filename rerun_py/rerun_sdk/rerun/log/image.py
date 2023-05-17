@@ -21,6 +21,7 @@ def log_image(
     entity_path: str,
     image: Tensor,
     *,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -44,6 +45,10 @@ def log_image(
         Path to the image in the space hierarchy.
     image:
         A [Tensor][rerun.log.tensor.Tensor] representing the image to log.
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for images is -10.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -83,7 +88,7 @@ def log_image(
     if interpretable_as_image and num_non_empty_dims != len(shape):
         image = np.squeeze(image)
 
-    _log_tensor(entity_path, image, ext=ext, timeless=timeless, recording=recording)
+    _log_tensor(entity_path, image, draw_order=draw_order, ext=ext, timeless=timeless, recording=recording)
 
 
 @log_decorator
@@ -91,6 +96,7 @@ def log_depth_image(
     entity_path: str,
     image: Tensor,
     *,
+    draw_order: Optional[float] = None,
     meter: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
@@ -111,6 +117,10 @@ def log_depth_image(
         Path to the image in the space hierarchy.
     image:
         A [Tensor][rerun.log.tensor.Tensor] representing the depth image to log.
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for images is -10.0.
     meter:
         How long is a meter in the given dtype?
         For instance: with uint16, perhaps meter=1000 which would mean
@@ -151,6 +161,7 @@ def log_depth_image(
         _log_tensor(
             entity_path,
             image,
+            draw_order=draw_order,
             meter=meter,
             ext=ext,
             timeless=timeless,
@@ -164,6 +175,7 @@ def log_segmentation_image(
     entity_path: str,
     image: npt.ArrayLike,
     *,
+    draw_order: Optional[float] = None,
     ext: Optional[Dict[str, Any]] = None,
     timeless: bool = False,
     recording: Optional[RecordingStream] = None,
@@ -186,6 +198,10 @@ def log_segmentation_image(
         Path to the image in the space hierarchy.
     image:
         A [Tensor][rerun.log.tensor.Tensor] representing the segmentation image to log.
+    draw_order:
+        An optional floating point value that specifies the 2D drawing order.
+        Objects with higher values are drawn on top of those with lower values.
+        The default for images is -10.0.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
@@ -214,6 +230,7 @@ def log_segmentation_image(
         _log_tensor(
             entity_path,
             tensor=image,
+            draw_order=draw_order,
             ext=ext,
             timeless=timeless,
             recording=recording,
@@ -225,6 +242,7 @@ def log_segmentation_image(
         _log_tensor(
             entity_path,
             tensor=image,
+            draw_order=draw_order,
             meaning=bindings.TensorDataMeaning.ClassId,
             ext=ext,
             timeless=timeless,

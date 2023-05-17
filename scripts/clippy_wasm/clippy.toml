@@ -17,8 +17,8 @@ disallowed-methods = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
-  # Cannot spawn threads on wasm:
-  "std::thread::Builder",
+  { path = "std::thread::Builder", reason = "Cannot spawn threads on wasm" },
+  { path = "instant::SystemTime", reason = "Known bugs. Use web-time." },
 ]
 
 # Allow-list of words for markdown in dosctrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
