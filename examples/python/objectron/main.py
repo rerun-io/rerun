@@ -153,7 +153,7 @@ def log_camera(cam: ARCamera) -> None:
 
     rr.log_transform3d(
         "world/camera",
-        rr.TranslationRotationScale3D(translation, rot.as_quat()),
+        rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rot.as_quat())),
     )
     rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
     rr.log_pinhole(

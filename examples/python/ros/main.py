@@ -158,7 +158,9 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             tf = self.tf_buffer.lookup_transform(parent_frame, child_frame, time, timeout=Duration(seconds=0.1))
             t = tf.transform.translation
             q = tf.transform.rotation
-            rr.log_transform3d(path, rr.TranslationRotationScale3D([t.x, t.y, t.z], [q.x, q.y, q.z, q.w]))
+            rr.log_transform3d(
+                path, rr.TranslationRotationScale3D([t.x, t.y, t.z], rr.Quaternion([q.x, q.y, q.z, q.w]))
+            )
         except TransformException as ex:
             print("Failed to get transform: {}".format(ex))
 

@@ -290,7 +290,7 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, rr.TranslationRotatio
     translation = np.asarray([float(tokens[4]), float(tokens[5]), float(tokens[6])])
 
     # Create tuple in format log_transform3d expects
-    camera_from_world = rr.TranslationRotationScale3D(translation, rotation.as_quat())
+    camera_from_world = rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rotation.as_quat()))
 
     return (ts, camera_from_world)
 
