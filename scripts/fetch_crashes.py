@@ -130,8 +130,8 @@ for backtrace, props in backtraces:
     file_line = props[0]["file_line"]
 
     timestamps = sorted(list(set([prop["timestamp"] for prop in props])))
-    first_occurence = timestamps[0]
-    last_occurence = timestamps[-1]
+    first_occurrence = timestamps[0]
+    last_occurrence = timestamps[-1]
 
     targets = sorted(list(set([prop["target"] for prop in props])))
     rust_versions = sorted(list(set([prop["rust_version"] for prop in props])))
@@ -140,8 +140,8 @@ for backtrace, props in backtraces:
     print(
         f"## {len(props)} {event} crash(es) in `{file_line}`\n"
         "\n"
-        f"- First occurence: {first_occurence}\n"
-        f"- Last occurence: {last_occurence}\n"
+        f"- First occurrence: {first_occurrence}\n"
+        f"- Last occurrence: {last_occurrence}\n"
         f"- Affected Rust versions: `{rust_versions}`\n"
         f"- Affected Rerun versions: `{rerun_versions}`\n"
         f"- Affected Targets: `{targets}`\n"
