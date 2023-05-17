@@ -148,6 +148,6 @@ for backtrace, props in backtraces:
         "\n"
         "Backtrace:\n"
         "```\n"
-        f'   {backtrace.decode("utf-8")}'
+        f'   {backtrace.decode("utf-8")}\n'
         "```\n"
     )
