@@ -121,8 +121,10 @@ for res in results:
     backtrace = res["properties"].pop("callstack").encode("utf-8").strip()
     backtraces[backtrace].append(res.pop("properties"))
 
+
 def count_uniques(backtrace):
     return len(set([prop["user_id"] for prop in backtrace[1]]))
+
 
 backtraces = list(backtraces.items())
 backtraces.sort(key=count_uniques, reverse=True)
