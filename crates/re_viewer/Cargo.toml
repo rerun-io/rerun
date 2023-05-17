@@ -89,7 +89,6 @@ image = { workspace = true, default-features = false, features = [
   "jpeg",
   "png",
 ] }
-instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = { workspace = true }
 lazy_static.workspace = true
 macaw = { workspace = true, features = ["with_serde"] }
@@ -103,6 +102,7 @@ smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting"] }
 vec1 = "1.8"
+web-time.workspace = true
 wgpu.workspace = true
 
 # native dependencies:

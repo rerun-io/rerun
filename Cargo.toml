@@ -98,6 +98,7 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
+web-time = "0.2.0"
 wgpu = { version = "0.16" }
 wgpu-core = { version = "0.16" }
 
