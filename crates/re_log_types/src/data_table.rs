@@ -1366,7 +1366,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        51_550_064, // expected_num_bytes
+        56_530_064, // expected_num_bytes
     );
 
     // dense union (varying)
@@ -1390,7 +1390,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        51_540_064, // expected_num_bytes
+        56_520_064, // expected_num_bytes
     );
 
     // --- Sparse ---
@@ -1400,7 +1400,6 @@ fn data_table_sizes_unions() {
     #[arrow_field(type = "sparse")]
     enum SparseTransform {
         Unknown,
-        Affine3D(crate::component_types::Transform3DRepr),
         Pinhole(crate::component_types::Pinhole),
     }
 
@@ -1422,7 +1421,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        53_980_064, // expected_num_bytes
+        22_180_064, // expected_num_bytes
     );
 
     // sparse union (varying)
@@ -1430,13 +1429,6 @@ fn data_table_sizes_unions() {
         DataCell::from_native(
             [
                 SparseTransform::Unknown,
-                SparseTransform::Affine3D(
-                    crate::component_types::TranslationAndMat3 {
-                        translation: [10.0, 11.0, 12.0].into(),
-                        matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
-                    }
-                    .into(),
-                ),
                 SparseTransform::Pinhole(crate::component_types::Pinhole {
                     image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]]
                         .into(),
@@ -1446,6 +1438,6 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        53_990_064, // expected_num_bytes
+        22_180_064, // expected_num_bytes
     );
 }

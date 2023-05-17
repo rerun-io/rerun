@@ -85,8 +85,8 @@ pub mod components {
 /// Transform helpers, for use with [`components::Transform3D`].
 pub mod transform {
     pub use re_log_types::component_types::{
-        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3DRepr, TranslationAndMat3,
-        TranslationRotationScale3D,
+        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3DRepr, Translation3D,
+        TranslationAndMat3, TranslationRotationScale3D,
     };
 }
 

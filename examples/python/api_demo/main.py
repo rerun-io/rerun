@@ -114,7 +114,7 @@ def run_2d_layering() -> None:
 
 
 def transform_test() -> None:
-    rr.log_unknown_transform("transform_test/unknown", timeless=True)
+    rr.log_disconnected_space("transform_test/disconnected", timeless=True)
     rr.log_transform3d(
         "transform_test/child_from_parent_mat3",
         rr.TranslationAndMat3((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
@@ -123,24 +123,29 @@ def transform_test() -> None:
     rr.log_transform3d("transform_test/parent_from_child_mat3", rr.TranslationAndMat3((123, 456, 789)))
     rr.log_transform3d("transform_test/empty_translation_mat3", rr.TranslationAndMat3())
     rr.log_transform3d("transform_test/translation_only", rr.TranslationRotationScale3D((1, 2, 3)))
+
+    # Log translation only.
+    rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 1, 3)))
+
+    # Log scale along the x axis only.
+    rr.log_transform3d("transform_test/x_scaled", rr.Scale3D((3, 1, 1)))
+
+    # Log a rotation around the z axis.
+    rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((0, 0, 1), degrees=20))
+
+    # Log scale followed by translation along the Y-axis.
     rr.log_transform3d(
-        "transform_test/quaternion_only", rr.TranslationRotationScale3D(rotation=rr.Quaternion(xyzw=(0, 0, 0, 1)))
+        "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0.0, 1.0, 0.0], scale=2)
     )
+
+    # Log translation, rotation & scale all at once.
     rr.log_transform3d(
-        "transform_test/axis_angle_degrees_only",
-        rr.RotationAxisAngle((0, 1, 0), degrees=10),
-    )
-    rr.log_transform3d(
-        "transform_test/axis_angle_radians_only",
-        rr.RotationAxisAngle((0, 0, 1), radians=1),
-    )
-    rr.log_transform3d(
-        "transform_test/scale_uniform_only",
-        rr.TranslationRotationScale3D(scale=2),
-    )
-    rr.log_transform3d(
-        "transform_test/scale_vector",
-        rr.TranslationRotationScale3D(scale=(1, 2, 3)),
+        "transform_test/transformed",
+        rr.TranslationRotationScale3D(
+            translation=[0, 1, 5],
+            rotation=rr.RotationAxisAngle((0, 0, 1), degrees=20),
+            scale=2,
+        ),
     )
 
 

@@ -9,8 +9,14 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun import experimental
-from rerun.components.quaternion import Quaternion
-from rerun.components.transform3d import RotationAxisAngle, TranslationAndMat3, TranslationRotationScale3D
+from rerun.components.transform3d import (
+    Quaternion,
+    RotationAxisAngle,
+    Scale3D,
+    Translation3D,
+    TranslationAndMat3,
+    TranslationRotationScale3D,
+)
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
@@ -26,7 +32,13 @@ from rerun.log.rects import RectFormat, log_rect, log_rects
 from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import LoggingHandler, LogLevel, log_text_entry
-from rerun.log.transform import log_rigid3, log_transform3d, log_unknown_transform, log_view_coordinates
+from rerun.log.transform import (
+    log_disconnected_space,
+    log_rigid3,
+    log_transform3d,
+    log_unknown_transform,
+    log_view_coordinates,
+)
 from rerun.recording_stream import (
     RecordingStream,
     get_application_id,
@@ -83,18 +95,18 @@ __all__ = [
     "serve",
     "spawn",
     # log functions
-    "log_transform3d",
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
     "log_depth_image",
+    "log_disconnected_space",
     "log_extension_components",
-    "log_image",
     "log_image_file",
+    "log_image",
     "log_line_segments",
     "log_line_strip",
-    "log_mesh",
     "log_mesh_file",
+    "log_mesh",
     "log_meshes",
     "log_obb",
     "log_path",
@@ -108,6 +120,7 @@ __all__ = [
     "log_segmentation_image",
     "log_tensor",
     "log_text_entry",
+    "log_transform3d",
     "log_unknown_transform",
     "log_view_coordinates",
     # classes
@@ -125,9 +138,15 @@ __all__ = [
     "script_add_args",
     "script_setup",
     "script_teardown",
+    # Transform helpers
+    "RotationAxisAngle",
+    "Scale3D",
+    "Transform3D",
+    "Transform3DArray",
+    "Transform3DType",
+    "Translation3D",
     "TranslationAndMat3",
     "TranslationRotationScale3D",
-    "RotationAxisAngle",
     "Quaternion",
 ]
 

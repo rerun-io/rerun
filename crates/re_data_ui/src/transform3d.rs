@@ -1,6 +1,6 @@
 use re_log_types::component_types::{
-    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
-    TranslationAndMat3, TranslationRotationScale3D, Vec3D,
+    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr, Translation3D,
+    TranslationAndMat3, TranslationRotationScale3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
@@ -89,20 +89,18 @@ impl DataUi for TranslationRotationScale3D {
             .show(ui, |ui| {
                 // Unlike Rotation/Scale, we don't have a value that indicates that nothing was logged.
                 // We still skip zero translations though since they are typically not logged explicitly.
-                if !translation.eq(&Vec3D::ZERO) {
+                if let Translation3D::Vec3D(translation) = translation {
                     ui.label("translation");
                     translation.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();
                 }
 
-                // Skip identity rotations as they typically aren't logged explicitly.
                 if !matches!(rotation, Rotation3D::Identity) {
                     ui.label("rotation");
                     rotation.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();
                 }
 
-                // Skip unit scales as they typically aren't logged explicitly.
                 if !matches!(scale, Scale3D::Unit) {
                     ui.label("scale");
                     scale.data_ui(ctx, ui, verbosity, query);
@@ -190,7 +188,7 @@ impl DataUi for TranslationAndMat3 {
         egui::Grid::new("translation_rotation_scale")
             .num_columns(2)
             .show(ui, |ui| {
-                if !translation.eq(&Vec3D::ZERO) {
+                if let Translation3D::Vec3D(translation) = translation {
                     ui.label("translation");
                     translation.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();
