@@ -13,7 +13,8 @@ Optionally, you can filter out data older than a given timestamp:
 python scripts/fetch_crashes.py -v 0.5.0 -v 0.5.1 --after 2023-05-02T20:17:52 > crashes.md
 ```
 
-See also:
+See Also
+--------
 ```
 python scripts/fetch_crashes.py --help
 ```
@@ -135,7 +136,6 @@ for backtrace, props in backtraces:
     targets = sorted(list(set([prop["target"] for prop in props])))
     rust_versions = sorted(list(set([prop["rust_version"] for prop in props])))
     rerun_versions = sorted(list(set([prop["rerun_version"] for prop in props])))
-
 
     print(
         f"## {len(props)} {event} crash(es) in `{file_line}`\n"
