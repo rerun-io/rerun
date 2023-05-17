@@ -183,7 +183,9 @@ def build_union_array_from_rotation(
             np_rotation, type=union_discriminant_type(type, rotation_discriminant)
         )
     else:
-        raise ValueError(f"Unknown 3d rotation representation: {rotation}")
+        raise ValueError(
+            f"Unknown 3d rotation representation: {rotation}. " + "Expected `RotationAxisAngle`/`Quaternion` or `None`."
+        )
 
     return build_dense_union(type, rotation_discriminant, stored_rotation)
 
@@ -243,7 +245,10 @@ class Transform3DArray(pa.ExtensionArray):  # type: ignore[misc]
             repr_type = union_discriminant_type(transform_repr_union_type, discriminant_affine3d)
             transform_repr = build_struct_array_from_translation_rotation_scale(transform.transform, repr_type)
         else:
-            raise ValueError(f"Unknown transform 3d representation: {transform.transform}")
+            raise ValueError(
+                f"Unknown transform 3d representation: {transform.transform} "
+                + " Expected `TranslationAndMat3` or `TranslationRotationScale3D`."
+            )
 
         storage = pa.StructArray.from_arrays(
             [
