@@ -579,8 +579,6 @@ impl eframe::App for App {
             main_panel_frame.inner_margin = 1.0.into();
         }
 
-        //self.state.selected_blueprint_id.clone();
-
         let blueprint_snapshot =
             self.load_or_create_blueprint(active_blueprint_id.as_ref(), egui_ctx);
 
@@ -672,10 +670,15 @@ impl eframe::App for App {
             frame_start.elapsed().as_secs_f32(),
         );
 
-        // If this wasn't the default blueprint, save it back
+        // If there was a real active blueprint that came from the store, save the changes back.
         if let Some(blueprint_id) = active_blueprint_id {
             if let Some(blueprint_db) = self.log_dbs.get_mut(&blueprint_id) {
                 blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
+            } else {
+                // This shouldn't happen because we should have used `active_blueprint_id` to
+                // create this same blueprint in `load_or_create_blueprint`, but we couldn't
+                // keep it around for borrow-checker reasons.
+                re_log::warn_once!("Blueprint unexpectedly missing from store.");
             }
         }
     }
