@@ -9,4 +9,11 @@ requires = ["flit"]
 build-backend = "flit.buildapi"
 
 
-dependencies = ["depthai-sdk", "depthai", "numpy==1.24.*", "rerun_sdk", "ahrs", "websockets"]
+dependencies = [
+  "depthai-sdk",
+  "depthai",
+  "numpy==1.24.*",
+  "rerun_sdk",
+  "ahrs",
+  "websockets",
+]
