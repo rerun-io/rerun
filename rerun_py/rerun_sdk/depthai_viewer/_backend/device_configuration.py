@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import depthai as dai
 from depthai_sdk import Previews as QueueNames
@@ -90,7 +90,7 @@ class DepthConfiguration(BaseModel):
     lrc_threshold: int = 5  # 0..10
     extended_disparity: Optional[bool] = False
     subpixel_disparity: Optional[bool] = True
-    align: Optional[dai.CameraBoardSocket] = dai.CameraBoardSocket.RGB
+    align: Optional[dai.CameraBoardSocket] = dai.CameraBoardSocket.CENTER
     sigma: int = 0  # 0..65535
     # pointcloud: PointcloudConfiguration | None = None
     confidence: int = 230
@@ -103,6 +103,7 @@ class DepthConfiguration(BaseModel):
             v["median"] = getattr(dai.StereoDepthProperties.MedianFilter, v["median"])
         if v.get("align"):
             v["align"] = getattr(dai.CameraBoardSocket, v["align"])
+
         return super().__init__(**v)
 
     def to_runtime_controls(self) -> Dict:

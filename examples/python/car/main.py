@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from typing import Iterator, Tuple
 
 import cv2
+import depthai_viewer as viewer
 import numpy as np
 import numpy.typing as npt
-import depthai_viewer as viewer
 
 
 def log_car_data() -> None:

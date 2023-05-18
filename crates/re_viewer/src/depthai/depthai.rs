@@ -96,7 +96,7 @@ impl fmt::Debug for ColorCameraConfig {
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, EnumIter, Debug)]
 #[allow(non_camel_case_types)]
-pub enum BoardSocket {
+pub enum CameraBoardSocket {
     AUTO,
     RGB,
     LEFT,
@@ -112,9 +112,15 @@ pub enum BoardSocket {
     CAM_H,
 }
 
-impl Default for BoardSocket {
+impl Default for CameraBoardSocket {
     fn default() -> Self {
         Self::AUTO
+    }
+}
+
+impl CameraBoardSocket {
+    pub fn depth_align_options() -> Vec<Self> {
+        return vec![Self::RGB, Self::LEFT, Self::RIGHT];
     }
 }
 
@@ -122,7 +128,7 @@ impl Default for BoardSocket {
 pub struct MonoCameraConfig {
     pub fps: u8,
     pub resolution: MonoCameraResolution,
-    pub board_socket: BoardSocket,
+    pub board_socket: CameraBoardSocket,
     #[serde(rename = "xout")]
     pub stream_enabled: bool,
 }
@@ -132,7 +138,7 @@ impl Default for MonoCameraConfig {
         Self {
             fps: 30,
             resolution: MonoCameraResolution::THE_800_P,
-            board_socket: BoardSocket::AUTO,
+            board_socket: CameraBoardSocket::AUTO,
             stream_enabled: false,
         }
     }
@@ -194,7 +200,7 @@ pub struct DepthConfig {
     pub subpixel_disparity: bool,
     pub sigma: i64,
     pub confidence: i64,
-    pub align: BoardSocket,
+    pub align: CameraBoardSocket,
 }
 
 impl Default for DepthConfig {
@@ -207,7 +213,7 @@ impl Default for DepthConfig {
             subpixel_disparity: true,
             sigma: 0,
             confidence: 230,
-            align: BoardSocket::RGB,
+            align: CameraBoardSocket::RGB,
         }
     }
 }
@@ -215,6 +221,14 @@ impl Default for DepthConfig {
 impl DepthConfig {
     pub fn default_as_option() -> Option<Self> {
         Some(Self::default())
+    }
+
+    pub fn only_runtime_configs_differ(&self, other: &DepthConfig) -> bool {
+        self.lr_check == other.lr_check
+            && self.align == other.align
+            && self.extended_disparity == other.extended_disparity
+            && self.subpixel_disparity == other.subpixel_disparity
+            && self != other
     }
 }
 
@@ -228,6 +242,52 @@ pub struct DeviceConfig {
     #[serde(default = "DepthConfig::default_as_option")]
     pub depth: Option<DepthConfig>,
     pub ai_model: AiModel,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(non_camel_case_types)]
+pub enum CameraSensorType {
+    COLOR,
+    MONO,
+    THERMAL,
+    TOF,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct CameraSensorConfig {
+    height: i64,
+    #[serde(rename = "maxFps")]
+    max_fps: i64,
+    #[serde(rename = "minFps")]
+    min_fps: i64,
+    #[serde(rename = "type")]
+    kind: CameraSensorType,
+    width: i64,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct CameraFeatures {
+    configs: Vec<CameraSensorConfig>,
+    #[serde(rename = "hasAutofocus")]
+    has_autofocus: bool,
+    height: i64,
+    name: String,
+    orientation: CameraImageOrientation,
+    #[serde(rename = "sensorName")]
+    sensor_name: String,
+    socket: CameraBoardSocket,
+    #[serde(rename = "supportedTypes")]
+    supported_types: Vec<CameraSensorType>,
+    width: i64,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(non_camel_case_types)]
+pub enum CameraImageOrientation {
+    AUTO,
+    HORIZONTAL_MIRROR,
+    NORMAL,
+    ROTATE_180_DEG,
+    VERTICAL_FLIP,
 }
 
 impl PartialEq for DeviceConfig {
@@ -465,7 +525,10 @@ impl State {
     ) -> bool {
         let any_runtime_conf_changed = old_config.depth.is_some()
             && new_config.depth.is_some()
-            && old_config.depth != new_config.depth; // || others to be added
+            && old_config
+                .depth
+                .unwrap()
+                .only_runtime_configs_differ(&new_config.depth.unwrap()); // || others to be added
         any_runtime_conf_changed
             && old_config.left_camera == new_config.left_camera
             && old_config.right_camera == new_config.right_camera
@@ -735,8 +798,8 @@ impl State {
         {
             return;
         }
-        config.left_camera.board_socket = BoardSocket::LEFT;
-        config.right_camera.board_socket = BoardSocket::RIGHT;
+        config.left_camera.board_socket = CameraBoardSocket::LEFT;
+        config.right_camera.board_socket = CameraBoardSocket::RIGHT;
         if !config.depth_enabled {
             config.depth = None;
         }

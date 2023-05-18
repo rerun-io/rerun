@@ -1,7 +1,4 @@
-from typing import Any, Dict, Union
-
-import numpy as np
-import numpy.typing as npt
+from typing import Any, Dict
 
 from depthai_viewer import bindings
 from depthai_viewer.components.xlink_stats import XLinkStats

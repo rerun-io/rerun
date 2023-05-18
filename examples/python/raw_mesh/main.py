@@ -14,8 +14,8 @@ import argparse
 from pathlib import Path
 from typing import Optional, cast
 
-import numpy as np
 import depthai_viewer as viewer
+import numpy as np
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 

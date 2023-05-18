@@ -34,10 +34,10 @@ from pathlib import Path
 from timeit import default_timer as timer
 from typing import Tuple, cast
 
+import depthai_viewer as viewer
 import mesh_to_sdf
 import numpy as np
 import numpy.typing as npt
-import depthai_viewer as viewer
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 from trimesh import Trimesh
@@ -117,7 +117,9 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
     # viewer.log_view_coordinates("world", up="+Y", timeless=True # TODO(cmc): depends on the mesh really
-    viewer.log_annotation_context("world/sdf", [(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))], timeless=False)
+    viewer.log_annotation_context(
+        "world/sdf", [(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))], timeless=False
+    )
     viewer.log_points("world/sdf/points", points, class_ids=np.array(sdf > 0, dtype=np.uint8))
 
     outside = points[sdf > 0]

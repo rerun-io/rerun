@@ -14,8 +14,8 @@ import argparse
 import random
 from math import cos, sin, tau
 
-import numpy as np
 import depthai_viewer as viewer
+import numpy as np
 
 
 def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]

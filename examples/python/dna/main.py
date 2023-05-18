@@ -8,8 +8,8 @@ The example from our Getting Started page.
 
 from math import tau
 
-import numpy as np
 import depthai_viewer as viewer
+import numpy as np
 from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp, interleave
 from scipy.spatial.transform import Rotation

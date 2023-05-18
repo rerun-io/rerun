@@ -174,7 +174,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     ctx.set_style(egui_style);
 
     DesignTokens {
-        top_bar_color: get_global_color(&json, "{Global.Color.Gray.200}"), // copied from figma
+        top_bar_color: get_global_color(&json, "{Global.Color.Gray.50}"), // copied from figma
         bottom_bar_color: get_global_color(&json, "{Global.Color.Gray.100}"),
         bottom_bar_stroke: egui::Stroke::new(
             1.0,

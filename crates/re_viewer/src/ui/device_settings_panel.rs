@@ -241,8 +241,9 @@ impl DeviceSettingsPanel {
                             );
 
                             let mut depth = device_config.depth.unwrap_or_default();
-                            if depth.align == depthai::BoardSocket::RGB && !depth.lr_check {
-                                depth.align = depthai::BoardSocket::AUTO;
+                            if depth.align == depthai::CameraBoardSocket::CENTER && !depth.lr_check
+                            {
+                                depth.align = depthai::CameraBoardSocket::AUTO;
                             }
 
                             ui.collapsing(
@@ -261,8 +262,11 @@ impl DeviceSettingsPanel {
                                             format!("{:?}", depth.align),
                                             false,
                                             |ui| {
-                                                for align in depthai::BoardSocket::iter() {
-                                                    if align == depthai::BoardSocket::RGB
+                                                for align in
+                                                    depthai::CameraBoardSocket::depth_align_options(
+                                                    )
+                                                {
+                                                    if align == depthai::CameraBoardSocket::CENTER
                                                         && !depth.lr_check
                                                     {
                                                         continue;

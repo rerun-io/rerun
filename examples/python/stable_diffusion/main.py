@@ -13,8 +13,8 @@ from typing import Final
 if platform.system() == "Darwin":
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
-import requests
 import depthai_viewer as viewer
+import requests
 import torch
 from huggingface_pipeline import StableDiffusionDepth2ImgPipeline
 from PIL import Image

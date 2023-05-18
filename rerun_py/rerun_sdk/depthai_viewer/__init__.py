@@ -5,6 +5,7 @@ from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
+from depthai_viewer import _backend
 from depthai_viewer.log import log_cleared
 from depthai_viewer.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from depthai_viewer.log.arrow import log_arrow
@@ -23,10 +24,9 @@ from depthai_viewer.log.scalar import log_scalar
 from depthai_viewer.log.tensor import log_tensor
 from depthai_viewer.log.text import LoggingHandler, LogLevel, log_text_entry
 from depthai_viewer.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
+from depthai_viewer.log.xlink_stats import log_xlink_stats
 from depthai_viewer.recording import MemoryRecording
 from depthai_viewer.script_helpers import script_add_args, script_setup, script_teardown
-from depthai_viewer.log.xlink_stats import log_xlink_stats
-from depthai_viewer import _backend
 
 __all__ = [
     "AnnotationInfo",

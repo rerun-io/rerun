@@ -9,6 +9,7 @@ use arrow2_convert::{field::I128, ArrowDeserialize, ArrowField, ArrowSerialize};
 pub struct XlinkStats {
     /// Bytes read from the XLink by the host (PC)
     pub bytes_read: i64,
+
     /// Bytes written to the XLink by the host (PC)
     pub bytes_written: i64,
 }

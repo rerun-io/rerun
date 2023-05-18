@@ -25,8 +25,6 @@ pub struct SpaceViewId(uuid::Uuid);
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub enum SpaceViewKind {
     Data,
-    Imu,
-    Xlink,
     Stats,
     Config,
     Selection,

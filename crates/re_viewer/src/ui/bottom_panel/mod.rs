@@ -19,6 +19,7 @@ impl<'a, 'b> Tabs<'a, 'b> {
 
 impl<'a, 'b> TabViewer for Tabs<'a, 'b> {
     type Tab = Tab;
+
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
         match tab {
             Tab::XlinkStatistics => self.xlink_statistics_ui(ui),

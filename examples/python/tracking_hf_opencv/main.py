@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, Final, List, Sequence
 
 import cv2 as cv
+import depthai_viewer as viewer
 import numpy as np
 import numpy.typing as npt
 import requests
-import depthai_viewer as viewer
 from PIL import Image
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
@@ -311,7 +311,8 @@ def track_objects(video_path: str) -> None:
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
-        viewer.log.annotation.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
+        viewer.log.annotation.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"])
+        for cat in coco_categories
     ]
     viewer.log_annotation_context("/", class_descriptions, timeless=True)
 

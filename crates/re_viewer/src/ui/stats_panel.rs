@@ -88,6 +88,7 @@ impl StatsPanelState {
         self.update_imu(ctx);
         self.update_xlink(ctx);
     }
+
     /// Push new data into the history buffers.
     fn update_imu(&mut self, ctx: &mut ViewerContext<'_>) {
         self.update_imu_subscription(ctx);

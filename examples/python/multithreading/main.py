@@ -6,9 +6,9 @@ import argparse
 import random
 import threading
 
+import depthai_viewer as viewer
 import numpy as np
 import numpy.typing as npt
-import depthai_viewer as viewer
 
 
 def rect_logger(path: str, color: npt.NDArray[np.float32]) -> None:

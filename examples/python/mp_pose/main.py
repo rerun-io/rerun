@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any, Final, Iterator, Optional
 
 import cv2 as cv
+import depthai_viewer as viewer
 import mediapipe as mp
 import numpy as np
 import numpy.typing as npt
 import requests
-import depthai_viewer as viewer
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"

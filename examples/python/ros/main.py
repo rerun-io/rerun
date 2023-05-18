@@ -13,8 +13,8 @@ in addition to the packages from requirements.txt.
 import argparse
 import sys
 
-import numpy as np
 import depthai_viewer as viewer
+import numpy as np
 
 try:
     import cv_bridge

@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, List
 
+import depthai_viewer as viewer
 import numpy as np
 import numpy.typing as npt
-import depthai_viewer as viewer
 from download_dataset import (
     ANNOTATIONS_FILENAME,
     AVAILABLE_RECORDINGS,

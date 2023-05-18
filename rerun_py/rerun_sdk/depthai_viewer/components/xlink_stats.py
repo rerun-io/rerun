@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
-
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 
 from depthai_viewer.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
-__all__ = [
-    "XLinkStats"
-]
+__all__ = ["XLinkStats"]
 
 # ---
 
-class XLinkStats(pa.ExtensionArray): # type: ignore[misc]
+
+class XLinkStats(pa.ExtensionArray):  # type: ignore[misc]
     def create(
         total_bytes_written: int,
         total_bytes_read: int,
@@ -24,7 +19,7 @@ class XLinkStats(pa.ExtensionArray): # type: ignore[misc]
             fields=XLinkStatsType.storage_type,
             arrays=[[total_bytes_written], [total_bytes_read]],
             mask=pa.array([False, False], type=pa.bool_()),
-    )
+        )
 
 
 XLinkStatsType = ComponentTypeFactory("XLinkStatsType", XLinkStats, REGISTERED_COMPONENT_NAMES["rerun.xlink_stats"])

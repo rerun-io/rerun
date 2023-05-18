@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import Final, Tuple
 
 import cv2
+import depthai_viewer as viewer
 import numpy as np
 import numpy.typing as npt
 import requests
-import depthai_viewer as viewer
 from tqdm import tqdm
 
 DEPTH_IMAGE_SCALING: Final = 1e4

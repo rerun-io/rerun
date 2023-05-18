@@ -15,8 +15,8 @@ import math
 import os
 
 import cv2
-import numpy as np
 import depthai_viewer as viewer
+import numpy as np
 from scipy.spatial.transform import Rotation
 
 
@@ -45,7 +45,9 @@ def run_segmentation() -> None:
         class_ids=np.array([42], dtype=np.uint8),
     )
 
-    viewer.log_text_entry("logs/seg_demo_log", "default colored rects, default colored points, a single point has a label")
+    viewer.log_text_entry(
+        "logs/seg_demo_log", "default colored rects, default colored points, a single point has a label"
+    )
 
     # Log an initial segmentation map with arbitrary colors
     viewer.set_time_seconds("sim_time", 2)
@@ -68,10 +70,16 @@ def run_segmentation() -> None:
     viewer.set_time_seconds("sim_time", 4)
     viewer.log_annotation_context(
         "seg_demo",
-        [viewer.AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), viewer.AnnotationInfo(99, label="label3")],
+        [
+            viewer.AnnotationInfo(13, color=(255, 0, 0)),
+            (42, "label2", (0, 255, 0)),
+            viewer.AnnotationInfo(99, label="label3"),
+        ],
         timeless=False,
     )
-    viewer.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
+    viewer.log_text_entry(
+        "logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again"
+    )
 
 
 def run_2d_lines() -> None:

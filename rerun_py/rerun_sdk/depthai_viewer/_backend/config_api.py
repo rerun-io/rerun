@@ -47,7 +47,7 @@ class ErrorAction:
 
 
 def error(message: str, action: ErrorAction) -> str:
-    """Create an error message to send via ws"""
+    """Create an error message to send via ws."""
     return json.dumps({"type": MessageType.ERROR, "data": {"action": action, "message": message}})
 
 

@@ -26,9 +26,9 @@ from typing import Final
 from urllib.parse import urlparse
 
 import cv2
+import depthai_viewer as viewer
 import numpy as np
 import requests
-import depthai_viewer as viewer
 import torch
 import torchvision
 from cv2 import Mat

@@ -3,7 +3,6 @@ from typing import Callable, Dict, List, Tuple, Union
 import cv2
 import depthai as dai
 import numpy as np
-import depthai_viewer as viewer
 from ahrs.filters import Mahony
 from depthai_sdk.classes.packets import (
     DepthPacket,
@@ -14,11 +13,12 @@ from depthai_sdk.classes.packets import (
     TwoStagePacket,
     _Detection,
 )
-from depthai_viewer.components.rect2d import RectFormat
 
+import depthai_viewer as viewer
 from depthai_viewer._backend import classification_labels
 from depthai_viewer._backend.store import Store
 from depthai_viewer._backend.topic import Topic
+from depthai_viewer.components.rect2d import RectFormat
 
 
 class EntityPath:
@@ -69,14 +69,6 @@ class SdkCallbacks:
         if Topic.ColorImage not in self.store.subscriptions:
             return
         viewer.log_rigid3(EntityPath.RGB_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
-        # This is slower, does cv2.imdecode decode the whole image even with cv2.IMREAD_UNCHANGED?
-        # In the future we may want to log an encoded image in the case of a remote viewer, such as robot hub
-        # if frame.msg.getType() == dai.RawImgFrame.Type.BITSTREAM:
-        #     h, w = cv2.imdecode(frame.frame, cv2.IMREAD_UNCHANGED).shape[:2]
-        #     viewer.log_image_file(EntityPath.RGB_CAMERA_IMAGE, img_bytes=frame.frame, img_format=viewer.ImageFormat.JPEG)
-        # else:
-        #     h, w, _ = frame.frame.shape
-        #     viewer.log_image(EntityPath.RGB_CAMERA_IMAGE, cv2.cvtColor(frame.frame, cv2.COLOR_BGR2RGB))
         h, w, _ = frame.frame.shape
         viewer.log_pinhole(
             EntityPath.RGB_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h

@@ -1,23 +1,23 @@
 import json
+import pkg_resources
 import threading
+import time
 from queue import Empty as QueueEmptyException
 from queue import Queue
 from typing import Dict, Tuple
-import time
+
 
 import depthai as dai
 import numpy as np
+import depthai_sdk
 from depthai_sdk import OakCamera
-from depthai_sdk.components import NNComponent
+from depthai_sdk.components import NNComponent, CameraComponent, StereoComponent
 
-# from depthai_sdk.components.pointcloud_component import PointcloudComponent
-from depthai_sdk.oak_camera import CameraComponent
-
+import depthai_viewer as viewer
 from depthai_viewer._backend.config_api import start_api
 from depthai_viewer._backend.device_configuration import PipelineConfiguration
 from depthai_viewer._backend.sdk_callbacks import SdkCallbacks
 from depthai_viewer._backend.store import Store
-import depthai_viewer as viewer
 
 viewer.init("Depthai Viewer")
 viewer.connect()
@@ -52,7 +52,7 @@ class SelectedDevice:
     _color: CameraComponent = None
     _left: CameraComponent = None
     _right: CameraComponent = None
-    _stereo: CameraComponent = None
+    _stereo: StereoComponent = None
     _nnet: NNComponent = None
     # _pc: PointcloudComponent = None
 
@@ -160,11 +160,22 @@ class SelectedDevice:
         if config.depth:
             print("Creating depth")
             self._stereo = self.oak_cam.create_stereo(left=self._left, right=self._right, name="depth")
+
+            # We used to be able to pass in the board socket to align to, but this was removed in depthai 1.10.0
+            align = config.depth.align
+            if pkg_resources.parse_version(depthai_sdk.__version__) >= pkg_resources.parse_version("1.10.0"):
+                align = (
+                    self._left
+                    if config.depth.align == dai.CameraBoardSocket.LEFT
+                    else self._right
+                    if config.depth.align == dai.CameraBoardSocket.RIGHT
+                    else self._color
+                )
             self._stereo.config_stereo(
                 lr_check=config.depth.lr_check,
                 subpixel=config.depth.subpixel_disparity,
                 confidence=config.depth.confidence,
-                align=config.depth.align,
+                align=align,
                 lr_check_threshold=config.depth.lrc_threshold,
                 median=config.depth.median,
             )
@@ -203,7 +214,9 @@ class SelectedDevice:
                 callback = callbacks.on_detections
                 if config.ai_model.path == "yolov8n_coco_640x352":
                     callback = callbacks.on_yolo_packet
-                self.oak_cam.callback(self._nnet, callback)
+                self.oak_cam.callback(
+                    self._nnet, callback, True
+                )  # in depthai-sdk=1.10.0 nnet callbacks don't work without visualizer enabled
         try:
             self.oak_cam.start(blocking=False)
         except RuntimeError as e:
@@ -220,8 +233,9 @@ class SelectedDevice:
         self.oak_cam.poll()
         if time.time_ns() - self._time_of_last_xlink_update >= 16e6:
             self._time_of_last_xlink_update = time.time_ns()
-            xlink_stats = self.oak_cam.device.getProfilingData()
-            viewer.log_xlink_stats(xlink_stats.numBytesWritten, xlink_stats.numBytesRead)
+            if hasattr(self.oak_cam.device, "getProfilingData"):  # Only on latest develop
+                xlink_stats = self.oak_cam.device.getProfilingData()
+                viewer.log_xlink_stats(xlink_stats.numBytesWritten, xlink_stats.numBytesRead)
 
 
 class DepthaiViewerBack:

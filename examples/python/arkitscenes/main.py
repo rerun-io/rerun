@@ -6,10 +6,10 @@ from pathlib import Path, PosixPath
 from typing import Any, Dict, List, Tuple
 
 import cv2
+import depthai_viewer as viewer
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import depthai_viewer as viewer
 import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 from scipy.spatial.transform import Rotation as R

@@ -8,8 +8,8 @@ import sys
 def run_cube(args: argparse.Namespace):
     import math
 
-    import numpy as np
     import depthai_viewer as viewer
+    import numpy as np
 
     from rerun_demo.data import build_color_grid
 

@@ -10,8 +10,8 @@ import argparse
 import math
 from typing import Final, Tuple
 
-import numpy as np
 import depthai_viewer as viewer
+import numpy as np
 
 LENGTH_S: Final = 20.0
 LENGTH_M: Final = 10.0
@@ -49,13 +49,17 @@ def log_clock(steps: int) -> None:
         point_s = np.array(rotate(math.tau * scaled_s, LENGTH_S))
         color_s = (int(255 - (scaled_s * 255)), int(scaled_s * 255), 0, 128)
         viewer.log_point("world/seconds_pt", position=point_s, color=color_s)
-        viewer.log_arrow("world/seconds_hand", origin=[0.0, 0.0, 0.0], vector=point_s, color=color_s, width_scale=WIDTH_S)
+        viewer.log_arrow(
+            "world/seconds_hand", origin=[0.0, 0.0, 0.0], vector=point_s, color=color_s, width_scale=WIDTH_S
+        )
 
         scaled_m = (t_secs % 3600) / 3600.0
         point_m = np.array(rotate(math.tau * scaled_m, LENGTH_M))
         color_m = (int(255 - (scaled_m * 255)), int(scaled_m * 255), 128, 128)
         viewer.log_point("world/minutes_pt", position=point_m, color=color_m)
-        viewer.log_arrow("world/minutes_hand", origin=[0.0, 0.0, 0.0], vector=point_m, color=color_m, width_scale=WIDTH_M)
+        viewer.log_arrow(
+            "world/minutes_hand", origin=[0.0, 0.0, 0.0], vector=point_m, color=color_m, width_scale=WIDTH_M
+        )
 
         scaled_h = (t_secs % 43200) / 43200.0
         point_h = np.array(rotate(math.tau * scaled_h, LENGTH_H))

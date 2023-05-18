@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import Any, Final, Optional, Tuple
 
 import cv2
+import depthai_viewer as viewer
 import numpy as np
 import numpy.typing as npt
 import requests
-import depthai_viewer as viewer
 from read_write_model import Camera, read_model
 from tqdm import tqdm
 

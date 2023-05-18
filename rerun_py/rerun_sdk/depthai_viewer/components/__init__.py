@@ -24,7 +24,7 @@ all = [
     "text_entry",
     "vec",
     "imu",
-    "xlink_stats"
+    "xlink_stats",
 ]
 
 # Component names that are recognized by Rerun.

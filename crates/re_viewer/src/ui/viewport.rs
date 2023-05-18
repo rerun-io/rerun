@@ -196,6 +196,7 @@ impl Viewport {
             }
         });
     }
+
     pub(crate) fn mark_user_interaction(&mut self) {}
 
     pub(crate) fn add_space_view(&mut self, mut space_view: SpaceView) -> SpaceViewId {
@@ -554,6 +555,7 @@ struct TabViewer<'a, 'b> {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Tab {
     pub space_view_id: SpaceViewId,
+
     /// Rerun only displayed logged data in the viewport.
     /// Depthai Viewer also has fixed ui panels that are part of the tab system.
     /// This is used to distinguish between the two.
@@ -603,15 +605,12 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
 
                 space_view_ui(self.ctx, ui, space_view, &highlights);
             }
-            SpaceViewKind::Imu => {}
-            SpaceViewKind::Xlink => {
-                println!("TODO: Xlink tab");
-            }
             SpaceViewKind::Selection => SelectionPanel::show_panel(self.ctx, ui, self.viewport),
             SpaceViewKind::Config => self.viewport.device_settings_panel.show_panel(self.ctx, ui),
             SpaceViewKind::Stats => {
                 StatsPanel::show_panel(self.ctx, ui, &mut self.viewport.stats_panel_state);
             }
+            _ => {}
         }
     }
 
@@ -641,8 +640,6 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
 
                 text
             }
-            SpaceViewKind::Imu => "Imu".into(),
-            SpaceViewKind::Xlink => "Xlink".into(),
             SpaceViewKind::Stats => "Stats".into(),
             SpaceViewKind::Config => "Device Settings".into(),
             SpaceViewKind::Selection => "Selection".into(),
