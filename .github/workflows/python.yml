@@ -1,0 +1,401 @@
+name: CI (Python)
+
+on:
+  pull_request:
+    types: [labeled, synchronize, opened]
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*.*.*" # on release tag
+
+env:
+  PYTHON_VERSION: "3.8"
+  PRE_RELEASE_INSTRUCTIONS: |
+    ## Installing the pre-release Python SDK
+    1. Download the correct `.whl`. For Mac M1/M2, grab the "universal2" `.whl`
+    2. Run `pip install rerun_sdk<...>.whl` (replace `<...>` with the actual filename)
+    3. Test it: `rerun --version`
+  UBUNTU_REQUIRED_PKGS: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libfontconfig1-dev libatk-bridge2.0 libfreetype6-dev libglib2.0-dev
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }} # Cancel previous CI jobs only on pull-requests
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Python lints (black, mypy, flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          just-version: 1.5
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-lint.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-lint.txt
+
+      - name: Lint Python
+        run: |
+          just py-lint
+
+      - name: Check requirements
+        run: |
+          just py-requirements
+
+  # ---------------------------------------------------------------------------
+
+  matrix-setup:
+    # Building all the wheels is expensive, so we only run this job when we push (to main or release tags),
+    # or if the PR has the 'build wheels' label for explicit testing of wheels.
+    if: github.event_name == 'push' || contains( github.event.pull_request.labels.*.name, '🛞 build wheels')
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      # Sets TAGGED_OR_MAIN if this workflow is running on a tag or the main branch.
+      - name: Set TAGGED_OR_MAIN
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        run: echo "TAGGED_OR_MAIN=1" >> $GITHUB_ENV
+
+      - id: set-matrix
+        shell: bash
+        run: |
+          matrix=()
+
+          if [[ $TAGGED_OR_MAIN ]]; then
+            # MacOS build is really slow (>30 mins); uses up a lot of CI minutes
+            matrix+=('{"platform": "macos", "runs_on": "macos-latest"},')
+          fi
+          matrix+=('{"platform": "windows", "runs_on": "windows-latest-8-cores"},')
+          matrix+=('{"platform": "linux", "runs_on": "ubuntu-latest-16-cores", container: {"image": "rerunio/ci_docker:0.5"}}')
+
+          echo "Matrix values: ${matrix[@]}"
+
+          echo "matrix={\"include\":[${matrix[@]}]}" >> $GITHUB_OUTPUT
+
+  wheels:
+    name: Build Python Wheels
+    needs: [lint, matrix-setup]
+
+    strategy:
+      matrix: ${{fromJson(needs.matrix-setup.outputs.matrix)}}
+
+    runs-on: ${{ matrix.runs_on }}
+
+    container: ${{ matrix.container }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - name: Cache APT Packages
+        if: matrix.platform == 'linux'
+        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
+        with:
+          packages: ${{ env.UBUNTU_REQUIRED_PKGS }}
+          version: 2.0 # Increment this to pull newer packages
+          execute_install_scripts: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: False
+
+      # The pip-cache setup logic doesn't work in the ubuntu docker container
+      # That's probably fine since we bake these deps into the container already
+      - name: Setup python
+        if: matrix.platform != 'linux'
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-build.txt"
+
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - run: pip install -r rerun_py/requirements-build.txt
+
+      # ----------------------------------------------------------------------------------
+      # Install prerequisites for building the web-viewer Wasm
+
+      # We have a nice script for that: ./scripts/setup_web.sh
+      # Unfortunately, we can't run that on Windows, because Windows doesn't come with
+      # a package manager like grown-up OSes do (at least not the CI version of Windows).
+      # Also we can't run it on linux because the 20.04 Docker container will install
+      # an old version of binaryen/wasm-opt that barfs on the `--fast-math` flag
+      # So we only run the script on macos, and then on Windows we do the parts of the script manually.
+      # On ubuntu, the correct packages are pre-installed in our docker container.
+
+      - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: ./scripts/setup_web.sh
+
+      # The first steps of setup_web.sh, for Windows:
+      - name: Install wasm32 and wasm-bindgen-cli for building the web-viewer Wasm on windows
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: rustup target add wasm32-unknown-unknown && cargo install wasm-bindgen-cli --version 0.2.84
+
+      # The last step of setup_web.sh, for Windows.
+      # Since 'winget' is not available within the GitHub runner, we download the package directly:
+      # See: https://github.com/marketplace/actions/engineerd-configurator
+      - name: Install binaryen for building the web-viewer Wasm on windows
+        if: matrix.platform == 'windows'
+        uses: engineerd/configurator@v0.0.9
+        with:
+          name: "wasm-opt.exe"
+          url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
+          pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
+
+      # ----------------------------------------------------------------------------------
+
+      - name: Patch Cargo.toml for pre-release
+        if: github.ref == 'refs/heads/main'
+        # After patching the pre-release version, run cargo check.
+        # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
+        run: |
+          python3 scripts/version_util.py --patch_prerelease
+          cargo check
+
+      - name: Version check for tagged-release
+        if: startsWith(github.ref, 'refs/tags/v')
+        # This call to version_util.py will assert version from Cargo.toml matches git tagged version vX.Y.Z
+        run: |
+          python3 scripts/version_util.py --check_version
+
+      - name: Build Wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.10"
+          manylinux: manylinux_2_31
+          container: off
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --no-default-features
+            --features pypi
+            --universal2
+            --out pre-dist
+
+      - name: Install built wheel
+        run: |
+          pip install rerun-sdk --find-links pre-dist --force-reinstall
+
+      - name: Run tests
+        run: cd rerun_py/tests && pytest
+
+      - name: Unpack the wheel
+        shell: bash
+        run: |
+          mkdir unpack-dist
+          wheel unpack pre-dist/*.whl --dest unpack-dist
+
+      - name: Get the folder name
+        shell: bash
+        run: |
+          echo "pkg_folder=$(ls unpack-dist)" >> $GITHUB_ENV
+
+      - name: Cache RRD dataset
+        id: dataset
+        uses: actions/cache@v3
+        with:
+          path: examples/python/colmap/dataset/
+          # TODO(jleibs): Derive this key from the invocation below
+          key: colmap-dataset-colmap-fiat-v0
+
+      - name: Generate Embedded RRD file
+        shell: bash
+        # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
+        run: |
+          pip install -r examples/python/colmap/requirements.txt
+          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save colmap.rrd
+          cp colmap.rrd unpack-dist/${{ env.pkg_folder }}/rerun_sdk/rerun_demo/colmap.rrd
+
+      - name: Repack the wheel
+        shell: bash
+        run: |
+          mkdir dist
+          wheel pack unpack-dist/${{ env.pkg_folder }} --dest dist/
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+  # ---------------------------------------------------------------------------
+
+  # See https://github.com/ncipollo/release-action
+  pre-release:
+    name: Pre Release
+    needs: [wheels]
+    if: github.ref == 'refs/heads/main'
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+      # First delete the old prerelease. If we don't do this, we don't get things like
+      # proper source-archives and changelog info.
+      # https://github.com/dev-drprasad/delete-tag-and-release
+      - uses: dev-drprasad/delete-tag-and-release@v0.2.0
+        with:
+          tag_name: prerelease
+          delete_release: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-tag the prerelease with the commit from this build
+      # https://github.com/richardsimko/update-tag
+      - name: Update prerelease tag
+        uses: richardsimko/update-tag@v1
+        with:
+          tag_name: prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create the actual prerelease
+      # https://github.com/softprops/action-gh-release
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          name: "Development Build"
+          body: ${{ env.PRE_RELEASE_INSTRUCTIONS }}
+          prerelease: true
+          tag_name: prerelease
+          files: dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: true
+
+  # ---------------------------------------------------------------------------
+
+  # This job is run on tags starting with "v", e.g., "v0.1.0"
+  tagged-release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [wheels]
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          prerelease: false
+          files: dist/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: true
+
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        env:
+          # These are both set in the GitHub project configuration
+          MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
+          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
+        with:
+          command: upload
+          args: --skip-existing dist/*
+
+  # ---------------------------------------------------------------------------
+
+  py-test-docs:
+    name: Verify the docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
+
+      - name: Build via mkdocs
+        run: |
+          mkdocs build -f rerun_py/mkdocs.yml
+
+  py-docs:
+    name: Build and deploy docs
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Don't do a shallow clone
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
+
+      - name: Set up git author
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy via mike # https://github.com/jimporter/mike
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python -u ${{github.ref_name}} latest
+
+      - name: Deploy tag via mike # https://github.com/jimporter/mike
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml -p --rebase -b gh-pages --prefix docs/python HEAD

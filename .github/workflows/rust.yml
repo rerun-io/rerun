@@ -1,0 +1,259 @@
+name: CI (Rust)
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }} # Cancel previous CI jobs on the same branch
+  cancel-in-progress: true
+
+env:
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis -D warnings
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: -D warnings -D rustdoc::missing_crate_level_docs
+
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
+jobs:
+  rs-benchmarks:
+    name: Rust Criterion benchmarks
+
+    # Only save the rs-benchmarks job when a commit gets pushed to main
+    if: ${{ github.event_name == 'push' }}
+
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.5
+      env:
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # Don't update the cache -- it will be updated by the lint job
+          # TODO(jleibs): this job will likely run before rust.yml updates
+          # the cache. Better cross-job sequencing would be nice here
+          save-if: false
+
+      - name: Run benchmark
+        # Use bash shell so we get pipefail behavior with tee
+        shell: bash
+        run: |
+          cargo bench \
+            --all-features \
+            -p re_arrow_store \
+            -p re_data_store \
+            -p re_log_types \
+            -p re_query \
+            -p re_tuid \
+            -- --output-format=bencher | tee output.txt
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Rust Benchmark
+          tool: "cargo"
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Show alert with commit comment on detecting possible performance regression
+          comment-on-alert: true
+          alert-threshold: "150%"
+          fail-on-alert: true
+          comment-always: true
+
+          # Push and deploy GitHub pages branch automatically
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          max-items-in-chart: 30
+
+  # ---------------------------------------------------------------------------
+
+  rs-lints:
+    name: Rust lints (fmt, check, cranky, tests, doc)
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.5
+      env:
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ github.event_name == 'push'}}
+
+      # First do our check with --locked to make sure `Cargo.lock` is up to date
+      - name: Check all features
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --all-features
+
+      - name: Rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Cranky
+        uses: actions-rs/cargo@v1
+        with:
+          command: cranky
+          args: --all-targets --all-features --  -D warnings
+
+      - name: Check no default features
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --no-default-features --features __ci --lib
+
+      - name: Test doc-tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --doc --all-features
+
+      - name: cargo doc
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps --all-features
+
+      - name: cargo doc --document-private-items
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --document-private-items --no-deps --all-features
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-targets --all-features
+
+      - name: Set up git author
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up ghp-import
+        if: ${{ github.event_name == 'push' }}
+        run: pip install ghp-import
+
+      - name: Patch in a redirect page
+        if: ${{ github.event_name == 'push' }}
+        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
+        env:
+          REDIRECT_CRATE: rerun
+
+      # See: https://github.com/c-w/ghp-import
+      - name: Deploy the docs
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          git fetch
+          python3 -m ghp_import -n -p -x docs/rust/head target/doc/ -m "Update the rust docs"
+
+  # ---------------------------------------------------------------------------
+
+  rs-check-wasm:
+    name: Check Rust web build (wasm32 + wasm-bindgen)
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.5
+      env:
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.67.0
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
+          # See: https://github.com/rerun-io/rerun/pull/497
+          save-if: ${{ github.event_name == 'push'}}
+
+      - name: Check re_viewer wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --all-features --lib --target wasm32-unknown-unknown -p re_viewer
+
+      - name: Check re_renderer examples wasm32
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --target wasm32-unknown-unknown -p re_renderer --examples
+
+      - run: ./scripts/wasm_bindgen_check.sh --skip-setup
+
+  # ---------------------------------------------------------------------------
+
+  rs-cargo-deny:
+    name: Check Rust dependencies (cargo-deny)
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.5
+      env:
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: cargo deny aarch64-apple-darwin check
+        uses: actions-rs/cargo@v1
+        with:
+          command: deny
+          args: --log-level=error --all-features --target aarch64-apple-darwin check
+
+      - name: cargo deny wasm32-unknown-unknown check
+        uses: actions-rs/cargo@v1
+        with:
+          command: deny
+          args: --log-level=error --all-features --target wasm32-unknown-unknown check
+
+      - name: cargo deny x86_64-pc-windows-msvc
+        uses: actions-rs/cargo@v1
+        with:
+          command: deny
+          args: --log-level=error --all-features --target x86_64-pc-windows-msvc check
+
+      - name: cargo deny x86_64-unknown-linux-musl check
+        uses: actions-rs/cargo@v1
+        with:
+          command: deny
+          args: --log-level=error --all-features --target x86_64-unknown-linux-musl check
