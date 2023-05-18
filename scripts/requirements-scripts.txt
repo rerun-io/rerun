@@ -1,3 +1,0 @@
-google-cloud-storage
-Jinja2
-PyGithub

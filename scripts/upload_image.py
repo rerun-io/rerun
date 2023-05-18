@@ -3,9 +3,11 @@
 """
 Upload an image to Google Cloud.
 
-To use this:
-- `pip install -r scripts/requirements-scripts.txt`
-- Install the Google Cloud CLI (https://cloud.google.com/storage/docs/gsutil_install)
+Requires the following packages:
+  pip install google-cloud-storage # NOLINT
+
+Before running, you have to authenticate via the Google Cloud CLI:
+- Install it (https://cloud.google.com/storage/docs/gsutil_install)
 - Set up credentials (https://cloud.google.com/storage/docs/gsutil_install#authenticate)
 """
 
