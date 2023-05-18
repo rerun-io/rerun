@@ -115,13 +115,19 @@ impl App {
             );
         }
 
-        let state: AppState = if startup_options.persist_state {
+        let mut state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
                 .unwrap_or_default()
         } else {
             AppState::default()
         };
+
+        // Forget the blueprint we used for some unknown app,
+        // so we don't reuse it for some unrelated unknown app.
+        // This is in particularly important for `rerun foo.png`
+        // followed by `rerun bar.png`, which both uses the unknow App ID.
+        state.blueprints.remove(&ApplicationId::unknown());
 
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
