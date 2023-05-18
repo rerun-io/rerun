@@ -1,17 +1,16 @@
 import json
-import pkg_resources
 import threading
 import time
 from queue import Empty as QueueEmptyException
 from queue import Queue
 from typing import Dict, Tuple
 
-
 import depthai as dai
-import numpy as np
 import depthai_sdk
+import numpy as np
+import pkg_resources
 from depthai_sdk import OakCamera
-from depthai_sdk.components import NNComponent, CameraComponent, StereoComponent
+from depthai_sdk.components import CameraComponent, NNComponent, StereoComponent
 
 import depthai_viewer as viewer
 from depthai_viewer._backend.config_api import start_api
