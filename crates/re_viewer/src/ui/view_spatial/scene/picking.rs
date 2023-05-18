@@ -2,10 +2,10 @@
 
 use ahash::HashSet;
 use re_data_store::InstancePathHash;
-use re_log_types::{component_types::InstanceKey, EntityPathHash};
+use re_log_types::component_types::InstanceKey;
 use re_renderer::PickingLayerProcessor;
 
-use super::{SceneSpatialPrimitives, SceneSpatialUiData};
+use super::{Image, SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
     misc::instance_hash_conversions::instance_path_hash_from_picking_layer_id,
     ui::view_spatial::eye::Eye,
@@ -116,11 +116,7 @@ impl PickingContext {
             self,
             previous_picking_result,
         );
-        let mut rect_hits = picking_textured_rects(
-            self,
-            &primitives.textured_rectangles,
-            &primitives.textured_rectangles_ids,
-        );
+        let mut rect_hits = picking_textured_rects(self, &primitives.images);
         rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
         let ui_rect_hits = picking_ui_rects(self, ui_data);
 
@@ -241,23 +237,13 @@ fn picking_gpu(
     }
 }
 
-fn picking_textured_rects(
-    context: &PickingContext,
-    textured_rectangles: &[re_renderer::renderer::TexturedRect],
-    textured_rectangles_ids: &[EntityPathHash],
-) -> Vec<PickingRayHit> {
+fn picking_textured_rects(context: &PickingContext, images: &[Image]) -> Vec<PickingRayHit> {
     crate::profile_function!();
 
     let mut hits = Vec::new();
 
-    for (rect, id) in textured_rectangles
-        .iter()
-        .zip(textured_rectangles_ids.iter())
-    {
-        if !id.is_some() {
-            continue;
-        }
-
+    for image in images {
+        let rect = &image.textured_rect;
         let rect_plane = macaw::Plane3::from_normal_point(
             rect.extent_u.cross(rect.extent_v).normalize(),
             rect.top_left_corner_position,
@@ -277,7 +263,7 @@ fn picking_textured_rects(
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
             hits.push(PickingRayHit {
                 instance_path_hash: InstancePathHash {
-                    entity_path_hash: *id,
+                    entity_path_hash: image.ent_path.hash(),
                     instance_key: InstanceKey::from_2d_image_coordinate(
                         [
                             (u * rect.colormapped_texture.texture.width() as f32) as u32,

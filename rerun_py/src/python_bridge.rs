@@ -11,15 +11,15 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_log_types::{ArrowMsg, DataRow, DataTableError};
-use rerun::{
+use depthai_viewer::{
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::{Time, TimeInt, TimePoint, TimeType, Timeline},
     ApplicationId, EntityPath, RecordingId,
 };
+use re_log_types::{ArrowMsg, DataRow, DataTableError};
 
-pub use rerun::{
+pub use depthai_viewer::{
     components::{
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
         EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3, Mesh3D,
@@ -251,12 +251,12 @@ fn time(timeless: bool) -> TimePoint {
 #[pyfunction]
 fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
     let build_info = re_build_info::build_info!();
-    let call_src = rerun::CallSource::Python(python_version(py));
+    let call_src = depthai_viewer::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(build_info, call_src, argv))
+        .block_on(depthai_viewer::run(build_info, call_src, argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
@@ -309,7 +309,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
-        rerun::default_server_addr()
+        depthai_viewer::default_server_addr()
     };
     python_session().connect(addr);
     Ok(())
@@ -340,7 +340,7 @@ fn serve(open_browser: bool, web_port: Option<u16>, ws_port: Option<u16>) -> PyR
         let _guard = enter_tokio_runtime();
 
         session.set_sink(
-            rerun::web_viewer::new_sink(
+            depthai_viewer::web_viewer::new_sink(
                 open_browser,
                 web_port.map(WebViewerServerPort).unwrap_or_default(),
                 ws_port.map(RerunServerPort).unwrap_or_default(),

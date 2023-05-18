@@ -7,7 +7,7 @@ or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 In order to show a rerun viewer inline within the notebook you need to use a special in-memory
 recording:
 ```
-rec = rr.memory_recording()
+rec = viewer.memory_recording()
 ```
 
 After creating this recording all the normal rerun commands will work as expected and log

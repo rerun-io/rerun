@@ -9,15 +9,15 @@ content.
 
 As an example, consider:
 ``` python
-import rerun as rr
+import depthai_viewer as viewer
 from rerun_demo.data import color_grid
 
-rr.init("log_points", True)
+viewer.init("log_points", True)
 
-rr.log_points("my_points", color_grid.positions, colors=color_grid.colors)
+viewer.log_points("my_points", color_grid.positions, colors=color_grid.colors)
 ```
 
-Note that because this package is shipped with the rerun-sdk pypi package, it
+Note that because this package is shipped with the depthai-viewer pypi package, it
 cannot carry any dependencies beyond those of rerun itself. This generally limits
 demos to only using the standard library and numpy for data generation.
 """

@@ -6,10 +6,10 @@ The top-level index file should look like
 ## Initialization
 Function | Description
 -------- | -----------
-[rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK ...
-[rerun.set_recording_id()](initialization/#rerun.set_recording_id) | Set the recording ID ...
-[rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the ...
-[rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer ...
+[depthai_viewer.init()](initialization/#depthai_viewer.init) | Initialize the Rerun SDK ...
+[depthai_viewer.set_recording_id()](initialization/#depthai_viewer.set_recording_id) | Set the recording ID ...
+[depthai_viewer.connect()](initialization/#depthai_viewer.connect) | Connect to a remote Depthai Viewer on the ...
+[depthai_viewer.spawn()](initialization/#depthai_viewer.spawn) | Spawn a Depthai Viewer ...
 ...
 
 The Summary should look like:
@@ -131,7 +131,7 @@ common_dir = Path("common")
 # This is what mkdocstrings uses under the hood
 search_paths = [path for path in sys.path if path]  # eliminate empty path
 search_paths.insert(0, root.as_posix())
-rerun_pkg = griffe.load("rerun", search_paths=search_paths)
+rerun_pkg = griffe.load("depthai_viewer", search_paths=search_paths)
 
 # Create the nav for this section
 nav = mkdocs_gen_files.Nav()
@@ -157,16 +157,16 @@ hide:
     - toc
 ---
 # Getting Started
-* [Quick start](https://www.rerun.io/docs/getting-started/python)
-* [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
+* [Quick start](https://www.depthai_viewer.io/docs/getting-started/python)
+* [Tutorial](https://www.depthai_viewer.io/docs/getting-started/logging-python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
-* [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+* [Troubleshooting](https://www.depthai_viewer.io/docs/getting-started/troubleshooting)
 
-There are many different ways of sending data to the Rerun Viewer depending on what you're trying
+There are many different ways of sending data to the Depthai Viewer depending on what you're trying
 to achieve and whether the viewer is running in the same process as your code, in another process,
 or even as a separate web application.
 
-Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
+Checkout [SDK Operating Modes](https://www.depthai_viewer.io/docs/reference/sdk-operating-modes) for an
 overview of what's possible and how.
 
 # APIs
@@ -183,13 +183,13 @@ overview of what's possible and how.
         write_path = common_dir.joinpath(md_file)
         with mkdocs_gen_files.open(write_path, "w") as fd:
             if section.module_summary is not None:
-                fd.write(f"::: rerun.{section.module_summary}\n")
+                fd.write(f"::: depthai_viewer.{section.module_summary}\n")
                 fd.write("    options:\n")
                 fd.write("      show_root_heading: False\n")
                 fd.write("      members: []\n")
                 fd.write("----\n")
             for func_name in section.func_list:
-                fd.write(f"::: rerun.{func_name}\n")
+                fd.write(f"::: depthai_viewer.{func_name}\n")
 
         # Write out a table for the section in the index_file
         index_file.write(f"## {section.title}\n")
@@ -197,7 +197,9 @@ overview of what's possible and how.
         index_file.write("-------- | -----------\n")
         for func_name in section.func_list:
             func = rerun_pkg[func_name]
-            index_file.write(f"[`rerun.{func_name}()`]({md_name}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
+            index_file.write(
+                f"[`depthai_viewer.{func_name}()`]({md_name}#depthai_viewer.{func_name}) | {func.docstring.lines[0]}\n"
+            )
 
         index_file.write("\n")
 

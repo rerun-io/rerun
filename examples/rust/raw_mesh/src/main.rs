@@ -12,9 +12,11 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use rerun::components::{ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates};
-use rerun::time::{TimeType, Timeline};
-use rerun::{
+use depthai_viewer::components::{
+    ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform, Vec4D, ViewCoordinates,
+};
+use depthai_viewer::time::{TimeType, Timeline};
+use depthai_viewer::{
     external::{re_log, re_memory::AccountingAllocator},
     EntityPath, MsgSender, Session,
 };
@@ -54,14 +56,14 @@ impl From<GltfPrimitive> for Mesh3D {
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
 impl From<GltfTransform> for Transform {
     fn from(transform: GltfTransform) -> Self {
-        Transform::Rigid3(rerun::components::Rigid3 {
-            rotation: rerun::components::Quaternion {
+        Transform::Rigid3(depthai_viewer::components::Rigid3 {
+            rotation: depthai_viewer::components::Quaternion {
                 x: transform.r[0],
                 y: transform.r[1],
                 z: transform.r[2],
                 w: transform.r[3],
             },
-            translation: rerun::components::Vec3D(transform.t),
+            translation: depthai_viewer::components::Vec3D(transform.t),
         })
     }
 }
@@ -131,7 +133,7 @@ enum Scene {
 #[clap(author, version, about)]
 struct Args {
     #[command(flatten)]
-    rerun: rerun::clap::RerunArgs,
+    rerun: depthai_viewer::clap::RerunArgs,
 
     /// Specifies the glTF scene to load.
     #[clap(long, value_enum, default_value = "buggy")]

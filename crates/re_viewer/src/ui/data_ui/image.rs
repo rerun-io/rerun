@@ -5,13 +5,13 @@ use re_log_types::{
     component_types::{ClassId, Tensor, TensorDataMeaning},
     DecodedTensor, TensorElement,
 };
-use re_renderer::renderer::ColormappedTexture;
-use re_ui::ReUi;
 
 use crate::{
     misc::{caches::TensorStats, ViewerContext},
     ui::annotations::AnnotationMap,
 };
+use re_renderer::renderer::ColormappedTexture;
+use re_ui::ReUi;
 
 use super::{EntityDataUi, UiVerbosity};
 

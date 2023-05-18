@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use itertools::Itertools as _;
 
-use rerun::{
+use depthai_viewer::{
     components::{ColorRGBA, LineStrip3D, Point3D, Quaternion, Radius, Rigid3, Transform, Vec3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
@@ -15,8 +15,8 @@ use rerun::{
 const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let recording_info = rerun::new_recording_info("DNA Abacus");
-    rerun::native_viewer::spawn(recording_info, |session| {
+    let recording_info = depthai_viewer::new_recording_info("DNA Abacus");
+    depthai_viewer::native_viewer::spawn(recording_info, |session| {
         run(&session).unwrap();
     })?;
     Ok(())

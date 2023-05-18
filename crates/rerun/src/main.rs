@@ -8,7 +8,7 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 async fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_native_logging();
     let build_info = re_build_info::build_info!();
-    rerun::run(build_info, rerun::CallSource::Cli, std::env::args())
+    depthai_viewer::run(build_info, depthai_viewer::CallSource::Cli, std::env::args())
         .await
         .map(std::process::ExitCode::from)
 }

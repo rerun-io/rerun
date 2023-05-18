@@ -1,6 +1,6 @@
 //! Demonstrates the most barebone usage of the Rerun SDK.
 
-use rerun::{
+use depthai_viewer::{
     components::{ColorRGBA, Point3D},
     demo_util::grid,
     external::glam,
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_component(&colors)?
         .send(&session)?;
 
-    rerun::native_viewer::show(&session)?;
+    depthai_viewer::native_viewer::show(&session)?;
 
     Ok(())
 }

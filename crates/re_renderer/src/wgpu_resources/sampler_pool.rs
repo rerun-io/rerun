@@ -1,4 +1,4 @@
-use std::{hash::Hash, num::NonZeroU8};
+use std::hash::Hash;
 
 use super::{resource::PoolError, static_resource_pool::StaticResourcePool};
 use crate::debug_label::DebugLabel;
@@ -33,9 +33,6 @@ pub struct SamplerDesc {
 
     /// Maximum level of detail (i.e. mip level) to use
     pub lod_max_clamp: ordered_float::NotNan<f32>,
-
-    /// Valid values: 1, 2, 4, 8, and 16.
-    pub anisotropy_clamp: Option<NonZeroU8>,
 }
 
 #[derive(Default)]
@@ -56,11 +53,11 @@ impl GpuSamplerPool {
                 mipmap_filter: desc.mipmap_filter,
                 lod_min_clamp: desc.lod_min_clamp.into(),
                 lod_max_clamp: desc.lod_max_clamp.into(),
-                anisotropy_clamp: desc.anisotropy_clamp,
 
                 // Unsupported
                 compare: None,
                 border_color: None,
+                anisotropy_clamp: 1,
             })
         })
     }

@@ -17,6 +17,7 @@ use re_ui::{toasts, Command};
 
 use crate::{
     app_icon::setup_app_icon,
+    depthai::depthai,
     misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
     viewer_analytics::ViewerAnalytics,
@@ -99,9 +100,47 @@ pub struct App {
     analytics: ViewerAnalytics,
 
     icon_status: AppIconStatus,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    backend_handle: Option<std::process::Child>,
 }
 
 impl App {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn spawn_backend() -> Option<std::process::Child> {
+        // TODO(filip): Is there some way I can know for sure where depthai_viewer_backend is?
+        let backend_handle = match std::process::Command::new("python")
+            .args(["-m", "depthai_viewer._backend.main"])
+            .spawn()
+        {
+            Ok(child) => {
+                println!("Backend started successfully.");
+                Some(child)
+            }
+            Err(err) => {
+                eprintln!("Failed to start depthai viewer: {err}");
+                match std::process::Command::new("python3")
+                    .args(["-m", "depthai_viewer._backend.main"])
+                    .spawn()
+                {
+                    Ok(child) => {
+                        println!("Backend started successfully.");
+                        Some(child)
+                    }
+                    Err(err) => {
+                        eprintln!("Failed to start depthai_viewer {err}");
+                        None
+                    }
+                }
+            }
+        };
+        // assert!(
+        //     backend_handle.is_some(),
+        //     "Couldn't start backend, exiting..."
+        // );
+        backend_handle
+    }
+
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
         build_info: re_build_info::BuildInfo,
@@ -157,6 +196,8 @@ impl App {
             analytics,
 
             icon_status: AppIconStatus::NotSetTryAgain,
+            #[cfg(not(target_arch = "wasm32"))]
+            backend_handle: App::spawn_backend(),
         }
     }
 
@@ -246,8 +287,6 @@ impl App {
     }
 
     fn run_command(&mut self, cmd: Command, _frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
-        let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
-
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
@@ -263,6 +302,10 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::Quit => {
+                self.state.depthai_state.shutdown();
+                if let Some(backend_handle) = &mut self.backend_handle {
+                    backend_handle.kill();
+                }
                 _frame.close();
             }
 
@@ -281,20 +324,10 @@ impl App {
             Command::ToggleBlueprintPanel => {
                 let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.blueprint_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.blueprint_panel_expanded {
-                    blueprint.selection_panel_expanded = false;
-                }
             }
             Command::ToggleSelectionPanel => {
                 let blueprint = self.blueprint_mut(egui_ctx);
                 blueprint.selection_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.selection_panel_expanded {
-                    blueprint.blueprint_panel_expanded = false;
-                }
             }
             Command::ToggleTimePanel => {
                 self.blueprint_mut(egui_ctx).time_panel_expanded ^= true;
@@ -425,6 +458,15 @@ impl eframe::App for App {
         [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn on_close_event(&mut self) -> bool {
+        self.state.depthai_state.shutdown();
+        if let Some(backend_handle) = &mut self.backend_handle {
+            backend_handle.kill();
+        }
+        true
+    }
+
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         if self.startup_options.persist_state {
             eframe::set_value(storage, eframe::APP_KEY, &self.state);
@@ -433,6 +475,27 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
+        self.state.depthai_state.update(); // Always update depthai state
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            match &mut self.backend_handle {
+                Some(handle) => match handle.try_wait() {
+                    Ok(status) => {
+                        if status.is_some() {
+                            handle.kill();
+                            re_log::debug!("Backend process has exited, restarting!");
+                            self.backend_handle = App::spawn_backend();
+                        }
+                    }
+                    Err(_) => {}
+                },
+                None => self.backend_handle = App::spawn_backend(),
+            };
+        }
+
+        if self.backend_handle.is_none() {
+            self.backend_handle = App::spawn_backend();
+        };
 
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit
@@ -444,8 +507,14 @@ impl eframe::App for App {
         }
 
         if self.shutdown.load(std::sync::atomic::Ordering::Relaxed) {
+            self.state.depthai_state.shutdown();
             #[cfg(not(target_arch = "wasm32"))]
-            frame.close();
+            {
+                if let Some(backend_handle) = &mut self.backend_handle {
+                    backend_handle.kill();
+                }
+                frame.close();
+            }
             return;
         }
 
@@ -548,18 +617,14 @@ impl eframe::App for App {
                         .unwrap();
                     render_ctx.begin_frame();
 
-                    if log_db.is_default() {
-                        wait_screen_ui(ui, &self.rx);
-                    } else {
-                        self.state.show(
-                            ui,
-                            render_ctx,
-                            log_db,
-                            &self.re_ui,
-                            &self.component_ui_registry,
-                            self.rx.source(),
-                        );
-                    }
+                    self.state.show(
+                        ui,
+                        render_ctx,
+                        log_db,
+                        &self.re_ui,
+                        &self.component_ui_registry,
+                        self.rx.source(),
+                    );
 
                     render_ctx.before_submit();
                 }
@@ -583,6 +648,7 @@ impl eframe::App for App {
             egui_ctx.input(|i| i.time),
             frame_start.elapsed().as_secs_f32(),
         );
+        egui_ctx.request_repaint(); // Force repaint even when out of focus
     }
 }
 
@@ -943,13 +1009,18 @@ struct AppState {
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
 
+    #[serde(skip)] // Quick fix for subscriptions setting, just don't remembet space views
     blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
 
     /// Which view panel is currently being shown
     panel_selection: PanelSelection,
 
     selection_panel: crate::selection_panel::SelectionPanel,
+
     time_panel: crate::time_panel::TimePanel,
+
+    selected_device: depthai::DeviceId,
+    depthai_state: depthai::State,
 
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(skip)]
@@ -976,8 +1047,10 @@ impl AppState {
             recording_configs,
             panel_selection,
             blueprints,
-            selection_panel,
-            time_panel,
+            selection_panel: _,
+            time_panel: _,
+            selected_device: _,
+            depthai_state,
             #[cfg(not(target_arch = "wasm32"))]
                 profiler: _,
         } = self;
@@ -998,13 +1071,11 @@ impl AppState {
             rec_cfg,
             re_ui,
             render_ctx,
+            depthai_state,
         };
 
-        let blueprint = blueprints
-            .entry(selected_app_id.clone())
-            .or_insert_with(|| Blueprint::new(ui.ctx()));
-        time_panel.show_panel(&mut ctx, blueprint, ui);
-        selection_panel.show_panel(&mut ctx, ui, blueprint);
+        // Hide time panel for now, reuse for recordings in the future
+        // time_panel.show_panel(&mut ctx, blueprint, ui);
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -1345,7 +1416,7 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
         // we use monospace so the width doesn't fluctuate as the numbers change.
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+            .on_hover_text("CPU time used by Depthai Viewer each frame. Lower is better.");
     }
 }
 
@@ -1360,7 +1431,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
                 .color(ui.visuals().weak_text_color()),
         )
         .on_hover_text(format!(
-            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
+            "Depthai Viewer is using {} of RAM in {} separate allocations,\n\
             plus {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
             format_number(count.count),
@@ -1395,7 +1466,7 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
                 format_number(queue_len),
             );
             let hover_text =
-                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    "When more data is arriving over network than the Depthai Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
                     This latency does NOT include network latency.";
 
             if latency_sec < app.state.app_options.warn_latency {

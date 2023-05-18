@@ -5,7 +5,7 @@ numpy
 packaging
 pillow
 requests==2.28.1
-rerun-sdk
+depthai-viewer
 scipy
 torch>=1.13.0
 transformers>=4.26.0

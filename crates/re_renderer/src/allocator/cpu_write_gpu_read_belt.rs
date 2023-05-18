@@ -1,6 +1,9 @@
-use std::{num::NonZeroU32, sync::mpsc};
+use std::sync::mpsc;
 
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, Texture2DBufferInfo};
+use crate::{
+    texture_info::Texture2DBufferInfo,
+    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool},
+};
 
 /// A sub-allocated staging buffer that can be written to.
 ///
@@ -119,7 +122,7 @@ where
                 buffer: &self.chunk_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: self.byte_offset_in_chunk_buffer,
-                    bytes_per_row: NonZeroU32::new(buffer_info.bytes_per_row_padded),
+                    bytes_per_row: Some(buffer_info.bytes_per_row_padded),
                     rows_per_image: None,
                 },
             },
@@ -290,7 +293,7 @@ impl CpuWriteGpuReadBelt {
         );
         // Largest uncompressed texture format (btw. many compressed texture format have the same block size!)
         debug_assert!(
-            wgpu::TextureFormat::Rgba32Uint.describe().block_size as u64
+            wgpu::TextureFormat::Rgba32Uint.block_size(None).unwrap() as u64
                 <= CpuWriteGpuReadBelt::MIN_OFFSET_ALIGNMENT
         );
 

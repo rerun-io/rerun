@@ -57,7 +57,7 @@ impl MemoryPanel {
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            ui.label("🗠 Rerun Viewer memory use over time");
+            ui.label("🗠 Depthai Viewer memory use over time");
             self.plot(ui, limit);
         });
     }
@@ -69,7 +69,7 @@ impl MemoryPanel {
         store_config: &DataStoreConfig,
         store_stats: &DataStoreStats,
     ) {
-        ui.strong("Rerun Viewer resource usage");
+        ui.strong("Depthai Viewer resource usage");
 
         ui.separator();
         ui.collapsing("CPU Resources", |ui| {

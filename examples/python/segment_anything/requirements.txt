@@ -2,7 +2,7 @@
 numpy
 opencv-python
 requests
-rerun-sdk
+depthai-viewer
 torch
 torchvision
 tqdm

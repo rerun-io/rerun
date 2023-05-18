@@ -1,7 +1,7 @@
 numpy
 opencv-python
 pandas
-rerun-sdk
+depthai-viewer
 scipy
 tqdm
 trimesh

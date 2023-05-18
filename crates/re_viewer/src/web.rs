@@ -24,8 +24,9 @@ pub async fn start(
 
     let web_options = eframe::WebOptions {
         follow_system_theme: false,
-        default_theme: eframe::Theme::Dark,
+        default_theme: eframe::Theme::Light,
         wgpu_options: crate::wgpu_options(),
+        depth_buffer: 0,
     };
 
     eframe::start_web(
@@ -38,7 +39,7 @@ pub async fn start(
             let startup_options = crate::StartupOptions {
                 memory_limit: re_memory::MemoryLimit {
                     // On wasm32 we only have 4GB of memory to play around with.
-                    limit: Some(3_500_000_000),
+                    limit: Some(2_500_000_000),
                 },
                 persist_state,
             };

@@ -21,22 +21,22 @@ from typing import List
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
-    parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
+    parser.add_argument("--no-build", action="store_true", help="Skip building depthai-viewer")
     parser.add_argument("--no-pip-reqs", action="store_true", help="Skip installing pip requirements")
 
     if parser.parse_args().no_build:
-        print("Skipping building rerun-sdk - assuming it is already built and up-to-date!")
+        print("Skipping building depthai-viewer - assuming it is already built and up-to-date!")
     else:
         build_env = os.environ.copy()
         if "RUST_LOG" in build_env:
             del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
 
         print("----------------------------------------------------------")
-        print("Building rerun-sdk…")
+        print("Building depthai-viewer…")
         start_time = time.time()
         subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
         elapsed = time.time() - start_time
-        print(f"rerun-sdk built in {elapsed:.1f} seconds")
+        print(f"depthai-viewer built in {elapsed:.1f} seconds")
         print("")
 
     if not parser.parse_args().no_pip_reqs:
@@ -87,7 +87,7 @@ def run_example(example: str, args: List[str]) -> None:
         python_executable = "python3"
 
     rerun_process = subprocess.Popen(
-        [python_executable, "-m", "rerun", "--port", str(port), "--strict", "--test-receive"]
+        [python_executable, "-m", "depthai_viewer", "--port", str(port), "--strict", "--test-receive"]
     )
     time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
 

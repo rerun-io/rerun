@@ -1,6 +1,6 @@
 """Test for color_conversion module."""
 import numpy as np
-from rerun.color_conversion import linear_to_gamma_u8_pixel, linear_to_gamma_u8_value
+from depthai_viewer.color_conversion import linear_to_gamma_u8_pixel, linear_to_gamma_u8_value
 
 
 def test_linear_to_gamma_u8_value() -> None:

@@ -3,14 +3,15 @@ use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, Tim
 use re_renderer::{GpuReadbackIdentifier, ScreenshotProcessor};
 
 use crate::{
+    depthai::depthai,
     misc::{space_info::SpaceInfoCollection, SpaceViewHighlights, TransformCache, ViewerContext},
     ui::view_category::categorize_entity_path,
 };
 
 use super::{
     data_blueprint::DataBlueprintTree, space_view_heuristics::default_queried_entities,
-    view_bar_chart, view_category::ViewCategory, view_spatial, view_tensor, view_text,
-    view_time_series,
+    view_bar_chart, view_category::ViewCategory, view_node_graph, view_spatial, view_tensor,
+    view_text, view_time_series,
 };
 
 // ----------------------------------------------------------------------------
@@ -20,6 +21,14 @@ use super::{
     Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
 )]
 pub struct SpaceViewId(uuid::Uuid);
+
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub enum SpaceViewKind {
+    Data,
+    Stats,
+    Config,
+    Selection,
+}
 
 impl SpaceViewId {
     pub fn random() -> Self {
@@ -66,6 +75,8 @@ pub struct SpaceView {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
+
+    pub is_depthai_spaceview: bool,
 }
 
 impl SpaceView {
@@ -78,11 +89,31 @@ impl SpaceView {
         // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
         // Spaces are now always named after the final element of the space-path (or the root), independent of the
         // query entities.
-        let display_name = if let Some(name) = space_path.iter().last() {
-            name.to_string()
-        } else {
-            // Include category name in the display for root paths because they look a tad bit too short otherwise.
-            format!("/ ({category})")
+        let mut is_depthai_spaceview = true;
+        let display_name = match space_path {
+            ep if ep.hash() == depthai::entity_paths::RGB_PINHOLE_CAMERA.hash() => {
+                "Color camera (2D)".into()
+            }
+            ep if ep.hash() == depthai::entity_paths::COLOR_CAM_3D.hash() => {
+                "Color camera (3D)".into()
+            }
+            ep if ep.hash() == depthai::entity_paths::RIGHT_PINHOLE_CAMERA.hash() => {
+                "Right mono camera (2D)".into()
+            }
+            ep if ep.hash() == depthai::entity_paths::LEFT_PINHOLE_CAMERA.hash() => {
+                "Left mono camera (2D)".into()
+            }
+            ep if ep.hash() == depthai::entity_paths::MONO_CAM_3D.hash() => {
+                "Mono cameras (3D)".into()
+            }
+            _ => {
+                is_depthai_spaceview = false;
+                if let Some(entity_path_part) = space_path.iter().last() {
+                    entity_path_part.to_string()
+                } else {
+                    format!("/ ({category})")
+                }
+            }
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
@@ -97,6 +128,7 @@ impl SpaceView {
             view_state: ViewState::default(),
             category,
             entities_determined_by_user: false,
+            is_depthai_spaceview,
         }
     }
 
@@ -191,6 +223,7 @@ impl SpaceView {
                     }
                 }
             }
+            ViewCategory::NodeGraph => self.view_state.state_node_graph.selection_ui(ctx.re_ui, ui),
         }
     }
 
@@ -262,6 +295,11 @@ impl SpaceView {
                 scene.load(ctx, &query);
                 self.view_state.ui_tensor(ctx, ui, &scene);
             }
+            ViewCategory::NodeGraph => {
+                let mut scene = view_node_graph::SceneNodeGraph::default();
+                scene.load(ctx, &query);
+                self.view_state.ui_node_graph(ctx, ui, &scene);
+            }
         };
     }
 
@@ -324,6 +362,7 @@ pub struct ViewState {
     state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
     state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
+    state_node_graph: view_node_graph::ViewNodeGraphState,
 }
 
 impl ViewState {
@@ -407,6 +446,21 @@ impl ViewState {
         }
         .show(ui, |ui| {
             view_text::view_text(ctx, ui, &mut self.state_text, scene);
+        });
+    }
+
+    fn ui_node_graph(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene: &view_node_graph::SceneNodeGraph,
+    ) {
+        egui::Frame {
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..egui::Frame::default()
+        }
+        .show(ui, |ui| {
+            view_node_graph::view_node_graph(ctx, ui, &mut self.state_node_graph, scene)
         });
     }
 

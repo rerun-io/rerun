@@ -7,7 +7,7 @@ use re_data_store::EntityPath;
 use re_log_types::{component_types::InstanceKey, EntityPathHash};
 use re_renderer::OutlineMaskPreference;
 
-use crate::ui::{Blueprint, SelectionHistory, SpaceView, SpaceViewId};
+use crate::ui::{Blueprint, SelectionHistory, SpaceView, SpaceViewId, Viewport};
 
 use super::{Item, ItemCollection};
 
@@ -288,9 +288,9 @@ impl SelectionState {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
-        blueprint: &mut Blueprint,
+        viewport: &mut Viewport,
     ) -> Option<ItemCollection> {
-        self.history.selection_ui(re_ui, ui, blueprint)
+        self.history.selection_ui(re_ui, ui, viewport)
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {

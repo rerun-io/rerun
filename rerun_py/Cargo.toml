@@ -14,8 +14,8 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 [features]
 default = ["extension-module", "native_viewer"]
 
-## The features we turn on when building the `rerun-sdk` PyPi package
-## for <https://pypi.org/project/rerun-sdk/>.
+## The features we turn on when building the `depthai-viewer` PyPi package
+## for <https://pypi.org/project/depthai-viewer/>.
 pypi = ["extension-module", "native_viewer", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
@@ -26,7 +26,7 @@ pypi = ["extension-module", "native_viewer", "web_viewer"]
 extension-module = ["pyo3/extension-module"]
 
 ## Support spawning a native Rerun viewer with `spawn()`.
-native_viewer = ["rerun/native_viewer"]
+native_viewer = ["depthai-viewer/native_viewer"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
@@ -35,7 +35,11 @@ native_viewer = ["rerun/native_viewer"]
 ##
 ## You also need to install some additional tools, which you can do by running
 ## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web_viewer = ["rerun/web_viewer", "dep:re_web_viewer_server", "dep:re_ws_comms"]
+web_viewer = [
+  "depthai-viewer/web_viewer",
+  "dep:re_web_viewer_server",
+  "dep:re_ws_comms",
+]
 
 
 [dependencies]
@@ -44,7 +48,7 @@ re_error.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
-rerun = { workspace = true, default-features = false, features = [
+depthai-viewer = { workspace = true, default-features = false, features = [
   "analytics",
   "server",
   "sdk",

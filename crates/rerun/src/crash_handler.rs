@@ -254,7 +254,7 @@ pub fn callstack_from(start_patterns: &[&str]) -> String {
         "std::sys_common::backtrace::__rust_begin_short_backtrace",
         // Trim the bottom even more to exclude any user code that potentially used `rerun`
         // as a library to show a viewer. In these cases there may be sensitive user code
-        // that called `rerun::run`, and we do not want to include it:
+        // that called `depthai_viewer::run`, and we do not want to include it:
         "run_native_app",
     ];
 

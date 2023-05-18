@@ -3,6 +3,17 @@ build-backend = "maturin"
 requires = ["maturin>=0.14.0,<0.15"]
 
 [project]
+dependencies = [
+  "deprecated",
+  "numpy>=1.23",
+  "pyarrow==10.0.1",
+  "setuptools",
+  "ahrs",
+  "depthai",             # Atm python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==2.21.2.0.dev0+5004cc71950e6786feb36147b7919e146f4ef8da --force-reinstall # is required
+  "depthai-sdk>=1.10.0",
+  "websockets",
+  "pydantic",
+]
 classifiers = [
   "Programming Language :: Rust",
   "Programming Language :: Python :: Implementation :: CPython",
@@ -11,15 +22,14 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Visualization",
 ]
-dependencies = ["deprecated", "numpy>=1.23", "pyarrow==10.0.1"]
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
-name = "rerun-sdk"
+name = "depthai-viewer"
 requires-python = ">=3.8"
 
 [[project.authors]]
-email = "opensource@rerun.io"
-name = "Rerun.io"
+email = "filip.jeretina@luxonis.com"
+name = "Luxonis"
 
 [project.license]
 text = "MIT OR Apache-2.0"
@@ -30,10 +40,10 @@ tests = ["pytest==7.1.2"]
 [project.urls]
 documentation = "https://www.rerun.io/docs"
 homepage = "https://www.rerun.io"
-repository = "https://github.com/rerun-io/rerun"
+repository = "https://github.com/luxonis/depthai-viewer"
 
 [project.scripts]
-rerun = "rerun.__main__:main"
+depthai-viewer = "depthai_viewer.__main__:main"
 
 [tool.black]
 line-length = 120
@@ -93,4 +103,4 @@ ban-relative-imports = "all"
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
 include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
 locked = true
-python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
+python-packages = ["rerun_sdk/depthai_viewer", "rerun_sdk/rerun_demo"]

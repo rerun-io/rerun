@@ -18,8 +18,8 @@ impl Blueprint {
     pub fn new(egui_ctx: &egui::Context) -> Self {
         let screen_size = egui_ctx.screen_rect().size();
         Self {
-            blueprint_panel_expanded: screen_size.x > 750.0,
-            selection_panel_expanded: screen_size.x > 1000.0,
+            blueprint_panel_expanded: true,
+            selection_panel_expanded: true,
             time_panel_expanded: screen_size.y > 600.0,
             viewport: Default::default(),
         }
@@ -71,7 +71,8 @@ impl Blueprint {
                 ..Default::default()
             }
             .show(ui, |ui| {
-                self.viewport.tree_ui(ctx, ui);
+                self.viewport
+                    .add_or_remove_space_views_ui(ctx, ui, spaces_info);
             });
         });
     }
@@ -91,15 +92,13 @@ impl Blueprint {
             .show_inside(ui, |ui| {
                 ui.horizontal_centered(|ui| {
                     ui.strong("Blueprint").on_hover_text(
-                        "The Blueprint is where you can configure the Rerun Viewer.",
+                        "The Blueprint is where you can configure the Depthai Viewer.",
                     );
 
                     ui.allocate_ui_with_layout(
                         ui.available_size_before_wrap(),
                         egui::Layout::right_to_left(egui::Align::Center),
                         |ui| {
-                            self.viewport
-                                .add_new_spaceview_button_ui(ctx, ui, spaces_info);
                             self.reset_button_ui(ctx, ui, spaces_info);
                         },
                     );

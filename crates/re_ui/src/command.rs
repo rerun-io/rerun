@@ -72,7 +72,7 @@ impl Command {
             Command::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Quit => ("Quit", "Close the Rerun Viewer"),
+            Command::Quit => ("Quit", "Close the Depthai Viewer"),
 
             Command::ResetViewer => (
                 "Reset viewer",
@@ -87,7 +87,7 @@ impl Command {
 
             Command::ToggleMemoryPanel => (
                 "Toggle memory panel",
-                "Investigate what is using up RAM in Rerun Viewer",
+                "Investigate what is using up RAM in Depthai Viewer",
             ),
             Command::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Command::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),

@@ -211,7 +211,7 @@ impl WebViewerServer {
     pub fn new(port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
         let bind_addr = format!("0.0.0.0:{port}").parse()?;
         let server = hyper::Server::try_bind(&bind_addr)
-            .map_err(|e| WebViewerServerError::BindFailed(port, e))?
+            .map_err(|err| WebViewerServerError::BindFailed(port, err))?
             .serve(MakeSvc);
         Ok(Self { server })
     }

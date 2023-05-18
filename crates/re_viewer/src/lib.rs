@@ -1,9 +1,10 @@
-//! Rerun Viewer GUI.
+//! Depthai Viewer GUI.
 //!
-//! This crate contains all the GUI code for the Rerun Viewer,
+//! This crate contains all the GUI code for the Depthai Viewer,
 //! including all 2D and 3D visualization code.
 
 mod app;
+pub mod depthai;
 pub mod env_vars;
 pub(crate) mod gpu_bridge;
 pub mod math;
@@ -14,7 +15,7 @@ mod viewer_analytics;
 
 pub(crate) use misc::{mesh_loader, Item, TimeControl, TimeView, ViewerContext};
 use re_log_types::PythonVersion;
-pub(crate) use ui::{memory_panel, selection_panel, time_panel, UiVerbosity};
+pub(crate) use ui::{bottom_panel, memory_panel, selection_panel, time_panel, UiVerbosity};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
@@ -115,11 +116,7 @@ impl AppEnvironment {
 // ---------------------------------------------------------------------------
 
 #[allow(dead_code)]
-const APPLICATION_NAME: &str = "Rerun Viewer";
-
-pub(crate) fn hardware_tier() -> re_renderer::config::HardwareTier {
-    re_renderer::config::HardwareTier::default()
-}
+const APPLICATION_NAME: &str = "Depthai Viewer";
 
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
     egui_wgpu::WgpuConfiguration {
@@ -141,10 +138,8 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
-            backends: re_renderer::config::supported_backends(),
-            device_descriptor: crate::hardware_tier().device_descriptor(),
-            // TODO(andreas): This should be the default for egui-wgpu.
-            power_preference: wgpu::util::power_preference_from_env().unwrap_or(wgpu::PowerPreference::HighPerformance),
+            supported_backends: re_renderer::config::supported_backends(),
+            device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::HardwareTier::from_adapter(adapter).device_descriptor()),
             ..Default::default()
         }
 }
@@ -157,11 +152,14 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi 
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 
         paint_callback_resources.insert(RenderContext::new(
+            &render_state.adapter,
             render_state.device.clone(),
             render_state.queue.clone(),
             RenderContextConfig {
                 output_format_color: render_state.target_format,
-                hardware_tier: crate::hardware_tier(),
+                hardware_tier: re_renderer::config::HardwareTier::from_adapter(
+                    &render_state.adapter,
+                ),
             },
         ));
     }
@@ -188,6 +186,11 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
         .name("ui_waker".to_owned())
         .spawn(move || {
             while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
+                // TODO(filip): Improve this code to be more smart, maybe we have 100 legit messages and ui is in focus?
+                if tx.len() > 100 {
+                    re_log::trace!("Dropping messages: Most likely the app is not in focus!");
+                    continue;
+                }
                 if tx.send_at(sent_at, msg).is_ok() {
                     ctx.request_repaint();
                 } else {

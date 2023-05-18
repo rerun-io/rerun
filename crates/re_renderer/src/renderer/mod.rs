@@ -15,7 +15,7 @@ pub use point_cloud::{
 
 mod depth_cloud;
 pub use self::depth_cloud::{
-    DepthCloud, DepthCloudDepthData, DepthCloudDrawData, DepthCloudRenderer, DepthClouds,
+    DepthCloud, DepthCloudAlbedoData, DepthCloudDrawData, DepthCloudRenderer, DepthClouds,
 };
 
 mod test_triangle;
@@ -35,7 +35,7 @@ mod compositor;
 pub(crate) use compositor::CompositorDrawData;
 
 mod debug_overlay;
-pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayRenderer};
+pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 
 use crate::{
     context::{RenderContext, SharedRendererData},

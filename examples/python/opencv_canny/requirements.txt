@@ -1,2 +1,2 @@
 opencv-python
-rerun-sdk
+depthai-viewer

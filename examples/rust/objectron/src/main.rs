@@ -18,7 +18,7 @@ use std::{
 
 use anyhow::{anyhow, Context as _};
 
-use rerun::{
+use depthai_viewer::{
     external::re_log,
     time::{Time, TimePoint, TimeType, Timeline},
     MsgSender, Session,
@@ -74,10 +74,10 @@ impl<'a> From<&'a [objectron::FrameAnnotation]> for AnnotationsPerFrame<'a> {
 
 fn log_coordinate_space(
     session: &Session,
-    ent_path: impl Into<rerun::EntityPath>,
+    ent_path: impl Into<depthai_viewer::EntityPath>,
     axes: &str,
 ) -> anyhow::Result<()> {
-    let view_coords: rerun::components::ViewCoordinates = axes
+    let view_coords: depthai_viewer::components::ViewCoordinates = axes
         .parse()
         .map_err(|err| anyhow!("couldn't parse {axes:?} as ViewCoordinates: {err}"))?;
     MsgSender::new(ent_path)
@@ -110,7 +110,7 @@ fn log_ar_frame(
 }
 
 fn log_baseline_objects(session: &Session, objects: &[objectron::Object]) -> anyhow::Result<()> {
-    use rerun::components::{Box3D, ColorRGBA, Label, Rigid3, Transform};
+    use depthai_viewer::components::{Box3D, ColorRGBA, Label, Rigid3, Transform};
 
     let boxes = objects.iter().filter_map(|object| {
         Some({
@@ -151,7 +151,7 @@ fn log_baseline_objects(session: &Session, objects: &[objectron::Object]) -> any
 
 fn log_video_frame(session: &Session, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
-    let tensor = rerun::components::Tensor::tensor_from_jpeg_file(image_path)?;
+    let tensor = depthai_viewer::components::Tensor::tensor_from_jpeg_file(image_path)?;
 
     MsgSender::new("world/camera/video")
         .with_timepoint(ar_frame.timepoint.clone())
@@ -189,7 +189,7 @@ fn log_ar_camera(
     // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);
 
-    use rerun::components::{Pinhole, Rigid3, Transform};
+    use depthai_viewer::components::{Pinhole, Rigid3, Transform};
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
         .with_component(&[Transform::Rigid3(Rigid3 {
@@ -213,7 +213,7 @@ fn log_feature_points(
     timepoint: TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
-    use rerun::components::{ColorRGBA, InstanceKey, Point3D};
+    use depthai_viewer::components::{ColorRGBA, InstanceKey, Point3D};
 
     let ids = points.identifier.iter();
     let points = points.point.iter();
@@ -246,7 +246,7 @@ fn log_frame_annotations(
     timepoint: &TimePoint,
     annotations: &objectron::FrameAnnotation,
 ) -> anyhow::Result<()> {
-    use rerun::components::{ColorRGBA, InstanceKey, LineStrip2D, Point2D};
+    use depthai_viewer::components::{ColorRGBA, InstanceKey, LineStrip2D, Point2D};
 
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
@@ -332,7 +332,7 @@ enum Recording {
 #[clap(author, version, about)]
 struct Args {
     #[command(flatten)]
-    rerun: rerun::clap::RerunArgs,
+    rerun: depthai_viewer::clap::RerunArgs,
 
     /// Specifies the recording to replay.
     #[clap(long, value_enum, default_value = "book")]

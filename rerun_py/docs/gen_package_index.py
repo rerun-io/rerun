@@ -41,7 +41,7 @@ package_dir = Path("package")
 nav = mkdocs_gen_files.Nav()
 nav["index"] = "index.md"
 
-for package in ["rerun", "rerun_demo"]:
+for package in ["depthai_viewer", "rerun_demo"]:
     for path in sorted(root.joinpath(package).rglob("*.py")):
         rel_path = path.relative_to(root)
 

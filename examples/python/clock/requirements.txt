@@ -1,2 +1,2 @@
 numpy
-rerun-sdk
+depthai-viewer

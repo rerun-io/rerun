@@ -15,12 +15,12 @@ import zipfile
 from pathlib import Path
 from typing import Final, Iterable, Tuple
 
+import depthai_viewer as viewer
 import dicom_numpy
 import numpy as np
 import numpy.typing as npt
 import pydicom as dicom
 import requests
-import rerun as rr
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dicom.zip"
@@ -51,7 +51,7 @@ def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
     # the data is i16, but in range [0, 536].
     voxels_volume_u16: npt.NDArray[np.uint16] = np.require(voxels_volume, np.uint16)
 
-    rr.log_tensor(
+    viewer.log_tensor(
         "tensor",
         voxels_volume_u16,
         names=["right", "back", "up"],
@@ -73,9 +73,10 @@ def ensure_dataset_downloaded() -> Iterable[Path]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-    rr.script_add_args(parser)
-    args = parser.parse_args()
-    rr.script_setup(args, "dicom")
+    viewer.script_add_args(parser)
+    args, unknown = parser.parse_known_args()
+    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    viewer.script_setup(args, "dicom")
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)
-    rr.script_teardown(args)
+    viewer.script_teardown(args)

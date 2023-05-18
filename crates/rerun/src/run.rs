@@ -15,7 +15,7 @@ use crate::web_viewer::host_web_viewer;
 
 // Note the extra blank lines between the point-lists below: it is required by `clap`.
 
-/// The Rerun Viewer and Server
+/// The Depthai Viewer and Server
 ///
 /// Features:
 ///
@@ -54,14 +54,13 @@ struct Args {
     #[clap(long)]
     drop_at_latency: Option<String>,
 
-    /// An upper limit on how much memory the Rerun Viewer should use.
-    ///
-    /// When this limit is used, Rerun will purge the oldest data.
-    ///
-    /// Example: `16GB`
-    #[clap(long)]
-    memory_limit: Option<String>,
-
+    // /// An upper limit on how much memory the Rerun Viewer should use.
+    // ///
+    // /// When this limit is used, Rerun will purge the oldest data.
+    // ///
+    // /// Example: `16GB`
+    // #[clap(long)]
+    // memory_limit: Option<String>,
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
@@ -294,11 +293,8 @@ async fn run_impl(
 
     #[cfg(feature = "native_viewer")]
     let startup_options = re_viewer::StartupOptions {
-        memory_limit: args.memory_limit.as_ref().map_or(Default::default(), |l| {
-            re_memory::MemoryLimit::parse(l)
-                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
-        }),
         persist_state: args.persist_state,
+        ..Default::default()
     };
 
     let (shutdown_rx, shutdown_bool) = setup_ctrl_c_handler();
@@ -441,7 +437,7 @@ async fn run_impl(
             app.set_profiler(profiler);
             Box::new(app)
         }))
-        .map_err(|e| e.into());
+        .map_err(|err| err.into());
 
         #[cfg(not(feature = "native_viewer"))]
         {

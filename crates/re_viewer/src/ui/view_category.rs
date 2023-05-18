@@ -2,7 +2,8 @@ use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_data_store::{EntityPath, LogDb, Timeline};
 use re_log_types::{
     component_types::{
-        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TextEntry,
+        Box3D, LineStrip2D, LineStrip3D, NodeGraph, Point2D, Point3D, Rect2D, Scalar, Tensor,
+        TextEntry,
     },
     Arrow3D, Component, Mesh3D, Transform,
 };
@@ -29,6 +30,7 @@ pub enum ViewCategory {
 
     /// High-dimensional tensor view
     Tensor,
+    NodeGraph,
 }
 
 impl ViewCategory {
@@ -39,6 +41,7 @@ impl ViewCategory {
             ViewCategory::BarChart => &re_ui::icons::SPACE_VIEW_HISTOGRAM,
             ViewCategory::Spatial => &re_ui::icons::SPACE_VIEW_3D,
             ViewCategory::Tensor => &re_ui::icons::SPACE_VIEW_TENSOR,
+            ViewCategory::NodeGraph => &re_ui::icons::SPACE_VIEW_TENSOR, // TODO(filip): add icon
         }
     }
 }
@@ -51,6 +54,7 @@ impl std::fmt::Display for ViewCategory {
             ViewCategory::BarChart => "Bar Chart",
             ViewCategory::Spatial => "Spatial",
             ViewCategory::Tensor => "Tensor",
+            ViewCategory::NodeGraph => "Node Graph",
         })
     }
 }
@@ -111,6 +115,8 @@ pub fn categorize_entity_path(
                     }
                 }
             }
+        } else if component == NodeGraph::name() {
+            set.insert(ViewCategory::NodeGraph);
         }
     }
 

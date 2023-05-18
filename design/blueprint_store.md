@@ -36,11 +36,11 @@ The user save the data store and blueprint store to separate files.
 Something like this is very low-level, and not very ergonomic:
 
 ```py
-rr.ui_log("top_bar", [("visible", false)])
-space_view_bpid = rr.ui_new_space_view("My 3D view")
-data_bpid = rr.new_data_blueprint("world/points")
-rr.ui_log(space_view_bpid, [("category", "3d"), ("children", [data_bpid])])
-rr.ui_log("viewport", [("children", [space_view_bpid])])
+viewer.ui_log("top_bar", [("visible", false)])
+space_view_bpid = viewer.ui_new_space_view("My 3D view")
+data_bpid = viewer.new_data_blueprint("world/points")
+viewer.ui_log(space_view_bpid, [("category", "3d"), ("children", [data_bpid])])
+viewer.ui_log("viewport", [("children", [space_view_bpid])])
 ```
 
 Adding high-level helpers on top of this is very desirable, but a lot of work.

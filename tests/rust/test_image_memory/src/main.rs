@@ -2,8 +2,8 @@
 
 use mimalloc::MiMalloc;
 
+use depthai_viewer::external::{image, re_memory, re_viewer};
 use re_memory::AccountingAllocator;
-use rerun::external::{image, re_memory, re_viewer};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc);
@@ -13,14 +13,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    let recording_info = rerun::new_recording_info("test_image_memory_rs");
-    rerun::native_viewer::spawn(recording_info, |session| {
+    let recording_info = depthai_viewer::new_recording_info("test_image_memory_rs");
+    depthai_viewer::native_viewer::spawn(recording_info, |session| {
         log_images(&session).unwrap();
     })?;
     Ok(())
 }
 
-fn log_images(session: &rerun::Session) -> Result<(), Box<dyn std::error::Error>> {
+fn log_images(session: &depthai_viewer::Session) -> Result<(), Box<dyn std::error::Error>> {
     let (w, h) = (2048, 1024);
     let n = 100;
 
@@ -31,10 +31,10 @@ fn log_images(session: &rerun::Session) -> Result<(), Box<dyn std::error::Error>
             image::Rgba([255, 255, 255, 255])
         }
     });
-    let tensor = rerun::components::Tensor::from_image(image)?;
+    let tensor = depthai_viewer::components::Tensor::from_image(image)?;
 
     for _ in 0..n {
-        rerun::MsgSender::new("image")
+        depthai_viewer::MsgSender::new("image")
             .with_component(&[tensor.clone()])?
             .send(session)?;
     }

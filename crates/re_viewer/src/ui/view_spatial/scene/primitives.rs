@@ -1,6 +1,6 @@
 use egui::Color32;
 use re_data_store::EntityPath;
-use re_log_types::{component_types::InstanceKey, EntityPathHash};
+use re_log_types::component_types::InstanceKey;
 use re_renderer::{
     renderer::{DepthClouds, MeshInstance},
     LineStripSeriesBuilder, PointCloudBuilder,
@@ -20,11 +20,7 @@ pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     pub(super) bounding_box: macaw::BoundingBox,
 
-    // TODO(andreas): Storing extra data like so is unsafe and not future proof either
-    //                (see also above comment on the need to separate cpu-readable data)
-    pub textured_rectangles_ids: Vec<EntityPathHash>,
-    pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
-
+    pub images: Vec<super::Image>,
     pub line_strips: LineStripSeriesBuilder,
     pub points: PointCloudBuilder,
     pub meshes: Vec<MeshSource>,
@@ -44,8 +40,7 @@ impl SceneSpatialPrimitives {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         Self {
             bounding_box: macaw::BoundingBox::nothing(),
-            textured_rectangles_ids: Default::default(),
-            textured_rectangles: Default::default(),
+            images: Default::default(),
             line_strips: LineStripSeriesBuilder::new(re_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
             points: PointCloudBuilder::new(re_ctx)
@@ -68,8 +63,7 @@ impl SceneSpatialPrimitives {
     pub fn num_primitives(&self) -> usize {
         let Self {
             bounding_box: _,
-            textured_rectangles,
-            textured_rectangles_ids: _,
+            images,
             line_strips,
             points,
             meshes,
@@ -77,7 +71,7 @@ impl SceneSpatialPrimitives {
             any_outlines: _,
         } = &self;
 
-        textured_rectangles.len()
+        images.len()
             + line_strips.vertices.len()
             + points.vertices.len()
             + meshes.len()
@@ -89,8 +83,7 @@ impl SceneSpatialPrimitives {
 
         let Self {
             bounding_box,
-            textured_rectangles_ids: _,
-            textured_rectangles,
+            images,
             line_strips,
             points,
             meshes,
@@ -100,7 +93,8 @@ impl SceneSpatialPrimitives {
 
         *bounding_box = macaw::BoundingBox::nothing();
 
-        for rect in textured_rectangles {
+        for image in images {
+            let rect = &image.textured_rect;
             bounding_box.extend(rect.top_left_corner_position);
             bounding_box.extend(rect.top_left_corner_position + rect.extent_u);
             bounding_box.extend(rect.top_left_corner_position + rect.extent_v);

@@ -95,11 +95,11 @@ cargo publish $FLAGS -p re_build_build_info
 cargo publish $FLAGS -p re_log
 cargo publish $FLAGS -p re_int_histogram
 cargo publish $FLAGS -p re_error
+cargo publish $FLAGS -p re_tuid
 cargo publish $FLAGS -p re_format
 cargo publish $FLAGS -p re_string_interner
 cargo publish $FLAGS -p re_analytics
 cargo publish $FLAGS -p re_memory
-cargo publish $FLAGS -p re_tuid
 cargo publish $FLAGS -p re_log_types
 cargo publish $FLAGS -p re_smart_channel
 cargo publish $FLAGS -p re_log_encoding

@@ -1,4 +1,6 @@
-use egui::NumExt as _;
+use egui::{
+    NumExt as _,
+};
 use re_data_store::{
     query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
 };
@@ -8,81 +10,34 @@ use re_log_types::{
 };
 
 use crate::{
-    ui::{view_spatial::SpatialNavigationMode, Blueprint},
-    Item, UiVerbosity, ViewerContext,
+     ui::view_spatial::SpatialNavigationMode, Item, UiVerbosity, ViewerContext,
 };
 
-use super::{data_ui::DataUi, space_view::ViewState};
+use super::{data_ui::DataUi, space_view::ViewState, Viewport};
 
 // ---
 
 /// The "Selection View" side-bar.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
 pub(crate) struct SelectionPanel {}
 
 impl SelectionPanel {
-    #[allow(clippy::unused_self)]
-    pub fn show_panel(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        blueprint: &mut Blueprint,
-    ) {
-        let screen_width = ui.ctx().screen_rect().width();
-
-        let panel = egui::SidePanel::right("selection_view")
-            .min_width(120.0)
-            .default_width((0.45 * screen_width).min(250.0).round())
-            .max_width((0.65 * screen_width).round())
-            .resizable(true)
-            .frame(egui::Frame {
-                fill: ui.style().visuals.panel_fill,
-                ..Default::default()
+    pub fn show_panel(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, viewport: &mut Viewport) {
+        egui::ScrollArea::both()
+            .auto_shrink([true; 2])
+            .show(ui, |ui| {
+                egui::Frame {
+                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                    ..Default::default()
+                }
+                .show(ui, |ui| {
+                    Self::contents(ui, ctx, viewport);
+                });
             });
-
-        panel.show_animated_inside(
-            ui,
-            blueprint.selection_panel_expanded,
-            |ui: &mut egui::Ui| {
-                egui::TopBottomPanel::top("selection_panel_title_bar")
-                    .exact_height(re_ui::ReUi::title_bar_height())
-                    .frame(egui::Frame {
-                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
-                        ..Default::default()
-                    })
-                    .show_inside(ui, |ui| {
-                        if let Some(selection) = ctx
-                            .rec_cfg
-                            .selection_state
-                            .selection_ui(ctx.re_ui, ui, blueprint)
-                        {
-                            ctx.set_multi_selection(selection.iter().cloned());
-                        }
-                    });
-
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
-                        egui::Frame {
-                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-                            ..Default::default()
-                        }
-                        .show(ui, |ui| {
-                            self.contents(ui, ctx, blueprint);
-                        });
-                    });
-            },
-        );
     }
 
-    #[allow(clippy::unused_self)]
-    fn contents(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
-    ) {
+    fn contents(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>, viewport: &mut Viewport) {
         crate::profile_function!();
 
         let query = ctx.current_query();
@@ -95,7 +50,7 @@ impl SelectionPanel {
         let selection = ctx.selection().to_vec();
         for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
-                what_is_selected_ui(ui, ctx, blueprint, item);
+                what_is_selected_ui(ui, ctx, viewport, item);
 
                 if has_data_section(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
@@ -105,7 +60,7 @@ impl SelectionPanel {
 
                 ctx.re_ui
                     .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                        blueprint_ui(ui, ctx, blueprint, item);
+                        blueprint_ui(ui, ctx, viewport, item);
                     });
 
                 if i + 1 < num_selections {
@@ -114,6 +69,27 @@ impl SelectionPanel {
                 }
             });
         }
+    }
+
+    pub fn selection_panel_options_ui(
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        viewport: &mut Viewport,
+        tab_bar_rect: egui::Rect,
+    ) {
+        let tab_bar_rect = tab_bar_rect.shrink2(egui::vec2(4.0, 0.0)); // Add some side margin outside the frame
+
+        ui.allocate_ui_at_rect(tab_bar_rect, |ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if let Some(selection) = ctx
+                    .rec_cfg
+                    .selection_state
+                    .selection_ui(ctx.re_ui, ui, viewport)
+                {
+                    ctx.set_multi_selection(selection.iter().cloned());
+                }
+            });
+        });
     }
 }
 
@@ -129,7 +105,7 @@ fn has_data_section(item: &Item) -> bool {
 pub fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
+    viewport: &mut Viewport,
     item: &Item,
 ) {
     match item {
@@ -151,7 +127,7 @@ pub fn what_is_selected_ui(
                 });
         }
         Item::SpaceView(space_view_id) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 ui.horizontal(|ui| {
                     ui.label("Space view:");
                     ui.text_edit_singleline(&mut space_view.display_name);
@@ -169,7 +145,7 @@ pub fn what_is_selected_ui(
                 ui.end_row();
 
                 if let Some(space_view_id) = space_view_id {
-                    if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                    if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                         ui.label("in Space View:");
                         ctx.space_view_button(ui, space_view);
                         ui.end_row();
@@ -178,7 +154,7 @@ pub fn what_is_selected_ui(
             });
         }
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
@@ -238,12 +214,12 @@ impl DataUi for Item {
 fn blueprint_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
+    viewport: &mut Viewport,
     item: &Item,
 ) {
     match item {
         Item::ComponentPath(component_path) => {
-            list_existing_data_blueprints(ui, ctx, component_path.entity_path(), blueprint);
+            list_existing_data_blueprints(ui, ctx, component_path.entity_path(), viewport);
         }
 
         Item::SpaceView(space_view_id) => {
@@ -253,8 +229,7 @@ fn blueprint_ui(
                     .on_hover_text("Manually add or remove entities from the Space View.")
                     .clicked()
                 {
-                    blueprint
-                        .viewport
+                    viewport
                         .show_add_remove_entities_window(*space_view_id);
                 }
 
@@ -263,25 +238,25 @@ fn blueprint_ui(
                     .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
                     .clicked()
                 {
-                    if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                    if let Some(space_view) = viewport.space_view(space_view_id) {
                         let mut new_space_view = space_view.clone();
                         new_space_view.id = super::SpaceViewId::random();
-                        blueprint.viewport.add_space_view(new_space_view);
-                        blueprint.viewport.mark_user_interaction();
+                        viewport.add_space_view(new_space_view);
+                        viewport.mark_user_interaction();
                     }
                 }
             });
 
             ui.add_space(ui.spacing().item_spacing.y);
 
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 space_view.selection_ui(ctx, ui);
             }
         }
 
         Item::InstancePath(space_view_id, instance_path) => {
-            if let Some(space_view) = space_view_id
-                .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
+            if let Some(space_view) =
+                space_view_id.and_then(|space_view_id| viewport.space_view_mut(&space_view_id))
             {
                 if instance_path.instance_key.is_specific() {
                     ui.horizontal(|ui| {
@@ -303,12 +278,12 @@ fn blueprint_ui(
                     data_blueprint.set(instance_path.entity_path.clone(), props);
                 }
             } else {
-                list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, blueprint);
+                list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
             }
         }
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
@@ -332,11 +307,9 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     entity_path: &EntityPath,
-    blueprint: &Blueprint,
+    viewport: &Viewport,
 ) {
-    let space_views_with_path = blueprint
-        .viewport
-        .space_views_containing_entity_path(entity_path);
+    let space_views_with_path = viewport.space_views_containing_entity_path(entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
@@ -346,7 +319,7 @@ fn list_existing_data_blueprints(
 
         ui.indent("list of data blueprints indent", |ui| {
             for space_view_id in &space_views_with_path {
-                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                if let Some(space_view) = viewport.space_view(space_view_id) {
                     ctx.entity_path_button_to(
                         ui,
                         Some(*space_view_id),
@@ -409,35 +382,98 @@ fn entity_props_ui(
         });
 }
 
-fn colormap_props_ui(ui: &mut egui::Ui, entity_props: &mut EntityProperties) {
-    let current = *entity_props.color_mapper.get();
+fn colormap_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_path: &EntityPath,
+    entity_props: &mut EntityProperties,
+) {
+    // Color mapping picker
+    {
+        let current = *entity_props.color_mapper.get();
+        ui.label("Color map");
+        egui::ComboBox::from_id_source("depth_color_mapper")
+            .selected_text(current.to_string())
+            .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.set_min_width(64.0);
 
-    ui.label("Color map");
-    egui::ComboBox::from_id_source("color_mapper")
-        .selected_text(current.to_string())
-        .show_ui(ui, |ui| {
+                let mut add_label = |proposed| {
+                    if ui
+                        .selectable_label(current == proposed, proposed.to_string())
+                        .clicked()
+                    {
+                        entity_props.color_mapper = EditableAutoValue::Auto(proposed);
+                    }
+                };
+
+                add_label(ColorMapper::Colormap(Colormap::Grayscale));
+                add_label(ColorMapper::Colormap(Colormap::Turbo));
+                add_label(ColorMapper::Colormap(Colormap::Viridis));
+                add_label(ColorMapper::Colormap(Colormap::Plasma));
+                add_label(ColorMapper::Colormap(Colormap::Magma));
+                add_label(ColorMapper::Colormap(Colormap::Inferno));
+                add_label(ColorMapper::AlbedoTexture);
+            });
+        ui.end_row();
+    }
+
+    if *entity_props.color_mapper.get() != ColorMapper::AlbedoTexture {
+        return;
+    }
+
+    // Albedo texture picker
+    if let Some(tree) = entity_path
+        .parent()
+        .and_then(|path| ctx.log_db.entity_db.tree.subtree(&path))
+    {
+        let query = ctx.current_query();
+        let current = entity_props.albedo_texture.clone();
+
+        ui.label("Albedo texture");
+
+        let mut combo = egui::ComboBox::from_id_source("depth_color_texture");
+        if let Some(current) = current.as_ref() {
+            combo = combo.selected_text(current.to_string());
+        } else {
+            // Select the first image-shaped tensor we find
+            // tree.visit_children_recursively(&mut |ent_path| {
+            //     if entity_props.albedo_texture.is_some() {
+            //         return;
+            //     }
+            //     let Some(tensor) =
+            //         query_latest_single::<Tensor>(&ctx.log_db.entity_db, ent_path, &query) else {
+            //             return;
+            //         };
+            //     if tensor.is_shaped_like_an_image() {
+            //         entity_props.albedo_texture = Some(ent_path.clone());
+            //     }
+            // });
+        }
+
+        combo.show_ui(ui, |ui| {
             ui.style_mut().wrap = Some(false);
             ui.set_min_width(64.0);
 
-            // TODO(cmc): that is not ideal but I don't want to import yet another proc-macro...
-            let mut add_label = |proposed| {
-                if ui
-                    .selectable_label(current == proposed, proposed.to_string())
-                    .clicked()
+            tree.visit_children_recursively(&mut |ent_path| {
+                let Some(tensor) = query_latest_single::<Tensor>(
+                    &ctx.log_db.entity_db,
+                    ent_path,
+                    &query,
+                ) else {
+                    return;
+                };
+
+                if tensor.is_shaped_like_an_image()
+                    && ui
+                        .selectable_label(current.as_ref() == Some(ent_path), ent_path.to_string())
+                        .clicked()
                 {
-                    entity_props.color_mapper = EditableAutoValue::Auto(proposed);
+                    entity_props.albedo_texture = Some(ent_path.clone());
                 }
-            };
-
-            add_label(ColorMapper::Colormap(Colormap::Grayscale));
-            add_label(ColorMapper::Colormap(Colormap::Turbo));
-            add_label(ColorMapper::Colormap(Colormap::Viridis));
-            add_label(ColorMapper::Colormap(Colormap::Plasma));
-            add_label(ColorMapper::Colormap(Colormap::Magma));
-            add_label(ColorMapper::Colormap(Colormap::Inferno));
+            });
         });
-
-    ui.end_row();
+    }
 }
 
 fn pinhole_props_ui(
@@ -510,9 +546,25 @@ fn depth_props_ui(
 
         backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
 
+        ui.label("Backproject radius scale");
+        let mut radius_scale = *entity_props.backproject_radius_scale.get();
+        let speed = (radius_scale * 0.001).at_least(0.001);
+        if ui
+            .add(
+                egui::DragValue::new(&mut radius_scale)
+                    .clamp_range(0.0..=1.0e8)
+                    .speed(speed),
+            )
+            .on_hover_text("Scales the radii of the points in the backprojected point cloud")
+            .changed()
+        {
+            entity_props.backproject_radius_scale = EditableAutoValue::UserEdited(radius_scale);
+        }
+        ui.end_row();
+
         // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
         // need to get the current hardcoded colormapping out of the image cache first.
-        colormap_props_ui(ui, entity_props);
+        colormap_props_ui(ctx, ui, entity_path, entity_props);
     }
 
     Some(())
@@ -522,6 +574,7 @@ fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue
     ui.label("Backproject meter");
     let mut value = *property.get();
     let speed = (value * 0.05).at_least(0.01);
+
     let response = ui
     .add(
         egui::DragValue::new(&mut value)

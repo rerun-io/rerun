@@ -13,7 +13,7 @@
 //! - [Rust API docs](https://docs.rs/rerun/)
 //! - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 //!
-//! There are many different ways of sending data to the Rerun Viewer depending on what you're
+//! There are many different ways of sending data to the Depthai Viewer depending on what you're
 //! trying to achieve and whether the viewer is running in the same process as your code, in
 //! another process, or even as a separate web application.
 //!
@@ -27,23 +27,23 @@
 //! #### Logging
 //!
 //! ```
-//! # use rerun::external::image;
+//! # use depthai_viewer::external::image;
 //! # fn capture_image() -> image::DynamicImage { Default::default() }
-//! # fn positions() -> Vec<rerun::components::Point3D> { Default::default() }
-//! # fn colors() -> Vec<rerun::components::ColorRGBA> { Default::default() }
-//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
+//! # fn positions() -> Vec<depthai_viewer::components::Point3D> { Default::default() }
+//! # fn colors() -> Vec<depthai_viewer::components::ColorRGBA> { Default::default() }
+//! let mut rr_session = depthai_viewer::SessionBuilder::new("my_app").buffered();
 //!
-//! let points: Vec<rerun::components::Point3D> = positions();
-//! let colors: Vec<rerun::components::ColorRGBA> = colors();
+//! let points: Vec<depthai_viewer::components::Point3D> = positions();
+//! let colors: Vec<depthai_viewer::components::ColorRGBA> = colors();
 //! let image: image::DynamicImage = capture_image();
 //!
-//! rerun::MsgSender::new("points")
+//! depthai_viewer::MsgSender::new("points")
 //!     .with_component(&points)?
 //!     .with_component(&colors)?
 //!     .send(&mut rr_session)?;
 //!
-//! rerun::MsgSender::new("image")
-//!     .with_component(&[rerun::components::Tensor::from_image(image)?])?
+//! depthai_viewer::MsgSender::new("image")
+//!     .with_component(&[depthai_viewer::components::Tensor::from_image(image)?])?
 //!     .send(&mut rr_session)?;
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
@@ -58,17 +58,17 @@
 //! Then do this:
 //!
 //! ``` no_run
-//! let mut rr_session = rerun::SessionBuilder::new("my_app").connect(rerun::default_server_addr());
+//! let mut rr_session = depthai_viewer::SessionBuilder::new("my_app").connect(depthai_viewer::default_server_addr());
 //! ```
 //!
 //! #### Buffering
 //!
 //! ``` no_run
-//! # fn log_using(rr_session: &rerun::Session) {}
+//! # fn log_using(rr_session: &depthai_viewer::Session) {}
 //!
-//! let mut rr_session = rerun::SessionBuilder::new("my_app").buffered();
+//! let mut rr_session = depthai_viewer::SessionBuilder::new("my_app").buffered();
 //! log_using(&mut rr_session);
-//! rerun::native_viewer::show(&mut rr_session);
+//! depthai_viewer::native_viewer::show(&mut rr_session);
 //! ```
 //!
 //! ## Binary

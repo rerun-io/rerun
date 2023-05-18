@@ -22,10 +22,10 @@ The logging data can be written to disk as `.rrd` files, or transmitted over TCP
 The Rerun Viewer is where log data is visualized. It is usually run as a native app, but can also be compiled to WebAssembly (Wasm) and run in a browser.
 
 #### Native viewer
-The easiest way to launch the viewer is directly from the logging API with `rr.init("my_app", spawn=True)`. However, the standalone viewer can also be run from the command line, for example to view an `.rrd` file: `rerun mydata.rrd`.
+The easiest way to launch the viewer is directly from the logging API with `viewer.init("my_app", spawn=True)`. However, the standalone viewer can also be run from the command line, for example to view an `.rrd` file: `rerun mydata.rrd`.
 
 #### Web viewer
-You can try running the viewer in a browser using `rr.serve()` in python, or using `rerun --web-viewer mydata.rrd`.
+You can try running the viewer in a browser using `viewer.serve()` in python, or using `rerun --web-viewer mydata.rrd`.
 
 The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/re_web_viewer_server) crate.
 

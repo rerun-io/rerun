@@ -18,7 +18,7 @@ fn skybox_light_srgb(dir: Vec3) -> Vec3 {
 fn main(in: FragmentInput) -> @location(0) Vec4 {
     let camera_dir = camera_ray_direction_from_screenuv(in.texcoord);
     // Messing with direction a bit so it looks like in our old three-d based renderer (for easier comparison)
-    let rgb = skybox_dark_srgb(camera_dir); // TODO(andreas): Allow switching to skybox_light
+    let rgb = skybox_light_srgb(camera_dir); // TODO(andreas): Allow switching to skybox_light
     return Vec4(linear_from_srgb(rgb), 1.0);
     //return Vec4(camera_dir, 1.0);
 }

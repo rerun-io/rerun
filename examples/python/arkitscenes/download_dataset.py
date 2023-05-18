@@ -3,6 +3,7 @@
 import math
 import os
 import subprocess
+import zipfile
 from pathlib import Path
 from typing import Final, List, Optional
 
@@ -121,9 +122,9 @@ def download_file(url: str, file_name: str, dst: Path) -> bool:
 def unzip_file(file_name: str, dst: Path, keep_zip: bool = True) -> bool:
     filepath = os.path.join(dst, file_name)
     print(f"Unzipping zip file {filepath}")
-    command = f"unzip -oq {filepath} -d {dst}"
     try:
-        subprocess.check_call(command, shell=True)
+        with zipfile.ZipFile(filepath, "r") as zip_ref:
+            zip_ref.extractall(dst)
     except Exception as error:
         print(f"Error unzipping {filepath}, error: {error}")
         return False
@@ -306,6 +307,7 @@ def ensure_recording_available(video_id: str, include_highres: bool) -> Path:
     Returns the path to the recording for a given video_id.
 
     Args:
+    ----
         video_id (str): Identifier for the recording.
 
     Returns
