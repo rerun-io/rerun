@@ -5,7 +5,7 @@ from depthai_sdk import Previews as QueueNames
 from pydantic import BaseModel
 
 
-class ColorCameraConfiguration(BaseModel):
+class ColorCameraConfiguration(BaseModel):  # type: ignore[misc]
     fps: Optional[int] = 30
     resolution: Optional[
         dai.ColorCameraProperties.SensorResolution
@@ -44,7 +44,7 @@ class ColorCameraConfiguration(BaseModel):
         return None
 
 
-class MonoCameraConfiguration(BaseModel):
+class MonoCameraConfiguration(BaseModel):  # type: ignore[misc]
     fps: Optional[int] = 30
     resolution: Optional[
         dai.MonoCameraProperties.SensorResolution
@@ -85,7 +85,7 @@ class MonoCameraConfiguration(BaseModel):
 #     enabled: bool = True
 
 
-class DepthConfiguration(BaseModel):
+class DepthConfiguration(BaseModel):  # type: ignore[misc]
     median: Optional[dai.MedianFilter] = dai.MedianFilter.KERNEL_7x7
     lr_check: Optional[bool] = True
     lrc_threshold: int = 5  # 0..10
@@ -105,7 +105,7 @@ class DepthConfiguration(BaseModel):
         if v.get("align"):
             v["align"] = getattr(dai.CameraBoardSocket, v["align"])
 
-        return super().__init__(**v)
+        return super().__init__(**v) # type: ignore[no-any-return]
 
     def to_runtime_controls(self) -> Dict[str, Any]:
         return {
@@ -141,17 +141,17 @@ class DepthConfiguration(BaseModel):
         return str(QueueNames.depthRaw.name)
 
 
-class AiModelConfiguration(BaseModel):
+class AiModelConfiguration(BaseModel):  # type: ignore[misc]
     display_name: str = "Yolo V8"
     path: str = "yolov8n_coco_640x352"
 
 
-class ImuConfiguration(BaseModel):
+class ImuConfiguration(BaseModel):  # type: ignore[misc]
     report_rate: int = 100
     batch_report_threshold: int = 5
 
 
-class PipelineConfiguration(BaseModel):
+class PipelineConfiguration(BaseModel):  # type: ignore[misc]
     color_camera: ColorCameraConfiguration = ColorCameraConfiguration()
     left_camera: MonoCameraConfiguration = MonoCameraConfiguration.create_left()
     right_camera: MonoCameraConfiguration = MonoCameraConfiguration.create_right()
