@@ -264,6 +264,7 @@ pub struct CameraSensorConfig {
     kind: CameraSensorType,
     width: i64,
 }
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct CameraFeatures {
     configs: Vec<CameraSensorConfig>,

@@ -29,7 +29,7 @@ class ColorCameraConfiguration(BaseModel):
             v["resolution"] = getattr(dai.ColorCameraProperties.SensorResolution, v["resolution"])
         if v.get("board_socket"):
             v["board_socket"] = getattr(dai.CameraBoardSocket, v["board_socket"])
-        return super().__init__(**v)
+        return super().__init__(**v)  # type: ignore[no-any-return]
 
     @property
     # Make this select the queue based on ui, also probably not just one queue
@@ -66,7 +66,7 @@ class MonoCameraConfiguration(BaseModel):
             v["resolution"] = getattr(dai.MonoCameraProperties.SensorResolution, v["resolution"])
         if v.get("board_socket"):
             v["board_socket"] = getattr(dai.CameraBoardSocket, v["board_socket"])
-        return super().__init__(**v)
+        return super().__init__(**v)  # type: ignore[no-any-return]
 
     @property
     def out_queue_name(self) -> str:

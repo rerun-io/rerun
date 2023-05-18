@@ -96,19 +96,19 @@ class SelectedDevice:
                     )
         device_properties["supported_color_resolutions"] = list(
             map(
-                lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
+                lambda x: color_wh_to_enum[x].name,  # type: ignore[index, no-any-return]
                 sorted(device_properties["supported_color_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
             )
         )
         device_properties["supported_left_mono_resolutions"] = list(
             map(
-                lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
+                lambda x: color_wh_to_enum[x].name,  # type: ignore[index, no-any-return]
                 sorted(device_properties["supported_left_mono_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
             )
         )
         device_properties["supported_right_mono_resolutions"] = list(
             map(
-                lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
+                lambda x: color_wh_to_enum[x].name,  # type: ignore[index, no-any-return]
                 sorted(device_properties["supported_right_mono_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
             )
         )
