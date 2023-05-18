@@ -87,7 +87,7 @@ def run_example(example: str, args: List[str]) -> None:
         python_executable = "python3"
 
     rerun_process = subprocess.Popen(
-        [python_executable, "-m", "rerun", "--port", str(port), "--strict", "--test-receive"]
+        [python_executable, "-m", "depthai_viewer", "--port", str(port), "--strict", "--test-receive"]
     )
     time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
 

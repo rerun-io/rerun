@@ -293,8 +293,8 @@ async fn run_impl(
 
     #[cfg(feature = "native_viewer")]
     let startup_options = re_viewer::StartupOptions {
-        memory_limit: re_memory::MemoryLimit::parse("100MB").unwrap(),
         persist_state: args.persist_state,
+        ..Default::default()
     };
 
     let (shutdown_rx, shutdown_bool) = setup_ctrl_c_handler();

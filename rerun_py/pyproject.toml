@@ -8,8 +8,8 @@ dependencies = [
   "numpy>=1.23",
   "pyarrow==10.0.1",
   "ahrs",
-  "depthai==2.21.2.0",
-  "depthai-sdk==1.9.5", # Atm latest develop is required
+  "depthai",             # Atm python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==2.21.2.0.dev0+5004cc71950e6786feb36147b7919e146f4ef8da --force-reinstall # is required
+  "depthai-sdk==1.10.0",
   "websockets",
   "pydantic",
 ]
@@ -42,7 +42,7 @@ homepage = "https://www.rerun.io"
 repository = "https://github.com/luxonis/depthai-viewer"
 
 [project.scripts]
-depthai-viewer = "rerun.__main__:main"
+depthai-viewer = "depthai_viewer.__main__:main"
 
 [tool.black]
 line-length = 120
@@ -102,8 +102,4 @@ ban-relative-imports = "all"
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
 include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
 locked = true
-python-packages = [
-  "rerun_sdk/rerun",
-  "rerun_sdk/rerun_demo",
-  "rerun_sdk/depthai_viewer_backend",
-]
+python-packages = ["rerun_sdk/depthai_viewer", "rerun_sdk/rerun_demo"]

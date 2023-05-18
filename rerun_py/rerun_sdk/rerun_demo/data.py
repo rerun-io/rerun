@@ -4,7 +4,7 @@ from collections import namedtuple
 from math import cos, sin, tau
 
 import numpy as np
-from rerun.log.rects import RectFormat
+from depthai_viewer.log.rects import RectFormat
 
 from rerun_demo.turbo import turbo_colormap_data
 

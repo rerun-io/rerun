@@ -29,7 +29,7 @@ pub fn all_possible_space_views(
         .tree
         .children
         .iter()
-        .filter(|(k, v)| {
+        .filter(|(_k, v)| {
             let timelines = v.prefix_times.timelines();
             let mut total_msgs = 0;
             for timeline in timelines {
@@ -278,6 +278,7 @@ fn is_default_added_to_space_view(
         re_log_types::component_types::KeypointId::name(),
         DataStore::insert_id_key(),
         re_log_types::ImuData::name(), // Separate plotting view for IMU data.
+        re_log_types::XlinkStats::name(), // Separate plotting view for XLink stats.
     ];
 
     entity_path.is_descendant_of(space_path)

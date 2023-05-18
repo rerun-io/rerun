@@ -1,8 +1,6 @@
 use itertools::Itertools;
-use re_log_types::{EntityPath, EntityPathHash};
-use std::collections::{BTreeSet, HashMap};
+use re_log_types::EntityPath;
 
-use super::super::ui::SpaceView;
 use super::api::BackendCommChannel;
 use super::ws::WsMessageData;
 use instant::Instant;
@@ -308,12 +306,24 @@ impl Default for Error {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, fmt::Debug, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, fmt::Debug)]
 pub struct Device {
     pub id: DeviceId,
     pub supported_color_resolutions: Vec<ColorCameraResolution>,
     pub supported_left_mono_resolutions: Vec<MonoCameraResolution>,
     pub supported_right_mono_resolutions: Vec<MonoCameraResolution>,
+}
+
+// Sensible default for when no device is connected
+impl Default for Device {
+    fn default() -> Self {
+        Self {
+            id: DeviceId::default(),
+            supported_color_resolutions: vec![ColorCameraResolution::THE_1080_P],
+            supported_left_mono_resolutions: vec![MonoCameraResolution::THE_400_P],
+            supported_right_mono_resolutions: vec![MonoCameraResolution::THE_400_P],
+        }
+    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, fmt::Debug)]
@@ -325,7 +335,7 @@ pub struct AiModel {
 impl Default for AiModel {
     fn default() -> Self {
         Self {
-            path: String::from(""),
+            path: String::new(),
             display_name: String::from("No model selected"),
         }
     }
@@ -649,7 +659,7 @@ impl State {
                     re_log::debug!("Setting devices...");
                     self.devices_available = Some(devices);
                 }
-                WsMessageData::Pipeline((config, runtime_only)) => {
+                WsMessageData::Pipeline((config, _)) => {
                     let mut subs = self.subscriptions.clone();
                     if config.depth.is_some() {
                         subs.push(ChannelId::DepthImage);
@@ -690,7 +700,6 @@ impl State {
                         }
                     }
                 }
-                _ => {}
             }
         }
 
@@ -713,6 +722,7 @@ impl State {
         }
         re_log::debug!("Setting device: {:?}", device_id);
         self.backend_comms.set_device(device_id);
+        self.applied_device_config.update_in_progress = true;
     }
 
     pub fn set_device_config(&mut self, config: &mut DeviceConfig, runtime_only: bool) {

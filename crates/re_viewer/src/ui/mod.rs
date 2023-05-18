@@ -18,8 +18,10 @@ mod viewport;
 pub(crate) mod bottom_panel;
 
 pub(crate) mod data_ui;
+pub(crate) mod device_settings_panel;
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;
+pub(crate) mod stats_panel;
 pub(crate) mod time_panel;
 
 pub mod view_spatial;
@@ -29,7 +31,7 @@ pub mod view_spatial;
 use self::scene::SceneQuery;
 
 pub(crate) use self::blueprint::Blueprint;
-pub(crate) use self::space_view::{SpaceView, SpaceViewId};
+pub(crate) use self::space_view::{SpaceView, SpaceViewId, SpaceViewKind};
 
 pub use self::annotations::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 pub use self::data_blueprint::DataBlueprintGroupHandle;

@@ -19,11 +19,11 @@ Use one of our logging APIs (Python or Rust) to log rich data, such as images an
 ```py
 import rerun as rr
 
-rr.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
+viewer.init("my_app", spawn = True) # Spawn a Rerun Viewer and stream log events to it
 
-rr.log_image("rgb_image", image)
-rr.log_points("points", positions)
-rr.log_rect("car", bbox)
+viewer.log_image("rgb_image", image)
+viewer.log_points("points", positions)
+viewer.log_rect("car", bbox)
 …
 ```
 

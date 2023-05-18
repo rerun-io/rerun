@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr
+import depthai_viewer as viewer
 from tqdm import tqdm
 
 DEPTH_IMAGE_SCALING: Final = 1e4
@@ -61,7 +61,7 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 
 
 def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    viewer.log_view_coordinates("world", up="-Y", timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
@@ -78,12 +78,12 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
         files_with_timestamps.sort(key=lambda t: t[0])
 
         for time, f in files_with_timestamps:
-            rr.set_time_seconds("time", time.timestamp())
+            viewer.set_time_seconds("time", time.timestamp())
 
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rr.log_image("world/camera/image/rgb", img_rgb)
+                viewer.log_image("world/camera/image/rgb", img_rgb)
 
             elif f.filename.endswith(".pgm"):
                 buf = archive.read(f)
@@ -92,12 +92,12 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
                 # Log the camera transforms:
                 translation = [0, 0, 0]
                 rotation_q = [0, 0, 0, 1]
-                rr.log_rigid3(
+                viewer.log_rigid3(
                     "world/camera",
                     parent_from_child=(translation, rotation_q),
                     xyz="RDF",  # X=Right, Y=Down, Z=Forward
                 )
-                rr.log_pinhole(
+                viewer.log_pinhole(
                     "world/camera/image",
                     child_from_parent=camera_intrinsics(img_depth),
                     width=img_depth.shape[1],
@@ -105,7 +105,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
                 )
 
                 # Log the depth image to the cameras image-space:
-                rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
+                viewer.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
 
 
 def ensure_recording_downloaded(name: str) -> Path:
@@ -159,11 +159,11 @@ if __name__ == "__main__":
         help="Name of the NYU Depth Dataset V2 recording",
     )
     parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "nyud")
+    viewer.script_setup(args, "nyud")
     recording_path = ensure_recording_downloaded(args.recording)
 
     log_nyud_data(
@@ -171,4 +171,4 @@ if __name__ == "__main__":
         subset_idx=args.subset_idx,
     )
 
-    rr.script_teardown(args)
+    viewer.script_teardown(args)

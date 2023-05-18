@@ -14,7 +14,7 @@ if platform.system() == "Darwin":
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 import requests
-import rerun as rr
+import depthai_viewer as viewer
 import torch
 from huggingface_pipeline import StableDiffusionDepth2ImgPipeline
 from PIL import Image
@@ -107,11 +107,11 @@ expense of slower inference. This parameter will be modulated by `strength`.
 """,
     )
 
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "Depth Guided Stable Diffusion")
+    viewer.script_setup(args, "Depth Guided Stable Diffusion")
 
     image_path = args.image_path  # type: str
     if not image_path:
@@ -141,7 +141,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
         image=image,
     )
 
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 if __name__ == "__main__":

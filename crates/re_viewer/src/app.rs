@@ -110,7 +110,7 @@ impl App {
     fn spawn_backend() -> Option<std::process::Child> {
         // TODO(filip): Is there some way I can know for sure where depthai_viewer_backend is?
         let backend_handle = match std::process::Command::new("python")
-            .args(["-m", "depthai_viewer_backend"])
+            .args(["-m", "depthai_viewer._backend.main"])
             .spawn()
         {
             Ok(child) => {
@@ -120,7 +120,7 @@ impl App {
             Err(err) => {
                 eprintln!("Failed to start depthai viewer: {err}");
                 match std::process::Command::new("python3")
-                    .args(["-m", "depthai_viewer_backend"])
+                    .args(["-m", "depthai_viewer._backend.main"])
                     .spawn()
                 {
                     Ok(child) => {
@@ -287,8 +287,6 @@ impl App {
     }
 
     fn run_command(&mut self, cmd: Command, _frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
-        let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
-
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
@@ -1051,10 +1049,9 @@ impl AppState {
             recording_configs,
             panel_selection,
             blueprints,
-            selection_panel,
-            time_panel,
-            bottom_panel,
-            selected_device,
+            selection_panel: _,
+            time_panel: _,
+            selected_device: _,
             depthai_state,
             #[cfg(not(target_arch = "wasm32"))]
                 profiler: _,
@@ -1079,13 +1076,8 @@ impl AppState {
             depthai_state,
         };
 
-        let blueprint = blueprints
-            .entry(selected_app_id.clone())
-            .or_insert_with(|| Blueprint::new(ui.ctx()));
         // Hide time panel for now, reuse for recordings in the future
         // time_panel.show_panel(&mut ctx, blueprint, ui);
-        // bottom_panel.show_panel(&mut ctx, blueprint, ui);
-        selection_panel.show_panel(&mut ctx, ui, blueprint);
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,

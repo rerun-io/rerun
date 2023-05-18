@@ -41,6 +41,7 @@ mod tensor;
 mod text_entry;
 mod transform;
 mod vec;
+mod xlink_stats;
 
 pub use arrow::Arrow3D;
 pub use bbox::Box3D;
@@ -71,10 +72,11 @@ pub use tensor::{TensorImageLoadError, TensorImageSaveError};
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};
 pub use vec::{Vec2D, Vec3D, Vec4D};
+pub use xlink_stats::XlinkStats;
 
 lazy_static! {
     //TODO(john): use a run-time type registry
-    static ref FIELDS: [Field; 27] = [
+    static ref FIELDS: [Field; 28] = [
         <AnnotationContext as Component>::field(),
         <Arrow3D as Component>::field(),
         <Box3D as Component>::field(),
@@ -102,6 +104,7 @@ lazy_static! {
         <ViewCoordinates as Component>::field(),
         <NodeGraph as Component>::field(),
         <ImuData as Component>::field(),
+        <XlinkStats as Component>::field(),
     ];
 }
 

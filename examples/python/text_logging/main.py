@@ -13,7 +13,7 @@ Run:
 import argparse
 import logging
 
-import rerun as rr
+import depthai_viewer as viewer
 
 
 def setup_logging() -> None:
@@ -25,7 +25,7 @@ def setup_logging() -> None:
     # default).
     #
     # For more info: https://docs.python.org/3/howto/logging.html#handlers
-    logging.getLogger().addHandler(rr.log.text.LoggingHandler())
+    logging.getLogger().addHandler(viewer.log.text.LoggingHandler())
     logging.getLogger().setLevel(-1)
 
 
@@ -51,7 +51,7 @@ def log_stuff(frame_offset: int) -> None:
     # Test that we can log multiple times to the same sequence timeline and still
     # have the log messages show up in the correct chronological order in the viewer:
     for frame_nr in range(2):
-        rr.set_time_sequence("frame_nr", 2 * frame_offset + frame_nr)
+        viewer.set_time_sequence("frame_nr", 2 * frame_offset + frame_nr)
         logging.info(f"Log one thing during frame {frame_nr}")
         logging.info(f"Log second thing during the same frame {frame_nr}")
         logging.info(f"Log third thing during the same frame {frame_nr}")
@@ -63,7 +63,7 @@ def log_stuff(frame_offset: int) -> None:
     # Use spaces to create distinct logging streams
     other_logger = logging.getLogger("totally.unrelated")
     other_logger.propagate = False  # don't want root logger to catch those
-    other_logger.addHandler(rr.log.text.LoggingHandler("3rd_party_logs"))
+    other_logger.addHandler(viewer.log.text.LoggingHandler("3rd_party_logs"))
     for _ in range(10):
         other_logger.debug("look ma, got my very own view!")
 
@@ -73,17 +73,17 @@ def main() -> None:
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
     )
     parser.add_argument("--repeat", type=int, default=1, help="How many times do we want to run the log function?")
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "text_logging")
+    viewer.script_setup(args, "text_logging")
 
     setup_logging()
     for frame_offset in range(args.repeat):
         log_stuff(frame_offset)
 
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 if __name__ == "__main__":

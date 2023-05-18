@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 import cv2
 import numpy as np
 import requests
-import rerun as rr
+import depthai_viewer as viewer
 import torch
 import torchvision
 from cv2 import Mat
@@ -85,7 +85,7 @@ def create_sam(model: str, device: str) -> Sam:
 
 def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> None:
     """Run segmentation on a single image."""
-    rr.log_image("image", image)
+    viewer.log_image("image", image)
 
     logging.info("Finding masks")
     masks = mask_generator.generate(image)
@@ -98,7 +98,7 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
         np.dstack([np.zeros((image.shape[0], image.shape[1]))] + [m["segmentation"] for m in masks]).astype("uint8")
         * 128
     )
-    rr.log_tensor("mask_tensor", mask_tensor)
+    viewer.log_tensor("mask_tensor", mask_tensor)
 
     # Note: for stacking, it is important to sort these masks by area from largest to smallest
     # this is because the masks are overlapping and we want smaller masks to
@@ -111,9 +111,9 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
     # Work-around for https://github.com/rerun-io/rerun/issues/1782
     # Make sure we have an AnnotationInfo present for every class-id used in this image
     # TODO(jleibs): Remove when fix is released
-    rr.log_annotation_context(
+    viewer.log_annotation_context(
         "image",
-        [rr.AnnotationInfo(id) for id, _ in masks_with_ids],
+        [viewer.AnnotationInfo(id) for id, _ in masks_with_ids],
         timeless=False,
     )
 
@@ -122,10 +122,10 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
     for id, m in masks_with_ids:
         segmentation_img[m["segmentation"]] = id
 
-    rr.log_segmentation_image("image/masks", segmentation_img)
+    viewer.log_segmentation_image("image/masks", segmentation_img)
 
     mask_bbox = np.array([m["bbox"] for _, m in masks_with_ids])
-    rr.log_rects("image/boxes", rects=mask_bbox, class_ids=[id for id, _ in masks_with_ids])
+    viewer.log_rects("image/boxes", rects=mask_bbox, class_ids=[id for id, _ in masks_with_ids])
 
 
 def is_url(path: str) -> bool:
@@ -180,12 +180,12 @@ def main() -> None:
     )
     parser.add_argument("images", metavar="N", type=str, nargs="*", help="A list of images to process.")
 
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "segment_anything")
-    logging.getLogger().addHandler(rr.LoggingHandler("logs"))
+    viewer.script_setup(args, "segment_anything")
+    logging.getLogger().addHandler(viewer.LoggingHandler("logs"))
     logging.getLogger().setLevel(logging.INFO)
 
     sam = create_sam(args.model, args.device)
@@ -200,11 +200,11 @@ def main() -> None:
         ]
 
     for n, image_uri in enumerate(args.images):
-        rr.set_time_sequence("image", n)
+        viewer.set_time_sequence("image", n)
         image = load_image(image_uri)
         run_segmentation(mask_generator, image)
 
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 if __name__ == "__main__":

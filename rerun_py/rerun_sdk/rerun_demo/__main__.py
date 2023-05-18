@@ -9,24 +9,24 @@ def run_cube(args: argparse.Namespace):
     import math
 
     import numpy as np
-    import rerun as rr
+    import depthai_viewer as viewer
 
     from rerun_demo.data import build_color_grid
 
-    rr.script_setup(args, "Cube")
+    viewer.script_setup(args, "Cube")
 
     STEPS = 100
     twists = math.pi * np.sin(np.linspace(0, math.tau, STEPS)) / 4
     for t in range(STEPS):
-        rr.set_time_sequence("step", t)
+        viewer.set_time_sequence("step", t)
         cube = build_color_grid(10, 10, 10, twist=twists[t])
-        rr.log_points("cube", positions=cube.positions, colors=cube.colors, radii=0.5)
+        viewer.log_points("cube", positions=cube.positions, colors=cube.colors, radii=0.5)
 
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 def run_colmap(args):
-    from rerun import bindings, unregister_shutdown  # type: ignore[attr-defined]
+    from depthai_viewer import bindings, unregister_shutdown  # type: ignore[attr-defined]
 
     serve_opts = []
 
@@ -53,7 +53,7 @@ def run_colmap(args):
 
 
 def main() -> None:
-    import rerun as rr
+    import depthai_viewer as viewer
 
     parser = argparse.ArgumentParser(description="Run rerun example programs.")
 
@@ -71,7 +71,7 @@ def main() -> None:
         help="Run the COLMAP data demo",
     )
 
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
 
     args = parser.parse_args()
 

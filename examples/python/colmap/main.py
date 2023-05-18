@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr
+import depthai_viewer as viewer
 from read_write_model import Camera, read_model
 from tqdm import tqdm
 
@@ -99,7 +99,7 @@ def read_and_log_sparse_reconstruction(
         # Filter out noisy points
         points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
-    rr.log_view_coordinates("/", up="-Y", timeless=True)
+    viewer.log_view_coordinates("/", up="-Y", timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
@@ -134,24 +134,24 @@ def read_and_log_sparse_reconstruction(
         if resize:
             visible_xys *= scale_factor
 
-        rr.set_time_sequence("frame", frame_idx)
+        viewer.set_time_sequence("frame", frame_idx)
 
         points = [point.xyz for point in visible_xyzs]
         point_colors = [point.rgb for point in visible_xyzs]
         point_errors = [point.error for point in visible_xyzs]
 
-        rr.log_scalar("plot/avg_reproj_err", np.mean(point_errors), color=[240, 45, 58])
+        viewer.log_scalar("plot/avg_reproj_err", np.mean(point_errors), color=[240, 45, 58])
 
-        rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})
+        viewer.log_points("points", points, colors=point_colors, ext={"error": point_errors})
 
-        rr.log_rigid3(
+        viewer.log_rigid3(
             "camera",
             child_from_parent=camera_from_world,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         # Log camera intrinsics
-        rr.log_pinhole(
+        viewer.log_pinhole(
             "camera/image",
             child_from_parent=intrinsics,
             width=camera.width,
@@ -163,11 +163,11 @@ def read_and_log_sparse_reconstruction(
             img = cv2.resize(img, resize)
             jpeg_quality = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
             _, encimg = cv2.imencode(".jpg", img, jpeg_quality)
-            rr.log_image_file("camera/image", img_bytes=encimg)
+            viewer.log_image_file("camera/image", img_bytes=encimg)
         else:
-            rr.log_image_file("camera/image", img_path=dataset_path / "images" / image.name)
+            viewer.log_image_file("camera/image", img_path=dataset_path / "images" / image.name)
 
-        rr.log_points("camera/image/keypoints", visible_xys, colors=[34, 138, 167])
+        viewer.log_points("camera/image/keypoints", visible_xys, colors=[34, 138, 167])
 
 
 def main() -> None:
@@ -181,17 +181,17 @@ def main() -> None:
         help="Which dataset to download",
     )
     parser.add_argument("--resize", action="store", help="Target resolution to resize images")
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
     if args.resize:
         args.resize = tuple(int(x) for x in args.resize.split("x"))
 
-    rr.script_setup(args, "colmap")
+    viewer.script_setup(args, "colmap")
     dataset_path = get_downloaded_dataset_path(args.dataset)
     read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered, resize=args.resize)
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 if __name__ == "__main__":

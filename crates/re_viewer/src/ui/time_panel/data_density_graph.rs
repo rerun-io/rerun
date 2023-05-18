@@ -540,7 +540,7 @@ fn show_row_ids_tooltip(
         }
 
         ui.add_space(8.0);
-        crate::ui::selection_panel::what_is_selected_ui(ui, ctx, blueprint, item);
+        crate::ui::selection_panel::what_is_selected_ui(ui, ctx, &mut blueprint.viewport, item);
         ui.add_space(8.0);
 
         let timeline = *ctx.rec_cfg.time_ctrl.timeline();

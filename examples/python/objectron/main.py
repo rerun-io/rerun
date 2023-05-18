@@ -18,7 +18,7 @@ from typing import Iterable, Iterator, List
 
 import numpy as np
 import numpy.typing as npt
-import rerun as rr
+import depthai_viewer as viewer
 from download_dataset import (
     ANNOTATIONS_FILENAME,
     AVAILABLE_RECORDINGS,
@@ -114,17 +114,17 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rr.log_view_coordinates("world", up="+Y", timeless=True)
+    viewer.log_view_coordinates("world", up="+Y", timeless=True)
 
     log_annotated_bboxes(seq.objects)
 
     frame_times = []
     for sample in samples:
-        rr.set_time_sequence("frame", sample.index)
-        rr.set_time_seconds("time", sample.timestamp)
+        viewer.set_time_sequence("frame", sample.index)
+        viewer.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        rr.log_image_file("world/camera/video", img_path=sample.image_path, img_format=rr.ImageFormat.JPEG)
+        viewer.log_image_file("world/camera/video", img_path=sample.image_path, img_format=viewer.ImageFormat.JPEG)
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -151,10 +151,10 @@ def log_camera(cam: ARCamera) -> None:
 
     rot = rot * R.from_rotvec((math.tau / 2.0) * X)  # TODO(emilk): figure out why this is needed
 
-    rr.log_rigid3(
+    viewer.log_rigid3(
         "world/camera", parent_from_child=(translation, rot.as_quat()), xyz="RDF"  # X=Right, Y=Down, Z=Forward
     )
-    rr.log_pinhole(
+    viewer.log_pinhole(
         "world/camera/video",
         child_from_parent=intrinsics,
         width=w,
@@ -167,7 +167,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
 
     positions = np.array([[p.x, p.y, p.z] for p in point_cloud.point]).astype(np.float32)
     identifiers = point_cloud.identifier
-    rr.log_points("world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
+    viewer.log_points("world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
@@ -179,7 +179,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
             continue
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
-        rr.log_obb(
+        viewer.log_obb(
             f"world/annotations/box-{bbox.id}",
             half_size=0.5 * np.array(bbox.scale),
             position=bbox.translation,
@@ -199,8 +199,8 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             continue
 
         time = frame_times[frame_idx]
-        rr.set_time_sequence("frame", frame_idx)
-        rr.set_time_seconds("time", time)
+        viewer.set_time_sequence("frame", frame_idx)
+        viewer.set_time_seconds("time", time)
 
         for obj_ann in frame_ann.annotations:
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
@@ -212,7 +212,7 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                 log_projected_bbox(f"world/camera/video/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for id, pos2 in zip(keypoint_ids, keypoint_pos2s):
-                    rr.log_point(
+                    viewer.log_point(
                         f"world/camera/video/estimates/box-{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
@@ -250,7 +250,7 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
                          keypoints[4], keypoints[8]], dtype=np.float32)
     # fmt: on
 
-    rr.log_line_segments(path, segments, color=[130, 160, 250, 255])
+    viewer.log_line_segments(path, segments, color=[130, 160, 250, 255])
 
 
 def main() -> None:
@@ -282,11 +282,11 @@ def main() -> None:
         "--dataset_dir", type=Path, default=LOCAL_DATASET_DIR, help="Directory to save example videos to."
     )
 
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "objectron")
+    viewer.script_setup(args, "objectron")
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
@@ -294,7 +294,7 @@ def main() -> None:
     seq = read_annotations(dir)
     log_ar_frames(samples, seq)
 
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 if __name__ == "__main__":

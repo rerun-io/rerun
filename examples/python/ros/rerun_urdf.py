@@ -4,7 +4,7 @@ from typing import Optional, cast
 from urllib.parse import urlparse
 
 import numpy as np
-import rerun as rr
+import depthai_viewer as viewer
 import trimesh
 from ament_index_python.packages import get_package_share_directory
 from std_msgs.msg import String
@@ -43,7 +43,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
             # `trimesh` stores quaternions in `wxyz` format, rerun needs `xyzw`
             # TODO(jleibs): Remove conversion once [#883](https://github.com/rerun-io/rerun/issues/883) is closed
             q = np.array([q[1], q[2], q[3], q[0]])
-            rr.log_rigid3(path, parent_from_child=(t, q), timeless=timeless)
+            viewer.log_rigid3(path, parent_from_child=(t, q), timeless=timeless)
 
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
@@ -70,7 +70,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
 
             albedo_factor = vertex_colors if vertex_colors is not None else visual_color
 
-            rr.log_mesh(
+            viewer.log_mesh(
                 path,
                 mesh.vertices,
                 indices=mesh.faces,

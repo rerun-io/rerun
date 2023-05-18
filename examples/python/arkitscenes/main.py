@@ -9,7 +9,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-import rerun as rr
+import depthai_viewer as viewer
 import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 from scipy.spatial.transform import Rotation as R
@@ -68,7 +68,7 @@ def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.flo
 
         rot = R.from_matrix(rotation).inv()
 
-        rr.log_obb(
+        viewer.log_obb(
             f"world/annotations/box-{uid}-{label}",
             half_size=half_size,
             position=centroid,
@@ -135,7 +135,7 @@ def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float
     # log centroid and add label so that object label is visible in the 2d view
     if valid_points.size > 0:
         centroid = valid_points.mean(axis=0)
-        rr.log_point(f"{entity_path}/centroid", centroid, color=color, label=label)
+        viewer.log_point(f"{entity_path}/centroid", centroid, color=color, label=label)
     else:
         pass
 
@@ -160,7 +160,7 @@ def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float
         bboxes_2d_filtered[3], bboxes_2d_filtered[7]
                          ], dtype=np.float32)
 
-    rr.log_line_segments(entity_path, segments, color=color)
+    viewer.log_line_segments(entity_path, segments, color=color)
 
 
 def project_3d_bboxes_to_2d_keypoints(
@@ -244,18 +244,18 @@ def log_camera(
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
     # clear previous centroid labels
-    rr.log_cleared(f"{entity_id}/bbox-2d-segments", recursive=True)
+    viewer.log_cleared(f"{entity_id}/bbox-2d-segments", recursive=True)
     # Log line segments for each bounding box in the image
     for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
         log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
 
-    rr.log_rigid3(
+    viewer.log_rigid3(
         # pathlib makes it easy to get the parent, but log_rigid requires a string
         str(PosixPath(entity_id).parent),
         child_from_parent=camera_from_world,
         xyz="RDF",  # X=Right, Y=Down, Z=Forward
     )
-    rr.log_pinhole(f"{entity_id}", child_from_parent=intrinsic, width=w, height=h)
+    viewer.log_pinhole(f"{entity_id}", child_from_parent=intrinsic, width=w, height=h)
 
 
 def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
@@ -344,13 +344,13 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
         timestamp = f"{round(float(timestamp), 3):.3f}"
         camera_from_world_dict[timestamp] = camera_from_world
 
-    rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
+    viewer.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
     print(f"Loading {ply_path}…")
     assert os.path.isfile(ply_path), f"Failed to find {ply_path}"
 
     mesh_ply = trimesh.load(str(ply_path))
-    rr.log_mesh(
+    viewer.log_mesh(
         "world/mesh",
         positions=mesh_ply.vertices,
         indices=mesh_ply.faces,
@@ -369,7 +369,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     print("Processing frames…")
     for frame_timestamp in tqdm(lowres_frame_ids):
         # frame_id is equivalent to timestamp
-        rr.set_time_seconds("time", float(frame_timestamp))
+        viewer.set_time_seconds("time", float(frame_timestamp))
         # load the lowres image and depth
         bgr = cv2.imread(f"{lowres_image_dir}/{video_id}_{frame_timestamp}.png")
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
@@ -390,12 +390,12 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 colors_list,
             )
 
-            rr.log_image(f"{lowres_posed_entity_id}/rgb", rgb)
-            rr.log_depth_image(f"{lowres_posed_entity_id}/depth", depth, meter=1000)
+            viewer.log_image(f"{lowres_posed_entity_id}/rgb", rgb)
+            viewer.log_depth_image(f"{lowres_posed_entity_id}/depth", depth, meter=1000)
 
         # log the high res camera
         if high_res_exists:
-            rr.set_time_seconds("time high resolution", float(frame_timestamp))
+            viewer.set_time_seconds("time high resolution", float(frame_timestamp))
             # only low res camera has a trajectory, high res does not so need to find the closest low res frame id
             closest_lowres_frame_id = find_closest_frame_id(frame_timestamp, camera_from_world_dict)
             highres_intri_path = intrinsics_dir / f"{video_id}_{frame_timestamp}.pincam"
@@ -414,8 +414,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
             highres_depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_timestamp}.png", cv2.IMREAD_ANYDEPTH)
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
-            rr.log_image(f"{highres_entity_id}/rgb", highres_rgb)
-            rr.log_depth_image(f"{highres_entity_id}/depth", highres_depth, meter=1000)
+            viewer.log_image(f"{highres_entity_id}/rgb", highres_rgb)
+            viewer.log_depth_image(f"{highres_entity_id}/depth", highres_depth, meter=1000)
 
 
 def main() -> None:
@@ -432,15 +432,15 @@ def main() -> None:
         action="store_true",
         help="Include the high resolution camera and depth images",
     )
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "arkitscenes")
+    viewer.script_setup(args, "arkitscenes")
     recording_path = ensure_recording_available(args.video_id, args.include_highres)
     log_arkit(recording_path, args.include_highres)
 
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 if __name__ == "__main__":

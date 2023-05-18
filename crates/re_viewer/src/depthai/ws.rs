@@ -179,34 +179,32 @@ impl WebSocket {
         let shutdown_clone = shutdown.clone();
         let connected = Arc::new(AtomicBool::new(false));
         let connected_clone = connected.clone();
-        let mut task = None;
+        let task;
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
             re_log::debug!("Using current tokio runtime");
-            task = Some(handle.spawn(spawn_ws_client(
+            task = handle.spawn(spawn_ws_client(
                 recv_tx,
                 send_rx,
                 shutdown_clone,
                 connected_clone,
-            )));
+            ));
         } else {
             re_log::debug!("Creating new tokio runtime");
-            task = Some(
-                tokio::runtime::Builder::new_current_thread()
-                    .build()
-                    .unwrap()
-                    .spawn(spawn_ws_client(
-                        recv_tx,
-                        send_rx,
-                        shutdown_clone,
-                        connected_clone,
-                    )),
-            );
+            task = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap()
+                .spawn(spawn_ws_client(
+                    recv_tx,
+                    send_rx,
+                    shutdown_clone,
+                    connected_clone,
+                ));
         }
         Self {
             receiver: recv_rx,
             sender: send_tx,
             shutdown,
-            task: task.unwrap(),
+            task,
             connected,
         }
     }

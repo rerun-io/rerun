@@ -525,7 +525,7 @@ impl TimePanel {
                 if is_visible {
                     response.on_hover_ui(|ui| {
                         let item = Item::ComponentPath(component_path.clone());
-                        what_is_selected_ui(ui, ctx, blueprint, &item);
+                        what_is_selected_ui(ui, ctx, &mut blueprint.viewport, &item);
                         ui.add_space(8.0);
                         let query = ctx.current_query();
                         component_path.data_ui(ctx, ui, super::UiVerbosity::Small, &query);

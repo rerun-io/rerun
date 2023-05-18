@@ -8,7 +8,7 @@ from typing import Iterator, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
-import rerun as rr
+import depthai_viewer as viewer
 
 
 def log_car_data() -> None:
@@ -16,22 +16,22 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    viewer.log_view_coordinates("world", up="-Y", timeless=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged entities a timeline called `frame_nr`.
         # In the viewer you can select how to view entities - by frame_nr or the built-in `log_time`.
-        rr.set_time_sequence("frame_nr", sample.frame_idx)
+        viewer.set_time_sequence("frame_nr", sample.frame_idx)
 
         # Log the camera pose:
-        rr.log_rigid3(
+        viewer.log_rigid3(
             "world/camera",
             parent_from_child=(sample.camera.position, sample.camera.rotation_q),
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         # Log the camera projection matrix:
-        rr.log_pinhole(
+        viewer.log_pinhole(
             "world/camera/image",
             child_from_parent=sample.camera.intrinsics,
             width=sample.camera.resolution[0],
@@ -39,14 +39,14 @@ def log_car_data() -> None:
         )
 
         # We log the rgb image to the image-space of the camera:
-        rr.log_image("world/camera/image/rgb", sample.rgb_image)
+        viewer.log_image("world/camera/image/rgb", sample.rgb_image)
 
         # Same with the bounding box:
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rr.log_rect("world/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
+        viewer.log_rect("world/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
 
         # The depth image is in millimeters, so we set meter=1000
-        rr.log_depth_image("world/camera/image/depth", sample.depth_image_mm, meter=1000)
+        viewer.log_depth_image("world/camera/image/depth", sample.depth_image_mm, meter=1000)
 
 
 class DummyCar:
@@ -254,13 +254,13 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-    rr.script_add_args(parser)
+    viewer.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
 
-    rr.script_setup(args, "car")
+    viewer.script_setup(args, "car")
     log_car_data()
-    rr.script_teardown(args)
+    viewer.script_teardown(args)
 
 
 if __name__ == "__main__":
