@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 import depthai as dai
 from depthai_sdk import Previews as QueueNames
@@ -24,7 +24,7 @@ class ColorCameraConfiguration(BaseModel):
             dai.CameraBoardSocket: lambda v: v.name,
         }
 
-    def __init__(self, **v):
+    def __init__(self, **v) -> None:  # type: ignore[no-untyped-def]
         if v.get("resolution"):
             v["resolution"] = getattr(dai.ColorCameraProperties.SensorResolution, v["resolution"])
         if v.get("board_socket"):
@@ -33,14 +33,15 @@ class ColorCameraConfiguration(BaseModel):
 
     @property
     # Make this select the queue based on ui, also probably not just one queue
-    def out_queue_name(self) -> str | None:
-        prefix = QueueNames.color.name
+    def out_queue_name(self) -> Optional[str]:
+        prefix: str = QueueNames.color.name
         if self.out_preview:
             return prefix + "_preview"
         if self.xout_still:
             return prefix + "_still"
         if self.xout_video:
             return prefix + "_video"
+        return None
 
 
 class MonoCameraConfiguration(BaseModel):
@@ -60,7 +61,7 @@ class MonoCameraConfiguration(BaseModel):
             dai.CameraBoardSocket: lambda v: v.name,
         }
 
-    def __init__(self, **v):
+    def __init__(self, **v) -> None:  # type: ignore[no-untyped-def]
         if v.get("resolution"):
             v["resolution"] = getattr(dai.MonoCameraProperties.SensorResolution, v["resolution"])
         if v.get("board_socket"):
@@ -72,11 +73,11 @@ class MonoCameraConfiguration(BaseModel):
         return "left" if self.board_socket == dai.CameraBoardSocket.LEFT else "right"
 
     @classmethod
-    def create_left(cls, **kwargs):
+    def create_left(cls, **kwargs) -> "MonoCameraConfiguration":  # type: ignore[no-untyped-def]
         return cls(board_socket="LEFT", **kwargs)
 
     @classmethod
-    def create_right(cls, **kwargs):
+    def create_right(cls, **kwargs) -> "MonoCameraConfiguration":  # type: ignore[no-untyped-def]
         return cls(board_socket="RIGHT", **kwargs)
 
 
@@ -85,7 +86,7 @@ class MonoCameraConfiguration(BaseModel):
 
 
 class DepthConfiguration(BaseModel):
-    median: Optional[dai.StereoDepthProperties.MedianFilter] = dai.StereoDepthProperties.MedianFilter.KERNEL_7x7
+    median: Optional[dai.MedianFilter] = dai.MedianFilter.KERNEL_7x7
     lr_check: Optional[bool] = True
     lrc_threshold: int = 5  # 0..10
     extended_disparity: Optional[bool] = False
@@ -98,15 +99,15 @@ class DepthConfiguration(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def __init__(self, **v):
+    def __init__(self, **v) -> None:  # type: ignore[no-untyped-def]
         if v.get("median"):
-            v["median"] = getattr(dai.StereoDepthProperties.MedianFilter, v["median"])
+            v["median"] = getattr(dai.MedianFilter, v["median"])
         if v.get("align"):
             v["align"] = getattr(dai.CameraBoardSocket, v["align"])
 
         return super().__init__(**v)
 
-    def to_runtime_controls(self) -> Dict:
+    def to_runtime_controls(self) -> Dict[str, Any]:
         return {
             "algorithm_control": {
                 "align": "RECTIFIED_LEFT"
@@ -121,11 +122,13 @@ class DepthConfiguration(BaseModel):
             },
             "postprocessing": {
                 "median": {
-                    dai.StereoDepthConfig.MedianFilter.MEDIAN_OFF: 0,
-                    dai.StereoDepthConfig.MedianFilter.KERNEL_3x3: 3,
-                    dai.StereoDepthConfig.MedianFilter.KERNEL_5x5: 5,
-                    dai.StereoDepthConfig.MedianFilter.KERNEL_7x7: 7,
-                }[self.median],
+                    dai.MedianFilter.MEDIAN_OFF: 0,
+                    dai.MedianFilter.KERNEL_3x3: 3,
+                    dai.MedianFilter.KERNEL_5x5: 5,
+                    dai.MedianFilter.KERNEL_7x7: 7,
+                }[self.median]
+                if self.median
+                else 0,
                 "bilateral_sigma": self.sigma,
             },
             "cost_matching": {
@@ -135,12 +138,12 @@ class DepthConfiguration(BaseModel):
 
     @property
     def out_queue_name(self) -> str:
-        return QueueNames.depthRaw.name
+        return str(QueueNames.depthRaw.name)
 
 
 class AiModelConfiguration(BaseModel):
-    display_name: str
-    path: str
+    display_name: str = "Yolo V8"
+    path: str = "yolov8n_coco_640x352"
 
 
 class ImuConfiguration(BaseModel):
@@ -152,15 +155,15 @@ class PipelineConfiguration(BaseModel):
     color_camera: ColorCameraConfiguration = ColorCameraConfiguration()
     left_camera: MonoCameraConfiguration = MonoCameraConfiguration.create_left()
     right_camera: MonoCameraConfiguration = MonoCameraConfiguration.create_right()
-    depth: DepthConfiguration | None
-    ai_model: AiModelConfiguration | None
+    depth: Optional[DepthConfiguration] = DepthConfiguration()
+    ai_model: Optional[AiModelConfiguration] = AiModelConfiguration()
     imu: ImuConfiguration = ImuConfiguration()
 
-    def to_json(self):
+    def to_json(self) -> Dict[str, Any]:
         as_dict = self.dict()
         return self._fix_depthai_types(as_dict)
 
-    def _fix_depthai_types(self, as_dict: dict):
+    def _fix_depthai_types(self, as_dict: Dict[str, Any]) -> Dict[str, Any]:
         """ATM Config.json_encoders doesn't work, so we manually fix convert the depthai types to strings here."""
         if as_dict.get("color_camera"):
             as_dict["color_camera"] = self._fix_camera(as_dict["color_camera"])
@@ -172,14 +175,14 @@ class PipelineConfiguration(BaseModel):
             as_dict["depth"] = self._fix_depth(as_dict["depth"])
         return as_dict
 
-    def _fix_depth(self, as_dict: dict):
+    def _fix_depth(self, as_dict: Dict[str, Any]) -> Dict[str, Any]:
         if as_dict.get("align"):
             as_dict["align"] = as_dict["align"].name
         if as_dict.get("median"):
             as_dict["median"] = as_dict["median"].name
         return as_dict
 
-    def _fix_camera(self, as_dict: dict):
+    def _fix_camera(self, as_dict: Dict[str, Any]) -> Dict[str, Any]:
         if as_dict.get("resolution"):
             as_dict["resolution"] = as_dict["resolution"].name
         if as_dict.get("board_socket"):

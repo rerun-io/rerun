@@ -1,8 +1,9 @@
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Optional
 
 import cv2
 import depthai as dai
 import numpy as np
+from numpy.typing import NDArray
 from ahrs.filters import Mahony
 from depthai_sdk.classes.packets import (
     DepthPacket,
@@ -39,7 +40,7 @@ class EntityPath:
 class SdkCallbacks:
     store: Store
     ahrs: Mahony
-    _get_camera_intrinsics: Callable[[int, int], np.ndarray]
+    _get_camera_intrinsics: Callable[[int, int], NDArray[np.float32]]
 
     def __init__(self, store: Store):
         viewer.init("Depthai Viewer")
@@ -48,10 +49,10 @@ class SdkCallbacks:
         self.ahrs = Mahony(frequency=100)
         self.ahrs.Q = np.array([1, 0, 0, 0], dtype=np.float64)
 
-    def set_camera_intrinsics_getter(self, camera_intrinsics_getter: Callable[[int, int], np.ndarray]):
+    def set_camera_intrinsics_getter(self, camera_intrinsics_getter: Callable[[int, int], NDArray[np.float32]]) -> None:
         self._get_camera_intrinsics = camera_intrinsics_getter
 
-    def on_imu(self, packet: IMUPacket):
+    def on_imu(self, packet: IMUPacket) -> None:
         for data in packet.data:
             gyro: dai.IMUReportGyroscope = data.gyroscope
             accel: dai.IMUReportAccelerometer = data.acceleroMeter
@@ -64,7 +65,7 @@ class SdkCallbacks:
             return
         viewer.log_imu([accel.z, accel.x, accel.y], [gyro.z, gyro.x, gyro.y], self.ahrs.Q, [mag.x, mag.y, mag.z])
 
-    def on_color_frame(self, frame: FramePacket):
+    def on_color_frame(self, frame: FramePacket) -> None:
         # Always log pinhole cam and pose (TODO(filip): move somewhere else or not)
         if Topic.ColorImage not in self.store.subscriptions:
             return
@@ -75,7 +76,7 @@ class SdkCallbacks:
         )
         viewer.log_image(EntityPath.RGB_CAMERA_IMAGE, cv2.cvtColor(frame.frame, cv2.COLOR_BGR2RGB))
 
-    def on_left_frame(self, frame: FramePacket):
+    def on_left_frame(self, frame: FramePacket) -> None:
         if Topic.LeftMono not in self.store.subscriptions:
             return
         h, w = frame.frame.shape
@@ -85,7 +86,7 @@ class SdkCallbacks:
         )
         viewer.log_image(EntityPath.LEFT_CAMERA_IMAGE, frame.frame)
 
-    def on_right_frame(self, frame: FramePacket):
+    def on_right_frame(self, frame: FramePacket) -> None:
         if Topic.RightMono not in self.store.subscriptions:
             return
         h, w = frame.frame.shape
@@ -95,47 +96,47 @@ class SdkCallbacks:
         )
         viewer.log_image(EntityPath.RIGHT_CAMERA_IMAGE, frame.frame)
 
-    def on_stereo_frame(self, frame: DepthPacket):
+    def on_stereo_frame(self, frame: DepthPacket) -> None:
         if Topic.DepthImage not in self.store.subscriptions:
             return
         depth_frame = frame.frame
         path = EntityPath.RGB_PINHOLE_CAMERA + "/Depth"
-        depth = self.store.pipeline_config.depth
-        if not depth:
+        if not self.store.pipeline_config or not self.store.pipeline_config.depth:
             # Essentially impossible to get here
             return
+        depth = self.store.pipeline_config.depth
         if depth.align == dai.CameraBoardSocket.LEFT:
             path = EntityPath.LEFT_PINHOLE_CAMERA + "/Depth"
         elif depth.align == dai.CameraBoardSocket.RIGHT:
             path = EntityPath.RIGHT_PINHOLE_CAMERA + "/Depth"
         viewer.log_depth_image(path, depth_frame, meter=1e3)
 
-    def on_detections(self, packet: DetectionPacket):
+    def on_detections(self, packet: DetectionPacket) -> None:
         rects, colors, labels = self._detections_to_rects_colors_labels(packet)
         viewer.log_rects(EntityPath.DETECTIONS, rects, rect_format=RectFormat.XYXY, colors=colors, labels=labels)
 
     def _detections_to_rects_colors_labels(
-        self, packet: DetectionPacket, labels_dict: Union[Dict, None] = None
-    ) -> Tuple[List, List, List]:
+        self, packet: DetectionPacket, omz_labels: Optional[List[str]] = None
+    ) -> Tuple[List[List[int]], List[List[int]], List[str]]:
         rects = []
         colors = []
         labels = []
         for detection in packet.detections:
             rects.append(self._rect_from_detection(detection))
             colors.append([0, 255, 0])
-            label = detection.label
+            label: str = detection.label
             # Open model zoo models output label index
-            if labels_dict is not None and isinstance(label, int):
-                label += labels_dict[label]
+            if omz_labels is not None and isinstance(label, int):
+                label += omz_labels[label]
             label += ", " + str(int(detection.img_detection.confidence * 100)) + "%"
             labels.append(label)
         return rects, colors, labels
 
-    def on_yolo_packet(self, packet: DetectionPacket):
+    def on_yolo_packet(self, packet: DetectionPacket) -> None:
         rects, colors, labels = self._detections_to_rects_colors_labels(packet)
         viewer.log_rects(EntityPath.DETECTIONS, rects=rects, colors=colors, labels=labels, rect_format=RectFormat.XYXY)
 
-    def on_age_gender_packet(self, packet: TwoStagePacket):
+    def on_age_gender_packet(self, packet: TwoStagePacket) -> None:
         for det, rec in zip(packet.detections, packet.nnData):
             age = int(float(np.squeeze(np.array(rec.getLayerFp16("age_conv3")))) * 100)
             gender = np.squeeze(np.array(rec.getLayerFp16("prob")))
@@ -151,12 +152,12 @@ class SdkCallbacks:
                 label=label,
             )
 
-    def _rect_from_detection(self, detection: _Detection):
+    def _rect_from_detection(self, detection: _Detection) -> List[int]:
         return [
             *detection.bottom_right,
             *detection.top_left,
         ]
 
-    def on_mobilenet_ssd_packet(self, packet: DetectionPacket):
+    def on_mobilenet_ssd_packet(self, packet: DetectionPacket) -> None:
         rects, colors, labels = self._detections_to_rects_colors_labels(packet, classification_labels.MOBILENET_LABELS)
         viewer.log_rects(EntityPath.DETECTIONS, rects=rects, colors=colors, labels=labels, rect_format=RectFormat.XYXY)

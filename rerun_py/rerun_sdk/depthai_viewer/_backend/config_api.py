@@ -3,7 +3,7 @@ import json
 from multiprocessing import Queue
 from queue import Empty as QueueEmptyException
 from signal import SIGINT, signal
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 
 import depthai as dai
 import websockets
@@ -13,24 +13,29 @@ from depthai_viewer._backend.device_configuration import PipelineConfiguration
 from depthai_viewer._backend.store import Action
 from depthai_viewer._backend.topic import Topic
 
+from enum import Enum
+
 signal(SIGINT, lambda *args, **kwargs: exit(0))
 
 # Definitions for linting
 # send actions to back
-dispatch_action_queue: Queue = None
+dispatch_action_queue: Queue[Any]
+
 # bool indicating action success
-result_queue: Queue = None
-send_message_queue: Queue = None
+result_queue: Queue[Any]
+
+# Send messages from backend to frontend without the frontend sending a message first
+send_message_queue: Queue[Any]
 
 
-def dispatch_action(action: Action, **kwargs) -> Tuple[bool, Dict[str, any]]:
+def dispatch_action(action: Action, **kwargs) -> Tuple[bool, Dict[str, Any]]:  # type: ignore[no-untyped-def]
     """
     Dispatches an action that will be executed by store.py.
 
-    Returns: (success: bool, result: Dict[str, any]).
+    Returns: (success: bool, result: Dict[str, Any]).
     """
     dispatch_action_queue.put((action, kwargs))
-    return result_queue.get()
+    return result_queue.get()  # type: ignore[no-any-return]
 
 
 class MessageType:
@@ -41,7 +46,7 @@ class MessageType:
     ERROR = "Error"  # Error message
 
 
-class ErrorAction:
+class ErrorAction(Enum):
     NONE = None
     FULL_RESET = "FullReset"
 
@@ -51,22 +56,22 @@ def error(message: str, action: ErrorAction) -> str:
     return json.dumps({"type": MessageType.ERROR, "data": {"action": action, "message": message}})
 
 
-async def ws_api(websocket: WebSocketServerProtocol):
+async def ws_api(websocket: WebSocketServerProtocol) -> None:
     while True:
-        message = None
+        raw_message = None
         try:
-            message = await asyncio.wait_for(websocket.recv(), 1)
+            raw_message = await asyncio.wait_for(websocket.recv(), 1)
         except asyncio.TimeoutError:
             pass
         except websockets.exceptions.ConnectionClosed:
-            success, message = dispatch_action(Action.RESET)
+            success, _ = dispatch_action(Action.RESET)  # type: ignore[assignment]
             if success:
                 return
             raise Exception("Couldn't reset backend after websocket disconnect!")
 
-        if message:
+        if raw_message:
             try:
-                message = json.loads(message)
+                message: Dict[str, Any] = json.loads(raw_message)
             except json.JSONDecodeError:
                 print("Failed to parse message: ", message)
                 continue
@@ -80,7 +85,7 @@ async def ws_api(websocket: WebSocketServerProtocol):
                 subscriptions = [Topic.create(topic_name) for topic_name in data.get(MessageType.SUBSCRIPTIONS, [])]
                 dispatch_action(Action.SET_SUBSCRIPTIONS, subscriptions=subscriptions)
                 print("Subscriptions: ", subscriptions)
-                active_subscriptions = [topic.name for topic in dispatch_action(Action.GET_SUBSCRIPTIONS) if topic]
+                active_subscriptions = [topic.name for topic in dispatch_action(Action.GET_SUBSCRIPTIONS) if topic]  # type: ignore[attr-defined]
                 await websocket.send(json.dumps({"type": MessageType.SUBSCRIPTIONS, "data": active_subscriptions}))
             elif message_type == MessageType.PIPELINE:
                 data = message.get("data", {})
@@ -98,13 +103,13 @@ async def ws_api(websocket: WebSocketServerProtocol):
                         await websocket.send(error("Failed to set runtime config", ErrorAction.FULL_RESET))
                     continue
                 if success:
-                    active_config: PipelineConfiguration = dispatch_action(Action.GET_PIPELINE)
+                    active_config: PipelineConfiguration = dispatch_action(Action.GET_PIPELINE)  # type: ignore[assignment]
                     print("Active config: ", active_config)
                     await websocket.send(
                         json.dumps(
                             {
                                 "type": MessageType.PIPELINE,
-                                "data": (active_config.to_json(), False) if active_config else None,
+                                "data": (active_config.to_json(), False) if active_config != None else None,
                             }
                         )
                     )
@@ -115,7 +120,7 @@ async def ws_api(websocket: WebSocketServerProtocol):
                     json.dumps(
                         {
                             "type": MessageType.DEVICES,
-                            "data": [d.getMxId() for d in dai.Device.getAllAvailableDevices()],
+                            "data": [d.getMxId() for d in dai.Device.getAllAvailableDevices()],  # type: ignore[call-arg]
                         }
                     )
                 )
@@ -149,12 +154,12 @@ async def ws_api(websocket: WebSocketServerProtocol):
             await websocket.send(send_message)
 
 
-async def main():
-    async with websockets.serve(ws_api, "localhost", 9001):
+async def main() -> None:
+    async with websockets.serve(ws_api, "localhost", 9001):  # type: ignore[attr-defined]
         await asyncio.Future()  # run forever
 
 
-def start_api(_dispatch_action_queue: Queue, _result_queue: Queue, _send_message_queue: Queue):
+def start_api(_dispatch_action_queue: Queue[Any], _result_queue: Queue[Any], _send_message_queue: Queue[Any]) -> None:
     """
     Starts the websocket API.
 

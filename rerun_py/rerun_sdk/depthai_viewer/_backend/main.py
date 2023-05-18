@@ -3,11 +3,12 @@ import threading
 import time
 from queue import Empty as QueueEmptyException
 from queue import Queue
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any, Optional, Union
 
 import depthai as dai
 import depthai_sdk
 import numpy as np
+from numpy.typing import NDArray
 import pkg_resources
 from depthai_sdk import OakCamera
 from depthai_sdk.components import CameraComponent, NNComponent, StereoComponent
@@ -43,8 +44,8 @@ mono_wh_to_enum = {
 
 class SelectedDevice:
     id: str
-    intrinsic_matrix: Dict[Tuple[int, int], np.ndarray] = {}
-    calibration_data: dai.CalibrationHandler = None
+    intrinsic_matrix: Dict[Tuple[int, int], NDArray[np.float32]] = {}
+    calibration_data: Optional[dai.CalibrationHandler] = None
     use_encoding: bool = False
     _time_of_last_xlink_update: int = 0
 
@@ -62,14 +63,16 @@ class SelectedDevice:
         self.oak_cam = OakCamera(self.id)
         print("Oak cam: ", self.oak_cam)
 
-    def get_intrinsic_matrix(self, width: int, height: int) -> np.ndarray:
-        if self.intrinsic_matrix.get((width, height)) is np.ndarray:
-            return self.intrinsic_matrix.get((width, height))
-        M_right = self.calibration_data.getCameraIntrinsics(dai.CameraBoardSocket.RIGHT, dai.Size2f(width, height))
+    def get_intrinsic_matrix(self, width: int, height: int) -> NDArray[np.float32]:
+        if self.intrinsic_matrix.get((width, height)) != None:
+            return self.intrinsic_matrix.get((width, height))  # type: ignore[return-value]
+        if self.calibration_data is None:
+            raise Exception("Missing calibration data!")
+        M_right = self.calibration_data.getCameraIntrinsics(dai.CameraBoardSocket.RIGHT, dai.Size2f(width, height))  # type: ignore[union-attr]
         self.intrinsic_matrix[(width, height)] = np.array(M_right).reshape(3, 3)
         return self.intrinsic_matrix[(width, height)]
 
-    def get_device_properties(self) -> Dict:
+    def get_device_properties(self) -> Dict[str, Any]:
         dai_props = self.oak_cam.device.getConnectedCameraFeatures()
         device_properties = {
             "id": self.id,
@@ -85,41 +88,43 @@ class SelectedDevice:
                 resolutions_key = "supported_right_mono_resolutions"
             for config in cam.configs:
                 wh = (config.width, config.height)
-                if wh not in device_properties[resolutions_key]:
-                    device_properties[resolutions_key].append((config.width, config.height))
+                if wh not in device_properties[resolutions_key]:  # type: ignore[comparison-overlap]
+                    device_properties[resolutions_key].append((config.width, config.height))  # type: ignore[attr-defined]
         device_properties["supported_color_resolutions"] = list(
             map(
-                lambda x: color_wh_to_enum[x].name,
-                sorted(device_properties["supported_color_resolutions"], key=lambda x: x[0] * x[1]),
+                lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
+                sorted(device_properties["supported_color_resolutions"], key=lambda x: x[0] * x[1]),  # type: ignore[operator]
             )
         )
         device_properties["supported_left_mono_resolutions"] = list(
             map(
-                lambda x: color_wh_to_enum[x].name,
-                sorted(device_properties["supported_left_mono_resolutions"], key=lambda x: x[0] * x[1]),
+                lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
+                sorted(device_properties["supported_left_mono_resolutions"], key=lambda x: x[0] * x[1]),  # type: ignore[operator]
             )
         )
         device_properties["supported_right_mono_resolutions"] = list(
             map(
-                lambda x: color_wh_to_enum[x].name,
-                sorted(device_properties["supported_right_mono_resolutions"], key=lambda x: x[0] * x[1]),
+                lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
+                sorted(device_properties["supported_right_mono_resolutions"], key=lambda x: x[0] * x[1]),  # type: ignore[operator]
             )
         )
         return device_properties
 
     def update_pipeline(
         self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, Dict[str, str]]:
         if self.oak_cam.running():
             if runtime_only:
-                return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
+                if config.depth is not None:
+                    return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
+                return False, {"message": "Depth is not enabled, can't send runtime controls!"}
             print("Cam running, closing...")
             self.oak_cam.device.close()
             self.oak_cam = None
             # Check if the device is available, timeout after 10 seconds
             timeout_start = time.time()
             while time.time() - timeout_start < 10:
-                available_devices = [device.getMxId() for device in dai.Device.getAllAvailableDevices()]
+                available_devices = [device.getMxId() for device in dai.Device.getAllAvailableDevices()]  # type: ignore[call-arg]
                 if self.id in available_devices:
                     break
             try:
@@ -135,21 +140,21 @@ class SelectedDevice:
             print("Connected device is PoE: Using encoding...")
         else:
             print("Connected device is USB: Not using encoding...")
-        if config.color_camera:
+        if config.color_camera is not None:
             print("Creating color camera")
             self._color = self.oak_cam.create_camera(
                 "color", config.color_camera.resolution, config.color_camera.fps, name="color", encode=self.use_encoding
             )
             if config.color_camera.xout_video:
                 self.oak_cam.callback(self._color, callbacks.on_color_frame, enable_visualizer=self.use_encoding)
-        if config.left_camera:
+        if config.left_camera is not None:
             print("Creating left camera")
             self._left = self.oak_cam.create_camera(
                 "left", config.left_camera.resolution, config.left_camera.fps, name="left", encode=self.use_encoding
             )
             if config.left_camera.xout:
                 self.oak_cam.callback(self._left, callbacks.on_left_frame, enable_visualizer=self.use_encoding)
-        if config.right_camera:
+        if config.right_camera is not None:
             print("Creating right camera")
             self._right = self.oak_cam.create_camera(
                 "right", config.right_camera.resolution, config.right_camera.fps, name="right", encode=self.use_encoding
@@ -183,7 +188,7 @@ class SelectedDevice:
             #     self._pc = self.oak_cam.create_pointcloud(stereo=self._stereo, colorize=self._color)
             #     self.oak_cam.callback(self._pc, callbacks.on_pointcloud)
 
-        if config.imu:
+        if config.imu is not None:
             print("Creating IMU")
             imu = self.oak_cam.create_imu()
             sensors = [
@@ -228,7 +233,7 @@ class SelectedDevice:
             self.intrinsic_matrix = {}
         return running, {"message": "Pipeline started" if running else "Couldn't start pipeline"}
 
-    def update(self):
+    def update(self) -> None:
         self.oak_cam.poll()
         if time.time_ns() - self._time_of_last_xlink_update >= 16e6:
             self._time_of_last_xlink_update = time.time_ns()
@@ -238,12 +243,12 @@ class SelectedDevice:
 
 
 class DepthaiViewerBack:
-    _device: SelectedDevice = None
+    _device: Optional[SelectedDevice]
 
     # Queues for communicating with the API process
-    action_queue: Queue
-    result_queue: Queue
-    send_message_queue: Queue
+    action_queue: Queue[Any]
+    result_queue: Queue[Any]
+    send_message_queue: Queue[Any]
 
     # Sdk callbacks for handling data from the device and sending it to the frontend
     sdk_callbacks: SdkCallbacks
@@ -266,12 +271,12 @@ class DepthaiViewerBack:
         self.sdk_callbacks = SdkCallbacks(self.store)
         self.run()
 
-    def set_device(self, device: SelectedDevice | None):
+    def set_device(self, device: Optional[SelectedDevice] = None) -> None:
         self._device = device
         if device:
             self.sdk_callbacks.set_camera_intrinsics_getter(device.get_intrinsic_matrix)
 
-    def on_reset(self) -> Tuple[bool, str]:
+    def on_reset(self) -> Tuple[bool, Dict[str, str]]:
         print("Resetting...")
         if self._device:
             print("Closing device...")
@@ -282,7 +287,7 @@ class DepthaiViewerBack:
         print("Done")
         return True, {"message": "Reset successful"}
 
-    def select_device(self, device_id: str) -> Tuple[bool, str]:
+    def select_device(self, device_id: str) -> Tuple[bool, Dict[str, Union[str, Any]]]:
         print("Selecting device: ", device_id)
         if self._device:
             self.on_reset()
@@ -297,8 +302,10 @@ class DepthaiViewerBack:
                 "device_properties": {},
             }
         try:
-            device_properties = self._device.get_device_properties()
-            return True, {"message:": "Device selected successfully", "device_properties": device_properties}
+            if self._device is not None:
+                device_properties = self._device.get_device_properties()
+                return True, {"message:": "Device selected successfully", "device_properties": device_properties}
+            return False, {"message": "CCouldn't select device", "device_properties": {}}
         except RuntimeError as e:
             print("Failed to get device properties:", e)
             self.on_reset()
@@ -308,19 +315,21 @@ class DepthaiViewerBack:
             exit(-1)
             # return False, {"message": "Failed to get device properties", "device_properties": {}}
 
-    def update_pipeline(self, runtime_only: bool) -> bool:
+    def update_pipeline(self, runtime_only: bool) -> Tuple[bool, Dict[str, str]]:
         if not self._device:
             print("No device selected, can't update pipeline!")
             return False, {"message": "No device selected, can't update pipeline!"}
         print("Updating pipeline...")
-        started, message = self._device.update_pipeline(
-            self.store.pipeline_config, runtime_only, callbacks=self.sdk_callbacks
-        )
-        if not started:
-            self.set_device(None)
-        return started, {"message": message}
+        started, message = False, {"message": "Couldn't start pipeline"}
+        if self.store.pipeline_config is not None:
+            started, message = self._device.update_pipeline(
+                self.store.pipeline_config, runtime_only, callbacks=self.sdk_callbacks
+            )
+            if not started:
+                self.set_device(None)
+        return started, message
 
-    def run(self):
+    def run(self) -> None:
         """Handles ws messages and polls OakCam."""
         while True:
             try:

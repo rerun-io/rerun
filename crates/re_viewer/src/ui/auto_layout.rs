@@ -394,7 +394,6 @@ pub(crate) fn default_tree_from_space_views(
     // - Addition should try to layout like currently 3d, 2d views. New views just appear in the top left corner i guess.
     let mut tree = egui_dock::Tree::new(Vec::new());
 
-    let mut is_color_stream_present = false;
     let spaces = space_views
         .iter()
         .filter(|(space_view_id, _space_view)| visible.contains(space_view_id))
@@ -407,9 +406,6 @@ pub(crate) fn default_tree_from_space_views(
             )
         })
         .map(|(space_view_id, space_view)| {
-            if space_view.space_path == EntityPath::from("color") {
-                is_color_stream_present = true;
-            }
             let aspect_ratio = match space_view.category {
                 ViewCategory::Spatial => {
                     let state_spatial = &space_view.view_state.state_spatial;
