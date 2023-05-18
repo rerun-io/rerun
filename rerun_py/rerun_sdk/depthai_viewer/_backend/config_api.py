@@ -1,9 +1,10 @@
 import asyncio
 import json
+from enum import Enum
 from multiprocessing import Queue
 from queue import Empty as QueueEmptyException
 from signal import SIGINT, signal
-from typing import Dict, Tuple, Any
+from typing import Any, Dict, Optional, Tuple
 
 import depthai as dai
 import websockets
@@ -13,19 +14,17 @@ from depthai_viewer._backend.device_configuration import PipelineConfiguration
 from depthai_viewer._backend.store import Action
 from depthai_viewer._backend.topic import Topic
 
-from enum import Enum
-
 signal(SIGINT, lambda *args, **kwargs: exit(0))
 
 # Definitions for linting
 # send actions to back
-dispatch_action_queue: Queue[Any]
+dispatch_action_queue: Queue  # type: ignore[type-arg]
 
 # bool indicating action success
-result_queue: Queue[Any]
+result_queue: Queue  # type: ignore[type-arg]
 
 # Send messages from backend to frontend without the frontend sending a message first
-send_message_queue: Queue[Any]
+send_message_queue: Queue  # type: ignore[type-arg]
 
 
 def dispatch_action(action: Action, **kwargs) -> Tuple[bool, Dict[str, Any]]:  # type: ignore[no-untyped-def]
@@ -85,7 +84,11 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                 subscriptions = [Topic.create(topic_name) for topic_name in data.get(MessageType.SUBSCRIPTIONS, [])]
                 dispatch_action(Action.SET_SUBSCRIPTIONS, subscriptions=subscriptions)
                 print("Subscriptions: ", subscriptions)
-                active_subscriptions = [topic.name for topic in dispatch_action(Action.GET_SUBSCRIPTIONS) if topic]  # type: ignore[attr-defined]
+                active_subscriptions = [
+                    topic.name  # type: ignore[attr-defined]
+                    for topic in dispatch_action(Action.GET_SUBSCRIPTIONS)
+                    if topic
+                ]
                 await websocket.send(json.dumps({"type": MessageType.SUBSCRIPTIONS, "data": active_subscriptions}))
             elif message_type == MessageType.PIPELINE:
                 data = message.get("data", {})
@@ -103,13 +106,15 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                         await websocket.send(error("Failed to set runtime config", ErrorAction.FULL_RESET))
                     continue
                 if success:
-                    active_config: PipelineConfiguration = dispatch_action(Action.GET_PIPELINE)  # type: ignore[assignment]
+                    active_config: Optional[PipelineConfiguration] = dispatch_action(
+                        Action.GET_PIPELINE
+                    )  # type: ignore[assignment]
                     print("Active config: ", active_config)
                     await websocket.send(
                         json.dumps(
                             {
                                 "type": MessageType.PIPELINE,
-                                "data": (active_config.to_json(), False) if active_config != None else None,
+                                "data": (active_config.to_json(), False) if active_config is not None else None,
                             }
                         )
                     )
@@ -120,7 +125,9 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                     json.dumps(
                         {
                             "type": MessageType.DEVICES,
-                            "data": [d.getMxId() for d in dai.Device.getAllAvailableDevices()],  # type: ignore[call-arg]
+                            "data": [
+                                d.getMxId() for d in dai.Device.getAllAvailableDevices()  # type: ignore[call-arg]
+                            ],
                         }
                     )
                 )
@@ -159,7 +166,9 @@ async def main() -> None:
         await asyncio.Future()  # run forever
 
 
-def start_api(_dispatch_action_queue: Queue[Any], _result_queue: Queue[Any], _send_message_queue: Queue[Any]) -> None:
+def start_api(
+    _dispatch_action_queue: Queue, _result_queue: Queue, _send_message_queue: Queue  # type: ignore[type-arg]
+) -> None:
     """
     Starts the websocket API.
 

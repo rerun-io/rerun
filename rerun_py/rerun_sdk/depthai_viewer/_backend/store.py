@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Callable, List, Tuple, Optional, Dict
+from typing import Callable, Dict, List, Optional, Tuple
 
 from depthai_viewer._backend.device_configuration import PipelineConfiguration
 from depthai_viewer._backend.topic import Topic

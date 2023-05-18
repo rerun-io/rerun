@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 import depthai as dai
 from depthai_sdk import Previews as QueueNames

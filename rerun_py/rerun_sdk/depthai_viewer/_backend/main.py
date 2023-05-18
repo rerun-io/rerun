@@ -3,15 +3,15 @@ import threading
 import time
 from queue import Empty as QueueEmptyException
 from queue import Queue
-from typing import Dict, Tuple, Any, Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import depthai as dai
 import depthai_sdk
 import numpy as np
-from numpy.typing import NDArray
 import pkg_resources
 from depthai_sdk import OakCamera
 from depthai_sdk.components import CameraComponent, NNComponent, StereoComponent
+from numpy.typing import NDArray
 
 import depthai_viewer as viewer
 from depthai_viewer._backend.config_api import start_api
@@ -64,11 +64,13 @@ class SelectedDevice:
         print("Oak cam: ", self.oak_cam)
 
     def get_intrinsic_matrix(self, width: int, height: int) -> NDArray[np.float32]:
-        if self.intrinsic_matrix.get((width, height)) != None:
+        if self.intrinsic_matrix.get((width, height)) is not None:
             return self.intrinsic_matrix.get((width, height))  # type: ignore[return-value]
         if self.calibration_data is None:
             raise Exception("Missing calibration data!")
-        M_right = self.calibration_data.getCameraIntrinsics(dai.CameraBoardSocket.RIGHT, dai.Size2f(width, height))  # type: ignore[union-attr]
+        M_right = self.calibration_data.getCameraIntrinsics(  # type: ignore[union-attr]
+            dai.CameraBoardSocket.RIGHT, dai.Size2f(width, height)
+        )
         self.intrinsic_matrix[(width, height)] = np.array(M_right).reshape(3, 3)
         return self.intrinsic_matrix[(width, height)]
 
@@ -89,23 +91,25 @@ class SelectedDevice:
             for config in cam.configs:
                 wh = (config.width, config.height)
                 if wh not in device_properties[resolutions_key]:  # type: ignore[comparison-overlap]
-                    device_properties[resolutions_key].append((config.width, config.height))  # type: ignore[attr-defined]
+                    device_properties[resolutions_key].append(  # type: ignore[attr-defined]
+                        (config.width, config.height)
+                    )
         device_properties["supported_color_resolutions"] = list(
             map(
                 lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
-                sorted(device_properties["supported_color_resolutions"], key=lambda x: x[0] * x[1]),  # type: ignore[operator]
+                sorted(device_properties["supported_color_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
             )
         )
         device_properties["supported_left_mono_resolutions"] = list(
             map(
                 lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
-                sorted(device_properties["supported_left_mono_resolutions"], key=lambda x: x[0] * x[1]),  # type: ignore[operator]
+                sorted(device_properties["supported_left_mono_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
             )
         )
         device_properties["supported_right_mono_resolutions"] = list(
             map(
                 lambda x: color_wh_to_enum[x].name,  # type: ignore[index]
-                sorted(device_properties["supported_right_mono_resolutions"], key=lambda x: x[0] * x[1]),  # type: ignore[operator]
+                sorted(device_properties["supported_right_mono_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
             )
         )
         return device_properties
@@ -124,7 +128,9 @@ class SelectedDevice:
             # Check if the device is available, timeout after 10 seconds
             timeout_start = time.time()
             while time.time() - timeout_start < 10:
-                available_devices = [device.getMxId() for device in dai.Device.getAllAvailableDevices()]  # type: ignore[call-arg]
+                available_devices = [
+                    device.getMxId() for device in dai.Device.getAllAvailableDevices()  # type: ignore[call-arg]
+                ]
                 if self.id in available_devices:
                     break
             try:
@@ -243,7 +249,7 @@ class SelectedDevice:
 
 
 class DepthaiViewerBack:
-    _device: Optional[SelectedDevice]
+    _device: Optional[SelectedDevice] = None
 
     # Queues for communicating with the API process
     action_queue: Queue[Any]

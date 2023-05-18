@@ -1,9 +1,8 @@
-from typing import Callable, Dict, List, Tuple, Optional
+from typing import Callable, List, Optional, Tuple
 
 import cv2
 import depthai as dai
 import numpy as np
-from numpy.typing import NDArray
 from ahrs.filters import Mahony
 from depthai_sdk.classes.packets import (
     DepthPacket,
@@ -14,6 +13,7 @@ from depthai_sdk.classes.packets import (
     TwoStagePacket,
     _Detection,
 )
+from numpy.typing import NDArray
 
 import depthai_viewer as viewer
 from depthai_viewer._backend import classification_labels
