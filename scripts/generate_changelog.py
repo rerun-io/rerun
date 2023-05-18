@@ -16,8 +16,8 @@ import requests
 from git import Repo  # pip install GitPython
 from tqdm import tqdm
 
-OWNER = "rerun-io"
-REPO = "rerun"
+OWNER = "luxonis"
+REPO = "depthai-viewer"
 COMMIT_RANGE = "latest..HEAD"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
