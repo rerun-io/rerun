@@ -105,7 +105,7 @@ class DepthConfiguration(BaseModel):  # type: ignore[misc]
         if v.get("align"):
             v["align"] = getattr(dai.CameraBoardSocket, v["align"])
 
-        return super().__init__(**v) # type: ignore[no-any-return]
+        return super().__init__(**v)  # type: ignore[no-any-return]
 
     def to_runtime_controls(self) -> Dict[str, Any]:
         return {
