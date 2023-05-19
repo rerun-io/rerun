@@ -71,6 +71,7 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 type SysExePath = String;
+
 /// Where is this App running in?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppEnvironment {
