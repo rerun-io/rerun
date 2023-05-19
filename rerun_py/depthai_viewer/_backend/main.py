@@ -266,9 +266,9 @@ class DepthaiViewerBack:
     _device: Optional[SelectedDevice] = None
 
     # Queues for communicating with the API process
-    action_queue: Queue[Any]
-    result_queue: Queue[Any]
-    send_message_queue: Queue[Any]
+    action_queue: Queue  # type: ignore[type-arg]
+    result_queue: Queue  # type: ignore[type-arg]
+    send_message_queue: Queue  # type: ignore[type-arg]
 
     # Sdk callbacks for handling data from the device and sending it to the frontend
     sdk_callbacks: SdkCallbacks

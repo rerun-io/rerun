@@ -352,6 +352,7 @@ impl Viewport {
                     ui.available_size(),
                     &visible_space_views,
                     &self.space_views,
+                    self.maximized.is_some(),
                 )
                 // }
             })
