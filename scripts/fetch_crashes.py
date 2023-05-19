@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Fetch user crashes from PostHog database, deduplicates them, and prefill issue reports for them.
 
