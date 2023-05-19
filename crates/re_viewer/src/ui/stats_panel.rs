@@ -204,19 +204,20 @@ struct StatsTabs<'a, 'b> {
 
 impl<'a, 'b> StatsTabs<'a, 'b> {
     fn imu_ui(&mut self, ui: &mut egui::Ui) {
-        let imu_entity_path = &ImuData::entity_path();
-        egui::ScrollArea::both().show(ui, |ui| {
-            egui::Frame {
-                inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-                ..Default::default()
-            }
-            .show(ui, |ui| {
-                let max_width = ui.available_width();
-                for kind in ImuTabKind::iter() {
-                    self.xyz_plot_ui(ui, kind, max_width);
+        self.ctx
+            .re_ui
+            .styled_scrollbar(ui, re_ui::ScrollAreaDirection::Both, [false; 2], |ui| {
+                egui::Frame {
+                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                    ..Default::default()
                 }
+                .show(ui, |ui| {
+                    let max_width = ui.available_width();
+                    for kind in ImuTabKind::iter() {
+                        self.xyz_plot_ui(ui, kind, max_width);
+                    }
+                });
             });
-        });
     }
 
     fn xlink_ui(&mut self, ui: &mut egui::Ui) {

@@ -57,9 +57,14 @@ impl SpaceViewEntityPicker {
             .title_bar(false)
             .show(ui.ctx(), |ui| {
                 title_bar(ctx.re_ui, ui, title, &mut open);
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    add_entities_ui(ctx, ui, space_view);
-                });
+                ctx.re_ui.styled_scrollbar(
+                    ui,
+                    re_ui::ScrollAreaDirection::Vertical,
+                    [false; 2],
+                    |ui| {
+                        add_entities_ui(ctx, ui, space_view);
+                    },
+                );
             });
 
         // Any click outside causes the window to close.

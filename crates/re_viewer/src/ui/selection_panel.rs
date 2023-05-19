@@ -1,6 +1,4 @@
-use egui::{
-    NumExt as _,
-};
+use egui::NumExt as _;
 use re_data_store::{
     query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
 };
@@ -9,9 +7,7 @@ use re_log_types::{
     TimeType, Transform,
 };
 
-use crate::{
-     ui::view_spatial::SpatialNavigationMode, Item, UiVerbosity, ViewerContext,
-};
+use crate::{ui::view_spatial::SpatialNavigationMode, Item, UiVerbosity, ViewerContext};
 
 use super::{data_ui::DataUi, space_view::ViewState, Viewport};
 
@@ -24,9 +20,8 @@ pub(crate) struct SelectionPanel {}
 
 impl SelectionPanel {
     pub fn show_panel(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, viewport: &mut Viewport) {
-        egui::ScrollArea::both()
-            .auto_shrink([true; 2])
-            .show(ui, |ui| {
+        ctx.re_ui
+            .styled_scrollbar(ui, re_ui::ScrollAreaDirection::Both, [true; 2], |ui| {
                 egui::Frame {
                     inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
                     ..Default::default()
@@ -34,7 +29,7 @@ impl SelectionPanel {
                 .show(ui, |ui| {
                     Self::contents(ui, ctx, viewport);
                 });
-            });
+            })
     }
 
     fn contents(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>, viewport: &mut Viewport) {

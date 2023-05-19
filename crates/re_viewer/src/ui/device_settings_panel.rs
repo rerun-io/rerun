@@ -21,52 +21,63 @@ impl DeviceSettingsPanel {
 
         egui::CentralPanel::default()
             .frame(egui::Frame {
-                inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                inner_margin: egui::Margin::same(0.0),
+                fill: egui::Color32::WHITE,
                 ..Default::default()
             })
             .show_inside(ui, |ui| {
-                ui.add_sized(
-                    [ui.available_width(), re_ui::ReUi::box_height()],
-                    |ui: &mut egui::Ui| {
-                        ui.horizontal(|ui| {
-                            ctx.re_ui.labeled_combo_box(
-                                ui,
-                                "Device",
-                                if !combo_device.is_empty() {
-                                    combo_device.clone()
-                                } else {
-                                    "No device selected".to_owned()
-                                },
-                                true,
-                                |ui: &mut egui::Ui| {
-                                    if ui
-                                        .selectable_value(
-                                            &mut combo_device,
-                                            String::new(),
-                                            "No device",
-                                        )
-                                        .changed()
-                                    {
-                                        ctx.depthai_state.set_device(combo_device.clone());
-                                    }
-                                    for device in available_devices {
-                                        if ui
-                                            .selectable_value(
-                                                &mut combo_device,
-                                                device.clone(),
-                                                device,
-                                            )
-                                            .changed()
-                                        {
-                                            ctx.depthai_state.set_device(combo_device.clone());
-                                        }
-                                    }
-                                },
-                            );
-                        })
-                        .response
-                    },
-                );
+                egui::Frame {
+                    inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                    ..Default::default()
+                }
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        // Use up all the horizontal space (color)
+                        ui.add_sized(
+                            [ui.available_width(), re_ui::ReUi::box_height() + 20.0],
+                            |ui: &mut egui::Ui| {
+                                ui.horizontal(|ui| {
+                                    ctx.re_ui.labeled_combo_box(
+                                        ui,
+                                        "Device",
+                                        if !combo_device.is_empty() {
+                                            combo_device.clone()
+                                        } else {
+                                            "No device selected".to_owned()
+                                        },
+                                        true,
+                                        |ui: &mut egui::Ui| {
+                                            if ui
+                                                .selectable_value(
+                                                    &mut combo_device,
+                                                    String::new(),
+                                                    "No device",
+                                                )
+                                                .changed()
+                                            {
+                                                ctx.depthai_state.set_device(combo_device.clone());
+                                            }
+                                            for device in available_devices {
+                                                if ui
+                                                    .selectable_value(
+                                                        &mut combo_device,
+                                                        device.clone(),
+                                                        device,
+                                                    )
+                                                    .changed()
+                                                {
+                                                    ctx.depthai_state
+                                                        .set_device(combo_device.clone());
+                                                }
+                                            }
+                                        },
+                                    );
+                                })
+                                .response
+                            },
+                        );
+                    });
+                });
 
                 if ctx.depthai_state.applied_device_config.update_in_progress {
                     ui.add_sized([CONFIG_UI_WIDTH, 10.0], |ui: &mut egui::Ui| {
@@ -84,16 +95,15 @@ impl DeviceSettingsPanel {
     fn device_configuration_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         let mut device_config = ctx.depthai_state.modified_device_config.config.clone();
         let primary_700 = ctx.re_ui.design_tokens.primary_700;
-        egui::ScrollArea::both()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                let mut style = ui.style_mut().clone();
-                style.spacing.scroll_bar_inner_margin = 0.0;
-                ui.set_style(style);
+
+        ctx.re_ui.styled_scrollbar(
+            ui, re_ui::ScrollAreaDirection::Vertical,
+            [false; 2],
+            |ui| {
                 egui::Frame {
-                    fill: ctx.re_ui.design_tokens.gray_50,
-                    inner_margin: egui::Margin::symmetric(30.0, 21.0),
-                    ..Default::default()
+                fill: ctx.re_ui.design_tokens.gray_50,
+                inner_margin: egui::Margin::symmetric(30.0, 21.0),
+                ..Default::default()
                 }
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
@@ -114,11 +124,16 @@ impl DeviceSettingsPanel {
                                                     .selected_device
                                                     .supported_color_resolutions
                                                 {
-                                                    ui.selectable_value(
-                                                        &mut device_config.color_camera.resolution,
-                                                        *res,
-                                                        format!("{res}"),
-                                                    );
+                                                    let disabled = res == &depthai::ColorCameraResolution::THE_4_K || res == &depthai::ColorCameraResolution::THE_12_MP;
+                                                    ui.add_enabled_ui(!disabled, |ui| {
+                                                        ui.selectable_value(
+                                                            &mut device_config.color_camera.resolution,
+                                                            *res,
+                                                            format!("{res}"),
+                                                        ).on_disabled_hover_ui(|ui| {
+                                                            ui.label(format!("{res} will be available in a future release!"));
+                                                        });
+                                                    });
                                                 }
                                             },
                                         );
@@ -418,9 +433,11 @@ impl DeviceSettingsPanel {
                                 });
                             });
                         });
-                        ui.add_space(ui.available_width());
+                        ui.allocate_space(ui.available_size());
                     });
                 });
-            });
+            }
+        )
+        // Set a more visible scroll bar color
     }
 }
