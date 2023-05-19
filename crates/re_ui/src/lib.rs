@@ -195,16 +195,19 @@ impl ReUi {
         label: &str,
         value: &mut Num,
         range: RangeInclusive<Num>,
-    ) where
+    ) -> egui::Response
+    where
         Num: egui::emath::Numeric,
     {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.add_sized(
+            let response = ui.add_sized(
                 [Self::box_width(), Self::box_height()],
                 egui::DragValue::new(value).clamp_range(range),
             );
             ui.label(egui::RichText::new(label).color(self.design_tokens.gray_900));
-        });
+            response
+        })
+        .inner
     }
 
     pub fn labeled_toggle_switch(&self, ui: &mut egui::Ui, label: &str, value: &mut bool) {

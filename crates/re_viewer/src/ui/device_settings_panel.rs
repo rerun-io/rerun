@@ -152,20 +152,35 @@ impl DeviceSettingsPanel {
                                                     .selected_device
                                                     .supported_left_mono_resolutions
                                                 {
-                                                    ui.selectable_value(
-                                                        &mut device_config.left_camera.resolution,
-                                                        *res,
-                                                        format!("{res}"),
-                                                    );
+                                                    if ui
+                                                        .selectable_value(
+                                                            &mut device_config
+                                                                .left_camera
+                                                                .resolution,
+                                                            *res,
+                                                            format!("{res}"),
+                                                        )
+                                                        .changed()
+                                                    {
+                                                        device_config.right_camera.resolution =
+                                                            *res;
+                                                    }
                                                 }
                                             },
                                         );
-                                        ctx.re_ui.labeled_dragvalue(
-                                            ui,
-                                            "FPS",
-                                            &mut device_config.left_camera.fps,
-                                            0..=120,
-                                        );
+                                        if ctx
+                                            .re_ui
+                                            .labeled_dragvalue(
+                                                ui,
+                                                "FPS",
+                                                &mut device_config.left_camera.fps,
+                                                0..=120,
+                                            )
+                                            .changed()
+                                        {
+                                            device_config.right_camera.fps =
+                                                device_config.left_camera.fps;
+                                        }
                                         ctx.re_ui.labeled_checkbox(
                                             ui,
                                             "Stream",
@@ -191,20 +206,34 @@ impl DeviceSettingsPanel {
                                                     .selected_device
                                                     .supported_right_mono_resolutions
                                                 {
-                                                    ui.selectable_value(
-                                                        &mut device_config.right_camera.resolution,
-                                                        *res,
-                                                        format!("{res}"),
-                                                    );
+                                                    if ui
+                                                        .selectable_value(
+                                                            &mut device_config
+                                                                .right_camera
+                                                                .resolution,
+                                                            *res,
+                                                            format!("{res}"),
+                                                        )
+                                                        .changed()
+                                                    {
+                                                        device_config.left_camera.resolution = *res;
+                                                    }
                                                 }
                                             },
                                         );
-                                        ctx.re_ui.labeled_dragvalue(
-                                            ui,
-                                            "FPS",
-                                            &mut device_config.right_camera.fps,
-                                            0..=120,
-                                        );
+                                        if ctx
+                                            .re_ui
+                                            .labeled_dragvalue(
+                                                ui,
+                                                "FPS",
+                                                &mut device_config.right_camera.fps,
+                                                0..=120,
+                                            )
+                                            .changed()
+                                        {
+                                            device_config.left_camera.fps =
+                                                device_config.right_camera.fps;
+                                        }
                                         ctx.re_ui.labeled_checkbox(
                                             ui,
                                             "Stream",
