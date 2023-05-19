@@ -23,6 +23,7 @@ cargo install wasm-bindgen-cli --git https://github.com/rerun-io/wasm-bindgen.gi
 # binaryen gives us wasm-opt, for optimizing the an .wasm file for speed and size
 packagesNeeded='binaryen'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
+elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
 elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded
 elif [ -x "$(command -v dnf)" ];     then sudo dnf install $packagesNeeded
 elif [ -x "$(command -v zypper)" ];  then sudo zypper install $packagesNeeded
