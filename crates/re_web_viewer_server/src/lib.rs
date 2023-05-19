@@ -175,7 +175,7 @@ impl<T> Service<T> for MakeSvc {
 pub struct WebViewerServerPort(pub u16);
 
 impl WebViewerServerPort {
-    /// Port to use with [`WebViewerServer::port`] when you want the OS to pick a port for you.
+    /// Port to use with [`WebViewerServer::new`] when you want the OS to pick a port for you.
     ///
     /// This is defined as `0`.
     pub const AUTO: Self = Self(0);
