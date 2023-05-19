@@ -115,7 +115,7 @@ jobs:
       # docker
       - name: Cache APT Packages
         if: matrix.platform == 'linux'
-        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
+        uses: awalsh128/cache-apt-pkgs-action@v1.2.4
         with:
           packages: ${{ env.UBUNTU_REQUIRED_PKGS }}
           version: 2.0 # Increment this to pull newer packages
