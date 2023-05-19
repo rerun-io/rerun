@@ -114,9 +114,9 @@ fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     }
 }
 
-/// The python module is called "rerun_bindings".
+/// The python module is called "depthai_viewer_bindings".
 #[pymodule]
-fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn depthai_viewer_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     re_log::setup_native_logging();
@@ -136,8 +136,8 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     if matches!(std::env::var("RERUN_APP_ONLY").as_deref(), Ok("true")) {
         return Ok(());
     }
-
-    python_session().set_python_version(python_version(py));
+    let sys_exe: String = py.import("sys")?.getattr("executable")?.extract()?;
+    python_session().set_python_version(python_version(py), sys_exe);
 
     // NOTE: We do this here because we want child processes to share the same recording-id,
     // whether the user has called `init` or not.
@@ -249,9 +249,9 @@ fn time(timeless: bool) -> TimePoint {
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
-fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+fn main(py: Python<'_>, argv: Vec<String>, sys_exe: String) -> PyResult<u8> {
     let build_info = re_build_info::build_info!();
-    let call_src = depthai_viewer::CallSource::Python(python_version(py));
+    let call_src = depthai_viewer::CallSource::Python(python_version(py), sys_exe);
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

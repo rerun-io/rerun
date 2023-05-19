@@ -8,7 +8,7 @@ from depthai_viewer import bindings, unregister_shutdown  # type: ignore[attr-de
 def main() -> None:
     # We don't need to call shutdown in this case. Rust should be handling everything
     unregister_shutdown()
-    exit(bindings.main(sys.argv))
+    exit(bindings.main(sys.argv, sys.executable))
 
 
 if __name__ == "__main__":

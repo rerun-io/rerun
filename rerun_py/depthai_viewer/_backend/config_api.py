@@ -46,13 +46,16 @@ class MessageType:
 
 
 class ErrorAction(Enum):
-    NONE = None
+    NONE = "None"
     FULL_RESET = "FullReset"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 def error(message: str, action: ErrorAction) -> str:
     """Create an error message to send via ws."""
-    return json.dumps({"type": MessageType.ERROR, "data": {"action": action, "message": message}})
+    return json.dumps({"type": MessageType.ERROR, "data": {"action": str(action), "message": message}})
 
 
 async def ws_api(websocket: WebSocketServerProtocol) -> None:

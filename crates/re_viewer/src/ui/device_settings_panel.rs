@@ -77,17 +77,19 @@ impl DeviceSettingsPanel {
                             },
                         );
                     });
+                    if ctx.depthai_state.applied_device_config.update_in_progress {
+                        ui.add_sized([CONFIG_UI_WIDTH, 10.0], |ui: &mut egui::Ui| {
+                            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                                ui.label("Setting pipeline");
+                                ui.add(egui::Spinner::new())
+                            })
+                            .response
+                        });
+                        return;
+                    }
                 });
 
-                if ctx.depthai_state.applied_device_config.update_in_progress {
-                    ui.add_sized([CONFIG_UI_WIDTH, 10.0], |ui: &mut egui::Ui| {
-                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                            ui.add(egui::Spinner::new())
-                        })
-                        .response
-                    });
-                    return;
-                }
+
                 Self::device_configuration_ui(ctx, ui);
             });
     }
@@ -437,7 +439,7 @@ impl DeviceSettingsPanel {
                     });
                 });
             }
-        )
+        );
         // Set a more visible scroll bar color
     }
 }

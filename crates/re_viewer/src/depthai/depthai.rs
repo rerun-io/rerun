@@ -817,6 +817,10 @@ impl State {
             self.applied_device_config.update_in_progress = true;
         }
     }
+
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
 }
 
 pub type DeviceId = String;
