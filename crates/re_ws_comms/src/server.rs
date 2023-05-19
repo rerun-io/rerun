@@ -78,11 +78,6 @@ impl RerunServer {
         }
     }
 
-    /// Get the local socket addr where the HTTP server is listening
-    pub fn local_addr(&self) -> std::net::SocketAddr {
-        self.local_addr
-    }
-
     /// Contains the `ws://` or `wss://` prefix.
     pub fn server_url(&self) -> String {
         server_url(&self.local_addr)
@@ -133,11 +128,6 @@ impl RerunServerHandle {
             local_addr,
             shutdown_tx,
         })
-    }
-
-    /// Get the local socket addr where the HTTP server is listening
-    pub fn local_addr(&self) -> std::net::SocketAddr {
-        self.local_addr
     }
 
     /// Contains the `ws://` or `wss://` prefix.

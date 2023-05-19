@@ -9,6 +9,7 @@
 
 use std::{
     fmt::Display,
+    net::SocketAddr,
     str::FromStr,
     task::{Context, Poll},
 };
@@ -247,13 +248,9 @@ impl WebViewerServer {
         Ok(())
     }
 
-    pub fn local_addr(&self) -> std::net::SocketAddr {
-        self.server.local_addr()
-    }
-
     /// Includes `http://` prefix
     pub fn server_url(&self) -> String {
-        format!("http://{}", self.local_addr())
+        server_url(&self.server.local_addr())
     }
 }
 
@@ -287,7 +284,7 @@ impl WebViewerServerHandle {
 
         let web_server = WebViewerServer::new(bind_ip, requested_port)?;
 
-        let local_addr = web_server.local_addr();
+        let local_addr = web_server.server.local_addr();
 
         tokio::spawn(async move { web_server.serve(shutdown_rx).await });
 
@@ -301,13 +298,17 @@ impl WebViewerServerHandle {
         Ok(slf)
     }
 
-    /// Get the local socket addr where the HTTP server is listening
-    pub fn local_addr(&self) -> std::net::SocketAddr {
-        self.local_addr
-    }
-
     /// Includes `http://` prefix
     pub fn server_url(&self) -> String {
-        format!("http://{}", self.local_addr)
+        server_url(&self.local_addr)
+    }
+}
+
+fn server_url(local_addr: &SocketAddr) -> String {
+    if local_addr.ip().is_unspecified() {
+        // "0.0.0.0"
+        format!("http://localhost:{}", local_addr.port())
+    } else {
+        format!("http://{local_addr}")
     }
 }
