@@ -66,7 +66,9 @@ ADD rerun_py/requirements-build.txt requirements-build.txt
 RUN pip install -r requirements-build.txt
 
 # Install tools from setup_web.sh
-RUN cargo install wasm-bindgen-cli --git https://github.com/rerun-io/wasm-bindgen.git --rev 13283975ddf48c2d90758095e235b28d381c5762
+ADD scripts/setup_web.sh setup_web.sh
+# Installing binaryen is going to cause this script to fail, but that's ok -- we install it manually
+RUN ./setup_web.sh || true
 # Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
 RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 

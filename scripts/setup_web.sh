@@ -18,6 +18,9 @@ cargo install wasm-bindgen-cli --version 0.2.86
 # cargo install basic-http-server
 
 # binaryen gives us wasm-opt, for optimizing the an .wasm file for speed and size
+# If you add to this list, please consult the ci_docker/Dockerfile and make sure the
+# package actually installs properly. binaryen isn't supported on ubuntu 20.04 so we have
+# to install it manually there.
 packagesNeeded='binaryen'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
 elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
