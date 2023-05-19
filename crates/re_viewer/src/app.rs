@@ -1339,41 +1339,6 @@ fn top_bar_ui(
                 let extra_margin = (ui.available_height() - 24.0) / 2.0;
                 ui.add_space(extra_margin);
             }
-
-            let mut selection_panel_expanded = blueprint.selection_panel_expanded;
-            if app
-                .re_ui
-                .medium_icon_toggle_button(
-                    ui,
-                    &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                    &mut selection_panel_expanded,
-                )
-                .on_hover_text(format!(
-                    "Toggle Selection View{}",
-                    Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ))
-                .clicked()
-            {
-                app.pending_commands.push(Command::ToggleSelectionPanel);
-            }
-
-            let mut time_panel_expanded = blueprint.time_panel_expanded;
-            if app
-                .re_ui
-                .medium_icon_toggle_button(
-                    ui,
-                    &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                    &mut time_panel_expanded,
-                )
-                .on_hover_text(format!(
-                    "Toggle Timeline View{}",
-                    Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-                ))
-                .clicked()
-            {
-                app.pending_commands.push(Command::ToggleTimePanel);
-            }
-
             let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
             if app
                 .re_ui

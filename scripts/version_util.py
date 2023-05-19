@@ -21,6 +21,7 @@ import semver
 
 # A regex to match the version number in Cargo.toml as SemVer, e.g., 1.2.3-alpha.0
 CARGO_VERSION_REGEX: Final = r"^version\s*=\s*\"(.+)\"$"
+VERSION_TAG_REGEX: Final = r"^v(?P<version>([0-9]+)\.([0-9]+)\.([0-9]+))$"
 
 
 def get_cargo_version(cargo_toml: str) -> semver.VersionInfo:
@@ -37,6 +38,24 @@ def get_cargo_version(cargo_toml: str) -> semver.VersionInfo:
 def get_git_sha() -> str:
     """Return the git short sha of the current commit."""
     return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+
+
+def get_ref_name_version() -> str:
+    """Return the parsed tag version from the GITHUB_REF_NAME environment variable."""
+
+    # This is the branch, or tag name that triggered the workflow.
+    ref_name = os.environ.get("GITHUB_REF_NAME")
+
+    if ref_name is None:
+        raise Exception("GITHUB_REF_NAME environment variable not set")
+
+    # Extract the version number from the tag name
+    match = re.search(VERSION_TAG_REGEX, ref_name)
+
+    if match is None:
+        raise Exception("Could not find valid version number in GITHUB_REF_NAME")
+
+    return match.group("version")
 
 
 def patch_cargo_version(cargo_toml: str, new_version: str) -> str:
@@ -80,6 +99,14 @@ def main() -> None:
         # Print the bare cargo version. NOTE: do not add additional formatting here. This output
         # is expected to be fed into an environment variable.
         print(f"{cargo_version}")
+
+    elif sys.argv[1] == "--check_version":
+        ref_version = get_ref_name_version()
+        if cargo_version != ref_version:
+            raise Exception(
+                f"Version number in Cargo.toml ({cargo_version}) does not match tag version ({ref_version})"
+            )
+        print(f"Version numbers match: {cargo_version} == {ref_version}")
 
     else:
         raise Exception("Invalid argument")
