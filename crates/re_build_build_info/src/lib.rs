@@ -100,7 +100,7 @@ fn run_command(cmd: &str, args: &[&str]) -> anyhow::Result<String> {
         .output()
         .with_context(|| format!("running '{cmd}'"))?;
 
-    assert!(
+    anyhow::ensure!(
         output.status.success(),
         "Failed to run '{cmd} {args:?}':\n{}\n{}\n",
         String::from_utf8_lossy(&output.stdout),
