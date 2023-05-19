@@ -495,6 +495,7 @@ fn serve(
         recording.set_sink(
             rerun::web_viewer::new_sink(
                 open_browser,
+                "0.0.0.0",
                 web_port.map(WebViewerServerPort).unwrap_or_default(),
                 ws_port.map(RerunServerPort).unwrap_or_default(),
             )
@@ -1160,7 +1161,7 @@ fn version() -> String {
 fn get_app_url() -> String {
     #[cfg(feature = "web_viewer")]
     if let Some(hosted_assets) = &*global_web_viewer_server() {
-        return format!("http://localhost:{}", hosted_assets.port());
+        return hosted_assets.server_url();
     }
 
     let build_info = re_build_info::build_info!();
@@ -1179,13 +1180,12 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
 
         let _guard = enter_tokio_runtime();
         *web_handle = Some(
-            re_web_viewer_server::WebViewerServerHandle::new(WebViewerServerPort(port)).map_err(
-                |err| {
+            re_web_viewer_server::WebViewerServerHandle::new("0.0.0.0", WebViewerServerPort(port))
+                .map_err(|err| {
                     PyRuntimeError::new_err(format!(
                         "Failed to start web viewer server on port {port}: {err}",
                     ))
-                },
-            )?,
+                })?,
         );
 
         Ok(())
