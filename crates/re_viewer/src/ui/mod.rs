@@ -1,5 +1,7 @@
 mod auto_layout;
 mod blueprint;
+mod blueprint_load;
+mod blueprint_sync;
 mod data_blueprint;
 mod selection_history_ui;
 mod space_view;
@@ -23,7 +25,8 @@ pub mod view_spatial;
 // ----
 
 pub(crate) use self::blueprint::Blueprint;
-pub(crate) use self::space_view::{item_ui, SpaceView};
+// TODO(jleibs) should we avoid leaking this?
+pub use self::space_view::{item_ui, SpaceView};
 
 pub use self::view_category::ViewCategory;
-pub use self::viewport::Viewport;
+pub use self::viewport::{Viewport, ViewportState, VisibilitySet};

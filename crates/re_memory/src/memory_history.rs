@@ -24,6 +24,9 @@ pub struct MemoryHistory {
 
     /// Bytes used by the datastore according to its own accounting.
     pub counted_store: History<i64>,
+
+    /// Bytes used by the blueprint store according to its own accounting.
+    pub counted_blueprint: History<i64>,
 }
 
 impl Default for MemoryHistory {
@@ -35,6 +38,7 @@ impl Default for MemoryHistory {
             counted: History::new(0..max_elems, max_seconds),
             counted_gpu: History::new(0..max_elems, max_seconds),
             counted_store: History::new(0..max_elems, max_seconds),
+            counted_blueprint: History::new(0..max_elems, max_seconds),
         }
     }
 }
@@ -46,15 +50,22 @@ impl MemoryHistory {
             counted,
             counted_gpu,
             counted_store,
+            counted_blueprint,
         } = self;
         resident.is_empty()
             && counted.is_empty()
             && counted_gpu.is_empty()
             && counted_store.is_empty()
+            && counted_blueprint.is_empty()
     }
 
     /// Add data to history
-    pub fn capture(&mut self, counted_gpu: Option<i64>, counted_store: Option<i64>) {
+    pub fn capture(
+        &mut self,
+        counted_gpu: Option<i64>,
+        counted_store: Option<i64>,
+        counted_blueprint: Option<i64>,
+    ) {
         let mem_use = crate::MemoryUse::capture();
         let now = crate::util::sec_since_start();
 
@@ -69,6 +80,9 @@ impl MemoryHistory {
         }
         if let Some(counted_store) = counted_store {
             self.counted_store.add(now, counted_store);
+        }
+        if let Some(counted_blueprint) = counted_blueprint {
+            self.counted_blueprint.add(now, counted_blueprint);
         }
     }
 }

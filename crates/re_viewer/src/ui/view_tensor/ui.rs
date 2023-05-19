@@ -18,7 +18,7 @@ use super::dimension_mapping_ui;
 // ---
 
 /// How we slice a given tensor
-#[derive(Clone, Debug, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct SliceSelection {
     /// How we select which dimensions to project the tensor onto.
     pub dim_mapping: DimensionMapping,
@@ -42,6 +42,22 @@ pub struct ViewTensorState {
     /// Used for the selection view.
     #[serde(skip)]
     tensor: Option<DecodedTensor>,
+}
+
+// TODO(#2089): TManually implement PartialEq so we aren't comparing the serde-skipped tensor
+impl PartialEq for ViewTensorState {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            slice,
+            color_mapping,
+            texture_settings,
+            tensor: _, // serde-skip
+        } = self;
+
+        *slice == other.slice
+            && *color_mapping == other.color_mapping
+            && *texture_settings == other.texture_settings
+    }
 }
 
 impl ViewTensorState {
@@ -226,7 +242,7 @@ fn paint_tensor_slice(
 // ----------------------------------------------------------------------------
 
 /// How we map values to colors.
-#[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ColorMapping {
     pub map: Colormap,
     pub gamma: f32,

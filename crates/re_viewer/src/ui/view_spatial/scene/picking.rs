@@ -23,7 +23,7 @@ pub enum PickingHitType {
     GuiOverlay,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PickingRayHit {
     /// What entity or instance got hit by the picking ray.
     ///
@@ -39,7 +39,7 @@ pub struct PickingRayHit {
     pub hit_type: PickingHitType,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PickingResult {
     /// Picking ray hits. NOT sorted by distance but rather by source of picking.
     ///

@@ -27,7 +27,7 @@ pub enum ScreenshotMode {
 }
 
 /// A view of a space.
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct SpaceView {
     pub id: SpaceViewId,
     pub display_name: String,
@@ -306,7 +306,7 @@ impl SpaceView {
 // ----------------------------------------------------------------------------
 
 /// Camera position and similar.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstancePath>,

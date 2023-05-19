@@ -167,6 +167,7 @@ pub fn new_recording_info(
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },
+        recording_type: re_log_types::RecordingType::Data,
     }
 }
 

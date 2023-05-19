@@ -45,7 +45,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ViewTimeSeriesState;
 
 pub(crate) fn view_time_series(
