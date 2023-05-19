@@ -222,7 +222,7 @@ impl WebViewerServer {
     /// # async fn example() -> Result<(), WebViewerServerError> {
     /// let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
     /// let server = WebViewerServer::new("0.0.0.0", WebViewerServerPort::AUTO)?;
-    /// let port = server.port();
+    /// let local_addr = server.local_addr();
     /// server.serve(shutdown_rx).await?;
     /// # Ok(()) }
     /// ```

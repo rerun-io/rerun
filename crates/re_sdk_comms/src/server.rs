@@ -59,8 +59,8 @@ async fn listen_for_new_clients(
 /// # use re_sdk_comms::{serve, ServerOptions};
 /// #[tokio::main]
 /// async fn main() {
-///     let (sender, receiver) = tokio::sync::broadcast::channel(1);
-///     let log_msg_rx = serve(80, ServerOptions::default(), receiver).await.unwrap();
+///     let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
+///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default(), shutdown_rx).await.unwrap();
 /// }
 /// ```
 pub async fn serve(
