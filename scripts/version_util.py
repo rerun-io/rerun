@@ -11,6 +11,7 @@ This script accepts one argument:
     EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)
 """
 
+import os
 import re
 import subprocess
 import sys
