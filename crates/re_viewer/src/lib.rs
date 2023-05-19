@@ -97,7 +97,9 @@ impl AppEnvironment {
     pub fn from_recording_source(source: &re_log_types::RecordingSource) -> Self {
         use re_log_types::RecordingSource;
         match source {
-            RecordingSource::PythonSdk(python_version, sys_exe) => Self::PythonSdk(python_version.clone(), sys_exe.clone()),
+            RecordingSource::PythonSdk(python_version, sys_exe) => {
+                Self::PythonSdk(python_version.clone(), sys_exe.clone())
+            }
             RecordingSource::RustSdk {
                 rustc_version: rust_version,
                 llvm_version,

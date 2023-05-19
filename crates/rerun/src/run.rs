@@ -156,6 +156,7 @@ enum AnalyticsCommands {
 }
 
 type SysExePath = String;
+
 /// Where are we calling [`run`] from?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallSource {
