@@ -8,6 +8,7 @@ from rerun.recording_stream import RecordingStream
 
 def new_blueprint(
     application_id: str,
+    *,
     blueprint_id: Optional[str] = None,
     make_default: bool = False,
     make_thread_default: bool = False,
@@ -85,9 +86,10 @@ def new_blueprint(
 
 
 def add_space_view(
-    name: str,
-    space_path: str,
-    entity_paths: List[str],
+    *,
+    origin: str,
+    name: Optional[str],
+    entity_paths: Optional[List[str]],
     blueprint: Optional[RecordingStream] = None,
 ) -> None:
     """
@@ -95,17 +97,22 @@ def add_space_view(
 
     Parameters
     ----------
-    name : str
-        The name of the space view.
-    space_path : str
-        The anchor point of the space view.
-    entity_paths : List[str]
-        The entities to be shown in the space view.
+    origin : str
+        The EntityPath to use as the origin of this space view. All other entities will be transformed
+        to be displayed relative to this origin.
+    name : Optional[str]
+        The name of the space view to show in the UI. Will default to the origin if not provided.
+    entity_paths : Optional[List[str]]
+        The entities to be shown in the space view. If not provided, this will default to [origin]
     blueprint : Optional[RecordingStream]
         The blueprint to add the space view to. If None, the default global blueprint is used.
     """
+    if name is None:
+        name = origin
+    if entity_paths is None:
+        entity_paths = [origin]
     blueprint = RecordingStream.to_native(blueprint)
-    bindings.add_space_view(name, space_path, entity_paths, blueprint)
+    bindings.add_space_view(name, origin, entity_paths, blueprint)
 
 
 def set_panels(
@@ -141,7 +148,6 @@ def set_panels(
     )
 
 
-# TODO(jleibs): docstrings
 def set_auto_space_views(
     enabled: bool,
     blueprint: Optional[RecordingStream] = None,

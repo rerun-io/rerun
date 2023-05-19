@@ -1246,7 +1246,7 @@ fn set_panel(
 #[pyfunction]
 fn add_space_view(
     name: &str,
-    space_path: &str,
+    origin: &str,
     entity_paths: Vec<&str>,
     blueprint: Option<&PyRecordingStream>,
 ) {
@@ -1254,7 +1254,7 @@ fn add_space_view(
 
     let mut space_view = SpaceView::new(
         ViewCategory::Spatial,
-        &space_path.into(),
+        &origin.into(),
         &entity_paths
             .into_iter()
             .map(|s| s.into())

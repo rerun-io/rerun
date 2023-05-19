@@ -50,7 +50,7 @@ def main() -> None:
 
         rr_exp.set_panels(all_expanded=False)
 
-        rr_exp.add_space_view("overlaid", "/", ["image", "rect/0", "rect/1"])
+        rr_exp.add_space_view(name="overlaid", origin="/", entity_paths=["image", "rect/0", "rect/1"])
 
     # Workaround https://github.com/rerun-io/rerun/issues/2124
     import time
