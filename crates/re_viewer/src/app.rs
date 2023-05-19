@@ -493,9 +493,12 @@ impl eframe::App for App {
             };
         }
 
-        if self.backend_handle.is_none() {
-            self.backend_handle = App::spawn_backend();
-        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if self.backend_handle.is_none() {
+                self.backend_handle = App::spawn_backend();
+            };
+        }
 
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit
