@@ -197,7 +197,7 @@ pub(crate) fn update_tree(
             NodeIndex::root(),
             &LayoutSplit::LeftRight(
                 LayoutSplit::Leaf(Vec::new()).into(),
-                0.5,
+                0.7,
                 right_panel_split().into(),
             ),
         );

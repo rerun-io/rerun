@@ -153,8 +153,8 @@ class ImuConfiguration(BaseModel):  # type: ignore[misc]
 
 class PipelineConfiguration(BaseModel):  # type: ignore[misc]
     color_camera: ColorCameraConfiguration = ColorCameraConfiguration()
-    left_camera: MonoCameraConfiguration = MonoCameraConfiguration.create_left()
-    right_camera: MonoCameraConfiguration = MonoCameraConfiguration.create_right()
+    left_camera: Optional[MonoCameraConfiguration] = MonoCameraConfiguration.create_left()
+    right_camera: Optional[MonoCameraConfiguration] = MonoCameraConfiguration.create_right()
     depth: Optional[DepthConfiguration] = DepthConfiguration()
     ai_model: Optional[AiModelConfiguration] = AiModelConfiguration()
     imu: ImuConfiguration = ImuConfiguration()
@@ -165,13 +165,13 @@ class PipelineConfiguration(BaseModel):  # type: ignore[misc]
 
     def _fix_depthai_types(self, as_dict: Dict[str, Any]) -> Dict[str, Any]:
         """ATM Config.json_encoders doesn't work, so we manually fix convert the depthai types to strings here."""
-        if as_dict.get("color_camera"):
+        if as_dict.get("color_camera", None):
             as_dict["color_camera"] = self._fix_camera(as_dict["color_camera"])
-        if as_dict.get("left_camera"):
+        if as_dict.get("left_camera", None):
             as_dict["left_camera"] = self._fix_camera(as_dict["left_camera"])
-        if as_dict.get("right_camera"):
+        if as_dict.get("right_camera", None):
             as_dict["right_camera"] = self._fix_camera(as_dict["right_camera"])
-        if as_dict.get("depth"):
+        if as_dict.get("depth", None):
             as_dict["depth"] = self._fix_depth(as_dict["depth"])
         return as_dict
 
