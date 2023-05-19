@@ -74,6 +74,5 @@ RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_11
 ENV CACHE_KEY=rerun_docker_v0.7
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
-# Note: this uses global and a more-specific path than '*' at recommended in that comment
-# this appears to have been needed due to a git version upgrade to 2.30.
-RUN git config --global --add safe.directory '/__w/rerun/rerun'
+RUN git config --system --add safe.directory '*'
+
