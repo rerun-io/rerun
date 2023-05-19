@@ -114,6 +114,10 @@ struct Args {
     #[clap(long)]
     web_viewer: bool,
 
+    /// What bind address IP to use.
+    #[clap(long, default_value = "0.0.0.0")]
+    bind: String,
+
     /// What port do we listen to for hosting the web viewer over HTTP.
     /// A port of 0 will pick a random port.
     #[cfg(feature = "web_viewer")]
@@ -339,6 +343,7 @@ async fn run_impl(
                         #[cfg(feature = "web_viewer")]
                         {
                             let web_viewer = host_web_viewer(
+                                args.bind.clone(),
                                 args.web_viewer_port,
                                 true,
                                 rerun_server_ws_url,
@@ -411,7 +416,13 @@ async fn run_impl(
                 // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
             };
-            re_sdk_comms::serve(args.port, server_options, shutdown_rx.resubscribe()).await?
+            re_sdk_comms::serve(
+                &args.bind,
+                args.port,
+                server_options,
+                shutdown_rx.resubscribe(),
+            )
+            .await?
         }
 
         #[cfg(not(feature = "server"))]
@@ -443,12 +454,14 @@ async fn run_impl(
             let shutdown_web_viewer = shutdown_rx.resubscribe();
 
             // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::RerunServer::new(args.ws_server_port).await?;
+            let ws_server =
+                re_ws_comms::RerunServer::new(args.bind.clone(), args.ws_server_port).await?;
             let ws_server_url = ws_server.server_url();
             let ws_server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
 
             // This is the server that serves the Wasm+HTML:
             let web_server_handle = tokio::spawn(host_web_viewer(
+                args.bind.clone(),
                 args.web_viewer_port,
                 true,
                 ws_server_url,

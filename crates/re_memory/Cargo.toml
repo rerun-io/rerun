@@ -37,4 +37,4 @@ sysinfo = { version = "0.28.3", default-features = false }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "=0.2.84"
+wasm-bindgen = "0.2.86"
