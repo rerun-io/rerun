@@ -27,8 +27,7 @@ py-dev-env:
     set -euxo pipefail
     python3 -m venv venv
     venv/bin/pip install --upgrade pip
-    venv/bin/pip install -r rerun_py/requirements-build.txt
-    venv/bin/pip install -r rerun_py/requirements-lint.txt
+    venv/bin/pip install -r scripts/requirements-dev.txt
     echo "Do 'source venv/bin/activate' to use the virtual environment!"
 
 # Run all examples with the specified args
