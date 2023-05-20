@@ -17,6 +17,9 @@ This is a guide to how to build Rerun.
 * Run `./scripts/setup_dev.sh`.
 * Make sure `cargo --version` prints `1.69.0` once you are done
 
+You should now be able run our Rust examples, e.g. with `cargo run -p dna`.
+
+You can type `cargo rerun` to compile and run the `rerun` binary with most features enabled, thanks to a shortcut in `.cargo/config.toml`.
 
 ### Apple-silicon Macs
 

@@ -1,4 +1,7 @@
 [alias]
+# `cargo rerun` is short a convenient shorthand
+rerun = "run --package rerun --features native_viewer --features server --"
+
 # To easily run examples on the web, see https://github.com/rukai/cargo-run-wasm.
 # Temporary solution while we wait for our own xtasks!
 run-wasm = "run --release --package run_wasm --"
