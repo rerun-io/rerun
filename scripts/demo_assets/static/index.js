@@ -38,9 +38,36 @@ function on_wasm_loaded() {
 
   console.debug("Wasm loaded. Starting app…");
 
-  // This call installs a bunch of callbacks and then returns:
-  let handle = new wasm_bindgen.WebHandle("the_canvas_id", determine_url());
-  handle.then(on_app_started).catch(on_wasm_error);
+  let handle = new wasm_bindgen.WebHandle();
+
+  function check_for_panic() {
+    if (handle.has_panicked()) {
+      console.error("Rerun has crashed");
+
+      document.getElementById("the_canvas_id").remove();
+      document.getElementById("center_text").innerHTML = `
+          <p>
+              Rerun has crashed.
+          </p>
+          <p style="font-size:10px" align="left">
+              ${handle.panic_message()}
+          </p>
+          <p style="font-size:14px">
+              See the console for details.
+          </p>
+          <p style="font-size:14px">
+              Reload the page to try again.
+          </p>`;
+    } else {
+      let delay_ms = 1000;
+      setTimeout(check_for_panic, delay_ms);
+    }
+  }
+
+  check_for_panic();
+
+  let url = determine_url();
+  handle.start("the_canvas_id", url).then(on_app_started).catch(on_wasm_error);
 }
 
 function on_app_started(handle) {
@@ -54,34 +81,6 @@ function on_app_started(handle) {
   if (window.location !== window.parent.location) {
     window.parent.postMessage("READY", "*");
   }
-
-  function check_for_panic() {
-    if (handle.has_panicked()) {
-      console.error("Rerun has crashed");
-
-      // Rerun already logs the panic message and callstack, but you
-      // can access them like this if you want to show them in the html:
-      // console.error(`${handle.panic_message()}`);
-      // console.error(`${handle.panic_callstack()}`);
-
-      document.getElementById("the_canvas_id").remove();
-      document.getElementById("center_text").innerHTML = `
-        <p>
-            Rerun has crashed.
-        </p>
-        <p style="font-size:14px">
-            See the console for details.
-        </p>
-        <p style="font-size:14px">
-            Reload the page to try again.
-        </p>`;
-    } else {
-      let delay_ms = 1000;
-      setTimeout(check_for_panic, delay_ms);
-    }
-  }
-
-  check_for_panic();
 }
 
 function determine_url() {

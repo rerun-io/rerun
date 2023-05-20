@@ -9,6 +9,7 @@
 
 use std::{
     fmt::Display,
+    net::SocketAddr,
     str::FromStr,
     task::{Context, Poll},
 };
@@ -174,6 +175,13 @@ impl<T> Service<T> for MakeSvc {
 /// Typed port for use with [`WebViewerServer`]
 pub struct WebViewerServerPort(pub u16);
 
+impl WebViewerServerPort {
+    /// Port to use with [`WebViewerServer::new`] when you want the OS to pick a port for you.
+    ///
+    /// This is defined as `0`.
+    pub const AUTO: Self = Self(0);
+}
+
 impl Default for WebViewerServerPort {
     fn default() -> Self {
         Self(DEFAULT_WEB_VIEWER_SERVER_PORT)
@@ -207,9 +215,20 @@ pub struct WebViewerServer {
 impl WebViewerServer {
     /// Create new [`WebViewerServer`] to host the Rerun Web Viewer on a specified port.
     ///
-    /// A port of 0 will let the OS choose a free port.
-    pub fn new(port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
-        let bind_addr = format!("0.0.0.0:{port}").parse()?;
+    /// [`WebViewerServerPort::AUTO`] will tell the OS choose any free port.
+    ///
+    /// ## Example
+    /// ``` no_run
+    /// # use re_web_viewer_server::{WebViewerServer, WebViewerServerPort, WebViewerServerError};
+    /// # async fn example() -> Result<(), WebViewerServerError> {
+    /// let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
+    /// let server = WebViewerServer::new("0.0.0.0", WebViewerServerPort::AUTO)?;
+    /// let server_url = server.server_url();
+    /// server.serve(shutdown_rx).await?;
+    /// # Ok(()) }
+    /// ```
+    pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
+        let bind_addr = format!("{bind_ip}:{port}").parse()?;
         let server = hyper::Server::try_bind(&bind_addr)
             .map_err(|err| WebViewerServerError::BindFailed(port, err))?
             .serve(MakeSvc);
@@ -229,8 +248,9 @@ impl WebViewerServer {
         Ok(())
     }
 
-    pub fn port(&self) -> WebViewerServerPort {
-        WebViewerServerPort(self.server.local_addr().port())
+    /// Includes `http://` prefix
+    pub fn server_url(&self) -> String {
+        server_url(&self.server.local_addr())
     }
 }
 
@@ -238,13 +258,13 @@ impl WebViewerServer {
 ///
 /// When dropped, the server will be shut down.
 pub struct WebViewerServerHandle {
-    port: WebViewerServerPort,
+    local_addr: std::net::SocketAddr,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
 impl Drop for WebViewerServerHandle {
     fn drop(&mut self) {
-        re_log::info!("Shutting down web server on port {}.", self.port);
+        re_log::info!("Shutting down web server on {}", self.server_url());
         self.shutdown_tx.send(()).ok();
     }
 }
@@ -256,22 +276,39 @@ impl WebViewerServerHandle {
     /// A port of 0 will let the OS choose a free port.
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
-    pub fn new(requested_port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
+    pub fn new(
+        bind_ip: &str,
+        requested_port: WebViewerServerPort,
+    ) -> Result<Self, WebViewerServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
 
-        let web_server = WebViewerServer::new(requested_port)?;
+        let web_server = WebViewerServer::new(bind_ip, requested_port)?;
 
-        let port = web_server.port();
+        let local_addr = web_server.server.local_addr();
 
         tokio::spawn(async move { web_server.serve(shutdown_rx).await });
 
-        re_log::info!("Started web server on port {}.", port);
+        let slf = Self {
+            local_addr,
+            shutdown_tx,
+        };
 
-        Ok(Self { port, shutdown_tx })
+        re_log::info!("Started web server on {}", slf.server_url());
+
+        Ok(slf)
     }
 
-    /// Get the port where the HTTP server is listening
-    pub fn port(&self) -> WebViewerServerPort {
-        self.port
+    /// Includes `http://` prefix
+    pub fn server_url(&self) -> String {
+        server_url(&self.local_addr)
+    }
+}
+
+fn server_url(local_addr: &SocketAddr) -> String {
+    if local_addr.ip().is_unspecified() {
+        // "0.0.0.0"
+        format!("http://localhost:{}", local_addr.port())
+    } else {
+        format!("http://{local_addr}")
     }
 }

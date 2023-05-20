@@ -4,6 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.tensor import TensorArray
 from rerun.log.error_utils import _send_warning
@@ -87,6 +88,7 @@ def log_tensor(
 def _log_tensor(
     entity_path: str,
     tensor: npt.NDArray[Any],
+    draw_order: Optional[float] = None,
     names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
     meaning: bindings.TensorDataMeaning = None,
@@ -136,6 +138,9 @@ def _log_tensor(
     splats: Dict[str, Any] = {}
 
     instanced["rerun.tensor"] = TensorArray.from_numpy(tensor, names, meaning, meter)
+
+    if draw_order is not None:
+        instanced["rerun.draw_order"] = DrawOrderArray.splat(draw_order)
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)

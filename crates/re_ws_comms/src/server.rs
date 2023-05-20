@@ -21,29 +21,33 @@ use crate::{server_url, RerunServerError, RerunServerPort};
 /// Websocket host for relaying [`LogMsg`]s to a web viewer.
 pub struct RerunServer {
     listener: TcpListener,
-    port: RerunServerPort,
+    local_addr: std::net::SocketAddr,
 }
 
 impl RerunServer {
     /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
     /// The websocket will be available at `port`.
     ///
+    /// A `bind_ip` of `"0.0.0.0"` is a good default.
     /// A port of 0 will let the OS choose a free port.
-    pub async fn new(port: RerunServerPort) -> Result<Self, RerunServerError> {
-        let bind_addr = format!("0.0.0.0:{port}");
+    pub async fn new(bind_ip: String, port: RerunServerPort) -> Result<Self, RerunServerError> {
+        let bind_addr = format!("{bind_ip}:{port}");
 
         let listener = TcpListener::bind(&bind_addr)
             .await
             .map_err(|err| RerunServerError::BindFailed(port, err))?;
 
-        let port = RerunServerPort(listener.local_addr()?.port());
+        let slf = Self {
+            local_addr: listener.local_addr()?,
+            listener,
+        };
 
         re_log::info!(
             "Listening for websocket traffic on {}. Connect with a Rerun Web Viewer.",
-            listener.local_addr()?
+            slf.server_url()
         );
 
-        Ok(Self { listener, port })
+        Ok(slf)
     }
 
     /// Accept new connections until we get a message on `shutdown_rx`
@@ -74,8 +78,9 @@ impl RerunServer {
         }
     }
 
+    /// Contains the `ws://` or `wss://` prefix.
     pub fn server_url(&self) -> String {
-        server_url("localhost", self.port)
+        server_url(&self.local_addr)
     }
 }
 
@@ -83,13 +88,13 @@ impl RerunServer {
 ///
 /// When dropped, the server will be shut down.
 pub struct RerunServerHandle {
-    port: RerunServerPort,
+    local_addr: std::net::SocketAddr,
     shutdown_tx: tokio::sync::broadcast::Sender<()>,
 }
 
 impl Drop for RerunServerHandle {
     fn drop(&mut self) {
-        re_log::info!("Shutting down Rerun server on port {}.", self.port);
+        re_log::info!("Shutting down Rerun server on {}", self.server_url());
         self.shutdown_tx.send(()).ok();
     }
 }
@@ -98,11 +103,13 @@ impl RerunServerHandle {
     /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
     /// Returns a [`RerunServerHandle`] that will shutdown the server when dropped.
     ///
+    /// A `bind_ip` of `"0.0.0.0"` is a good default.
     /// A port of 0 will let the OS choose a free port.
     ///
     /// The caller needs to ensure that there is a `tokio` runtime running.
     pub fn new(
         rerun_rx: Receiver<LogMsg>,
+        bind_ip: String,
         requested_port: RerunServerPort,
     ) -> Result<Self, RerunServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
@@ -110,23 +117,22 @@ impl RerunServerHandle {
         let rt = tokio::runtime::Handle::current();
 
         let ws_server = rt.block_on(tokio::spawn(async move {
-            RerunServer::new(requested_port).await
+            RerunServer::new(bind_ip, requested_port).await
         }))??;
 
-        let port = ws_server.port;
+        let local_addr = ws_server.local_addr;
 
         tokio::spawn(async move { ws_server.listen(rerun_rx, shutdown_rx).await });
 
-        Ok(Self { port, shutdown_tx })
+        Ok(Self {
+            local_addr,
+            shutdown_tx,
+        })
     }
 
-    /// Get the port where the websocket server is listening
-    pub fn port(&self) -> RerunServerPort {
-        self.port
-    }
-
+    /// Contains the `ws://` or `wss://` prefix.
     pub fn server_url(&self) -> String {
-        server_url("localhost", self.port)
+        server_url(&self.local_addr)
     }
 }
 

@@ -98,6 +98,7 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
+web-time = "0.2.0"
 wgpu = { version = "0.16" }
 wgpu-core = { version = "0.16" }
 
@@ -126,13 +127,13 @@ debug = true
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
 # TODO(andreas/emilk): Update to a stable egui version
-# wgpu 0.16 support, device configuration dependent on adapter, and some additions to help egui_tiles, egui::Modifiers::contains
-ecolor = { git = "https://github.com/emilk/egui", rev = "ff8e482" }
-eframe = { git = "https://github.com/emilk/egui", rev = "ff8e482" }
-egui = { git = "https://github.com/emilk/egui", rev = "ff8e482" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "ff8e482" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "ff8e482" }
-emath = { git = "https://github.com/emilk/egui", rev = "ff8e482" }
+# wgpu 0.16 support, device configuration dependent on adapter, some additions to help egui_tiles, egui::Modifiers::contains, better error reporting for web, wasm-bindgen update
+ecolor = { git = "https://github.com/emilk/egui", rev = "856afc8" }
+eframe = { git = "https://github.com/emilk/egui", rev = "856afc8" }
+egui = { git = "https://github.com/emilk/egui", rev = "856afc8" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "856afc8" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "856afc8" }
+emath = { git = "https://github.com/emilk/egui", rev = "856afc8" }
 
 # TODO(andreas): Either work around this issue in wgpu-egui (never discard command buffers) or wait for wgpu patch release.
 # Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726

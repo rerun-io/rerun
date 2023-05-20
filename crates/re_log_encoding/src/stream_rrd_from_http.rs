@@ -121,7 +121,7 @@ mod web_decode {
     ///
     /// This is cooperative multi-tasking.
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
-        let mut last_yield = instant::Instant::now();
+        let mut last_yield = web_time::Instant::now();
 
         match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
             Ok(decoder) => {
@@ -135,10 +135,10 @@ mod web_decode {
                         }
                     }
 
-                    if last_yield.elapsed() > instant::Duration::from_millis(10) {
+                    if last_yield.elapsed() > web_time::Duration::from_millis(10) {
                         // yield to the ui task
                         yield_().await;
-                        last_yield = instant::Instant::now();
+                        last_yield = web_time::Instant::now();
                     }
                 }
             }

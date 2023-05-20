@@ -76,8 +76,14 @@ impl FromStr for RerunServerPort {
     }
 }
 
-pub fn server_url(hostname: &str, port: RerunServerPort) -> String {
-    format!("{PROTOCOL}://{hostname}:{port}")
+/// Add a protocol (`ws://` or `wss://`) to the given address.
+pub fn server_url(local_addr: &std::net::SocketAddr) -> String {
+    if local_addr.ip().is_unspecified() {
+        // "0.0.0.0"
+        format!("{PROTOCOL}://localhost:{}", local_addr.port())
+    } else {
+        format!("{PROTOCOL}://{local_addr}")
+    }
 }
 
 const PREFIX: [u8; 4] = *b"RR00";

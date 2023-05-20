@@ -141,6 +141,12 @@ impl RecordingStreamBuilder {
         self
     }
 
+    #[doc(hidden)]
+    pub fn blueprint(mut self) -> Self {
+        self.recording_type = RecordingType::Blueprint;
+        self
+    }
+
     /// Creates a new [`RecordingStream`] that starts in a buffering state (RAM).
     ///
     /// ## Example
@@ -270,6 +276,7 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             recording_source,
+            recording_type,
         };
 
         let batcher_config = batcher_config

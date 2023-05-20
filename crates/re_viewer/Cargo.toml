@@ -68,6 +68,8 @@ re_analytics = { workspace = true, optional = true }
 # External
 ahash.workspace = true
 anyhow.workspace = true
+arrow2.workspace = true
+arrow2_convert.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [
@@ -89,7 +91,6 @@ image = { workspace = true, default-features = false, features = [
   "jpeg",
   "png",
 ] }
-instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = { workspace = true }
 lazy_static.workspace = true
 macaw = { workspace = true, features = ["with_serde"] }
@@ -97,12 +98,14 @@ ndarray = "0.15"
 nohash-hasher = "0.2"
 poll-promise = "0.2"
 rfd.workspace = true
+rmp-serde = { version = "1.1" }
 serde = { version = "1", features = ["derive"] }
 slotmap.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting"] }
 vec1 = "1.8"
+web-time.workspace = true
 wgpu.workspace = true
 
 # native dependencies:
@@ -119,7 +122,6 @@ winapi = "0.3.9"
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook = "0.1.6"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.52", features = ["Window"] }
 

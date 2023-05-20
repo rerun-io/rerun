@@ -10,11 +10,13 @@ pub mod entity_properties;
 pub mod entity_tree;
 mod instance_path;
 pub mod log_db;
+mod util;
 
 pub use entity_properties::*;
 pub use entity_tree::*;
 pub use instance_path::*;
 pub use log_db::LogDb;
+pub use util::*;
 
 #[cfg(feature = "serde")]
 pub use editable_auto_value::EditableAutoValue;

@@ -9,18 +9,8 @@ pub struct Time(i64);
 impl Time {
     #[inline]
     pub fn now() -> Self {
-        // TODO(https://github.com/rerun-io/rerun/issues/2105): Even though `instant` should work on wasm,
-        // `elapsed` is broken.  See: https://github.com/sebcrozet/instant/issues/49
-        //
-        // For now, we implement what elapsed is supposed to do ourselves.
-        /*
-        let nanos_since_epoch = instant::SystemTime::UNIX_EPOCH
+        let nanos_since_epoch = web_time::SystemTime::UNIX_EPOCH
             .elapsed()
-            .expect("Expected system clock to be set to after 1970")
-            .as_nanos() as _;
-        */
-        let nanos_since_epoch = instant::SystemTime::now()
-            .duration_since(instant::SystemTime::UNIX_EPOCH)
             .expect("Expected system clock to be set to after 1970")
             .as_nanos() as _;
         Self(nanos_since_epoch)
@@ -165,14 +155,14 @@ impl TryFrom<std::time::SystemTime> for Time {
     }
 }
 
-// On non-wasm32 builds, `instant::SystemTime` is a re-export of `std::time::SystemTime`,
+// On non-wasm32 builds, `web_time::SystemTime` is a re-export of `std::time::SystemTime`,
 // so it's covered by the above `TryFrom`.
 #[cfg(target_arch = "wasm32")]
-impl TryFrom<instant::SystemTime> for Time {
-    type Error = ();
+impl TryFrom<web_time::SystemTime> for Time {
+    type Error = web_time::SystemTimeError;
 
-    fn try_from(time: instant::SystemTime) -> Result<Time, Self::Error> {
-        time.duration_since(instant::SystemTime::UNIX_EPOCH)
+    fn try_from(time: web_time::SystemTime) -> Result<Time, Self::Error> {
+        time.duration_since(web_time::SystemTime::UNIX_EPOCH)
             .map(|duration_since_epoch| Time(duration_since_epoch.as_nanos() as _))
     }
 }

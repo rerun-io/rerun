@@ -18,4 +18,4 @@ all-features = true
 
 [dependencies]
 crossbeam.workspace = true
-instant = { version = "0.1", features = ["wasm-bindgen"] }
+web-time.workspace = true

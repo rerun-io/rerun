@@ -6,7 +6,7 @@ use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
     component_types::InstanceKey, ArrowMsg, Component as _, ComponentPath, DataCell, DataRow,
     DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RecordingId,
-    RecordingInfo, RowId, SetRecordingInfo, TimePoint, Timeline,
+    RecordingInfo, RecordingType, RowId, SetRecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -69,7 +69,8 @@ impl EntityDb {
         Ok(())
     }
 
-    fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+    // TODO(jleibs): If this shouldn't be public, chain together other setters
+    pub fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
         for (&timeline, &time_int) in row.timepoint().iter() {
             self.times_per_timeline.insert(timeline, time_int);
         }
@@ -195,6 +196,10 @@ impl LogDb {
         self.recording_msg().map(|msg| &msg.info)
     }
 
+    pub fn recording_type(&self) -> RecordingType {
+        self.recording_id.variant
+    }
+
     pub fn recording_id(&self) -> &RecordingId {
         &self.recording_id
     }
@@ -240,7 +245,7 @@ impl LogDb {
         Ok(())
     }
 
-    fn add_begin_recording_msg(&mut self, msg: &SetRecordingInfo) {
+    pub fn add_begin_recording_msg(&mut self, msg: &SetRecordingInfo) {
         self.recording_msg = Some(msg.clone());
     }
 

@@ -45,7 +45,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ViewTimeSeriesState;
 
 pub(crate) fn view_time_series(
@@ -110,7 +110,7 @@ pub(crate) fn view_time_series(
     let egui::plot::PlotResponse {
         inner: time_x,
         response,
-        transform: _,
+        transform,
     } = plot.show(ui, |plot_ui| {
         if plot_ui.plot_secondary_clicked() {
             let timeline = ctx.rec_cfg.time_ctrl.timeline();
@@ -154,8 +154,33 @@ pub(crate) fn view_time_series(
     });
 
     if let Some(time_x) = time_x {
-        // TODO(emilk): allow interacting with the timeline (may require `egui::Plot` to return the `plot_from_screen` transform)
-        let stroke = ui.visuals().widgets.inactive.fg_stroke;
+        let interact_radius = ui.style().interaction.resize_grab_radius_side;
+        let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
+            .expand(interact_radius);
+
+        let time_drag_id = ui.id().with("time_drag");
+        let response = ui
+            .interact(line_rect, time_drag_id, egui::Sense::drag())
+            .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+
+        if response.dragged() {
+            if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
+                let time =
+                    time_offset + transform.value_from_position(pointer_pos).x.round() as i64;
+
+                let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                time_ctrl.set_time(time);
+                time_ctrl.pause();
+            }
+        }
+
+        let stroke = if response.dragged() {
+            ui.style().visuals.widgets.active.fg_stroke
+        } else if response.hovered() {
+            ui.style().visuals.widgets.hovered.fg_stroke
+        } else {
+            ui.visuals().widgets.inactive.fg_stroke
+        };
         crate::ui::time_panel::paint_time_cursor(
             ui.painter(),
             time_x,
