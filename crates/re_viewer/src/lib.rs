@@ -4,6 +4,7 @@
 //! including all 2D and 3D visualization code.
 
 mod app;
+pub mod blueprint_components;
 pub mod env_vars;
 pub mod math;
 mod misc;
@@ -14,6 +15,9 @@ mod viewer_analytics;
 pub(crate) use misc::mesh_loader;
 use re_log_types::PythonVersion;
 pub(crate) use ui::{memory_panel, selection_panel, time_panel};
+
+// TODO(jleibs): Do we want to expose this
+pub use ui::{SpaceView, ViewCategory};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;

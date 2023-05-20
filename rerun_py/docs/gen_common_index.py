@@ -122,7 +122,13 @@ SECTION_TABLE: Final[List[Section]] = [
     Section(
         title="Experimental",
         module_summary="experimental",
-        func_list=["experimental.log_text_box"],
+        func_list=[
+            "experimental.log_text_box",
+            "experimental.new_blueprint",
+            "experimental.add_space_view",
+            "experimental.set_panels",
+            "experimental.set_auto_space_views",
+        ],
     ),
 ]
 

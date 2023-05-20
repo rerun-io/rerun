@@ -22,35 +22,33 @@ use super::{
 // ----------------------------------------------------------------------------
 
 /// What views are visible?
-type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
+pub type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 
 /// Describes the layout and contents of the Viewport Panel.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct Viewport {
     /// Where the space views are stored.
-    space_views: HashMap<SpaceViewId, SpaceView>,
+    pub(crate) space_views: HashMap<SpaceViewId, SpaceView>,
 
     /// Which views are visible.
-    visible: VisibilitySet,
+    pub(crate) visible: VisibilitySet,
 
     /// The layouts of all the space views.
     ///
     /// One for each combination of what views are visible.
     /// So if a user toggles the visibility of one SpaceView, we
     /// switch which layout we are using. This is somewhat hacky.
-    trees: HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>,
+    pub(crate) trees: HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>,
 
     /// Show one tab as maximized?
-    maximized: Option<SpaceViewId>,
+    pub(crate) maximized: Option<SpaceViewId>,
 
     /// Set to `true` the first time the user messes around with the viewport blueprint.
-    /// Before this is set we automatically add new spaces to the viewport
-    /// when they show up in the data.
-    has_been_user_edited: bool,
+    pub(crate) has_been_user_edited: bool,
 
-    #[serde(skip)]
-    space_view_entity_window: Option<SpaceViewEntityPicker>,
+    /// Whether or not space views should be created automatically.
+    pub(crate) auto_space_views: bool,
 }
 
 impl Viewport {
@@ -58,11 +56,15 @@ impl Viewport {
     pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
         crate::profile_function!();
 
-        let mut blueprint = Self::default();
+        let mut viewport = Self::default();
         for space_view in default_created_space_views(ctx, spaces_info) {
-            blueprint.add_space_view(space_view);
+            viewport.add_space_view(space_view);
         }
-        blueprint
+        viewport
+    }
+
+    pub(crate) fn space_view_ids(&self) -> impl Iterator<Item = &SpaceViewId> + '_ {
+        self.space_views.keys()
     }
 
     pub(crate) fn space_view(&self, space_view: &SpaceViewId) -> Option<&SpaceView> {
@@ -80,14 +82,8 @@ impl Viewport {
             trees,
             maximized,
             has_been_user_edited,
-            space_view_entity_window,
+            auto_space_views: _,
         } = self;
-
-        if let Some(window) = space_view_entity_window {
-            if window.space_view_id == *space_view_id {
-                *space_view_entity_window = None;
-            }
-        }
 
         *has_been_user_edited = true;
 
@@ -111,7 +107,9 @@ impl Viewport {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].space_path)
+                    .sorted_by_key(|space_view_id| {
+                        (&self.space_views[space_view_id].space_path, *space_view_id)
+                    })
                     .copied()
                     .collect_vec();
 
@@ -358,10 +356,6 @@ impl Viewport {
         id
     }
 
-    pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
-        self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
-    }
-
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -373,7 +367,7 @@ impl Viewport {
             space_view.on_frame_start(ctx, spaces_info);
         }
 
-        if !self.has_been_user_edited {
+        if self.auto_space_views {
             for space_view_candidate in default_created_space_views(ctx, spaces_info) {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.add_space_view(space_view_candidate);
@@ -405,15 +399,20 @@ impl Viewport {
         true
     }
 
-    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) {
-        if let Some(window) = &mut self.space_view_entity_window {
+    pub fn viewport_ui(
+        &mut self,
+        state: &mut ViewportState,
+        ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+    ) {
+        if let Some(window) = &mut state.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
                 if !window.ui(ctx, ui, space_view) {
-                    self.space_view_entity_window = None;
+                    state.space_view_entity_window = None;
                 }
             } else {
                 // The space view no longer exist, close the window!
-                self.space_view_entity_window = None;
+                state.space_view_entity_window = None;
             }
         }
 
@@ -509,6 +508,19 @@ impl Viewport {
                 }
             })
             .collect()
+    }
+}
+
+/// State for the blueprint that persists across frames but otherwise
+/// is not saved.
+#[derive(Clone, Default)]
+pub struct ViewportState {
+    pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
+}
+
+impl ViewportState {
+    pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
+        self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
     }
 }
 
@@ -770,7 +782,7 @@ fn space_view_ui(
 ) {
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {
-            ui.label(ctx.re_ui.warning_text("No time selected"));
+            ui.weak("No time selected");
         });
         return
     };

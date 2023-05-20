@@ -66,6 +66,10 @@ pub struct RerunArgs {
     #[cfg(feature = "web_viewer")]
     #[clap(long)]
     serve: bool,
+
+    /// What bind address IP to use.
+    #[clap(long, default_value = "0.0.0.0")]
+    bind: String,
 }
 
 impl RerunArgs {
@@ -111,6 +115,7 @@ impl RerunArgs {
                 let open_browser = true;
                 crate::web_viewer::new_sink(
                     open_browser,
+                    &self.bind,
                     WebViewerServerPort::default(),
                     RerunServerPort::default(),
                 )?
