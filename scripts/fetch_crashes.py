@@ -149,7 +149,7 @@ for backtrace, props in backtraces:
     rerun_versions = sorted(list(set([prop["rerun_version"] for prop in props])))
 
     print(
-        f"## {n} {event} crash(es) in `{title}`\n"
+        f"## {n} distinct user(s) affected by {event} crash @ `{title}`\n"
         "\n"
         f"- First occurrence: `{first_occurrence}`\n"
         f"- Last occurrence: `{last_occurrence}`\n"
