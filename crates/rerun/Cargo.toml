@@ -21,15 +21,13 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = [
-  "analytics",
-  "demo",
-  "glam",
-  "image",
-  "native_viewer",
-  "server",
-  "sdk",
-]
+default = ["library"]
+
+## Default features when using `rerun` as a binary. Everything included.
+binary = ["library", "native_viewer", "server", "web_viewer"]
+
+## Default features when using `rerun` as a logging library. Optimized for compilation speed.
+library = ["analytics", "demo", "glam", "image", "sdk", "server"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = [
@@ -52,7 +50,7 @@ image = ["re_log_types/image", "re_sdk?/image"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer"]
 
-## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
+## Support for running a TCP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
 
 ## Embed the Rerun SDK and re-export all of its public symbols.

@@ -39,7 +39,7 @@ rr.log_rect("car", bbox)
 ### Rerun Viewer binary
 Both the Python and Rust library can start the Rerun Viewer, but to stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
 
-It can be installed with `pip install rerun-sdk` or with `cargo install rerun`.
+It can be installed with `pip install rerun-sdk` or with `cargo install rerun --features binary`.
 
 You should now be able to run `rerun --help` in any terminal.
 
