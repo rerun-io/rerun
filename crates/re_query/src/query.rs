@@ -79,7 +79,7 @@ pub fn get_component_with_instances(
 /// length.
 ///
 /// If you expect only one instance (e.g. for mono-components like `Transform` `Tensor`]
-/// and have no additional components you can use [`re_data_store::query_latest_component`] instead.
+/// and have no additional components you can use [`DataStore::query_latest_component`] instead.
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
