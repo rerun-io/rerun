@@ -44,12 +44,6 @@ pub fn init() {
     }
 
     {
-        let virtpath = Path::new("shader/device_info.wgsl");
-        let content = include_str!("../shader/device_info.wgsl").into();
-        fs.create_file(virtpath, content).unwrap();
-    }
-
-    {
         let virtpath = Path::new("shader/generic_skybox.wgsl");
         let content = include_str!("../shader/generic_skybox.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
