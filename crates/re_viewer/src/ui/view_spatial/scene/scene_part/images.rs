@@ -2,7 +2,7 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_data_store::{query_latest_single, EntityPath, EntityProperties};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
     component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning},
     Component, DecodedTensor, DrawOrder, Transform,
@@ -274,8 +274,8 @@ impl ImagesPart {
     ) -> Result<(), String> {
         crate::profile_function!();
 
-        let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
-            &ctx.log_db.entity_db.data_store,
+        let store = &ctx.log_db.entity_db.data_store;
+        let Some(re_log_types::Transform::Pinhole(intrinsics)) = store.query_latest_component::<Transform>(
             pinhole_ent_path,
             &ctx.current_query(),
         ) else {
