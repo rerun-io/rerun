@@ -28,7 +28,7 @@ pub enum ScreenshotMode {
 
 /// A view of a space.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct SpaceView {
+pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
 
@@ -42,7 +42,7 @@ pub struct SpaceView {
     /// It determines which entities are part of the spaceview.
     pub data_blueprint: DataBlueprintTree,
 
-    pub view_state: ViewState,
+    pub view_state: SpaceViewState,
 
     /// We only show data that match this category.
     pub category: ViewCategory,
@@ -51,7 +51,7 @@ pub struct SpaceView {
     pub entities_determined_by_user: bool,
 }
 
-impl SpaceView {
+impl SpaceViewBlueprint {
     pub fn new(
         category: ViewCategory,
         space_path: &EntityPath,
@@ -77,7 +77,7 @@ impl SpaceView {
             id: SpaceViewId::random(),
             space_path: space_path.clone(),
             data_blueprint: data_blueprint_tree,
-            view_state: ViewState::default(),
+            view_state: SpaceViewState::default(),
             category,
             entities_determined_by_user: false,
         }
@@ -307,7 +307,7 @@ impl SpaceView {
 
 /// Camera position and similar.
 #[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct ViewState {
+pub struct SpaceViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstancePath>,
 
@@ -319,7 +319,7 @@ pub struct ViewState {
     state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
-impl ViewState {
+impl SpaceViewState {
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
     #[allow(clippy::too_many_arguments)]
     fn ui_spatial(
@@ -453,7 +453,7 @@ pub mod item_ui {
     pub fn space_view_button(
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view: &crate::ui::SpaceView,
+        space_view: &crate::ui::SpaceViewBlueprint,
     ) -> egui::Response {
         space_view_button_to(
             ctx,

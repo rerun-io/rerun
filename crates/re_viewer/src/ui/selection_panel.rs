@@ -11,7 +11,7 @@ use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use crate::ui::Blueprint;
 
 use super::{
-    selection_history_ui::SelectionHistoryUi, space_view::ViewState,
+    selection_history_ui::SelectionHistoryUi, space_view::SpaceViewState,
     view_spatial::SpatialNavigationMode, ViewportState,
 };
 
@@ -354,7 +354,7 @@ fn entity_props_ui(
     ui: &mut egui::Ui,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
-    view_state: &ViewState,
+    view_state: &SpaceViewState,
 ) {
     ui.checkbox(&mut entity_props.visible, "Visible");
     ui.checkbox(&mut entity_props.interactive, "Interactive")

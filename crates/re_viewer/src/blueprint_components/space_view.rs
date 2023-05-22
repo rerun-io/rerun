@@ -2,7 +2,7 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 use re_data_store::ComponentName;
 use re_log_types::{serde_field::SerdeField, Component};
 
-use crate::ui::SpaceView;
+use crate::ui::SpaceViewBlueprint;
 
 /// A [`SpaceView`]
 ///
@@ -20,8 +20,8 @@ use crate::ui::SpaceView;
 /// ```
 #[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct SpaceViewComponent {
-    #[arrow_field(type = "SerdeField<SpaceView>")]
-    pub space_view: SpaceView,
+    #[arrow_field(type = "SerdeField<SpaceViewBlueprint>")]
+    pub space_view: SpaceViewBlueprint,
 }
 
 impl SpaceViewComponent {
@@ -46,7 +46,8 @@ impl std::fmt::Debug for SpaceViewComponent {
 fn test_spaceview() {
     use crate::ui::ViewCategory;
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
-    let space_view = SpaceView::new(ViewCategory::Spatial, &"foo".into(), &["foo/bar".into()]);
+    let space_view =
+        SpaceViewBlueprint::new(ViewCategory::Spatial, &"foo".into(), &["foo/bar".into()]);
 
     let data = [SpaceViewComponent { space_view }];
     let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();

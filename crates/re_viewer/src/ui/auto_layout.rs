@@ -18,7 +18,7 @@ use itertools::Itertools as _;
 use re_data_store::{EntityPath, EntityPathPart};
 use re_viewer_context::SpaceViewId;
 
-use super::{space_view::SpaceView, view_category::ViewCategory};
+use super::{space_view::SpaceViewBlueprint, view_category::ViewCategory};
 
 #[derive(Clone, Debug)]
 pub struct SpaceMakeInfo {
@@ -47,7 +47,7 @@ enum SplitDirection {
 pub(crate) fn tree_from_space_views(
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
-    space_views: &HashMap<SpaceViewId, SpaceView>,
+    space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
         .iter()

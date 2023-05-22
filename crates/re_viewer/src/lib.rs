@@ -17,7 +17,7 @@ use re_log_types::PythonVersion;
 pub(crate) use ui::{memory_panel, selection_panel, time_panel};
 
 // TODO(jleibs): Do we want to expose this
-pub use ui::{SpaceView, ViewCategory};
+pub use ui::{SpaceViewBlueprint, ViewCategory};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
