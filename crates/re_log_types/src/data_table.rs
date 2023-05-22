@@ -1438,6 +1438,6 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        22_180_064, // expected_num_bytes
+        21_730_064, // expected_num_bytes
     );
 }
