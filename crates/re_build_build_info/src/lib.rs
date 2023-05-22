@@ -83,7 +83,10 @@ pub fn export_env_vars() {
 
 fn rerun_if_changed(path: &str) {
     // Make sure the file exists, otherwise we'll be rebuilding all the time.
-    assert!(std::path::Path::new(path).exists(), "Failed to find {path}");
+    assert!(
+        std::path::Path::new(path).exists(),
+        "Failed to find {path:?}"
+    );
     println!("cargo:rerun-if-changed={path}");
 }
 
@@ -96,6 +99,14 @@ fn run_command(cmd: &str, args: &[&str]) -> anyhow::Result<String> {
         .args(args)
         .output()
         .with_context(|| format!("running '{cmd}'"))?;
+
+    anyhow::ensure!(
+        output.status.success(),
+        "Failed to run '{cmd} {args:?}':\n{}\n{}\n",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
     Ok(String::from_utf8(output.stdout)?.trim().to_owned())
 }
 
