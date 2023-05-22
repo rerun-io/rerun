@@ -31,6 +31,7 @@ struct FrameUniformBuffer {
     /// re_renderer defined hardware tier.
     hardware_tier: u32,
 };
+
 @group(0) @binding(0)
 var<uniform> frame: FrameUniformBuffer;
 
