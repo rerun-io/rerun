@@ -163,8 +163,11 @@ def init(
     application_id: str,
     recording_id: Optional[str] = None,
     spawn: bool = False,
+    init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
+    exp_init_blueprint: bool = False,
+    exp_add_to_app_default_blueprint: bool = True,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -202,22 +205,44 @@ def init(
     default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    init_logging
+        Should we initialize the logging for this application?
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types etc).
         If `False`, errors are logged as warnings instead.
+    exp_init_blueprint
+        (Experimental) Should we initialize the blueprint for this application?
+    exp_add_to_app_default_blueprint
+        (Experimental) Should the blueprint append to the existing app-default blueprint instead of creating a new one.
 
     """
 
     _strict_mode = strict
 
-    new_recording(
-        application_id,
-        recording_id,
-        True,  # make_default
-        False,  # make_thread_default
-        spawn,
-        default_enabled,
-    )
+    if init_logging:
+        new_recording(
+            application_id,
+            recording_id,
+            make_default=True,
+            make_thread_default=False,
+            spawn=False,
+            default_enabled=default_enabled,
+        )
+    if exp_init_blueprint:
+        experimental.new_blueprint(
+            application_id=application_id,
+            blueprint_id=recording_id,
+            make_default=True,
+            make_thread_default=False,
+            spawn=False,
+            add_to_app_default_blueprint=exp_add_to_app_default_blueprint,
+            default_enabled=default_enabled,
+        )
+
+    if spawn:
+        from rerun.sinks import spawn as _spawn
+
+        _spawn()
 
 
 def new_recording(

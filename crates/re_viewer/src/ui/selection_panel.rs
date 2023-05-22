@@ -14,7 +14,7 @@ use crate::ui::Blueprint;
 
 use super::{
     selection_history_ui::SelectionHistoryUi, space_view::ViewState,
-    view_spatial::SpatialNavigationMode,
+    view_spatial::SpatialNavigationMode, ViewportState,
 };
 
 // ---
@@ -29,6 +29,7 @@ pub(crate) struct SelectionPanel {
 impl SelectionPanel {
     pub fn show_panel(
         &mut self,
+        viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
@@ -75,7 +76,7 @@ impl SelectionPanel {
                             ..Default::default()
                         }
                         .show(ui, |ui| {
-                            self.contents(ui, ctx, blueprint);
+                            self.contents(viewport_state, ui, ctx, blueprint);
                         });
                     });
             },
@@ -85,6 +86,7 @@ impl SelectionPanel {
     #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
+        viewport_state: &mut ViewportState,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
@@ -111,7 +113,7 @@ impl SelectionPanel {
 
                 ctx.re_ui
                     .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                        blueprint_ui(ui, ctx, blueprint, item);
+                        blueprint_ui(viewport_state, ui, ctx, blueprint, item);
                     });
 
                 if i + 1 < num_selections {
@@ -220,6 +222,7 @@ pub fn what_is_selected_ui(
 
 /// What is the blueprint stuff for this item?
 fn blueprint_ui(
+    viewport_state: &mut ViewportState,
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
@@ -237,8 +240,7 @@ fn blueprint_ui(
                     .on_hover_text("Manually add or remove entities from the Space View.")
                     .clicked()
                 {
-                    blueprint
-                        .viewport
+                    viewport_state
                         .show_add_remove_entities_window(*space_view_id);
                 }
 

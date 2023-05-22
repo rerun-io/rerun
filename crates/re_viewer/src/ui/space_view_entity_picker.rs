@@ -13,6 +13,7 @@ use super::{
 };
 
 /// Window for adding/removing entities from a space view.
+#[derive(Clone)]
 pub struct SpaceViewEntityPicker {
     pub space_view_id: SpaceViewId,
 }

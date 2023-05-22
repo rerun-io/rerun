@@ -166,7 +166,7 @@ impl Eye {
 // ----------------------------------------------------------------------------
 
 /// Note: we use "eye" so we don't confuse this with logged camera.
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct OrbitEye {
     pub orbit_center: Vec3,
     pub orbit_radius: f32,

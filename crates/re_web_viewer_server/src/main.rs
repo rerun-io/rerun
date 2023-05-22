@@ -44,8 +44,7 @@ async fn main() {
     )
     .expect("Could not create web server");
 
-    let port = server.port();
-    let url = format!("http://{bind_ip}:{port}");
+    let url = server.server_url();
     eprintln!("Hosting web-viewer on {url}");
 
     if args.open {

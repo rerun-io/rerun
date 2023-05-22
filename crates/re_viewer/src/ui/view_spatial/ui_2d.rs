@@ -25,15 +25,14 @@ use crate::{
 
 // ---
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View2DState {
     /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
-    #[serde(skip)]
     zoom: ZoomState2D,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
 pub enum ZoomState2D {
     #[default]
@@ -276,6 +275,7 @@ pub fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
+        let desired_size = desired_size.at_least(Vec2::ZERO);
         let (mut response, painter) =
             ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 

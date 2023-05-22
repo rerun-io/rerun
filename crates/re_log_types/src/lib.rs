@@ -134,8 +134,8 @@ impl std::fmt::Display for RecordingType {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingId {
-    variant: RecordingType,
-    id: Arc<String>,
+    pub variant: RecordingType,
+    pub id: Arc<String>,
 }
 
 impl RecordingId {
@@ -161,6 +161,11 @@ impl RecordingId {
             variant,
             id: Arc::new(str),
         }
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.id.as_str()
     }
 }
 
@@ -200,6 +205,10 @@ impl ApplicationId {
     /// Currently: `"unknown_app_id"`.
     pub fn unknown() -> Self {
         Self("unknown_app_id".to_owned())
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -275,6 +284,16 @@ pub struct RecordingInfo {
     pub started: Time,
 
     pub recording_source: RecordingSource,
+
+    pub recording_type: RecordingType,
+}
+
+impl RecordingInfo {
+    /// Whether this `RecordingInfo` is the default used when a user is not explicitly
+    /// creating their own blueprint.
+    pub fn is_app_default_blueprint(&self) -> bool {
+        self.application_id.as_str() == self.recording_id.as_str()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

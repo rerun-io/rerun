@@ -17,12 +17,21 @@ class MemoryRecording:
     def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
 
+    def reset_data(self) -> None:
+        """Reset the data in the MemoryRecording."""
+        self.storage.reset_data()
+
+    def reset_blueprint(self, add_to_app_default_blueprint: bool = False) -> None:
+        """Reset the blueprint in the MemoryRecording."""
+        self.storage.reset_blueprint(add_to_app_default_blueprint)  # type: ignore[no-untyped-def]
+
     def as_html(
         self,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
         app_url: Optional[str] = None,
         timeout_ms: int = DEFAULT_TIMEOUT,
+        other: Optional["MemoryRecording"] = None,
     ) -> str:
         """
         Generate an HTML snippet that displays the recording in an IFrame.
@@ -42,6 +51,8 @@ class MemoryRecording:
             or localhost if [rerun.start_web_viewer_server][] has been called.
         timeout_ms : int
             The number of milliseconds to wait for the Rerun web viewer to load.
+        other: MemoryRecording
+            An optional MemoryRecording to merge with this one.
         """
 
         if app_url is None:
@@ -50,7 +61,9 @@ class MemoryRecording:
         # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
         presentation_id = "".join(random.choice(string.ascii_letters) for i in range(6))
 
-        base64_data = base64.b64encode(self.storage.get_rrd_as_bytes()).decode("utf-8")
+        if other:
+            other = other.storage
+        base64_data = base64.b64encode(self.storage.concat_as_bytes(other)).decode("utf-8")
 
         html_template = f"""
         <div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
@@ -93,6 +106,7 @@ class MemoryRecording:
 
     def show(
         self,
+        other: Optional["MemoryRecording"] = None,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
         app_url: Optional[str] = None,
@@ -112,8 +126,10 @@ class MemoryRecording:
             or localhost if [rerun.start_web_viewer_server][] has been called.
         timeout_ms : int
             The number of milliseconds to wait for the Rerun web viewer to load.
+        other: MemoryRecording
+            An optional MemoryRecording to merge with this one.
         """
-        html = self.as_html(width=width, height=height, app_url=app_url, timeout_ms=timeout_ms)
+        html = self.as_html(width=width, height=height, app_url=app_url, timeout_ms=timeout_ms, other=other)
         try:
             from IPython.core.display import HTML
 

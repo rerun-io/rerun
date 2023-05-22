@@ -7,7 +7,7 @@ use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
 /// A grouping of several data-blueprints.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct DataBlueprintGroup {
     pub display_name: String,
 
@@ -32,7 +32,7 @@ pub struct DataBlueprintGroup {
 }
 
 /// Data blueprints for all entity paths in a space view.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 struct DataBlueprints {
     /// Individual settings. Mutate this.
     individual: EntityPropertyMap,
@@ -69,6 +69,26 @@ pub struct DataBlueprintTree {
     root_group_handle: DataBlueprintGroupHandle,
 
     data_blueprints: DataBlueprints,
+}
+
+// Manually implement PartialEq since slotmap doesn't
+impl PartialEq for DataBlueprintTree {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            groups,
+            path_to_group,
+            entity_paths,
+            root_group_handle,
+            data_blueprints,
+        } = self;
+
+        // Note: this could fail unexpectedly if slotmap iteration order is unstable.
+        groups.iter().zip(other.groups.iter()).all(|(x, y)| x == y)
+            && *path_to_group == other.path_to_group
+            && *entity_paths == other.entity_paths
+            && *root_group_handle == other.root_group_handle
+            && *data_blueprints == other.data_blueprints
+    }
 }
 
 impl Default for DataBlueprintTree {

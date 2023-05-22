@@ -4,7 +4,7 @@ use macaw::{IsoTransform, Ray3};
 use re_log_types::{component_types::Pinhole, EntityPath, ViewCoordinates};
 
 /// A logged camera that connects spaces.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct SpaceCamera3D {
     /// Path to the entity which has the projection (pinhole, ortho or otherwise) transforms.
     ///

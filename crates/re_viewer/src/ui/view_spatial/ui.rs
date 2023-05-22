@@ -92,6 +92,30 @@ pub struct ViewSpatialState {
     auto_size_config: re_renderer::AutoSizeConfig,
 }
 
+// TODO(#2089): This render-related state probably doesn't belong in the blueprint
+// in the blueprint in the first place. But since serde skips it we also have to ignore it.
+// or else we re-store state on every frame. Either way the fact that we don't get it
+// back out of the store is going to cause problems.
+impl PartialEq for ViewSpatialState {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            nav_mode,
+            scene_bbox_accum: _,        // serde-skip
+            scene_bbox: _,              // serde-skip
+            scene_num_primitives: _,    // serde-skip
+            previous_picking_result: _, // serde-skip
+            state_2d,
+            state_3d,
+            auto_size_config,
+        } = self;
+
+        *nav_mode == other.nav_mode
+            && *state_2d == other.state_2d
+            && *state_3d == other.state_3d
+            && *auto_size_config == other.auto_size_config
+    }
+}
+
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
