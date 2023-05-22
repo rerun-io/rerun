@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from attr import dataclass
 
 from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 

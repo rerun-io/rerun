@@ -53,6 +53,9 @@ def lint_line(line: str) -> Optional[str]:
     if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 
+    if "from attr import dataclass" in line:
+        return "Avoid 'from attr import dataclass'; prefer 'from dataclasses import dataclass'"
+
     m = re.search(error_map_err_name, line) or re.search(error_match_name, line)
     if m:
         name = m.group(1)
