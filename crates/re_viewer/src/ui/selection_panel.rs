@@ -259,37 +259,48 @@ fn blueprint_ui(
             ui.add_space(ui.spacing().item_spacing.y);
 
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
-                space_view.selection_ui(ctx, ui);
+                // TODO(jleibs): Is this the right place to create default state?
+                let space_view_state = viewport_state
+                    .space_view_states
+                    .entry(*space_view_id)
+                    .or_default();
+
+                space_view.selection_ui(space_view_state, ctx, ui);
             }
         }
 
         Item::InstancePath(space_view_id, instance_path) => {
-            if let Some(space_view) = space_view_id
-                .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
-            {
-                if instance_path.instance_key.is_specific() {
-                    ui.horizontal(|ui| {
-                        ui.label("Part of");
-                        item_ui::entity_path_button(
+            if let Some(space_view_id) = space_view_id {
+                if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                    if instance_path.instance_key.is_specific() {
+                        ui.horizontal(|ui| {
+                            ui.label("Part of");
+                            item_ui::entity_path_button(
+                                ctx,
+                                ui,
+                                Some(*space_view_id),
+                                &instance_path.entity_path,
+                            );
+                        });
+                        // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
+                    } else {
+                        let space_view_state = viewport_state
+                            .space_view_states
+                            .entry(*space_view_id)
+                            .or_default();
+
+                        // splat - the whole entity
+                        let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
+                        let mut props = data_blueprint.get(&instance_path.entity_path);
+                        entity_props_ui(
                             ctx,
                             ui,
-                            *space_view_id,
-                            &instance_path.entity_path,
+                            Some(&instance_path.entity_path),
+                            &mut props,
+                            space_view_state,
                         );
-                    });
-                    // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
-                } else {
-                    // splat - the whole entity
-                    let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
-                    let mut props = data_blueprint.get(&instance_path.entity_path);
-                    entity_props_ui(
-                        ctx,
-                        ui,
-                        Some(&instance_path.entity_path),
-                        &mut props,
-                        &space_view.view_state,
-                    );
-                    data_blueprint.set(instance_path.entity_path.clone(), props);
+                        data_blueprint.set(instance_path.entity_path.clone(), props);
+                    }
                 }
             } else {
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, blueprint);
@@ -302,12 +313,17 @@ fn blueprint_ui(
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
                 {
+                    let space_view_state = viewport_state
+                        .space_view_states
+                        .entry(*space_view_id)
+                        .or_default();
+
                     entity_props_ui(
                         ctx,
                         ui,
                         None,
                         &mut group.properties_individual,
-                        &space_view.view_state,
+                        space_view_state,
                     );
                 } else {
                     ctx.selection_state_mut().clear_current();
