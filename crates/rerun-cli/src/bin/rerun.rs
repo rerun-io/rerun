@@ -1,3 +1,6 @@
+//! The `rerun` binary.
+//!
+//! Run `rerun --help` for more information.
 use re_memory::AccountingAllocator;
 
 #[global_allocator]

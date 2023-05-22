@@ -59,6 +59,5 @@ Run `rerun --help` for more.
 The web viewer is an experimental feature, but you can try it out with:
 
 ```sh
-cargo install --features web rerun
 rerun --web-viewer ../nyud.rrd
 ```
