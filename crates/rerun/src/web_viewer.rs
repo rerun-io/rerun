@@ -94,7 +94,7 @@ impl crate::sink::LogSink for WebViewerSink {
 /// If the `open_browser` argument is `true`, your default browser
 /// will be opened with a connected web-viewer.
 ///
-/// If not, you can connect to this server using the `rerun` binary (`cargo install rerun --features binary`).
+/// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli`).
 ///
 /// NOTE: you can not connect one `Session` to another.
 ///

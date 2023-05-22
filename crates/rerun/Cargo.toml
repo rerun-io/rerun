@@ -2,7 +2,6 @@
 name = "rerun"
 authors.workspace = true
 categories = ["visualization", "computer-vision"]
-default-run = "rerun"
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
 homepage.workspace = true
@@ -21,13 +20,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["library"]
-
-## Default features when using `rerun` as a binary. Everything included.
-binary = ["library", "native_viewer", "server", "web_viewer"]
-
-## Default features when using `rerun` as a logging library. Optimized for compilation speed.
-library = ["analytics", "demo", "glam", "image", "sdk", "server"]
+default = ["analytics", "demo", "glam", "image", "sdk", "server"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = [
@@ -100,7 +93,6 @@ webbrowser = { version = "0.8", optional = true }
 backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
 ctrlc.workspace = true
-mimalloc.workspace = true
 puffin.workspace = true
 rayon.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
