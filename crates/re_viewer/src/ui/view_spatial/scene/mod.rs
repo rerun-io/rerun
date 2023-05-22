@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, sync::Arc};
 use ahash::HashMap;
 
 use nohash_hasher::IntMap;
-use re_data_store::{query_latest_single, EntityPath, InstancePathHash};
+use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::{
     component_types::{ClassId, InstanceKey, KeypointId},
     DecodedTensor, DrawOrder, EntityPathHash,
@@ -138,10 +138,11 @@ impl SceneSpatial {
             DefaultPoints,
         }
 
+        let store = &ctx.log_db.entity_db.data_store;
+
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, SmallVec<[_; 4]>>::new();
         for (ent_path, _) in query.iter_entities() {
-            if let Some(draw_order) = query_latest_single::<DrawOrder>(
-                &ctx.log_db.entity_db.data_store,
+            if let Some(draw_order) = store.query_latest_component::<DrawOrder>(
                 ent_path,
                 &ctx.rec_cfg.time_ctrl.current_query(),
             ) {

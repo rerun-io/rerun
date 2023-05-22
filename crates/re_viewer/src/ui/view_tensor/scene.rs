@@ -17,14 +17,12 @@ impl SceneTensor {
     pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
+        let store = &ctx.log_db.entity_db.data_store;
         for (ent_path, props) in query.iter_entities() {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(tensor) = re_data_store::query_latest_single::<Tensor>(
-                &ctx.log_db.entity_db.data_store,
-                ent_path,
-                &timeline_query,
-            ) {
+            if let Some(tensor) = store.query_latest_component::<Tensor>(ent_path, &timeline_query)
+            {
                 self.load_tensor_entity(ctx, ent_path, &props, tensor);
             }
         }

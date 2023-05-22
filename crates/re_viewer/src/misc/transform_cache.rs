@@ -1,8 +1,6 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{
-    log_db::EntityDb, query_latest_single, EntityPath, EntityPropertyMap, EntityTree,
-};
+use re_data_store::{log_db::EntityDb, EntityPath, EntityPropertyMap, EntityTree};
 use re_viewer_context::TimeControl;
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
@@ -224,12 +222,12 @@ impl TransformCache {
 
 fn transform_at(
     entity_path: &EntityPath,
-    data_store: &re_arrow_store::DataStore,
+    store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
-    if let Some(transform) = query_latest_single(data_store, entity_path, query) {
+    if let Some(transform) = store.query_latest_component(entity_path, query) {
         match transform {
             re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().into())),
             // If we're connected via 'unknown' it's not reachable
