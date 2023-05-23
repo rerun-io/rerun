@@ -6,7 +6,7 @@ type AppCreator =
 // NOTE: the name of this function is hard-coded in `crates/rerun/src/crash_handler.rs`!
 pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
-        // Controls where on disk the app state is presisted.
+        // Controls where on disk the app state is persisted.
         app_id: Some("rerun".to_owned()),
 
         initial_window_size: Some([1600.0, 1200.0].into()),
