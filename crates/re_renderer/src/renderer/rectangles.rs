@@ -55,7 +55,7 @@ pub struct ColormappedTexture {
 
     /// Decode 0-1 sRGB gamma values to linear space before filtering?
     ///
-    /// Only applies to [`TextureFormat::Rgba8Unorm`] and float textures.
+    /// Only applies to [`wgpu::TextureFormat::Rgba8Unorm`] and float textures.
     pub decode_srgb: bool,
 
     /// Min/max range of the values in the texture.
