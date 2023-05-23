@@ -64,6 +64,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
             sampled_value = mix(top, bottom, fract(coord.y));
         }
     } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+        // TODO(emilk): support premultiplying alpha on this path. Requires knowing the alpha range (255, 65535, …).
         let coord = in.texcoord * Vec2(textureDimensions(texture_uint).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
