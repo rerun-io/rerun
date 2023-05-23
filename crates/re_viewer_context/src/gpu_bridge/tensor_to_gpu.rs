@@ -74,18 +74,12 @@ fn color_tensor_to_gpu(
             (1, TensorData::I8(buf)) => (cast_slice_to_cow(buf), TextureFormat::R8Snorm),
 
             // Special handling for sRGB(A) textures:
-            (3, TensorData::U8(buf)) => (
-                pad_and_cast(buf.as_slice(), 255),
-                TextureFormat::Rgba8UnormSrgb,
-            ),
-            (4, TensorData::U8(buf)) => (
-                // We pre-multiply on the CPU because we currently use hardware texture filtering
-                // in `rectangle_fs.wgsl`, and pre-multiplication needs to happen before filtering.
-                // If we switched our shader to always do software filtering we could do the pre-multiplication
-                // on the GPU instead, saving us some time here!
-                premultiply_alpha(buf.as_slice()).into(),
-                TextureFormat::Rgba8UnormSrgb,
-            ),
+            (3, TensorData::U8(buf)) => {
+                (pad_and_cast(buf.as_slice(), 255), TextureFormat::Rgba8Unorm)
+            }
+            (4, TensorData::U8(buf)) => {
+                (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba8Unorm)
+            }
 
             _ => {
                 // Fallback to general case:
@@ -105,10 +99,12 @@ fn color_tensor_to_gpu(
 
     let texture_format = texture_handle.format();
 
+    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm; // TODO(emilk): let the user specify this.
+
     // Special casing for normalized textures used above:
     let range = if matches!(
         texture_format,
-        TextureFormat::R8Unorm | TextureFormat::Rgba8UnormSrgb
+        TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm
     ) {
         [0.0, 1.0]
     } else if texture_format == TextureFormat::R8Snorm {
@@ -126,6 +122,7 @@ fn color_tensor_to_gpu(
 
     Ok(ColormappedTexture {
         texture: texture_handle,
+        decode_srgb,
         range,
         gamma: 1.0,
         color_mapper,
@@ -181,7 +178,7 @@ fn class_id_tensor_to_gpu(
             Texture2DCreationDesc {
                 label: "class_id_colormap".into(),
                 data: data.into(),
-                format: TextureFormat::Rgba8UnormSrgb,
+                format: TextureFormat::Rgba8Unorm,
                 width: colormap_width as u32,
                 height: colormap_height as u32,
             }
@@ -195,6 +192,7 @@ fn class_id_tensor_to_gpu(
 
     Ok(ColormappedTexture {
         texture: main_texture_handle,
+        decode_srgb: true,
         range: [0.0, (colormap_width * colormap_height) as f32],
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
@@ -225,6 +223,7 @@ fn depth_tensor_to_gpu(
 
     Ok(ColormappedTexture {
         texture,
+        decode_srgb: false,
         range: [min as f32, max as f32],
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Function(re_renderer::Colormap::Turbo)),
@@ -448,15 +447,6 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
         .flat_map(|chunk| [narrow(chunk[0]), narrow(chunk[1]), narrow(chunk[2]), pad])
         .collect();
     pod_collect_to_vec(&floats).into()
-}
-
-fn premultiply_alpha(rgba: &[u8]) -> Vec<u8> {
-    crate::profile_function!();
-    rgba.chunks_exact(4)
-        .flat_map(|rgba| {
-            egui::Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]).to_array()
-        })
-        .collect()
 }
 
 // ----------------------------------------------------------------------------;
