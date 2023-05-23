@@ -22,7 +22,10 @@ pub fn spawn<F>(
 where
     F: FnOnce(RecordingStream) + Send + 'static,
 {
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
+    let (tx, rx) = re_smart_channel::smart_channel(
+        re_smart_channel::SmartMessageSource::Sdk,
+        re_smart_channel::SmartChannelSource::Sdk,
+    );
     let sink = Box::new(NativeViewerSink(tx));
     let app_env =
         re_viewer::AppEnvironment::from_recording_source(&recording_info.recording_source);

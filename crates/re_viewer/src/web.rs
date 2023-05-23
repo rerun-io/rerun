@@ -61,14 +61,35 @@ impl WebHandle {
                         EndpointCategory::HttpRrd(url) => {
                             // Download an .rrd file over http:
                             let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::Source::RrdHttpStream { url: url.clone() },
+                                re_smart_channel::SmartMessageSource::RrdHttpStream {
+                                    url: url.clone(),
+                                },
+                                re_smart_channel::SmartChannelSource::RrdHttpStream {
+                                    url: url.clone(),
+                                },
                             );
-                            let egui_ctx = cc.egui_ctx.clone();
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http(
                                 url,
-                                Arc::new(move |msg| {
-                                    egui_ctx.request_repaint(); // wake up ui thread
-                                    tx.send(msg).ok();
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    let tx = tx.clone();
+                                    move |msg| {
+                                        egui_ctx.request_repaint(); // wake up ui thread
+                                        tx.send(msg).ok();
+                                    }
+                                }),
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    let tx = tx.clone();
+                                    move || {
+                                        tx.quit(None).ok();
+                                    }
+                                }),
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    move |err| {
+                                        tx.quit(Some(err)).ok();
+                                    }
                                 }),
                             );
 
@@ -85,14 +106,31 @@ impl WebHandle {
                         EndpointCategory::WebEventListener => {
                             // Process an rrd when it's posted via `window.postMessage`
                             let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::Source::RrdWebEventListener,
+                                re_smart_channel::SmartMessageSource::RrdWebEventCallback,
+                                re_smart_channel::SmartChannelSource::RrdWebEventListener,
                             );
-                            let egui_ctx = cc.egui_ctx.clone();
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
-                                Some(Arc::new(move |msg| {
-                                    egui_ctx.request_repaint(); // wake up ui thread
-                                    tx.send(msg).ok();
-                                })),
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    let tx = tx.clone();
+                                    move |msg| {
+                                        egui_ctx.request_repaint(); // wake up ui thread
+                                        tx.send(msg).ok();
+                                    }
+                                }),
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    let tx = tx.clone();
+                                    move || {
+                                        tx.quit(None).ok();
+                                    }
+                                }),
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    move |err| {
+                                        tx.quit(Some(err)).ok();
+                                    }
+                                }),
                             );
 
                             Box::new(crate::App::from_receiver(

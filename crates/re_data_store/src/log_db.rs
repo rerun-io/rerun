@@ -168,7 +168,7 @@ pub struct LogDb {
     entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
 
     /// Set by whomever created this [`LogDb`].
-    pub data_source: Option<re_smart_channel::Source>,
+    pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetRecordingInfo`].
     recording_msg: Option<SetRecordingInfo>,

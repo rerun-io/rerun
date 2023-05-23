@@ -3,19 +3,43 @@ use std::sync::Arc;
 use re_log_types::LogMsg;
 
 pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receiver<LogMsg> {
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::RrdHttpStream {
-        url: url.clone(),
-    });
+    let (tx, rx) = re_smart_channel::smart_channel(
+        re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
+        re_smart_channel::SmartChannelSource::RrdHttpStream { url: url.clone() },
+    );
     stream_rrd_from_http(
         url,
-        Arc::new(move |msg| {
-            tx.send(msg).ok();
+        Arc::new({
+            let tx = tx.clone();
+            move |msg| {
+                if let Err(err) = tx.send(msg) {
+                    re_log::warn_once!("failed to send message: {err}");
+                }
+            }
+        }),
+        Arc::new({
+            let tx = tx.clone();
+            move || {
+                if let Err(err) = tx.quit(None) {
+                    re_log::warn_once!("failed to send quit marker: {err}");
+                }
+            }
+        }),
+        Arc::new(move |err| {
+            if let Err(err) = tx.quit(Some(err)) {
+                re_log::warn_once!("failed to send quit marker: {err}");
+            }
         }),
     );
     rx
 }
 
-pub fn stream_rrd_from_http(url: String, on_msg: Arc<dyn Fn(LogMsg) + Send + Sync>) {
+pub fn stream_rrd_from_http(
+    url: String,
+    on_msg: Arc<dyn Fn(LogMsg) + Send + Sync>,
+    on_success: Arc<dyn Fn() + Send + Sync>,
+    on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
+) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     // TODO(emilk): stream the http request, progressively decoding the .rrd file.
@@ -23,17 +47,25 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<dyn Fn(LogMsg) + Send + Syn
         Ok(response) => {
             if response.ok {
                 re_log::debug!("Decoding .rrd file from {url:?}…");
-                decode_rrd(response.bytes, on_msg);
+                decode_rrd(response.bytes, on_msg, on_success, on_error);
             } else {
                 re_log::error!(
                     "Failed to fetch .rrd file from {url}: {} {}",
                     response.status,
                     response.status_text
                 );
+                on_error(
+                    format!(
+                        "Failed to fetch .rrd file from {url}: {} {}",
+                        response.status, response.status_text
+                    )
+                    .into(),
+                );
             }
         }
         Err(err) => {
             re_log::error!("Failed to fetch .rrd file from {url}: {err}");
+            on_error(format!("Failed to fetch .rrd file from {url}: {err}").into());
         }
     });
 }
@@ -53,29 +85,29 @@ mod web_event_listener {
     /// var rrd = new Uint8Array(...); // Get an RRD from somewhere
     /// window.postMessage(rrd, "*")
     /// ```
-    pub fn stream_rrd_from_event_listener(mut on_msg: Option<Arc<dyn Fn(LogMsg) + Send>>) {
+    pub fn stream_rrd_from_event_listener(
+        on_msg: Arc<dyn Fn(LogMsg) + Send>,
+        on_success: Arc<dyn Fn() + Send + Sync>,
+        on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
+    ) {
         let window = web_sys::window().expect("no global `window` exists");
-        let closure =
-            Closure::wrap(Box::new(
-                move |event: JsValue| match event.dyn_into::<MessageEvent>() {
-                    Ok(message_event) => {
-                        let uint8_array = Uint8Array::new(&message_event.data());
-                        let result: Vec<u8> = uint8_array.to_vec();
-
-                        // On the first incoming message_event, take the on_msg callback
-                        // so that the channel drops dropped when we are done. This is
-                        // necessary to allow the viewer to know that no more data is coming.
-                        // TODO(jleibs): In live-streaming mode we don't want to do this and
-                        // will instead want to clone the arc.
-                        if let Some(on_msg) = on_msg.take() {
-                            crate::stream_rrd_from_http::decode_rrd(result, on_msg);
-                        }
-                    }
-                    Err(js_val) => {
-                        re_log::error!("Incoming event was not a MessageEvent. {:?}", js_val);
-                    }
-                },
-            ) as Box<dyn FnMut(_)>);
+        let closure = Closure::wrap(Box::new({
+            move |event: JsValue| match event.dyn_into::<MessageEvent>() {
+                Ok(message_event) => {
+                    let uint8_array = Uint8Array::new(&message_event.data());
+                    let result: Vec<u8> = uint8_array.to_vec();
+                    crate::stream_rrd_from_http::decode_rrd(
+                        result,
+                        Arc::clone(&on_msg),
+                        Arc::clone(&on_success),
+                        Arc::clone(&on_error),
+                    );
+                }
+                Err(js_val) => {
+                    re_log::error!("Incoming event was not a MessageEvent. {:?}", js_val);
+                }
+            }
+        }) as Box<dyn FnMut(_)>);
         window
             .add_event_listener_with_callback("message", closure.as_ref().unchecked_ref())
             .unwrap();
@@ -88,7 +120,12 @@ pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::needless_pass_by_value)] // must match wasm version
-fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
+fn decode_rrd(
+    rrd_bytes: Vec<u8>,
+    on_msg: Arc<dyn Fn(LogMsg) + Send>,
+    on_success: Arc<dyn Fn() + Send + Sync>,
+    on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
+) {
     match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
         Ok(decoder) => {
             for msg in decoder {
@@ -101,9 +138,11 @@ fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
                     }
                 }
             }
+            on_success();
         }
         Err(err) => {
             re_log::error!("Failed to decode .rrd: {err}");
+            on_error(Box::new(err));
         }
     }
 }
@@ -113,14 +152,26 @@ mod web_decode {
     use re_log_types::LogMsg;
     use std::sync::Arc;
 
-    pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
-        wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
+    pub fn decode_rrd(
+        rrd_bytes: Vec<u8>,
+        on_msg: Arc<dyn Fn(LogMsg) + Send>,
+        on_success: Arc<dyn Fn() + Send + Sync>,
+        on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
+    ) {
+        wasm_bindgen_futures::spawn_local(decode_rrd_async(
+            rrd_bytes, on_msg, on_success, on_error,
+        ));
     }
 
     /// Decodes the file in chunks, with an yield between each chunk.
     ///
     /// This is cooperative multi-tasking.
-    async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<dyn Fn(LogMsg) + Send>) {
+    async fn decode_rrd_async(
+        rrd_bytes: Vec<u8>,
+        on_msg: Arc<dyn Fn(LogMsg) + Send>,
+        on_success: Arc<dyn Fn() + Send + Sync>,
+        on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
+    ) {
         let mut last_yield = web_time::Instant::now();
 
         match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
@@ -135,6 +186,8 @@ mod web_decode {
                         }
                     }
 
+                    on_success();
+
                     if last_yield.elapsed() > web_time::Duration::from_millis(10) {
                         // yield to the ui task
                         yield_().await;
@@ -144,6 +197,7 @@ mod web_decode {
             }
             Err(err) => {
                 re_log::error!("Failed to decode .rrd: {err}");
+                on_error(Box::new(err));
             }
         }
     }
