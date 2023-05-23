@@ -2,6 +2,7 @@ use eframe::wasm_bindgen::{self, prelude::*};
 
 use std::sync::Arc;
 
+use re_error::ResultExt as _;
 use re_memory::AccountingAllocator;
 
 #[global_allocator]
@@ -72,27 +73,20 @@ impl WebHandle {
                                 url,
                                 Arc::new({
                                     let egui_ctx = cc.egui_ctx.clone();
-                                    let tx = tx.clone();
                                     move |msg| {
                                         egui_ctx.request_repaint(); // wake up ui thread
-                                        if let Err(err) = tx.send(msg) {
-                                            re_log::warn_once!("failed to send message: {err}");
-                                        }
-                                    }
-                                }),
-                                Arc::new({
-                                    let tx = tx.clone();
-                                    move || {
-                                        if let Err(err) = tx.quit(None) {
-                                            re_log::warn_once!("failed to send quit marker: {err}");
-                                        }
-                                    }
-                                }),
-                                Arc::new({
-                                    move |err| {
-                                        if let Err(err) = tx.quit(Some(err)) {
-                                            re_log::warn_once!("failed to send quit marker: {err}");
-                                        }
+                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                                        match msg {
+                                            HttpMessage::LogMsg(msg) => tx
+                                                .send(msg)
+                                                .warn_on_err_once("failed to send message"),
+                                            HttpMessage::Success => tx
+                                                .quit(None)
+                                                .warn_on_err_once("failed to send quit marker"),
+                                            HttpMessage::Failure(err) => tx
+                                                .quit(Some(err))
+                                                .warn_on_err_once("failed to send quit marker"),
+                                        };
                                     }
                                 }),
                             );
@@ -116,27 +110,20 @@ impl WebHandle {
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
                                 Arc::new({
                                     let egui_ctx = cc.egui_ctx.clone();
-                                    let tx = tx.clone();
                                     move |msg| {
                                         egui_ctx.request_repaint(); // wake up ui thread
-                                        if let Err(err) = tx.send(msg) {
-                                            re_log::warn_once!("failed to send message: {err}");
-                                        }
-                                    }
-                                }),
-                                Arc::new({
-                                    let tx = tx.clone();
-                                    move || {
-                                        if let Err(err) = tx.quit(None) {
-                                            re_log::warn_once!("failed to send quit marker: {err}");
-                                        }
-                                    }
-                                }),
-                                Arc::new({
-                                    move |err| {
-                                        if let Err(err) = tx.quit(Some(err)) {
-                                            re_log::warn_once!("failed to send quit marker: {err}");
-                                        }
+                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                                        match msg {
+                                            HttpMessage::LogMsg(msg) => tx
+                                                .send(msg)
+                                                .warn_on_err_once("failed to send message"),
+                                            HttpMessage::Success => tx
+                                                .quit(None)
+                                                .warn_on_err_once("failed to send quit marker"),
+                                            HttpMessage::Failure(err) => tx
+                                                .quit(Some(err))
+                                                .warn_on_err_once("failed to send quit marker"),
+                                        };
                                     }
                                 }),
                             );

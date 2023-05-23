@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use re_error::ResultExt as _;
 use re_log_types::LogMsg;
 
 pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receiver<LogMsg> {
@@ -9,37 +10,36 @@ pub fn stream_rrd_from_http_to_channel(url: String) -> re_smart_channel::Receive
     );
     stream_rrd_from_http(
         url,
-        Arc::new({
-            let tx = tx.clone();
-            move |msg| {
-                if let Err(err) = tx.send(msg) {
-                    re_log::warn_once!("failed to send message: {err}");
+        Arc::new(move |msg| {
+            match msg {
+                HttpMessage::LogMsg(msg) => tx.send(msg).warn_on_err_once("failed to send message"),
+                HttpMessage::Success => {
+                    tx.quit(None).warn_on_err_once("failed to send quit marker")
                 }
-            }
-        }),
-        Arc::new({
-            let tx = tx.clone();
-            move || {
-                if let Err(err) = tx.quit(None) {
-                    re_log::warn_once!("failed to send quit marker: {err}");
-                }
-            }
-        }),
-        Arc::new(move |err| {
-            if let Err(err) = tx.quit(Some(err)) {
-                re_log::warn_once!("failed to send quit marker: {err}");
-            }
+                HttpMessage::Failure(err) => tx
+                    .quit(Some(err))
+                    .warn_on_err_once("failed to send quit marker"),
+            };
         }),
     );
     rx
 }
 
-pub fn stream_rrd_from_http(
-    url: String,
-    on_msg: Arc<dyn Fn(LogMsg) + Send + Sync>,
-    on_success: Arc<dyn Fn() + Send + Sync>,
-    on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
-) {
+/// An intermediate message when decoding an rrd file fetched over HTTP.
+pub enum HttpMessage {
+    /// The next [`LogMsg`] in the decoding stream.
+    LogMsg(LogMsg),
+
+    /// Everything has been successfully decoded. End of stream.
+    Success,
+
+    /// Something went wrong. End of stream.
+    Failure(Box<dyn std::error::Error + Send + Sync>),
+}
+
+pub type HttpMessageCallback = dyn Fn(HttpMessage) + Send + Sync;
+
+pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     // TODO(emilk): stream the http request, progressively decoding the .rrd file.
@@ -47,28 +47,27 @@ pub fn stream_rrd_from_http(
         Ok(response) => {
             if response.ok {
                 re_log::debug!("Decoding .rrd file from {url:?}…");
-                decode_rrd(response.bytes, on_msg, on_success, on_error);
+                decode_rrd(response.bytes, on_msg);
             } else {
                 let err = format!(
                     "Failed to fetch .rrd file from {url}: {} {}",
                     response.status, response.status_text
                 );
-                re_log::error!("{err}",);
-                on_error(err.into());
+                on_msg(HttpMessage::Failure(err.into()));
             }
         }
         Err(err) => {
-            let err = format!("Failed to fetch .rrd file from {url}: {err}");
-            re_log::error!("{err}");
-            on_error(err.into());
+            on_msg(HttpMessage::Failure(
+                format!("Failed to fetch .rrd file from {url}: {err}").into(),
+            ));
         }
     });
 }
 
 #[cfg(target_arch = "wasm32")]
 mod web_event_listener {
+    use super::HttpMessageCallback;
     use js_sys::Uint8Array;
-    use re_log_types::LogMsg;
     use std::sync::Arc;
     use wasm_bindgen::{closure::Closure, JsCast, JsValue};
     use web_sys::MessageEvent;
@@ -80,23 +79,14 @@ mod web_event_listener {
     /// var rrd = new Uint8Array(...); // Get an RRD from somewhere
     /// window.postMessage(rrd, "*")
     /// ```
-    pub fn stream_rrd_from_event_listener(
-        on_msg: Arc<dyn Fn(LogMsg) + Send>,
-        on_success: Arc<dyn Fn() + Send + Sync>,
-        on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
-    ) {
+    pub fn stream_rrd_from_event_listener(on_msg: Arc<HttpMessageCallback>) {
         let window = web_sys::window().expect("no global `window` exists");
         let closure = Closure::wrap(Box::new({
             move |event: JsValue| match event.dyn_into::<MessageEvent>() {
                 Ok(message_event) => {
                     let uint8_array = Uint8Array::new(&message_event.data());
                     let result: Vec<u8> = uint8_array.to_vec();
-                    crate::stream_rrd_from_http::decode_rrd(
-                        result,
-                        Arc::clone(&on_msg),
-                        Arc::clone(&on_success),
-                        Arc::clone(&on_error),
-                    );
+                    crate::stream_rrd_from_http::decode_rrd(result, Arc::clone(&on_msg));
                 }
                 Err(js_val) => {
                     re_log::error!("Incoming event was not a MessageEvent. {:?}", js_val);
@@ -115,58 +105,42 @@ pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::needless_pass_by_value)] // must match wasm version
-fn decode_rrd(
-    rrd_bytes: Vec<u8>,
-    on_msg: Arc<dyn Fn(LogMsg) + Send>,
-    on_success: Arc<dyn Fn() + Send + Sync>,
-    on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
-) {
+fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
     match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
         Ok(decoder) => {
             for msg in decoder {
                 match msg {
                     Ok(msg) => {
-                        on_msg(msg);
+                        on_msg(HttpMessage::LogMsg(msg));
                     }
                     Err(err) => {
                         re_log::warn_once!("Failed to decode message: {err}");
                     }
                 }
             }
-            on_success();
+            on_msg(HttpMessage::Success);
         }
         Err(err) => {
-            re_log::error!("Failed to decode .rrd: {err}");
-            on_error(Box::new(err));
+            on_msg(HttpMessage::Failure(
+                format!("Failed to decode .rrd: {err}").into(),
+            ));
         }
     }
 }
 
 #[cfg(target_arch = "wasm32")]
 mod web_decode {
-    use re_log_types::LogMsg;
+    use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;
 
-    pub fn decode_rrd(
-        rrd_bytes: Vec<u8>,
-        on_msg: Arc<dyn Fn(LogMsg) + Send>,
-        on_success: Arc<dyn Fn() + Send + Sync>,
-        on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
-    ) {
-        wasm_bindgen_futures::spawn_local(decode_rrd_async(
-            rrd_bytes, on_msg, on_success, on_error,
-        ));
+    pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
+        wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
     /// Decodes the file in chunks, with an yield between each chunk.
     ///
     /// This is cooperative multi-tasking.
-    async fn decode_rrd_async(
-        rrd_bytes: Vec<u8>,
-        on_msg: Arc<dyn Fn(LogMsg) + Send>,
-        on_success: Arc<dyn Fn() + Send + Sync>,
-        on_error: Arc<dyn Fn(Box<dyn std::error::Error + Send + Sync>) + Send + Sync>,
-    ) {
+    async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         let mut last_yield = web_time::Instant::now();
 
         match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
@@ -174,14 +148,14 @@ mod web_decode {
                 for msg in decoder {
                     match msg {
                         Ok(msg) => {
-                            on_msg(msg);
+                            on_msg(HttpMessage::LogMsg(msg));
                         }
                         Err(err) => {
                             re_log::warn_once!("Failed to decode message: {err}");
                         }
                     }
 
-                    on_success();
+                    on_msg(HttpMessage::Success);
 
                     if last_yield.elapsed() > web_time::Duration::from_millis(10) {
                         // yield to the ui task
@@ -191,8 +165,9 @@ mod web_decode {
                 }
             }
             Err(err) => {
-                re_log::error!("Failed to decode .rrd: {err}");
-                on_error(Box::new(err));
+                on_msg(HttpMessage::Failure(
+                    format!("Failed to decode .rrd: {err}").into(),
+                ));
             }
         }
     }
