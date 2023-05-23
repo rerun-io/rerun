@@ -8,7 +8,7 @@ use std::hash::BuildHasher;
 /// 10^-9  collision risk with 190k values.
 /// 10^-6  collision risk with   6M values.
 /// 10^-3  collision risk with 200M values.
-#[derive(Copy, Clone, Eq)]
+#[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub struct Hash64(u64);
 
 impl Hash64 {

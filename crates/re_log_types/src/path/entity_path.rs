@@ -8,7 +8,7 @@ use crate::{
 // ----------------------------------------------------------------------------
 
 /// A 64 bit hash of [`EntityPath`] with very small risk of collision.
-#[derive(Copy, Clone, Eq)]
+#[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub struct EntityPathHash(Hash64);
 
 impl EntityPathHash {
