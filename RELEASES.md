@@ -55,6 +55,11 @@ This is a living document. Strive to improve it on each new release.
     * [ ] Editorialize the changelog if necessary
     * [ ] Make sure the changelog includes instructions for handling any breaking changes
     * [ ] Commit and push the changelog
+* [ ] Check that the [`rerun-docs`](https://github.com/rerun-io/rerun-docs) are up to date:
+  * [ ] Python quick start
+  * [ ] Logging Data in Python
+  * [ ] Rust quick start
+  * [ ] Logging Data in Rust
 * [ ] Create a draft PR containing:
     * [ ] One-line summary of the release
     * [ ] A multi-line summary of the release
@@ -96,7 +101,7 @@ Before pushing the release tag:
 
 After tagging and the CI has published:
   * [ ] Test the Python packages from PyPI: `pip install rerun_sdk==0.x.0a1`
-  * [ ] Test rust install version: `cargo install -f rerun@0.x.0-alpha.1 -F web_viewer && rerun --web-viewer api.rrd`
+  * [ ] Test rust install version: `cargo install --force rerun-cli@0.x.0-alpha.1 && rerun --web-viewer api.rrd`
   * [ ] Test rust crate: Modify Cargo.toml of any example to not point to the workspace
     * [ ] run with `--serve` to test web player
 

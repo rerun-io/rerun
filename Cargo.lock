@@ -4291,7 +4291,6 @@ dependencies = [
  "document-features",
  "itertools",
  "libc",
- "mimalloc",
  "parking_lot 0.12.1",
  "puffin",
  "rayon",
@@ -4312,6 +4311,21 @@ dependencies = [
  "re_ws_comms",
  "tokio",
  "webbrowser",
+]
+
+[[package]]
+name = "rerun-cli"
+version = "0.6.0-alpha.0"
+dependencies = [
+ "anyhow",
+ "document-features",
+ "mimalloc",
+ "re_build_build_info",
+ "re_build_info",
+ "re_log",
+ "re_memory",
+ "rerun",
+ "tokio",
 ]
 
 [[package]]
