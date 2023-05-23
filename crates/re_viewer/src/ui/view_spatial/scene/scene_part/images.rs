@@ -1,6 +1,4 @@
 use egui::NumExt;
-use glam::Vec3;
-use itertools::Itertools;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
@@ -89,63 +87,69 @@ fn to_textured_rect(
     }
 }
 
+struct ImageGroup {
+    plane: macaw::Plane3,
+    draw_order: DrawOrder,
+    images: Vec<Image>,
+}
+
+impl ImageGroup {
+    fn is_plane_similar(a: macaw::Plane3, b: macaw::Plane3) -> bool {
+        a.normal.dot(b.normal) > 0.99 && (a.d - b.d).abs() < 0.01
+    }
+
+    /// Returns true if the image is part of this group.
+    pub fn is_part_of_group(&self, draw_order: DrawOrder, plane: macaw::Plane3) -> bool {
+        self.draw_order == draw_order && Self::is_plane_similar(self.plane, plane)
+    }
+}
+
 fn handle_image_layering(scene: &mut SceneSpatial) {
     crate::profile_function!();
 
     // Handle layered rectangles that are on (roughly) the same plane with the same depth offset and were logged in sequence.
-    // First, group by similar plane.
-    // TODO(andreas): Need planes later for picking as well!
-    let images_grouped_by_plane = {
-        let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
-        let mut rectangle_group: Vec<Image> = Vec::new();
-        scene
-            .primitives
-            .images
-            .drain(..) // We rebuild the list as we might reorder as well!
-            .batching(move |it| {
-                for image in it {
-                    let rect = &image.textured_rect;
+    // Rectangles that have different draw order are not grouped together.
+    let mut image_groups: Vec<ImageGroup> = Vec::new();
 
-                    let prev_plane = cur_plane;
-                    cur_plane = macaw::Plane3::from_normal_point(
-                        rect.extent_u.cross(rect.extent_v).normalize(),
-                        rect.top_left_corner_position,
-                    );
+    // We rebuild the list as we might reorder as well!
+    for image in scene.primitives.images.drain(..) {
+        let rect = &image.textured_rect;
+        let plane = macaw::Plane3::from_normal_point(
+            rect.extent_u.cross(rect.extent_v).normalize(),
+            rect.top_left_corner_position,
+        );
 
-                    fn is_plane_similar(a: macaw::Plane3, b: macaw::Plane3) -> bool {
-                        a.normal.dot(b.normal) > 0.99 && (a.d - b.d).abs() < 0.01
-                    }
-
-                    // Use draw order, not depth offset since depth offset might change when draw order does not.
-                    let has_same_draw_order = rectangle_group
-                        .last()
-                        .map_or(true, |last_image| last_image.draw_order == image.draw_order);
-
-                    // If the planes are similar, add them to the same group, otherwise start a new group.
-                    if has_same_draw_order && is_plane_similar(prev_plane, cur_plane) {
-                        rectangle_group.push(image);
-                    } else {
-                        let previous_group = std::mem::replace(&mut rectangle_group, vec![image]);
-                        return Some(previous_group);
-                    }
-                }
-                if !rectangle_group.is_empty() {
-                    Some(rectangle_group.drain(..).collect())
-                } else {
-                    None
-                }
-            })
+        if let Some(group) = image_groups
+            .iter_mut()
+            .find(|group| group.is_part_of_group(image.draw_order, plane))
+        {
+            group.images.push(image);
+        } else {
+            image_groups.push(ImageGroup {
+                plane,
+                draw_order: image.draw_order,
+                images: vec![image],
+            });
+        }
     }
-    .collect_vec();
 
     // Then, for each planar group do resorting and change transparency.
-    for mut grouped_images in images_grouped_by_plane {
+    for mut grouped_images in image_groups {
+        // Since we change transparency depending on order and re_renderer doesn't handle transparency
+        // ordering either, we need to ensure that sorting is stable at the very least.
+        // Sorting is done by depth offset, not by draw order which is the same for the entire group.
+        grouped_images
+            .images
+            .sort_by_key(|image| image.textured_rect.options.depth_offset);
+
         // Class id images should generally come last within the same layer as
         // they typically have large areas being zeroed out (which maps to fully transparent).
-        grouped_images.sort_by_key(|image| image.tensor.meaning == TensorDataMeaning::ClassId);
+        grouped_images
+            .images
+            .sort_by_key(|image| image.tensor.meaning == TensorDataMeaning::ClassId);
 
-        let total_num_images = grouped_images.len();
-        for (idx, image) in grouped_images.iter_mut().enumerate() {
+        let total_num_images = grouped_images.images.len();
+        for (idx, image) in grouped_images.images.iter_mut().enumerate() {
             // make top images transparent
             let opacity = if idx == 0 {
                 1.0
@@ -160,7 +164,7 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
                 .multiply(opacity);
         }
 
-        scene.primitives.images.extend(grouped_images);
+        scene.primitives.images.extend(grouped_images.images);
     }
 }
 
