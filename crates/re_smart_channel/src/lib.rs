@@ -186,7 +186,7 @@ impl<T: Send> Sender<T> {
         )
     }
 
-    /// back-date a message
+    /// Forwards a message as-is.
     pub fn send_at(
         &self,
         time: Instant,
@@ -211,7 +211,7 @@ impl<T: Send> Sender<T> {
     /// sender has left, and if so why (if applicable).
     ///
     /// Using a [`Sender`] after calling `quit` is undefined behaviour: the receiving end is free
-    /// is silently drop those messages.
+    /// to silently drop those messages (or worse).
     pub fn quit(
         &self,
         err: Option<Box<dyn std::error::Error + Send>>,
@@ -257,6 +257,7 @@ impl<T: Send> Sender<T> {
 pub enum SmartMessagePayload<T: Send> {
     /// A message sent down the channel.
     Msg(T),
+
     /// The [`Sender`] has quit.
     ///
     /// `None` indicates the sender left gracefully, an error indicates otherwise.
@@ -411,6 +412,8 @@ impl<T: Send> Receiver<T> {
     /// This is a very leaky abstraction, and it would be nice with a refactor.
     pub fn chained_channel(&self) -> (Sender<T>, Receiver<T>) {
         smart_channel_with_stats(
+            // NOTE: We cannot know yet, and it doesn't matter as the new sender will only be used
+            // to forward existing messages.
             SmartMessageSource::Unknown,
             self.source.clone(),
             self.stats.clone(),

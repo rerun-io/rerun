@@ -45,6 +45,7 @@ pub async fn serve(
     shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<Receiver<LogMsg>> {
     let (tx, rx) = re_smart_channel::smart_channel(
+        // NOTE: We don't know until we start actually accepting clients!
         re_smart_channel::SmartMessageSource::Unknown,
         re_smart_channel::SmartChannelSource::TcpServer { port },
     );

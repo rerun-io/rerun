@@ -49,23 +49,18 @@ pub fn stream_rrd_from_http(
                 re_log::debug!("Decoding .rrd file from {url:?}…");
                 decode_rrd(response.bytes, on_msg, on_success, on_error);
             } else {
-                re_log::error!(
+                let err = format!(
                     "Failed to fetch .rrd file from {url}: {} {}",
-                    response.status,
-                    response.status_text
+                    response.status, response.status_text
                 );
-                on_error(
-                    format!(
-                        "Failed to fetch .rrd file from {url}: {} {}",
-                        response.status, response.status_text
-                    )
-                    .into(),
-                );
+                re_log::error!("{err}",);
+                on_error(err.into());
             }
         }
         Err(err) => {
-            re_log::error!("Failed to fetch .rrd file from {url}: {err}");
-            on_error(format!("Failed to fetch .rrd file from {url}: {err}").into());
+            let err = format!("Failed to fetch .rrd file from {url}: {err}");
+            re_log::error!("{err}");
+            on_error(err.into());
         }
     });
 }

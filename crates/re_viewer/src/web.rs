@@ -75,20 +75,24 @@ impl WebHandle {
                                     let tx = tx.clone();
                                     move |msg| {
                                         egui_ctx.request_repaint(); // wake up ui thread
-                                        tx.send(msg).ok();
+                                        if let Err(err) = tx.send(msg) {
+                                            re_log::warn_once!("failed to send message: {err}");
+                                        }
                                     }
                                 }),
                                 Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
                                     let tx = tx.clone();
                                     move || {
-                                        tx.quit(None).ok();
+                                        if let Err(err) = tx.quit(None) {
+                                            re_log::warn_once!("failed to send quit marker: {err}");
+                                        }
                                     }
                                 }),
                                 Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
                                     move |err| {
-                                        tx.quit(Some(err)).ok();
+                                        if let Err(err) = tx.quit(Some(err)) {
+                                            re_log::warn_once!("failed to send quit marker: {err}");
+                                        }
                                     }
                                 }),
                             );
@@ -115,20 +119,24 @@ impl WebHandle {
                                     let tx = tx.clone();
                                     move |msg| {
                                         egui_ctx.request_repaint(); // wake up ui thread
-                                        tx.send(msg).ok();
+                                        if let Err(err) = tx.send(msg) {
+                                            re_log::warn_once!("failed to send message: {err}");
+                                        }
                                     }
                                 }),
                                 Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
                                     let tx = tx.clone();
                                     move || {
-                                        tx.quit(None).ok();
+                                        if let Err(err) = tx.quit(None) {
+                                            re_log::warn_once!("failed to send quit marker: {err}");
+                                        }
                                     }
                                 }),
                                 Arc::new({
-                                    let egui_ctx = cc.egui_ctx.clone();
                                     move |err| {
-                                        tx.quit(Some(err)).ok();
+                                        if let Err(err) = tx.quit(Some(err)) {
+                                            re_log::warn_once!("failed to send quit marker: {err}");
+                                        }
                                     }
                                 }),
                             );

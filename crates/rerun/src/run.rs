@@ -327,7 +327,7 @@ async fn run_impl(
                 }
                 ArgumentCategory::FilePath(path) => {
                     let (tx, rx) = re_smart_channel::smart_channel(
-                        re_smart_channel::SmartMessageSource::File(path.to_path_buf()),
+                        re_smart_channel::SmartMessageSource::File(path.clone()),
                         re_smart_channel::SmartChannelSource::Files {
                             paths: vec![path.clone()],
                         },
@@ -391,6 +391,8 @@ async fn run_impl(
             }
 
             let (tx, rx) = re_smart_channel::smart_channel(
+                // NOTE: We can't know yet, each file will get its own properly sourced sender a
+                // few lines below.
                 re_smart_channel::SmartMessageSource::Unknown,
                 re_smart_channel::SmartChannelSource::Files {
                     paths: paths.clone(),
