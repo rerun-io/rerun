@@ -66,9 +66,12 @@ struct Args {
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
-    /// - Linux: /home/UserName/.local/share/rerunviewer
-    /// - macOS: /Users/UserName/Library/Application Support/rerunviewer
-    /// - Windows: C:\Users\UserName\AppData\Roaming\rerunviewer
+    ///
+    /// - Linux: /home/UserName/.local/share/rerun
+    ///
+    /// - macOS: /Users/UserName/Library/Application Support/rerun
+    ///
+    /// - Windows: C:\Users\UserName\AppData\Roaming\rerun
     #[clap(long, default_value_t = true)]
     persist_state: bool,
 

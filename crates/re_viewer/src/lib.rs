@@ -109,9 +109,6 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
-#[allow(dead_code)]
-const APPLICATION_NAME: &str = "Rerun Viewer";
-
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
     egui_wgpu::WgpuConfiguration {
             // When running wgpu on native debug builds, we want some extra control over how
