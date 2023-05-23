@@ -55,6 +55,11 @@ This is a living document. Strive to improve it on each new release.
     * [ ] Editorialize the changelog if necessary
     * [ ] Make sure the changelog includes instructions for handling any breaking changes
     * [ ] Commit and push the changelog
+* [ ] Check that the [`rerun-docs`](https://github.com/rerun-io/rerun-docs) are up to date:
+  * [ ] Python quick start
+  * [ ] Logging Data in Python
+  * [ ] Rust quick start
+  * [ ] Logging Data in Rust
 * [ ] Create a draft PR containing:
     * [ ] One-line summary of the release
     * [ ] A multi-line summary of the release
