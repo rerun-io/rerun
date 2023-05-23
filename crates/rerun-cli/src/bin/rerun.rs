@@ -1,6 +1,15 @@
-//! The `rerun` binary.
+//! The `rerun` binary, part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 //!
 //! Run `rerun --help` for more information.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
+//! ## Links
+//! - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
+//! - [High-level docs](http://rerun.io/docs)
+//! - [Rust API docs](https://docs.rs/rerun/)
+//! - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 use re_memory::AccountingAllocator;
 
 #[global_allocator]
