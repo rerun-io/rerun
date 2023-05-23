@@ -85,7 +85,7 @@ parking_lot = "0.12"
 polars-core = "0.29"
 polars-lazy = "0.29"
 polars-ops = "0.29"
-puffin = "0.14"
+puffin = "0.15"
 rayon = "1.7"
 rfd = { version = "0.11.3", default_features = false, features = [
   "xdg-portal",
