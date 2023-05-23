@@ -14,11 +14,10 @@ fn tex_filter(pixel_coord: Vec2) -> u32 {
     }
 }
 
-fn mul_alpha(rgba_arg: Vec4) -> Vec4 {
-    // TODO(emilk): is this order correct?
-
+fn decode_color(rgba_arg: Vec4) -> Vec4 {
     var rgba = rgba_arg;
 
+    // Convert to linear space:
     if rect_info.decode_srgb != 0u {
         rgba = linear_from_srgba(rgba);
     }
@@ -37,13 +36,13 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         let coord = in.texcoord * Vec2(textureDimensions(texture_float).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
-            sampled_value = mul_alpha(textureLoad(texture_float, IVec2(coord + vec2(0.5)), 0));
+            sampled_value = decode_color(textureLoad(texture_float, IVec2(coord + vec2(0.5)), 0));
         } else {
             // bilinear
-            let v00 = mul_alpha(textureLoad(texture_float, IVec2(coord) + IVec2(0, 0), 0));
-            let v01 = mul_alpha(textureLoad(texture_float, IVec2(coord) + IVec2(0, 1), 0));
-            let v10 = mul_alpha(textureLoad(texture_float, IVec2(coord) + IVec2(1, 0), 0));
-            let v11 = mul_alpha(textureLoad(texture_float, IVec2(coord) + IVec2(1, 1), 0));
+            let v00 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(0, 0), 0));
+            let v01 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(0, 1), 0));
+            let v10 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(1, 0), 0));
+            let v11 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(1, 1), 0));
             let top = mix(v00, v10, fract(coord.x));
             let bottom = mix(v01, v11, fract(coord.x));
             sampled_value = mix(top, bottom, fract(coord.y));

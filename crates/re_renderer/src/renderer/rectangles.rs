@@ -93,7 +93,7 @@ pub enum ColorMapper {
 }
 
 impl ColormappedTexture {
-    /// Assumes a separate alpha.
+    /// Assumes a separate/unmultiplied alpha.
     pub fn from_unorm_rgba(texture: GpuTexture2D) -> Self {
         // If the texture is an sRGB texture, the GPU will decode it for us.
         let decode_srgb = !texture.format().is_srgb();

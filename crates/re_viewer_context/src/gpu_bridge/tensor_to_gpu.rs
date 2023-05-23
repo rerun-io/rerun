@@ -69,11 +69,9 @@ fn color_tensor_to_gpu(
     let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
         let [height, width, depth] = height_width_depth(tensor)?;
         let (data, format) = match (depth, &tensor.data) {
-            // Use R8Unorm and R8Snorm to get filtering on the GPU:
-            (1, TensorData::U8(buf)) => (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm),
-            (1, TensorData::I8(buf)) => (cast_slice_to_cow(buf), TextureFormat::R8Snorm),
-
-            // Special handling for sRGB(A) textures:
+            // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
+            // Why? Because premul must happen _before_ sRGB decode, so we can't
+            // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (3, TensorData::U8(buf)) => {
                 (pad_and_cast(buf.as_slice(), 255), TextureFormat::Rgba8Unorm)
             }
@@ -99,7 +97,7 @@ fn color_tensor_to_gpu(
 
     let texture_format = texture_handle.format();
 
-    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm; // TODO(emilk): let the user specify this.
+    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm; // TODO(emilk): let the user specify the color space.
 
     // Special casing for normalized textures used above:
     let range = if matches!(
