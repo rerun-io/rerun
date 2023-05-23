@@ -223,9 +223,6 @@ pub enum LogMsg {
 
     /// Log an entity using an [`ArrowMsg`].
     ArrowMsg(RecordingId, ArrowMsg),
-
-    /// Sent when the client shuts down the connection.
-    Goodbye(RecordingId, RowId),
 }
 
 impl LogMsg {
@@ -235,7 +232,6 @@ impl LogMsg {
             Self::EntityPathOpMsg(recording_id, _) | Self::ArrowMsg(recording_id, _) => {
                 recording_id
             }
-            Self::Goodbye(recording_id, _) => recording_id,
         }
     }
 }

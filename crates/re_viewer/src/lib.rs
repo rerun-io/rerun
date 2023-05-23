@@ -180,8 +180,8 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {
-            while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
-                if tx.send_at(sent_at, msg).is_ok() {
+            while let Ok(msg) = rx.recv_with_send_time() {
+                if tx.send_at(msg.time, msg.source, msg.payload).is_ok() {
                     ctx.request_repaint();
                 } else {
                     break;

@@ -2,6 +2,7 @@ use eframe::wasm_bindgen::{self, prelude::*};
 
 use std::sync::Arc;
 
+use re_error::ResultExt as _;
 use re_memory::AccountingAllocator;
 
 #[global_allocator]
@@ -61,14 +62,32 @@ impl WebHandle {
                         EndpointCategory::HttpRrd(url) => {
                             // Download an .rrd file over http:
                             let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::Source::RrdHttpStream { url: url.clone() },
+                                re_smart_channel::SmartMessageSource::RrdHttpStream {
+                                    url: url.clone(),
+                                },
+                                re_smart_channel::SmartChannelSource::RrdHttpStream {
+                                    url: url.clone(),
+                                },
                             );
-                            let egui_ctx = cc.egui_ctx.clone();
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http(
                                 url,
-                                Arc::new(move |msg| {
-                                    egui_ctx.request_repaint(); // wake up ui thread
-                                    tx.send(msg).ok();
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    move |msg| {
+                                        egui_ctx.request_repaint(); // wake up ui thread
+                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                                        match msg {
+                                            HttpMessage::LogMsg(msg) => tx
+                                                .send(msg)
+                                                .warn_on_err_once("failed to send message"),
+                                            HttpMessage::Success => tx
+                                                .quit(None)
+                                                .warn_on_err_once("failed to send quit marker"),
+                                            HttpMessage::Failure(err) => tx
+                                                .quit(Some(err))
+                                                .warn_on_err_once("failed to send quit marker"),
+                                        };
+                                    }
                                 }),
                             );
 
@@ -85,14 +104,28 @@ impl WebHandle {
                         EndpointCategory::WebEventListener => {
                             // Process an rrd when it's posted via `window.postMessage`
                             let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::Source::RrdWebEventListener,
+                                re_smart_channel::SmartMessageSource::RrdWebEventCallback,
+                                re_smart_channel::SmartChannelSource::RrdWebEventListener,
                             );
-                            let egui_ctx = cc.egui_ctx.clone();
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
-                                Some(Arc::new(move |msg| {
-                                    egui_ctx.request_repaint(); // wake up ui thread
-                                    tx.send(msg).ok();
-                                })),
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    move |msg| {
+                                        egui_ctx.request_repaint(); // wake up ui thread
+                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                                        match msg {
+                                            HttpMessage::LogMsg(msg) => tx
+                                                .send(msg)
+                                                .warn_on_err_once("failed to send message"),
+                                            HttpMessage::Success => tx
+                                                .quit(None)
+                                                .warn_on_err_once("failed to send quit marker"),
+                                            HttpMessage::Failure(err) => tx
+                                                .quit(Some(err))
+                                                .warn_on_err_once("failed to send quit marker"),
+                                        };
+                                    }
+                                }),
                             );
 
                             Box::new(crate::App::from_receiver(

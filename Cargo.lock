@@ -3842,6 +3842,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "puffin",
  "re_build_info",
+ "re_error",
  "re_log",
  "re_log_types",
  "re_smart_channel",
