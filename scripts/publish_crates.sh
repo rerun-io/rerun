@@ -118,5 +118,6 @@ cargo publish $FLAGS -p re_data_ui
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun
+cargo publish $FLAGS -p rerun-cli
 
 echo "All crates successfully published!"
