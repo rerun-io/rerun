@@ -20,9 +20,9 @@ checksum = "330223a1aecc308757b9926e9391c9b47f8ef2dbd8aea9df88312aea18c5e8d6"
 
 [[package]]
 name = "accesskit"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "704d532b1cd3d912bb37499c55a81ac748cc1afa737eedd100ba441acdd47d38"
+checksum = "02c98a5d094590335462354da402d754fe2cb78f0e6ce5024611c28ed539c1de"
 dependencies = [
  "enumn",
  "serde",
@@ -1261,7 +1261,7 @@ checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 [[package]]
 name = "ecolor"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1270,7 +1270,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.21.3"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1285,7 +1285,7 @@ dependencies = [
  "objc",
  "percent-encoding",
  "pollster",
- "puffin",
+ "puffin 0.15.0",
  "raw-window-handle",
  "ron",
  "serde",
@@ -1301,7 +1301,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1315,12 +1315,12 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "bytemuck",
  "epaint",
  "log",
- "puffin",
+ "puffin 0.15.0",
  "thiserror",
  "type-map",
  "wgpu",
@@ -1330,13 +1330,13 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.21.1"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "arboard",
  "egui",
  "instant",
  "log",
- "puffin",
+ "puffin 0.15.0",
  "raw-window-handle",
  "serde",
  "smithay-clipboard",
@@ -1347,7 +1347,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "egui",
  "log",
@@ -1357,7 +1357,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1365,7 +1365,7 @@ dependencies = [
  "glow",
  "log",
  "memoffset 0.6.5",
- "puffin",
+ "puffin 0.15.0",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -1406,7 +1406,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1487,7 +1487,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui?rev=856afc8#856afc8f7e7de77d5592ac657f9a07be1938ae7a"
+source = "git+https://github.com/emilk/egui?rev=bb252e2#bb252e2788a8db8fedd6e7dfc0700aad52f6aa70"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
@@ -3499,6 +3499,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "puffin"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f99b70359a44d98fceb167734e8cc19e232fe885a547f1b622e66d8099931b6"
+dependencies = [
+ "byteorder",
+ "instant",
+ "once_cell",
+]
+
+[[package]]
 name = "puffin_http"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3507,7 +3518,7 @@ dependencies = [
  "anyhow",
  "crossbeam-channel",
  "log",
- "puffin",
+ "puffin 0.14.0",
 ]
 
 [[package]]
@@ -3709,7 +3720,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "polars-core",
  "polars-ops",
- "puffin",
+ "puffin 0.14.0",
  "rand",
  "re_format",
  "re_log",
@@ -3750,7 +3761,7 @@ dependencies = [
  "itertools",
  "mimalloc",
  "nohash-hasher",
- "puffin",
+ "puffin 0.14.0",
  "rand",
  "re_arrow_store",
  "re_format",
@@ -3774,7 +3785,7 @@ dependencies = [
  "image",
  "itertools",
  "nohash-hasher",
- "puffin",
+ "puffin 0.14.0",
  "re_arrow_store",
  "re_data_store",
  "re_error",
@@ -3839,7 +3850,7 @@ dependencies = [
  "js-sys",
  "mimalloc",
  "parking_lot 0.12.1",
- "puffin",
+ "puffin 0.14.0",
  "re_build_info",
  "re_log",
  "re_log_types",
@@ -3878,7 +3889,7 @@ dependencies = [
  "nohash-hasher",
  "num-derive",
  "num-traits",
- "puffin",
+ "puffin 0.14.0",
  "rand",
  "re_format",
  "re_log",
@@ -3926,7 +3937,7 @@ dependencies = [
  "itertools",
  "mimalloc",
  "polars-core",
- "puffin",
+ "puffin 0.14.0",
  "re_arrow_store",
  "re_data_store",
  "re_format",
@@ -3965,7 +3976,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "pathdiff",
  "pollster",
- "puffin",
+ "puffin 0.14.0",
  "rand",
  "re_error",
  "re_log",
@@ -4114,7 +4125,7 @@ dependencies = [
  "nohash-hasher",
  "objc",
  "poll-promise",
- "puffin",
+ "puffin 0.14.0",
  "puffin_http",
  "re_analytics",
  "re_arrow_store",
@@ -4167,7 +4178,7 @@ dependencies = [
  "macaw",
  "ndarray",
  "nohash-hasher",
- "puffin",
+ "puffin 0.14.0",
  "re_arrow_store",
  "re_data_store",
  "re_log",
@@ -4291,7 +4302,7 @@ dependencies = [
  "libc",
  "mimalloc",
  "parking_lot 0.12.1",
- "puffin",
+ "puffin 0.14.0",
  "rayon",
  "re_analytics",
  "re_build_build_info",
