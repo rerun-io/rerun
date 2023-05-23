@@ -2,9 +2,10 @@
 //!
 //! Rectangles are at close distance to each other in the z==0 plane.
 //! Rects on the left use "real" depth values, rects on the right use depth offset.
+//! You should see the least saturated rects in front of more saturated rects.
 //!
-//! Press arrow up/down to increase/decrease the distance of the camera to the z==0
-//! plane in tandem with the scale of the rectangles.
+//! Press arrow up/down to increase/decrease the distance of the camera to the z==0 plane in tandem with the scale of the rectangles.
+//! Press arrow left/right to increase/decrease the near plane distance.
 
 use ecolor::Hsva;
 use re_renderer::{
@@ -27,7 +28,7 @@ impl framework::Example for Render2D {
     fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
         Render2D {
             distance_scale: 100.0,
-            near_plane: 0.5,
+            near_plane: 0.1,
         }
     }
 
@@ -137,11 +138,11 @@ impl framework::Example for Render2D {
                     self.distance_scale /= 1.1;
                     re_log::info!(self.distance_scale);
                 }
-                Some(winit::event::VirtualKeyCode::Left) => {
+                Some(winit::event::VirtualKeyCode::Right) => {
                     self.near_plane *= 1.1;
                     re_log::info!(self.near_plane);
                 }
-                Some(winit::event::VirtualKeyCode::Right) => {
+                Some(winit::event::VirtualKeyCode::Left) => {
                     self.near_plane /= 1.1;
                     re_log::info!(self.near_plane);
                 }
