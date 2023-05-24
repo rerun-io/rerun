@@ -70,11 +70,7 @@ pub async fn serve(
     Ok(rx)
 }
 
-async fn listen_for_new_clients(
-    listener: TcpListener,
-    options: ServerOptions,
-    tx: Sender<LogMsg>,
-) {
+async fn listen_for_new_clients(listener: TcpListener, options: ServerOptions, tx: Sender<LogMsg>) {
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {

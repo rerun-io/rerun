@@ -235,9 +235,7 @@ impl WebViewerServer {
         Ok(Self { server })
     }
 
-    pub async fn serve(
-        self,
-    ) -> Result<(), WebViewerServerError> {
+    pub async fn serve(self) -> Result<(), WebViewerServerError> {
         self.server
             .await
             .map_err(WebViewerServerError::ServeFailed)?;

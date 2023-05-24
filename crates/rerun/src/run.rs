@@ -421,12 +421,7 @@ async fn run_impl(
                 // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
             };
-            re_sdk_comms::serve(
-                &args.bind,
-                args.port,
-                server_options,
-            )
-            .await?
+            re_sdk_comms::serve(&args.bind, args.port, server_options).await?
         }
 
         #[cfg(not(feature = "server"))]
