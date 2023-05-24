@@ -4343,6 +4343,7 @@ name = "rerun_py"
 version = "0.6.0-alpha.0"
 dependencies = [
  "arrow2",
+ "ctrlc",
  "document-features",
  "glam",
  "image",
