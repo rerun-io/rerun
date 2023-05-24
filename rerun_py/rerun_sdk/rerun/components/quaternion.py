@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
@@ -11,7 +9,7 @@ from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 __all__ = ["QuaternionArray", "QuaternionType", "Quaternion"]
 
 
-@dataclass
+# @dataclass # not a dataclass in order to force explicit xyzw call
 class Quaternion:
     """3D rotation expressed via a Quaternion."""
 
@@ -20,6 +18,9 @@ class Quaternion:
     Quaternion given as a 4-element array of floats in the order (x, y, z, w).
     """
     # TODO(andreas): Other representations.
+
+    def __init__(self, *, xyzw: npt.ArrayLike):
+        self.xyzw = xyzw
 
 
 class QuaternionArray(pa.ExtensionArray):  # type: ignore[misc]

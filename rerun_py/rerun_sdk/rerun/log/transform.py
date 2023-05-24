@@ -345,7 +345,7 @@ def log_rigid3(
     if parent_from_child:
         rotation = None
         if parent_from_child[1] is not None:
-            rotation = Quaternion(parent_from_child[1])
+            rotation = Quaternion(xyzw=parent_from_child[1])
         log_transform3d(
             entity_path,
             Rigid3D(translation=parent_from_child[0], rotation=rotation),
@@ -355,7 +355,7 @@ def log_rigid3(
     elif child_from_parent:
         rotation = None
         if child_from_parent[1] is not None:
-            rotation = Quaternion(child_from_parent[1])
+            rotation = Quaternion(xyzw=child_from_parent[1])
         log_transform3d(
             entity_path,
             Rigid3D(translation=child_from_parent[0], rotation=rotation),

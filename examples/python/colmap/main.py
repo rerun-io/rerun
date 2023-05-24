@@ -145,7 +145,7 @@ def read_and_log_sparse_reconstruction(
 
         # COLMAP's camera transform is "camera from world"
         rr.log_transform3d(
-            "camera", rr.TranslationRotationScale3D(image.tvec, rr.Quaternion(quat_xyzw)), from_parent=True
+            "camera", rr.TranslationRotationScale3D(image.tvec, rr.Quaternion(xyzw=quat_xyzw)), from_parent=True
         )
         rr.log_view_coordinates("camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
