@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use ahash::HashMap;
 
@@ -10,8 +13,6 @@ use re_log_types::{
 };
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_viewer_context::{auto_color, AnnotationMap, Annotations, SceneQuery, ViewerContext};
-use smallvec::smallvec;
-use smallvec::SmallVec;
 
 use crate::misc::{mesh_loader::LoadedMesh, SpaceViewHighlights, TransformCache};
 
@@ -130,6 +131,7 @@ impl SceneSpatial {
     ) -> EntityDepthOffsets {
         crate::profile_function!();
 
+        #[derive(PartialEq, PartialOrd, Eq, Ord)]
         enum DrawOrderTarget {
             Entity(EntityPathHash),
             DefaultBox2D,
@@ -138,7 +140,8 @@ impl SceneSpatial {
             DefaultPoints,
         }
 
-        let mut entities_per_draw_order = BTreeMap::<DrawOrder, SmallVec<[_; 4]>>::new();
+        // Use a BTreeSet for entity hashes to get a stable order.
+        let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();
         for (ent_path, _) in query.iter_entities() {
             if let Some(draw_order) = query_latest_single::<DrawOrder>(
                 &ctx.log_db.entity_db.data_store,
@@ -148,26 +151,26 @@ impl SceneSpatial {
                 entities_per_draw_order
                     .entry(draw_order)
                     .or_default()
-                    .push(DrawOrderTarget::Entity(ent_path.hash()));
+                    .insert(DrawOrderTarget::Entity(ent_path.hash()));
             }
         }
 
         // Push in default draw orders. All of them using the none hash.
         entities_per_draw_order.insert(
             DrawOrder::DEFAULT_BOX2D,
-            smallvec![DrawOrderTarget::DefaultBox2D],
+            [DrawOrderTarget::DefaultBox2D].into(),
         );
         entities_per_draw_order.insert(
             DrawOrder::DEFAULT_IMAGE,
-            smallvec![DrawOrderTarget::DefaultImage],
+            [DrawOrderTarget::DefaultImage].into(),
         );
         entities_per_draw_order.insert(
             DrawOrder::DEFAULT_LINES2D,
-            smallvec![DrawOrderTarget::DefaultLines2D],
+            [DrawOrderTarget::DefaultLines2D].into(),
         );
         entities_per_draw_order.insert(
             DrawOrder::DEFAULT_POINTS2D,
-            smallvec![DrawOrderTarget::DefaultPoints],
+            [DrawOrderTarget::DefaultPoints].into(),
         );
 
         // Determine re_renderer draw order from this.
@@ -210,7 +213,7 @@ impl SceneSpatial {
                             }
                         }
                     })
-                    .collect::<SmallVec<[_; 4]>>()
+                    .collect::<Vec<_>>()
             })
             .collect();
 

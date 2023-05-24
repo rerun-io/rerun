@@ -99,21 +99,25 @@ fn main() {
     let host = host.as_deref().unwrap_or("localhost");
     let port = port.as_deref().unwrap_or("8000");
 
-    std::thread::Builder::new()
+    let thread = std::thread::Builder::new()
         .name("cargo_run_wasm".into())
         .spawn(|| {
             cargo_run_wasm::run_wasm_with_css(CSS);
         })
         .expect("Failed to spawn thread");
 
-    // It would be nice to start a webbrowser, but we can't really know when the server is ready.
-    // So we just sleep for a while and hope it works.
-    std::thread::sleep(Duration::from_millis(500));
+    if args.contains("--build-only") {
+        thread.join().unwrap();
+    } else {
+        // It would be nice to start a web-browser, but we can't really know when the server is ready.
+        // So we just sleep for a while and hope it works.
+        std::thread::sleep(Duration::from_millis(500));
 
-    // Open browser tab.
-    let viewer_url = format!("http://{host}:{port}",);
-    webbrowser::open(&viewer_url).ok();
-    println!("Opening browser at {viewer_url}");
+        // Open browser tab.
+        let viewer_url = format!("http://{host}:{port}",);
+        webbrowser::open(&viewer_url).ok();
+        println!("Opening browser at {viewer_url}");
 
-    std::thread::sleep(Duration::from_secs(u64::MAX));
+        std::thread::sleep(Duration::from_secs(u64::MAX));
+    }
 }
