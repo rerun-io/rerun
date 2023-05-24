@@ -440,7 +440,7 @@ fn setup_target_config(
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
-        near_plane_distance: 0.01,
+        near_plane_distance: 0.1,
         aspect_ratio: pinhole
             .aspect_ratio()
             .unwrap_or(canvas_size.x / canvas_size.y),
