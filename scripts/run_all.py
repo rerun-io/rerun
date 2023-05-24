@@ -44,7 +44,7 @@ def run_py_example(path: str, viewer_port: Optional[int] = None, wait: bool = Tr
 
 def run_saved_example(path: str, wait: bool = True) -> Any:
     return start_process(
-        ["cargo", "run", "-p", "rerun", "--all-features", "--", "out.rrd"],
+        ["cargo", "run", "-p", "rerun-cli", "--all-features", "--", "out.rrd"],
         cwd=path,
         wait=wait,
     )
@@ -149,7 +149,7 @@ def run_viewer_build() -> None:
             "cargo",
             "build",
             "-p",
-            "rerun",
+            "rerun-cli",
             "--all-features",
             "--quiet",
         ]
