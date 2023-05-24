@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
+use ahash::{HashSet, HashSetExt};
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
     component_types::InstanceKey, ArrowMsg, BeginRecordingMsg, Component as _, ComponentPath,
     DataCell, DataRow, DataTable, EntityPath, EntityPathHash, EntityPathOpMsg, LogMsg, PathOp,
-    RecordingId, RecordingInfo, RowId, TimePoint, Timeline,
+    RecordingId, RecordingInfo, RowId, Time, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -276,5 +277,16 @@ impl LogDb {
         }
 
         entity_db.purge(&cutoff_times, &drop_row_ids);
+    }
+
+    /// Free up some RAM by forgetting parts of the time that are more than `cutoff` ns in the past.
+    pub fn clear_by_cutoff(&mut self, cutoff: i64) {
+        let cutoff_time = Time::now().nanos_since_epoch() - cutoff;
+        let oldest = self.entity_db.data_store.oldest_time_per_timeline();
+        let row_ids = self
+            .entity_db
+            .data_store
+            .gc_drop_by_cutoff_time(cutoff_time);
+        self.entity_db.purge(&oldest, &row_ids);
     }
 }

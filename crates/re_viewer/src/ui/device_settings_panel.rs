@@ -1,4 +1,7 @@
-use crate::{depthai::depthai, misc::ViewerContext};
+use crate::{
+    depthai::depthai::{self, CameraBoardSocket},
+    misc::ViewerContext,
+};
 
 use strum::IntoEnumIterator; // Needed for enum::iter()
 
@@ -81,15 +84,62 @@ impl DeviceSettingsPanel {
             });
     }
 
+    fn camera_config_ui(
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        camera_features: &depthai::CameraFeatures,
+        camera_config: &mut depthai::CameraConfig,
+    ) {
+        let primary_700 = ctx.re_ui.design_tokens.primary_700;
+        egui::CollapsingHeader::new(
+            egui::RichText::new(format!("{:?}", camera_features.board_socket)).color(primary_700),
+        )
+        .default_open(true)
+        .show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.set_width(CONFIG_UI_WIDTH);
+                ctx.re_ui.labeled_combo_box(
+                    ui,
+                    "Resolution",
+                    format!("{}", camera_config.resolution),
+                    false,
+                    |ui| {
+                        for res in camera_features.resolutions.clone() {
+                            let disabled = res == depthai::CameraSensorResolution::THE_4_K
+                                || res == depthai::CameraSensorResolution::THE_12_MP;
+                            ui.add_enabled_ui(!disabled, |ui| {
+                                ui.selectable_value(
+                                    &mut camera_config.resolution,
+                                    res,
+                                    format!("{res}"),
+                                )
+                                .on_disabled_hover_ui(|ui| {
+                                    ui.label(format!(
+                                        "{res} will be available in a future release!"
+                                    ));
+                                });
+                            });
+                        }
+                    },
+                );
+                ctx.re_ui.labeled_dragvalue(
+                    ui,
+                    "FPS",
+                    &mut camera_config.fps,
+                    0..=camera_features.max_fps,
+                );
+                ctx.re_ui
+                    .labeled_checkbox(ui, "Stream", &mut camera_config.stream_enabled);
+            });
+        });
+    }
+
     fn device_configuration_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         let mut device_config = ctx.depthai_state.modified_device_config.config.clone();
         let primary_700 = ctx.re_ui.design_tokens.primary_700;
-        egui::ScrollArea::both()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                let mut style = ui.style_mut().clone();
-                style.spacing.scroll_bar_inner_margin = 0.0;
-                ui.set_style(style);
+
+        ctx.re_ui
+            .styled_scrollbar(ui, re_ui::ScrollAreaDirection::Vertical, [false; 2], |ui| {
                 egui::Frame {
                     fill: ctx.re_ui.design_tokens.gray_50,
                     inner_margin: egui::Margin::symmetric(30.0, 21.0),
@@ -98,153 +148,14 @@ impl DeviceSettingsPanel {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.vertical(|ui| {
-                            ui.collapsing(
-                                egui::RichText::new("Color Camera").color(primary_700),
-                                |ui| {
-                                    ui.vertical(|ui| {
-                                        ui.set_width(CONFIG_UI_WIDTH);
-                                        ctx.re_ui.labeled_combo_box(
-                                            ui,
-                                            "Resolution",
-                                            format!("{}", device_config.color_camera.resolution),
-                                            false,
-                                            |ui| {
-                                                for res in &ctx
-                                                    .depthai_state
-                                                    .selected_device
-                                                    .supported_color_resolutions
-                                                {
-                                                    ui.selectable_value(
-                                                        &mut device_config.color_camera.resolution,
-                                                        *res,
-                                                        format!("{res}"),
-                                                    );
-                                                }
-                                            },
-                                        );
-                                        ctx.re_ui.labeled_dragvalue(
-                                            ui,
-                                            "FPS",
-                                            &mut device_config.color_camera.fps,
-                                            0..=120,
-                                        );
-                                        ctx.re_ui.labeled_checkbox(
-                                            ui,
-                                            "Stream",
-                                            &mut device_config.color_camera.stream_enabled,
-                                        );
-                                    });
-                                },
-                            );
-                            ui.collapsing(
-                                egui::RichText::new("Left Mono Camera").color(primary_700),
-                                |ui| {
-                                    ui.vertical(|ui| {
-                                        ui.set_width(CONFIG_UI_WIDTH);
-                                        ctx.re_ui.labeled_combo_box(
-                                            ui,
-                                            "Resolution",
-                                            format!("{}", device_config.left_camera.resolution),
-                                            false,
-                                            |ui| {
-                                                for res in &ctx
-                                                    .depthai_state
-                                                    .selected_device
-                                                    .supported_left_mono_resolutions
-                                                {
-                                                    if ui
-                                                        .selectable_value(
-                                                            &mut device_config
-                                                                .left_camera
-                                                                .resolution,
-                                                            *res,
-                                                            format!("{res}"),
-                                                        )
-                                                        .changed()
-                                                    {
-                                                        device_config.right_camera.resolution =
-                                                            *res;
-                                                    }
-                                                }
-                                            },
-                                        );
-                                        if ctx
-                                            .re_ui
-                                            .labeled_dragvalue(
-                                                ui,
-                                                "FPS",
-                                                &mut device_config.left_camera.fps,
-                                                0..=120,
-                                            )
-                                            .changed()
-                                        {
-                                            device_config.right_camera.fps =
-                                                device_config.left_camera.fps;
-                                        }
-                                        ctx.re_ui.labeled_checkbox(
-                                            ui,
-                                            "Stream",
-                                            &mut device_config.left_camera.stream_enabled,
-                                        );
-                                    })
-                                },
-                            );
+                            // for cam in ctx.depthai_state
+                            for cam in ctx.depthai_state.selected_device.cameras.clone() {
+                                let Some(config) = device_config.cameras.iter_mut().find(|conf| conf.board_socket == cam.board_socket) else {
+                                    continue;
+                                };
+                                Self::camera_config_ui(ctx,ui, &cam, config);
+                            }
 
-                            ui.collapsing(
-                                egui::RichText::new("Right Mono Camera").color(primary_700),
-                                |ui| {
-                                    ui.vertical(|ui| {
-                                        ui.set_width(CONFIG_UI_WIDTH);
-                                        ctx.re_ui.labeled_combo_box(
-                                            ui,
-                                            "Resolution",
-                                            format!("{}", device_config.right_camera.resolution),
-                                            false,
-                                            |ui| {
-                                                for res in &ctx
-                                                    .depthai_state
-                                                    .selected_device
-                                                    .supported_right_mono_resolutions
-                                                {
-                                                    if ui
-                                                        .selectable_value(
-                                                            &mut device_config
-                                                                .right_camera
-                                                                .resolution,
-                                                            *res,
-                                                            format!("{res}"),
-                                                        )
-                                                        .changed()
-                                                    {
-                                                        device_config.left_camera.resolution = *res;
-                                                    }
-                                                }
-                                            },
-                                        );
-                                        if ctx
-                                            .re_ui
-                                            .labeled_dragvalue(
-                                                ui,
-                                                "FPS",
-                                                &mut device_config.right_camera.fps,
-                                                0..=120,
-                                            )
-                                            .changed()
-                                        {
-                                            device_config.left_camera.fps =
-                                                device_config.right_camera.fps;
-                                        }
-                                        ctx.re_ui.labeled_checkbox(
-                                            ui,
-                                            "Stream",
-                                            &mut device_config.right_camera.stream_enabled,
-                                        );
-                                    })
-                                },
-                            );
-
-                            // This is a hack, I wanted AI settings at the bottom, but some depth settings names
-                            // are too long and it messes up the width of the ui layout somehow.
                             ui.collapsing(
                                 egui::RichText::new("AI settings").color(primary_700),
                                 |ui| {
@@ -265,6 +176,11 @@ impl DeviceSettingsPanel {
                                                 }
                                             },
                                         );
+                                        ctx.re_ui.labeled_combo_box(ui, "Run on", format!("{:?}", device_config.ai_model.camera), true, |ui| {
+                                            for cam in &ctx.depthai_state.selected_device.cameras {
+                                                ui.selectable_value(&mut device_config.ai_model.camera, cam.board_socket, format!("{:?}", cam.board_socket));
+                                            }
+                                        });
                                     });
                                 },
                             );
@@ -275,11 +191,26 @@ impl DeviceSettingsPanel {
                                 depth.align = depthai::CameraBoardSocket::AUTO;
                             }
 
-                            ui.collapsing(
-                                egui::RichText::new("Depth settings").color(primary_700),
-                                |ui| {
+                            let has_left_cam = ctx.depthai_state.selected_device.has_left_camera();
+                            let has_right_cam = ctx.depthai_state.selected_device.has_left_camera();
+                            ui.add_enabled_ui(has_right_cam && has_left_cam, |ui| {
+                                egui::CollapsingHeader::new(
+                                    egui::RichText::new("Depth Settings").color(primary_700),
+                                )
+                                .open(if !(has_right_cam && has_left_cam) {
+                                    Some(false)
+                                } else {
+                                    None
+                                })
+                                .show(ui, |ui| {
                                     ui.vertical(|ui| {
                                         ui.set_width(CONFIG_UI_WIDTH);
+
+                                        ctx.re_ui.labeled_combo_box(ui, "Camera Pair", format!("{:?}", depth.stereo_pair), true, |ui| {
+                                            for pair in &ctx.depthai_state.selected_device.stereo_pairs {
+                                                ui.selectable_value(&mut depth.stereo_pair, *pair, format!("{pair:?}"));
+                                            }
+                                        });
                                         ctx.re_ui.labeled_checkbox(
                                             ui,
                                             "LR Check",
@@ -357,30 +288,47 @@ impl DeviceSettingsPanel {
                                             &mut device_config.depth_enabled,
                                         );
                                     });
-                                },
-                            );
+                                })
+                                .header_response
+                                .on_disabled_hover_ui(|ui| {
+                                    ui.label("Selected device doesn't support depth!");
+                                });
+                            });
 
                             device_config.depth = Some(depth);
                             ctx.depthai_state.modified_device_config.config = device_config.clone();
                             ui.vertical(|ui| {
                                 ui.horizontal(|ui| {
-                                    let only_runtime_configs_changed =
-                                        depthai::State::only_runtime_configs_changed(
-                                            &ctx.depthai_state.applied_device_config.config,
-                                            &device_config,
-                                        );
-                                    let apply_enabled = !only_runtime_configs_changed
-                                        && device_config
-                                            != ctx.depthai_state.applied_device_config.config
-                                        && !ctx.depthai_state.selected_device.id.is_empty();
-                                    if !apply_enabled && only_runtime_configs_changed {
-                                        ctx.depthai_state
-                                            .set_device_config(&mut device_config, true);
-                                    }
-                                    if ctx.depthai_state.selected_device.id.is_empty() {
-                                        ctx.depthai_state
-                                            .set_device_config(&mut device_config, false);
-                                    }
+                                    let apply_enabled = {
+                                        if let Some(applied_config) =
+                                            &ctx.depthai_state.applied_device_config.config
+                                        {
+                                            let only_runtime_configs_changed =
+                                                depthai::State::only_runtime_configs_changed(
+                                                    applied_config,
+                                                    &device_config,
+                                                );
+                                            let apply_enabled = !only_runtime_configs_changed
+                                                && ctx
+                                                    .depthai_state
+                                                    .applied_device_config
+                                                    .config
+                                                    .is_some()
+                                                && device_config != applied_config.clone()
+                                                && !ctx.depthai_state.selected_device.id.is_empty()
+                                                && !ctx.depthai_state.is_update_in_progress();
+
+                                            if !apply_enabled && only_runtime_configs_changed {
+                                                ctx.depthai_state
+                                                    .set_device_config(&mut device_config, true);
+                                            }
+                                            apply_enabled
+                                        } else {
+                                            !ctx.depthai_state
+                                                .applied_device_config
+                                                .update_in_progress
+                                        }
+                                    };
 
                                     ui.add_enabled_ui(apply_enabled, |ui| {
                                         ui.scope(|ui| {
@@ -422,5 +370,6 @@ impl DeviceSettingsPanel {
                     });
                 });
             });
+        // Set a more visible scroll bar color
     }
 }

@@ -1,4 +1,5 @@
-use re_log_types::{RowId, SizeBytes as _, TimeInt, TimeRange};
+use ahash::HashSetExt;
+use re_log_types::{RowId, SizeBytes as _, Time, TimeInt, TimeRange};
 
 use crate::{
     store::{IndexedBucketInner, IndexedTable},
@@ -155,6 +156,31 @@ impl DataStore {
             }
         }
 
+        row_ids
+    }
+
+    pub fn gc_drop_by_cutoff_time(&mut self, cutoff_time: i64) -> ahash::HashSet<RowId> {
+        let mut row_ids = ahash::HashSet::new();
+
+        for (_, table) in &mut self.tables.iter_mut() {
+            let mut row_ids_to_remove = Vec::new();
+            {
+                let (_, bucket) = table.find_bucket(cutoff_time.into());
+                for row_id in bucket.inner.write().col_row_id.iter() {
+                    for time in self.metadata_registry.get(row_id).unwrap().times() {
+                        if time.as_i64() < cutoff_time {
+                            row_ids_to_remove.push((*row_id, time));
+                            if !row_ids.contains(row_id) {
+                                row_ids.insert(*row_id);
+                            }
+                        }
+                    }
+                }
+            }
+            for (row_id, time) in row_ids_to_remove {
+                table.try_drop_row(row_id, time.as_i64());
+            }
+        }
         row_ids
     }
 }

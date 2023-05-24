@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import cv2
 import depthai as dai
@@ -21,6 +21,12 @@ from depthai_viewer._backend.store import Store
 from depthai_viewer._backend.topic import Topic
 from depthai_viewer.components.rect2d import RectFormat
 
+from depthai_viewer._backend.device_configuration import CameraConfiguration
+
+from pydantic import BaseModel
+
+from typing import Union
+
 
 class EntityPath:
     LEFT_PINHOLE_CAMERA = "mono/camera/left_mono"
@@ -35,6 +41,31 @@ class EntityPath:
 
     RGB_CAMERA_TRANSFORM = "color/camera"
     MONO_CAMERA_TRANSFORM = "mono/camera"
+
+
+class CameraCallbackArgs(BaseModel):
+    board_socket: dai.CameraBoardSocket
+    image_kind: dai.CameraSensorType
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class DepthCallbackArgs(BaseModel):
+    alignment_camera: CameraConfiguration
+    stereo_pair: Tuple[dai.CameraBoardSocket, dai.CameraBoardSocket]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class AiModelCallbackArgs(BaseModel):
+    model_name: str
+    camera: CameraConfiguration
+    labels: Optional[List[str]] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class SdkCallbacks:
@@ -52,6 +83,35 @@ class SdkCallbacks:
     def set_camera_intrinsics_getter(self, camera_intrinsics_getter: Callable[[int, int], NDArray[np.float32]]) -> None:
         self._get_camera_intrinsics = camera_intrinsics_getter
 
+    def build_callback(
+        self, args: Union[CameraCallbackArgs, DepthCallbackArgs, AiModelCallbackArgs]
+    ) -> Callable[[Any], None]:
+        if isinstance(args, CameraCallbackArgs):
+            return lambda packet: self._on_camera_frame(packet, args)  # type: ignore[arg-type]
+        elif isinstance(args, DepthCallbackArgs):
+            return lambda packet: self._on_stereo_frame(packet, args)  # type: ignore[arg-type]
+        elif isinstance(args, AiModelCallbackArgs):
+            callback: Callable[[Any, AiModelCallbackArgs], None] = self._on_detections
+            if args.model_name == "age-gender-recognition-retail-0013":
+                callback = self._on_age_gender_packet
+            return lambda packet: callback(packet, args)  # type: ignore[arg-type]
+
+    def _on_camera_frame(self, packet: FramePacket, args: CameraCallbackArgs) -> None:
+        viewer.log_rigid3(f"{args.image_kind.name}/camera", child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
+        h, w = packet.frame.shape[:2]
+        viewer.log_pinhole(
+            f"{args.image_kind.name}/camera/{args.board_socket.name}",
+            child_from_parent=self._get_camera_intrinsics(args.board_socket, w, h),
+            width=w,
+            height=h,
+        )
+        img_frame = (
+            packet.frame
+            if args.image_kind == dai.CameraSensorType.MONO
+            else cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
+        )
+        viewer.log_image(f"{args.image_kind.name}/camera/{args.board_socket.name}/{args.image_kind.name}", img_frame)
+
     def on_imu(self, packet: IMUPacket) -> None:
         for data in packet.data:
             gyro: dai.IMUReportGyroscope = data.gyroscope
@@ -65,55 +125,25 @@ class SdkCallbacks:
             return
         viewer.log_imu([accel.z, accel.x, accel.y], [gyro.z, gyro.x, gyro.y], self.ahrs.Q, [mag.x, mag.y, mag.z])
 
-    def on_color_frame(self, frame: FramePacket) -> None:
-        # Always log pinhole cam and pose (TODO(filip): move somewhere else or not)
-        if Topic.ColorImage not in self.store.subscriptions:
-            return
-        viewer.log_rigid3(EntityPath.RGB_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
-        h, w, _ = frame.frame.shape
-        viewer.log_pinhole(
-            EntityPath.RGB_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
-        )
-        viewer.log_image(EntityPath.RGB_CAMERA_IMAGE, cv2.cvtColor(frame.frame, cv2.COLOR_BGR2RGB))
-
-    def on_left_frame(self, frame: FramePacket) -> None:
-        if Topic.LeftMono not in self.store.subscriptions:
-            return
-        h, w = frame.frame.shape
-        viewer.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
-        viewer.log_pinhole(
-            EntityPath.LEFT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
-        )
-        viewer.log_image(EntityPath.LEFT_CAMERA_IMAGE, frame.frame)
-
-    def on_right_frame(self, frame: FramePacket) -> None:
-        if Topic.RightMono not in self.store.subscriptions:
-            return
-        h, w = frame.frame.shape
-        viewer.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
-        viewer.log_pinhole(
-            EntityPath.RIGHT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
-        )
-        viewer.log_image(EntityPath.RIGHT_CAMERA_IMAGE, frame.frame)
-
-    def on_stereo_frame(self, frame: DepthPacket) -> None:
+    def _on_stereo_frame(self, frame: DepthPacket, args: DepthCallbackArgs) -> None:
         if Topic.DepthImage not in self.store.subscriptions:
             return
         depth_frame = frame.frame
-        path = EntityPath.RGB_PINHOLE_CAMERA + "/Depth"
+        path = f"{args.alignment_camera.kind.name}/camera/{args.alignment_camera.board_socket.name}" + "/Depth"
         if not self.store.pipeline_config or not self.store.pipeline_config.depth:
             # Essentially impossible to get here
             return
-        depth = self.store.pipeline_config.depth
-        if depth.align == dai.CameraBoardSocket.LEFT:
-            path = EntityPath.LEFT_PINHOLE_CAMERA + "/Depth"
-        elif depth.align == dai.CameraBoardSocket.RIGHT:
-            path = EntityPath.RIGHT_PINHOLE_CAMERA + "/Depth"
         viewer.log_depth_image(path, depth_frame, meter=1e3)
 
-    def on_detections(self, packet: DetectionPacket) -> None:
-        rects, colors, labels = self._detections_to_rects_colors_labels(packet)
-        viewer.log_rects(EntityPath.DETECTIONS, rects, rect_format=RectFormat.XYXY, colors=colors, labels=labels)
+    def _on_detections(self, packet: DetectionPacket, args: AiModelCallbackArgs) -> None:
+        rects, colors, labels = self._detections_to_rects_colors_labels(packet, args.labels)
+        viewer.log_rects(
+            f"{args.camera.kind.name}/camera/{args.camera.board_socket.name}/Detections",
+            rects,
+            rect_format=RectFormat.XYXY,
+            colors=colors,
+            labels=labels,
+        )
 
     def _detections_to_rects_colors_labels(
         self, packet: DetectionPacket, omz_labels: Optional[List[str]] = None
@@ -132,11 +162,7 @@ class SdkCallbacks:
             labels.append(label)
         return rects, colors, labels
 
-    def on_yolo_packet(self, packet: DetectionPacket) -> None:
-        rects, colors, labels = self._detections_to_rects_colors_labels(packet)
-        viewer.log_rects(EntityPath.DETECTIONS, rects=rects, colors=colors, labels=labels, rect_format=RectFormat.XYXY)
-
-    def on_age_gender_packet(self, packet: TwoStagePacket) -> None:
+    def _on_age_gender_packet(self, packet: TwoStagePacket, args: AiModelCallbackArgs) -> None:
         for det, rec in zip(packet.detections, packet.nnData):
             age = int(float(np.squeeze(np.array(rec.getLayerFp16("age_conv3")))) * 100)
             gender = np.squeeze(np.array(rec.getLayerFp16("prob")))
@@ -157,7 +183,3 @@ class SdkCallbacks:
             *detection.bottom_right,
             *detection.top_left,
         ]
-
-    def on_mobilenet_ssd_packet(self, packet: DetectionPacket) -> None:
-        rects, colors, labels = self._detections_to_rects_colors_labels(packet, classification_labels.MOBILENET_LABELS)
-        viewer.log_rects(EntityPath.DETECTIONS, rects=rects, colors=colors, labels=labels, rect_format=RectFormat.XYXY)

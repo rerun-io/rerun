@@ -8,6 +8,7 @@ use itertools::Itertools as _;
 use re_data_store::EntityPath;
 
 use crate::{
+    depthai::depthai,
     misc::{space_info::SpaceInfoCollection, Item, SpaceViewHighlights, ViewerContext},
     ui::{space_view_heuristics::default_created_space_views, stats_panel::StatsPanel},
 };
@@ -115,8 +116,6 @@ impl Viewport {
     ) {
         crate::profile_function!();
 
-        let entities_to_remove = ctx.depthai_state.get_entities_to_remove();
-
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
@@ -127,9 +126,7 @@ impl Viewport {
                 // as they didn't create the blueprint by logging the data
                 for space_view in all_possible_space_views(ctx, spaces_info)
                     .into_iter()
-                    .filter(|sv| {
-                        sv.is_depthai_spaceview && !entities_to_remove.contains(&sv.space_path)
-                    })
+                    .filter(|sv| sv.is_depthai_spaceview)
                 {
                     self.available_space_view_row_ui(ctx, ui, space_view);
                 }
@@ -238,32 +235,13 @@ impl Viewport {
         let mut space_views_to_remove = Vec::new();
 
         // Get all the entity paths that aren't logged anymore
-        let entities_to_remove = ctx.depthai_state.get_entities_to_remove();
         // First clear the has_been_user_edited entry, so if the entity path is a space path and it reappeaars later,
         // it will get added back into the viewport
-        for ep in &entities_to_remove {
-            self.has_been_user_edited.insert(ep.clone(), false);
-        }
         self.stats_panel_state.update(ctx);
 
         // Remove all entities that are marked for removal from the space view.
         // Remove the space view if it has no entities left
         for space_view in self.space_views.values_mut() {
-            if let Some(group) = space_view
-                .data_blueprint
-                .group(space_view.data_blueprint.root_handle())
-            {
-                for ep in entities_to_remove.iter() {
-                    space_view.data_blueprint.remove_entity(ep);
-                }
-
-                if space_view.data_blueprint.entity_paths().is_empty() {
-                    space_views_to_remove.push(space_view.id);
-                    self.has_been_user_edited
-                        .insert(space_view.space_path.clone(), false);
-                    continue;
-                }
-            }
             space_view.on_frame_start(ctx, spaces_info);
         }
         for id in &space_views_to_remove {
@@ -276,7 +254,6 @@ impl Viewport {
                 .has_been_user_edited
                 .get(&space_view_candidate.space_path)
                 .unwrap_or(&false)
-                && !entities_to_remove.contains(&space_view_candidate.space_path)
                 && self.should_auto_add_space_view(&space_view_candidate)
             {
                 self.add_space_view(space_view_candidate);
@@ -718,11 +695,11 @@ fn space_view_options_ui(
                 let entities = space_view.data_blueprint.entity_paths().clone();
                 let entities = entities.iter().filter(|ep| {
                     let eps_to_skip = vec![
-                        EntityPath::from("color/camera/rgb"),
-                        EntityPath::from("color/camera"),
-                        EntityPath::from("mono/camera"),
-                        EntityPath::from("mono/camera/left_mono"),
-                        EntityPath::from("mono/camera/right_mono"),
+                        depthai::entity_paths::RGB_PINHOLE_CAMERA.clone(),
+                        depthai::entity_paths::DEVICE_TRANSFORM.clone(),
+                        // depthai::entity_paths::LEFT_
+                        EntityPath::from("camera/left_mono"),
+                        EntityPath::from("camera/right_mono"),
                     ];
                     !eps_to_skip.contains(ep)
                 });

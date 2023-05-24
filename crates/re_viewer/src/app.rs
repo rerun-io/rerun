@@ -845,12 +845,14 @@ impl App {
             }
         }
 
+        for log_db in self.log_dbs.values_mut() {
+            log_db.clear_by_cutoff(1e9 as i64);
+        }
+
         use re_format::format_bytes;
         use re_memory::MemoryUse;
-
         let limit = self.startup_options.memory_limit;
         let mem_use_before = MemoryUse::capture();
-
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
@@ -875,26 +877,25 @@ impl App {
                     log_db.purge_fraction_of_ram(fraction_to_purge);
                 }
                 self.state.cache.purge_memory();
+
+                let mem_use_after = MemoryUse::capture();
+
+                let freed_memory = mem_use_before - mem_use_after;
+
+                if let (Some(counted_before), Some(counted_diff)) =
+                    (mem_use_before.counted, freed_memory.counted)
+                {
+                    re_log::debug!(
+                        "Freed up {} ({:.1}%)",
+                        format_bytes(counted_diff as _),
+                        100.0 * counted_diff as f32 / counted_before as f32
+                    );
+                }
+
+                self.memory_panel.note_memory_purge();
             }
-
-            let mem_use_after = MemoryUse::capture();
-
-            let freed_memory = mem_use_before - mem_use_after;
-
-            if let (Some(counted_before), Some(counted_diff)) =
-                (mem_use_before.counted, freed_memory.counted)
-            {
-                re_log::debug!(
-                    "Freed up {} ({:.1}%)",
-                    format_bytes(counted_diff as _),
-                    100.0 * counted_diff as f32 / counted_before as f32
-                );
-            }
-
-            self.memory_panel.note_memory_purge();
         }
     }
-
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
         let selected_rec_id = self.state.selected_rec_id;

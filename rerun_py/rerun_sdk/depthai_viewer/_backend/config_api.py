@@ -7,10 +7,11 @@ from signal import SIGINT, signal
 from typing import Any, Dict, Optional, Tuple
 
 import depthai as dai
+from pydantic import BaseModel
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from depthai_viewer._backend.device_configuration import PipelineConfiguration
+from depthai_viewer._backend.device_configuration import PipelineConfiguration, DeviceProperties
 from depthai_viewer._backend.store import Action
 from depthai_viewer._backend.topic import Topic
 
@@ -41,7 +42,7 @@ class MessageType:
     SUBSCRIPTIONS = "Subscriptions"  # Get or set subscriptions
     PIPELINE = "Pipeline"  # Get or Set pipeline
     DEVICES = "Devices"  # Get device list
-    DEVICE = "Device"  # Get or set device
+    DEVICE = "DeviceProperties"  # Get or set device
     ERROR = "Error"  # Error message
 
 
@@ -109,12 +110,11 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                     active_config: Optional[PipelineConfiguration] = dispatch_action(
                         Action.GET_PIPELINE
                     )  # type: ignore[assignment]
-                    print("Active config: ", active_config)
                     await websocket.send(
                         json.dumps(
                             {
                                 "type": MessageType.PIPELINE,
-                                "data": (active_config.to_json(), False) if active_config is not None else None,
+                                "data": (active_config.dict(), False) if active_config is not None else None,
                             }
                         )
                     )
@@ -134,7 +134,7 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
 
             elif message_type == MessageType.DEVICE:
                 data = message.get("data", {})
-                device_repr = data.get("Device", {})
+                device_repr = data.get(message_type, {})
                 device_id = device_repr.get("id", None)
                 if device_id is None:
                     print("Missing device id")
@@ -142,8 +142,14 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                 success, result = dispatch_action(Action.SELECT_DEVICE, device_id=device_id)
                 if success:
                     print("Selected device properties: ", result.get("device_properties", None))
+                    if result.get("device_properties", None) is None:
+                        print("Device props is non!")
+                        await websocket.send(error("Unknown error", ErrorAction.FULL_RESET))
+                        continue
+                    print("Sending device props!")
+                    device_properties = result.get("device_properties", None)
                     await websocket.send(
-                        json.dumps({"type": MessageType.DEVICE, "data": result.get("device_properties", {})})
+                        json.dumps({"type": MessageType.DEVICE, "data": device_properties.dict() if device_properties else DeviceProperties(id="").dict()})  # type: ignore[union-attr]
                     )
                 else:
                     await websocket.send(error(result.get("message", "Unknown error"), ErrorAction.FULL_RESET))

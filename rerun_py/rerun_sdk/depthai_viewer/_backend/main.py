@@ -3,7 +3,8 @@ import threading
 import time
 from queue import Empty as QueueEmptyException
 from queue import Queue
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+import itertools
 
 import depthai as dai
 import depthai_sdk
@@ -15,31 +16,20 @@ from numpy.typing import NDArray
 
 import depthai_viewer as viewer
 from depthai_viewer._backend.config_api import start_api
-from depthai_viewer._backend.device_configuration import PipelineConfiguration
-from depthai_viewer._backend.sdk_callbacks import SdkCallbacks
+from depthai_viewer._backend.device_configuration import (
+    CameraFeatures,
+    DeviceProperties,
+    PipelineConfiguration,
+    get_resolutions_for_size,
+    ImuKind,
+    CameraConfiguration,
+)
+from depthai_viewer._backend.sdk_callbacks import *
 from depthai_viewer._backend.store import Store
+from depthai_viewer._backend import classification_labels
 
 viewer.init("Depthai Viewer")
 viewer.connect()
-
-color_wh_to_enum = {
-    (1280, 720): dai.ColorCameraProperties.SensorResolution.THE_720_P,
-    (1280, 800): dai.ColorCameraProperties.SensorResolution.THE_800_P,
-    (1920, 1080): dai.ColorCameraProperties.SensorResolution.THE_1080_P,
-    (3840, 2160): dai.ColorCameraProperties.SensorResolution.THE_4_K,
-    (4056, 3040): dai.ColorCameraProperties.SensorResolution.THE_12_MP,
-    (1440, 1080): dai.ColorCameraProperties.SensorResolution.THE_1440X1080,
-    (5312, 6000): dai.ColorCameraProperties.SensorResolution.THE_5312X6000,
-    # TODO(filip): Add other resolutions
-}
-
-mono_wh_to_enum = {
-    (640, 400): dai.MonoCameraProperties.SensorResolution.THE_400_P,
-    (640, 480): dai.MonoCameraProperties.SensorResolution.THE_480_P,
-    (1280, 720): dai.MonoCameraProperties.SensorResolution.THE_720_P,
-    (1280, 800): dai.MonoCameraProperties.SensorResolution.THE_800_P,
-    (1920, 1200): dai.MonoCameraProperties.SensorResolution.THE_1200_P,
-}
 
 
 class SelectedDevice:
@@ -48,10 +38,7 @@ class SelectedDevice:
     calibration_data: Optional[dai.CalibrationHandler] = None
     use_encoding: bool = False
     _time_of_last_xlink_update: int = 0
-
-    _color: CameraComponent = None
-    _left: CameraComponent = None
-    _right: CameraComponent = None
+    _cameras: List[CameraComponent] = []
     _stereo: StereoComponent = None
     _nnet: NNComponent = None
     # _pc: PointcloudComponent = None
@@ -74,42 +61,34 @@ class SelectedDevice:
         self.intrinsic_matrix[(width, height)] = np.array(M_right).reshape(3, 3)
         return self.intrinsic_matrix[(width, height)]
 
-    def get_device_properties(self) -> Dict[str, Any]:
-        dai_props = self.oak_cam.device.getConnectedCameraFeatures()
-        device_properties = {
-            "id": self.id,
-            "supported_color_resolutions": [],
-            "supported_left_mono_resolutions": [],
-            "supported_right_mono_resolutions": [],
-        }
-        for cam in dai_props:
-            resolutions_key = "supported_left_mono_resolutions"
-            if cam.socket == dai.CameraBoardSocket.RGB:
-                resolutions_key = "supported_color_resolutions"
-            elif cam.socket == dai.CameraBoardSocket.RIGHT:
-                resolutions_key = "supported_right_mono_resolutions"
-            for config in cam.configs:
-                wh = (config.width, config.height)
-                if wh not in device_properties[resolutions_key]:  # type: ignore[comparison-overlap]
-                    device_properties[resolutions_key].append(  # type: ignore[attr-defined]
-                        (config.width, config.height)
-                    )
-        device_properties["supported_color_resolutions"] = list(
-            map(
-                lambda x: color_wh_to_enum[x].name,  # type: ignore[index, no-any-return]
-                sorted(device_properties["supported_color_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
+    def get_device_properties(self) -> DeviceProperties:
+        connected_cam_features = self.oak_cam.device.getConnectedCameraFeatures()
+        imu = self.oak_cam.device.getConnectedIMU()
+        imu = ImuKind.NINE_AXIS if "BNO" in imu else None if imu == "NONE" else ImuKind.SIX_AXIS
+        device_properties = DeviceProperties(id=self.id, imu=imu)
+        for cam in connected_cam_features:
+            stereo_pairs = []
+            if cam.name == "right":
+                stereo_pairs.extend(
+                    [features.socket for features in filter(lambda c: c.name == "left", connected_cam_features)]
+                )
+            elif cam.name == "left":
+                stereo_pairs.extend(
+                    [features.socket for features in filter(lambda c: c.name == "right", connected_cam_features)]
+                )
+            device_properties.cameras.append(
+                CameraFeatures(
+                    board_socket=cam.socket,
+                    max_fps=60,
+                    resolutions=get_resolutions_for_size(cam.width, cam.height),
+                    supported_types=cam.supportedTypes,
+                    stereo_pairs=stereo_pairs,
+                    name=cam.name,
+                )
             )
-        )
-        device_properties["supported_left_mono_resolutions"] = list(
-            map(
-                lambda x: color_wh_to_enum[x].name,  # type: ignore[index, no-any-return]
-                sorted(device_properties["supported_left_mono_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
-            )
-        )
-        device_properties["supported_right_mono_resolutions"] = list(
-            map(
-                lambda x: color_wh_to_enum[x].name,  # type: ignore[index, no-any-return]
-                sorted(device_properties["supported_right_mono_resolutions"], key=lambda x: int(x[0]) * int(x[1])),
+        device_properties.stereo_pairs = list(
+            itertools.chain.from_iterable(
+                [(cam.board_socket, pair) for pair in cam.stereo_pairs] for cam in device_properties.cameras
             )
         )
         return device_properties
@@ -139,48 +118,73 @@ class SelectedDevice:
                 print("Failed to create oak camera")
                 print(e)
                 self.oak_cam = None
-                return False, {"message": "Failed to create oak camera"}
+        return False, {"message": "Failed to create oak camera"}
 
+    def _get_component_by_socket(self, socket: dai.CameraBoardSocket) -> Optional[CameraComponent]:
+        component = list(filter(lambda c: c.node.getBoardSocket() == socket, self._cameras))
+        if not component:
+            return None
+        return component[0]
+
+    def _get_camera_config_by_socket(
+        self, config: PipelineConfiguration, socket: dai.CameraBoardSocket
+    ) -> Optional[CameraConfiguration]:
+        camera = list(filter(lambda c: c.board_socket == socket, config.cameras))
+        if not camera:
+            return None
+        return camera[0]
+
+    def update_pipeline(
+        self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
+    ) -> Tuple[bool, Dict[str, str]]:
+        if self.oak_cam.running():
+            if runtime_only:
+                if config.depth is not None:
+                    return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
+                return False, {"message": "Depth is not enabled, can't send runtime controls!"}
+            print("Cam running, closing...")
+            self.close_oak_cam()
+            # Check if the device is available, timeout after 10 seconds
+            success, message = self.reconnect_to_oak_cam()
+            if not success:
+                return success, message
+
+        self._cameras = []
         self.use_encoding = self.oak_cam.device.getDeviceInfo().protocol == dai.XLinkProtocol.X_LINK_TCP_IP
         if self.use_encoding:
             print("Connected device is PoE: Using encoding...")
         else:
             print("Connected device is USB: Not using encoding...")
-        if config.color_camera is not None:
-            print("Creating color camera")
-            self._color = self.oak_cam.create_camera(
-                "color", config.color_camera.resolution, config.color_camera.fps, name="color", encode=self.use_encoding
+        for cam in config.cameras:
+            print("Creating camera: ", cam)
+            sdk_cam = self.oak_cam.create_camera(
+                cam.board_socket,
+                cam.resolution.as_sdk_resolution(),
+                cam.fps,
+                encode=self.use_encoding,
             )
-            if config.color_camera.xout_video:
-                self.oak_cam.callback(self._color, callbacks.on_color_frame, enable_visualizer=self.use_encoding)
-        if config.left_camera is not None:
-            print("Creating left camera")
-            self._left = self.oak_cam.create_camera(
-                "left", config.left_camera.resolution, config.left_camera.fps, name="left", encode=self.use_encoding
-            )
-            if config.left_camera.xout:
-                self.oak_cam.callback(self._left, callbacks.on_left_frame, enable_visualizer=self.use_encoding)
-        if config.right_camera is not None:
-            print("Creating right camera")
-            self._right = self.oak_cam.create_camera(
-                "right", config.right_camera.resolution, config.right_camera.fps, name="right", encode=self.use_encoding
-            )
-            if config.right_camera.xout:
-                self.oak_cam.callback(self._right, callbacks.on_right_frame, enable_visualizer=self.use_encoding)
+            if cam.stream_enabled:
+                callback_args = CameraCallbackArgs(board_socket=cam.board_socket, image_kind=cam.kind)
+                self.oak_cam.callback(
+                    sdk_cam, callbacks.build_callback(callback_args), enable_visualizer=self.use_encoding
+                )
+            self._cameras.append(sdk_cam)
+
         if config.depth:
             print("Creating depth")
-            self._stereo = self.oak_cam.create_stereo(left=self._left, right=self._right, name="depth")
-
+            stereo_pair = config.depth.stereo_pair
+            left_cam = self._get_component_by_socket(stereo_pair[0])
+            right_cam = self._get_component_by_socket(stereo_pair[1])
+            if not left_cam or not right_cam:
+                return False, {"message": f"{cam} is not configured. Couldn't create stereo pair."}
+            self._stereo = self.oak_cam.create_stereo(left=left_cam, right=right_cam, name="depth")
             # We used to be able to pass in the board socket to align to, but this was removed in depthai 1.10.0
             align = config.depth.align
             if pkg_resources.parse_version(depthai_sdk.__version__) >= pkg_resources.parse_version("1.10.0"):
-                align = (
-                    self._left
-                    if config.depth.align == dai.CameraBoardSocket.LEFT
-                    else self._right
-                    if config.depth.align == dai.CameraBoardSocket.RIGHT
-                    else self._color
-                )
+                align_component = self._get_component_by_socket(align)
+                if not align_component:
+                    return False, {"message": f"{align} is not configured. Couldn't create stereo pair."}
+                align = align_component
             self._stereo.config_stereo(
                 lr_check=config.depth.lr_check,
                 subpixel=config.depth.subpixel_disparity,
@@ -189,10 +193,16 @@ class SelectedDevice:
                 lr_check_threshold=config.depth.lrc_threshold,
                 median=config.depth.median,
             )
-            self.oak_cam.callback(self._stereo, callbacks.on_stereo_frame)
-            # if config.depth.pointcloud and config.depth.pointcloud.enabled:
-            #     self._pc = self.oak_cam.create_pointcloud(stereo=self._stereo, colorize=self._color)
-            #     self.oak_cam.callback(self._pc, callbacks.on_pointcloud)
+
+            aligned_camera = self._get_camera_config_by_socket(config, align)
+            if not aligned_camera:
+                return False, {"message": f"{align} is not configured. Couldn't create stereo pair."}
+            self.oak_cam.callback(
+                self._stereo,
+                callbacks.build_callback(
+                    DepthCallbackArgs(alignment_camera=aligned_camera, stereo_pair=config.depth.stereo_pair)
+                ),
+            )
 
         if config.imu is not None:
             print("Creating IMU")
@@ -209,24 +219,28 @@ class SelectedDevice:
             self.oak_cam.callback(imu, callbacks.on_imu)
 
         if config.ai_model and config.ai_model.path:
+            cam_component = self._get_component_by_socket(config.ai_model.camera)
+            if not cam_component:
+                return False, {"message": f"{config.ai_model.camera} is not configured."}
+            labels: Optional[List[str]] = None
             if config.ai_model.path == "age-gender-recognition-retail-0013":
-                face_detection = self.oak_cam.create_nn("face-detection-retail-0004", self._color)
+                face_detection = self.oak_cam.create_nn("face-detection-retail-0004", cam_component)
                 self._nnet = self.oak_cam.create_nn("age-gender-recognition-retail-0013", input=face_detection)
-                self.oak_cam.callback(self._nnet, callbacks.on_age_gender_packet)
-            elif config.ai_model.path == "mobilenet-ssd":
-                self._nnet = self.oak_cam.create_nn(
-                    config.ai_model.path,
-                    self._color,
-                )
-                self.oak_cam.callback(self._nnet, callbacks.on_mobilenet_ssd_packet)
+
             else:
-                self._nnet = self.oak_cam.create_nn(config.ai_model.path, self._color)
-                callback = callbacks.on_detections
-                if config.ai_model.path == "yolov8n_coco_640x352":
-                    callback = callbacks.on_yolo_packet
-                self.oak_cam.callback(
-                    self._nnet, callback, True
-                )  # in depthai-sdk=1.10.0 nnet callbacks don't work without visualizer enabled
+                self._nnet = self.oak_cam.create_nn(config.ai_model.path, cam_component)
+                labels = getattr(classification_labels, config.ai_model.path.upper().replace("-", "_"), None)
+
+            camera = self._get_camera_config_by_socket(config, config.ai_model.camera)
+            if not camera:
+                return False, {"message": f"{config.ai_model.camera} is not configured. Couldn't create NN."}
+            self.oak_cam.callback(
+                self._nnet,
+                callbacks.build_callback(
+                    AiModelCallbackArgs(model_name=config.ai_model.path, camera=camera, labels=labels)
+                ),
+                True,
+            )  # in depthai-sdk=1.10.0 nnet callbacks don't work without visualizer enabled
         try:
             self.oak_cam.start(blocking=False)
         except RuntimeError as e:
@@ -315,6 +329,9 @@ class DepthaiViewerBack:
         except RuntimeError as e:
             print("Failed to get device properties:", e)
             self.on_reset()
+            self.send_message_queue.put(
+                json.dumps({"type": "Error", "data": {"action": "FullReset", "message": "Device disconnected"}})
+            )
             print("Restarting backend...")
             # For now exit the backend, the frontend will restart it
             # (TODO(filip): Why does "Device already closed or disconnected: Input/output error happen")

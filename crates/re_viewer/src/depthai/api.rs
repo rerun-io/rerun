@@ -68,8 +68,8 @@ impl BackendCommChannel {
         self.ws.send(
             serde_json::to_string(
                 &(WsMessage {
-                    kind: WsMessageType::Device,
-                    data: WsMessageData::Device(depthai::Device {
+                    kind: WsMessageType::DeviceProperties,
+                    data: WsMessageData::DeviceProperties(depthai::DeviceProperties {
                         id: device_id,
                         ..Default::default()
                     }),

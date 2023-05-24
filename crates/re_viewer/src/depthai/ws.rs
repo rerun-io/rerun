@@ -81,7 +81,7 @@ type RuntimeOnly = bool;
 pub enum WsMessageData {
     Subscriptions(Vec<depthai::ChannelId>),
     Devices(Vec<depthai::DeviceId>),
-    Device(depthai::Device),
+    DeviceProperties(depthai::DeviceProperties),
     Pipeline((depthai::DeviceConfig, RuntimeOnly)),
     Error(depthai::Error),
 }
@@ -90,7 +90,7 @@ pub enum WsMessageData {
 pub enum WsMessageType {
     Subscriptions,
     Devices,
-    Device,
+    DeviceProperties,
     Pipeline,
     Error,
 }
@@ -129,8 +129,8 @@ impl<'de> Deserialize<'de> for BackWsMessage {
             WsMessageType::Devices => {
                 WsMessageData::Devices(serde_json::from_value(message.data).unwrap_or_default())
             }
-            WsMessageType::Device => {
-                WsMessageData::Device(serde_json::from_value(message.data).unwrap_or_default())
+            WsMessageType::DeviceProperties => {
+                WsMessageData::DeviceProperties(serde_json::from_value(message.data).unwrap())
             }
             WsMessageType::Pipeline => {
                 WsMessageData::Pipeline(serde_json::from_value(message.data).unwrap())
