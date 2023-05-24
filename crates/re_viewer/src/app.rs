@@ -72,9 +72,6 @@ pub struct App {
     /// What is serialized
     state: AppState,
 
-    /// Set to `true` on Ctrl-C.
-    shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
-
     /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
 
@@ -105,7 +102,6 @@ impl App {
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
-        shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
@@ -142,7 +138,6 @@ impl App {
             rx,
             log_dbs: Default::default(),
             state,
-            shutdown,
             pending_promises: Default::default(),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
@@ -452,12 +447,6 @@ impl eframe::App for App {
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
-        }
-
-        if self.shutdown.load(std::sync::atomic::Ordering::Relaxed) {
-            #[cfg(not(target_arch = "wasm32"))]
-            frame.close();
-            return;
         }
 
         #[cfg(not(target_arch = "wasm32"))]

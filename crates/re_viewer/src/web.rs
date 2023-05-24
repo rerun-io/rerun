@@ -79,7 +79,6 @@ impl WebHandle {
                                 re_ui,
                                 cc.storage,
                                 rx,
-                                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
                             ))
                         }
                         EndpointCategory::WebEventListener => {
@@ -102,7 +101,6 @@ impl WebHandle {
                                 re_ui,
                                 cc.storage,
                                 rx,
-                                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
                             ))
                         }
                         EndpointCategory::WebSocket(url) => {

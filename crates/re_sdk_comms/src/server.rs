@@ -28,46 +28,19 @@ impl Default for ServerOptions {
     }
 }
 
-async fn listen_for_new_clients(
-    listener: TcpListener,
-    options: ServerOptions,
-    tx: Sender<LogMsg>,
-    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-) {
-    loop {
-        let incoming = tokio::select! {
-            res = listener.accept() => res,
-            _ = shutdown_rx.recv() => {
-                return;
-            }
-        };
-        match incoming {
-            Ok((stream, _)) => {
-                let tx = tx.clone();
-                spawn_client(stream, tx, options);
-            }
-            Err(err) => {
-                re_log::warn!("Failed to accept incoming SDK client: {err}");
-            }
-        }
-    }
-}
-
 /// Listen to multiple SDK:s connecting to us over TCP.
 ///
 /// ``` no_run
 /// # use re_sdk_comms::{serve, ServerOptions};
 /// #[tokio::main]
 /// async fn main() {
-///     let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default(), shutdown_rx).await.unwrap();
+///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default()).await.unwrap();
 /// }
 /// ```
 pub async fn serve(
     bind_ip: &str,
     port: u16,
     options: ServerOptions,
-    shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<Receiver<LogMsg>> {
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::TcpServer { port });
 
@@ -88,9 +61,23 @@ pub async fn serve(
         );
     }
 
-    tokio::spawn(listen_for_new_clients(listener, options, tx, shutdown_rx));
+    tokio::spawn(listen_for_new_clients(listener, options, tx));
 
     Ok(rx)
+}
+
+async fn listen_for_new_clients(listener: TcpListener, options: ServerOptions, tx: Sender<LogMsg>) {
+    loop {
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                let tx = tx.clone();
+                spawn_client(stream, tx, options);
+            }
+            Err(err) => {
+                re_log::warn!("Failed to accept incoming SDK client: {err}");
+            }
+        }
+    }
 }
 
 fn spawn_client(stream: TcpStream, tx: Sender<LogMsg>, options: ServerOptions) {
