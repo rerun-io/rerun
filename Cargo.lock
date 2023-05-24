@@ -4199,7 +4199,6 @@ name = "re_web_viewer_server"
 version = "0.6.0-alpha.0"
 dependencies = [
  "clap 4.1.14",
- "ctrlc",
  "document-features",
  "futures-util",
  "hyper",
@@ -4297,7 +4296,6 @@ dependencies = [
  "anyhow",
  "backtrace",
  "clap 4.1.14",
- "ctrlc",
  "document-features",
  "itertools",
  "libc",
@@ -4343,6 +4341,7 @@ name = "rerun_py"
 version = "0.6.0-alpha.0"
 dependencies = [
  "arrow2",
+ "ctrlc",
  "document-features",
  "glam",
  "image",

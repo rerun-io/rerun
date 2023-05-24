@@ -72,6 +72,15 @@ fn global_web_viewer_server(
 
 #[pyfunction]
 fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+    // Python catches SIGINT and waits for us to release the GIL before shtting down.
+    // That's no good, so we need to catch SIGINT ourselves and shut down:
+    ctrlc::set_handler(move || {
+        eprintln!("Ctrl-C detected in rerun_py. Shutting down.");
+        #[allow(clippy::exit)]
+        std::process::exit(42);
+    })
+    .expect("Error setting Ctrl-C handler");
+
     let build_info = re_build_info::build_info!();
     let call_src = rerun::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()
