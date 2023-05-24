@@ -352,7 +352,6 @@ async fn run_impl(
                                 args.web_viewer_port,
                                 true,
                                 rerun_server_ws_url,
-                                shutdown_rx.resubscribe(),
                             );
                             // We return here because the running [`WebViewerServer`] is all we need.
                             // The page we open will be pointed at a websocket url hosted by a *different* server.
@@ -360,7 +359,7 @@ async fn run_impl(
                         }
                         #[cfg(not(feature = "web_viewer"))]
                         {
-                            _ = (rerun_server_ws_url, shutdown_rx);
+                            _ = rerun_server_ws_url;
                             panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
                         }
                     } else {
@@ -461,7 +460,6 @@ async fn run_impl(
 
             // Make it possible to gracefully shutdown the servers on ctrl-c.
             let shutdown_ws_server = shutdown_rx.resubscribe();
-            let shutdown_web_viewer = shutdown_rx.resubscribe();
 
             // This is the server which the web viewer will talk to:
             let ws_server =
@@ -475,7 +473,6 @@ async fn run_impl(
                 args.web_viewer_port,
                 true,
                 ws_server_url,
-                shutdown_web_viewer,
             ));
 
             // Wait for both servers to shutdown.

@@ -237,6 +237,15 @@ impl WebViewerServer {
 
     pub async fn serve(
         self,
+    ) -> Result<(), WebViewerServerError> {
+        self.server
+            .await
+            .map_err(WebViewerServerError::ServeFailed)?;
+        Ok(())
+    }
+
+    pub async fn serve_with_graceful_shutdown(
+        self,
         mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
     ) -> Result<(), WebViewerServerError> {
         self.server
@@ -286,7 +295,7 @@ impl WebViewerServerHandle {
 
         let local_addr = web_server.server.local_addr();
 
-        tokio::spawn(async move { web_server.serve(shutdown_rx).await });
+        tokio::spawn(async move { web_server.serve_with_graceful_shutdown(shutdown_rx).await });
 
         let slf = Self {
             local_addr,
