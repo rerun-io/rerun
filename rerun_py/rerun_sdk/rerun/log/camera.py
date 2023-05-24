@@ -1,9 +1,9 @@
 from typing import Optional
 
-import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
+from rerun.components.pinhole import Pinhole, PinholeArray
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -69,11 +69,5 @@ def log_pinhole(
 
     """
 
-    # Transform arrow handling happens inside the python bridge
-    bindings.log_pinhole(
-        entity_path,
-        resolution=[width, height],
-        child_from_parent=np.asarray(child_from_parent).T.tolist(),
-        timeless=timeless,
-        recording=recording,
-    )
+    instanced = {"rerun.pinhole": PinholeArray.from_pinhole(Pinhole(child_from_parent, [width, height]))}
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)

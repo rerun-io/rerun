@@ -1,6 +1,7 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{log_db::EntityDb, EntityPath, EntityPropertyMap, EntityTree};
+use re_log_types::component_types::{DisconnectedSpace, Pinhole, Transform3D};
 use re_viewer_context::TimeControl;
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
@@ -39,7 +40,7 @@ pub enum UnreachableTransform {
     InversePinholeCameraWithoutResolution,
 
     /// Unknown transform between this and the reference space.
-    UnknownTransform,
+    DisconnectedSpace,
 }
 
 impl std::fmt::Display for UnreachableTransform {
@@ -49,8 +50,8 @@ impl std::fmt::Display for UnreachableTransform {
                 "Can't determine transform because internal data structures are not in a valid state. Please file an issue on https://github.com/rerun-io/rerun/",
             Self::NestedPinholeCameras =>
                 "Can't display entities under nested pinhole cameras.",
-            Self::UnknownTransform =>
-                "Can't display entities that are connected via an unknown transform to this space.",
+            Self::DisconnectedSpace =>
+                "Can't display entities that are in an explicitly disconnected space.",
             Self::InversePinholeCameraWithoutResolution =>
                 "Can't display entities that would require inverting a pinhole camera without a specified resolution.",
         })
@@ -227,49 +228,59 @@ fn transform_at(
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
-    if let Some(transform) = store.query_latest_component(entity_path, query) {
-        match transform {
-            re_log_types::Transform::Rigid3(rigid) => Ok(Some(rigid.parent_from_child().into())),
-            // If we're connected via 'unknown' it's not reachable
-            re_log_types::Transform::Unknown => Err(UnreachableTransform::UnknownTransform),
-
-            re_log_types::Transform::Pinhole(pinhole) => {
-                if *encountered_pinhole {
-                    Err(UnreachableTransform::NestedPinholeCameras)
-                } else {
-                    *encountered_pinhole = true;
-
-                    // A pinhole camera means that we're looking at some 2D image plane from a single point (the pinhole).
-                    // Center the image plane and move it along z, scaling the further the image plane is.
-                    let distance = pinhole_image_plane_distance(entity_path);
-
-                    let focal_length = pinhole.focal_length_in_pixels();
-                    let focal_length = glam::vec2(focal_length.x(), focal_length.y());
-                    let scale = distance / focal_length;
-                    let translation = (-pinhole.principal_point() * scale).extend(distance);
-                    let parent_from_child = glam::Affine3A::from_translation(translation)
-
-                        // We want to preserve any depth that might be on the pinhole image.
-                        // Use harmonic mean of x/y scale for those.
-                        * glam::Affine3A::from_scale(
-                            scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
-                        );
-
-                    // Above calculation is nice for a certain kind of visualizing a projected image plane,
-                    // but the image plane distance is arbitrary and there might be other, better visualizations!
-
-                    // TODO(#1988):
-                    // As such we don't ever want to invert this matrix!
-                    // However, currently our 2D views require do to exactly that since we're forced to
-                    // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
-                    // should have infinite depth!
-                    // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
-                    // See also `ui_2d.rs#setup_target_config`
-
-                    Ok(Some(parent_from_child))
-                }
-            }
+    let pinhole = store.query_latest_component::<Pinhole>(entity_path, query);
+    if pinhole.is_some() {
+        if *encountered_pinhole {
+            return Err(UnreachableTransform::NestedPinholeCameras);
+        } else {
+            *encountered_pinhole = true;
         }
+    }
+
+    let transform3d = store
+        .query_latest_component::<Transform3D>(entity_path, query)
+        .map(|transform| transform.to_parent_from_child_transform());
+
+    let pinhole = pinhole.map(|pinhole| {
+        // A pinhole camera means that we're looking at some 2D image plane from a single point (the pinhole).
+        // Center the image plane and move it along z, scaling the further the image plane is.
+        let distance = pinhole_image_plane_distance(entity_path);
+
+        let focal_length = pinhole.focal_length_in_pixels();
+        let focal_length = glam::vec2(focal_length.x(), focal_length.y());
+        let scale = distance / focal_length;
+        let translation = (-pinhole.principal_point() * scale).extend(distance);
+
+        glam::Affine3A::from_translation(translation)
+        // We want to preserve any depth that might be on the pinhole image.
+        // Use harmonic mean of x/y scale for those.
+        * glam::Affine3A::from_scale(
+            scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
+        )
+
+        // Above calculation is nice for a certain kind of visualizing a projected image plane,
+        // but the image plane distance is arbitrary and there might be other, better visualizations!
+
+        // TODO(#1988):
+        // As such we don't ever want to invert this matrix!
+        // However, currently our 2D views require do to exactly that since we're forced to
+        // build a relationship between the 2D plane and the 3D world, when actually the 2D plane
+        // should have infinite depth!
+        // The inverse of this matrix *is* working for this, but quickly runs into precision issues.
+        // See also `ui_2d.rs#setup_target_config`
+    });
+
+    // If there is any other transform, we ignore `DisconnectedSpace`.
+    if transform3d.is_some() || pinhole.is_some() {
+        Ok(Some(
+            transform3d.unwrap_or(glam::Affine3A::IDENTITY)
+                * pinhole.unwrap_or(glam::Affine3A::IDENTITY),
+        ))
+    } else if store
+        .query_latest_component::<DisconnectedSpace>(entity_path, query)
+        .is_some()
+    {
+        Err(UnreachableTransform::DisconnectedSpace)
     } else {
         Ok(None)
     }
