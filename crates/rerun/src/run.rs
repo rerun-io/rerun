@@ -458,14 +458,11 @@ async fn run_impl(
                 );
             }
 
-            // Make it possible to gracefully shutdown the servers on ctrl-c.
-            let shutdown_ws_server = shutdown_rx.resubscribe();
-
             // This is the server which the web viewer will talk to:
             let ws_server =
                 re_ws_comms::RerunServer::new(args.bind.clone(), args.ws_server_port).await?;
             let ws_server_url = ws_server.server_url();
-            let ws_server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
+            let ws_server_handle = tokio::spawn(ws_server.listen(rx));
 
             // This is the server that serves the Wasm+HTML:
             let web_server_handle = tokio::spawn(host_web_viewer(

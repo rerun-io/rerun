@@ -50,8 +50,17 @@ impl RerunServer {
         Ok(slf)
     }
 
-    /// Accept new connections until we get a message on `shutdown_rx`
+    /// Accept new connections
     pub async fn listen(
+        self,
+        rx: Receiver<LogMsg>,
+    ) -> Result<(), RerunServerError> {
+        let (_shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
+        self.listen_with_graceful_shutdown(rx, shutdown_rx).await
+    }
+
+    /// Accept new connections until we get a message on `shutdown_rx`
+    pub async fn listen_with_graceful_shutdown(
         self,
         rx: Receiver<LogMsg>,
         mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
@@ -122,7 +131,7 @@ impl RerunServerHandle {
 
         let local_addr = ws_server.local_addr;
 
-        tokio::spawn(async move { ws_server.listen(rerun_rx, shutdown_rx).await });
+        tokio::spawn(async move { ws_server.listen_with_graceful_shutdown(rerun_rx, shutdown_rx).await });
 
         Ok(Self {
             local_addr,
