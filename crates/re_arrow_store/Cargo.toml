@@ -71,7 +71,7 @@ polars-ops = { workspace = true, optional = true, features = [
 
 [dev-dependencies]
 anyhow.workspace = true
-criterion = "0.4"
+criterion = "0.5"
 mimalloc.workspace = true
 polars-core = { workspace = true, features = [
   "diagonal_concat",
