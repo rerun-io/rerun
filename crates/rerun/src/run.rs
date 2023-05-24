@@ -155,6 +155,8 @@ enum AnalyticsCommands {
     Config,
 }
 
+type SysExePath = String;
+
 /// Where are we calling [`run`] from?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallSource {
@@ -162,13 +164,13 @@ pub enum CallSource {
     Cli,
 
     /// Called from the Rerun Python SDK.
-    Python(PythonVersion),
+    Python(PythonVersion, SysExePath),
 }
 
 #[cfg(feature = "native_viewer")]
 impl CallSource {
     fn is_python(&self) -> bool {
-        matches!(self, Self::Python(_))
+        matches!(self, Self::Python(..))
     }
 
     fn app_env(&self) -> re_viewer::AppEnvironment {
@@ -177,8 +179,8 @@ impl CallSource {
                 rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
                 llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
             },
-            CallSource::Python(python_version) => {
-                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
+            CallSource::Python(python_version, sys_exe) => {
+                re_viewer::AppEnvironment::PythonSdk(python_version.clone(), sys_exe.clone())
             }
         }
     }

@@ -197,7 +197,7 @@ pub(crate) fn update_tree(
             NodeIndex::root(),
             &LayoutSplit::LeftRight(
                 LayoutSplit::Leaf(Vec::new()).into(),
-                0.5,
+                0.7,
                 right_panel_split().into(),
             ),
         );
@@ -386,6 +386,7 @@ pub(crate) fn default_tree_from_space_views(
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
     space_views: &HashMap<SpaceViewId, SpaceView>,
+    is_maximized: bool,
 ) -> egui_dock::Tree<Tab> {
     // TODO(filip): Implement sensible auto layout when space views changes.
     // Something like:
@@ -434,75 +435,94 @@ pub(crate) fn default_tree_from_space_views(
         })
         .collect_vec();
 
-    if !spaces.is_empty() {
-        let layout = LayoutSplit::LeftRight(
-            {
-                if spaces.len() == 1 {
-                    LayoutSplit::Leaf(spaces)
+    if !spaces.is_empty() || is_maximized {
+        let layout = {
+            if is_maximized {
+                let space_view_id = visible.first().unwrap();
+                if space_views.get(space_view_id).is_none() {
+                    if space_view_id == &STATS_SPACE_VIEW.id {
+                        println!("Space view is stats space view!");
+                        LayoutSplit::Leaf(vec![SpaceMakeInfo {
+                            id: *space_view_id,
+                            path: None,
+                            category: None,
+                            aspect_ratio: None,
+                            kind: SpaceViewKind::Stats,
+                        }])
+                    } else {
+                        panic!("Can't maximize this space view");
+                    }
                 } else {
-                    // Split space views:
-                    // - Color stream available: Split top 3d, bottom 2d
-                    // - if mono available split it right from color streams into 3d top and both 2d in a tab group on the bottom
-                    let mut top_left_spaces = Vec::new();
-                    let mut top_right_spaces = Vec::new();
-                    let mut bottom_left_spaces = Vec::new();
-                    let mut bottom_right_spaces = Vec::new();
-                    spaces.iter().cloned().for_each(|space| {
-                        let Some(space_path) = &space.path else {
+                    LayoutSplit::Leaf(spaces)
+                }
+            } else {
+                LayoutSplit::LeftRight(
+                    {
+                        // Split space views:
+                        // - Color stream available: Split top 3d, bottom 2d
+                        // - if mono available split it right from color streams into 3d top and both 2d in a tab group on the bottom
+                        let mut top_left_spaces = Vec::new();
+                        let mut top_right_spaces = Vec::new();
+                        let mut bottom_left_spaces = Vec::new();
+                        let mut bottom_right_spaces = Vec::new();
+                        spaces.iter().cloned().for_each(|space| {
+                            let Some(space_path) = &space.path else {
                             return;
                         };
-                        if space_path.hash() == depthai::entity_paths::COLOR_CAM_3D.hash() {
-                            top_left_spaces.push(space);
-                        } else if space_path.hash()
-                            == depthai::entity_paths::RGB_PINHOLE_CAMERA.hash()
-                        {
-                            top_right_spaces.push(space);
-                        } else if space_path.hash() == depthai::entity_paths::MONO_CAM_3D.hash() {
-                            bottom_left_spaces.push(space);
+                            if space_path.hash() == depthai::entity_paths::COLOR_CAM_3D.hash() {
+                                top_left_spaces.push(space);
+                            } else if space_path.hash()
+                                == depthai::entity_paths::RGB_PINHOLE_CAMERA.hash()
+                            {
+                                top_right_spaces.push(space);
+                            } else if space_path.hash() == depthai::entity_paths::MONO_CAM_3D.hash()
+                            {
+                                bottom_left_spaces.push(space);
+                            } else {
+                                bottom_right_spaces.push(space);
+                            }
+                        });
+
+                        let color_empty = top_left_spaces.is_empty() && top_right_spaces.is_empty();
+                        let mono_empty =
+                            bottom_left_spaces.is_empty() && bottom_right_spaces.is_empty();
+                        let mut color_split = LayoutSplit::TopBottom(
+                            LayoutSplit::Leaf(top_left_spaces.clone()).into(),
+                            0.5,
+                            LayoutSplit::Leaf(top_right_spaces.clone()).into(),
+                        );
+                        let mut mono_split = LayoutSplit::TopBottom(
+                            LayoutSplit::Leaf(bottom_left_spaces.clone()).into(),
+                            0.5,
+                            LayoutSplit::Leaf(bottom_right_spaces.clone()).into(),
+                        );
+
+                        if !color_empty && mono_empty {
+                            color_split
+                        } else if !color_empty && !mono_empty {
+                            if top_left_spaces.is_empty() {
+                                color_split = LayoutSplit::Leaf(top_right_spaces);
+                            } else if top_right_spaces.is_empty() {
+                                color_split = LayoutSplit::Leaf(top_left_spaces);
+                            }
+                            if bottom_left_spaces.is_empty() {
+                                mono_split = LayoutSplit::Leaf(bottom_right_spaces);
+                            } else if bottom_right_spaces.is_empty() {
+                                mono_split = LayoutSplit::Leaf(bottom_left_spaces);
+                            }
+                            LayoutSplit::LeftRight(color_split.into(), 0.5, mono_split.into())
+                        } else if color_empty && !mono_empty {
+                            mono_split
                         } else {
-                            bottom_right_spaces.push(space);
+                            LayoutSplit::Leaf(spaces)
                         }
-                    });
-
-                    let color_empty = top_left_spaces.is_empty() && top_right_spaces.is_empty();
-                    let mono_empty =
-                        bottom_left_spaces.is_empty() && bottom_right_spaces.is_empty();
-                    let mut color_split = LayoutSplit::TopBottom(
-                        LayoutSplit::Leaf(top_left_spaces.clone()).into(),
-                        0.5,
-                        LayoutSplit::Leaf(top_right_spaces.clone()).into(),
-                    );
-                    let mut mono_split = LayoutSplit::TopBottom(
-                        LayoutSplit::Leaf(bottom_left_spaces.clone()).into(),
-                        0.5,
-                        LayoutSplit::Leaf(bottom_right_spaces.clone()).into(),
-                    );
-
-                    if !color_empty && mono_empty {
-                        color_split
-                    } else if !color_empty && !mono_empty {
-                        if top_left_spaces.is_empty() {
-                            color_split = LayoutSplit::Leaf(top_right_spaces);
-                        } else if top_right_spaces.is_empty() {
-                            color_split = LayoutSplit::Leaf(top_left_spaces);
-                        }
-                        if bottom_left_spaces.is_empty() {
-                            mono_split = LayoutSplit::Leaf(bottom_right_spaces);
-                        } else if bottom_right_spaces.is_empty() {
-                            mono_split = LayoutSplit::Leaf(bottom_left_spaces);
-                        }
-                        LayoutSplit::LeftRight(color_split.into(), 0.5, mono_split.into())
-                    } else if color_empty && !mono_empty {
-                        mono_split
-                    } else {
-                        LayoutSplit::Leaf(spaces)
                     }
-                }
+                    .into(),
+                    0.7,
+                    right_panel_split().into(),
+                )
             }
-            .into(),
-            0.7,
-            right_panel_split().into(),
-        );
+        };
         tree_from_split(&mut tree, NodeIndex::root(), &layout);
     } else {
         tree_from_split(
@@ -515,16 +535,17 @@ pub(crate) fn default_tree_from_space_views(
             ),
         );
     }
-
-    // Always set the config tab as the active tab
-    let (config_node, config_tab) = tree
-        .find_tab(
-            tree.tabs()
-                .find(|tab| tab.space_view_id == CONFIG_SPACE_VIEW.id)
-                .unwrap(), // CONFIG_SPACE_VIEW is always present
-        )
-        .unwrap();
-    tree.set_active_tab(config_node, config_tab);
+    if !is_maximized {
+        // Always set the config tab as the active tab
+        let (config_node, config_tab) = tree
+            .find_tab(
+                tree.tabs()
+                    .find(|tab| tab.space_view_id == CONFIG_SPACE_VIEW.id)
+                    .unwrap(), // CONFIG_SPACE_VIEW is always present
+            )
+            .unwrap();
+        tree.set_active_tab(config_node, config_tab);
+    }
     tree
 }
 

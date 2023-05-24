@@ -71,7 +71,7 @@ class AiModelCallbackArgs(BaseModel):
 class SdkCallbacks:
     store: Store
     ahrs: Mahony
-    _get_camera_intrinsics: Callable[[int, int], NDArray[np.float32]]
+    _get_camera_intrinsics: Callable[[dai.CameraBoardSocket, int, int], NDArray[np.float32]]
 
     def __init__(self, store: Store):
         viewer.init("Depthai Viewer")
@@ -80,7 +80,9 @@ class SdkCallbacks:
         self.ahrs = Mahony(frequency=100)
         self.ahrs.Q = np.array([1, 0, 0, 0], dtype=np.float64)
 
-    def set_camera_intrinsics_getter(self, camera_intrinsics_getter: Callable[[int, int], NDArray[np.float32]]) -> None:
+    def set_camera_intrinsics_getter(
+        self, camera_intrinsics_getter: Callable[[dai.CameraBoardSocket, int, int], NDArray[np.float32]]
+    ) -> None:
         self._get_camera_intrinsics = camera_intrinsics_getter
 
     def build_callback(

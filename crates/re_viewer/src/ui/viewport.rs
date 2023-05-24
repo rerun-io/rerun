@@ -315,22 +315,23 @@ impl Viewport {
             .entry(visible_space_views.clone())
             .or_insert_with(|| {
                 // TODO(filip): Continue working on this smart layout updater
-                if let Some(previous_frame_tree) = &self.previous_frame_tree {
-                    let mut tree = previous_frame_tree.clone();
-                    super::auto_layout::update_tree(
-                        &mut tree,
-                        &visible_space_views,
-                        &self.space_views,
-                        self.maximized.is_some(),
-                    );
-                    tree
-                } else {
-                    super::auto_layout::default_tree_from_space_views(
-                        ui.available_size(),
-                        &visible_space_views,
-                        &self.space_views,
-                    )
-                }
+                // if let Some(previous_frame_tree) = &self.previous_frame_tree {
+                //     let mut tree = previous_frame_tree.clone();
+                //     super::auto_layout::update_tree(
+                //         &mut tree,
+                //         &visible_space_views,
+                //         &self.space_views,
+                //         self.maximized.is_some(),
+                //     );
+                //     tree
+                // } else {
+                super::auto_layout::default_tree_from_space_views(
+                    ui.available_size(),
+                    &visible_space_views,
+                    &self.space_views,
+                    self.maximized.is_some(),
+                )
+                // }
             })
             .clone();
         self.previous_frame_tree = Some(tree.clone());

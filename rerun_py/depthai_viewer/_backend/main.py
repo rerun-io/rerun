@@ -34,7 +34,7 @@ viewer.connect()
 
 class SelectedDevice:
     id: str
-    intrinsic_matrix: Dict[Tuple[int, int], NDArray[np.float32]] = {}
+    intrinsic_matrix: Dict[Tuple[dai.CameraBoardSocket, int, int], NDArray[np.float32]] = {}
     calibration_data: Optional[dai.CalibrationHandler] = None
     use_encoding: bool = False
     _time_of_last_xlink_update: int = 0
@@ -50,16 +50,16 @@ class SelectedDevice:
         self.oak_cam = OakCamera(self.id)
         print("Oak cam: ", self.oak_cam)
 
-    def get_intrinsic_matrix(self, width: int, height: int) -> NDArray[np.float32]:
-        if self.intrinsic_matrix.get((width, height)) is not None:
-            return self.intrinsic_matrix.get((width, height))  # type: ignore[return-value]
+    def get_intrinsic_matrix(self, board_socket: dai.CameraBoardSocket, width: int, height: int) -> NDArray[np.float32]:
+        if self.intrinsic_matrix.get((board_socket, width, height)) is not None:
+            return self.intrinsic_matrix.get((board_socket, width, height))  # type: ignore[return-value]
         if self.calibration_data is None:
             raise Exception("Missing calibration data!")
         M_right = self.calibration_data.getCameraIntrinsics(  # type: ignore[union-attr]
-            dai.CameraBoardSocket.RIGHT, dai.Size2f(width, height)
+            board_socket, dai.Size2f(width, height)
         )
-        self.intrinsic_matrix[(width, height)] = np.array(M_right).reshape(3, 3)
-        return self.intrinsic_matrix[(width, height)]
+        self.intrinsic_matrix[(board_socket, width, height)] = np.array(M_right).reshape(3, 3)
+        return self.intrinsic_matrix[(board_socket, width, height)]
 
     def get_device_properties(self) -> DeviceProperties:
         connected_cam_features = self.oak_cam.device.getConnectedCameraFeatures()
@@ -93,18 +93,18 @@ class SelectedDevice:
         )
         return device_properties
 
-    def update_pipeline(
-        self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
-    ) -> Tuple[bool, Dict[str, str]]:
+    def close_oak_cam(self) -> None:
         if self.oak_cam.running():
-            if runtime_only:
-                if config.depth is not None:
-                    return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
-                return False, {"message": "Depth is not enabled, can't send runtime controls!"}
-            print("Cam running, closing...")
-            self.oak_cam.device.close()
-            self.oak_cam = None
-            # Check if the device is available, timeout after 10 seconds
+            self.oak_cam.device.__exit__(0, 0, 0)
+
+    def reconnect_to_oak_cam(self) -> Tuple[bool, Dict[str, str]]:
+        """
+
+        Try to reconnect to the device with self.id.
+
+        Timeout after 10 seconds.
+        """
+        if self.oak_cam.device.isClosed():
             timeout_start = time.time()
             while time.time() - timeout_start < 10:
                 available_devices = [
@@ -114,11 +114,41 @@ class SelectedDevice:
                     break
             try:
                 self.oak_cam = OakCamera(self.id)
+                return True, {"message": "Successfully reconnected to device"}
             except RuntimeError as e:
                 print("Failed to create oak camera")
                 print(e)
                 self.oak_cam = None
         return False, {"message": "Failed to create oak camera"}
+
+    def _get_component_by_socket(self, socket: dai.CameraBoardSocket) -> Optional[CameraComponent]:
+        component = list(filter(lambda c: c.node.getBoardSocket() == socket, self._cameras))
+        if not component:
+            return None
+        return component[0]
+
+    def _get_camera_config_by_socket(
+        self, config: PipelineConfiguration, socket: dai.CameraBoardSocket
+    ) -> Optional[CameraConfiguration]:
+        camera = list(filter(lambda c: c.board_socket == socket, config.cameras))
+        if not camera:
+            return None
+        return camera[0]
+
+    def update_pipeline(
+        self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
+    ) -> Tuple[bool, Dict[str, str]]:
+        if self.oak_cam.running():
+            if runtime_only:
+                if config.depth is not None:
+                    return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
+                return False, {"message": "Depth is not enabled, can't send runtime controls!"}
+            print("Cam running, closing...")
+            self.close_oak_cam()
+            # Check if the device is available, timeout after 10 seconds
+            success, message = self.reconnect_to_oak_cam()
+            if not success:
+                return success, message
 
     def _get_component_by_socket(self, socket: dai.CameraBoardSocket) -> Optional[CameraComponent]:
         component = list(filter(lambda c: c.node.getBoardSocket() == socket, self._cameras))
@@ -204,7 +234,7 @@ class SelectedDevice:
                 ),
             )
 
-        if config.imu is not None:
+        if self.oak_cam.device.getConnectedIMU() != "NONE":
             print("Creating IMU")
             imu = self.oak_cam.create_imu()
             sensors = [
@@ -217,6 +247,8 @@ class SelectedDevice:
                 sensors, report_rate=config.imu.report_rate, batch_report_threshold=config.imu.batch_report_threshold
             )
             self.oak_cam.callback(imu, callbacks.on_imu)
+        else:
+            print("Connected cam doesn't have IMU, skipping IMU creation...")
 
         if config.ai_model and config.ai_model.path:
             cam_component = self._get_component_by_socket(config.ai_model.camera)
@@ -266,9 +298,9 @@ class DepthaiViewerBack:
     _device: Optional[SelectedDevice] = None
 
     # Queues for communicating with the API process
-    action_queue: Queue[Any]
-    result_queue: Queue[Any]
-    send_message_queue: Queue[Any]
+    action_queue: Queue  # type: ignore[type-arg]
+    result_queue: Queue  # type: ignore[type-arg]
+    send_message_queue: Queue  # type: ignore[type-arg]
 
     # Sdk callbacks for handling data from the device and sending it to the frontend
     sdk_callbacks: SdkCallbacks
@@ -300,9 +332,7 @@ class DepthaiViewerBack:
         print("Resetting...")
         if self._device:
             print("Closing device...")
-            self._device.oak_cam.device.close()
-            self._device.oak_cam.__exit__(None, None, None)
-            self._device.oak_cam = None
+            self._device.close_oak_cam()
             self.set_device(None)
         print("Done")
         return True, {"message": "Reset successful"}
@@ -362,7 +392,7 @@ class DepthaiViewerBack:
             except QueueEmptyException:
                 pass
 
-            if self._device and self._device.oak_cam:
+            if self._device:
                 self._device.update()
                 if self._device.oak_cam.device.isClosed():
                     # TODO(filip): Typehint the messages properly

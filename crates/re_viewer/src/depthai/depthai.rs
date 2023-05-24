@@ -138,6 +138,21 @@ impl Default for CameraSensorKind {
     }
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Debug)]
+#[allow(non_camel_case_types)]
+pub enum CameraSensorKind {
+    COLOR,
+    MONO,
+    TOF,
+    THERMAL,
+}
+
+impl Default for CameraSensorKind {
+    fn default() -> Self {
+        Self::COLOR
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug)]
 pub struct CameraFeatures {
     pub resolutions: Vec<CameraSensorResolution>,
@@ -250,7 +265,7 @@ impl DepthConfig {
     }
 }
 
-#[derive(Default, serde::Deserialize, serde::Serialize, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct DeviceConfig {
     pub cameras: Vec<CameraConfig>,
     #[serde(default = "bool_true")]
@@ -345,7 +360,8 @@ const fn bool_true() -> bool {
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct DeviceConfigState {
-    pub config: DeviceConfig,
+    #[serde(skip)]
+    pub config: Option<DeviceConfig>,
     #[serde(skip)]
     pub update_in_progress: bool,
 }
@@ -368,7 +384,7 @@ struct PipelineResponse {
 impl Default for PipelineResponse {
     fn default() -> Self {
         Self {
-            message: "Pipeline not started".to_string(),
+            message: String::from("Pipeline not started"),
         }
     }
 }
@@ -403,6 +419,12 @@ pub struct AiModel {
 
 impl Default for AiModel {
     fn default() -> Self {
+        default_neural_networks()[1].clone()
+    }
+}
+
+impl AiModel {
+    pub fn none() -> Self {
         Self {
             path: String::new(),
             display_name: String::from("No model selected"),
@@ -425,7 +447,8 @@ pub struct State {
     pub selected_device: DeviceProperties,
     #[serde(skip)]
     pub applied_device_config: DeviceConfigState,
-    pub modified_device_config: DeviceConfigState,
+    #[serde(skip)]
+    pub modified_device_config: DeviceConfig,
     #[serde(skip, default = "all_subscriptions")]
     // Want to resubscribe to api when app is reloaded
     pub subscriptions: Vec<ChannelId>, // Shown in ui
@@ -449,7 +472,7 @@ fn all_subscriptions() -> Vec<ChannelId> {
 #[inline]
 fn default_neural_networks() -> Vec<AiModel> {
     vec![
-        AiModel::default(),
+        AiModel::none(),
         AiModel {
             path: String::from("yolov8n_coco_640x352"),
             display_name: String::from("Yolo V8"),
@@ -479,7 +502,7 @@ impl Default for State {
             devices_available: None,
             selected_device: DeviceProperties::default(),
             applied_device_config: DeviceConfigState::default(),
-            modified_device_config: DeviceConfigState::default(),
+            modified_device_config: DeviceConfig::default(),
             subscriptions: ChannelId::iter().collect(),
             setting_subscriptions: false,
             backend_comms: BackendCommChannel::default(),
@@ -625,12 +648,16 @@ impl State {
                             subs.push(ChannelId::RightMono);
                         }
                     }
-                    self.applied_device_config.config = config.clone();
-                    self.modified_device_config.config = config;
-                    self.applied_device_config.config.depth_enabled =
-                        self.applied_device_config.config.depth.is_some();
-                    self.modified_device_config.config.depth_enabled =
-                        self.modified_device_config.config.depth.is_some();
+                    self.applied_device_config.config = Some(config.clone());
+                    self.modified_device_config = config.clone();
+                    let Some(applied_device_config) = self.applied_device_config.config.as_mut() else {
+                        self.reset();
+                    self.applied_device_config.update_in_progress = false;
+                    return;
+                    };
+                    applied_device_config.depth_enabled = config.depth.is_some();
+                    self.modified_device_config.depth_enabled =
+                        self.modified_device_config.depth.is_some();
                     self.set_subscriptions(&subs);
                     self.set_update_in_progress(false);
                 }
@@ -673,10 +700,8 @@ impl State {
     }
 
     pub fn set_device(&mut self, device_id: DeviceId) {
-        if self.selected_device.id == device_id {
-            return;
-        }
         re_log::debug!("Setting device: {:?}", device_id);
+        self.applied_device_config.config = None;
         self.backend_comms.set_device(device_id);
         self.set_update_in_progress(true);
     }
@@ -691,8 +716,6 @@ impl State {
         {
             return;
         }
-        config.left_camera.board_socket = CameraBoardSocket::LEFT;
-        config.right_camera.board_socket = CameraBoardSocket::RIGHT;
         if !config.depth_enabled {
             config.depth = None;
         }
@@ -702,7 +725,7 @@ impl State {
         }
 
         if self.selected_device.id.is_empty() {
-            self.applied_device_config.config = config.clone();
+            self.applied_device_config.config = Some(config.clone());
             return;
         }
         self.backend_comms.set_pipeline(config, runtime_only);
@@ -712,6 +735,14 @@ impl State {
         } else {
             self.set_update_in_progress(true);
         }
+    }
+
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn is_update_in_progress(&self) -> bool {
+        self.applied_device_config.update_in_progress
     }
 }
 

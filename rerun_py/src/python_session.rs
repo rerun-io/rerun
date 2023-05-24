@@ -104,10 +104,16 @@ impl Default for PythonSession {
     }
 }
 
+type SysExePath = String;
+
 impl PythonSession {
-    pub fn set_python_version(&mut self, python_version: re_log_types::PythonVersion) {
+    pub fn set_python_version(
+        &mut self,
+        python_version: re_log_types::PythonVersion,
+        sys_exe: SysExePath,
+    ) {
         self.recording_meta_data.recording_source =
-            re_log_types::RecordingSource::PythonSdk(python_version);
+            re_log_types::RecordingSource::PythonSdk(python_version, sys_exe);
     }
 
     /// Check if logging is enabled on this `Session`.

@@ -21,6 +21,7 @@ use crate::{
     misc::{AppOptions, Caches, RecordingConfig, ViewerContext},
     ui::{data_ui::ComponentUiRegistry, Blueprint},
     viewer_analytics::ViewerAnalytics,
+    AppEnvironment,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -102,14 +103,20 @@ pub struct App {
     icon_status: AppIconStatus,
 
     #[cfg(not(target_arch = "wasm32"))]
+    python_path: Option<String>,
+
+    #[cfg(not(target_arch = "wasm32"))]
     backend_handle: Option<std::process::Child>,
 }
 
 impl App {
     #[cfg(not(target_arch = "wasm32"))]
-    fn spawn_backend() -> Option<std::process::Child> {
+    fn spawn_backend(python_path: &Option<String>) -> Option<std::process::Child> {
         // TODO(filip): Is there some way I can know for sure where depthai_viewer_backend is?
-        let backend_handle = match std::process::Command::new("python")
+        let Some(py_path) = python_path else {
+            panic!("Python path is missing, exiting...");
+        };
+        let backend_handle = match std::process::Command::new(py_path)
             .args(["-m", "depthai_viewer._backend.main"])
             .spawn()
         {
@@ -119,19 +126,7 @@ impl App {
             }
             Err(err) => {
                 eprintln!("Failed to start depthai viewer: {err}");
-                match std::process::Command::new("python3")
-                    .args(["-m", "depthai_viewer._backend.main"])
-                    .spawn()
-                {
-                    Ok(child) => {
-                        println!("Backend started successfully.");
-                        Some(child)
-                    }
-                    Err(err) => {
-                        eprintln!("Failed to start depthai_viewer {err}");
-                        None
-                    }
-                }
+                None
             }
         };
         // assert!(
@@ -170,6 +165,12 @@ impl App {
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
 
+        #[cfg(not(target_arch = "wasm32"))]
+        let python_path = match app_env {
+            AppEnvironment::PythonSdk(_, py_path) => Some(py_path.clone()),
+            _ => None,
+        };
+
         Self {
             build_info,
             startup_options,
@@ -196,8 +197,11 @@ impl App {
             analytics,
 
             icon_status: AppIconStatus::NotSetTryAgain,
+
             #[cfg(not(target_arch = "wasm32"))]
-            backend_handle: App::spawn_backend(),
+            python_path: python_path.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
+            backend_handle: App::spawn_backend(&python_path),
         }
     }
 
@@ -483,20 +487,21 @@ impl eframe::App for App {
                     Ok(status) => {
                         if status.is_some() {
                             handle.kill();
+                            self.state.depthai_state.reset();
                             re_log::debug!("Backend process has exited, restarting!");
-                            self.backend_handle = App::spawn_backend();
+                            self.backend_handle = App::spawn_backend(&self.python_path);
                         }
                     }
                     Err(_) => {}
                 },
-                None => self.backend_handle = App::spawn_backend(),
+                None => self.backend_handle = App::spawn_backend(&self.python_path),
             };
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
             if self.backend_handle.is_none() {
-                self.backend_handle = App::spawn_backend();
+                self.backend_handle = App::spawn_backend(&self.python_path);
             };
         }
 
