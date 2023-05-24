@@ -41,6 +41,7 @@ pub fn colormapped_texture(
 
     Ok(ColormappedTexture {
         texture,
+        decode_srgb: false,
         range,
         gamma: color_mapping.gamma,
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(
