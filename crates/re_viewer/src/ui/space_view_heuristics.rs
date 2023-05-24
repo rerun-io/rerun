@@ -5,7 +5,10 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_data_store::{ComponentName, EntityPath};
-use re_log_types::{component_types::Tensor, Component};
+use re_log_types::{
+    component_types::{DisconnectedSpace, Pinhole, Tensor},
+    Component,
+};
 use re_viewer_context::ViewerContext;
 
 use crate::{
@@ -92,19 +95,18 @@ fn is_interesting_space_view_not_at_root(
     }
 
     // .. otherwise, spatial views are considered only interesting if they have an interesting transform.
-    // -> If there is no transform or just a rigid transform, it is trivial to display in a root/child-of-root space view.
-    //    If however there is ..
-    //       .. an unknown transform, the children can't be shown otherwise
-    //       .. an pinhole transform, we'd like to see the world from this camera's pov as well!
-    if candidate.category == ViewCategory::Spatial {
-        if let Some(transform) = store.query_latest_component(&candidate.space_path, query) {
-            match transform {
-                re_log_types::Transform::Rigid3(_) => {}
-                re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {
-                    return true;
-                }
-            }
-        }
+    // -> If there is ..
+    //    .. a disconnect transform, the children can't be shown otherwise
+    //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
+    if candidate.category == ViewCategory::Spatial
+        && (store
+            .query_latest_component::<Pinhole>(&candidate.space_path, query)
+            .is_some()
+            || store
+                .query_latest_component::<DisconnectedSpace>(&candidate.space_path, query)
+                .is_some())
+    {
+        return true;
     }
 
     // Not interesting!
@@ -261,7 +263,7 @@ fn is_default_added_to_space_view(
     timeline: Timeline,
 ) -> bool {
     let ignored_components = [
-        re_log_types::Transform::name(),
+        re_log_types::component_types::Transform3D::name(),
         re_log_types::ViewCoordinates::name(),
         re_log_types::component_types::InstanceKey::name(),
         re_log_types::component_types::KeypointId::name(),

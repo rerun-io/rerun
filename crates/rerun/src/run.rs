@@ -1,8 +1,6 @@
-use std::sync::{atomic::AtomicBool, Arc};
-
 use itertools::Itertools;
 use re_log_types::{LogMsg, PythonVersion};
-use re_smart_channel::Receiver;
+use re_smart_channel::{Receiver, SmartMessagePayload};
 
 use anyhow::Context as _;
 use clap::Subcommand;
@@ -66,9 +64,12 @@ struct Args {
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
-    /// - Linux: /home/UserName/.local/share/rerunviewer
-    /// - macOS: /Users/UserName/Library/Application Support/rerunviewer
-    /// - Windows: C:\Users\UserName\AppData\Roaming\rerunviewer
+    ///
+    /// - Linux: /home/UserName/.local/share/rerun
+    ///
+    /// - macOS: /Users/UserName/Library/Application Support/rerun
+    ///
+    /// - Windows: C:\Users\UserName\AppData\Roaming\rerun
     #[clap(long, default_value_t = true)]
     persist_state: bool,
 
@@ -309,8 +310,6 @@ async fn run_impl(
         persist_state: args.persist_state,
     };
 
-    let (shutdown_rx, shutdown_bool) = setup_ctrl_c_handler();
-
     // Where do we get the data from?
     let rx = if !args.url_or_paths.is_empty() {
         let arguments = args
@@ -326,10 +325,12 @@ async fn run_impl(
                     re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
                 }
                 ArgumentCategory::FilePath(path) => {
-                    let (tx, rx) =
-                        re_smart_channel::smart_channel(re_smart_channel::Source::Files {
+                    let (tx, rx) = re_smart_channel::smart_channel(
+                        re_smart_channel::SmartMessageSource::File(path.clone()),
+                        re_smart_channel::SmartChannelSource::Files {
                             paths: vec![path.clone()],
-                        });
+                        },
+                    );
                     let recording_id =
                         re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
                     load_file_to_channel_at(recording_id, &path, tx)
@@ -347,7 +348,6 @@ async fn run_impl(
                                 args.web_viewer_port,
                                 true,
                                 rerun_server_ws_url,
-                                shutdown_rx.resubscribe(),
                             );
                             // We return here because the running [`WebViewerServer`] is all we need.
                             // The page we open will be pointed at a websocket url hosted by a *different* server.
@@ -355,7 +355,7 @@ async fn run_impl(
                         }
                         #[cfg(not(feature = "web_viewer"))]
                         {
-                            _ = (rerun_server_ws_url, shutdown_rx);
+                            _ = rerun_server_ws_url;
                             panic!("Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature");
                         }
                     } else {
@@ -388,16 +388,21 @@ async fn run_impl(
                 }
             }
 
-            let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Files {
-                paths: paths.clone(),
-            });
+            let (tx, rx) = re_smart_channel::smart_channel(
+                // NOTE: We can't know yet, each file will get its own properly sourced sender a
+                // few lines below.
+                re_smart_channel::SmartMessageSource::Unknown,
+                re_smart_channel::SmartChannelSource::Files {
+                    paths: paths.clone(),
+                },
+            );
 
             let recording_id = re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
 
             // Load the files in parallel, and log errors.
             // Failing to log one out of many files is not a big deal.
             for path in paths {
-                let tx = tx.clone();
+                let tx = tx.clone_as(re_smart_channel::SmartMessageSource::File(path.clone()));
                 let recording_id = recording_id.clone();
                 rayon::spawn(move || {
                     if let Err(err) = load_file_to_channel_at(recording_id, &path, tx) {
@@ -416,13 +421,7 @@ async fn run_impl(
                 // `rerun.spawn()` doesn't need to log that a connection has been made
                 quiet: call_source.is_python(),
             };
-            re_sdk_comms::serve(
-                &args.bind,
-                args.port,
-                server_options,
-                shutdown_rx.resubscribe(),
-            )
-            .await?
+            re_sdk_comms::serve(&args.bind, args.port, server_options).await?
         }
 
         #[cfg(not(feature = "server"))]
@@ -434,7 +433,7 @@ async fn run_impl(
     if args.test_receive {
         assert_receive_into_log_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
-        Ok(stream_to_rrd(&rx, &rrd_path.into(), &shutdown_bool)?)
+        Ok(stream_to_rrd(&rx, &rrd_path.into())?)
     } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
         {
@@ -449,15 +448,11 @@ async fn run_impl(
                 );
             }
 
-            // Make it possible to gracefully shutdown the servers on ctrl-c.
-            let shutdown_ws_server = shutdown_rx.resubscribe();
-            let shutdown_web_viewer = shutdown_rx.resubscribe();
-
             // This is the server which the web viewer will talk to:
             let ws_server =
                 re_ws_comms::RerunServer::new(args.bind.clone(), args.ws_server_port).await?;
             let ws_server_url = ws_server.server_url();
-            let ws_server_handle = tokio::spawn(ws_server.listen(rx, shutdown_ws_server));
+            let ws_server_handle = tokio::spawn(ws_server.listen(rx));
 
             // This is the server that serves the Wasm+HTML:
             let web_server_handle = tokio::spawn(host_web_viewer(
@@ -465,7 +460,6 @@ async fn run_impl(
                 args.web_viewer_port,
                 true,
                 ws_server_url,
-                shutdown_web_viewer,
             ));
 
             // Wait for both servers to shutdown.
@@ -483,14 +477,6 @@ async fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            // We need to wake up the ui thread in order to process shutdown signals.
-            let ctx = cc.egui_ctx.clone();
-            let mut shutdown_repaint = shutdown_rx.resubscribe();
-            tokio::spawn(async move {
-                shutdown_repaint.recv().await.unwrap();
-                ctx.request_repaint();
-            });
-
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(
                 _build_info,
@@ -499,7 +485,6 @@ async fn run_impl(
                 re_ui,
                 cc.storage,
                 rx,
-                shutdown_bool,
             );
             app.set_profiler(profiler);
             Box::new(app)
@@ -532,21 +517,27 @@ fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_s
         match rx.recv_timeout(timeout) {
             Ok(msg) => {
                 re_log::info_once!("Received first message.");
-                let is_goodbye = matches!(msg, re_log_types::LogMsg::Goodbye(_, _));
 
-                let mut_db =
-                    db.get_or_insert_with(|| re_data_store::LogDb::new(msg.recording_id().clone()));
+                match msg.payload {
+                    SmartMessagePayload::Msg(msg) => {
+                        let mut_db = db.get_or_insert_with(|| {
+                            re_data_store::LogDb::new(msg.recording_id().clone())
+                        });
 
-                mut_db.add(&msg)?;
-                num_messages += 1;
-                if is_goodbye {
-                    mut_db.entity_db.data_store.sanity_check()?;
-                    anyhow::ensure!(0 < num_messages, "No messages received");
-                    re_log::info!("Successfully ingested {num_messages} messages.");
-                    if let Some(db) = db {
-                        return Ok(db);
-                    } else {
-                        anyhow::bail!("logdb never initialized");
+                        mut_db.add(&msg)?;
+                        num_messages += 1;
+                    }
+                    SmartMessagePayload::Quit(err) => {
+                        if let Some(err) = err {
+                            anyhow::bail!("data source has disconnected unexpectedly: {err}",)
+                        } else if let Some(db) = db {
+                            db.entity_db.data_store.sanity_check()?;
+                            anyhow::ensure!(0 < num_messages, "No messages received");
+                            re_log::info!("Successfully ingested {num_messages} messages.");
+                            return Ok(db);
+                        } else {
+                            anyhow::bail!("logdb never initialized");
+                        }
                     }
                 }
             }
@@ -770,6 +761,7 @@ fn load_file_to_channel_at(
         {
             let log_msg = re_sdk::MsgSender::from_file_path(path)?.into_log_msg(recording_id)?;
             tx.send(log_msg).ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
+            tx.quit(None).ok();
             Ok(())
         }
 
@@ -800,6 +792,7 @@ fn load_rrd_file_to_channel(
                 }
             }
         }
+        tx.quit(None).ok(); // .ok(): we're running in a background thread, so who knows if the receiver is still open
     });
 
     Ok(())
@@ -808,10 +801,9 @@ fn load_rrd_file_to_channel(
 fn stream_to_rrd(
     rx: &re_smart_channel::Receiver<LogMsg>,
     path: &std::path::PathBuf,
-    shutdown_bool: &Arc<AtomicBool>,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
-    use re_smart_channel::RecvTimeoutError;
+    use re_smart_channel::RecvError;
 
     if path.exists() {
         re_log::warn!("Overwriting existing file at {path:?}");
@@ -823,15 +815,14 @@ fn stream_to_rrd(
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
     let mut encoder = re_log_encoding::encoder::Encoder::new(file)?;
 
-    while !shutdown_bool.load(std::sync::atomic::Ordering::Relaxed) {
-        // We wake up and poll shutdown_bool every now and then.
-        // This is far from elegant, but good enough.
-        match rx.recv_timeout(std::time::Duration::from_millis(500)) {
-            Ok(log_msg) => {
-                encoder.append(&log_msg)?;
+    loop {
+        match rx.recv() {
+            Ok(msg) => {
+                if let Some(payload) = msg.into_data() {
+                    encoder.append(&payload)?;
+                }
             }
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => {
+            Err(RecvError) => {
                 re_log::info!("Log stream disconnected, stopping.");
                 break;
             }
@@ -851,19 +842,6 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
         re_format::parse_duration(time)
             .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
     })
-}
-
-pub fn setup_ctrl_c_handler() -> (tokio::sync::broadcast::Receiver<()>, Arc<AtomicBool>) {
-    let (sender, receiver) = tokio::sync::broadcast::channel(1);
-    let shutdown_return = Arc::new(AtomicBool::new(false));
-    let shutdown = shutdown_return.clone();
-    ctrlc::set_handler(move || {
-        re_log::debug!("Ctrl-C detected, shutting down.");
-        sender.send(()).ok();
-        shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
-    })
-    .expect("Error setting Ctrl-C handler");
-    (receiver, shutdown_return)
 }
 
 // ----------------------------------------------------------------------------

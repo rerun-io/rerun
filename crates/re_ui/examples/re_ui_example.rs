@@ -4,6 +4,8 @@ fn main() -> eframe::Result<()> {
     re_log::setup_native_logging();
 
     let native_options = eframe::NativeOptions {
+        app_id: Some("re_ui_example".to_owned()),
+
         initial_window_size: Some([1200.0, 800.0].into()),
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,

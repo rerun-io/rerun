@@ -24,7 +24,11 @@ impl WebViewerSink {
         web_port: WebViewerServerPort,
         ws_port: RerunServerPort,
     ) -> anyhow::Result<Self> {
-        let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
+        // TODO(cmc): the sources here probably don't make much sense...
+        let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(
+            re_smart_channel::SmartMessageSource::Sdk,
+            re_smart_channel::SmartChannelSource::Sdk,
+        );
 
         let rerun_server = RerunServerHandle::new(rerun_rx, bind_ip.to_owned(), ws_port)?;
         let webviewer_server = WebViewerServerHandle::new(bind_ip, web_port)?;
@@ -59,11 +63,10 @@ pub async fn host_web_viewer(
     web_port: WebViewerServerPort,
     open_browser: bool,
     source_url: String,
-    shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<()> {
     let web_server = re_web_viewer_server::WebViewerServer::new(&bind_ip, web_port)?;
     let http_web_viewer_url = web_server.server_url();
-    let web_server_handle = web_server.serve(shutdown_rx);
+    let web_server_handle = web_server.serve();
 
     let viewer_url = format!("{http_web_viewer_url}?url={source_url}");
 
@@ -94,7 +97,7 @@ impl crate::sink::LogSink for WebViewerSink {
 /// If the `open_browser` argument is `true`, your default browser
 /// will be opened with a connected web-viewer.
 ///
-/// If not, you can connect to this server using the `rerun` binary (`cargo install rerun`).
+/// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli`).
 ///
 /// NOTE: you can not connect one `Session` to another.
 ///

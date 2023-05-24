@@ -52,6 +52,7 @@ re_ws_comms = { workspace = true, optional = true }
 re_viewer = { workspace = true }
 
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
+ctrlc.workspace = true
 document-features = "0.2"
 glam.workspace = true
 image = { workspace = true, default-features = false, features = [

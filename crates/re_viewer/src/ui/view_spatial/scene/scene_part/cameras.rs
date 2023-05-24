@@ -1,8 +1,8 @@
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::InstanceKey,
+    component_types::{InstanceKey, Pinhole},
     coordinates::{Handedness, SignedAxis3},
-    Pinhole, Transform, ViewCoordinates,
+    ViewCoordinates,
 };
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::TimeControl;
@@ -196,17 +196,13 @@ impl ScenePart for CamerasPart {
         for (ent_path, props) in query.iter_entities() {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(transform) = store.query_latest_component::<Transform>(ent_path, &query) {
-                let Transform::Pinhole(pinhole) = transform else {
-                        return;
-                    };
-                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-
+            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
                 let view_coordinates = determine_view_coordinates(
                     &ctx.log_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl,
                     ent_path.clone(),
                 );
+                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
                 Self::visit_instance(
                     scene,

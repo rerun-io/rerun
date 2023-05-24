@@ -75,9 +75,6 @@ pub struct App {
     /// What is serialized
     state: AppState,
 
-    /// Set to `true` on Ctrl-C.
-    shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
-
     /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
 
@@ -108,7 +105,6 @@ impl App {
         re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
-        shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
@@ -139,7 +135,6 @@ impl App {
             rx,
             log_dbs: Default::default(),
             state,
-            shutdown,
             pending_promises: Default::default(),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
@@ -486,12 +481,6 @@ impl eframe::App for App {
             self.ram_limit_warner.update();
         }
 
-        if self.shutdown.load(std::sync::atomic::Ordering::Relaxed) {
-            #[cfg(not(target_arch = "wasm32"))]
-            frame.close();
-            return;
-        }
-
         #[cfg(not(target_arch = "wasm32"))]
         {
             // Ensure zoom factor is sane and in 10% steps at all times before applying it.
@@ -738,7 +727,7 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
         }
 
         match rx.source() {
-            re_smart_channel::Source::Files { paths } => {
+            re_smart_channel::SmartChannelSource::Files { paths } => {
                 ui.strong(format!(
                     "Loading {}…",
                     paths
@@ -746,20 +735,20 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
                         .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
                 ));
             }
-            re_smart_channel::Source::RrdHttpStream { url } => {
+            re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
                 ui.strong(format!("Loading {url}…"));
             }
-            re_smart_channel::Source::RrdWebEventListener => {
+            re_smart_channel::SmartChannelSource::RrdWebEventListener => {
                 ready_and_waiting(ui, "Waiting for logging data…");
             }
-            re_smart_channel::Source::Sdk => {
+            re_smart_channel::SmartChannelSource::Sdk => {
                 ready_and_waiting(ui, "Waiting for logging data from SDK");
             }
-            re_smart_channel::Source::WsClient { ws_server_url } => {
+            re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
                 // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
                 ready_and_waiting(ui, &format!("Waiting for data from {ws_server_url}"));
             }
-            re_smart_channel::Source::TcpServer { port } => {
+            re_smart_channel::SmartChannelSource::TcpServer { port } => {
                 ready_and_waiting(ui, &format!("Listening on port {port}"));
             }
         };
@@ -800,6 +789,18 @@ impl App {
         let start = web_time::Instant::now();
 
         while let Ok(msg) = self.rx.try_recv() {
+            let msg = match msg.payload {
+                re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
+                re_smart_channel::SmartMessagePayload::Quit(err) => {
+                    if let Some(err) = err {
+                        re_log::warn!(%msg.source, err, "data source has left unexpectedly");
+                    } else {
+                        re_log::debug!(%msg.source, "data source has left");
+                    }
+                    continue;
+                }
+            };
+
             let recording_id = msg.recording_id();
 
             let is_new_recording = if let LogMsg::SetRecordingInfo(msg) = &msg {
@@ -2072,7 +2073,7 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
     match load_file_path_impl(path) {
         Ok(mut new_log_db) => {
             re_log::info!("Loaded {path:?}");
-            new_log_db.data_source = Some(re_smart_channel::Source::Files {
+            new_log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
                 paths: vec![path.into()],
             });
             Some(new_log_db)
@@ -2094,7 +2095,7 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
     match load_rrd_to_log_db(read) {
         Ok(mut log_db) => {
             re_log::info!("Loaded {name:?}");
-            log_db.data_source = Some(re_smart_channel::Source::Files {
+            log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
                 paths: vec![name.into()],
             });
             Some(log_db)
@@ -2114,7 +2115,7 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
 fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<RecordingId, RecordingConfig>,
     id: RecordingId,
-    data_source: &'_ re_smart_channel::Source,
+    data_source: &'_ re_smart_channel::SmartChannelSource,
     log_db: &'_ LogDb,
 ) -> &'cfgs mut RecordingConfig {
     configs
@@ -2123,20 +2124,20 @@ fn recording_config_entry<'cfgs>(
 }
 
 fn new_recording_confg(
-    data_source: &'_ re_smart_channel::Source,
+    data_source: &'_ re_smart_channel::SmartChannelSource,
     log_db: &'_ LogDb,
 ) -> RecordingConfig {
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
         // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-        re_smart_channel::Source::Files { .. }
-        | re_smart_channel::Source::RrdHttpStream { .. }
-        | re_smart_channel::Source::RrdWebEventListener => PlayState::Playing,
+        re_smart_channel::SmartChannelSource::Files { .. }
+        | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
+        | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 
         // Live data - follow it!
-        re_smart_channel::Source::Sdk
-        | re_smart_channel::Source::WsClient { .. }
-        | re_smart_channel::Source::TcpServer { .. } => PlayState::Following,
+        re_smart_channel::SmartChannelSource::Sdk
+        | re_smart_channel::SmartChannelSource::WsClient { .. }
+        | re_smart_channel::SmartChannelSource::TcpServer { .. } => PlayState::Following,
     };
 
     let mut rec_cfg = RecordingConfig::default();

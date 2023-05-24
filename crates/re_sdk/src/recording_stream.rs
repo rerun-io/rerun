@@ -5,7 +5,7 @@ use crossbeam::channel::{Receiver, Sender};
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
     DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
-    RowId, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -346,13 +346,6 @@ impl Drop for RecordingStreamInner {
         // sending data down the pipeline.
         self.batcher.flush_blocking();
         self.cmds_tx.send(Command::PopPendingTables).ok();
-        // Announce we're gracefully leaving to the other end.
-        self.cmds_tx
-            .send(Command::RecordMsg(LogMsg::Goodbye(
-                self.info.recording_id.clone(),
-                RowId::random(),
-            )))
-            .ok();
         self.cmds_tx.send(Command::Shutdown).ok();
         if let Some(handle) = self.batcher_to_sink_handle.take() {
             handle.join().ok();
@@ -778,35 +771,12 @@ impl RecordingStream {
         Ok(())
     }
 
-    /// Swaps the underlying sink for a [`crate::sink::BufferedSink`], making sure to first send a
-    /// `Goodbye` message down the sink to let the other end know of the graceful disconnection.
+    /// Swaps the underlying sink for a [`crate::sink::BufferedSink`].
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn disconnect(&self) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to disconnect() ignored");
-            return;
-        };
-
-        // TODO(cmc): The `Goodbye` message is our last remaining message piece that is neither
-        // idempotent, stateless, nor order insensitive... so make sure to get all the pending
-        // tables into the pipe first.
-
-        // 1. Flush the batcher down the table channel
-        this.batcher.flush_blocking();
-
-        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
-        this.cmds_tx.send(Command::PopPendingTables).ok();
-
-        this.cmds_tx
-            .send(Command::RecordMsg(LogMsg::Goodbye(
-                this.info.recording_id.clone(),
-                RowId::random(),
-            )))
-            .ok();
-
         self.set_sink(Box::new(crate::sink::BufferedSink::new()));
     }
 }

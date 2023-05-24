@@ -173,7 +173,7 @@ pub struct LogDb {
     entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
 
     /// Set by whomever created this [`LogDb`].
-    pub data_source: Option<re_smart_channel::Source>,
+    pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetRecordingInfo`].
     recording_msg: Option<SetRecordingInfo>,
@@ -245,7 +245,6 @@ impl LogDb {
                 self.entity_db.add_path_op(*row_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
-            LogMsg::Goodbye(_, _) => {}
         }
 
         Ok(())

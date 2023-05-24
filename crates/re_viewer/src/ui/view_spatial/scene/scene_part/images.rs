@@ -4,8 +4,8 @@ use egui::NumExt;
 
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning},
-    Component, DecodedTensor, DrawOrder, EntityPathHash, Transform,
+    component_types::{ColorRGBA, InstanceKey, Pinhole, Tensor, TensorData, TensorDataMeaning},
+    Component, DecodedTensor, DrawOrder, EntityPathHash,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
@@ -257,7 +257,7 @@ impl ImagesPart {
         crate::profile_function!();
 
         let store = &ctx.log_db.entity_db.data_store;
-        let Some(re_log_types::Transform::Pinhole(intrinsics)) = store.query_latest_component::<Transform>(
+        let Some(intrinsics) = store.query_latest_component::<Pinhole>(
             pinhole_ent_path,
             &ctx.current_query(),
         ) else {

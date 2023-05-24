@@ -113,7 +113,8 @@ fn log_baseline_objects(
     rec_stream: &RecordingStream,
     objects: &[objectron::Object],
 ) -> anyhow::Result<()> {
-    use rerun::components::{Box3D, ColorRGBA, Label, Rigid3, Transform};
+    use rerun::components::{Box3D, ColorRGBA, Label, Transform3D};
+    use rerun::transform::TranslationAndMat3;
 
     let boxes = objects.iter().filter_map(|object| {
         Some({
@@ -124,14 +125,10 @@ fn log_baseline_objects(
 
             let box3: Box3D = glam::Vec3::from_slice(&object.scale).into();
             let transform = {
-                let translation = glam::Vec3::from_slice(&object.translation).into();
+                let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                let rotation = glam::Quat::from_mat3(&rotation).into();
-                Transform::Rigid3(Rigid3 {
-                    rotation,
-                    translation,
-                })
+                Transform3D::new(TranslationAndMat3::new(translation, rotation))
             };
             let label = Label(object.category.clone());
 
@@ -192,20 +189,21 @@ fn log_ar_camera(
     // TODO(cmc): I can't figure out why I need to do this
     let rot = rot * glam::Quat::from_axis_angle(glam::Vec3::X, std::f32::consts::TAU / 2.0);
 
-    use rerun::components::{Pinhole, Rigid3, Transform};
+    use rerun::components::{Pinhole, Transform3D};
+    use rerun::transform::TranslationRotationScale3D;
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        .with_component(&[Transform::Rigid3(Rigid3 {
-            rotation: rot.into(),
-            translation: translation.into(),
-        })])?
+        .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
+            translation,
+            rot,
+        ))])?
         .send(rec_stream)?;
     MsgSender::new("world/camera/video")
         .with_timepoint(timepoint)
-        .with_component(&[Transform::Pinhole(Pinhole {
+        .with_component(&[Pinhole {
             image_from_cam: intrinsics.into(),
             resolution: Some(resolution.into()),
-        })])?
+        }])?
         .send(rec_stream)?;
 
     Ok(())

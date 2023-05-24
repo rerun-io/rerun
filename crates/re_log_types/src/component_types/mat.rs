@@ -27,6 +27,14 @@ use super::Vec3D;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Mat3x3([Vec3D; 3]);
 
+impl Mat3x3 {
+    pub const IDENTITY: Mat3x3 = Mat3x3([
+        Vec3D([1.0, 0.0, 0.0]),
+        Vec3D([0.0, 1.0, 0.0]),
+        Vec3D([0.0, 0.0, 1.0]),
+    ]);
+}
+
 impl<Idx> std::ops::Index<Idx> for Mat3x3
 where
     Idx: std::slice::SliceIndex<[Vec3D]>,

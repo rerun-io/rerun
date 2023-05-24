@@ -1,6 +1,6 @@
 //! TODO(emilk): use tokio instead
 
-use std::time::Instant;
+use std::{io::ErrorKind, time::Instant};
 
 use anyhow::Context;
 use rand::{Rng as _, SeedableRng};
@@ -28,48 +28,25 @@ impl Default for ServerOptions {
     }
 }
 
-async fn listen_for_new_clients(
-    listener: TcpListener,
-    options: ServerOptions,
-    tx: Sender<LogMsg>,
-    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-) {
-    loop {
-        let incoming = tokio::select! {
-            res = listener.accept() => res,
-            _ = shutdown_rx.recv() => {
-                return;
-            }
-        };
-        match incoming {
-            Ok((stream, _)) => {
-                let tx = tx.clone();
-                spawn_client(stream, tx, options);
-            }
-            Err(err) => {
-                re_log::warn!("Failed to accept incoming SDK client: {err}");
-            }
-        }
-    }
-}
-
 /// Listen to multiple SDK:s connecting to us over TCP.
 ///
 /// ``` no_run
 /// # use re_sdk_comms::{serve, ServerOptions};
 /// #[tokio::main]
 /// async fn main() {
-///     let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default(), shutdown_rx).await.unwrap();
+///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default()).await.unwrap();
 /// }
 /// ```
 pub async fn serve(
     bind_ip: &str,
     port: u16,
     options: ServerOptions,
-    shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<Receiver<LogMsg>> {
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::TcpServer { port });
+    let (tx, rx) = re_smart_channel::smart_channel(
+        // NOTE: We don't know until we start actually accepting clients!
+        re_smart_channel::SmartMessageSource::Unknown,
+        re_smart_channel::SmartChannelSource::TcpServer { port },
+    );
 
     let bind_addr = format!("{bind_ip}:{port}");
     let listener = TcpListener::bind(&bind_addr).await.with_context(|| {
@@ -88,23 +65,53 @@ pub async fn serve(
         );
     }
 
-    tokio::spawn(listen_for_new_clients(listener, options, tx, shutdown_rx));
+    tokio::spawn(listen_for_new_clients(listener, options, tx));
 
     Ok(rx)
 }
 
-fn spawn_client(stream: TcpStream, tx: Sender<LogMsg>, options: ServerOptions) {
+async fn listen_for_new_clients(listener: TcpListener, options: ServerOptions, tx: Sender<LogMsg>) {
+    loop {
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                let addr = stream.peer_addr().ok();
+                let tx = tx.clone_as(re_smart_channel::SmartMessageSource::TcpClient { addr });
+                spawn_client(stream, tx, options, addr);
+            }
+            Err(err) => {
+                re_log::warn!("Failed to accept incoming SDK client: {err}");
+            }
+        }
+    }
+}
+
+fn spawn_client(
+    stream: TcpStream,
+    tx: Sender<LogMsg>,
+    options: ServerOptions,
+    peer_addr: Option<std::net::SocketAddr>,
+) {
     tokio::spawn(async move {
-        let addr_string = stream
-            .peer_addr()
-            .map_or_else(|_| "(unknown ip)".to_owned(), |addr| addr.to_string());
+        let addr_string =
+            peer_addr.map_or_else(|| "(unknown ip)".to_owned(), |addr| addr.to_string());
+
         if options.quiet {
             re_log::debug!("New SDK client connected: {addr_string}");
         } else {
             re_log::info!("New SDK client connected: {addr_string}");
         }
+
         if let Err(err) = run_client(stream, &tx, options).await {
+            if let Some(err) = err.downcast_ref::<std::io::Error>() {
+                if err.kind() == ErrorKind::UnexpectedEof {
+                    // Client gracefully severed the connection.
+                    tx.quit(None).ok(); // best-effort at this point
+                    return;
+                }
+            }
             re_log::warn!("Closing connection to client: {err}");
+            let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.to_string().into();
+            tx.quit(Some(err)).ok(); // best-effort at this point
         }
     });
 }
@@ -157,12 +164,6 @@ async fn run_client(
         congestion_manager.register_latency(tx.latency_sec());
 
         for msg in re_log_encoding::decoder::decode_bytes(&packet)? {
-            if matches!(msg, LogMsg::Goodbye(_, _)) {
-                re_log::debug!("Received goodbye message.");
-                tx.send(msg)?;
-                return Ok(());
-            }
-
             if congestion_manager.should_send(&msg) {
                 tx.send(msg)?;
             } else {
@@ -211,9 +212,7 @@ impl CongestionManager {
         #[allow(clippy::match_same_arms)]
         match msg {
             // we don't want to drop any of these
-            LogMsg::SetRecordingInfo(_) | LogMsg::EntityPathOpMsg(_, _) | LogMsg::Goodbye(_, _) => {
-                true
-            }
+            LogMsg::SetRecordingInfo(_) | LogMsg::EntityPathOpMsg(_, _) => true,
 
             LogMsg::ArrowMsg(_, arrow_msg) => self.should_send_time_point(&arrow_msg.timepoint_max),
         }
