@@ -52,7 +52,6 @@ where
             re_ui,
             cc.storage,
             rx,
-            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         ))
     }))
 }

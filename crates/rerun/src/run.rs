@@ -1,5 +1,3 @@
-use std::sync::{atomic::AtomicBool, Arc};
-
 use itertools::Itertools;
 use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::{Receiver, SmartMessagePayload};
@@ -312,8 +310,6 @@ async fn run_impl(
         persist_state: args.persist_state,
     };
 
-    let (shutdown_rx, shutdown_bool) = setup_ctrl_c_handler();
-
     // Where do we get the data from?
     let rx = if !args.url_or_paths.is_empty() {
         let arguments = args
@@ -429,7 +425,6 @@ async fn run_impl(
                 &args.bind,
                 args.port,
                 server_options,
-                shutdown_rx.resubscribe(),
             )
             .await?
         }
@@ -443,7 +438,7 @@ async fn run_impl(
     if args.test_receive {
         assert_receive_into_log_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
-        Ok(stream_to_rrd(&rx, &rrd_path.into(), &shutdown_bool)?)
+        Ok(stream_to_rrd(&rx, &rrd_path.into())?)
     } else if args.web_viewer {
         #[cfg(feature = "web_viewer")]
         {
@@ -487,14 +482,6 @@ async fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            // We need to wake up the ui thread in order to process shutdown signals.
-            let ctx = cc.egui_ctx.clone();
-            let mut shutdown_repaint = shutdown_rx.resubscribe();
-            tokio::spawn(async move {
-                shutdown_repaint.recv().await.unwrap();
-                ctx.request_repaint();
-            });
-
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app = re_viewer::App::from_receiver(
                 _build_info,
@@ -503,7 +490,6 @@ async fn run_impl(
                 re_ui,
                 cc.storage,
                 rx,
-                shutdown_bool,
             );
             app.set_profiler(profiler);
             Box::new(app)
@@ -820,10 +806,9 @@ fn load_rrd_file_to_channel(
 fn stream_to_rrd(
     rx: &re_smart_channel::Receiver<LogMsg>,
     path: &std::path::PathBuf,
-    shutdown_bool: &Arc<AtomicBool>,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
-    use re_smart_channel::RecvTimeoutError;
+    use re_smart_channel::RecvError;
 
     if path.exists() {
         re_log::warn!("Overwriting existing file at {path:?}");
@@ -835,17 +820,14 @@ fn stream_to_rrd(
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
     let mut encoder = re_log_encoding::encoder::Encoder::new(file)?;
 
-    while !shutdown_bool.load(std::sync::atomic::Ordering::Relaxed) {
-        // We wake up and poll shutdown_bool every now and then.
-        // This is far from elegant, but good enough.
-        match rx.recv_timeout(std::time::Duration::from_millis(500)) {
+    loop {
+        match rx.recv() {
             Ok(msg) => {
                 if let Some(payload) = msg.into_data() {
                     encoder.append(&payload)?;
                 }
             }
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => {
+            Err(RecvError) => {
                 re_log::info!("Log stream disconnected, stopping.");
                 break;
             }
@@ -865,19 +847,6 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
         re_format::parse_duration(time)
             .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
     })
-}
-
-pub fn setup_ctrl_c_handler() -> (tokio::sync::broadcast::Receiver<()>, Arc<AtomicBool>) {
-    let (sender, receiver) = tokio::sync::broadcast::channel(1);
-    let shutdown_return = Arc::new(AtomicBool::new(false));
-    let shutdown = shutdown_return.clone();
-    ctrlc::set_handler(move || {
-        re_log::debug!("Ctrl-C detected, shutting down.");
-        sender.send(()).ok();
-        shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
-    })
-    .expect("Error setting Ctrl-C handler");
-    (receiver, shutdown_return)
 }
 
 // ----------------------------------------------------------------------------

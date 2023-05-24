@@ -137,12 +137,9 @@ impl RerunArgs {
 
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
-            use anyhow::Context as _;
-
-            let (mut shutdown_rx, _) = crate::run::setup_ctrl_c_handler();
-            return tokio_runtime_handle
-                .block_on(async { shutdown_rx.recv().await })
-                .context("Failed to wait for shutdown signal.");
+            // Sleep waiting for Ctrl-C:
+            tokio_runtime_handle
+                .block_on(async { tokio::time::sleep(std::time::Duration::from_secs(1_000_000_000)).await; });
         }
 
         Ok(())
