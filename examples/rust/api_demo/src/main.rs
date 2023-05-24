@@ -12,17 +12,14 @@
 //! cargo run -p api_demo -- --demo rects
 //! ```
 
-use std::{
-    collections::HashSet,
-    f32::consts::{PI, TAU},
-};
+use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools;
 use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Box3D, ClassDescription, ClassId, ColorRGBA, DrawOrder,
-        Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Quaternion, Radius, Rect2D, Rigid3,
-        Tensor, TensorDataMeaning, TextEntry, Transform, Vec2D, Vec3D, ViewCoordinates,
+        Label, LineStrip2D, LineStrip3D, Point2D, Point3D, Radius, Rect2D, Tensor,
+        TensorDataMeaning, TextEntry, Transform3D, Vec2D, Vec3D, ViewCoordinates,
     },
     coordinates::SignedAxis3,
     external::{
@@ -30,6 +27,7 @@ use rerun::{
         re_log_types::external::{arrow2, arrow2_convert},
     },
     time::{Time, TimePoint, TimeType, Timeline},
+    transform::{Angle, RotationAxisAngle, TranslationRotationScale3D},
     Component, ComponentName, EntityPath, MsgSender, RecordingStream,
 };
 
@@ -45,10 +43,10 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("bbox_demo/bbox")
         .with_timepoint(sim_time(0 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Transform::Rigid3(Rigid3 {
-            rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
-            translation: Vec3D::default(),
-        })])?
+        .with_component(&[Transform3D::new(RotationAxisAngle::new(
+            glam::Vec3::Z,
+            Angle::Degrees(180.0),
+        ))])?
         .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
         .with_component(&[Radius(0.005)])?
         .with_component(&[Label("box/t0".to_owned())])?
@@ -57,10 +55,10 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("bbox_demo/bbox")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Transform::Rigid3(Rigid3 {
-            rotation: Quaternion::new(0.0, 0.0, (PI / 4.0).sin(), (PI / 4.0).cos()),
-            translation: Vec3D::new(1.0, 0.0, 0.0),
-        })])?
+        .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
+            Vec3D::new(1.0, 0.0, 0.0),
+            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
+        ))])?
         .with_component(&[ColorRGBA::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
         .with_component(&[Label("box/t1".to_owned())])?
@@ -647,29 +645,23 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
         MsgSender::new("transforms3d/sun/planet")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Transform::Rigid3(Rigid3 {
-                rotation: Quaternion::from(glam::Quat::from_axis_angle(
-                    glam::Vec3::X,
-                    20.0f32.to_radians(),
-                )),
-                translation: Vec3D::new(
+            .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
+                Vec3D::new(
                     (time * rotation_speed_planet).sin() * sun_to_planet_distance,
                     (time * rotation_speed_planet).cos() * sun_to_planet_distance,
                     0.0,
                 ),
-            })])?
+                RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
+            ))])?
             .send(rec_stream)?;
 
         MsgSender::new("transforms3d/sun/planet/moon")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Transform::Rigid3(Rigid3 {
-                rotation: Quaternion::default(),
-                translation: Vec3D::new(
-                    -(time * rotation_speed_moon).cos() * planet_to_moon_distance,
-                    -(time * rotation_speed_moon).sin() * planet_to_moon_distance,
-                    0.0,
-                ),
-            })])?
+            .with_component(&[Transform3D::from_parent(Vec3D::new(
+                (time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                (time * rotation_speed_moon).sin() * planet_to_moon_distance,
+                0.0,
+            ))])?
             .send(rec_stream)?;
     }
 

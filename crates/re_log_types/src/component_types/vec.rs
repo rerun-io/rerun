@@ -113,6 +113,8 @@ impl std::fmt::Display for Vec2D {
 pub struct Vec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3]);
 
 impl Vec3D {
+    pub const ZERO: Vec3D = Vec3D([0.0; 3]);
+
     #[inline]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self::from([x, y, z])

@@ -5,7 +5,7 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    components::{ColorRGBA, LineStrip3D, Point3D, Quaternion, Radius, Rigid3, Transform, Vec3D},
+    components::{ColorRGBA, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
     time::{Time, TimeType, Timeline},
@@ -90,13 +90,10 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
 
         MsgSender::new("dna/structure")
             .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
-            .with_component(&[Transform::Rigid3(Rigid3 {
-                rotation: Quaternion::from(glam::Quat::from_axis_angle(
-                    glam::Vec3::Z,
-                    time / 4.0 * TAU,
-                )),
-                ..Default::default()
-            })])?
+            .with_component(&[Transform3D::new(rerun::transform::RotationAxisAngle::new(
+                glam::Vec3::Z,
+                rerun::transform::Angle::Radians(time / 4.0 * TAU),
+            ))])?
             .send(rec_stream)?;
     }
 

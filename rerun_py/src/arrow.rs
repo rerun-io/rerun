@@ -39,12 +39,14 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
 
         // There is a bad incompatibility between pyarrow and arrow2-convert
         // Force the type to be correct.
-        // https://github.com/rerun-io/rerun/issues/795s
+        // https://github.com/rerun-io/rerun/issues/795
         if let Some(name) = name {
             if name == <component_types::Tensor as re_log_types::Component>::name() {
                 field.data_type = <component_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             } else if name == <component_types::Rect2D as re_log_types::Component>::name() {
                 field.data_type = <component_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            } else if name == <component_types::Transform3D as re_log_types::Component>::name() {
+                field.data_type = <component_types::Transform3D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }
 

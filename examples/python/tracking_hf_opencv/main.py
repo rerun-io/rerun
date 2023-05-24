@@ -84,7 +84,7 @@ class Detector:
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv.resize(rgb, scaled_size)
         rr.log_image("image/scaled/rgb", rgb_scaled)
-        rr.log_unknown_transform("image/scaled")  # Note: Haven't implemented 2D transforms yet.
+        rr.log_disconnected_space("image/scaled")  # Note: Haven't implemented 2D transforms yet.
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)

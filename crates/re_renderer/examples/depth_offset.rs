@@ -55,7 +55,7 @@ impl framework::Example for Render2D {
                 top_left_corner_position: (base_top_left + i as f32 * xy_step).extend(z),
                 extent_u,
                 extent_v,
-                colormapped_texture: ColormappedTexture::from_unorm_srgba(
+                colormapped_texture: ColormappedTexture::from_unorm_rgba(
                     re_ctx
                         .texture_manager_2d
                         .white_texture_unorm_handle()
@@ -79,7 +79,7 @@ impl framework::Example for Render2D {
                 top_left_corner_position: (base_top_left + i as f32 * xy_step).extend(0.0),
                 extent_u,
                 extent_v,
-                colormapped_texture: ColormappedTexture::from_unorm_srgba(
+                colormapped_texture: ColormappedTexture::from_unorm_rgba(
                     re_ctx
                         .texture_manager_2d
                         .white_texture_unorm_handle()

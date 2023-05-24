@@ -1,10 +1,8 @@
 use egui::Vec2;
 
 use re_format::format_f32;
-use re_log_types::{
-    component_types::ColorRGBA,
-    component_types::{LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D},
-    Pinhole, Rigid3, Transform, ViewCoordinates,
+use re_log_types::component_types::{
+    ColorRGBA, LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
@@ -53,24 +51,6 @@ impl DataUi for ColorRGBA {
     }
 }
 
-impl DataUi for Transform {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            Transform::Unknown => {
-                ui.label("Unknown transform");
-            }
-            Transform::Rigid3(rigid3) => rigid3.data_ui(ctx, ui, verbosity, query),
-            Transform::Pinhole(pinhole) => pinhole.data_ui(ctx, ui, verbosity, query),
-        }
-    }
-}
-
 impl DataUi for ViewCoordinates {
     fn data_ui(
         &self,
@@ -85,90 +65,6 @@ impl DataUi for ViewCoordinates {
             }
             UiVerbosity::All | UiVerbosity::Reduced => {
                 ui.label(self.describe());
-            }
-        }
-    }
-}
-
-impl DataUi for Rigid3 {
-    #[allow(clippy::only_used_in_recursion)]
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match verbosity {
-            UiVerbosity::Small => {
-                ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::All, query);
-                });
-            }
-
-            UiVerbosity::All | UiVerbosity::Reduced => {
-                let pose = self.parent_from_child(); // TODO(emilk): which one to show?
-                let rotation = pose.rotation();
-                let translation = pose.translation();
-
-                ui.vertical(|ui| {
-                    ui.label("Rigid 3D transform:");
-                    ui.indent("rigid3", |ui| {
-                        egui::Grid::new("rigid3").num_columns(2).show(ui, |ui| {
-                            ui.label("rotation");
-                            ui.monospace(format!("{rotation:?}"));
-                            ui.end_row();
-
-                            ui.label("translation");
-                            ui.monospace(format!("{translation:?}"));
-                            ui.end_row();
-                        });
-                    });
-                });
-            }
-        }
-    }
-}
-
-impl DataUi for Pinhole {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match verbosity {
-            UiVerbosity::Small => {
-                ui.label("Pinhole transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::All, query);
-                });
-            }
-
-            UiVerbosity::All | UiVerbosity::Reduced => {
-                let Pinhole {
-                    image_from_cam: image_from_view,
-                    resolution,
-                } = self;
-
-                ui.vertical(|ui| {
-                    ui.label("Pinhole transform:");
-                    ui.indent("pinole", |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label("resolution:");
-                            if let Some(re_log_types::component_types::Vec2D([x, y])) = resolution {
-                                ui.monospace(format!("{x}x{y}"));
-                            } else {
-                                ui.weak("(none)");
-                            }
-                        });
-
-                        ui.label("image from view:");
-                        ui.indent("image_from_view", |ui| {
-                            image_from_view.data_ui(ctx, ui, verbosity, query);
-                        });
-                    });
-                });
             }
         }
     }
