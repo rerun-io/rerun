@@ -139,7 +139,7 @@ impl RerunArgs {
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
             // Sleep waiting for Ctrl-C:
             tokio_runtime_handle.block_on(async {
-                tokio::time::sleep(std::time::Duration::from_secs(1_000_000_000)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(u64::MAX)).await;
             });
         }
 
