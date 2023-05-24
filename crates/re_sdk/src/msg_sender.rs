@@ -115,9 +115,27 @@ impl MsgSender {
     ) -> Result<Self, re_log_types::FromFileError> {
         let ent_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
         let cell = DataCell::from_file_path(file_path)?;
+
+        let mut timepoint = TimePoint::from([(Timeline::log_time(), Time::now().into())]);
+
+        if let Ok(metadata) = std::fs::metadata(file_path) {
+            use re_log_types::TimeType;
+            if let Ok(time) = metadata.created() {
+                if let Ok(time) = Time::try_from(time) {
+                    timepoint.insert(Timeline::new("created", TimeType::Time), time.into());
+                }
+            }
+            if let Ok(time) = metadata.modified() {
+                if let Ok(time) = Time::try_from(time) {
+                    timepoint.insert(Timeline::new("modified", TimeType::Time), time.into());
+                }
+            }
+        }
+
         Ok(Self {
             num_instances: Some(cell.num_instances()),
             instanced: vec![cell],
+            timepoint,
             ..Self::new(ent_path)
         })
     }
