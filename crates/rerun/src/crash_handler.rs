@@ -123,7 +123,7 @@ fn install_signal_handler(build_info: BuildInfo) {
         libc::SIGFPE,
         libc::SIGILL,
         libc::SIGSEGV,
-        // These interfere with the ctrl handler (ctrlc::set_handler):
+        // These are not errors:
         // libc::SIGINT,
         // libc::SIGTERM,
     ] {
