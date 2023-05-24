@@ -12,6 +12,7 @@ from rerun import bindings
 from rerun.components.disconnected_space import DisconnectedSpaceArray
 from rerun.components.quaternion import Quaternion
 from rerun.components.transform3d import (
+    Rigid3D,
     RotationAxisAngle,
     Scale3D,
     Transform3D,
@@ -191,7 +192,13 @@ def log_disconnected_space(
 def log_transform3d(
     entity_path: str,
     transform: Union[
-        TranslationAndMat3, TranslationRotationScale3D, RotationAxisAngle, Translation3D, Scale3D, Quaternion
+        TranslationAndMat3,
+        TranslationRotationScale3D,
+        RotationAxisAngle,
+        Translation3D,
+        Scale3D,
+        Quaternion,
+        Rigid3D,
     ],
     *,
     from_parent: bool = False,
@@ -224,6 +231,9 @@ def log_transform3d(
         "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0.0, 1.0, 0.0], scale=2)
     )
 
+    # Log translation + rotation, also called a rigid transform.
+    rr.log_transform3d("transform_test/rigid3", rr.Rigid3D([1, 2, 3], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
+
     # Log translation, rotation & scale all at once.
     rr.log_transform3d(
         "transform_test/transformed",
@@ -244,6 +254,7 @@ def log_transform3d(
         One of:
         * `TranslationAndMat3`
         * `TranslationRotationScale3D`
+        * `Rigid3D`
         * `RotationAxisAngle`
         * `Translation3D`
         * `Quaternion`
@@ -258,12 +269,15 @@ def log_transform3d(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    # Convert additionally supported types to TranslationRotationScale3D
     if isinstance(transform, RotationAxisAngle) or isinstance(transform, Quaternion):
         transform = TranslationRotationScale3D(rotation=transform)
     elif isinstance(transform, Translation3D):
         transform = TranslationRotationScale3D(translation=transform)
     elif isinstance(transform, Scale3D):
         transform = TranslationRotationScale3D(scale=transform)
+    elif isinstance(transform, Rigid3D):
+        transform = TranslationRotationScale3D(rotation=transform.rotation, translation=transform.translation)
 
     instanced = {"rerun.transform3d": Transform3DArray.from_transform(Transform3D(transform, from_parent))}
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
@@ -334,7 +348,7 @@ def log_rigid3(
             rotation = Quaternion(parent_from_child[1])
         log_transform3d(
             entity_path,
-            TranslationRotationScale3D(translation=parent_from_child[0], rotation=rotation),
+            Rigid3D(translation=parent_from_child[0], rotation=rotation),
             timeless=timeless,
             recording=recording,
         )
@@ -344,7 +358,7 @@ def log_rigid3(
             rotation = Quaternion(child_from_parent[1])
         log_transform3d(
             entity_path,
-            TranslationRotationScale3D(translation=child_from_parent[0], rotation=rotation),
+            Rigid3D(translation=child_from_parent[0], rotation=rotation),
             from_parent=True,
             timeless=timeless,
             recording=recording,

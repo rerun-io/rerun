@@ -11,6 +11,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 from rerun import experimental
 from rerun.components.transform3d import (
     Quaternion,
+    Rigid3D,
     RotationAxisAngle,
     Scale3D,
     Translation3D,
@@ -139,6 +140,8 @@ __all__ = [
     "script_setup",
     "script_teardown",
     # Transform helpers
+    "Quaternion",
+    "Rigid3D",
     "RotationAxisAngle",
     "Scale3D",
     "Transform3D",
@@ -147,7 +150,6 @@ __all__ = [
     "Translation3D",
     "TranslationAndMat3",
     "TranslationRotationScale3D",
-    "Quaternion",
 ]
 
 

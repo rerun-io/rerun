@@ -122,7 +122,6 @@ def transform_test() -> None:
     )
     rr.log_transform3d("transform_test/parent_from_child_mat3", rr.TranslationAndMat3((123, 456, 789)))
     rr.log_transform3d("transform_test/empty_translation_mat3", rr.TranslationAndMat3())
-    rr.log_transform3d("transform_test/translation_only", rr.TranslationRotationScale3D((1, 2, 3)))
 
     # Log translation only.
     rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 1, 3)))
@@ -137,6 +136,9 @@ def transform_test() -> None:
     rr.log_transform3d(
         "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0.0, 1.0, 0.0], scale=2)
     )
+
+    # Log translation + rotation, also called a rigid transform.
+    rr.log_transform3d("transform_test/rigid3", rr.Rigid3D([1, 2, 3], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
 
     # Log translation, rotation & scale all at once.
     rr.log_transform3d(

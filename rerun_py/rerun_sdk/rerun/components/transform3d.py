@@ -18,6 +18,8 @@ from rerun.components.vec import Vec3DType
 from rerun.log import _normalize_matrix3
 
 __all__ = [
+    "Quaternion",
+    "Rigid3D",
     "RotationAxisAngle",
     "Scale3D",
     "Transform3D",
@@ -26,7 +28,6 @@ __all__ = [
     "Translation3D",
     "TranslationAndMat3",
     "TranslationRotationScale3D",
-    "Quaternion",
 ]
 
 
@@ -53,6 +54,17 @@ class TranslationAndMat3:
 
     matrix: Union[npt.ArrayLike, None] = None
     """The column-major 3x3 matrix for scale, rotation & skew matrix. Uses identity if not set."""
+
+
+@dataclass
+class Rigid3D:
+    """Representation of a rigid transform via separate translation & rotation."""
+
+    translation: Union[Translation3D, npt.ArrayLike, None] = None
+    """3D translation vector, applied last."""
+
+    rotation: Union[Quaternion, RotationAxisAngle, None] = None
+    """3D rotation, represented as a quaternion or axis + angle, applied second."""
 
 
 @dataclass
