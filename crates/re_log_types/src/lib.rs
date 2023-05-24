@@ -9,9 +9,11 @@
 //! ## Mono-components
 //!
 //! Some components, mostly transform related ones, are "mono-components".
-//! This means that all instances of an Entity always share the same component.
-//! In other words, a mono-component acts like a splat
-//! (all instances of an entity share the same component).
+//! This means that Rerun makes assumptions that depend on this component
+//! only taking on a singular value for all instances of an Entity. Where possible,
+//! exposed APIs will force these components to be logged as a singular instance
+//! or a splat. However, it is an error with undefined behavior to manually use lower-level
+//! APIs to log a batched mono-component.
 //!
 //! This requirement is especially apparent with transforms:
 //! Each entity must have a unique transform chain,

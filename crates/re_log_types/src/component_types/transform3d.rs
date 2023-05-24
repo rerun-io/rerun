@@ -285,7 +285,7 @@ impl From<glam::Quat> for Rotation3D {
     }
 }
 
-/// Representation of a affine transform via a 3x3 translation matrix paired with a translation.
+/// Representation of a affine transform via a 3x3 affine matrix paired with a translation.
 ///
 /// First applies the matrix, then the translation.
 ///
@@ -576,8 +576,8 @@ pub struct Transform3D {
     /// Representation of the transform.
     pub transform: Transform3DRepr,
 
-    /// If true, the transform maps from the parent space to the child space.
-    /// Otherwise, the transform maps from the child space to the parent space.
+    /// If true, the transform maps from the parent space to the space where the transform was logged.
+    /// Otherwise, the transform maps from the space to its parent.
     pub from_parent: bool,
 }
 

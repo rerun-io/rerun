@@ -271,14 +271,11 @@ fn transform_at(
     });
 
     // If there is any other transform, we ignore `DisconnectedSpace`.
-    if let Some(transform3d) = transform3d {
-        if let Some(pinhole) = pinhole {
-            Ok(Some(transform3d * pinhole))
-        } else {
-            Ok(Some(transform3d))
-        }
-    } else if let Some(pinhole) = pinhole {
-        Ok(Some(pinhole))
+    if transform3d.is_some() || pinhole.is_some() {
+        Ok(Some(
+            transform3d.unwrap_or(glam::Affine3A::IDENTITY)
+                * pinhole.unwrap_or(glam::Affine3A::IDENTITY),
+        ))
     } else if store
         .query_latest_component::<DisconnectedSpace>(entity_path, query)
         .is_some()

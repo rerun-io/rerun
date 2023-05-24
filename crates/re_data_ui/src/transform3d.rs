@@ -17,7 +17,7 @@ impl DataUi for Transform3D {
     ) {
         match verbosity {
             UiVerbosity::Small => {
-                // TODO(andreas): Preview some information.
+                // TODO(andreas): Preview some information instead of just a label with hover ui.
                 ui.label("3D transform").on_hover_ui(|ui| {
                     self.data_ui(ctx, ui, UiVerbosity::All, query);
                 });
@@ -185,7 +185,7 @@ impl DataUi for TranslationAndMat3 {
             matrix,
         } = self;
 
-        egui::Grid::new("translation_rotation_scale")
+        egui::Grid::new("translation_and_mat3")
             .num_columns(2)
             .show(ui, |ui| {
                 if let Translation3D::Vec3D(translation) = translation {
