@@ -106,7 +106,9 @@ fn main() {
         })
         .expect("Failed to spawn thread");
 
-    if !args.contains("--build-only") {
+    if args.contains("--build-only") {
+        thread.join().unwrap();
+    } else {
         // It would be nice to start a web-browser, but we can't really know when the server is ready.
         // So we just sleep for a while and hope it works.
         std::thread::sleep(Duration::from_millis(500));
@@ -117,7 +119,5 @@ fn main() {
         println!("Opening browser at {viewer_url}");
 
         std::thread::sleep(Duration::from_secs(u64::MAX));
-    } else {
-        thread.join().unwrap();
     }
 }
