@@ -1,5 +1,5 @@
 use re_log_types::component_types::{
-    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr, Translation3D,
+    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
     TranslationAndMat3, TranslationRotationScale3D,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -89,19 +89,19 @@ impl DataUi for TranslationRotationScale3D {
             .show(ui, |ui| {
                 // Unlike Rotation/Scale, we don't have a value that indicates that nothing was logged.
                 // We still skip zero translations though since they are typically not logged explicitly.
-                if let Translation3D::Vec3D(translation) = translation {
+                if let Some(translation) = translation {
                     ui.label("translation");
                     translation.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();
                 }
 
-                if !matches!(rotation, Rotation3D::Identity) {
+                if let Some(rotation) = rotation {
                     ui.label("rotation");
                     rotation.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();
                 }
 
-                if !matches!(scale, Scale3D::Unit) {
+                if let Some(scale) = scale {
                     ui.label("scale");
                     scale.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();
@@ -119,9 +119,6 @@ impl DataUi for Rotation3D {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            Rotation3D::Identity => {
-                ui.label("No rotation");
-            }
             Rotation3D::Quaternion(q) => {
                 // TODO(andreas): Better formatting for quaternions.
                 ui.label(format!("{q:?}"));
@@ -159,9 +156,6 @@ impl DataUi for Scale3D {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            Scale3D::Unit => {
-                ui.label("No scaling");
-            }
             Scale3D::Uniform(scale) => {
                 ui.label(re_format::format_f32(*scale));
             }
@@ -188,7 +182,7 @@ impl DataUi for TranslationAndMat3 {
         egui::Grid::new("translation_and_mat3")
             .num_columns(2)
             .show(ui, |ui| {
-                if let Translation3D::Vec3D(translation) = translation {
+                if let Some(translation) = translation {
                     ui.label("translation");
                     translation.data_ui(ctx, ui, verbosity, query);
                     ui.end_row();

@@ -201,7 +201,7 @@ def log_transform3d(
     """
     Log an (affine) 3D transform between this entity and the parent.
 
-    If `from_parent` is set to `True`, the transformation is from the parent to the child,
+    If `from_parent` is set to `True`, the transformation is from the parent to the space of the entity_path,
     otherwise it is from the child to the parent.
 
     Note that new transforms replace previous, i.e. if you call this function several times on the same path,

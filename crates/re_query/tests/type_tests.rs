@@ -5,15 +5,17 @@ fn test_transform_to_polars() {
 
     let transforms = vec![Some(Transform3D::child_from_parent(
         TranslationRotationScale3D {
-            rotation: Quaternion {
-                x: 11.0,
-                y: 12.0,
-                z: 13.0,
-                w: 14.0,
-            }
-            .into(),
-            translation: [15.0, 16.0, 17.0].into(),
-            scale: [18.0, 19.0, 20.0].into(),
+            rotation: Some(
+                Quaternion {
+                    x: 11.0,
+                    y: 12.0,
+                    z: 13.0,
+                    w: 14.0,
+                }
+                .into(),
+            ),
+            translation: Some([15.0, 16.0, 17.0].into()),
+            scale: Some([18.0, 19.0, 20.0].into()),
         },
     ))];
 

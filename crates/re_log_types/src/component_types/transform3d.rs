@@ -4,66 +4,6 @@ use crate::Component;
 
 use super::{mat::Mat3x3, Quaternion, Vec3D};
 
-/// 3D scaling translation, part of a transform representation.
-///
-/// ```
-/// use re_log_types::component_types::{Translation3D, Vec3D};
-/// use arrow2_convert::field::ArrowField;
-/// use arrow2::datatypes::{DataType, Field, UnionMode};
-///
-/// assert_eq!(
-///     Translation3D::data_type(),
-///     DataType::Union(vec![
-///         Field::new("None", DataType::Boolean, false),
-///         Field::new("Vec3D", Vec3D::data_type(), false),
-///     ], None, UnionMode::Dense),
-/// );
-/// ```
-#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(type = "dense")]
-pub enum Translation3D {
-    /// No translation specified.
-    #[default]
-    None,
-
-    /// Translation along a 3d dimensional vector.
-    Vec3D(Vec3D),
-}
-
-impl From<Vec3D> for Translation3D {
-    #[inline]
-    fn from(v: Vec3D) -> Self {
-        Self::Vec3D(v)
-    }
-}
-
-impl From<[f32; 3]> for Translation3D {
-    #[inline]
-    fn from(v: [f32; 3]) -> Self {
-        Self::Vec3D(v.into())
-    }
-}
-
-#[cfg(feature = "glam")]
-impl From<Translation3D> for glam::Vec3 {
-    #[inline]
-    fn from(val: Translation3D) -> Self {
-        match val {
-            Translation3D::None => glam::Vec3::ZERO,
-            Translation3D::Vec3D(v) => v.into(),
-        }
-    }
-}
-
-#[cfg(feature = "glam")]
-impl From<glam::Vec3> for Translation3D {
-    #[inline]
-    fn from(val: glam::Vec3) -> Self {
-        Translation3D::Vec3D(val.into())
-    }
-}
-
 /// 3D scaling factor, part of a transform representation.
 ///
 /// ```
@@ -80,14 +20,10 @@ impl From<glam::Vec3> for Translation3D {
 ///     ], None, UnionMode::Dense),
 /// );
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")]
 pub enum Scale3D {
-    /// Unit scale, meaning no scaling.
-    #[default]
-    Unit,
-
     /// Individual scaling factors for each axis, distorting the original object.
     ThreeD(Vec3D),
 
@@ -121,7 +57,6 @@ impl From<Scale3D> for glam::Vec3 {
     #[inline]
     fn from(val: Scale3D) -> Self {
         match val {
-            Scale3D::Unit => glam::Vec3::ONE,
             Scale3D::ThreeD(v) => v.into(),
             Scale3D::Uniform(v) => glam::Vec3::splat(v),
         }
@@ -230,20 +165,15 @@ impl From<RotationAxisAngle> for glam::Quat {
 /// assert_eq!(
 ///     Rotation3D::data_type(),
 ///     DataType::Union(vec![
-///         Field::new("Identity", DataType::Boolean, false),
 ///         Field::new("Quaternion", Quaternion::data_type(), false),
 ///         Field::new("AxisAngle", RotationAxisAngle::data_type(), false),
 ///     ], None, UnionMode::Dense),
 /// );
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")]
 pub enum Rotation3D {
-    /// No rotation.
-    #[default]
-    Identity,
-
     /// Rotation defined by a quaternion.
     Quaternion(Quaternion),
 
@@ -270,7 +200,6 @@ impl From<Rotation3D> for glam::Quat {
     #[inline]
     fn from(val: Rotation3D) -> Self {
         match val {
-            Rotation3D::Identity => glam::Quat::IDENTITY,
             Rotation3D::Quaternion(v) => v.into(),
             Rotation3D::AxisAngle(a) => a.into(),
         }
@@ -290,14 +219,14 @@ impl From<glam::Quat> for Rotation3D {
 /// First applies the matrix, then the translation.
 ///
 /// ```
-/// use re_log_types::component_types::{TranslationAndMat3, Translation3D, Mat3x3};
+/// use re_log_types::component_types::{TranslationAndMat3, Vec3D, Mat3x3};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
 /// assert_eq!(
 ///     TranslationAndMat3::data_type(),
 ///     DataType::Struct(vec![
-///         Field::new("translation", Translation3D::data_type(), false),
+///         Field::new("translation", Vec3D::data_type(), true),
 ///         Field::new("matrix", Mat3x3::data_type(), false)
 ///     ]),
 /// );
@@ -306,7 +235,7 @@ impl From<glam::Quat> for Rotation3D {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TranslationAndMat3 {
     /// 3D translation, applied after the matrix.
-    pub translation: Translation3D,
+    pub translation: Option<Vec3D>,
 
     /// 3x3 matrix for scale, rotation & shear.
     pub matrix: Mat3x3,
@@ -314,15 +243,15 @@ pub struct TranslationAndMat3 {
 
 impl TranslationAndMat3 {
     pub const IDENTITY: TranslationAndMat3 = TranslationAndMat3 {
-        translation: Translation3D::None,
+        translation: None,
         matrix: Mat3x3::IDENTITY,
     };
 
     /// Create a new `TranslationAndMat3`.
     #[inline]
-    pub fn new<T: Into<Translation3D>, M: Into<Mat3x3>>(translation: T, matrix: M) -> Self {
+    pub fn new<T: Into<Vec3D>, M: Into<Mat3x3>>(translation: T, matrix: M) -> Self {
         Self {
-            translation: translation.into(),
+            translation: Some(translation.into()),
             matrix: matrix.into(),
         }
     }
@@ -331,16 +260,16 @@ impl TranslationAndMat3 {
 /// Representation of an affine transform via separate translation, rotation & scale.
 ///
 /// ```
-/// use re_log_types::component_types::{TranslationRotationScale3D, Rotation3D, Scale3D, Translation3D};
+/// use re_log_types::component_types::{TranslationRotationScale3D, Rotation3D, Scale3D, Vec3D};
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field, UnionMode};
 ///
 /// assert_eq!(
 ///     TranslationRotationScale3D::data_type(),
 ///     DataType::Struct(vec![
-///         Field::new("translation", Translation3D::data_type(), false),
-///         Field::new("rotation", Rotation3D::data_type(), false),
-///         Field::new("scale", Scale3D::data_type(), false)
+///         Field::new("translation", Vec3D::data_type(), true),
+///         Field::new("rotation", Rotation3D::data_type(), true),
+///         Field::new("scale", Scale3D::data_type(), true)
 ///     ]),
 /// );
 /// ```
@@ -348,27 +277,27 @@ impl TranslationAndMat3 {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TranslationRotationScale3D {
     /// 3D translation vector, applied last.
-    pub translation: Translation3D,
+    pub translation: Option<Vec3D>,
 
     /// 3D rotation, applied second.
-    pub rotation: Rotation3D,
+    pub rotation: Option<Rotation3D>,
 
     /// 3D scale, applied first.
-    pub scale: Scale3D,
+    pub scale: Option<Scale3D>,
 }
 
 impl TranslationRotationScale3D {
     pub const IDENTITY: TranslationRotationScale3D = TranslationRotationScale3D {
-        translation: Translation3D::None,
-        rotation: Rotation3D::Identity,
-        scale: Scale3D::Unit,
+        translation: None,
+        rotation: None,
+        scale: None,
     };
 
     /// From a translation only.
     #[inline]
-    pub fn from_translation<T: Into<Translation3D>>(translation: T) -> Self {
+    pub fn from_translation<T: Into<Vec3D>>(translation: T) -> Self {
         Self {
-            translation: translation.into(),
+            translation: Some(translation.into()),
             ..Self::IDENTITY
         }
     }
@@ -377,7 +306,7 @@ impl TranslationRotationScale3D {
     #[inline]
     pub fn from_rotation<R: Into<Rotation3D>>(rotation: R) -> Self {
         Self {
-            rotation: rotation.into(),
+            rotation: Some(rotation.into()),
             ..Self::IDENTITY
         }
     }
@@ -386,20 +315,20 @@ impl TranslationRotationScale3D {
     #[inline]
     pub fn from_scale<S: Into<Scale3D>>(scale: S) -> Self {
         Self {
-            scale: scale.into(),
+            scale: Some(scale.into()),
             ..Self::IDENTITY
         }
     }
 
     /// From a translation, applied after a rotation.
     #[inline]
-    pub fn from_translation_rotation<T: Into<Translation3D>, R: Into<Rotation3D>>(
+    pub fn from_translation_rotation<T: Into<Vec3D>, R: Into<Rotation3D>>(
         translation: T,
         rotation: R,
     ) -> Self {
         Self {
-            translation: translation.into(),
-            rotation: rotation.into(),
+            translation: Some(translation.into()),
+            rotation: Some(rotation.into()),
             ..Self::IDENTITY
         }
     }
@@ -407,7 +336,7 @@ impl TranslationRotationScale3D {
     /// From a translation, applied after a rotation & scale.
     #[inline]
     pub fn from_translation_rotation_scale<
-        T: Into<Translation3D>,
+        T: Into<Vec3D>,
         R: Into<Rotation3D>,
         S: Into<Scale3D>,
     >(
@@ -416,9 +345,23 @@ impl TranslationRotationScale3D {
         scale: S,
     ) -> Self {
         Self {
-            translation: translation.into(),
-            rotation: rotation.into(),
-            scale: scale.into(),
+            translation: Some(translation.into()),
+            rotation: Some(rotation.into()),
+            scale: Some(scale.into()),
+        }
+    }
+
+    /// From a translation, applied after a rotation & scale.
+    #[inline]
+    pub fn new<T: Into<Vec3D>, R: Into<Rotation3D>, S: Into<Scale3D>>(
+        translation: T,
+        rotation: R,
+        scale: S,
+    ) -> Self {
+        Self {
+            translation: Some(translation.into()),
+            rotation: Some(rotation.into()),
+            scale: Some(scale.into()),
         }
     }
 }
@@ -434,17 +377,7 @@ impl From<Vec3D> for TranslationRotationScale3D {
     #[inline]
     fn from(v: Vec3D) -> Self {
         Self {
-            translation: v.into(),
-            ..Default::default()
-        }
-    }
-}
-
-impl From<Translation3D> for TranslationRotationScale3D {
-    #[inline]
-    fn from(translation: Translation3D) -> Self {
-        Self {
-            translation,
+            translation: Some(v),
             ..Default::default()
         }
     }
@@ -454,7 +387,7 @@ impl From<Rotation3D> for TranslationRotationScale3D {
     #[inline]
     fn from(v: Rotation3D) -> Self {
         Self {
-            rotation: v,
+            rotation: Some(v),
             ..Default::default()
         }
     }
@@ -464,7 +397,7 @@ impl From<Scale3D> for TranslationRotationScale3D {
     #[inline]
     fn from(v: Scale3D) -> Self {
         Self {
-            scale: v,
+            scale: Some(v),
             ..Default::default()
         }
     }
@@ -538,16 +471,19 @@ impl From<Transform3DRepr> for glam::Affine3A {
             Transform3DRepr::TranslationAndMat3(TranslationAndMat3 {
                 translation,
                 matrix,
-            }) => glam::Affine3A::from_mat3_translation(matrix.into(), translation.into()),
+            }) => glam::Affine3A::from_mat3_translation(
+                matrix.into(),
+                translation.map_or(glam::Vec3::ZERO, |v| v.into()),
+            ),
 
             Transform3DRepr::TranslationRotationScale(TranslationRotationScale3D {
                 translation,
                 rotation,
                 scale,
             }) => glam::Affine3A::from_scale_rotation_translation(
-                scale.into(),
-                rotation.into(),
-                translation.into(),
+                scale.map_or(glam::Vec3::ONE, |s| s.into()),
+                rotation.map_or(glam::Quat::IDENTITY, |q| q.into()),
+                translation.map_or(glam::Vec3::ZERO, |v| v.into()),
             ),
         }
     }
@@ -642,13 +578,13 @@ fn test_transform_roundtrip() {
 
     let transforms_in = vec![
         Transform3D::child_from_parent(TranslationAndMat3 {
-            translation: [10.0, 11.0, 12.0].into(),
+            translation: Some([10.0, 11.0, 12.0].into()),
             matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
         }),
         Transform3D::parent_from_child(TranslationRotationScale3D {
-            translation: [10.0, 11.0, 12.0].into(),
-            rotation: Quaternion::new(13.0, 14.0, 15.0, 16.0).into(),
-            scale: [17.0, 18.0, 19.0].into(),
+            translation: Some([10.0, 11.0, 12.0].into()),
+            rotation: Some(Quaternion::new(13.0, 14.0, 15.0, 16.0).into()),
+            scale: Some([17.0, 18.0, 19.0].into()),
         }),
     ];
     let array: Box<dyn Array> = transforms_in.try_into_arrow().unwrap();

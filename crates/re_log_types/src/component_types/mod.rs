@@ -73,7 +73,7 @@ pub use tensor::{TensorImageLoadError, TensorImageSaveError};
 pub use text_box::TextBox;
 pub use text_entry::TextEntry;
 pub use transform3d::{
-    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr, Translation3D,
+    Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
     TranslationAndMat3, TranslationRotationScale3D,
 };
 pub use vec::{Vec2D, Vec3D, Vec4D};

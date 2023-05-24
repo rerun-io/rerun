@@ -14,6 +14,7 @@ from rerun.components import (
     union_discriminant_type,
 )
 from rerun.components.quaternion import Quaternion
+from rerun.components.vec import Vec3DType
 from rerun.log import _normalize_matrix3
 
 __all__ = [
@@ -101,32 +102,24 @@ class RotationAxisAngle:
     """3D rotation angle in radians. Only one of `degrees` or `radians` should be set."""
 
 
-def build_union_array_from_translation(
-    translation: Union[npt.ArrayLike, Translation3D, None], type: pa.DenseUnionType
-) -> pa.UnionArray:
+def optional_translation_to_arrow(translation: Union[npt.ArrayLike, Translation3D, None]) -> pa.UnionArray:
     # "unpack" rr.Translation3D first.
     if isinstance(translation, Translation3D):
         translation = translation.translation
 
     if translation is None:
-        translation_discriminant = "None"
-        stored_translation = pa.array([False])
-    else:
-        translation_discriminant = "Vec3D"
-        np_translation = np.array(translation, dtype=np.float32).flatten()
-        if np_translation.size != 3:
-            raise ValueError(f"Expected three dimensional translation vector, shape was instead {np_translation.shape}")
-        stored_translation = pa.FixedSizeListArray.from_arrays(
-            np_translation, type=union_discriminant_type(type, translation_discriminant)
-        )
+        return pa.nulls(1, type=Vec3DType.storage_type)
 
-    return build_dense_union(type, translation_discriminant, stored_translation)
+    np_translation = np.array(translation, dtype=np.float32).flatten()
+    if np_translation.size != 3:
+        raise ValueError(f"Expected three dimensional translation vector, shape was instead {np_translation.shape}")
+    return pa.FixedSizeListArray.from_arrays(np_translation, type=Vec3DType.storage_type)
 
 
 def build_struct_array_from_translation_mat3(
     translation_mat3: TranslationAndMat3, type: pa.StructType
 ) -> pa.StructArray:
-    translation = build_union_array_from_translation(translation_mat3.translation, type["translation"].type)
+    translation = optional_translation_to_arrow(translation_mat3.translation)
     matrix = pa.FixedSizeListArray.from_arrays(_normalize_matrix3(translation_mat3.matrix), type=type["matrix"].type)
 
     return pa.StructArray.from_arrays(
@@ -170,8 +163,7 @@ def build_union_array_from_rotation(
     rotation: Quaternion | RotationAxisAngle | None, type: pa.DenseUnionType
 ) -> pa.UnionArray:
     if rotation is None:
-        rotation_discriminant = "Identity"
-        stored_rotation = pa.array([False])
+        return pa.nulls(1, type=type)
     elif isinstance(rotation, RotationAxisAngle):
         rotation_discriminant = "AxisAngle"
         axis_angle_type = union_discriminant_type(type, rotation_discriminant)
@@ -198,8 +190,7 @@ def build_union_array_from_scale(
         scale = scale.scale
 
     if scale is None:
-        scale_discriminant = "Unit"
-        scale = pa.array([False])
+        return pa.nulls(1, type=type)
     elif np.isscalar(scale):
         scale_discriminant = "Uniform"
         scale = pa.array([scale], type=pa.float32())
@@ -216,7 +207,7 @@ def build_union_array_from_scale(
 def build_struct_array_from_translation_rotation_scale(
     transform: TranslationRotationScale3D, type: pa.StructType
 ) -> pa.StructArray:
-    translation = build_union_array_from_translation(transform.translation, type["translation"].type)
+    translation = optional_translation_to_arrow(transform.translation)
     rotation = build_union_array_from_rotation(transform.rotation, type["rotation"].type)
     scale = build_union_array_from_scale(transform.scale, type["scale"].type)
 
