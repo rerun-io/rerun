@@ -293,67 +293,19 @@ impl TranslationRotationScale3D {
         scale: None,
     };
 
-    /// From a translation only.
+    /// From a translation applied after a rotation, known as a rigid transformation.
     #[inline]
-    pub fn from_translation<T: Into<Vec3D>>(translation: T) -> Self {
-        Self {
-            translation: Some(translation.into()),
-            ..Self::IDENTITY
-        }
-    }
-
-    /// From a rotation only.
-    #[inline]
-    pub fn from_rotation<R: Into<Rotation3D>>(rotation: R) -> Self {
-        Self {
-            rotation: Some(rotation.into()),
-            ..Self::IDENTITY
-        }
-    }
-
-    /// From a scale only.
-    #[inline]
-    pub fn from_scale<S: Into<Scale3D>>(scale: S) -> Self {
-        Self {
-            scale: Some(scale.into()),
-            ..Self::IDENTITY
-        }
-    }
-
-    /// From a translation, applied after a rotation.
-    #[inline]
-    pub fn from_translation_rotation<T: Into<Vec3D>, R: Into<Rotation3D>>(
-        translation: T,
-        rotation: R,
-    ) -> Self {
+    pub fn rigid<T: Into<Vec3D>, R: Into<Rotation3D>>(translation: T, rotation: R) -> Self {
         Self {
             translation: Some(translation.into()),
             rotation: Some(rotation.into()),
-            ..Self::IDENTITY
+            scale: None,
         }
     }
 
-    /// From a translation, applied after a rotation & scale.
+    /// From a translation, applied after a rotation & scale, known as an affine transformation.
     #[inline]
-    pub fn from_translation_rotation_scale<
-        T: Into<Vec3D>,
-        R: Into<Rotation3D>,
-        S: Into<Scale3D>,
-    >(
-        translation: T,
-        rotation: R,
-        scale: S,
-    ) -> Self {
-        Self {
-            translation: Some(translation.into()),
-            rotation: Some(rotation.into()),
-            scale: Some(scale.into()),
-        }
-    }
-
-    /// From a translation, applied after a rotation & scale.
-    #[inline]
-    pub fn new<T: Into<Vec3D>, R: Into<Rotation3D>, S: Into<Scale3D>>(
+    pub fn affine<T: Into<Vec3D>, R: Into<Rotation3D>, S: Into<Scale3D>>(
         translation: T,
         rotation: R,
         scale: S,
@@ -378,6 +330,17 @@ impl From<Vec3D> for TranslationRotationScale3D {
     fn from(v: Vec3D) -> Self {
         Self {
             translation: Some(v),
+            ..Default::default()
+        }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::Vec3> for TranslationRotationScale3D {
+    #[inline]
+    fn from(v: glam::Vec3) -> Self {
+        Self {
+            translation: Some(v.into()),
             ..Default::default()
         }
     }
@@ -453,6 +416,21 @@ impl From<TranslationRotationScale3D> for Transform3DRepr {
     #[inline]
     fn from(v: TranslationRotationScale3D) -> Self {
         Self::TranslationRotationScale(v)
+    }
+}
+
+impl From<Vec3D> for Transform3DRepr {
+    #[inline]
+    fn from(v: Vec3D) -> Self {
+        Self::TranslationRotationScale(v.into())
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::Vec3> for Transform3DRepr {
+    #[inline]
+    fn from(v: glam::Vec3) -> Self {
+        Self::TranslationRotationScale(v.into())
     }
 }
 

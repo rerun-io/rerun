@@ -193,9 +193,10 @@ fn log_ar_camera(
     use rerun::transform::TranslationRotationScale3D;
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        .with_component(&[Transform3D::new(
-            TranslationRotationScale3D::from_translation_rotation(translation, rot),
-        )])?
+        .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
+            translation,
+            rot,
+        ))])?
         .send(rec_stream)?;
     MsgSender::new("world/camera/video")
         .with_timepoint(timepoint)

@@ -55,12 +55,10 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     MsgSender::new("bbox_demo/bbox")
         .with_timepoint(sim_time(1 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
-        .with_component(&[Transform3D::new(
-            TranslationRotationScale3D::from_translation_rotation(
-                Vec3D::new(1.0, 0.0, 0.0),
-                RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
-            ),
-        )])?
+        .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
+            Vec3D::new(1.0, 0.0, 0.0),
+            RotationAxisAngle::new(glam::Vec3::Z, Angle::Degrees(180.0)),
+        ))])?
         .with_component(&[ColorRGBA::from_rgb(255, 255, 0)])?
         .with_component(&[Radius(0.01)])?
         .with_component(&[Label("box/t1".to_owned())])?
@@ -647,27 +645,23 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
         MsgSender::new("transforms3d/sun/planet")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Transform3D::new(
-                TranslationRotationScale3D::from_translation_rotation(
-                    Vec3D::new(
-                        (time * rotation_speed_planet).sin() * sun_to_planet_distance,
-                        (time * rotation_speed_planet).cos() * sun_to_planet_distance,
-                        0.0,
-                    ),
-                    RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
+            .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
+                Vec3D::new(
+                    (time * rotation_speed_planet).sin() * sun_to_planet_distance,
+                    (time * rotation_speed_planet).cos() * sun_to_planet_distance,
+                    0.0,
                 ),
-            )])?
+                RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
+            ))])?
             .send(rec_stream)?;
 
         MsgSender::new("transforms3d/sun/planet/moon")
             .with_timepoint(sim_time(time as _))
-            .with_component(&[Transform3D::from_parent(
-                TranslationRotationScale3D::from_translation(Vec3D::new(
-                    (time * rotation_speed_moon).cos() * planet_to_moon_distance,
-                    (time * rotation_speed_moon).sin() * planet_to_moon_distance,
-                    0.0,
-                )),
-            )])?
+            .with_component(&[Transform3D::from_parent(Vec3D::new(
+                (time * rotation_speed_moon).cos() * planet_to_moon_distance,
+                (time * rotation_speed_moon).sin() * planet_to_moon_distance,
+                0.0,
+            ))])?
             .send(rec_stream)?;
     }
 

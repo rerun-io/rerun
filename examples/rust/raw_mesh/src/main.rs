@@ -57,7 +57,7 @@ impl From<GltfPrimitive> for Mesh3D {
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
 impl From<GltfTransform> for Transform3D {
     fn from(transform: GltfTransform) -> Self {
-        Transform3D::new(TranslationRotationScale3D::from_translation_rotation_scale(
+        Transform3D::new(TranslationRotationScale3D::affine(
             transform.t,
             rerun::components::Quaternion::from_xyzw(transform.r),
             transform.s,
