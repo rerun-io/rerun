@@ -368,7 +368,7 @@ impl From<Scale3D> for TranslationRotationScale3D {
 /// Representation of a 3D affine transform.
 ///
 /// Rarely used directly, prefer using the underlying representation classes and pass them directly to
-/// [`Transform3D::child_from_parent`] or [`Transform3D::parent_from_child`].
+/// [`Transform3D::new`] or [`Transform3D::from_parent`].
 ///
 /// ```
 /// use re_log_types::component_types::{Transform3DRepr, TranslationAndMat3, TranslationRotationScale3D};
