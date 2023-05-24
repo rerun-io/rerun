@@ -221,10 +221,9 @@ impl WebViewerServer {
     /// ``` no_run
     /// # use re_web_viewer_server::{WebViewerServer, WebViewerServerPort, WebViewerServerError};
     /// # async fn example() -> Result<(), WebViewerServerError> {
-    /// let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
     /// let server = WebViewerServer::new("0.0.0.0", WebViewerServerPort::AUTO)?;
     /// let server_url = server.server_url();
-    /// server.serve(shutdown_rx).await?;
+    /// server.serve().await?;
     /// # Ok(()) }
     /// ```
     pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
