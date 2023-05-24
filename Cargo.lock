@@ -4206,6 +4206,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_time_panel"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "puffin",
+ "re_ui",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_tuid"
 version = "0.7.0-alpha.0"
 dependencies = [
@@ -4282,6 +4291,7 @@ dependencies = [
  "re_renderer",
  "re_smart_channel",
  "re_tensor_ops",
+ "re_time_panel",
  "re_ui",
  "re_viewer_context",
  "re_ws_comms",
