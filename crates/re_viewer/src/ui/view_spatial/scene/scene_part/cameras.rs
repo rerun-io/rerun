@@ -198,7 +198,7 @@ impl ScenePart for CamerasPart {
 
             if let Some(transform) = store.query_latest_component::<Transform>(ent_path, &query) {
                 let Transform::Pinhole(pinhole) = transform else {
-                        return;
+                        continue;
                     };
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
