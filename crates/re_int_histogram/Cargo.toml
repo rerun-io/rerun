@@ -22,7 +22,7 @@ static_assertions = "1.1"
 
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 insta = "1.23"
 mimalloc.workspace = true
 

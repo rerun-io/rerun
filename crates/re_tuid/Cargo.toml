@@ -38,7 +38,7 @@ arrow2_convert = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 
 [lib]
 bench = false
