@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{log_db::EntityDb, query_latest_single, EntityPath, EntityTree};
+use re_data_store::{log_db::EntityDb, EntityPath, EntityTree};
 use re_log_types::component_types::{DisconnectedSpace, Pinhole, Transform3D};
 
 use super::UnreachableTransform;
@@ -122,11 +122,10 @@ impl SpaceInfoCollection {
             query: &LatestAtQuery,
         ) {
             // Determine how the paths are connected.
-            let transform3d =
-                query_latest_single::<Transform3D>(&entity_db.data_store, &tree.path, query);
-            let pinhole = query_latest_single::<Pinhole>(&entity_db.data_store, &tree.path, query);
-            let disconnect =
-                query_latest_single::<DisconnectedSpace>(&entity_db.data_store, &tree.path, query);
+            let store = &entity_db.data_store;
+            let transform3d = store.query_latest_component::<Transform3D>(&tree.path, query);
+            let pinhole = store.query_latest_component::<Pinhole>(&tree.path, query);
+            let disconnect = store.query_latest_component::<DisconnectedSpace>(&tree.path, query);
 
             let connection = if let Some(transform3d) = transform3d {
                 if let Some(pinhole) = pinhole {
@@ -189,7 +188,9 @@ impl SpaceInfoCollection {
         let mut spaces_info = Self::default();
 
         // Start at the root. The root is always part of the collection!
-        if query_latest_single::<Transform3D>(&entity_db.data_store, &EntityPath::root(), &query)
+        if entity_db
+            .data_store
+            .query_latest_component::<Transform3D>(&EntityPath::root(), &query)
             .is_some()
         {
             re_log::warn_once!("The root entity has a 'transform' component! This will have no effect. Did you mean to apply the transform elsewhere?");

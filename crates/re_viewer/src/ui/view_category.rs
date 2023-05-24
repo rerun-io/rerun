@@ -101,11 +101,10 @@ pub fn categorize_entity_path(
         } else if component == Tensor::name() {
             let timeline_query = LatestAtQuery::new(timeline, TimeInt::MAX);
 
-            if let Some(tensor) = re_data_store::query_latest_single::<Tensor>(
-                &log_db.entity_db.data_store,
-                entity_path,
-                &timeline_query,
-            ) {
+            let store = &log_db.entity_db.data_store;
+            if let Some(tensor) =
+                store.query_latest_component::<Tensor>(entity_path, &timeline_query)
+            {
                 if tensor.is_vector() {
                     set.insert(ViewCategory::BarChart);
                 } else if tensor.is_shaped_like_an_image() {

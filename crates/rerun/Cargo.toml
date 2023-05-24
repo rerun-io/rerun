@@ -2,7 +2,6 @@
 name = "rerun"
 authors.workspace = true
 categories = ["visualization", "computer-vision"]
-default-run = "rerun"
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
 homepage.workspace = true
@@ -21,15 +20,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = [
-  "analytics",
-  "demo",
-  "glam",
-  "image",
-  "native_viewer",
-  "server",
-  "sdk",
-]
+default = ["analytics", "demo", "glam", "image", "sdk", "server"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = [
@@ -52,7 +43,7 @@ image = ["re_log_types/image", "re_sdk?/image"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer"]
 
-## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
+## Support for running a TCP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
 
 ## Embed the Rerun SDK and re-export all of its public symbols.
@@ -102,7 +93,6 @@ webbrowser = { version = "0.8", optional = true }
 backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
 ctrlc.workspace = true
-mimalloc.workspace = true
 puffin.workspace = true
 rayon.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

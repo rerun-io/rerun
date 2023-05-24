@@ -182,12 +182,12 @@ impl ViewerAnalytics {
 
         if let Some(data_source) = &log_db.data_source {
             let data_source = match data_source {
-                re_smart_channel::Source::Files { .. } => "file", // .rrd, .png, .glb, …
-                re_smart_channel::Source::RrdHttpStream { .. } => "http",
-                re_smart_channel::Source::RrdWebEventListener { .. } => "web_event",
-                re_smart_channel::Source::Sdk => "sdk", // show()
-                re_smart_channel::Source::WsClient { .. } => "ws_client", // spawn()
-                re_smart_channel::Source::TcpServer { .. } => "tcp_server", // connect()
+                re_smart_channel::SmartChannelSource::Files { .. } => "file", // .rrd, .png, .glb, …
+                re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
+                re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
+                re_smart_channel::SmartChannelSource::Sdk => "sdk", // show()
+                re_smart_channel::SmartChannelSource::WsClient { .. } => "ws_client", // spawn()
+                re_smart_channel::SmartChannelSource::TcpServer { .. } => "tcp_server", // connect()
             };
             self.register("data_source", data_source);
         }

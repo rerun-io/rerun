@@ -1,8 +1,6 @@
 use egui::NumExt as _;
 
-use re_data_store::{
-    query_latest_single, ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties,
-};
+use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::{
     component_types::{Pinhole, Tensor, TensorDataMeaning},
@@ -439,7 +437,9 @@ fn pinhole_props_ui(
     entity_props: &mut EntityProperties,
 ) {
     let query = ctx.current_query();
-    if query_latest_single::<Pinhole>(&ctx.log_db.entity_db.data_store, entity_path, &query)
+    let store = &ctx.log_db.entity_db.data_store;
+    if store
+        .query_latest_component::<Pinhole>(entity_path, &query)
         .is_some()
     {
         ui.label("Image plane distance");
@@ -469,8 +469,8 @@ fn depth_props_ui(
     crate::profile_function!();
 
     let query = ctx.current_query();
-    let tensor =
-        query_latest_single::<Tensor>(&ctx.log_db.entity_db.data_store, entity_path, &query)?;
+    let store = &ctx.log_db.entity_db.data_store;
+    let tensor = store.query_latest_component::<Tensor>(entity_path, &query)?;
     if tensor.meaning != TensorDataMeaning::Depth {
         return Some(());
     }

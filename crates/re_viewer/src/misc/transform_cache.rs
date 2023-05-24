@@ -1,8 +1,6 @@
 use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{
-    log_db::EntityDb, query_latest_single, EntityPath, EntityPropertyMap, EntityTree,
-};
+use re_data_store::{log_db::EntityDb, EntityPath, EntityPropertyMap, EntityTree};
 use re_log_types::component_types::{DisconnectedSpace, Pinhole, Transform3D};
 use re_viewer_context::TimeControl;
 
@@ -225,12 +223,12 @@ impl TransformCache {
 
 fn transform_at(
     entity_path: &EntityPath,
-    data_store: &re_arrow_store::DataStore,
+    store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut bool,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
-    let pinhole = query_latest_single::<Pinhole>(data_store, entity_path, query);
+    let pinhole = store.query_latest_component::<Pinhole>(entity_path, query);
     if pinhole.is_some() {
         if *encountered_pinhole {
             return Err(UnreachableTransform::NestedPinholeCameras);
@@ -239,7 +237,8 @@ fn transform_at(
         }
     }
 
-    let transform3d = query_latest_single::<Transform3D>(data_store, entity_path, query)
+    let transform3d = store
+        .query_latest_component::<Transform3D>(entity_path, query)
         .map(|transform| transform.to_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
@@ -280,7 +279,10 @@ fn transform_at(
         }
     } else if let Some(pinhole) = pinhole {
         Ok(Some(pinhole))
-    } else if query_latest_single::<DisconnectedSpace>(data_store, entity_path, query).is_some() {
+    } else if store
+        .query_latest_component::<DisconnectedSpace>(entity_path, query)
+        .is_some()
+    {
         Err(UnreachableTransform::DisconnectedSpace)
     } else {
         Ok(None)

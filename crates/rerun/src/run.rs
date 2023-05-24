@@ -2,7 +2,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 use itertools::Itertools;
 use re_log_types::{LogMsg, PythonVersion};
-use re_smart_channel::Receiver;
+use re_smart_channel::{Receiver, SmartMessagePayload};
 
 use anyhow::Context as _;
 use clap::Subcommand;
@@ -66,9 +66,12 @@ struct Args {
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
-    /// - Linux: /home/UserName/.local/share/rerunviewer
-    /// - macOS: /Users/UserName/Library/Application Support/rerunviewer
-    /// - Windows: C:\Users\UserName\AppData\Roaming\rerunviewer
+    ///
+    /// - Linux: /home/UserName/.local/share/rerun
+    ///
+    /// - macOS: /Users/UserName/Library/Application Support/rerun
+    ///
+    /// - Windows: C:\Users\UserName\AppData\Roaming\rerun
     #[clap(long, default_value_t = true)]
     persist_state: bool,
 
@@ -326,10 +329,12 @@ async fn run_impl(
                     re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url)
                 }
                 ArgumentCategory::FilePath(path) => {
-                    let (tx, rx) =
-                        re_smart_channel::smart_channel(re_smart_channel::Source::Files {
+                    let (tx, rx) = re_smart_channel::smart_channel(
+                        re_smart_channel::SmartMessageSource::File(path.clone()),
+                        re_smart_channel::SmartChannelSource::Files {
                             paths: vec![path.clone()],
-                        });
+                        },
+                    );
                     let recording_id =
                         re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
                     load_file_to_channel_at(recording_id, &path, tx)
@@ -388,16 +393,21 @@ async fn run_impl(
                 }
             }
 
-            let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Files {
-                paths: paths.clone(),
-            });
+            let (tx, rx) = re_smart_channel::smart_channel(
+                // NOTE: We can't know yet, each file will get its own properly sourced sender a
+                // few lines below.
+                re_smart_channel::SmartMessageSource::Unknown,
+                re_smart_channel::SmartChannelSource::Files {
+                    paths: paths.clone(),
+                },
+            );
 
             let recording_id = re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
 
             // Load the files in parallel, and log errors.
             // Failing to log one out of many files is not a big deal.
             for path in paths {
-                let tx = tx.clone();
+                let tx = tx.clone_as(re_smart_channel::SmartMessageSource::File(path.clone()));
                 let recording_id = recording_id.clone();
                 rayon::spawn(move || {
                     if let Err(err) = load_file_to_channel_at(recording_id, &path, tx) {
@@ -532,21 +542,27 @@ fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_s
         match rx.recv_timeout(timeout) {
             Ok(msg) => {
                 re_log::info_once!("Received first message.");
-                let is_goodbye = matches!(msg, re_log_types::LogMsg::Goodbye(_, _));
 
-                let mut_db =
-                    db.get_or_insert_with(|| re_data_store::LogDb::new(msg.recording_id().clone()));
+                match msg.payload {
+                    SmartMessagePayload::Msg(msg) => {
+                        let mut_db = db.get_or_insert_with(|| {
+                            re_data_store::LogDb::new(msg.recording_id().clone())
+                        });
 
-                mut_db.add(&msg)?;
-                num_messages += 1;
-                if is_goodbye {
-                    mut_db.entity_db.data_store.sanity_check()?;
-                    anyhow::ensure!(0 < num_messages, "No messages received");
-                    re_log::info!("Successfully ingested {num_messages} messages.");
-                    if let Some(db) = db {
-                        return Ok(db);
-                    } else {
-                        anyhow::bail!("logdb never initialized");
+                        mut_db.add(&msg)?;
+                        num_messages += 1;
+                    }
+                    SmartMessagePayload::Quit(err) => {
+                        if let Some(err) = err {
+                            anyhow::bail!("data source has disconnected unexpectedly: {err}",)
+                        } else if let Some(db) = db {
+                            db.entity_db.data_store.sanity_check()?;
+                            anyhow::ensure!(0 < num_messages, "No messages received");
+                            re_log::info!("Successfully ingested {num_messages} messages.");
+                            return Ok(db);
+                        } else {
+                            anyhow::bail!("logdb never initialized");
+                        }
                     }
                 }
             }
@@ -770,6 +786,7 @@ fn load_file_to_channel_at(
         {
             let log_msg = re_sdk::MsgSender::from_file_path(path)?.into_log_msg(recording_id)?;
             tx.send(log_msg).ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
+            tx.quit(None).ok();
             Ok(())
         }
 
@@ -800,6 +817,7 @@ fn load_rrd_file_to_channel(
                 }
             }
         }
+        tx.quit(None).ok(); // .ok(): we're running in a background thread, so who knows if the receiver is still open
     });
 
     Ok(())
@@ -827,8 +845,10 @@ fn stream_to_rrd(
         // We wake up and poll shutdown_bool every now and then.
         // This is far from elegant, but good enough.
         match rx.recv_timeout(std::time::Duration::from_millis(500)) {
-            Ok(log_msg) => {
-                encoder.append(&log_msg)?;
+            Ok(msg) => {
+                if let Some(payload) = msg.into_data() {
+                    encoder.append(&payload)?;
+                }
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => {

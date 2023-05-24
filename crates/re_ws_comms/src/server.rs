@@ -143,13 +143,23 @@ fn to_broadcast_stream(
     let (tx, _) = tokio::sync::broadcast::channel(1024 * 1024);
     let tx1 = tx.clone();
     tokio::task::spawn_blocking(move || {
-        while let Ok(log_msg) = log_rx.recv() {
-            let bytes = crate::encode_log_msg(&log_msg);
-            let bytes: Arc<[u8]> = bytes.into();
-            history.lock().push(bytes.clone());
-
-            if let Err(tokio::sync::broadcast::error::SendError(_bytes)) = tx1.send(bytes) {
-                // no receivers currently - that's fine!
+        while let Ok(msg) = log_rx.recv() {
+            match msg.payload {
+                re_smart_channel::SmartMessagePayload::Msg(data) => {
+                    let bytes = crate::encode_log_msg(&data);
+                    let bytes: Arc<[u8]> = bytes.into();
+                    history.lock().push(bytes.clone());
+                    if let Err(tokio::sync::broadcast::error::SendError(_bytes)) = tx1.send(bytes) {
+                        // no receivers currently - that's fine!
+                    }
+                }
+                re_smart_channel::SmartMessagePayload::Quit(err) => {
+                    if let Some(err) = err {
+                        re_log::warn!(%msg.source, err, "sender has left unexpectedly");
+                    } else {
+                        re_log::debug!(%msg.source, "sender has left");
+                    }
+                }
             }
         }
     });

@@ -4,7 +4,7 @@ use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
-use re_data_store::{query_latest_single, ComponentName, EntityPath};
+use re_data_store::{ComponentName, EntityPath};
 use re_log_types::{
     component_types::{DisconnectedSpace, Pinhole, Tensor},
     Component,
@@ -49,10 +49,10 @@ pub fn all_possible_space_views(
 
 fn contains_any_image(
     entity_path: &EntityPath,
-    data_store: &re_arrow_store::DataStore,
+    store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
 ) -> bool {
-    if let Some(tensor) = query_latest_single::<Tensor>(data_store, entity_path, query) {
+    if let Some(tensor) = store.query_latest_component::<Tensor>(entity_path, query) {
         tensor.is_shaped_like_an_image()
     } else {
         false
@@ -82,7 +82,7 @@ fn is_interesting_space_view_at_root(
 }
 
 fn is_interesting_space_view_not_at_root(
-    data_store: &re_arrow_store::DataStore,
+    store: &re_arrow_store::DataStore,
     candidate: &SpaceView,
     categories_with_interesting_roots: &ViewCategorySet,
     query: &LatestAtQuery,
@@ -99,8 +99,11 @@ fn is_interesting_space_view_not_at_root(
     //    .. a disconnect transform, the children can't be shown otherwise
     //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
     if candidate.category == ViewCategory::Spatial
-        && (query_latest_single::<Pinhole>(data_store, &candidate.space_path, query).is_some()
-            || query_latest_single::<DisconnectedSpace>(data_store, &candidate.space_path, query)
+        && (store
+            .query_latest_component::<Pinhole>(&candidate.space_path, query)
+            .is_some()
+            || store
+                .query_latest_component::<DisconnectedSpace>(&candidate.space_path, query)
                 .is_some())
     {
         return true;
@@ -120,7 +123,7 @@ pub fn default_created_space_views(
 }
 
 fn default_created_space_views_from_candidates(
-    data_store: &re_arrow_store::DataStore,
+    store: &re_arrow_store::DataStore,
     candidates: Vec<SpaceView>,
 ) -> Vec<SpaceView> {
     crate::profile_function!();
@@ -133,7 +136,7 @@ fn default_created_space_views_from_candidates(
         .iter()
         .filter_map(|space_view_candidate| {
             (space_view_candidate.space_path.is_root()
-                && is_interesting_space_view_at_root(data_store, space_view_candidate, &query))
+                && is_interesting_space_view_at_root(store, space_view_candidate, &query))
             .then_some(space_view_candidate.category)
         })
         .collect::<ViewCategorySet>();
@@ -148,7 +151,7 @@ fn default_created_space_views_from_candidates(
                 continue;
             }
         } else if !is_interesting_space_view_not_at_root(
-            data_store,
+            store,
             &candidate,
             &categories_with_interesting_roots,
             &query,
@@ -179,15 +182,11 @@ fn default_created_space_views_from_candidates(
 
             // For this we're only interested in the direct children.
             for entity_path in &candidate.data_blueprint.root_group().entities {
-                if let Some(tensor) = query_latest_single::<Tensor>(data_store, entity_path, &query)
-                {
+                if let Some(tensor) = store.query_latest_component::<Tensor>(entity_path, &query) {
                     if let Some([height, width, _]) = tensor.image_height_width_channels() {
-                        if query_latest_single::<re_log_types::DrawOrder>(
-                            data_store,
-                            entity_path,
-                            &query,
-                        )
-                        .is_some()
+                        if store
+                            .query_latest_component::<re_log_types::DrawOrder>(entity_path, &query)
+                            .is_some()
                         {
                             // Put everything in the same bucket if it has a draw order.
                             images_by_bucket

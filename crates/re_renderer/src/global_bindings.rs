@@ -45,8 +45,8 @@ pub struct FrameUniformBuffer {
     // Size used for all line radii given with Size::AUTO.
     pub auto_size_lines: f32,
 
-    /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
-    pub end_padding: wgpu_buffer_types::PaddingRow,
+    /// re_renderer defined hardware tier.
+    pub hardware_tier: wgpu_buffer_types::U32RowPadded,
 }
 
 pub(crate) struct GlobalBindings {
