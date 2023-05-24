@@ -11,18 +11,12 @@ use super::UnreachableTransform;
 /// Transform connecting two space paths.
 #[derive(Clone, Debug)]
 pub enum SpaceInfoConnection {
+    Connected {
+        transform3d: Option<Transform3D>,
+        pinhole: Option<Pinhole>,
+    },
+    /// Explicitly disconnected via a [`DisconnectedSpace`] component.
     Disconnected,
-    Transform3D(Transform3D),
-    Pinhole(Pinhole),
-
-    /// TODO(andreas): There will be more combinations in the future, need to figure out how to handle them.
-    Transform3DAndPinhole(Transform3D, Pinhole),
-}
-
-impl SpaceInfoConnection {
-    pub fn is_pinhole(&self) -> bool {
-        matches!(self, Self::Pinhole(_))
-    }
 }
 
 /// Information about one "space".
@@ -71,22 +65,28 @@ impl SpaceInfo {
         ) {
             visitor(space_info);
 
-            for (child_path, transform) in &space_info.child_spaces {
+            for (child_path, connection) in &space_info.child_spaces {
                 let Some(child_space) = space_info_collection.spaces.get(child_path) else {
                     re_log::warn_once!("Child space info {} not part of space info collection", child_path);
                     continue;
                 };
 
                 // don't allow nested pinhole
-                let is_pinhole = transform.is_pinhole();
-                if encountered_pinhole && is_pinhole {
+                let has_pinhole = matches!(
+                    connection,
+                    SpaceInfoConnection::Connected {
+                        pinhole: Some(_),
+                        ..
+                    }
+                );
+                if encountered_pinhole && has_pinhole {
                     continue;
                 }
 
                 visit_descendants_with_reachable_transform_recursively(
                     child_space,
                     space_info_collection,
-                    is_pinhole,
+                    has_pinhole,
                     visitor,
                 );
             }
@@ -125,20 +125,16 @@ impl SpaceInfoCollection {
             let store = &entity_db.data_store;
             let transform3d = store.query_latest_component::<Transform3D>(&tree.path, query);
             let pinhole = store.query_latest_component::<Pinhole>(&tree.path, query);
-            let disconnect = store.query_latest_component::<DisconnectedSpace>(&tree.path, query);
 
-            let connection = if let Some(transform3d) = transform3d {
-                if let Some(pinhole) = pinhole {
-                    Some(SpaceInfoConnection::Transform3DAndPinhole(
-                        transform3d,
-                        pinhole,
-                    ))
-                } else {
-                    Some(SpaceInfoConnection::Transform3D(transform3d))
-                }
-            } else if let Some(pinhole) = pinhole {
-                Some(SpaceInfoConnection::Pinhole(pinhole))
-            } else if disconnect.is_some() {
+            let connection = if transform3d.is_some() || pinhole.is_some() {
+                Some(SpaceInfoConnection::Connected {
+                    transform3d,
+                    pinhole,
+                })
+            } else if store
+                .query_latest_component::<DisconnectedSpace>(&tree.path, query)
+                .is_some()
+            {
                 Some(SpaceInfoConnection::Disconnected)
             } else {
                 None
@@ -264,9 +260,10 @@ impl SpaceInfoCollection {
                     SpaceInfoConnection::Disconnected => {
                         Err(UnreachableTransform::DisconnectedSpace)
                     }
-                    SpaceInfoConnection::Transform3D(_) => Ok(()),
-                    SpaceInfoConnection::Transform3DAndPinhole(_, pinhole)
-                    | SpaceInfoConnection::Pinhole(pinhole) => {
+                    SpaceInfoConnection::Connected {
+                        pinhole: Some(pinhole),
+                        ..
+                    } => {
                         if encountered_pinhole {
                             Err(UnreachableTransform::NestedPinholeCameras)
                         } else {
@@ -278,6 +275,7 @@ impl SpaceInfoCollection {
                             }
                         }
                     }
+                    SpaceInfoConnection::Connected { .. } => Ok(()),
                 }?;
 
                 let Some(parent_space) = self.spaces.get(parent_path)
