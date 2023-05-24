@@ -124,7 +124,6 @@ fn install_signal_handler(build_info: BuildInfo) {
             libc::SIGBUS,
             libc::SIGFPE,
             libc::SIGILL,
-            libc::SIGINT,
             libc::SIGSEGV,
             libc::SIGTERM,
         ] {
