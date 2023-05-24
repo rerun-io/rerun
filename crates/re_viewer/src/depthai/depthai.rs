@@ -138,21 +138,6 @@ impl Default for CameraSensorKind {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq, Debug)]
-#[allow(non_camel_case_types)]
-pub enum CameraSensorKind {
-    COLOR,
-    MONO,
-    TOF,
-    THERMAL,
-}
-
-impl Default for CameraSensorKind {
-    fn default() -> Self {
-        Self::COLOR
-    }
-}
-
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug)]
 pub struct CameraFeatures {
     pub resolutions: Vec<CameraSensorResolution>,
