@@ -72,7 +72,7 @@ fn global_web_viewer_server(
 
 #[pyfunction]
 fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
-    // Python catches SIGINT and waints for us to release the GIL before shtting down.
+    // Python catches SIGINT and waits for us to release the GIL before shtting down.
     // That's no good, so we need to catch SIGINT ourselves and shut down:
     ctrlc::set_handler(move || {
         eprintln!("Ctrl-C detected in rerun_py. Shutting down.");
