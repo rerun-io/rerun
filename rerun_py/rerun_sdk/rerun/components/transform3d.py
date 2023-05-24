@@ -53,7 +53,7 @@ class TranslationAndMat3:
     """3D translation vector, applied after the matrix. Uses (0, 0, 0) if not set."""
 
     matrix: Union[npt.ArrayLike, None] = None
-    """The column-major 3x3 matrix for scale, rotation & skew matrix. Uses identity if not set."""
+    """The row-major 3x3 matrix for scale, rotation & skew matrix. Uses identity if not set."""
 
 
 @dataclass
