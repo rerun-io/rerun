@@ -307,7 +307,7 @@ impl SpaceViewBlueprint {
 // ----------------------------------------------------------------------------
 
 /// Camera position and similar.
-#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default)]
 pub struct SpaceViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstancePath>,

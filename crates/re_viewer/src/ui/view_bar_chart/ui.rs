@@ -36,7 +36,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
-#[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct BarChartState;
 
 pub(crate) fn view_bar_chart(

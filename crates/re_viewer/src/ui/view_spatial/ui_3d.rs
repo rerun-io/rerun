@@ -35,8 +35,7 @@ use super::{
 
 // ---
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[derive(Clone)]
 pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
 
@@ -46,11 +45,9 @@ pub struct View3DState {
     /// Camera pose just before we took over another camera via [Self::tracked_camera].
     camera_before_tracked_camera: Option<Eye>,
 
-    #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
 
     /// Where in world space the mouse is hovering (from previous frame)
-    #[serde(skip)]
     hovered_point: Option<glam::Vec3>,
 
     // options:
@@ -58,43 +55,11 @@ pub struct View3DState {
     pub show_axes: bool,
     pub show_bbox: bool,
 
-    #[serde(skip)]
     last_eye_interact_time: f64,
 
     /// Filled in at the start of each frame
-    #[serde(skip)]
     pub(crate) space_specs: SpaceSpecs,
-    #[serde(skip)]
     space_camera: Vec<SpaceCamera3D>, // TODO(andreas): remove this once camera meshes are gone
-}
-
-// TODO(#2089): This state probably doesn't belong in the blueprint in the
-// first place. But since serde skips it we also have to ignore it. or else we
-// re-store state on every frame. Either way the fact that we don't get it back
-// out of the store is going to cause problems.
-impl PartialEq for View3DState {
-    fn eq(&self, other: &Self) -> bool {
-        let Self {
-            orbit_eye,
-            tracked_camera,
-            camera_before_tracked_camera,
-            eye_interpolation: _, // serde-skip
-            hovered_point: _,     // serde-skip
-            spin,
-            show_axes,
-            show_bbox,
-            last_eye_interact_time: _, // serde-skip
-            space_specs: _,            // serde-skip
-            space_camera: _,           // serde-skip
-        } = self;
-
-        *orbit_eye == other.orbit_eye
-            && *tracked_camera == other.tracked_camera
-            && *camera_before_tracked_camera == other.camera_before_tracked_camera
-            && *spin == other.spin
-            && *show_axes == other.show_axes
-            && *show_bbox == other.show_bbox
-    }
 }
 
 impl Default for View3DState {

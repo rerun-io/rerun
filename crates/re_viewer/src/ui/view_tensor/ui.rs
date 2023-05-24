@@ -27,7 +27,7 @@ pub struct SliceSelection {
     pub selector_values: BTreeMap<usize, u64>,
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone)]
 pub struct ViewTensorState {
     /// What slice are we vieiwing?
     slice: SliceSelection,
@@ -40,24 +40,7 @@ pub struct ViewTensorState {
 
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
-    #[serde(skip)]
     tensor: Option<DecodedTensor>,
-}
-
-// TODO(#2089): TManually implement PartialEq so we aren't comparing the serde-skipped tensor
-impl PartialEq for ViewTensorState {
-    fn eq(&self, other: &Self) -> bool {
-        let Self {
-            slice,
-            color_mapping,
-            texture_settings,
-            tensor: _, // serde-skip
-        } = self;
-
-        *slice == other.slice
-            && *color_mapping == other.color_mapping
-            && *texture_settings == other.texture_settings
-    }
 }
 
 impl ViewTensorState {
