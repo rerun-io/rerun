@@ -44,6 +44,9 @@ pub struct Image {
     /// Textured rectangle for the renderer.
     pub textured_rect: TexturedRect,
 
+    /// Pinhole camera this image is under.
+    pub parent_pinhole: Option<EntityPathHash>,
+
     /// Draw order value used.
     pub draw_order: DrawOrder,
 }
