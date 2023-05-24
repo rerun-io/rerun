@@ -117,16 +117,16 @@ fn panic_info_message(panic_info: &std::panic::PanicInfo<'_>) -> Option<String> 
 fn install_signal_handler(build_info: BuildInfo) {
     *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
 
-    // SAFETY: we're installing a signal handler.
-    unsafe {
-        for signum in [
-            libc::SIGABRT,
-            libc::SIGBUS,
-            libc::SIGFPE,
-            libc::SIGILL,
-            libc::SIGSEGV,
-            libc::SIGTERM,
-        ] {
+    for signum in [
+        libc::SIGABRT,
+        libc::SIGBUS,
+        libc::SIGFPE,
+        libc::SIGILL,
+        libc::SIGSEGV,
+        libc::SIGTERM,
+    ] {
+        // SAFETY: we're installing a signal handler.
+        unsafe {
             libc::signal(
                 signum,
                 signal_handler as *const fn(libc::c_int) as libc::size_t,

@@ -45,7 +45,7 @@ puffin.workspace = true
 
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 mimalloc.workspace = true
 rand = "0.8"
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
