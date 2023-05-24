@@ -115,11 +115,15 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
         // Since we change transparency depending on order and re_renderer doesn't handle transparency
         // ordering either, we need to ensure that sorting is stable at the very least.
         // Sorting is done by depth offset, not by draw order which is the same for the entire group.
-        images.sort_by_key(|image| image.textured_rect.options.depth_offset);
-
+        //
         // Class id images should generally come last within the same layer as
         // they typically have large areas being zeroed out (which maps to fully transparent).
-        images.sort_by_key(|image| image.tensor.meaning == TensorDataMeaning::ClassId);
+        images.sort_by_key(|image| {
+            (
+                image.textured_rect.options.depth_offset,
+                image.tensor.meaning == TensorDataMeaning::ClassId,
+            )
+        });
 
         let total_num_images = images.len();
         for (idx, image) in images.iter_mut().enumerate() {
