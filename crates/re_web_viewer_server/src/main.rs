@@ -29,14 +29,6 @@ async fn main() {
     use clap::Parser as _;
     let args = Args::parse();
 
-    // Shutdown server via Ctrl+C
-    let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-    ctrlc::set_handler(move || {
-        re_log::debug!("Ctrl-C detected - Closing web server.");
-        shutdown_tx.send(()).unwrap();
-    })
-    .expect("Error setting Ctrl-C handler");
-
     let bind_ip = &args.bind;
     let server = re_web_viewer_server::WebViewerServer::new(
         bind_ip,
@@ -53,5 +45,5 @@ async fn main() {
         }
     }
 
-    server.serve(shutdown_rx).await.unwrap();
+    server.serve().await.unwrap();
 }

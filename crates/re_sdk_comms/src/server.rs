@@ -34,15 +34,13 @@ impl Default for ServerOptions {
 /// # use re_sdk_comms::{serve, ServerOptions};
 /// #[tokio::main]
 /// async fn main() {
-///     let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default(), shutdown_rx).await.unwrap();
+///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default()).await.unwrap();
 /// }
 /// ```
 pub async fn serve(
     bind_ip: &str,
     port: u16,
     options: ServerOptions,
-    shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<Receiver<LogMsg>> {
     let (tx, rx) = re_smart_channel::smart_channel(
         // NOTE: We don't know until we start actually accepting clients!
@@ -67,25 +65,14 @@ pub async fn serve(
         );
     }
 
-    tokio::spawn(listen_for_new_clients(listener, options, tx, shutdown_rx));
+    tokio::spawn(listen_for_new_clients(listener, options, tx));
 
     Ok(rx)
 }
 
-async fn listen_for_new_clients(
-    listener: TcpListener,
-    options: ServerOptions,
-    tx: Sender<LogMsg>,
-    mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-) {
+async fn listen_for_new_clients(listener: TcpListener, options: ServerOptions, tx: Sender<LogMsg>) {
     loop {
-        let incoming = tokio::select! {
-            res = listener.accept() => res,
-            _ = shutdown_rx.recv() => {
-                return;
-            }
-        };
-        match incoming {
+        match listener.accept().await {
             Ok((stream, _)) => {
                 let addr = stream.peer_addr().ok();
                 let tx = tx.clone_as(re_smart_channel::SmartMessageSource::TcpClient { addr });

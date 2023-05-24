@@ -3,12 +3,24 @@ Methods for logging transforms on entity paths.
 
 Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/spaces-and-transforms)
 """
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy.typing as npt
+from deprecated import deprecated
 
 from rerun import bindings
-from rerun.log import _to_sequence
+from rerun.components.disconnected_space import DisconnectedSpaceArray
+from rerun.components.quaternion import Quaternion
+from rerun.components.transform3d import (
+    Rigid3D,
+    RotationAxisAngle,
+    Scale3D,
+    Transform3D,
+    Transform3DArray,
+    Translation3D,
+    TranslationAndMat3,
+    TranslationRotationScale3D,
+)
 from rerun.log.error_utils import _send_warning
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -16,7 +28,9 @@ from rerun.recording_stream import RecordingStream
 __all__ = [
     "log_view_coordinates",
     "log_unknown_transform",
+    "log_disconnected_space",
     "log_rigid3",
+    "log_transform3d",
 ]
 
 
@@ -112,6 +126,7 @@ def log_view_coordinates(
         )
 
 
+@deprecated(version="0.7.0", reason="Use log_disconnected_space instead.")
 @log_decorator
 def log_unknown_transform(
     entity_path: str,
@@ -136,13 +151,139 @@ def log_unknown_transform(
     """
     recording = RecordingStream.to_native(recording)
 
-    bindings.log_unknown_transform(
-        entity_path,
-        timeless=timeless,
-        recording=recording,
+    instanced: Dict[str, Any] = {}
+    instanced["rerun.disconnected_transform"] = DisconnectedSpaceArray.single()
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+
+
+@log_decorator
+def log_disconnected_space(
+    entity_path: str,
+    timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
+) -> None:
+    """
+    Log that this entity is NOT in the same space as the parent.
+
+    This is useful for specifying that a subgraph is independent of the rest of the scene.
+    If a transform or pinhole is logged on the same path, this component will be ignored.
+
+    Parameters
+    ----------
+    entity_path:
+        The path of the affected entity.
+
+    timeless:
+        Log the data as timeless.
+
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    """
+    recording = RecordingStream.to_native(recording)
+
+    instanced: Dict[str, Any] = {}
+    instanced["rerun.disconnected_transform"] = DisconnectedSpaceArray.single()
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+
+
+@log_decorator
+def log_transform3d(
+    entity_path: str,
+    transform: Union[
+        TranslationAndMat3,
+        TranslationRotationScale3D,
+        RotationAxisAngle,
+        Translation3D,
+        Scale3D,
+        Quaternion,
+        Rigid3D,
+    ],
+    *,
+    from_parent: bool = False,
+    timeless: bool = False,
+    recording: Optional[RecordingStream] = None,
+) -> None:
+    """
+    Log an (affine) 3D transform between this entity and the parent.
+
+    If `from_parent` is set to `True`, the transformation is from the parent to the space of the entity_path,
+    otherwise it is from the child to the parent.
+
+    Note that new transforms replace previous, i.e. if you call this function several times on the same path,
+    each new transform will replace the previous one and does not combine with it.
+
+    Examples
+    --------
+    ```
+    # Log translation only.
+    rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 1, 3)))
+
+    # Log scale along the x axis only.
+    rr.log_transform3d("transform_test/x_scaled", rr.Scale3D((3, 1, 1)))
+
+    # Log a rotation around the z axis.
+    rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((0, 0, 1), degrees=20))
+
+    # Log scale followed by translation along the Y-axis.
+    rr.log_transform3d(
+        "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0.0, 1.0, 0.0], scale=2)
     )
 
+    # Log translation + rotation, also called a rigid transform.
+    rr.log_transform3d("transform_test/rigid3", rr.Rigid3D([1, 2, 3], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
 
+    # Log translation, rotation & scale all at once.
+    rr.log_transform3d(
+        "transform_test/transformed",
+        rr.TranslationRotationScale3D(
+            translation=[0, 1, 5],
+            rotation=rr.RotationAxisAngle((0, 0, 1), degrees=20),
+            scale=2,
+        ),
+    )
+    ```
+
+    Parameters
+    ----------
+    entity_path:
+        Path of the *child* space in the space hierarchy.
+    transform:
+        Instance of a rerun data class that describes a three dimensional transform.
+        One of:
+        * `TranslationAndMat3`
+        * `TranslationRotationScale3D`
+        * `Rigid3D`
+        * `RotationAxisAngle`
+        * `Translation3D`
+        * `Quaternion`
+        * `Scale3D`
+    from_parent:
+        If True, the transform is from the parent to the child, otherwise it is from the child to the parent.
+    timeless:
+        If true, the transform will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+    # Convert additionally supported types to TranslationRotationScale3D
+    if isinstance(transform, RotationAxisAngle) or isinstance(transform, Quaternion):
+        transform = TranslationRotationScale3D(rotation=transform)
+    elif isinstance(transform, Translation3D):
+        transform = TranslationRotationScale3D(translation=transform)
+    elif isinstance(transform, Scale3D):
+        transform = TranslationRotationScale3D(scale=transform)
+    elif isinstance(transform, Rigid3D):
+        transform = TranslationRotationScale3D(rotation=transform.rotation, translation=transform.translation)
+
+    instanced = {"rerun.transform3d": Transform3DArray.from_transform(Transform3D(transform, from_parent))}
+    bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
+
+
+@deprecated(version="0.7.0", reason="Use log_transform3d instead and, if xyz was set, use log_view_coordinates.")
 @log_decorator
 def log_rigid3(
     entity_path: str,
@@ -202,22 +343,23 @@ def log_rigid3(
         raise TypeError("Set either parent_from_child or child_from_parent, but not both.")
 
     if parent_from_child:
-        (t, q) = parent_from_child
-        bindings.log_rigid3(
+        rotation = None
+        if parent_from_child[1] is not None:
+            rotation = Quaternion(xyzw=parent_from_child[1])
+        log_transform3d(
             entity_path,
-            parent_from_child=True,
-            rotation_q=_to_sequence(q),
-            translation=_to_sequence(t),
+            Rigid3D(translation=parent_from_child[0], rotation=rotation),
             timeless=timeless,
             recording=recording,
         )
     elif child_from_parent:
-        (t, q) = child_from_parent
-        bindings.log_rigid3(
+        rotation = None
+        if child_from_parent[1] is not None:
+            rotation = Quaternion(xyzw=child_from_parent[1])
+        log_transform3d(
             entity_path,
-            parent_from_child=False,
-            rotation_q=_to_sequence(q),
-            translation=_to_sequence(t),
+            Rigid3D(translation=child_from_parent[0], rotation=rotation),
+            from_parent=True,
             timeless=timeless,
             recording=recording,
         )

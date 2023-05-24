@@ -63,11 +63,10 @@ pub async fn host_web_viewer(
     web_port: WebViewerServerPort,
     open_browser: bool,
     source_url: String,
-    shutdown_rx: tokio::sync::broadcast::Receiver<()>,
 ) -> anyhow::Result<()> {
     let web_server = re_web_viewer_server::WebViewerServer::new(&bind_ip, web_port)?;
     let http_web_viewer_url = web_server.server_url();
-    let web_server_handle = web_server.serve(shutdown_rx);
+    let web_server_handle = web_server.serve();
 
     let viewer_url = format!("{http_web_viewer_url}?url={source_url}");
 
