@@ -41,7 +41,10 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timel
             rr.log_transform3d(
                 path,
                 rr.Translation3D(
-                    trimesh.transformations.translation_from_matrix(world_from_mesh, world_from_mesh[0:3, 0:3])
+                    rr.TranslationAndMat3(
+                        translation=trimesh.transformations.translation_from_matrix(world_from_mesh),
+                        matrix=world_from_mesh[0:3, 0:3],
+                    )
                 ),
                 timeless=timeless,
             )
