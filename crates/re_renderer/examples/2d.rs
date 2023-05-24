@@ -26,15 +26,7 @@ impl framework::Example for Render2D {
         let rerun_logo =
             image::load_from_memory(include_bytes!("../../re_ui/data/logo_dark_mode.png")).unwrap();
 
-        let mut image_data = rerun_logo.as_rgba8().unwrap().to_vec();
-
-        // Premultiply alpha.
-        for color in image_data.chunks_exact_mut(4) {
-            color.clone_from_slice(
-                &ecolor::Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
-                    .to_array(),
-            );
-        }
+        let image_data = rerun_logo.as_rgba8().unwrap().to_vec();
 
         let rerun_logo_texture = re_ctx
             .texture_manager_2d
@@ -229,7 +221,7 @@ impl framework::Example for Render2D {
                     top_left_corner_position: glam::vec3(500.0, 120.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    colormapped_texture: ColormappedTexture::from_unorm_srgba(
+                    colormapped_texture: ColormappedTexture::from_unorm_rgba(
                         self.rerun_logo_texture.clone(),
                     ),
                     options: RectangleOptions {
@@ -247,7 +239,7 @@ impl framework::Example for Render2D {
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    colormapped_texture: ColormappedTexture::from_unorm_srgba(
+                    colormapped_texture: ColormappedTexture::from_unorm_rgba(
                         self.rerun_logo_texture.clone(),
                     ),
                     options: RectangleOptions {
