@@ -525,7 +525,7 @@ impl Transform3D {
     };
 
     /// Creates a new transform with a given representation, transforming from the parent space into the child space.
-    pub fn parent_from_child<T: Into<Transform3DRepr>>(representation: T) -> Self {
+    pub fn new<T: Into<Transform3DRepr>>(representation: T) -> Self {
         Self {
             transform: representation.into(),
             from_parent: false,
@@ -533,7 +533,7 @@ impl Transform3D {
     }
 
     /// Creates a new transform with a given representation, transforming from the child space into the parent space.
-    pub fn child_from_parent<T: Into<Transform3DRepr>>(representation: T) -> Self {
+    pub fn from_parent<T: Into<Transform3DRepr>>(representation: T) -> Self {
         Self {
             transform: representation.into(),
             from_parent: true,
@@ -577,11 +577,11 @@ fn test_transform_roundtrip() {
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
     let transforms_in = vec![
-        Transform3D::child_from_parent(TranslationAndMat3 {
+        Transform3D::from_parent(TranslationAndMat3 {
             translation: Some([10.0, 11.0, 12.0].into()),
             matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
         }),
-        Transform3D::parent_from_child(TranslationRotationScale3D {
+        Transform3D::new(TranslationRotationScale3D {
             translation: Some([10.0, 11.0, 12.0].into()),
             rotation: Some(Quaternion::new(13.0, 14.0, 15.0, 16.0).into()),
             scale: Some([17.0, 18.0, 19.0].into()),

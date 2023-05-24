@@ -128,7 +128,7 @@ fn log_baseline_objects(
                 let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                Transform3D::parent_from_child(TranslationAndMat3::new(translation, rotation))
+                Transform3D::new(TranslationAndMat3::new(translation, rotation))
             };
             let label = Label(object.category.clone());
 
@@ -193,7 +193,7 @@ fn log_ar_camera(
     use rerun::transform::TranslationRotationScale3D;
     MsgSender::new("world/camera")
         .with_timepoint(timepoint.clone())
-        .with_component(&[Transform3D::parent_from_child(
+        .with_component(&[Transform3D::new(
             TranslationRotationScale3D::from_translation_rotation(translation, rot),
         )])?
         .send(rec_stream)?;
