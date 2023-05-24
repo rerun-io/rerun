@@ -37,14 +37,15 @@ def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> No
     node_data = scene.graph.get(frame_to=node, frame_from=parent)
     if node_data:
         # Log the transform between this node and its direct parent (if it has one!).
-        # TODO(cmc): Not ideal that the user has to decompose the matrix before logging it.
         if parent:
+            # TODO(andreas): We should support 4x4 matrices directly
             world_from_mesh = node_data[0]
-            t = trimesh.transformations.translation_from_matrix(world_from_mesh)
-            q = trimesh.transformations.quaternion_from_matrix(world_from_mesh)
-            # `trimesh` stores quaternions in `wxyz` format, rerun needs `xyzw`
-            q = np.array([q[1], q[2], q[3], q[0]])
-            rr.log_rigid3(path, parent_from_child=(t, q))
+            rr.log_transform3d(
+                path,
+                rr.TranslationAndMat3(
+                    trimesh.transformations.translation_from_matrix(world_from_mesh), world_from_mesh[0:3, 0:3]
+                ),
+            )
 
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))

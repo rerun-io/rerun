@@ -6,7 +6,7 @@ use re_data_store::{EditableAutoValue, EntityPath, EntityPropertyMap};
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
-use re_log_types::component_types::{Tensor, TensorDataMeaning};
+use re_log_types::component_types::{Pinhole, Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
@@ -168,8 +168,9 @@ impl ViewSpatialState {
         entity_path: &EntityPath,
     ) {
         let store = &ctx.log_db.entity_db.data_store;
-        if let Some(re_log_types::Transform::Pinhole(_)) =
-            store.query_latest_component::<re_log_types::Transform>(entity_path, query)
+        if store
+            .query_latest_component::<Pinhole>(entity_path, query)
+            .is_some()
         {
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {

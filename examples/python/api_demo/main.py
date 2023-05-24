@@ -19,8 +19,6 @@ from typing import Callable
 import cv2
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-from rerun import RecordingStream
-from scipy.spatial.transform import Rotation
 
 
 def run_segmentation() -> None:
@@ -112,6 +110,44 @@ def run_2d_layering() -> None:
         "2d_layering/points_between_top_and_middle",
         [(32.0 + int(i / 16) * 16.0, 64.0 + (i % 16) * 16.0) for i in range(16 * 16)],
         draw_order=1.51,
+    )
+
+
+def transform_test() -> None:
+    rr.log_disconnected_space("transform_test/disconnected", timeless=True)
+    rr.log_transform3d(
+        "transform_test/child_from_parent_mat3",
+        rr.TranslationAndMat3((123, 456, 789), np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
+        from_parent=True,
+    )
+    rr.log_transform3d("transform_test/parent_from_child_mat3", rr.TranslationAndMat3((123, 456, 789)))
+    rr.log_transform3d("transform_test/empty_translation_mat3", rr.TranslationAndMat3())
+
+    # Log translation only.
+    rr.log_transform3d("transform_test/translation", rr.Translation3D((2, 1, 3)))
+
+    # Log scale along the x axis only.
+    rr.log_transform3d("transform_test/x_scaled", rr.Scale3D((3, 1, 1)))
+
+    # Log a rotation around the z axis.
+    rr.log_transform3d("transform_test/z_rotated_object", rr.RotationAxisAngle((0, 0, 1), degrees=20))
+
+    # Log scale followed by translation along the Y-axis.
+    rr.log_transform3d(
+        "transform_test/scaled_and_translated_object", rr.TranslationRotationScale3D([0.0, 1.0, 0.0], scale=2)
+    )
+
+    # Log translation + rotation, also called a rigid transform.
+    rr.log_transform3d("transform_test/rigid3", rr.Rigid3D([1, 2, 3], rr.RotationAxisAngle((0, 1, 0), radians=1.57)))
+
+    # Log translation, rotation & scale all at once.
+    rr.log_transform3d(
+        "transform_test/transformed",
+        rr.TranslationRotationScale3D(
+            translation=[0, 1, 5],
+            rotation=rr.RotationAxisAngle((0, 0, 1), degrees=20),
+            scale=2,
+        ),
     )
 
 
@@ -249,29 +285,28 @@ def transforms_rigid_3d() -> None:
     for i in range(0, 6 * 120):
         time = i / 120.0
         rr.set_time_seconds("sim_time", time)
-        rotation_q = [0, 0, 0, 1]
 
-        rr.log_rigid3(
+        rr.log_transform3d(
             "transforms3d/sun/planet",
-            parent_from_child=(
+            rr.TranslationRotationScale3D(
                 [
                     math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
                     math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
                     0.0,
                 ],
-                Rotation.from_euler("x", 20, degrees=True).as_quat(),
+                rr.RotationAxisAngle((1, 0, 0), degrees=20),
             ),
         )
-        rr.log_rigid3(
+        rr.log_transform3d(
             "transforms3d/sun/planet/moon",
-            child_from_parent=(
+            rr.TranslationRotationScale3D(
                 [
                     math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
                     math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
                     0.0,
-                ],
-                rotation_q,
+                ]
             ),
+            from_parent=True,
         )
 
 
@@ -353,7 +388,7 @@ def run_image_tensors() -> None:
         rr.log_image(f"img_gray_{dtype}", img_gray.astype(dtype))
 
 
-def spawn_demo(demo: Callable[[], None], rec: RecordingStream) -> None:
+def spawn_demo(demo: Callable[[], None], rec: rr.RecordingStream) -> None:
     with rec:
         demo()
 
@@ -370,7 +405,8 @@ def main() -> None:
         "rects": run_rects,
         "segmentation": run_segmentation,
         "text": run_text_logs,
-        "transforms_3d": transforms_rigid_3d,
+        "transforms_rigid_3d": transforms_rigid_3d,
+        "transform_test": transform_test,
         "2d_layering": run_2d_layering,
     }
 
@@ -404,7 +440,7 @@ def main() -> None:
         threads = []
         for name, demo in demos.items():
             # Some demos are just a bit… too much
-            if args.demo == "most" and name in ["image_tensors"]:
+            if args.demo == "most" and name in ["image_tensors", "transform_test"]:
                 continue
 
             if args.split_recordings:

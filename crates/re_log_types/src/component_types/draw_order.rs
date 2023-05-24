@@ -10,6 +10,8 @@ use crate::Component;
 ///
 /// Draw order for entities with the same draw order is generally undefined.
 ///
+/// This component is a "mono-component". See [the crate level docs](crate) for details.
+///
 /// ```
 /// use re_log_types::component_types::DrawOrder;
 /// use arrow2_convert::field::ArrowField;

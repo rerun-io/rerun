@@ -233,109 +233,64 @@ fn test_clean_for_polars_nomodify() {
     assert_eq!(cell.as_arrow_ref(), &*cleaned);
 }
 
-#[test]
-fn test_clean_for_polars_modify() {
-    use re_log_types::{DataCell, Pinhole, Transform};
-    // transforms are a nice pathological type with both Unions and FixedSizeLists
-    let transforms = vec![Transform::Pinhole(Pinhole {
-        image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
-        resolution: None,
-    })];
+#[cfg(test)]
+mod tests {
+    use arrow2::datatypes::{DataType, Field, UnionMode};
+    use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
+    use re_log_types::{component_types::Vec3D, Component, DataCell};
 
-    let cell: DataCell = transforms.try_into().unwrap();
-    assert_eq!(
-        *cell.datatype(),
-        DataType::Union(
-            vec![
-                Field::new("Unknown", DataType::Boolean, false),
-                Field::new(
-                    "Rigid3",
-                    DataType::Struct(vec![
-                        Field::new(
-                            "rotation",
-                            DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
-                                4
-                            ),
-                            false
-                        ),
-                        Field::new(
-                            "translation",
-                            DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
-                                3
-                            ),
-                            false
-                        )
-                    ]),
-                    false
-                ),
-                Field::new(
-                    "Pinhole",
-                    DataType::Struct(vec![
-                        Field::new(
-                            "image_from_cam",
-                            DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
-                                9
-                            ),
-                            false,
-                        ),
-                        Field::new(
-                            "resolution",
-                            DataType::FixedSizeList(
-                                Box::new(Field::new("item", DataType::Float32, false)),
-                                2
-                            ),
-                            true,
-                        ),
-                    ]),
-                    false
-                )
-            ],
-            None,
-            UnionMode::Dense
-        ),
-    );
+    use crate::ArrayExt;
 
-    let cleaned = cell.as_arrow_ref().clean_for_polars();
+    #[derive(Clone, Copy, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+    #[arrow_field(type = "dense")]
+    enum TestComponentWithUnionAndFixedSizeList {
+        Bool(bool),
+        Vec3D(Vec3D),
+    }
 
-    assert_eq!(
-        *cleaned.data_type(),
-        DataType::Struct(vec![
-            Field::new("Unknown", DataType::Boolean, false),
-            Field::new(
-                "Rigid3",
-                DataType::Struct(vec![
+    impl Component for TestComponentWithUnionAndFixedSizeList {
+        fn name() -> re_log_types::ComponentName {
+            "test_component_with_union_and_fixed_size_list".into()
+        }
+    }
+
+    #[test]
+    fn test_clean_for_polars_modify() {
+        // Pick a type with both Unions and FixedSizeLists
+        let elements = vec![TestComponentWithUnionAndFixedSizeList::Bool(false)];
+
+        let cell: DataCell = elements.try_into().unwrap();
+        assert_eq!(
+            *cell.datatype(),
+            DataType::Union(
+                vec![
+                    Field::new("Bool", DataType::Boolean, false),
                     Field::new(
-                        "rotation",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
-                        false
-                    ),
-                    Field::new(
-                        "translation",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
+                        "Vec3D",
+                        DataType::FixedSizeList(
+                            Box::new(Field::new("item", DataType::Float32, false)),
+                            3
+                        ),
                         false
                     )
-                ]),
-                false
-            ),
-            Field::new(
-                "Pinhole",
-                DataType::Struct(vec![
-                    Field::new(
-                        "image_from_cam",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
-                        false,
-                    ),
-                    Field::new(
-                        "resolution",
-                        DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
-                        true,
-                    ),
-                ]),
-                false
+                ],
+                None,
+                UnionMode::Dense
             )
-        ],),
-    );
+        );
+
+        let cleaned = cell.as_arrow_ref().clean_for_polars();
+
+        assert_eq!(
+            *cleaned.data_type(),
+            DataType::Struct(vec![
+                Field::new("Bool", DataType::Boolean, false),
+                Field::new(
+                    "Vec3D",
+                    DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+                    false
+                )
+            ],)
+        );
+    }
 }

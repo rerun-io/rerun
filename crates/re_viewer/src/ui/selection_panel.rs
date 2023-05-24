@@ -3,8 +3,8 @@ use egui::NumExt as _;
 use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::{
-    component_types::{Tensor, TensorDataMeaning},
-    TimeType, Transform,
+    component_types::{Pinhole, Tensor, TensorDataMeaning},
+    TimeType,
 };
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 
@@ -436,8 +436,9 @@ fn pinhole_props_ui(
 ) {
     let query = ctx.current_query();
     let store = &ctx.log_db.entity_db.data_store;
-    if let Some(re_log_types::Transform::Pinhole(_)) =
-        store.query_latest_component::<Transform>(entity_path, &query)
+    if store
+        .query_latest_component::<Pinhole>(entity_path, &query)
+        .is_some()
     {
         ui.label("Image plane distance");
         let mut distance = *entity_props.pinhole_image_plane_distance.get();

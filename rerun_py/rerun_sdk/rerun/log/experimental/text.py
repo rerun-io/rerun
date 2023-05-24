@@ -40,7 +40,7 @@ def log_text_box(
     if text:
         instanced["rerun.text_box"] = TextBoxArray.from_bodies([(text,)])
     else:
-        logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
+        logging.warning(f"Null text entry in log_text_entry('{entity_path}') will be dropped.")
 
     if ext:
         rerun.log.extension_components._add_extension_components(instanced, splats, ext, None)

@@ -151,9 +151,11 @@ def log_camera(cam: ARCamera) -> None:
 
     rot = rot * R.from_rotvec((math.tau / 2.0) * X)  # TODO(emilk): figure out why this is needed
 
-    rr.log_rigid3(
-        "world/camera", parent_from_child=(translation, rot.as_quat()), xyz="RDF"  # X=Right, Y=Down, Z=Forward
+    rr.log_transform3d(
+        "world/camera",
+        rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rot.as_quat())),
     )
+    rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
     rr.log_pinhole(
         "world/camera/video",
         child_from_parent=intrinsics,

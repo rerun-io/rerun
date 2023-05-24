@@ -114,7 +114,6 @@ def read_and_log_sparse_reconstruction(
         frame_idx = int(idx_match.group(0))
 
         quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
-        camera_from_world = (image.tvec, quat_xyzw)  # COLMAP's camera transform is "camera from world"
         camera = cameras[image.camera_id]
         if resize:
             camera, scale_factor = scale_camera(camera, resize)
@@ -144,11 +143,11 @@ def read_and_log_sparse_reconstruction(
 
         rr.log_points("points", points, colors=point_colors, ext={"error": point_errors})
 
-        rr.log_rigid3(
-            "camera",
-            child_from_parent=camera_from_world,
-            xyz="RDF",  # X=Right, Y=Down, Z=Forward
+        # COLMAP's camera transform is "camera from world"
+        rr.log_transform3d(
+            "camera", rr.TranslationRotationScale3D(image.tvec, rr.Quaternion(xyzw=quat_xyzw)), from_parent=True
         )
+        rr.log_view_coordinates("camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
 
         # Log camera intrinsics
         rr.log_pinhole(

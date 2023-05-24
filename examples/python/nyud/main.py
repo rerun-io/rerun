@@ -90,13 +90,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
                 img_depth = read_image(buf)
 
                 # Log the camera transforms:
-                translation = [0, 0, 0]
-                rotation_q = [0, 0, 0, 1]
-                rr.log_rigid3(
-                    "world/camera",
-                    parent_from_child=(translation, rotation_q),
-                    xyz="RDF",  # X=Right, Y=Down, Z=Forward
-                )
+                rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
                 rr.log_pinhole(
                     "world/camera/image",
                     child_from_parent=camera_intrinsics(img_depth),

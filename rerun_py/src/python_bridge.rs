@@ -22,10 +22,10 @@ use rerun::{
 pub use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
-        DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3,
-        Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D,
-        Rect2D, Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDimension,
-        TensorId, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+        DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
+        LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
+        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData,
+        TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
@@ -151,9 +151,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
-    m.add_function(wrap_pyfunction!(log_pinhole, m)?)?;
-    m.add_function(wrap_pyfunction!(log_rigid3, m)?)?;
-    m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
 
@@ -587,91 +584,6 @@ fn set_time_nanos(timeline: &str, nanos: Option<i64>, recording: Option<&PyRecor
 fn reset_time(recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else { return; };
     recording.reset_time();
-}
-
-// --- Log transforms ---
-
-#[pyfunction]
-fn log_unknown_transform(
-    entity_path: &str,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let transform = re_log_types::Transform::Unknown;
-    log_transform(entity_path, transform, timeless, recording)
-}
-
-#[pyfunction]
-fn log_rigid3(
-    entity_path: &str,
-    parent_from_child: bool,
-    rotation_q: re_log_types::Quaternion,
-    translation: [f32; 3],
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let rotation = glam::Quat::from_slice(&rotation_q);
-    let translation = glam::Vec3::from_slice(&translation);
-    let transform = macaw::IsoTransform::from_rotation_translation(rotation, translation);
-
-    let transform = if parent_from_child {
-        re_log_types::Rigid3::new_parent_from_child(transform)
-    } else {
-        re_log_types::Rigid3::new_child_from_parent(transform)
-    };
-
-    let transform = re_log_types::Transform::Rigid3(transform);
-
-    log_transform(entity_path, transform, timeless, recording)
-}
-
-#[pyfunction]
-fn log_pinhole(
-    entity_path: &str,
-    resolution: [f32; 2],
-    child_from_parent: [[f32; 3]; 3],
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
-        image_from_cam: child_from_parent.into(),
-        resolution: Some(resolution.into()),
-    });
-
-    log_transform(entity_path, transform, timeless, recording)
-}
-
-fn log_transform(
-    entity_path: &str,
-    transform: re_log_types::Transform,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
-
-    let entity_path = parse_entity_path(entity_path)?;
-    if entity_path.is_root() {
-        return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so the root cannot have a transform"));
-    }
-    let time_point = time(timeless, &recording);
-
-    // We currently log arrow transforms from inside the bridge because we are
-    // using glam and macaw to potentially do matrix-inversion as part of the
-    // logging pipeline. Implementing these data-transforms consistently on the
-    // python side will take a bit of additional work and testing to ensure we aren't
-    // introducing new numerical issues.
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        time_point,
-        1,
-        [transform].as_slice(),
-    );
-
-    recording.record_row(row);
-
-    Ok(())
 }
 
 // --- Log view coordinates ---
