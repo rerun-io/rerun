@@ -358,7 +358,7 @@ pub fn view_2d(
             ) {
                 Ok(command_buffer) => command_buffer,
                 Err(err) => {
-                    re_log::error!("Failed to fill view builder: {}", err);
+                    re_log::error_once!("Failed to fill view builder: {err}");
                     return response;
                 }
             };

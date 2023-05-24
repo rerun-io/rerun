@@ -176,7 +176,7 @@ fn class_id_tensor_to_gpu(
             Texture2DCreationDesc {
                 label: "class_id_colormap".into(),
                 data: data.into(),
-                format: TextureFormat::Rgba8Unorm,
+                format: TextureFormat::Rgba8UnormSrgb,
                 width: colormap_width as u32,
                 height: colormap_height as u32,
             }
