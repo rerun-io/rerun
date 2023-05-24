@@ -672,3 +672,9 @@ pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
         frame.set_minimized(true);
     }
 }
+
+pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
+    ui.add(
+        egui::Label::new("❓").sense(egui::Sense::click()), // sensing clicks also gives hover effect
+    )
+}

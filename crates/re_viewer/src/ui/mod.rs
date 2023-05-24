@@ -18,7 +18,6 @@ mod viewport;
 
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;
-pub(crate) mod time_panel;
 
 pub mod view_spatial;
 

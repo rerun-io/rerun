@@ -105,7 +105,6 @@ slotmap.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting"] }
-vec1 = "1.8"
 web-time.workspace = true
 wgpu.workspace = true
 
