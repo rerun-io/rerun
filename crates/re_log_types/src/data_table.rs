@@ -1366,7 +1366,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        56_530_064, // expected_num_bytes
+        49_030_064, // expected_num_bytes
     );
 
     // dense union (varying)
@@ -1390,7 +1390,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        56_520_064, // expected_num_bytes
+        49_020_064, // expected_num_bytes
     );
 
     // --- Sparse ---

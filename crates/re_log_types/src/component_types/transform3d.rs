@@ -14,7 +14,6 @@ use super::{mat::Mat3x3, Quaternion, Vec3D};
 /// assert_eq!(
 ///     Scale3D::data_type(),
 ///     DataType::Union(vec![
-///         Field::new("Unit", DataType::Boolean, false),
 ///         Field::new("ThreeD", Vec3D::data_type(), false),
 ///         Field::new("Uniform", DataType::Float32, false),
 ///     ], None, UnionMode::Dense),

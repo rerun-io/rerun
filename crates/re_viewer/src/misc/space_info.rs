@@ -15,6 +15,7 @@ pub enum SpaceInfoConnection {
         transform3d: Option<Transform3D>,
         pinhole: Option<Pinhole>,
     },
+
     /// Explicitly disconnected via a [`DisconnectedSpace`] component.
     Disconnected,
 }
