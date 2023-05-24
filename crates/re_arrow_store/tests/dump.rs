@@ -79,17 +79,20 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     }
     sanity_unwrap(store3);
 
-    let store1_df = store1.to_dataframe();
-    let store2_df = store2.to_dataframe();
-    let store3_df = store3.to_dataframe();
-    assert!(
-        store1_df == store2_df,
-        "First & second stores differ:\n{store1_df}\n{store2_df}"
-    );
-    assert!(
-        store1_df == store3_df,
-        "First & third stores differ:\n{store1_df}\n{store3_df}"
-    );
+    #[cfg(feature = "polars")]
+    {
+        let store1_df = store1.to_dataframe();
+        let store2_df = store2.to_dataframe();
+        let store3_df = store3.to_dataframe();
+        assert!(
+            store1_df == store2_df,
+            "First & second stores differ:\n{store1_df}\n{store2_df}"
+        );
+        assert!(
+            store1_df == store3_df,
+            "First & third stores differ:\n{store1_df}\n{store3_df}"
+        );
+    }
 
     let store1_stats = DataStoreStats::from_store(store1);
     let store2_stats = DataStoreStats::from_store(store2);
@@ -173,12 +176,15 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     }
     sanity_unwrap(store2);
 
-    let store1_df = store1.to_dataframe();
-    let store2_df = store2.to_dataframe();
-    assert!(
-        store1_df == store2_df,
-        "First & second stores differ:\n{store1_df}\n{store2_df}"
-    );
+    #[cfg(feature = "polars")]
+    {
+        let store1_df = store1.to_dataframe();
+        let store2_df = store2.to_dataframe();
+        assert!(
+            store1_df == store2_df,
+            "First & second stores differ:\n{store1_df}\n{store2_df}"
+        );
+    }
 
     let store1_stats = DataStoreStats::from_store(store1);
     let store2_stats = DataStoreStats::from_store(store2);

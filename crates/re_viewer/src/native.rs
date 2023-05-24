@@ -94,7 +94,6 @@ pub fn run_native_viewer_with_messages(
             re_ui,
             cc.storage,
             rx,
-            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         ))
     }))
 }

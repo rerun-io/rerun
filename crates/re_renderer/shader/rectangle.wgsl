@@ -3,10 +3,9 @@
 // Keep in sync with mirror in rectangle.rs
 
 // Which texture to read from?
-const SAMPLE_TYPE_FLOAT_FILTER   = 1u;
-const SAMPLE_TYPE_FLOAT_NOFILTER = 2u;
-const SAMPLE_TYPE_SINT_NOFILTER  = 3u;
-const SAMPLE_TYPE_UINT_NOFILTER  = 4u;
+const SAMPLE_TYPE_FLOAT = 1u;
+const SAMPLE_TYPE_SINT  = 2u;
+const SAMPLE_TYPE_UINT  = 3u;
 
 // How do we do colormapping?
 const COLOR_MAPPER_OFF      = 1u;
@@ -51,6 +50,9 @@ struct UniformBuffer {
 
     minification_filter: u32,
     magnification_filter: u32,
+
+    /// Boolean: decode 0-1 sRGB gamma to linear space before filtering?
+    decode_srgb: u32,
 };
 
 @group(1) @binding(0)

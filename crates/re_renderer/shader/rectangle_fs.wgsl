@@ -14,29 +14,40 @@ fn tex_filter(pixel_coord: Vec2) -> u32 {
     }
 }
 
+fn decode_color(rgba_arg: Vec4) -> Vec4 {
+    var rgba = rgba_arg;
+
+    // Convert to linear space:
+    if rect_info.decode_srgb != 0u {
+        rgba = linear_from_srgba(rgba);
+    }
+
+    // Premultiply alpha:
+    rgba = vec4(rgba.xyz * rgba.a, rgba.a);
+
+    return rgba;
+}
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sample the main texture:
     var sampled_value: Vec4;
-    if rect_info.sample_type == SAMPLE_TYPE_FLOAT_FILTER {
-        // TODO(emilk): support mipmaps
-        sampled_value = textureSampleLevel(texture_float_filterable, texture_sampler, in.texcoord, 0.0);
-    } else if rect_info.sample_type == SAMPLE_TYPE_FLOAT_NOFILTER {
+    if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         let coord = in.texcoord * Vec2(textureDimensions(texture_float).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
-            sampled_value = textureLoad(texture_float, IVec2(coord + vec2(0.5)), 0);
+            sampled_value = decode_color(textureLoad(texture_float, IVec2(coord + vec2(0.5)), 0));
         } else {
             // bilinear
-            let v00 = textureLoad(texture_float, IVec2(coord) + IVec2(0, 0), 0);
-            let v01 = textureLoad(texture_float, IVec2(coord) + IVec2(0, 1), 0);
-            let v10 = textureLoad(texture_float, IVec2(coord) + IVec2(1, 0), 0);
-            let v11 = textureLoad(texture_float, IVec2(coord) + IVec2(1, 1), 0);
+            let v00 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(0, 0), 0));
+            let v01 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(0, 1), 0));
+            let v10 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(1, 0), 0));
+            let v11 = decode_color(textureLoad(texture_float, IVec2(coord) + IVec2(1, 1), 0));
             let top = mix(v00, v10, fract(coord.x));
             let bottom = mix(v01, v11, fract(coord.x));
             sampled_value = mix(top, bottom, fract(coord.y));
         }
-    } else if rect_info.sample_type == SAMPLE_TYPE_SINT_NOFILTER {
+    } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
         let coord = in.texcoord * Vec2(textureDimensions(texture_sint).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
@@ -51,7 +62,8 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
             let bottom = mix(v01, v11, fract(coord.x));
             sampled_value = mix(top, bottom, fract(coord.y));
         }
-    } else if rect_info.sample_type == SAMPLE_TYPE_UINT_NOFILTER {
+    } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+        // TODO(emilk): support premultiplying alpha on this path. Requires knowing the alpha range (255, 65535, …).
         let coord = in.texcoord * Vec2(textureDimensions(texture_uint).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
@@ -75,7 +87,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     var normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
 
     // Apply gamma:
-    normalized_value = vec4(pow(normalized_value.rgb, vec3(rect_info.gamma)), normalized_value.a); // TODO(emilk): handle premultiplied alpha
+    normalized_value = vec4(pow(normalized_value.rgb, vec3(rect_info.gamma)), normalized_value.a);
 
     // Apply colormap, if any:
     var texture_color: Vec4;
