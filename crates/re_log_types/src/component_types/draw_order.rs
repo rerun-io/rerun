@@ -19,7 +19,7 @@ use crate::Component;
 ///
 /// assert_eq!(DrawOrder::data_type(), DataType::Float32);
 /// ```
-#[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Debug, Clone, Copy, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct DrawOrder(pub f32);
