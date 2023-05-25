@@ -43,8 +43,8 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 Go through this checklist from top to bottom, and check each item before moving onto the next.
 This is a living document. Strive to improve it on each new release.
 
-* [ ] Create a release branch called `release-0.x.y`
-* [ ] If it is a patch release branch off `latest` and cherry-pick the commits that should be included
+* [ ] Create a release branch called `release-0.x`
+* [ ] If it is a patch release, continue off the existing `release-0.x` branch and cherry-pick the additional commits that should be included
 * [ ] Update `CHANGELOG.md` with the new version number with:
     * [ ] A one-line summary of the release
     * [ ] A multi-line summary of the release
@@ -69,18 +69,18 @@ This is a living document. Strive to improve it on each new release.
 * [ ] Bump version number in root `Cargo.toml`.
 * [ ] Check that CI is green
 * [ ] Publish the crates (see below)
-* [ ] `git tag -a v0.x.y -m 'Release 0.x.y - summary'`
-    * `git push --tags`
-    * This will trigger a PyPI release when pushed
-* [ ] `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push --tags origin latest --force`
-* [ ] Manually trigger a new web viewer build and upload at https://github.com/rerun-io/rerun/actions/workflows/rust.yml
-* [ ] Wait for CI to build release artifacts and publish them on GitHub and PyPI.
-* [ ] Merge PR
+* [ ] Manually run the workflow to create the python wheels and web artifacts for the `release-0.x` branch.
+    * https://github.com/rerun-io/rerun/actions/workflows/manual_build_release.yml
+    * Choose the release branch, and enter the release number `0.x.y` or `0.x.y-alpha.z`.
+* [ ] Verify the build wheels and web artifacts look correct.
+* [ ] For the final release, manually run the workflow to publish the artifacts to pypi and create the Github release.
+    * https://github.com/rerun-io/rerun/actions/workflows/manual_release.yml
+    * Choose the release branch, and enter the release number `0.x.y`
+    * This will create the github release page in draft state.
+    * Publishing this release will create the release tag
 * [ ] Edit the GitHub release at https://github.com/rerun-io/rerun/releases/edit/v0.x.0
   * [ ] Mark it as as the latest release
   * [ ] Paste in the `CHANGELOG.md`
-* [ ] Wait for wheel to appear on https://pypi.org/project/rerun-sdk/
-* [ ] Test the released Python and Rust libraries (see below)
 * [ ] Wait for documentation to build: https://docs.rs/releases/queue
 * [ ] Point <https://app.rerun.io/> to the latest release via instructions in <https://www.notion.so/rerunio/Ops-Notes-9232e436b80548a2b252c2312b4e4db6?pvs=4>.
 * [ ] Post on:
