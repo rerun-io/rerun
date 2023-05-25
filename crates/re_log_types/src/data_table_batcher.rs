@@ -73,8 +73,8 @@ impl Default for DataTableBatcherConfig {
 impl DataTableBatcherConfig {
     /// Default configuration, applicable to most use cases.
     pub const DEFAULT: Self = Self {
-        flush_tick: Duration::from_millis(50),
-        flush_num_bytes: 1024 * 1024, // 1 MiB
+        flush_tick: Duration::from_millis(8), // We want it fast enough for 60 Hz for real time camera feel
+        flush_num_bytes: 1024 * 1024,         // 1 MiB
         flush_num_rows: u64::MAX,
         max_commands_in_flight: None,
         max_tables_in_flight: None,
