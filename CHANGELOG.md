@@ -3,7 +3,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.0...v0.6.0)
+## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.0...v0.6.0) - 3D in 2D ands SDK batching
 
 ### Overview & Highlights
 
@@ -18,20 +18,21 @@
 
 
 #### 🐍 Python SDK
-You must now call `rr.init` if you want logging to work.`
-
-- More robust wait for exit condition during .`serve()` [#1939](https://github.com/rerun-io/rerun/pull/1939)
-- SDK batching/revamp 3: sunset `PythonSession` [#1985](https://github.com/rerun-io/rerun/pull/1985)
-- Fix a race condition for notebooks [#2073](https://github.com/rerun-io/rerun/pull/2073)
-- Add an experimental text-box component and logtype [#2011](https://github.com/rerun-io/rerun/pull/2011)
-- Add `rr.version()` [#2084](https://github.com/rerun-io/rerun/pull/2084)
+- ⚠️ BREAKING: You must now call `rr.init` if you want logging to work.
+- ⚠️ BREAKING: `set_enabled` has been removed.
 - `log_mesh_file`: accept either path or bytes [#2098](https://github.com/rerun-io/rerun/pull/2098)
-- Redesign multi-recording & multi-threading [#2061](https://github.com/rerun-io/rerun/pull/2061)
 - Add `draw_order` to 2D primitives [#2138](https://github.com/rerun-io/rerun/pull/2138)
+- Add `rr.version()` [#2084](https://github.com/rerun-io/rerun/pull/2084)
+- Add an experimental text-box component and logtype [#2011](https://github.com/rerun-io/rerun/pull/2011)
+- Fix a race condition for notebooks [#2073](https://github.com/rerun-io/rerun/pull/2073)
+- Redesign multi-recording & multi-threading [#2061](https://github.com/rerun-io/rerun/pull/2061)
+- More robust wait for exit condition during `.serve()` [#1939](https://github.com/rerun-io/rerun/pull/1939)
+- SDK batching/revamp 3: sunset `PythonSession` [#1985](https://github.com/rerun-io/rerun/pull/1985)
 
 #### 🦀 Rust SDK
-- `native_viewer` is now an opt-in feature of the `rerun` library [#2064](https://github.com/rerun-io/rerun/pull/2064)
-- Replace `Session` with `RecordingContext` [#1983](https://github.com/rerun-io/rerun/pull/1983)
+- ⚠️ BREAKING: `set_enabled` has been removed.
+- ⚠️ BREAKING: `Session` hass been replaced by `RecordingContext` [#1983](https://github.com/rerun-io/rerun/pull/1983)
+- ⚠️ BREAKING: `native_viewer` is now an opt-in feature of the `rerun` library [#2064](https://github.com/rerun-io/rerun/pull/2064)
 - Rust SDK: bring back support for implicit splats [#2059](https://github.com/rerun-io/rerun/pull/2059)
 - Introduce a 2D `DrawOrder` component [#2056](https://github.com/rerun-io/rerun/pull/2056)
 - Add `Tensor::from_image_file` and `Tensor::from_image_bytes` [#2097](https://github.com/rerun-io/rerun/pull/2097)
