@@ -57,11 +57,11 @@ impl EncodingOptions {
                 let compression = match compression {
                     0 => Compression::Off,
                     1 => Compression::LZ4,
-                    _ => return Err(OptionsError::UnkownCompression(compression)),
+                    _ => return Err(OptionsError::UnknownCompression(compression)),
                 };
                 let serializer = match serializer {
                     1 => Serializer::MsgPack,
-                    _ => return Err(OptionsError::UnkownSerializer(serializer)),
+                    _ => return Err(OptionsError::UnknownSerializer(serializer)),
                 };
                 Ok(Self {
                     compression,
@@ -89,10 +89,10 @@ pub enum OptionsError {
     UnknownReservedBytes,
 
     #[error("Unknown compression: {0}")]
-    UnkownCompression(u8),
+    UnknownCompression(u8),
 
     #[error("Unknown serializer: {0}")]
-    UnkownSerializer(u8),
+    UnknownSerializer(u8),
 }
 
 // ---------------------------------------------------------------------------
