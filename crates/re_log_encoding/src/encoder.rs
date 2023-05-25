@@ -1,7 +1,5 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
-// TODO(1316): switch to using lz4flex - see https://github.com/rerun-io/rerun/issues/1316#issuecomment-1510967893
-
 use std::io::Write as _;
 
 use re_log_types::LogMsg;
