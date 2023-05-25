@@ -76,8 +76,8 @@ impl DataTableBatcherConfig {
         flush_tick: Duration::from_millis(50),
         flush_num_bytes: 1024 * 1024, // 1 MiB
         flush_num_rows: u64::MAX,
-        max_commands_in_flight: None,
-        max_tables_in_flight: None,
+        max_commands_in_flight: Some(1), // TODO(#2216)
+        max_tables_in_flight: Some(1),   // TODO(#2216)
     };
 
     /// Always flushes ASAP.
@@ -85,8 +85,8 @@ impl DataTableBatcherConfig {
         flush_tick: Duration::MAX,
         flush_num_bytes: 0,
         flush_num_rows: 0,
-        max_commands_in_flight: None,
-        max_tables_in_flight: None,
+        max_commands_in_flight: Some(1), // TODO(#2216)
+        max_tables_in_flight: Some(1),   // TODO(#2216)
     };
 
     /// Never flushes unless manually told to.
@@ -94,8 +94,8 @@ impl DataTableBatcherConfig {
         flush_tick: Duration::MAX,
         flush_num_bytes: u64::MAX,
         flush_num_rows: u64::MAX,
-        max_commands_in_flight: None,
-        max_tables_in_flight: None,
+        max_commands_in_flight: Some(1), // TODO(#2216)
+        max_tables_in_flight: Some(1),   // TODO(#2216)
     };
 
     /// Environment variable to configure [`Self::flush_tick`].

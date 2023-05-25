@@ -54,15 +54,13 @@ impl Client {
     pub fn new(addr: SocketAddr) -> Self {
         re_log::debug!("Connecting to remote {addr}…");
 
-        // TODO(emilk): keep track of how much memory is in each pipe
-        // and apply back-pressure to not use too much RAM.
-        let (msg_tx, msg_rx) = crossbeam::channel::unbounded();
-        let (msg_drop_tx, msg_drop_rx) = crossbeam::channel::unbounded();
-        let (packet_tx, packet_rx) = crossbeam::channel::unbounded();
-        let (flushed_tx, flushed_rx) = crossbeam::channel::unbounded();
-        let (encode_quit_tx, encode_quit_rx) = crossbeam::channel::unbounded();
-        let (send_quit_tx, send_quit_rx) = crossbeam::channel::unbounded();
-        let (drop_quit_tx, drop_quit_rx) = crossbeam::channel::unbounded();
+        let (msg_tx, msg_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
+        let (msg_drop_tx, msg_drop_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
+        let (packet_tx, packet_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
+        let (flushed_tx, flushed_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
+        let (encode_quit_tx, encode_quit_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
+        let (send_quit_tx, send_quit_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
+        let (drop_quit_tx, drop_quit_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
 
         let encode_join = std::thread::Builder::new()
             .name("msg_encoder".into())

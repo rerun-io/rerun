@@ -376,7 +376,7 @@ impl RecordingStreamInner {
             );
         }
 
-        let (cmds_tx, cmds_rx) = crossbeam::channel::unbounded();
+        let (cmds_tx, cmds_rx) = crossbeam::channel::bounded(1); // TODO(#2216)
 
         let batcher_to_sink_handle = {
             const NAME: &str = "RecordingStream::batcher_to_sink";
