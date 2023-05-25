@@ -36,9 +36,14 @@ impl RemoteViewerApp {
     }
 
     fn connect(&mut self, storage: Option<&dyn eframe::Storage>) {
-        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::WsClient {
-            ws_server_url: self.url.clone(),
-        });
+        let (tx, rx) = re_smart_channel::smart_channel(
+            re_smart_channel::SmartMessageSource::WsClient {
+                ws_server_url: self.url.clone(),
+            },
+            re_smart_channel::SmartChannelSource::WsClient {
+                ws_server_url: self.url.clone(),
+            },
+        );
 
         let egui_ctx = self.re_ui.egui_ctx.clone();
 
@@ -74,7 +79,6 @@ impl RemoteViewerApp {
                     self.re_ui.clone(),
                     storage,
                     rx,
-                    std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
                 );
 
                 self.app = Some((connection, app));

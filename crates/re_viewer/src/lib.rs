@@ -4,6 +4,7 @@
 //! including all 2D and 3D visualization code.
 
 mod app;
+pub mod blueprint_components;
 pub mod env_vars;
 pub mod math;
 mod misc;
@@ -14,6 +15,9 @@ mod viewer_analytics;
 pub(crate) use misc::mesh_loader;
 use re_log_types::PythonVersion;
 pub(crate) use ui::{memory_panel, selection_panel, time_panel};
+
+// TODO(jleibs): Do we want to expose this
+pub use ui::{SpaceView, ViewCategory};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
@@ -109,9 +113,6 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
-#[allow(dead_code)]
-const APPLICATION_NAME: &str = "Rerun Viewer";
-
 pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
     egui_wgpu::WgpuConfiguration {
             // When running wgpu on native debug builds, we want some extra control over how
@@ -179,8 +180,8 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {
-            while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
-                if tx.send_at(sent_at, msg).is_ok() {
+            while let Ok(msg) = rx.recv_with_send_time() {
+                if tx.send_at(msg.time, msg.source, msg.payload).is_ok() {
                     ctx.request_repaint();
                 } else {
                     break;

@@ -68,6 +68,8 @@ re_analytics = { workspace = true, optional = true }
 # External
 ahash.workspace = true
 anyhow.workspace = true
+arrow2.workspace = true
+arrow2_convert.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [
@@ -96,6 +98,7 @@ ndarray = "0.15"
 nohash-hasher = "0.2"
 poll-promise = "0.2"
 rfd.workspace = true
+rmp-serde = { version = "1.1" }
 serde = { version = "1", features = ["derive"] }
 slotmap.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
@@ -107,7 +110,7 @@ wgpu.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-puffin_http = "0.11"
+puffin_http = "0.12"
 puffin.workspace = true
 
 [target.'cfg(any(target_os = "macos"))'.dependencies]

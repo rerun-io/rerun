@@ -1,8 +1,8 @@
 use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
-use re_data_store::{query_latest_single, EntityPath, EntityPropertyMap};
-use re_log_types::Pinhole;
+use re_data_store::{EntityPath, EntityPropertyMap};
+use re_log_types::component_types::Pinhole;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
 
@@ -25,15 +25,14 @@ use crate::{
 
 // ---
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View2DState {
     /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
-    #[serde(skip)]
     zoom: ZoomState2D,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, serde::Deserialize, serde::Serialize)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
 pub enum ZoomState2D {
     #[default]
@@ -241,6 +240,8 @@ pub fn view_2d(
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
+    let store = &ctx.log_db.entity_db.data_store;
+
     // Determine the canvas which determines the extent of the explorable scene coordinates,
     // and thus the size of the scroll area.
     //
@@ -251,15 +252,8 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole = query_latest_single(
-        &ctx.log_db.entity_db.data_store,
-        space,
-        &ctx.rec_cfg.time_ctrl.current_query(),
-    )
-    .and_then(|transform| match transform {
-        re_log_types::Transform::Pinhole(pinhole) => Some(pinhole),
-        _ => None,
-    });
+    let pinhole =
+        store.query_latest_component::<Pinhole>(space, &ctx.rec_cfg.time_ctrl.current_query());
     let canvas_rect = pinhole
         .and_then(|p| p.resolution())
         .map_or(scene_rect_accum, |res| {
@@ -280,6 +274,7 @@ pub fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
+        let desired_size = desired_size.at_least(Vec2::ZERO);
         let (mut response, painter) =
             ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
@@ -363,7 +358,7 @@ pub fn view_2d(
             ) {
                 Ok(command_buffer) => command_buffer,
                 Err(err) => {
-                    re_log::error!("Failed to fill view builder: {}", err);
+                    re_log::error_once!("Failed to fill view builder: {err}");
                     return response;
                 }
             };
@@ -432,7 +427,7 @@ fn setup_target_config(
     let pinhole = pinhole.unwrap_or_else(|| {
         let focal_length_in_pixels = canvas_size.x;
 
-        re_log_types::Pinhole {
+        Pinhole {
             image_from_cam: glam::Mat3::from_cols(
                 glam::vec3(focal_length_in_pixels, 0.0, 0.0),
                 glam::vec3(0.0, focal_length_in_pixels, 0.0),
@@ -445,7 +440,7 @@ fn setup_target_config(
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
-        near_plane_distance: 0.01,
+        near_plane_distance: 0.1,
         aspect_ratio: pinhole
             .aspect_ratio()
             .unwrap_or(canvas_size.x / canvas_size.y),

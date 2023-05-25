@@ -2,6 +2,7 @@ use eframe::wasm_bindgen::{self, prelude::*};
 
 use std::sync::Arc;
 
+use re_error::ResultExt as _;
 use re_memory::AccountingAllocator;
 
 #[global_allocator]
@@ -61,14 +62,32 @@ impl WebHandle {
                         EndpointCategory::HttpRrd(url) => {
                             // Download an .rrd file over http:
                             let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::Source::RrdHttpStream { url: url.clone() },
+                                re_smart_channel::SmartMessageSource::RrdHttpStream {
+                                    url: url.clone(),
+                                },
+                                re_smart_channel::SmartChannelSource::RrdHttpStream {
+                                    url: url.clone(),
+                                },
                             );
-                            let egui_ctx = cc.egui_ctx.clone();
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http(
                                 url,
-                                Arc::new(move |msg| {
-                                    egui_ctx.request_repaint(); // wake up ui thread
-                                    tx.send(msg).ok();
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    move |msg| {
+                                        egui_ctx.request_repaint(); // wake up ui thread
+                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                                        match msg {
+                                            HttpMessage::LogMsg(msg) => tx
+                                                .send(msg)
+                                                .warn_on_err_once("failed to send message"),
+                                            HttpMessage::Success => tx
+                                                .quit(None)
+                                                .warn_on_err_once("failed to send quit marker"),
+                                            HttpMessage::Failure(err) => tx
+                                                .quit(Some(err))
+                                                .warn_on_err_once("failed to send quit marker"),
+                                        };
+                                    }
                                 }),
                             );
 
@@ -79,20 +98,33 @@ impl WebHandle {
                                 re_ui,
                                 cc.storage,
                                 rx,
-                                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
                             ))
                         }
                         EndpointCategory::WebEventListener => {
                             // Process an rrd when it's posted via `window.postMessage`
                             let (tx, rx) = re_smart_channel::smart_channel(
-                                re_smart_channel::Source::RrdWebEventListener,
+                                re_smart_channel::SmartMessageSource::RrdWebEventCallback,
+                                re_smart_channel::SmartChannelSource::RrdWebEventListener,
                             );
-                            let egui_ctx = cc.egui_ctx.clone();
                             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(
-                                Some(Arc::new(move |msg| {
-                                    egui_ctx.request_repaint(); // wake up ui thread
-                                    tx.send(msg).ok();
-                                })),
+                                Arc::new({
+                                    let egui_ctx = cc.egui_ctx.clone();
+                                    move |msg| {
+                                        egui_ctx.request_repaint(); // wake up ui thread
+                                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                                        match msg {
+                                            HttpMessage::LogMsg(msg) => tx
+                                                .send(msg)
+                                                .warn_on_err_once("failed to send message"),
+                                            HttpMessage::Success => tx
+                                                .quit(None)
+                                                .warn_on_err_once("failed to send quit marker"),
+                                            HttpMessage::Failure(err) => tx
+                                                .quit(Some(err))
+                                                .warn_on_err_once("failed to send quit marker"),
+                                        };
+                                    }
+                                }),
                             );
 
                             Box::new(crate::App::from_receiver(
@@ -102,7 +134,6 @@ impl WebHandle {
                                 re_ui,
                                 cc.storage,
                                 rx,
-                                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
                             ))
                         }
                         EndpointCategory::WebSocket(url) => {
@@ -187,7 +218,12 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
         url = param.clone();
     }
     if url.is_empty() {
-        re_ws_comms::server_url(&info.web_info.location.hostname, Default::default())
+        format!(
+            "{}://{}:{}",
+            re_ws_comms::PROTOCOL,
+            &info.web_info.location.hostname,
+            re_ws_comms::DEFAULT_WS_SERVER_PORT
+        )
     } else {
         url
     }

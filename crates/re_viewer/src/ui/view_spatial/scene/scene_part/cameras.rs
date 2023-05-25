@@ -1,8 +1,8 @@
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::InstanceKey,
+    component_types::{InstanceKey, Pinhole},
     coordinates::{Handedness, SignedAxis3},
-    Pinhole, Transform, ViewCoordinates,
+    ViewCoordinates,
 };
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::TimeControl;
@@ -26,13 +26,13 @@ use super::{instance_path_hash_for_picking, ScenePart};
 ///
 /// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
 fn determine_view_coordinates(
-    data_store: &re_arrow_store::DataStore,
+    store: &re_arrow_store::DataStore,
     time_ctrl: &TimeControl,
     mut entity_path: EntityPath,
 ) -> ViewCoordinates {
     loop {
         if let Some(view_coordinates) =
-            re_data_store::query_latest_single(data_store, &entity_path, &time_ctrl.current_query())
+            store.query_latest_component(&entity_path, &time_ctrl.current_query())
         {
             return view_coordinates;
         }
@@ -192,24 +192,17 @@ impl ScenePart for CamerasPart {
     ) {
         crate::profile_scope!("CamerasPart");
 
+        let store = &ctx.log_db.entity_db.data_store;
         for (ent_path, props) in query.iter_entities() {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(transform) = re_data_store::query_latest_single::<Transform>(
-                &ctx.log_db.entity_db.data_store,
-                ent_path,
-                &query,
-            ) {
-                let Transform::Pinhole(pinhole) = transform else {
-                        return;
-                    };
-                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-
+            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
                 let view_coordinates = determine_view_coordinates(
                     &ctx.log_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl,
                     ent_path.clone(),
                 );
+                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
                 Self::visit_instance(
                     scene,

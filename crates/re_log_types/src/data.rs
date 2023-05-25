@@ -1,7 +1,5 @@
 use half::f16;
 
-pub use crate::component_types::{Arrow3D, Pinhole, Rigid3, Transform};
-
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]

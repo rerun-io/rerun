@@ -4,11 +4,20 @@
 
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
 
-use itertools::izip;
+use itertools::{izip, Itertools};
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
     types::{PyBytes, PyDict},
+};
+
+use re_viewer::{
+    blueprint_components::{
+        panel::PanelState,
+        space_view::SpaceViewComponent,
+        viewport::{AutoSpaceViews, SpaceViewId, VIEWPORT_PATH},
+    },
+    SpaceView, ViewCategory,
 };
 
 use re_log_types::{DataRow, RecordingType};
@@ -22,10 +31,10 @@ use rerun::{
 pub use rerun::{
     components::{
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
-        DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D, LineStrip3D, Mat3x3,
-        Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion, Radius, RawMesh3D,
-        Rect2D, Rigid3, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData, TensorDimension,
-        TensorId, TextEntry, Transform, Vec2D, Vec3D, Vec4D, ViewCoordinates,
+        DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
+        LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
+        Radius, RawMesh3D, Rect2D, Scalar, ScalarPlotProps, Size3D, Tensor, TensorData,
+        TensorDimension, TensorId, TextEntry, Transform3D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
     },
     coordinates::{Axis3, Handedness, Sign, SignedAxis3},
 };
@@ -69,7 +78,18 @@ fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(build_info, call_src, argv))
+        .block_on(async {
+            // Python catches SIGINT and waits for us to release the GIL before shtting down.
+            // That's no good, so we need to catch SIGINT ourselves and shut down:
+            tokio::spawn(async move {
+                tokio::signal::ctrl_c().await.unwrap();
+                eprintln!("Ctrl-C detected in rerun_py. Shutting down.");
+                #[allow(clippy::exit)]
+                std::process::exit(42);
+            });
+
+            rerun::run(build_info, call_src, argv).await
+        })
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
@@ -99,6 +119,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
+    m.add_function(wrap_pyfunction!(new_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
     // recordings
@@ -140,9 +161,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_meshes, m)?)?;
-    m.add_function(wrap_pyfunction!(log_pinhole, m)?)?;
-    m.add_function(wrap_pyfunction!(log_rigid3, m)?)?;
-    m.add_function(wrap_pyfunction!(log_unknown_transform, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_up_handedness, m)?)?;
     m.add_function(wrap_pyfunction!(log_view_coordinates_xyz, m)?)?;
 
@@ -151,11 +169,18 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
 
+    // blueprint
+    m.add_function(wrap_pyfunction!(set_panels, m)?)?;
+    m.add_function(wrap_pyfunction!(add_space_view, m)?)?;
+    m.add_function(wrap_pyfunction!(set_auto_space_views, m)?)?;
+
     Ok(())
 }
 
 // --- Init ---
 
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::struct_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -190,7 +215,7 @@ fn new_recording(
     let recording_id = if let Some(recording_id) = recording_id {
         RecordingId::from_string(RecordingType::Data, recording_id)
     } else {
-        default_recording_id(py, &application_id)
+        default_recording_id(py, RecordingType::Data, &application_id)
     };
 
     let recording = RecordingStreamBuilder::new(application_id)
@@ -218,6 +243,55 @@ fn new_recording(
     all_recordings().insert(recording_id, recording.clone());
 
     Ok(PyRecordingStream(recording))
+}
+
+#[allow(clippy::struct_excessive_bools)]
+#[pyfunction]
+#[pyo3(signature = (
+    application_id,
+    blueprint_id=None,
+    make_default=true,
+    make_thread_default=true,
+    default_enabled=true,
+))]
+fn new_blueprint(
+    py: Python<'_>,
+    application_id: String,
+    blueprint_id: Option<String>,
+    make_default: bool,
+    make_thread_default: bool,
+    default_enabled: bool,
+) -> PyResult<PyRecordingStream> {
+    let blueprint_id = if let Some(blueprint_id) = blueprint_id {
+        RecordingId::from_string(RecordingType::Blueprint, blueprint_id)
+    } else {
+        default_recording_id(py, RecordingType::Blueprint, &application_id)
+    };
+
+    let blueprint = RecordingStreamBuilder::new(application_id)
+        .recording_id(blueprint_id.clone())
+        .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+        .default_enabled(default_enabled)
+        .buffered()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    if make_default {
+        set_global_blueprint_recording(
+            py,
+            Some(&PyRecordingStream(blueprint.clone() /* shallow */)),
+        );
+    }
+    if make_thread_default {
+        set_thread_local_blueprint_recording(
+            py,
+            Some(&PyRecordingStream(blueprint.clone() /* shallow */)),
+        );
+    }
+
+    // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
+    all_recordings().insert(blueprint_id, blueprint.clone());
+
+    Ok(PyRecordingStream(blueprint))
 }
 
 #[pyfunction]
@@ -411,15 +485,24 @@ fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
 #[pyfunction]
 #[pyo3(signature = (addr = None, recording = None))]
 fn connect(addr: Option<String>, recording: Option<&PyRecordingStream>) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
-
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
         rerun::default_server_addr()
     };
 
-    recording.connect(addr);
+    if let Some(recording) = recording {
+        // If the user passed in a recording, use it
+        recording.connect(addr);
+    } else {
+        // Otherwise, connect both global defaults
+        if let Some(recording) = get_data_recording(None) {
+            recording.connect(addr);
+        };
+        if let Some(blueprint) = get_blueprint_recording(None) {
+            blueprint.connect(addr);
+        };
+    }
 
     Ok(())
 }
@@ -454,16 +537,25 @@ struct PyMemorySinkStorage {
 #[pymethods]
 impl PyMemorySinkStorage {
     /// This will do a blocking flush before returning!
-    fn get_rrd_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+    fn concat_as_bytes<'p>(
+        &self,
+        concat: Option<&PyMemorySinkStorage>,
+        py: Python<'p>,
+    ) -> PyResult<&'p PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             self.rec.flush_blocking();
         });
 
-        self.inner
-            .rrd_as_bytes()
-            .map(|bytes| PyBytes::new(py, bytes.as_slice()))
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+        MemorySinkStorage::concat_memory_sinks_as_bytes(
+            [Some(&self.inner), concat.map(|c| &c.inner)]
+                .iter()
+                .filter_map(|s| *s)
+                .collect_vec()
+                .as_slice(),
+        )
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
 
@@ -495,6 +587,7 @@ fn serve(
         recording.set_sink(
             rerun::web_viewer::new_sink(
                 open_browser,
+                "0.0.0.0",
                 web_port.map(WebViewerServerPort).unwrap_or_default(),
                 ws_port.map(RerunServerPort).unwrap_or_default(),
             )
@@ -575,91 +668,6 @@ fn set_time_nanos(timeline: &str, nanos: Option<i64>, recording: Option<&PyRecor
 fn reset_time(recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else { return; };
     recording.reset_time();
-}
-
-// --- Log transforms ---
-
-#[pyfunction]
-fn log_unknown_transform(
-    entity_path: &str,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let transform = re_log_types::Transform::Unknown;
-    log_transform(entity_path, transform, timeless, recording)
-}
-
-#[pyfunction]
-fn log_rigid3(
-    entity_path: &str,
-    parent_from_child: bool,
-    rotation_q: re_log_types::Quaternion,
-    translation: [f32; 3],
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let rotation = glam::Quat::from_slice(&rotation_q);
-    let translation = glam::Vec3::from_slice(&translation);
-    let transform = macaw::IsoTransform::from_rotation_translation(rotation, translation);
-
-    let transform = if parent_from_child {
-        re_log_types::Rigid3::new_parent_from_child(transform)
-    } else {
-        re_log_types::Rigid3::new_child_from_parent(transform)
-    };
-
-    let transform = re_log_types::Transform::Rigid3(transform);
-
-    log_transform(entity_path, transform, timeless, recording)
-}
-
-#[pyfunction]
-fn log_pinhole(
-    entity_path: &str,
-    resolution: [f32; 2],
-    child_from_parent: [[f32; 3]; 3],
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
-        image_from_cam: child_from_parent.into(),
-        resolution: Some(resolution.into()),
-    });
-
-    log_transform(entity_path, transform, timeless, recording)
-}
-
-fn log_transform(
-    entity_path: &str,
-    transform: re_log_types::Transform,
-    timeless: bool,
-    recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else { return Ok(()); };
-
-    let entity_path = parse_entity_path(entity_path)?;
-    if entity_path.is_root() {
-        return Err(PyTypeError::new_err("Transforms are between a child entity and its parent, so the root cannot have a transform"));
-    }
-    let time_point = time(timeless, &recording);
-
-    // We currently log arrow transforms from inside the bridge because we are
-    // using glam and macaw to potentially do matrix-inversion as part of the
-    // logging pipeline. Implementing these data-transforms consistently on the
-    // python side will take a bit of additional work and testing to ensure we aren't
-    // introducing new numerical issues.
-
-    let row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path,
-        time_point,
-        1,
-        [transform].as_slice(),
-    );
-
-    recording.record_row(row);
-
-    Ok(())
 }
 
 // --- Log view coordinates ---
@@ -1117,6 +1125,114 @@ fn log_cleared(
 }
 
 #[pyfunction]
+fn set_panels(
+    blueprint_view_expanded: Option<bool>,
+    selection_view_expanded: Option<bool>,
+    timeline_view_expanded: Option<bool>,
+    blueprint: Option<&PyRecordingStream>,
+) {
+    blueprint_view_expanded
+        .map(|expanded| set_panel(PanelState::BLUEPRINT_VIEW_PATH, expanded, blueprint));
+    selection_view_expanded
+        .map(|expanded| set_panel(PanelState::SELECTION_VIEW_PATH, expanded, blueprint));
+    timeline_view_expanded
+        .map(|expanded| set_panel(PanelState::TIMELINE_VIEW_PATH, expanded, blueprint));
+}
+
+fn set_panel(
+    entity_path: &str,
+    expanded: bool,
+    blueprint: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(blueprint) = get_blueprint_recording(blueprint) else { return Ok(()); };
+
+    // TODO(jleibs): Validation this is a valid blueprint path?
+    let entity_path = parse_entity_path(entity_path)?;
+    // TODO(jleibs) timeless? Something else?
+    let timepoint = time(true, &blueprint);
+
+    let panel_state = PanelState { expanded };
+
+    let row = DataRow::from_cells1(
+        RowId::random(),
+        entity_path,
+        timepoint,
+        1,
+        [panel_state].as_slice(),
+    );
+
+    blueprint.record_row(row);
+
+    Ok(())
+}
+
+#[pyfunction]
+fn add_space_view(
+    name: &str,
+    origin: &str,
+    entity_paths: Vec<&str>,
+    blueprint: Option<&PyRecordingStream>,
+) {
+    let Some(blueprint) = get_blueprint_recording(blueprint) else { return };
+
+    let mut space_view = SpaceView::new(
+        ViewCategory::Spatial,
+        &origin.into(),
+        &entity_paths
+            .into_iter()
+            .map(|s| s.into())
+            .collect::<Vec<_>>(),
+    );
+
+    // Choose the space-view id deterministically from the name; this means the user
+    // can run the application multiple times and get sane behavior.
+    space_view.id = SpaceViewId::hashed_from_str(name);
+
+    space_view.display_name = name.into();
+    space_view.entities_determined_by_user = true;
+
+    let entity_path = parse_entity_path(
+        format!("{}/{}", SpaceViewComponent::SPACEVIEW_PREFIX, space_view.id).as_str(),
+    )
+    .unwrap();
+
+    // TODO(jleibs) timeless? Something else?
+    let timepoint = time(true, &blueprint);
+
+    let space_view = SpaceViewComponent { space_view };
+
+    let row = DataRow::from_cells1(
+        RowId::random(),
+        entity_path,
+        timepoint,
+        1,
+        [space_view].as_slice(),
+    );
+
+    blueprint.record_row(row);
+}
+
+#[pyfunction]
+fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
+    let Some(blueprint) = get_blueprint_recording(blueprint) else { return };
+
+    // TODO(jleibs) timeless? Something else?
+    let timepoint = time(true, &blueprint);
+
+    let enable_auto_space = AutoSpaceViews(enabled);
+
+    let row = DataRow::from_cells1(
+        RowId::random(),
+        VIEWPORT_PATH,
+        timepoint,
+        1,
+        [enable_auto_space].as_slice(),
+    );
+
+    blueprint.record_row(row);
+}
+
+#[pyfunction]
 #[pyo3(signature = (
     entity_path,
     components,
@@ -1160,7 +1276,7 @@ fn version() -> String {
 fn get_app_url() -> String {
     #[cfg(feature = "web_viewer")]
     if let Some(hosted_assets) = &*global_web_viewer_server() {
-        return format!("http://localhost:{}", hosted_assets.port());
+        return hosted_assets.server_url();
     }
 
     let build_info = re_build_info::build_info!();
@@ -1179,13 +1295,12 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
 
         let _guard = enter_tokio_runtime();
         *web_handle = Some(
-            re_web_viewer_server::WebViewerServerHandle::new(WebViewerServerPort(port)).map_err(
-                |err| {
+            re_web_viewer_server::WebViewerServerHandle::new("0.0.0.0", WebViewerServerPort(port))
+                .map_err(|err| {
                     PyRuntimeError::new_err(format!(
                         "Failed to start web viewer server on port {port}: {err}",
                     ))
-                },
-            )?,
+                })?,
         );
 
         Ok(())
@@ -1212,7 +1327,11 @@ fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     }
 }
 
-fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
+fn default_recording_id(
+    py: Python<'_>,
+    variant: RecordingType,
+    application_id: &str,
+) -> RecordingId {
     use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
 
@@ -1240,7 +1359,7 @@ fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
     application_id.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
     let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
-    RecordingId::from_uuid(RecordingType::Data, uuid)
+    RecordingId::from_uuid(variant, uuid)
 }
 
 fn authkey(py: Python<'_>) -> Vec<u8> {

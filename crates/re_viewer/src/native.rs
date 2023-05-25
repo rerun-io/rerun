@@ -1,13 +1,14 @@
 use re_log_types::LogMsg;
 
-use crate::APPLICATION_NAME;
-
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
 // NOTE: the name of this function is hard-coded in `crates/rerun/src/crash_handler.rs`!
 pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
+        // Controls where on disk the app state is persisted.
+        app_id: Some("rerun".to_owned()),
+
         initial_window_size: Some([1600.0, 1200.0].into()),
         min_window_size: Some([320.0, 450.0].into()), // Should be high enough to fit the rerun menu
 
@@ -32,8 +33,9 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
         ..Default::default()
     };
 
+    let window_title = "Rerun Viewer";
     eframe::run_native(
-        APPLICATION_NAME,
+        window_title,
         native_options,
         Box::new(move |cc| {
             let re_ui = crate::customize_eframe(cc);
@@ -77,7 +79,10 @@ pub fn run_native_viewer_with_messages(
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
 ) -> eframe::Result<()> {
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Sdk);
+    let (tx, rx) = re_smart_channel::smart_channel(
+        re_smart_channel::SmartMessageSource::Sdk,
+        re_smart_channel::SmartChannelSource::Sdk,
+    );
     for log_msg in log_messages {
         tx.send(log_msg).ok();
     }
@@ -89,7 +94,6 @@ pub fn run_native_viewer_with_messages(
             re_ui,
             cc.storage,
             rx,
-            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         ))
     }))
 }

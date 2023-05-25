@@ -2,10 +2,10 @@ use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_data_store::{EntityPath, LogDb, Timeline};
 use re_log_types::{
     component_types::{
-        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Scalar, Tensor, TextBox,
-        TextEntry,
+        Box3D, LineStrip2D, LineStrip3D, Pinhole, Point2D, Point3D, Rect2D, Scalar, Tensor,
+        TextBox, TextEntry, Transform3D,
     },
-    Arrow3D, Component, Mesh3D, Transform,
+    Arrow3D, Component, Mesh3D,
 };
 
 #[derive(
@@ -94,17 +94,17 @@ pub fn categorize_entity_path(
             || component == LineStrip3D::name()
             || component == Mesh3D::name()
             || component == Arrow3D::name()
-            || component == Transform::name()
+            || component == Transform3D::name()
+            || component == Pinhole::name()
         {
             set.insert(ViewCategory::Spatial);
         } else if component == Tensor::name() {
             let timeline_query = LatestAtQuery::new(timeline, TimeInt::MAX);
 
-            if let Some(tensor) = re_data_store::query_latest_single::<Tensor>(
-                &log_db.entity_db.data_store,
-                entity_path,
-                &timeline_query,
-            ) {
+            let store = &log_db.entity_db.data_store;
+            if let Some(tensor) =
+                store.query_latest_component::<Tensor>(entity_path, &timeline_query)
+            {
                 if tensor.is_vector() {
                     set.insert(ViewCategory::BarChart);
                 } else if tensor.is_shaped_like_an_image() {

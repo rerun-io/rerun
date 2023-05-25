@@ -3,6 +3,22 @@
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!
+//!
+//!
+//!
+//! ## Mono-components
+//!
+//! Some components, mostly transform related ones, are "mono-components".
+//! This means that Rerun makes assumptions that depend on this component
+//! only taking on a singular value for all instances of an Entity. Where possible,
+//! exposed APIs will force these components to be logged as a singular instance
+//! or a splat. However, it is an error with undefined behavior to manually use lower-level
+//! APIs to log a batched mono-component.
+//!
+//! This requirement is especially apparent with transforms:
+//! Each entity must have a unique transform chain,
+//! e.g. the entity `foo/bar/baz` is has the transform that is the product of
+//! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
 mod component;
@@ -120,8 +136,8 @@ impl std::fmt::Display for RecordingType {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingId {
-    variant: RecordingType,
-    id: Arc<String>,
+    pub variant: RecordingType,
+    pub id: Arc<String>,
 }
 
 impl RecordingId {
@@ -147,6 +163,11 @@ impl RecordingId {
             variant,
             id: Arc::new(str),
         }
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.id.as_str()
     }
 }
 
@@ -187,6 +208,10 @@ impl ApplicationId {
     pub fn unknown() -> Self {
         Self("unknown_app_id".to_owned())
     }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
 }
 
 impl std::fmt::Display for ApplicationId {
@@ -214,9 +239,6 @@ pub enum LogMsg {
 
     /// Log an entity using an [`ArrowMsg`].
     ArrowMsg(RecordingId, ArrowMsg),
-
-    /// Sent when the client shuts down the connection.
-    Goodbye(RecordingId, RowId),
 }
 
 impl LogMsg {
@@ -226,7 +248,6 @@ impl LogMsg {
             Self::EntityPathOpMsg(recording_id, _) | Self::ArrowMsg(recording_id, _) => {
                 recording_id
             }
-            Self::Goodbye(recording_id, _) => recording_id,
         }
     }
 }
@@ -261,6 +282,16 @@ pub struct RecordingInfo {
     pub started: Time,
 
     pub recording_source: RecordingSource,
+
+    pub recording_type: RecordingType,
+}
+
+impl RecordingInfo {
+    /// Whether this `RecordingInfo` is the default used when a user is not explicitly
+    /// creating their own blueprint.
+    pub fn is_app_default_blueprint(&self) -> bool {
+        self.application_id.as_str() == self.recording_id.as_str()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

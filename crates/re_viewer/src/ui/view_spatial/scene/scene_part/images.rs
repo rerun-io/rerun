@@ -1,11 +1,11 @@
-use egui::NumExt;
-use glam::Vec3;
-use itertools::Itertools;
+use std::collections::BTreeMap;
 
-use re_data_store::{query_latest_single, EntityPath, EntityProperties};
+use egui::NumExt;
+
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Tensor, TensorData, TensorDataMeaning},
-    Component, DecodedTensor, DrawOrder, Transform,
+    component_types::{ColorRGBA, InstanceKey, Pinhole, Tensor, TensorData, TensorDataMeaning},
+    Component, DecodedTensor, DrawOrder, EntityPathHash,
 };
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
@@ -89,63 +89,44 @@ fn to_textured_rect(
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct ImageGrouping {
+    parent_pinhole: Option<EntityPathHash>,
+    draw_order: DrawOrder,
+}
+
 fn handle_image_layering(scene: &mut SceneSpatial) {
     crate::profile_function!();
 
-    // Handle layered rectangles that are on (roughly) the same plane with the same depth offset and were logged in sequence.
-    // First, group by similar plane.
-    // TODO(andreas): Need planes later for picking as well!
-    let images_grouped_by_plane = {
-        let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
-        let mut rectangle_group: Vec<Image> = Vec::new();
-        scene
-            .primitives
-            .images
-            .drain(..) // We rebuild the list as we might reorder as well!
-            .batching(move |it| {
-                for image in it {
-                    let rect = &image.textured_rect;
-
-                    let prev_plane = cur_plane;
-                    cur_plane = macaw::Plane3::from_normal_point(
-                        rect.extent_u.cross(rect.extent_v).normalize(),
-                        rect.top_left_corner_position,
-                    );
-
-                    fn is_plane_similar(a: macaw::Plane3, b: macaw::Plane3) -> bool {
-                        a.normal.dot(b.normal) > 0.99 && (a.d - b.d).abs() < 0.01
-                    }
-
-                    // Use draw order, not depth offset since depth offset might change when draw order does not.
-                    let has_same_draw_order = rectangle_group
-                        .last()
-                        .map_or(true, |last_image| last_image.draw_order == image.draw_order);
-
-                    // If the planes are similar, add them to the same group, otherwise start a new group.
-                    if has_same_draw_order && is_plane_similar(prev_plane, cur_plane) {
-                        rectangle_group.push(image);
-                    } else {
-                        let previous_group = std::mem::replace(&mut rectangle_group, vec![image]);
-                        return Some(previous_group);
-                    }
-                }
-                if !rectangle_group.is_empty() {
-                    Some(rectangle_group.drain(..).collect())
-                } else {
-                    None
-                }
+    // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
+    let mut image_groups: BTreeMap<ImageGrouping, Vec<Image>> = BTreeMap::new();
+    for image in scene.primitives.images.drain(..) {
+        image_groups
+            .entry(ImageGrouping {
+                parent_pinhole: image.parent_pinhole,
+                draw_order: image.draw_order,
             })
+            .or_default()
+            .push(image);
     }
-    .collect_vec();
 
-    // Then, for each planar group do resorting and change transparency.
-    for mut grouped_images in images_grouped_by_plane {
+    // Then, for each group do resorting and change transparency.
+    for (_, mut images) in image_groups {
+        // Since we change transparency depending on order and re_renderer doesn't handle transparency
+        // ordering either, we need to ensure that sorting is stable at the very least.
+        // Sorting is done by depth offset, not by draw order which is the same for the entire group.
+        //
         // Class id images should generally come last within the same layer as
         // they typically have large areas being zeroed out (which maps to fully transparent).
-        grouped_images.sort_by_key(|image| image.tensor.meaning == TensorDataMeaning::ClassId);
+        images.sort_by_key(|image| {
+            (
+                image.textured_rect.options.depth_offset,
+                image.tensor.meaning == TensorDataMeaning::ClassId,
+            )
+        });
 
-        let total_num_images = grouped_images.len();
-        for (idx, image) in grouped_images.iter_mut().enumerate() {
+        let total_num_images = images.len();
+        for (idx, image) in images.iter_mut().enumerate() {
             // make top images transparent
             let opacity = if idx == 0 {
                 1.0
@@ -160,7 +141,7 @@ fn handle_image_layering(scene: &mut SceneSpatial) {
                 .multiply(opacity);
         }
 
-        scene.primitives.images.extend(grouped_images);
+        scene.primitives.images.extend(images);
     }
 }
 
@@ -253,6 +234,7 @@ impl ImagesPart {
                     ent_path: ent_path.clone(),
                     tensor,
                     textured_rect,
+                    parent_pinhole: transforms.parent_pinhole(ent_path),
                     draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
                 });
             }
@@ -274,8 +256,8 @@ impl ImagesPart {
     ) -> Result<(), String> {
         crate::profile_function!();
 
-        let Some(re_log_types::Transform::Pinhole(intrinsics)) = query_latest_single::<Transform>(
-            &ctx.log_db.entity_db.data_store,
+        let store = &ctx.log_db.entity_db.data_store;
+        let Some(intrinsics) = store.query_latest_component::<Pinhole>(
             pinhole_ent_path,
             &ctx.current_query(),
         ) else {

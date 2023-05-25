@@ -46,7 +46,7 @@ polars-core = { workspace = true, optional = true, features = [
 
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 itertools = { workspace = true }
 mimalloc.workspace = true
 polars-core = { workspace = true, features = [

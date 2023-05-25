@@ -11,7 +11,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--package=rerun"
+                    "--package=rerun-cli"
                 ],
                 "filter": {
                     "name": "rerun",
@@ -30,7 +30,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--package=rerun"
+                    "--package=rerun-cli"
                 ],
                 "filter": {
                     "name": "rerun",

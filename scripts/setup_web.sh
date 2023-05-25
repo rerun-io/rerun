@@ -12,17 +12,18 @@ set -x
 rustup target add wasm32-unknown-unknown
 
 # For generating JS bindings:
-# cargo install wasm-bindgen-cli --version 0.2.84
-# We use our own patched version containing this critical fix: https://github.com/rustwasm/wasm-bindgen/pull/3310
-# See https://github.com/rerun-io/wasm-bindgen/commits/0.2.84-patch
-cargo install wasm-bindgen-cli --git https://github.com/rerun-io/wasm-bindgen.git --rev 13283975ddf48c2d90758095e235b28d381c5762
+cargo install wasm-bindgen-cli --version 0.2.86
 
 # For local tests with `start_server.sh`:
 # cargo install basic-http-server
 
 # binaryen gives us wasm-opt, for optimizing the an .wasm file for speed and size
+# If you add to this list, please consult the ci_docker/Dockerfile and make sure the
+# package actually installs properly. binaryen isn't supported on ubuntu 20.04 so we have
+# to install it manually there.
 packagesNeeded='binaryen'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
+elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
 elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded
 elif [ -x "$(command -v dnf)" ];     then sudo dnf install $packagesNeeded
 elif [ -x "$(command -v zypper)" ];  then sudo zypper install $packagesNeeded

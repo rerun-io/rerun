@@ -165,7 +165,7 @@ def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float
 
 def project_3d_bboxes_to_2d_keypoints(
     bboxes_3d: npt.NDArray[np.float64],
-    camera_from_world: Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]],
+    camera_from_world: rr.TranslationRotationScale3D,
     intrinsic: npt.NDArray[np.float64],
     img_width: int,
     img_height: int,
@@ -188,12 +188,12 @@ def project_3d_bboxes_to_2d_keypoints(
         are within the image frame.
     """
 
-    translation, rotation_q = camera_from_world
-    rotation = R.from_quat(rotation_q)
+    translation, rotation_q = camera_from_world.translation, camera_from_world.rotation
+    rotation = R.from_quat(np.array(rotation_q))
 
     # Transform 3D keypoints from world to camera frame
     world_to_camera_rotation = rotation.as_matrix()
-    world_to_camera_translation = translation.reshape(3, 1)
+    world_to_camera_translation = np.array(translation).reshape(3, 1)
     # Tile translation to match bounding box shape, (nObjects, 1, 3)
     world_to_camera_translation_tiled = np.tile(world_to_camera_translation.T, (bboxes_3d.shape[0], 1, 1))
     # Transform 3D bounding box keypoints from world to camera frame to filter out points behind the camera
@@ -229,7 +229,7 @@ def project_3d_bboxes_to_2d_keypoints(
 def log_camera(
     intri_path: Path,
     frame_id: str,
-    poses_from_traj: Dict[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
+    poses_from_traj: Dict[str, rr.TranslationRotationScale3D],
     entity_id: str,
     bboxes: npt.NDArray[np.float64],
     bbox_labels: List[str],
@@ -249,16 +249,14 @@ def log_camera(
     for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
         log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
 
-    rr.log_rigid3(
-        # pathlib makes it easy to get the parent, but log_rigid requires a string
-        str(PosixPath(entity_id).parent),
-        child_from_parent=camera_from_world,
-        xyz="RDF",  # X=Right, Y=Down, Z=Forward
-    )
+    # pathlib makes it easy to get the parent, but log methods requires a string
+    camera_path = str(PosixPath(entity_id).parent)
+    rr.log_transform3d(camera_path, camera_from_world, from_parent=True)
+    rr.log_view_coordinates(camera_path, xyz="RDF")  # X=Right, Y=Down, Z=Forward
     rr.log_pinhole(f"{entity_id}", child_from_parent=intrinsic, width=w, height=h)
 
 
-def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]]:
+def read_camera_from_world(traj_string: str) -> Tuple[str, rr.TranslationRotationScale3D]:
     """
     Reads out camera_from_world transform from trajectory string.
 
@@ -291,8 +289,8 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, Tuple[npt.NDArray[np.
     # Extract translation from the fifth to seventh tokens
     translation = np.asarray([float(tokens[4]), float(tokens[5]), float(tokens[6])])
 
-    # Create tuple in format log_rigid3 expects
-    camera_from_world = (translation, rotation.as_quat())
+    # Create tuple in format log_transform3d expects
+    camera_from_world = rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rotation.as_quat()))
 
     return (ts, camera_from_world)
 

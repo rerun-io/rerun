@@ -10,6 +10,8 @@ use crate::Component;
 ///
 /// Draw order for entities with the same draw order is generally undefined.
 ///
+/// This component is a "mono-component". See [the crate level docs](crate) for details.
+///
 /// ```
 /// use re_log_types::component_types::DrawOrder;
 /// use arrow2_convert::field::ArrowField;
@@ -17,7 +19,7 @@ use crate::Component;
 ///
 /// assert_eq!(DrawOrder::data_type(), DataType::Float32);
 /// ```
-#[derive(Debug, Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Debug, Clone, Copy, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
 pub struct DrawOrder(pub f32);

@@ -105,7 +105,14 @@ SECTION_TABLE: Final[List[Section]] = [
     Section(
         title="Transforms",
         module_summary="log.transform",
-        func_list=["log_rigid3", "log_pinhole", "log_unknown_transform", "log_view_coordinates"],
+        func_list=[
+            "log_rigid3",
+            "log_transform3d",
+            "log_pinhole",
+            "log_unknown_transform",
+            "log_disconnected_space",
+            "log_view_coordinates",
+        ],
     ),
     Section(
         title="Text",
@@ -122,7 +129,13 @@ SECTION_TABLE: Final[List[Section]] = [
     Section(
         title="Experimental",
         module_summary="experimental",
-        func_list=["experimental.log_text_box"],
+        func_list=[
+            "experimental.log_text_box",
+            "experimental.new_blueprint",
+            "experimental.add_space_view",
+            "experimental.set_panels",
+            "experimental.set_auto_space_views",
+        ],
     ),
 ]
 

@@ -2,11 +2,11 @@ use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
-use re_data_store::{query_latest_single, EditableAutoValue, EntityPath, EntityPropertyMap};
+use re_data_store::{EditableAutoValue, EntityPath, EntityPropertyMap};
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
-use re_log_types::component_types::{Tensor, TensorDataMeaning};
+use re_log_types::component_types::{Pinhole, Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
@@ -92,6 +92,30 @@ pub struct ViewSpatialState {
     auto_size_config: re_renderer::AutoSizeConfig,
 }
 
+// TODO(#2089): This render-related state probably doesn't belong in the blueprint
+// in the blueprint in the first place. But since serde skips it we also have to ignore it.
+// or else we re-store state on every frame. Either way the fact that we don't get it
+// back out of the store is going to cause problems.
+impl PartialEq for ViewSpatialState {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            nav_mode,
+            scene_bbox_accum: _,        // serde-skip
+            scene_bbox: _,              // serde-skip
+            scene_num_primitives: _,    // serde-skip
+            previous_picking_result: _, // serde-skip
+            state_2d,
+            state_3d,
+            auto_size_config,
+        } = self;
+
+        *nav_mode == other.nav_mode
+            && *state_2d == other.state_2d
+            && *state_3d == other.state_3d
+            && *auto_size_config == other.auto_size_config
+    }
+}
+
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
@@ -167,12 +191,10 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) {
-        if let Some(re_log_types::Transform::Pinhole(_)) =
-            query_latest_single::<re_log_types::Transform>(
-                &ctx.log_db.entity_db.data_store,
-                entity_path,
-                query,
-            )
+        let store = &ctx.log_db.entity_db.data_store;
+        if store
+            .query_latest_component::<Pinhole>(entity_path, query)
+            .is_some()
         {
             let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {
@@ -198,8 +220,8 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) -> Option<()> {
-        let tensor =
-            query_latest_single::<Tensor>(&ctx.log_db.entity_db.data_store, entity_path, query)?;
+        let store = &ctx.log_db.entity_db.data_store;
+        let tensor = store.query_latest_component::<Tensor>(entity_path, query)?;
 
         let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
         if properties.backproject_depth.is_auto() {
@@ -396,13 +418,10 @@ impl ViewSpatialState {
         }
         self.scene_num_primitives = scene.primitives.num_primitives();
 
+        let store = &ctx.log_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates = query_latest_single(
-                    &ctx.log_db.entity_db.data_store,
-                    space,
-                    &ctx.current_query(),
-                );
+                let coordinates = store.query_latest_component(space, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
                 super::view_3d(
                     ctx,
@@ -750,29 +769,27 @@ pub fn picking(
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
             || *ent_properties.backproject_depth.get()
         {
-            query_latest_single::<Tensor>(
-                &ctx.log_db.entity_db.data_store,
-                &instance_path.entity_path,
-                &ctx.current_query(),
-            )
-            .and_then(|tensor| {
-                // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                // (the back-projection property may be true despite this not being a depth image!)
-                if hit.hit_type != PickingHitType::TexturedRect
-                    && *ent_properties.backproject_depth.get()
-                    && tensor.meaning != TensorDataMeaning::Depth
-                {
-                    None
-                } else {
-                    tensor.image_height_width_channels().map(|[_, w, _]| {
-                        let coordinates = hit
-                            .instance_path_hash
-                            .instance_key
-                            .to_2d_image_coordinate(w);
-                        (tensor, coordinates)
-                    })
-                }
-            })
+            let store = &ctx.log_db.entity_db.data_store;
+            store
+                .query_latest_component::<Tensor>(&instance_path.entity_path, &ctx.current_query())
+                .and_then(|tensor| {
+                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                    // (the back-projection property may be true despite this not being a depth image!)
+                    if hit.hit_type != PickingHitType::TexturedRect
+                        && *ent_properties.backproject_depth.get()
+                        && tensor.meaning != TensorDataMeaning::Depth
+                    {
+                        None
+                    } else {
+                        tensor.image_height_width_channels().map(|[_, w, _]| {
+                            let coordinates = hit
+                                .instance_path_hash
+                                .instance_key
+                                .to_2d_image_coordinate(w);
+                            (tensor, coordinates)
+                        })
+                    }
+                })
         } else {
             None
         };

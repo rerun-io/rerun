@@ -61,16 +61,15 @@ cfg-if = "1.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
 crossbeam = "0.8"
-ctrlc = { version = "3.0", features = ["termination"] }
-ecolor = "0.21.0"
-eframe = { version = "0.21.3", default-features = false }
-egui = { version = "0.21.0", features = ["extra_debug_asserts", "log"] }
-egui_extras = { version = "0.21.0", features = ["log"] }
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "cd85328bc727ec9cd25d2e52583ec4ec2cff1381" }
-egui-wgpu = "0.21.0"
-emath = "0.21.0"
+ecolor = "0.22.0"
+eframe = { version = "0.22.0", default-features = false }
+egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
+egui_extras = { version = "0.22.0", features = ["log"] }
+egui_tiles = { version = "0.1" }
+egui-wgpu = "0.22.0"
+emath = "0.22.0"
 enumset = "1.0.12"
-epaint = "0.21.0"
+epaint = "0.22.0"
 glam = "0.22"
 gltf = "1.1"
 half = "2.0"
@@ -85,7 +84,7 @@ parking_lot = "0.12"
 polars-core = "0.29"
 polars-lazy = "0.29"
 polars-ops = "0.29"
-puffin = "0.14"
+puffin = "0.15"
 rayon = "1.7"
 rfd = { version = "0.11.3", default_features = false, features = [
   "xdg-portal",
@@ -99,8 +98,8 @@ time = { version = "0.3", default-features = false, features = [
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
 web-time = "0.2.0"
-wgpu = { version = "0.16" }
-wgpu-core = { version = "0.16" }
+wgpu = { version = "0.16.1" }
+wgpu-core = { version = "0.16.1" }
 
 
 [profile.dev]
@@ -125,17 +124,3 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-
-# TODO(andreas/emilk): Update to a stable egui version
-# wgpu 0.16 support, device configuration dependent on adapter, and some additions to help egui_tiles, egui::Modifiers::contains, better error reporting for web
-ecolor = { git = "https://github.com/emilk/egui", rev = "ea71b7f" }
-eframe = { git = "https://github.com/emilk/egui", rev = "ea71b7f" }
-egui = { git = "https://github.com/emilk/egui", rev = "ea71b7f" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "ea71b7f" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "ea71b7f" }
-emath = { git = "https://github.com/emilk/egui", rev = "ea71b7f" }
-
-# TODO(andreas): Either work around this issue in wgpu-egui (never discard command buffers) or wait for wgpu patch release.
-# Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726
-wgpu = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
-wgpu-core = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }

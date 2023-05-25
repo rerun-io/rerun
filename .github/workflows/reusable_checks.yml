@@ -106,7 +106,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.6
+      image: rerunio/ci_docker:0.7
     steps:
       - name: Show context
         run: |
@@ -190,7 +190,14 @@ jobs:
           command: doc
           args: --document-private-items --no-deps --all-features
 
-      - name: Test
+      # Just a normal `cargo test` should always work:
+      - name: cargo test --all-targets
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+      # Full test of everything:
+      - name: cargo test --all-targets --all-features
         uses: actions-rs/cargo@v1
         with:
           command: test
@@ -202,7 +209,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.6
+      image: rerunio/ci_docker:0.7
     steps:
       - uses: actions/checkout@v3
 
@@ -281,7 +288,7 @@ jobs:
       - name: Check for too large files
         run: |
           ./scripts/check_large_files.sh
-      
+
       - name: Check Python example requirements
         run: |
           ./scripts/check_requirements.py
@@ -304,7 +311,7 @@ jobs:
     name: Cargo Deny ${{ matrix.platform }}
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.6
+      image: rerunio/ci_docker:0.7
 
     steps:
       - uses: actions/checkout@v3

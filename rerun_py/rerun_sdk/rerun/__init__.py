@@ -9,6 +9,15 @@ from typing import Optional
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun import experimental
+from rerun.components.transform3d import (
+    Quaternion,
+    Rigid3D,
+    RotationAxisAngle,
+    Scale3D,
+    Translation3D,
+    TranslationAndMat3,
+    TranslationRotationScale3D,
+)
 from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from rerun.log.arrow import log_arrow
 from rerun.log.bounding_box import log_obb
@@ -24,7 +33,13 @@ from rerun.log.rects import RectFormat, log_rect, log_rects
 from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import LoggingHandler, LogLevel, log_text_entry
-from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
+from rerun.log.transform import (
+    log_disconnected_space,
+    log_rigid3,
+    log_transform3d,
+    log_unknown_transform,
+    log_view_coordinates,
+)
 from rerun.recording_stream import (
     RecordingStream,
     get_application_id,
@@ -85,13 +100,14 @@ __all__ = [
     "log_arrow",
     "log_cleared",
     "log_depth_image",
+    "log_disconnected_space",
     "log_extension_components",
-    "log_image",
     "log_image_file",
+    "log_image",
     "log_line_segments",
     "log_line_strip",
-    "log_mesh",
     "log_mesh_file",
+    "log_mesh",
     "log_meshes",
     "log_obb",
     "log_path",
@@ -105,6 +121,7 @@ __all__ = [
     "log_segmentation_image",
     "log_tensor",
     "log_text_entry",
+    "log_transform3d",
     "log_unknown_transform",
     "log_view_coordinates",
     # classes
@@ -122,6 +139,17 @@ __all__ = [
     "script_add_args",
     "script_setup",
     "script_teardown",
+    # Transform helpers
+    "Quaternion",
+    "Rigid3D",
+    "RotationAxisAngle",
+    "Scale3D",
+    "Transform3D",
+    "Transform3DArray",
+    "Transform3DType",
+    "Translation3D",
+    "TranslationAndMat3",
+    "TranslationRotationScale3D",
 ]
 
 
@@ -137,8 +165,11 @@ def init(
     application_id: str,
     recording_id: Optional[str] = None,
     spawn: bool = False,
+    init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
+    exp_init_blueprint: bool = False,
+    exp_add_to_app_default_blueprint: bool = True,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -176,22 +207,44 @@ def init(
     default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    init_logging
+        Should we initialize the logging for this application?
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types etc).
         If `False`, errors are logged as warnings instead.
+    exp_init_blueprint
+        (Experimental) Should we initialize the blueprint for this application?
+    exp_add_to_app_default_blueprint
+        (Experimental) Should the blueprint append to the existing app-default blueprint instead of creating a new one.
 
     """
 
     _strict_mode = strict
 
-    new_recording(
-        application_id,
-        recording_id,
-        True,  # make_default
-        False,  # make_thread_default
-        spawn,
-        default_enabled,
-    )
+    if init_logging:
+        new_recording(
+            application_id,
+            recording_id,
+            make_default=True,
+            make_thread_default=False,
+            spawn=False,
+            default_enabled=default_enabled,
+        )
+    if exp_init_blueprint:
+        experimental.new_blueprint(
+            application_id=application_id,
+            blueprint_id=recording_id,
+            make_default=True,
+            make_thread_default=False,
+            spawn=False,
+            add_to_app_default_blueprint=exp_add_to_app_default_blueprint,
+            default_enabled=default_enabled,
+        )
+
+    if spawn:
+        from rerun.sinks import spawn as _spawn
+
+        _spawn()
 
 
 def new_recording(

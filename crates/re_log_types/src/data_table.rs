@@ -1334,6 +1334,9 @@ fn data_table_sizes_unions() {
         );
     }
 
+    // This test uses an artificial enum type to test the union serialization.
+    // The transform type does *not* represent our current transform representation.
+
     // --- Dense ---
 
     #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
@@ -1341,8 +1344,8 @@ fn data_table_sizes_unions() {
     #[arrow_field(type = "dense")]
     enum DenseTransform {
         Unknown,
-        Rigid3(crate::Rigid3),
-        Pinhole(crate::Pinhole),
+        Transform3D(crate::component_types::Transform3DRepr),
+        Pinhole(crate::component_types::Pinhole),
     }
 
     impl crate::Component for DenseTransform {
@@ -1363,7 +1366,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        27_230_064, // expected_num_bytes
+        49_030_064, // expected_num_bytes
     );
 
     // dense union (varying)
@@ -1371,16 +1374,14 @@ fn data_table_sizes_unions() {
         DataCell::from_native(
             [
                 DenseTransform::Unknown,
-                DenseTransform::Rigid3(crate::Rigid3 {
-                    rotation: crate::component_types::Quaternion {
-                        x: 11.0,
-                        y: 12.0,
-                        z: 13.0,
-                        w: 14.0,
-                    },
-                    translation: [15.0, 16.0, 17.0].into(),
-                }),
-                DenseTransform::Pinhole(crate::Pinhole {
+                DenseTransform::Transform3D(
+                    crate::component_types::TranslationAndMat3 {
+                        translation: Some([10.0, 11.0, 12.0].into()),
+                        matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
+                    }
+                    .into(),
+                ),
+                DenseTransform::Pinhole(crate::component_types::Pinhole {
                     image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]]
                         .into(),
                     resolution: Some([123.0, 456.0].into()),
@@ -1389,7 +1390,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        27_220_064, // expected_num_bytes
+        49_020_064, // expected_num_bytes
     );
 
     // --- Sparse ---
@@ -1399,8 +1400,7 @@ fn data_table_sizes_unions() {
     #[arrow_field(type = "sparse")]
     enum SparseTransform {
         Unknown,
-        Rigid3(crate::Rigid3),
-        Pinhole(crate::Pinhole),
+        Pinhole(crate::component_types::Pinhole),
     }
 
     impl crate::Component for SparseTransform {
@@ -1421,7 +1421,7 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        29_420_064, // expected_num_bytes
+        22_180_064, // expected_num_bytes
     );
 
     // sparse union (varying)
@@ -1429,16 +1429,7 @@ fn data_table_sizes_unions() {
         DataCell::from_native(
             [
                 SparseTransform::Unknown,
-                SparseTransform::Rigid3(crate::Rigid3 {
-                    rotation: crate::component_types::Quaternion {
-                        x: 11.0,
-                        y: 12.0,
-                        z: 13.0,
-                        w: 14.0,
-                    },
-                    translation: [15.0, 16.0, 17.0].into(),
-                }),
-                SparseTransform::Pinhole(crate::Pinhole {
+                SparseTransform::Pinhole(crate::component_types::Pinhole {
                     image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]]
                         .into(),
                     resolution: Some([123.0, 456.0].into()),
@@ -1447,6 +1438,6 @@ fn data_table_sizes_unions() {
             .as_slice(),
         ),
         10_000,     // num_rows
-        29_430_064, // expected_num_bytes
+        21_730_064, // expected_num_bytes
     );
 }

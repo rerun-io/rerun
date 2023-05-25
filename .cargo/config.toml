@@ -1,4 +1,9 @@
 [alias]
+# `cargo rerun` is short a convenient shorthand, skipping the web viewer.
+rerun = "run --package rerun-cli --no-default-features --features native_viewer --"
+# `cargo rerun-web` is short a convenient shorthand for building & starting the web viewer.
+rerun-web = "run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer"
+
 # To easily run examples on the web, see https://github.com/rukai/cargo-run-wasm.
 # Temporary solution while we wait for our own xtasks!
 run-wasm = "run --release --package run_wasm --"

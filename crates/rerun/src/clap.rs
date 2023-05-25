@@ -66,6 +66,10 @@ pub struct RerunArgs {
     #[cfg(feature = "web_viewer")]
     #[clap(long)]
     serve: bool,
+
+    /// What bind address IP to use.
+    #[clap(long, default_value = "0.0.0.0")]
+    bind: String,
 }
 
 impl RerunArgs {
@@ -111,6 +115,7 @@ impl RerunArgs {
                 let open_browser = true;
                 crate::web_viewer::new_sink(
                     open_browser,
+                    &self.bind,
                     WebViewerServerPort::default(),
                     RerunServerPort::default(),
                 )?
@@ -132,12 +137,10 @@ impl RerunArgs {
 
         #[cfg(feature = "web_viewer")]
         if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
-            use anyhow::Context as _;
-
-            let (mut shutdown_rx, _) = crate::run::setup_ctrl_c_handler();
-            return tokio_runtime_handle
-                .block_on(async { shutdown_rx.recv().await })
-                .context("Failed to wait for shutdown signal.");
+            // Sleep waiting for Ctrl-C:
+            tokio_runtime_handle.block_on(async {
+                tokio::time::sleep(std::time::Duration::from_secs(u64::MAX)).await;
+            });
         }
 
         Ok(())
