@@ -8,7 +8,7 @@ from typing import Iterator, Tuple
 import cv2
 import numpy as np
 import numpy.typing as npt
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 
 def log_car_data() -> None:

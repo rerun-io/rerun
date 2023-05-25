@@ -18,7 +18,7 @@ from typing import Callable
 
 import cv2
 import numpy as np
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 
 def run_segmentation() -> None:

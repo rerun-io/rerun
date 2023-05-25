@@ -37,7 +37,7 @@ from typing import Tuple, cast
 import mesh_to_sdf
 import numpy as np
 import numpy.typing as npt
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 from trimesh import Trimesh

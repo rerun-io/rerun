@@ -13,7 +13,7 @@ Run:
 import argparse
 import logging
 
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 
 def setup_logging() -> None:

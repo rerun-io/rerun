@@ -56,7 +56,7 @@ from transformers import (
     DPTForDepthEstimation,
 )
 
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 logger.addHandler(rr.log.text.LoggingHandler("logs"))

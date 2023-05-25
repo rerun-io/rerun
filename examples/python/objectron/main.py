@@ -18,7 +18,7 @@ from typing import Iterable, Iterator, List
 
 import numpy as np
 import numpy.typing as npt
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 from download_dataset import (
     ANNOTATIONS_FILENAME,
     AVAILABLE_RECORDINGS,

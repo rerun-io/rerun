@@ -4,7 +4,7 @@
 
 
 import numpy as np
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 _, unknown = __import__("argparse").ArgumentParser().parse_known_args()
 [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]

@@ -4,7 +4,7 @@ from typing import Optional, cast
 from urllib.parse import urlparse
 
 import numpy as np
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 import trimesh
 from ament_index_python.packages import get_package_share_directory
 from std_msgs.msg import String
