@@ -27,8 +27,9 @@ criterion_group!(
 criterion_main!(benches);
 
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
+    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let mut bytes = vec![];
-    re_log_encoding::encoder::encode(messages.iter(), &mut bytes).unwrap();
+    re_log_encoding::encoder::encode(encoding_options, messages.iter(), &mut bytes).unwrap();
     assert!(bytes.len() > messages.len());
     bytes
 }

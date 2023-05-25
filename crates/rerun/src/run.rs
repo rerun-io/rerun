@@ -811,9 +811,10 @@ fn stream_to_rrd(
 
     re_log::info!("Saving incoming log stream to {path:?}. Abort with Ctrl-C.");
 
+    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::Encoder::new(file)?;
+    let mut encoder = re_log_encoding::encoder::Encoder::new(encoding_options, file)?;
 
     loop {
         match rx.recv() {

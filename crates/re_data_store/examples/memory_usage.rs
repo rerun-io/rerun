@@ -65,7 +65,9 @@ fn log_messages() {
 
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
-        re_log_encoding::encoder::encode(std::iter::once(log_msg), &mut bytes).unwrap();
+        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+        re_log_encoding::encoder::encode(encoding_options, std::iter::once(log_msg), &mut bytes)
+            .unwrap();
         bytes
     }
 
