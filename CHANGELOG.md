@@ -147,7 +147,6 @@
 - Lint error names in `map_err` [#1948](https://github.com/rerun-io/rerun/pull/1948)
 - New dispatch-only workflow for running the lint-job [#1950](https://github.com/rerun-io/rerun/pull/1950)
 - Move clippy_wasm/clippy.toml to under scripts [#1949](https://github.com/rerun-io/rerun/pull/1949)
-- change crate version to 0.6.0-alpha.0 [#1952](https://github.com/rerun-io/rerun/pull/1952)
 - Fix run-wasm crash on trying to wait for server [#1959](https://github.com/rerun-io/rerun/pull/1959)
 - Introduce new reusable workflow jobs and cleanup manual trigger [#1954](https://github.com/rerun-io/rerun/pull/1954)
 - Use new CI workflows on pull-request [#1955](https://github.com/rerun-io/rerun/pull/1955)
