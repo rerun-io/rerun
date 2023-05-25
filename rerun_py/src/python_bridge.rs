@@ -337,7 +337,7 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 /// specified recording otherwise, if any.
 #[pyfunction]
 fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
-    RecordingStream::get(
+    RecordingStream::get_quiet(
         rerun::RecordingType::Data,
         recording.map(|rec| rec.0.clone()),
     )
@@ -408,7 +408,7 @@ fn set_thread_local_data_recording(
 /// specified recording otherwise, if any.
 #[pyfunction]
 fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
-    RecordingStream::get(
+    RecordingStream::get_quiet(
         rerun::RecordingType::Blueprint,
         overrides.map(|rec| rec.0.clone()),
     )

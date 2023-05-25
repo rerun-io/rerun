@@ -50,7 +50,7 @@ def save(path: str, recording: Optional[RecordingStream] = None) -> None:
     """
 
     if not bindings.is_enabled():
-        logging.warning("Rerun is disabled - save() call ignored")
+        logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
     recording = RecordingStream.to_native(recording)
