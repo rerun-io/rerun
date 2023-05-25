@@ -72,7 +72,11 @@ def collect_examples(fast: bool) -> List[str]:
             "examples/python/text_logging",
         ]
     else:
-        return [os.path.dirname(entry) for entry in glob("examples/python/**/main.py")]
+        slow_list = ["examples/python/ros/main.py"]
+
+        return [
+            os.path.dirname(main_path) for main_path in glob("examples/python/**/main.py") if main_path not in slow_list
+        ]
 
 
 def print_example_output(path: str, example: Any) -> None:
