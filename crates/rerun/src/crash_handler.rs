@@ -123,7 +123,6 @@ fn install_signal_handler(build_info: BuildInfo) {
         libc::SIGFPE,
         libc::SIGILL,
         libc::SIGSEGV,
-        libc::SIGTERM,
     ] {
         // SAFETY: we're installing a signal handler.
         unsafe {
