@@ -14,6 +14,7 @@ Before running, you have to authenticate via the Google Cloud CLI:
 import argparse
 import hashlib
 import mimetypes
+import os
 
 from google.cloud import storage
 
@@ -34,7 +35,7 @@ def main() -> None:
     args = parser.parse_args()
 
     hash = content_hash(args.path)
-    object_name = f"{hash}_{args.path}"
+    object_name = f"{hash}_{os.path.basename(args.path)}"
 
     gcs = storage.Client()
     bucket = gcs.bucket("rerun-static-img")
