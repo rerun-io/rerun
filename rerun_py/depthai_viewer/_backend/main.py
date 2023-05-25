@@ -107,7 +107,7 @@ class SelectedDevice:
                     resolutions=[resolution_to_enum[(conf.width, conf.height)] for conf in cam.configs],
                     supported_types=cam.supportedTypes,
                     stereo_pairs=self._get_possible_stereo_pairs_for_cam(cam, connected_cam_features),
-                    name=cam.name,
+                    name=cam.name.capitalize(),
                 )
             )
         device_properties.stereo_pairs = list(

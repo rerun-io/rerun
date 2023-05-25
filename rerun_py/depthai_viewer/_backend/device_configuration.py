@@ -256,6 +256,7 @@ resolution_to_enum = {
     (640, 400): CameraSensorResolution.THE_400_P,
     (1280, 720): CameraSensorResolution.THE_720_P,
     (1280, 800): CameraSensorResolution.THE_800_P,
+    (1920, 1080): CameraSensorResolution.THE_1080_P,
     (1920, 1200): CameraSensorResolution.THE_1200_P,
     (3840, 2160): CameraSensorResolution.THE_4_K,
     (4056, 3040): CameraSensorResolution.THE_12_MP,

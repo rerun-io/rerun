@@ -171,6 +171,7 @@ impl ReUi {
                     egui::ComboBox::from_id_source(label)
                         .selected_text(selected_text)
                         .width(Self::box_width())
+                        .wrap(true)
                         .show_ui(ui, menu_contents)
                         .response
                 },

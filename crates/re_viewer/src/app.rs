@@ -851,7 +851,7 @@ impl App {
         }
 
         for log_db in self.log_dbs.values_mut() {
-            log_db.clear_by_cutoff(1e9 as i64);
+            log_db.clear_by_cutoff(2e9 as i64);
         }
 
         use re_format::format_bytes;

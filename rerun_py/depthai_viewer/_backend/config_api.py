@@ -149,7 +149,6 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                         print("Device props is non!")
                         await websocket.send(error("Unknown error", ErrorAction.FULL_RESET))
                         continue
-                    print("Sending device props!")
                     device_properties = result.get("device_properties", None)
                     await websocket.send(
                         json.dumps({"type": MessageType.DEVICE, "data": device_properties.dict() if device_properties else DeviceProperties(id="").dict()})  # type: ignore[union-attr]

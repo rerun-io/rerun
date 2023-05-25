@@ -161,7 +161,12 @@ impl DeviceSettingsPanel {
     ) {
         let primary_700 = ctx.re_ui.design_tokens.primary_700;
         egui::CollapsingHeader::new(
-            egui::RichText::new(format!("{:?}", camera_features.board_socket)).color(primary_700),
+            egui::RichText::new(
+                camera_features
+                    .board_socket
+                    .display_name(ctx.depthai_state.get_connected_cameras()),
+            )
+            .color(primary_700),
         )
         .default_open(true)
         .show(ui, |ui| {
@@ -206,6 +211,7 @@ impl DeviceSettingsPanel {
     fn device_configuration_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         let mut device_config = ctx.depthai_state.modified_device_config.clone();
         let primary_700 = ctx.re_ui.design_tokens.primary_700;
+        let connected_cameras = ctx.depthai_state.get_connected_cameras().clone();
 
         ctx.re_ui
             .styled_scrollbar(ui, re_ui::ScrollAreaDirection::Vertical, [false; 2], |ui| {
@@ -217,8 +223,7 @@ impl DeviceSettingsPanel {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.vertical(|ui| {
-                            // for cam in ctx.depthai_state
-                            for cam in ctx.depthai_state.selected_device.cameras.clone() {
+                            for cam in connected_cameras.clone() {
                                 let Some(config) = device_config.cameras.iter_mut().find(|conf| conf.board_socket == cam.board_socket) else {
                                     continue;
                                 };
@@ -245,9 +250,9 @@ impl DeviceSettingsPanel {
                                                 }
                                             },
                                         );
-                                        ctx.re_ui.labeled_combo_box(ui, "Run on", format!("{:?}", device_config.ai_model.camera), true, |ui| {
-                                            for cam in &ctx.depthai_state.selected_device.cameras {
-                                                ui.selectable_value(&mut device_config.ai_model.camera, cam.board_socket, format!("{:?}", cam.board_socket));
+                                        ctx.re_ui.labeled_combo_box(ui, "Run on", device_config.ai_model.camera.display_name(&connected_cameras), false, |ui| {
+                                            for cam in &connected_cameras {
+                                                ui.selectable_value(&mut device_config.ai_model.camera, cam.board_socket, cam.board_socket.display_name(&connected_cameras));
                                             }
                                         });
                                     });
@@ -260,13 +265,11 @@ impl DeviceSettingsPanel {
                                 depth.align = depthai::CameraBoardSocket::AUTO;
                             }
 
-                            let has_left_cam = ctx.depthai_state.selected_device.has_left_camera();
-                            let has_right_cam = ctx.depthai_state.selected_device.has_left_camera();
-                            ui.add_enabled_ui(has_right_cam && has_left_cam, |ui| {
+                            ui.add_enabled_ui(ctx.depthai_state.selected_device.has_stereo_pairs(), |ui| {
                                 egui::CollapsingHeader::new(
                                     egui::RichText::new("Depth Settings").color(primary_700),
                                 )
-                                .open(if !(has_right_cam && has_left_cam) {
+                                .open(if !ctx.depthai_state.selected_device.has_stereo_pairs() {
                                     Some(false)
                                 } else {
                                     None
@@ -274,10 +277,10 @@ impl DeviceSettingsPanel {
                                 .show(ui, |ui| {
                                     ui.vertical(|ui| {
                                         ui.set_width(CONFIG_UI_WIDTH);
-
-                                        ctx.re_ui.labeled_combo_box(ui, "Camera Pair", format!("{:?}", depth.stereo_pair), true, |ui| {
+                                        let (cam1, cam2) = depth.stereo_pair;
+                                        ctx.re_ui.labeled_combo_box(ui, "Camera Pair", format!("{}, {}", cam1.display_name(&connected_cameras), cam2.display_name(&connected_cameras)), false, |ui| {
                                             for pair in &ctx.depthai_state.selected_device.stereo_pairs {
-                                                ui.selectable_value(&mut depth.stereo_pair, *pair, format!("{pair:?}"));
+                                                ui.selectable_value(&mut depth.stereo_pair, *pair, format!("{} {}", pair.0.display_name(&connected_cameras), pair.1.display_name(&connected_cameras)));
                                             }
                                         });
                                         ctx.re_ui.labeled_checkbox(
@@ -288,22 +291,15 @@ impl DeviceSettingsPanel {
                                         ctx.re_ui.labeled_combo_box(
                                             ui,
                                             "Align to",
-                                            format!("{:?}", depth.align),
+                                            depth.align.display_name(ctx.depthai_state.get_connected_cameras()),
                                             false,
                                             |ui| {
-                                                for align in
-                                                    depthai::CameraBoardSocket::depth_align_options(
-                                                    )
+                                                for align in &connected_cameras
                                                 {
-                                                    if align == depthai::CameraBoardSocket::CENTER
-                                                        && !depth.lr_check
-                                                    {
-                                                        continue;
-                                                    }
                                                     ui.selectable_value(
                                                         &mut depth.align,
-                                                        align,
-                                                        format!("{align:?}"),
+                                                        align.board_socket,
+                                                        align.board_socket.display_name(&connected_cameras),
                                                     );
                                                 }
                                             },

@@ -35,14 +35,14 @@ impl Default for CameraConfig {
 impl CameraConfig {
     pub fn left() -> Self {
         Self {
-            board_socket: CameraBoardSocket::LEFT,
+            board_socket: CameraBoardSocket::CAM_B,
             ..Default::default()
         }
     }
 
     pub fn right() -> Self {
         Self {
-            board_socket: CameraBoardSocket::RIGHT,
+            board_socket: CameraBoardSocket::CAM_C,
             ..Default::default()
         }
     }
@@ -73,8 +73,13 @@ impl Default for CameraBoardSocket {
 }
 
 impl CameraBoardSocket {
-    pub fn depth_align_options() -> Vec<Self> {
-        return vec![Self::RGB, Self::LEFT, Self::RIGHT];
+    pub fn display_name(&self, camera_features: &[CameraFeatures]) -> String {
+        if let Some(cam) = camera_features.iter().find(|cam| cam.board_socket == *self) {
+            if !cam.name.is_empty() {
+                return format!("{} ({self:?})", cam.name);
+            }
+        }
+        format!("{self:?}")
     }
 }
 
@@ -157,16 +162,8 @@ pub struct DeviceProperties {
 }
 
 impl DeviceProperties {
-    pub fn has_right_camera(&self) -> bool {
-        self.has_cam_with_name("right")
-    }
-
-    pub fn has_left_camera(&self) -> bool {
-        self.has_cam_with_name("left")
-    }
-
-    fn has_cam_with_name(&self, name: &str) -> bool {
-        self.cameras.iter().any(|cam| cam.name == name)
+    pub fn has_stereo_pairs(&self) -> bool {
+        !self.stereo_pairs.is_empty()
     }
 }
 
@@ -237,16 +234,23 @@ impl Default for DepthConfig {
 }
 
 impl DepthConfig {
+    pub fn from_camera_features(camera_features: &[CameraFeatures]) -> Option<Self> {
+        let mut config = Self::default();
+        let Some(cam_with_stereo_pair) = camera_features.iter().find(|feat| !feat.stereo_pairs.is_empty()) else {
+            return None
+        };
+        let stereo_pair = cam_with_stereo_pair.stereo_pairs[0];
+        config.stereo_pair = (cam_with_stereo_pair.board_socket, stereo_pair);
+        config.align = cam_with_stereo_pair.board_socket;
+        Some(config)
+    }
+
     pub fn default_as_option() -> Option<Self> {
         Some(Self::default())
     }
 
     pub fn only_runtime_configs_differ(&self, other: &DepthConfig) -> bool {
-        self.lr_check == other.lr_check
-            && self.align == other.align
-            && self.extended_disparity == other.extended_disparity
-            && self.subpixel_disparity == other.subpixel_disparity
-            && self != other
+        self.align == other.align && self != other
     }
 }
 
@@ -272,15 +276,21 @@ impl Default for DeviceConfig {
 }
 
 impl DeviceConfig {
-    pub fn create_device_config_from_camera_features(
-        camera_features: &Vec<CameraFeatures>,
-    ) -> DeviceConfig {
+    pub fn from_camera_features(camera_features: &Vec<CameraFeatures>) -> DeviceConfig {
         let mut config = DeviceConfig::default();
         for features in camera_features {
             config.cameras.push(CameraConfig {
                 name: features.name.clone(),
                 fps: 30, // TODO(filip): Do performance improvements to allow higher fps
-                resolution: features.resolutions.last().unwrap().clone(),
+                resolution: *features
+                    .resolutions
+                    .iter()
+                    .filter(|res| {
+                        res != &&CameraSensorResolution::THE_4_K
+                            && res != &&CameraSensorResolution::THE_12_MP
+                    })
+                    .last()
+                    .unwrap_or(&CameraSensorResolution::THE_800_P),
                 board_socket: features.board_socket,
                 stream_enabled: true,
                 kind: if features.supported_types.contains(&CameraSensorKind::COLOR) {
@@ -290,6 +300,8 @@ impl DeviceConfig {
                 },
             });
         }
+        config.depth = DepthConfig::from_camera_features(camera_features);
+        config.ai_model = AiModel::from_camera_features(camera_features);
         config
     }
 }
@@ -415,6 +427,14 @@ impl AiModel {
             display_name: String::from("No model selected"),
             camera: CameraBoardSocket::CAM_B,
         }
+    }
+
+    pub fn from_camera_features(camera_features: &[CameraFeatures]) -> Self {
+        let mut model = Self::default();
+        if let Some(cam) = camera_features.iter().find(|cam| cam.name == "color") {
+            model.camera = cam.board_socket;
+        }
+        model
     }
 }
 
@@ -572,12 +592,18 @@ impl State {
         self.subscriptions = subscriptions.clone();
     }
 
+    /// Returns available devices
     pub fn get_devices(&mut self) -> Vec<DeviceId> {
         // Return stored available devices or fetch them from the api (they get fetched every 30s via poller)
         if let Some(devices) = self.devices_available.clone() {
             return devices;
         }
         Vec::new()
+    }
+
+    /// Returns cameras connected to the selected device
+    pub fn get_connected_cameras(&self) -> &Vec<CameraFeatures> {
+        &self.selected_device.cameras
     }
 
     pub fn shutdown(&mut self) {
@@ -651,9 +677,7 @@ impl State {
                     self.selected_device = device;
                     self.backend_comms.set_subscriptions(&self.subscriptions);
                     self.modified_device_config =
-                        DeviceConfig::create_device_config_from_camera_features(
-                            &self.selected_device.cameras,
-                        );
+                        DeviceConfig::from_camera_features(&self.selected_device.cameras);
                     // self.backend_comms
                     //     .set_pipeline(&self.applied_device_config.config, false);
                     self.set_update_in_progress(false);
@@ -705,7 +729,7 @@ impl State {
             config.depth = None;
         }
 
-        if !self.selected_device.has_left_camera() || !self.selected_device.has_right_camera() {
+        if !self.selected_device.has_stereo_pairs() {
             config.depth = None;
         }
 

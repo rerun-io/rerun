@@ -99,7 +99,7 @@ class SdkCallbacks:
             return lambda packet: callback(packet, args)  # type: ignore[arg-type]
 
     def _on_camera_frame(self, packet: FramePacket, args: CameraCallbackArgs) -> None:
-        viewer.log_rigid3(f"{args.board_socket.name}", child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
+        viewer.log_rigid3(f"{args.board_socket.name}/transform", child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         h, w = packet.frame.shape[:2]
         child_from_parent: NDArray[np.float32]
         try:
@@ -108,7 +108,7 @@ class SdkCallbacks:
             f_len = (w * h) ** 0.5
             child_from_parent = np.array([[f_len, 0, w / 2], [0, f_len, h / 2], [0, 0, 1]])
         viewer.log_pinhole(
-            f"{args.board_socket.name}/camera/",
+            f"{args.board_socket.name}/transform/camera/",
             child_from_parent=child_from_parent,
             width=w,
             height=h,
@@ -118,7 +118,7 @@ class SdkCallbacks:
             if args.image_kind == dai.CameraSensorType.MONO
             else cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
         )
-        viewer.log_image(f"{args.board_socket.name}/camera/image", img_frame)
+        viewer.log_image(f"{args.board_socket.name}/transform/camera/image", img_frame)
 
     def on_imu(self, packet: IMUPacket) -> None:
         for data in packet.data:
@@ -137,7 +137,7 @@ class SdkCallbacks:
         if Topic.DepthImage not in self.store.subscriptions:
             return
         depth_frame = frame.frame
-        path = f"{args.alignment_camera.board_socket.name}/camera" + "/Depth"
+        path = f"{args.alignment_camera.board_socket.name}/transform/camera" + "/Depth"
         if not self.store.pipeline_config or not self.store.pipeline_config.depth:
             # Essentially impossible to get here
             return
@@ -146,7 +146,7 @@ class SdkCallbacks:
     def _on_detections(self, packet: DetectionPacket, args: AiModelCallbackArgs) -> None:
         rects, colors, labels = self._detections_to_rects_colors_labels(packet, args.labels)
         viewer.log_rects(
-            f"{args.camera.board_socket.name}/camera/Detections",
+            f"{args.camera.board_socket.name}/transform/camera/Detections",
             rects,
             rect_format=RectFormat.XYXY,
             colors=colors,
