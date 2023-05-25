@@ -97,14 +97,10 @@ impl<R: std::io::Read> Decoder<R> {
         {
             let mut header = [0_u8; 4];
             read.read_exact(&mut header).map_err(DecodeError::Read)?;
-            match &header {
-                b"RRF0" => {
-                    return Err(DecodeError::OldRrdVersion);
-                }
-                b"RRF1" => {}
-                _ => {
-                    return Err(DecodeError::NotAnRrd);
-                }
+            if &header == b"RRF0" {
+                return Err(DecodeError::OldRrdVersion);
+            } else if &header != crate::RRD_HEADER {
+                return Err(DecodeError::NotAnRrd);
             }
         }
 

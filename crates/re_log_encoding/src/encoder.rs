@@ -141,7 +141,9 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn new(options: EncodingOptions, mut write: W) -> Result<Self, EncodeError> {
         let rerun_version = re_build_info::CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
-        write.write_all(b"RRF1").map_err(EncodeError::Write)?;
+        write
+            .write_all(crate::RRD_HEADER)
+            .map_err(EncodeError::Write)?;
         write
             .write_all(&rerun_version.to_bytes())
             .map_err(EncodeError::Write)?;

@@ -18,6 +18,11 @@ pub mod stream_rrd_from_http;
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use file_sink::{FileSink, FileSinkError};
+
+// ----------------------------------------------------------------------------
+
+const RRD_HEADER: &[u8; 4] = b"RRF1";
+
 // ----------------------------------------------------------------------------
 
 /// Compression format used.
