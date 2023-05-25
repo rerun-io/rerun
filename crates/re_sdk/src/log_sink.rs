@@ -129,7 +129,9 @@ impl MemorySinkStorage {
     #[inline]
     pub fn rrd_as_bytes(&self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
         let mut buffer = std::io::Cursor::new(Vec::new());
-        re_log_encoding::encoder::encode(self.read().iter(), &mut buffer)?;
+        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+        re_log_encoding::encoder::encode(encoding_options, self.read().iter(), &mut buffer)?;
+
         Ok(buffer.into_inner())
     }
 }
