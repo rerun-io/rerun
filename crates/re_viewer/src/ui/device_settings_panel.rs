@@ -260,11 +260,6 @@ impl DeviceSettingsPanel {
                             );
 
                             let mut depth = device_config.depth.unwrap_or_default();
-                            if depth.align == depthai::CameraBoardSocket::CENTER && !depth.lr_check
-                            {
-                                depth.align = depthai::CameraBoardSocket::AUTO;
-                            }
-
                             ui.add_enabled_ui(ctx.depthai_state.selected_device.has_stereo_pairs(), |ui| {
                                 egui::CollapsingHeader::new(
                                     egui::RichText::new("Depth Settings").color(primary_700),
