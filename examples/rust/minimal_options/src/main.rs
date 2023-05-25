@@ -5,7 +5,7 @@
 //!  cargo run -p minimal_options -- --help
 //! ```
 
-use rerun::components::{ColorRGBA, Point3D};
+use rerun::components::{ColorRGBA, Point3D, Radius};
 use rerun::time::{TimeType, Timeline};
 use rerun::{external::re_log, MsgSender, RecordingStream};
 
@@ -20,7 +20,7 @@ struct Args {
     #[clap(long, default_value = "10")]
     num_points_per_axis: usize,
 
-    #[clap(long, default_value = "5.0")]
+    #[clap(long, default_value = "10.0")]
     radius: f32,
 }
 
@@ -45,6 +45,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?
+        .with_splat(Radius(0.5))?
         .with_time(timeline_keyframe, 0)
         .send(rec_stream)?;
 
