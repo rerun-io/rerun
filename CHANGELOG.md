@@ -20,6 +20,8 @@
 #### 🐍 Python SDK
 - ⚠️ BREAKING: You must now call `rr.init` if you want logging to work.
 - ⚠️ BREAKING: `set_enabled` has been removed.
+  In order to disable logging at runtime, create a no-op recording via `RecordingStream::disabled()`.
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
 - `log_mesh_file`: accept either path or bytes [#2098](https://github.com/rerun-io/rerun/pull/2098)
 - Add `draw_order` to 2D primitives [#2138](https://github.com/rerun-io/rerun/pull/2138)
 - Add `rr.version()` [#2084](https://github.com/rerun-io/rerun/pull/2084)
@@ -31,7 +33,9 @@
 
 #### 🦀 Rust SDK
 - ⚠️ BREAKING: `set_enabled` has been removed.
-- ⚠️ BREAKING: `Session` hass been replaced by `RecordingContext` [#1983](https://github.com/rerun-io/rerun/pull/1983)
+  In order to disable logging at runtime, call `set_global_data_recording(None)`.
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
+- ⚠️ BREAKING: `Session` has been replaced by `RecordingContext` [#1983](https://github.com/rerun-io/rerun/pull/1983)
 - ⚠️ BREAKING: `native_viewer` is now an opt-in feature of the `rerun` library [#2064](https://github.com/rerun-io/rerun/pull/2064)
 - Rust SDK: bring back support for implicit splats [#2059](https://github.com/rerun-io/rerun/pull/2059)
 - Introduce a 2D `DrawOrder` component [#2056](https://github.com/rerun-io/rerun/pull/2056)
