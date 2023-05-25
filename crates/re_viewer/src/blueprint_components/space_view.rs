@@ -4,7 +4,7 @@ use re_log_types::{serde_field::SerdeField, Component};
 
 use crate::ui::SpaceViewBlueprint;
 
-/// A [`SpaceView`]
+/// A [`SpaceViewBlueprint`]
 ///
 /// ## Example
 /// ```
