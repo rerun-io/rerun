@@ -61,7 +61,6 @@ cfg-if = "1.0"
 clap = "4.0"
 comfy-table = { version = "6.1", default-features = false }
 crossbeam = "0.8"
-ctrlc = { version = "3.0", features = ["termination"] }
 ecolor = "0.22.0"
 eframe = { version = "0.22.0", default-features = false }
 egui = { version = "0.22.0", features = ["extra_debug_asserts", "log"] }
