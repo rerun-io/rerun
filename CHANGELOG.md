@@ -49,7 +49,6 @@
 - Show tensors shaped [H, W, 1, 1] as images (and more!) [#2075](https://github.com/rerun-io/rerun/pull/2075)
 - Show meshes and images with `rerun foo.obj bar.png` [#2060](https://github.com/rerun-io/rerun/pull/2060)
 - Don't persist blueprints for unknown apps [#2165](https://github.com/rerun-io/rerun/pull/2165)
-- Add "modified" and "created" timelines for files [#2202](https://github.com/rerun-io/rerun/pull/2202)
 
 #### 🪳 Bug Fixes
 - Fix hover/select highlights when picking single points in a scene with multiple point clouds [#1942](https://github.com/rerun-io/rerun/pull/1942)

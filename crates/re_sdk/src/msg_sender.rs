@@ -118,16 +118,24 @@ impl MsgSender {
 
         let mut timepoint = TimePoint::from([(Timeline::log_time(), Time::now().into())]);
 
-        if let Ok(metadata) = std::fs::metadata(file_path) {
-            use re_log_types::TimeType;
-            if let Ok(time) = metadata.created() {
-                if let Ok(time) = Time::try_from(time) {
-                    timepoint.insert(Timeline::new("created", TimeType::Time), time.into());
+        // This may sounds like a good idea, but that means `rerun *.jpg` will
+        // actually act like it is playing a bunch of files over time, perhaps over many years.
+        // Starting at the first time, this also means only one image is shown at the start.
+        // We should probably just jump to the end of the stream or something,
+        // but it is the eve of the 0.6.0 release, so TODO(emilk)
+        let add_created_and_modified_timlines = false;
+        if add_created_and_modified_timlines {
+            if let Ok(metadata) = std::fs::metadata(file_path) {
+                use re_log_types::TimeType;
+                if let Ok(time) = metadata.created() {
+                    if let Ok(time) = Time::try_from(time) {
+                        timepoint.insert(Timeline::new("created", TimeType::Time), time.into());
+                    }
                 }
-            }
-            if let Ok(time) = metadata.modified() {
-                if let Ok(time) = Time::try_from(time) {
-                    timepoint.insert(Timeline::new("modified", TimeType::Time), time.into());
+                if let Ok(time) = metadata.modified() {
+                    if let Ok(time) = Time::try_from(time) {
+                        timepoint.insert(Timeline::new("modified", TimeType::Time), time.into());
+                    }
                 }
             }
         }
