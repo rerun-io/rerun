@@ -420,7 +420,8 @@ def start_web_viewer_server(port: int = 0) -> None:
 
     if not bindings.is_enabled():
         logging.warning(
-            "Rerun is disabled - start_web_viewer_server() call ignored. . You must call rerun.init before starting the web viewer server."
+            "Rerun is disabled - start_web_viewer_server() call ignored. You must call rerun.init before starting the"
+            + " web viewer server."
         )
         return
 
