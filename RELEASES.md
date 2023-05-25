@@ -73,7 +73,7 @@ This is a living document. Strive to improve it on each new release.
     * https://github.com/rerun-io/rerun/actions/workflows/manual_build_release.yml
     * Choose the release branch, and enter the release number `0.x.y` or `0.x.y-alpha.z`.
 * [ ] Verify the build wheels and web artifacts look correct.
-* [ ] For the final release, manually run the workflow to publish the artifacts to pypi and create the Github release.
+* [ ] For the final release, manually run the workflow to publish the artifacts to pypi and create the GitHub release.
     * https://github.com/rerun-io/rerun/actions/workflows/manual_release.yml
     * Choose the release branch, and enter the release number `0.x.y`
     * This will create the github release page in draft state.
