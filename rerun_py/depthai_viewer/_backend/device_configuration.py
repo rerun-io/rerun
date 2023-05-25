@@ -4,7 +4,7 @@ from enum import Enum
 import depthai as dai
 from depthai_sdk import Previews as QueueNames
 from pydantic import BaseModel
-
+from fractions import Fraction
 
 # class PointcloudConfiguration(BaseModel):
 #     enabled: bool = True
@@ -264,5 +264,19 @@ resolution_to_enum = {
 }
 
 
-def get_resolutions_for_size(width: int, height: int) -> List[CameraSensorResolution]:
-    return [resolution_to_enum[(w, h)] for w, h in resolution_to_enum.keys() if w * h <= width * height]
+def compare_dai_camera_configs(cam1: dai.CameraSensorConfig, cam2: dai.CameraSensorConfig) -> bool:
+    return (
+        cam1.height == cam2.height
+        and cam2.width == cam2.width
+        and cam1.type == cam2.type
+        and cam1.maxFps == cam2.maxFps
+        and cam1.minFps == cam2.minFps
+    )
+
+
+def calculate_isp_scale(resolution_width: int) -> Tuple[int, int]:
+    """
+    Based on width, get ISP scale to target THE_800_P, aka 1280x800.
+    """
+    x = 1280 / resolution_width
+    return Fraction.from_float(x).limit_denominator().as_integer_ratio()

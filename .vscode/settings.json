@@ -71,5 +71,6 @@
   // INCLUDING attempts to publish a new release!
   "rust-analyzer.cargo.buildScripts.enable": false,
   "python.analysis.extraPaths": ["rerun_py/"],
-  "ruff.args": ["--config", "rerun_py/pyproject.toml"]
+  "ruff.args": ["--config", "rerun_py/pyproject.toml"],
+  "stm32-for-vscode.openOCDPath": false
 }

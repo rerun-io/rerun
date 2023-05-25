@@ -122,7 +122,7 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                         )
                     )
                 else:
-                    await websocket.send(error("Unknown error", ErrorAction.FULL_RESET))
+                    await websocket.send(error(result["message"], ErrorAction.FULL_RESET))
             elif message_type == MessageType.DEVICES:
                 await websocket.send(
                     json.dumps(

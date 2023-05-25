@@ -20,9 +20,11 @@ from depthai_viewer._backend.device_configuration import (
     CameraFeatures,
     DeviceProperties,
     PipelineConfiguration,
-    get_resolutions_for_size,
     ImuKind,
     CameraConfiguration,
+    compare_dai_camera_configs,
+    resolution_to_enum,
+    calculate_isp_scale,
 )
 from depthai_viewer._backend.sdk_callbacks import *
 from depthai_viewer._backend.store import Store
@@ -61,28 +63,50 @@ class SelectedDevice:
         self.intrinsic_matrix[(board_socket, width, height)] = np.array(M_right).reshape(3, 3)
         return self.intrinsic_matrix[(board_socket, width, height)]
 
+    def _get_possible_stereo_pairs_for_cam(
+        self, cam: dai.CameraFeatures, connected_camera_features: List[dai.CameraFeatures]
+    ) -> List[dai.CameraBoardSocket]:
+        """
+        Tries to find the possible stereo pairs for a camera.
+        """
+        stereo_pairs = []
+        if cam.name == "right":
+            stereo_pairs.extend(
+                [features.socket for features in filter(lambda c: c.name == "left", connected_camera_features)]
+            )
+        elif cam.name == "left":
+            stereo_pairs.extend(
+                [features.socket for features in filter(lambda c: c.name == "right", connected_camera_features)]
+            )
+        else:
+            stereo_pairs.extend(
+                [
+                    camera.socket
+                    for camera in connected_camera_features
+                    if camera != cam
+                    and all(
+                        map(
+                            lambda confs: compare_dai_camera_configs(confs[0], confs[1]),
+                            zip(camera.configs, cam.configs),
+                        )
+                    )
+                ]
+            )
+        return stereo_pairs
+
     def get_device_properties(self) -> DeviceProperties:
         connected_cam_features = self.oak_cam.device.getConnectedCameraFeatures()
         imu = self.oak_cam.device.getConnectedIMU()
         imu = ImuKind.NINE_AXIS if "BNO" in imu else None if imu == "NONE" else ImuKind.SIX_AXIS
         device_properties = DeviceProperties(id=self.id, imu=imu)
         for cam in connected_cam_features:
-            stereo_pairs = []
-            if cam.name == "right":
-                stereo_pairs.extend(
-                    [features.socket for features in filter(lambda c: c.name == "left", connected_cam_features)]
-                )
-            elif cam.name == "left":
-                stereo_pairs.extend(
-                    [features.socket for features in filter(lambda c: c.name == "right", connected_cam_features)]
-                )
             device_properties.cameras.append(
                 CameraFeatures(
                     board_socket=cam.socket,
                     max_fps=60,
-                    resolutions=get_resolutions_for_size(cam.width, cam.height),
+                    resolutions=[resolution_to_enum[(conf.width, conf.height)] for conf in cam.configs],
                     supported_types=cam.supportedTypes,
-                    stereo_pairs=stereo_pairs,
+                    stereo_pairs=self._get_possible_stereo_pairs_for_cam(cam, connected_cam_features),
                     name=cam.name,
                 )
             )
@@ -130,6 +154,7 @@ class SelectedDevice:
     def _get_camera_config_by_socket(
         self, config: PipelineConfiguration, socket: dai.CameraBoardSocket
     ) -> Optional[CameraConfiguration]:
+        print("Getting cam by socket: ", socket, " Cameras: ", config.cameras)
         camera = list(filter(lambda c: c.board_socket == socket, config.cameras))
         if not camera:
             return None
@@ -145,36 +170,6 @@ class SelectedDevice:
                 return False, {"message": "Depth is not enabled, can't send runtime controls!"}
             print("Cam running, closing...")
             self.close_oak_cam()
-            # Check if the device is available, timeout after 10 seconds
-            success, message = self.reconnect_to_oak_cam()
-            if not success:
-                return success, message
-
-    def _get_component_by_socket(self, socket: dai.CameraBoardSocket) -> Optional[CameraComponent]:
-        component = list(filter(lambda c: c.node.getBoardSocket() == socket, self._cameras))
-        if not component:
-            return None
-        return component[0]
-
-    def _get_camera_config_by_socket(
-        self, config: PipelineConfiguration, socket: dai.CameraBoardSocket
-    ) -> Optional[CameraConfiguration]:
-        camera = list(filter(lambda c: c.board_socket == socket, config.cameras))
-        if not camera:
-            return None
-        return camera[0]
-
-    def update_pipeline(
-        self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
-    ) -> Tuple[bool, Dict[str, str]]:
-        if self.oak_cam.running():
-            if runtime_only:
-                if config.depth is not None:
-                    return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
-                return False, {"message": "Depth is not enabled, can't send runtime controls!"}
-            print("Cam running, closing...")
-            self.close_oak_cam()
-            # Check if the device is available, timeout after 10 seconds
             success, message = self.reconnect_to_oak_cam()
             if not success:
                 return success, message
@@ -207,13 +202,21 @@ class SelectedDevice:
             right_cam = self._get_component_by_socket(stereo_pair[1])
             if not left_cam or not right_cam:
                 return False, {"message": f"{cam} is not configured. Couldn't create stereo pair."}
+
+            if left_cam.node.getResolutionWidth() > 1280:
+                print("Left cam width > 1280, setting isp scale to get 800")
+                left_cam.config_color_camera(isp_scale=calculate_isp_scale(left_cam.node.getResolutionWidth()))
+            if right_cam.node.getResolutionWidth() > 1280:
+                print("Right cam width > 1280, setting isp scale to get 800")
+                right_cam.config_color_camera(isp_scale=calculate_isp_scale(right_cam.node.getResolutionWidth()))
             self._stereo = self.oak_cam.create_stereo(left=left_cam, right=right_cam, name="depth")
+
             # We used to be able to pass in the board socket to align to, but this was removed in depthai 1.10.0
             align = config.depth.align
             if pkg_resources.parse_version(depthai_sdk.__version__) >= pkg_resources.parse_version("1.10.0"):
                 align_component = self._get_component_by_socket(align)
                 if not align_component:
-                    return False, {"message": f"{align} is not configured. Couldn't create stereo pair."}
+                    return False, {"message": f"{config.depth.align} is not configured. Couldn't create stereo pair."}
                 align = align_component
             self._stereo.config_stereo(
                 lr_check=config.depth.lr_check,
@@ -224,9 +227,9 @@ class SelectedDevice:
                 median=config.depth.median,
             )
 
-            aligned_camera = self._get_camera_config_by_socket(config, align)
+            aligned_camera = self._get_camera_config_by_socket(config, config.depth.align)
             if not aligned_camera:
-                return False, {"message": f"{align} is not configured. Couldn't create stereo pair."}
+                return False, {"message": f"{config.depth.align} is not configured. Couldn't create stereo pair."}
             self.oak_cam.callback(
                 self._stereo,
                 callbacks.build_callback(

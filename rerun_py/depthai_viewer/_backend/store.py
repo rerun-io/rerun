@@ -29,6 +29,8 @@ class Store:
                     old_pipeline_config = self.pipeline_config
                     self.pipeline_config = kwargs.get("pipeline_config")
                     success, message = self.on_update_pipeline(kwargs.get("runtime_only"))  # type: ignore[arg-type]
+
+                    print(f"Updating pipeline: {'successful' if success else 'failed'} with message: {message}")
                     if success:
                         return success, message
                     self.pipeline_config = old_pipeline_config
