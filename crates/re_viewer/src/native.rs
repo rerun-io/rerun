@@ -48,12 +48,12 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
 fn icon_data() -> Option<eframe::IconData> {
     cfg_if::cfg_if! {
         if #[cfg(target_os = "macos")] {
-            let app_icon_png_bytes = include_bytes!("../../re_ui/data/icons/app_icon_mac.png");
+            let app_icon_png_bytes = include_bytes!("../data/app_icon_mac.png");
         } else if #[cfg(target_os = "windows")] {
-            let app_icon_png_bytes = include_bytes!("../../re_ui/data/icons/app_icon_windows.png");
+            let app_icon_png_bytes = include_bytes!("../data/app_icon_windows.png");
         } else {
             // Use the same icon for X11 as for Windows, at least for now.
-            let app_icon_png_bytes = include_bytes!("../../re_ui/data/icons/app_icon_windows.png");
+            let app_icon_png_bytes = include_bytes!("../data/app_icon_windows.png");
         }
     };
 
