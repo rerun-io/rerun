@@ -32,7 +32,9 @@ def log_decorator(func: _TFunc) -> _TFunc:
         recording = RecordingStream.to_native(kwargs.get("recording"))
         if not bindings.is_enabled(recording):
             # NOTE: use `warnings` which handles runtime deduplication.
-            warnings.warn(f"Rerun is disabled - {func.__name__}() call ignored")
+            warnings.warn(
+                f"Rerun is disabled - {func.__name__}() call ignored. You must call rerun.init before using log APIs."
+            )
             return
 
         if rerun.strict_mode():
