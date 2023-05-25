@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional, cast
 
 import numpy as np
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 

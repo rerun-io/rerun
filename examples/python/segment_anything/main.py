@@ -28,7 +28,7 @@ from urllib.parse import urlparse
 import cv2
 import numpy as np
 import requests
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 import torch
 import torchvision
 from cv2 import Mat

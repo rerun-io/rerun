@@ -25,7 +25,7 @@ import argparse
 from typing import Optional
 
 import cv2
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 
 def run_canny(num_frames: Optional[int]) -> None:

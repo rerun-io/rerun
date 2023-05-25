@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 from read_write_model import Camera, read_model
 from tqdm import tqdm
 

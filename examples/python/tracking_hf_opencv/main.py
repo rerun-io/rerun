@@ -12,7 +12,7 @@ import cv2 as cv
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 from PIL import Image
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))

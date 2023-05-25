@@ -13,7 +13,7 @@ import mediapipe as mp
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"

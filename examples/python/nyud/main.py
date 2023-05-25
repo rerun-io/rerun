@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 from tqdm import tqdm
 
 DEPTH_IMAGE_SCALING: Final = 1e4

@@ -15,7 +15,7 @@ import random
 from math import cos, sin, tau
 
 import numpy as np
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 
 def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
