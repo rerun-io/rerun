@@ -2637,6 +2637,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lz4_flex"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b8c72594ac26bfd34f2d99dfced2edfaddfe8a476e3ff2ca0eb293d925c4f83"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "macaw"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3978,6 +3987,7 @@ dependencies = [
  "criterion",
  "ehttp",
  "js-sys",
+ "lz4_flex",
  "mimalloc",
  "parking_lot 0.12.1",
  "puffin",
@@ -3986,14 +3996,12 @@ dependencies = [
  "re_log_types",
  "re_smart_channel",
  "rmp-serde",
- "ruzstd",
  "serde_test",
  "thiserror",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
- "zstd",
 ]
 
 [[package]]

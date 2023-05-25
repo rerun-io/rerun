@@ -32,17 +32,8 @@ pub enum DecodeError {
     #[error("Failed to read: {0}")]
     Read(std::io::Error),
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Zstd error: {0}")]
-    Zstd(std::io::Error),
-
-    #[cfg(target_arch = "wasm32")]
-    #[error("Zstd error: {0}")]
-    RuzstdInit(ruzstd::frame_decoder::FrameDecoderError),
-
-    #[cfg(target_arch = "wasm32")]
-    #[error("Zstd read error: {0}")]
-    RuzstdRead(std::io::Error),
+    #[error("lz4 error: {0}")]
+    Lz4(std::io::Error),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::decode::Error),
@@ -60,74 +51,12 @@ pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
 }
 
 // ----------------------------------------------------------------------------
-// native decode:
 
-#[cfg(not(target_arch = "wasm32"))]
-pub struct Decoder<'r, R: std::io::BufRead> {
-    zdecoder: zstd::stream::Decoder<'r, R>,
-    buffer: Vec<u8>,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl<'r, R: std::io::Read> Decoder<'r, std::io::BufReader<R>> {
-    pub fn new(mut read: R) -> Result<Self, DecodeError> {
-        crate::profile_function!();
-
-        let mut header = [0_u8; 4];
-        read.read_exact(&mut header).map_err(DecodeError::Read)?;
-        if &header != b"RRF0" {
-            return Err(DecodeError::NotAnRrd);
-        }
-        read.read_exact(&mut header).map_err(DecodeError::Read)?;
-        warn_on_version_mismatch(header);
-
-        let zdecoder = zstd::stream::read::Decoder::new(read).map_err(DecodeError::Zstd)?;
-        Ok(Self {
-            zdecoder,
-            buffer: vec![],
-        })
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl<'r, R: std::io::BufRead> Iterator for Decoder<'r, R> {
-    type Item = Result<LogMsg, DecodeError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        crate::profile_function!();
-        use std::io::Read as _;
-
-        let mut len = [0_u8; 8];
-        self.zdecoder.read_exact(&mut len).ok()?;
-        let len = u64::from_le_bytes(len) as usize;
-
-        self.buffer.resize(len, 0);
-
-        {
-            crate::profile_scope!("zstd");
-            if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
-                return Some(Err(DecodeError::Zstd(err)));
-            }
-        }
-
-        crate::profile_scope!("MsgPack deser");
-        match rmp_serde::from_read(&mut self.buffer.as_slice()) {
-            Ok(msg) => Some(Ok(msg)),
-            Err(err) => Some(Err(err.into())),
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-// wasm decode:
-
-#[cfg(target_arch = "wasm32")]
 pub struct Decoder<R: std::io::Read> {
-    zdecoder: ruzstd::StreamingDecoder<R>,
+    lz4_decoder: lz4_flex::frame::FrameDecoder<R>,
     buffer: Vec<u8>,
 }
 
-#[cfg(target_arch = "wasm32")]
 impl<R: std::io::Read> Decoder<R> {
     pub fn new(mut read: R) -> Result<Self, DecodeError> {
         crate::profile_function!();
@@ -140,15 +69,14 @@ impl<R: std::io::Read> Decoder<R> {
         read.read_exact(&mut header).map_err(DecodeError::Read)?;
         warn_on_version_mismatch(header);
 
-        let zdecoder = ruzstd::StreamingDecoder::new(read).map_err(DecodeError::RuzstdInit)?;
+        let lz4_decoder = lz4_flex::frame::FrameDecoder::new(read);
         Ok(Self {
-            zdecoder,
+            lz4_decoder,
             buffer: vec![],
         })
     }
 }
 
-#[cfg(target_arch = "wasm32")]
 impl<R: std::io::Read> Iterator for Decoder<R> {
     type Item = Result<LogMsg, DecodeError>;
 
@@ -157,15 +85,15 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         use std::io::Read as _;
 
         let mut len = [0_u8; 8];
-        self.zdecoder.read_exact(&mut len).ok()?;
+        self.lz4_decoder.read_exact(&mut len).ok()?;
         let len = u64::from_le_bytes(len) as usize;
 
         self.buffer.resize(len, 0);
 
         {
-            crate::profile_scope!("ruzstd");
-            if let Err(err) = self.zdecoder.read_exact(&mut self.buffer) {
-                return Some(Err(DecodeError::RuzstdRead(err)));
+            crate::profile_scope!("lz4");
+            if let Err(err) = self.lz4_decoder.read_exact(&mut self.buffer) {
+                return Some(Err(DecodeError::Lz4(err)));
             }
         }
 

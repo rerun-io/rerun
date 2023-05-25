@@ -1,7 +1,5 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
-// TODO(1316): switch to using lz4flex - see https://github.com/rerun-io/rerun/issues/1316#issuecomment-1510967893
-
 use std::io::Write as _;
 
 use re_log_types::LogMsg;
@@ -12,8 +10,11 @@ pub enum EncodeError {
     #[error("Failed to write: {0}")]
     Write(std::io::Error),
 
-    #[error("Zstd error: {0}")]
-    Zstd(std::io::Error),
+    #[error("lz4 error: {0}")]
+    Lz4Write(std::io::Error),
+
+    #[error("lz4 error: {0}")]
+    Lz4Finish(lz4_flex::frame::Error),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::encode::Error),
@@ -43,13 +44,13 @@ pub fn encode_to_bytes<'a>(
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
 pub struct Encoder<W: std::io::Write> {
     /// Set to None when finished.
-    zstd_encoder: Option<zstd::stream::Encoder<'static, W>>,
+    lz4_encoder: Option<lz4_flex::frame::FrameEncoder<W>>,
     buffer: Vec<u8>,
 }
 
 impl<W: std::io::Write> Drop for Encoder<W> {
     fn drop(&mut self) {
-        if self.zstd_encoder.is_some() {
+        if self.lz4_encoder.is_some() {
             re_log::warn!("Encoder dropped without calling finish()!");
             if let Err(err) = self.finish() {
                 re_log::error!("Failed to finish encoding: {err}");
@@ -67,29 +68,30 @@ impl<W: std::io::Write> Encoder<W> {
             .write_all(&rerun_version.to_bytes())
             .map_err(EncodeError::Write)?;
 
-        let level = 3;
-        let zstd_encoder = zstd::stream::Encoder::new(write, level).map_err(EncodeError::Zstd)?;
+        let lz4_encoder = lz4_flex::frame::FrameEncoder::new(write);
 
         Ok(Self {
-            zstd_encoder: Some(zstd_encoder),
+            lz4_encoder: Some(lz4_encoder),
             buffer: vec![],
         })
     }
 
     pub fn append(&mut self, message: &LogMsg) -> Result<(), EncodeError> {
         let Self {
-            zstd_encoder,
+            lz4_encoder,
             buffer,
         } = self;
 
-        if let Some(zstd_encoder) = zstd_encoder {
+        if let Some(lz4_encoder) = lz4_encoder {
             buffer.clear();
             rmp_serde::encode::write_named(buffer, message)?;
 
-            zstd_encoder
+            lz4_encoder
                 .write_all(&(buffer.len() as u64).to_le_bytes())
-                .map_err(EncodeError::Zstd)?;
-            zstd_encoder.write_all(buffer).map_err(EncodeError::Zstd)?;
+                .map_err(EncodeError::Lz4Write)?;
+            lz4_encoder
+                .write_all(buffer)
+                .map_err(EncodeError::Lz4Write)?;
 
             Ok(())
         } else {
@@ -98,8 +100,8 @@ impl<W: std::io::Write> Encoder<W> {
     }
 
     pub fn finish(&mut self) -> Result<(), EncodeError> {
-        if let Some(zstd_encoder) = self.zstd_encoder.take() {
-            zstd_encoder.finish().map_err(EncodeError::Zstd)?;
+        if let Some(lz4_encoder) = self.lz4_encoder.take() {
+            lz4_encoder.finish().map_err(EncodeError::Lz4Finish)?;
             Ok(())
         } else {
             re_log::warn!("Encoder::finish called twice");
