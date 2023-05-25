@@ -266,7 +266,7 @@ def main() -> None:
 
     if not args.skip_build:
         run_sdk_build()
-    run_viewer_build()
+        run_viewer_build()
 
     if args.web:
         run_web(examples, separate=args.separate)
