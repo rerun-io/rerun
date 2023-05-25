@@ -2,6 +2,8 @@
 
 use re_log_types::LogMsg;
 
+use crate::{Compression, EncodingOptions, Serializer};
+
 // ----------------------------------------------------------------------------
 
 fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
@@ -29,6 +31,12 @@ pub enum DecodeError {
     #[error("Not an .rrd file")]
     NotAnRrd,
 
+    #[error("Old .rrd file")]
+    OldRrdVersion,
+
+    #[error("Failed to decode the options: {0}")]
+    Options(#[from] crate::OptionsError),
+
     #[error("Failed to read: {0}")]
     Read(std::io::Error),
 
@@ -52,8 +60,33 @@ pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
 
 // ----------------------------------------------------------------------------
 
+enum Decompressor<R: std::io::Read> {
+    Uncompressed(R),
+    Lz4(lz4_flex::frame::FrameDecoder<R>),
+}
+
+impl<R: std::io::Read> Decompressor<R> {
+    fn new(compression: Compression, read: R) -> Self {
+        match compression {
+            Compression::Off => Self::Uncompressed(read),
+            Compression::LZ4 => Self::Lz4(lz4_flex::frame::FrameDecoder::new(read)),
+        }
+    }
+
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), DecodeError> {
+        use std::io::Read as _;
+
+        match self {
+            Decompressor::Uncompressed(read) => read.read_exact(buf).map_err(DecodeError::Read),
+            Decompressor::Lz4(lz4) => lz4.read_exact(buf).map_err(DecodeError::Lz4),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 pub struct Decoder<R: std::io::Read> {
-    lz4_decoder: lz4_flex::frame::FrameDecoder<R>,
+    decompressor: Decompressor<R>,
     buffer: Vec<u8>,
 }
 
@@ -61,17 +94,40 @@ impl<R: std::io::Read> Decoder<R> {
     pub fn new(mut read: R) -> Result<Self, DecodeError> {
         crate::profile_function!();
 
-        let mut header = [0_u8; 4];
-        read.read_exact(&mut header).map_err(DecodeError::Read)?;
-        if &header != b"RRF0" {
-            return Err(DecodeError::NotAnRrd);
+        {
+            let mut header = [0_u8; 4];
+            read.read_exact(&mut header).map_err(DecodeError::Read)?;
+            match &header {
+                b"RRF0" => {
+                    return Err(DecodeError::OldRrdVersion);
+                }
+                b"RRF1" => {}
+                _ => {
+                    return Err(DecodeError::NotAnRrd);
+                }
+            }
         }
-        read.read_exact(&mut header).map_err(DecodeError::Read)?;
-        warn_on_version_mismatch(header);
 
-        let lz4_decoder = lz4_flex::frame::FrameDecoder::new(read);
+        {
+            let mut version_bytes = [0_u8; 4];
+            read.read_exact(&mut version_bytes)
+                .map_err(DecodeError::Read)?;
+            warn_on_version_mismatch(version_bytes);
+        }
+
+        let options = {
+            let mut options_bytes = [0_u8; 4];
+            read.read_exact(&mut options_bytes)
+                .map_err(DecodeError::Read)?;
+            EncodingOptions::from_bytes(options_bytes)?
+        };
+
+        match options.serializer {
+            Serializer::MsgPack => {}
+        }
+
         Ok(Self {
-            lz4_decoder,
+            decompressor: Decompressor::new(options.compression, read),
             buffer: vec![],
         })
     }
@@ -82,18 +138,17 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         crate::profile_function!();
-        use std::io::Read as _;
 
         let mut len = [0_u8; 8];
-        self.lz4_decoder.read_exact(&mut len).ok()?;
+        self.decompressor.read_exact(&mut len).ok()?;
         let len = u64::from_le_bytes(len) as usize;
 
         self.buffer.resize(len, 0);
 
         {
             crate::profile_scope!("lz4");
-            if let Err(err) = self.lz4_decoder.read_exact(&mut self.buffer) {
-                return Some(Err(DecodeError::Lz4(err)));
+            if let Err(err) = self.decompressor.read_exact(&mut self.buffer) {
+                return Some(Err(err));
             }
         }
 
@@ -130,13 +185,26 @@ fn test_encode_decode() {
         },
     })];
 
-    let mut file = vec![];
-    crate::encoder::encode(messages.iter(), &mut file).unwrap();
+    let options = [
+        EncodingOptions {
+            compression: Compression::Off,
+            serializer: Serializer::MsgPack,
+        },
+        EncodingOptions {
+            compression: Compression::LZ4,
+            serializer: Serializer::MsgPack,
+        },
+    ];
 
-    let decoded_messages = Decoder::new(&mut file.as_slice())
-        .unwrap()
-        .collect::<Result<Vec<LogMsg>, DecodeError>>()
-        .unwrap();
+    for options in options {
+        let mut file = vec![];
+        crate::encoder::encode(options, messages.iter(), &mut file).unwrap();
 
-    assert_eq!(messages, decoded_messages);
+        let decoded_messages = Decoder::new(&mut file.as_slice())
+            .unwrap()
+            .collect::<Result<Vec<LogMsg>, DecodeError>>()
+            .unwrap();
+
+        assert_eq!(messages, decoded_messages);
+    }
 }

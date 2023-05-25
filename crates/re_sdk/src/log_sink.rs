@@ -135,7 +135,9 @@ impl MemorySinkStorage {
         let mut buffer = std::io::Cursor::new(Vec::new());
 
         {
-            let mut encoder = re_log_encoding::encoder::Encoder::new(&mut buffer)?;
+            let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+            let mut encoder =
+                re_log_encoding::encoder::Encoder::new(encoding_options, &mut buffer)?;
             for sink in sinks {
                 for message in sink.read().iter() {
                     encoder.append(message)?;

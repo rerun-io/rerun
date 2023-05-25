@@ -18,6 +18,82 @@ pub mod stream_rrd_from_http;
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use file_sink::{FileSink, FileSinkError};
+// ----------------------------------------------------------------------------
+
+/// Compression level for [`Encoder`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Compression {
+    Off = 0,
+    LZ4 = 1,
+}
+
+/// How we serialize the data
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Serializer {
+    MsgPack = 1,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EncodingOptions {
+    pub compression: Compression,
+    pub serializer: Serializer,
+}
+
+impl EncodingOptions {
+    pub const UNCOMPRESSED: Self = Self {
+        compression: Compression::Off,
+        serializer: Serializer::MsgPack,
+    };
+    pub const COMPRESSED: Self = Self {
+        compression: Compression::LZ4,
+        serializer: Serializer::MsgPack,
+    };
+
+    pub fn from_bytes(bytes: [u8; 4]) -> Result<Self, OptionsError> {
+        match bytes {
+            [compression, serializer, 0, 0] => {
+                let compression = match compression {
+                    0 => Compression::Off,
+                    1 => Compression::LZ4,
+                    _ => return Err(OptionsError::UnkownCompression(compression)),
+                };
+                let serializer = match serializer {
+                    1 => Serializer::MsgPack,
+                    _ => return Err(OptionsError::UnkownSerializer(serializer)),
+                };
+                Ok(Self {
+                    compression,
+                    serializer,
+                })
+            }
+            _ => Err(OptionsError::UnknownReservedBytes),
+        }
+    }
+
+    pub fn to_bytes(&self) -> [u8; 4] {
+        [
+            self.compression as u8,
+            self.serializer as u8,
+            0, // reserved
+            0, // reserved
+        ]
+    }
+}
+
+/// On failure to decode [`EncodingOptions`]
+#[derive(thiserror::Error, Debug)]
+pub enum OptionsError {
+    #[error("Reserved bytes not zero")]
+    UnknownReservedBytes,
+
+    #[error("Unknown compression: {0}")]
+    UnkownCompression(u8),
+
+    #[error("Unknown serializer: {0}")]
+    UnkownSerializer(u8),
+}
 
 // ---------------------------------------------------------------------------
 

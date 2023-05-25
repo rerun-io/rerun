@@ -39,6 +39,9 @@ impl Drop for FileSink {
 impl FileSink {
     /// Start writing log messages to a file at the given path.
     pub fn new(path: impl Into<std::path::PathBuf>) -> Result<Self, FileSinkError> {
+        // We always compress on disk
+        let encoding_options = crate::EncodingOptions::COMPRESSED;
+
         let (tx, rx) = std::sync::mpsc::channel();
 
         let path = path.into();
@@ -47,7 +50,7 @@ impl FileSink {
 
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-        let mut encoder = crate::encoder::Encoder::new(file)?;
+        let mut encoder = crate::encoder::Encoder::new(encoding_options, file)?;
 
         let join_handle = std::thread::Builder::new()
             .name("file_writer".into())

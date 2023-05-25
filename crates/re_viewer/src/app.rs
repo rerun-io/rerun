@@ -2035,7 +2035,8 @@ fn save_database_to_file(
         let file = std::fs::File::create(path.as_path())
             .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-        re_log_encoding::encoder::encode_owned(msgs, file)
+        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+        re_log_encoding::encoder::encode_owned(encoding_options, msgs, file)
             .map(|_| path)
             .context("Message encode")
     })
