@@ -5925,14 +5925,14 @@ checksum = "9193164d4de03a926d909d3bc7c30543cecb35400c02114792c2cae20d5e2dbb"
 [[package]]
 name = "wgpu"
 version = "0.16.0"
-source = "git+https://github.com/rerun-io/wgpu?rev=de497aeda152a3515bac5eb4bf1b17f1757b9dac#de497aeda152a3515bac5eb4bf1b17f1757b9dac"
+source = "git+https://github.com/rerun-io/wgpu?rev=6241c4f#6241c4f2ef7166923ffbfd825804b1cbaedd533d"
 dependencies = [
  "arrayvec",
  "cfg-if",
  "js-sys",
  "log",
  "naga",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -5948,7 +5948,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.16.0"
-source = "git+https://github.com/rerun-io/wgpu?rev=de497aeda152a3515bac5eb4bf1b17f1757b9dac#de497aeda152a3515bac5eb4bf1b17f1757b9dac"
+source = "git+https://github.com/rerun-io/wgpu?rev=6241c4f#6241c4f2ef7166923ffbfd825804b1cbaedd533d"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -5956,7 +5956,7 @@ dependencies = [
  "codespan-reporting",
  "log",
  "naga",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "raw-window-handle",
  "rustc-hash",
@@ -5970,7 +5970,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.16.0"
-source = "git+https://github.com/rerun-io/wgpu?rev=de497aeda152a3515bac5eb4bf1b17f1757b9dac#de497aeda152a3515bac5eb4bf1b17f1757b9dac"
+source = "git+https://github.com/rerun-io/wgpu?rev=6241c4f#6241c4f2ef7166923ffbfd825804b1cbaedd533d"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -5994,7 +5994,7 @@ dependencies = [
  "metal",
  "naga",
  "objc",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "range-alloc",
  "raw-window-handle",
@@ -6011,7 +6011,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.16.0"
-source = "git+https://github.com/rerun-io/wgpu?rev=de497aeda152a3515bac5eb4bf1b17f1757b9dac#de497aeda152a3515bac5eb4bf1b17f1757b9dac"
+source = "git+https://github.com/rerun-io/wgpu?rev=6241c4f#6241c4f2ef7166923ffbfd825804b1cbaedd533d"
 dependencies = [
  "bitflags 2.3.1",
  "js-sys",
