@@ -20,11 +20,13 @@ pub mod stream_rrd_from_http;
 pub use file_sink::{FileSink, FileSinkError};
 // ----------------------------------------------------------------------------
 
-/// Compression level for [`Encoder`].
+/// Compression format used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Compression {
     Off = 0,
+
+    /// Very fast compression and decompression, but not very good compression ratio.
     LZ4 = 1,
 }
 
