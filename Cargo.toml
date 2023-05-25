@@ -98,8 +98,8 @@ time = { version = "0.3", default-features = false, features = [
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
 web-time = "0.2.0"
-wgpu = { version = "0.16" }
-wgpu-core = { version = "0.16" }
+wgpu = { version = "0.16.1" }
+wgpu-core = { version = "0.16.1" }
 
 
 [profile.dev]
@@ -124,8 +124,3 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-
-# TODO(andreas): Either work around this issue in wgpu-egui (never discard command buffers) or wait for wgpu patch release.
-# Fix for command buffer dropping crash https://github.com/gfx-rs/wgpu/pull/3726
-wgpu = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
-wgpu-core = { git = "https://github.com/rerun-io/wgpu", rev = "de497aeda152a3515bac5eb4bf1b17f1757b9dac" }
