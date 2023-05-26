@@ -76,7 +76,7 @@ This is a living document. Strive to improve it on each new release.
 * [ ] For the final release, manually run the workflow to publish the artifacts to pypi and create the GitHub release.
     * https://github.com/rerun-io/rerun/actions/workflows/manual_release.yml
     * Choose the release branch, and enter the release number `0.x.y`
-    * This will create the github release page in draft state.
+    * This will create the GitHub release page in draft state.
     * Publishing this release will create the release tag
 * [ ] Edit the GitHub draft release at https://github.com/rerun-io/rerun/releases
   * [ ] Mark it as as the latest release
