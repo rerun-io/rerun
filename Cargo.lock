@@ -1668,6 +1668,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "extend_viewer_ui"
+version = "0.6.0"
+dependencies = [
+ "anyhow",
+ "eframe",
+ "egui",
+ "mimalloc",
+ "re_log",
+ "re_memory",
+ "re_sdk_comms",
+ "re_viewer",
+ "tokio",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

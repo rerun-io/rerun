@@ -25,6 +25,9 @@ pub use remote_viewer_app::RemoteViewerApp;
 pub mod external {
     pub use eframe;
     pub use egui;
+    pub use re_data_store;
+    pub use re_log_types;
+    pub use re_memory;
     pub use re_renderer;
 }
 
@@ -32,7 +35,7 @@ pub mod external {
 // When compiling for native:
 
 #[cfg(not(target_arch = "wasm32"))]
-mod native;
+pub mod native;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::{run_native_app, run_native_viewer_with_messages};
 
@@ -69,6 +72,13 @@ macro_rules! profile_scope {
 
 // ---------------------------------------------------------------------------
 
+/// Information about this version of the crate.
+pub fn build_info() -> re_build_info::BuildInfo {
+    re_build_info::build_info!()
+}
+
+// ---------------------------------------------------------------------------
+
 /// Where is this App running in?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppEnvironment {
@@ -89,6 +99,9 @@ pub enum AppEnvironment {
 
     /// We are a web-viewer running in a browser as Wasm.
     Web,
+
+    /// Some custom application wrapping re_viewer
+    Custom(String),
 }
 
 impl AppEnvironment {
@@ -139,8 +152,9 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
         }
 }
 
+/// Customize eframe and egui to suit the rerun viewer.
 #[must_use]
-pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
+pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 

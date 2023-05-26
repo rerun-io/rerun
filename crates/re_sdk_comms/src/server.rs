@@ -34,7 +34,7 @@ impl Default for ServerOptions {
 /// # use re_sdk_comms::{serve, ServerOptions};
 /// #[tokio::main]
 /// async fn main() {
-///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default()).await.unwrap();
+///     let log_msg_rx = serve("0.0.0.0", re_sdk_comms::DEFAULT_SERVER_PORT, ServerOptions::default()).await.unwrap();
 /// }
 /// ```
 pub async fn serve(
