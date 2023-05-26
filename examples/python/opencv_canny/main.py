@@ -5,7 +5,7 @@ Very simple example of capturing from a live camera.
 Runs the opencv canny edge detector on the image stream.
 
 Known issues:
- - Only two layers of image transparency are visible. [#1503](https://github.com/rerun-io/rerun/issues/1503)
+ - The example has 2+ seconds latency on macOS. [#2216](https://github.com/rerun-io/rerun/issues/2216)
 
 NOTE: this example currently runs forever and will eventually exhaust your
 system memory. It is advised you run an independent rerun viewer with a memory

@@ -23,6 +23,7 @@ INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
     "emilk",
     "jleibs",
+    "jprochazk",
     "nikolausWest",
     "teh-cmc",
     "Wumpf",
@@ -132,6 +133,7 @@ def main() -> None:
     performance = []
     python = []
     renderer = []
+    refactor = []
     rfc = []
     rust = []
     ui = []
@@ -179,7 +181,7 @@ def main() -> None:
 
             if not added:
                 # Put the remaining PRs under just one section:
-                if "🪳 bug" in labels or "💣 crash" in labels:
+                if "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels:
                     bugs.append(summary)
                 elif "📉 performance" in labels:
                     performance.append(summary)
@@ -197,6 +199,8 @@ def main() -> None:
                     web.append(summary)
                 elif "enhancement" in labels:
                     enhancement.append(summary)
+                elif "🚜 refactor" in labels:
+                    refactor.append(summary)
                 elif "🧑‍💻 dev experience" in labels:
                     dev_experience.append(summary)
                 elif "💬 discussion" in labels:
@@ -209,17 +213,18 @@ def main() -> None:
     print_section("🐍 Python SDK", python)
     print_section("🦀 Rust SDK", rust)
     print_section("🪳 Bug Fixes", bugs)
+    print_section("🌁 Viewer Improvements", viewer)
     print_section("🚀 Performance Improvements", performance)
     print_section("🧑‍🏫 Examples", examples)
     print_section("📚 Docs", docs)
     print_section("🖼 UI Improvements", ui)
-    print_section("🤷‍♂️ Other Viewer Improvements", viewer)
     print_section("🕸️ Web", web)
     print_section("🎨 Renderer Improvements", renderer)
     print_section("✨ Other Enhancement", enhancement)
     print_section("📈 Analytics", analytics)
     print_section("🗣 Merged RFCs", rfc)
     print_section("🧑‍💻 Dev-experience", dev_experience)
+    print_section("🗣 Refactors", refactor)
     print_section("🤷‍♂️ Other", misc)
 
 

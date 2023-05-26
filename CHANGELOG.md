@@ -2,7 +2,207 @@
 
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
-…
+
+## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.0...v0.6.0) - 3D in 2D and SDK batching
+
+### Overview & Highlights
+
+- You can now show 3D objects in 2D views connected by Pinhole transforms [#2008](https://github.com/rerun-io/rerun/pull/2008)
+- You can quickly view images and meshes with `rerun mesh.obj image.png` [#2060](https://github.com/rerun-io/rerun/pull/2060)
+- The correct to install the `rerun` binary is now with `cargo install rerun-cli` [#2183](https://github.com/rerun-io/rerun/pull/2183)
+- `native_viewer` is now an opt-in feature of the `rerun` library, leading to faster compilation times [#2064](https://github.com/rerun-io/rerun/pull/2064)
+- Experimental WebGPU support [#1965](https://github.com/rerun-io/rerun/pull/1965)
+- SDK log calls are now batched on the wire, saving CPU time and bandwidth
+
+### In Detail
+
+
+#### 🐍 Python SDK
+- ⚠️ BREAKING: You must now call `rr.init` if you want logging to work.
+- ⚠️ BREAKING: `set_enabled` has been removed.
+  In order to disable logging at runtime, call `set_global_data_recording(None)`.
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
+- `log_mesh_file`: accept either path or bytes [#2098](https://github.com/rerun-io/rerun/pull/2098)
+- Add `draw_order` to 2D primitives [#2138](https://github.com/rerun-io/rerun/pull/2138)
+- Add `rr.version()` [#2084](https://github.com/rerun-io/rerun/pull/2084)
+- Add an experimental text-box component and logtype [#2011](https://github.com/rerun-io/rerun/pull/2011)
+- Fix a race condition for notebooks [#2073](https://github.com/rerun-io/rerun/pull/2073)
+- Redesign multi-recording & multi-threading [#2061](https://github.com/rerun-io/rerun/pull/2061)
+- More robust wait for exit condition during `.serve()` [#1939](https://github.com/rerun-io/rerun/pull/1939)
+- SDK batching/revamp 3: sunset `PythonSession` [#1985](https://github.com/rerun-io/rerun/pull/1985)
+
+#### 🦀 Rust SDK
+- ⚠️ BREAKING: `set_enabled` has been removed.
+  In order to disable logging at runtime, create a no-op recording via `RecordingStream::disabled()`.
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
+- ⚠️ BREAKING: `Session` has been replaced by `RecordingStream` [#1983](https://github.com/rerun-io/rerun/pull/1983)
+- ⚠️ BREAKING: `native_viewer` is now an opt-in feature of the `rerun` library [#2064](https://github.com/rerun-io/rerun/pull/2064)
+- Rust SDK: bring back support for implicit splats [#2059](https://github.com/rerun-io/rerun/pull/2059)
+- Introduce a 2D `DrawOrder` component [#2056](https://github.com/rerun-io/rerun/pull/2056)
+- Add `Tensor::from_image_file` and `Tensor::from_image_bytes` [#2097](https://github.com/rerun-io/rerun/pull/2097)
+- Redesign multi-recording & multi-threading [#2061](https://github.com/rerun-io/rerun/pull/2061)
+
+#### 🌁 Viewer Improvements
+- Support projecting 3D entities in 2D views [#2008](https://github.com/rerun-io/rerun/pull/2008)
+- Set Rerun viewer native app icon using eframe [#1976](https://github.com/rerun-io/rerun/pull/1976)
+- Use `alt` key again for rolling camera in 3d views [#2066](https://github.com/rerun-io/rerun/pull/2066)
+- Show tensors shaped [H, W, 1, 1] as images (and more!) [#2075](https://github.com/rerun-io/rerun/pull/2075)
+- Show meshes and images with `rerun foo.obj bar.png` [#2060](https://github.com/rerun-io/rerun/pull/2060)
+- Don't persist blueprints for unknown apps [#2165](https://github.com/rerun-io/rerun/pull/2165)
+
+#### 🪳 Bug Fixes
+- Fix hover/select highlights when picking single points in a scene with multiple point clouds [#1942](https://github.com/rerun-io/rerun/pull/1942)
+- Fix crash for missing class ids causing zero sized texture [#1947](https://github.com/rerun-io/rerun/pull/1947)
+- Handle leaking of prerelease into alpha version [#1953](https://github.com/rerun-io/rerun/pull/1953)
+- Fix incorrect memory usage stats for destroyed on-creation-mapped buffers [#1963](https://github.com/rerun-io/rerun/pull/1963)
+- Fix: don't starve web-socket decoding task [#1977](https://github.com/rerun-io/rerun/pull/1977)
+- When hovering a 3D view in the presence of images, fix previously incorrect depth shown in 2D view [#2009](https://github.com/rerun-io/rerun/pull/2009)
+- Fix: use the mac icon on mac [#2023](https://github.com/rerun-io/rerun/pull/2023)
+- SDK batching/revamp 2.2: homegrown arrow size estimation routines [#2002](https://github.com/rerun-io/rerun/pull/2002)
+- Fix twice as wide alpha-to-coverage edge on circles, leading to artifacts [#2053](https://github.com/rerun-io/rerun/pull/2053)
+- Bugfix: allow hovered items to be clicked to set selection [#2057](https://github.com/rerun-io/rerun/pull/2057)
+- Detect, warn and gracefully handle corrupt cells in `lookup_arrow` [#2055](https://github.com/rerun-io/rerun/pull/2055)
+- Fix failing dependency install of mesh_to_sdf [#2081](https://github.com/rerun-io/rerun/pull/2081)
+- Stop playback when we reach the end of the data [#2085](https://github.com/rerun-io/rerun/pull/2085)
+- `tornado` >6.1 doesn't work with recent `jupyter` [#2092](https://github.com/rerun-io/rerun/pull/2092)
+- Premultiply alpha of RGBA u8 images [#2095](https://github.com/rerun-io/rerun/pull/2095)
+- Fix premature pausing when reaching end of still-streaming stream [#2106](https://github.com/rerun-io/rerun/pull/2106)
+- 2D layering fixes [#2080](https://github.com/rerun-io/rerun/pull/2080)
+- Fix depth precision issues on WebGL due to different NDC space [#2123](https://github.com/rerun-io/rerun/pull/2123)
+- Fix flushing race in new multi-recording SDK [#2125](https://github.com/rerun-io/rerun/pull/2125)
+- Web viewer: catch and show panic messages that happens at startup [#2157](https://github.com/rerun-io/rerun/pull/2157)
+- Don't early-exit on non-pinhole transforms when looking up cameras [#2194](https://github.com/rerun-io/rerun/pull/2194)
+- Mitigate depth offset precision issues on web [#2187](https://github.com/rerun-io/rerun/pull/2187)
+- Fix colormaps [#2204](https://github.com/rerun-io/rerun/pull/2204)
+- Fix annotation images sometimes drawn in the background [#1933](https://github.com/rerun-io/rerun/pull/1933)
+- Fix hovering depth clouds [#1943](https://github.com/rerun-io/rerun/pull/1943)
+- Fix incorrect 2D camera for scenes with negative 2D coordinates [#2051](https://github.com/rerun-io/rerun/pull/2051)
+- Fix web depth/projection regression, causing incorrect rendering on all 3D scenes [#2170](https://github.com/rerun-io/rerun/pull/2170)
+
+#### 🚀 Performance Improvements
+- SDK batching/revamp 1: impl `DataTableBatcher` [#1980](https://github.com/rerun-io/rerun/pull/1980)
+- Upgrade arrow2/convert and use native buffers for the tensor u8 types [#1375](https://github.com/rerun-io/rerun/pull/1375)
+- Use the same RRD encoding for the SDK comms as for everything else [#2065](https://github.com/rerun-io/rerun/pull/2065)
+- Optimize GLTF/GLB texture loading in debug builds [#2096](https://github.com/rerun-io/rerun/pull/2096)
+- Premultiply the alpha on the GPU [#2190](https://github.com/rerun-io/rerun/pull/2190)
+- Switch compression algorithm from zstd to lz4 [#2112](https://github.com/rerun-io/rerun/pull/2112)
+
+#### 🧑‍🏫 Examples
+- Join threads at end of multi-threading example [#1934](https://github.com/rerun-io/rerun/pull/1934)
+- Add argument parsing to the rerun_demo [#1925](https://github.com/rerun-io/rerun/pull/1925)
+- Use zipfile python library instead of `unzip` command in arkitscene [#1936](https://github.com/rerun-io/rerun/pull/1936)
+- Fix backslashes in arkitscene rigid transformation path [#1938](https://github.com/rerun-io/rerun/pull/1938)
+- Fix mp_pose example 2D points having incorrectly interpreted depth [#2034](https://github.com/rerun-io/rerun/pull/2034)
+- SDK batching/revamp 2.1: `clock` example for Rust [#2000](https://github.com/rerun-io/rerun/pull/2000)
+- Add `scripts/run_all.py` [#2046](https://github.com/rerun-io/rerun/pull/2046)
+- Check `examples/python/requirements.txt` in CI [#2063](https://github.com/rerun-io/rerun/pull/2063)
+- Fix glb mesh data set downloads [#2100](https://github.com/rerun-io/rerun/pull/2100)
+- Add more examples to https://app.rerun.io/ [#2062](https://github.com/rerun-io/rerun/pull/2062)
+
+
+#### 🖼 UI Improvements
+- Update egui to latest and wgpu to 0.16 [#1958](https://github.com/rerun-io/rerun/pull/1958)
+- Add keyboard shortcut for "Follow", and stop following on "Restart" [#1986](https://github.com/rerun-io/rerun/pull/1986) (thanks [@h3mosphere](https://github.com/h3mosphere)!)
+- Improve UI for keypoint and class-ids of annotations contexts [#2071](https://github.com/rerun-io/rerun/pull/2071)
+- Improvements to memory measurements and reporting [#2069](https://github.com/rerun-io/rerun/pull/2069)
+- Switch from `egui_dock` to `egui_tiles` [#2082](https://github.com/rerun-io/rerun/pull/2082)
+- Allow horizontal scrolling in blueprint panel [#2114](https://github.com/rerun-io/rerun/pull/2114)
+- Nicer (& fixed up) help texts for space views [#2070](https://github.com/rerun-io/rerun/pull/2070)
+- Allow dragging time cursor in plots [#2115](https://github.com/rerun-io/rerun/pull/2115)
+
+
+#### 🕸️ Web
+- Set the GC limit to 2.5GB on web [#1944](https://github.com/rerun-io/rerun/pull/1944)
+- Better crash reports on Web, plus WebGPU support detection [#1975](https://github.com/rerun-io/rerun/pull/1975)
+- Work around https://github.com/sebcrozet/instant/issues/49 [#2094](https://github.com/rerun-io/rerun/pull/2094)
+- Update `wasm-bindgen` to 0.2.86 [#2161](https://github.com/rerun-io/rerun/pull/2161)
+
+#### 🎨 Renderer Improvements
+- Full (experimental) WebGPU support [#1965](https://github.com/rerun-io/rerun/pull/1965)
+- Depth offset for lines & points [#2052](https://github.com/rerun-io/rerun/pull/2052)
+- Update to wgpu 0.16.1 [#2205](https://github.com/rerun-io/rerun/pull/2205)
+
+#### 🚜 Refactors
+- Replace complex uses of `query_entity_with_primary` with `query_latest_single` [#2137](https://github.com/rerun-io/rerun/pull/2137)
+- Make selection state independent of blueprint [#2035](https://github.com/rerun-io/rerun/pull/2035)
+- Remove unused MeshSourceData [#2036](https://github.com/rerun-io/rerun/pull/2036)
+- Move selection state into an independent crate, re_viewer_context [#2037](https://github.com/rerun-io/rerun/pull/2037)
+- Move item-ui to separate module, move AppOptions to re_viewer_context [#2040](https://github.com/rerun-io/rerun/pull/2040)
+- Move `Caches` to `re_viewer_ctx` and make it generic [#2043](https://github.com/rerun-io/rerun/pull/2043)
+- Move time control to re_viewer_context [#2045](https://github.com/rerun-io/rerun/pull/2045)
+- Move `ViewerContext` & `ComponentUiRegistry` to `viewer_context` [#2047](https://github.com/rerun-io/rerun/pull/2047)
+- Move data ui to new `re_data_ui` crate [#2048](https://github.com/rerun-io/rerun/pull/2048)
+- Use instant for `Time::now()` [#2090](https://github.com/rerun-io/rerun/pull/2090)
+- Move from `instant` -> `web_time` [#2093](https://github.com/rerun-io/rerun/pull/2093)
+- "namespace" flag parameters for linestrip & point cloud shader flags [#2033](https://github.com/rerun-io/rerun/pull/2033)
+
+#### ✨ Other Enhancement
+- Update minimum supported Rust version to `1.69.0` [#1935](https://github.com/rerun-io/rerun/pull/1935)
+- Allow users to select the bind address (ip) to use with `--bind` [#2159](https://github.com/rerun-io/rerun/pull/2159)
+
+
+
+#### 🧑‍💻 Dev-experience
+- Suggest users open an issue on crash, and other fixes [#1993](https://github.com/rerun-io/rerun/pull/1993)
+- Lint error names in `map_err` [#1948](https://github.com/rerun-io/rerun/pull/1948)
+- New dispatch-only workflow for running the lint-job [#1950](https://github.com/rerun-io/rerun/pull/1950)
+- Move clippy_wasm/clippy.toml to under scripts [#1949](https://github.com/rerun-io/rerun/pull/1949)
+- Fix run-wasm crash on trying to wait for server [#1959](https://github.com/rerun-io/rerun/pull/1959)
+- Introduce new reusable workflow jobs and cleanup manual trigger [#1954](https://github.com/rerun-io/rerun/pull/1954)
+- Use new CI workflows on pull-request [#1955](https://github.com/rerun-io/rerun/pull/1955)
+- Try making pull-request workflows non-concurrent [#1970](https://github.com/rerun-io/rerun/pull/1970)
+- Another attempt to make jobs non-concurrent on a per-PR basis [#1974](https://github.com/rerun-io/rerun/pull/1974)
+- If there's a `{{ pr-build-summary }}` in the PR description, update it. [#1971](https://github.com/rerun-io/rerun/pull/1971)
+- Run the cube notebook on PR [#1972](https://github.com/rerun-io/rerun/pull/1972)
+- Add ability to manually run a web build to upload to an adhoc name [#1966](https://github.com/rerun-io/rerun/pull/1966)
+- Limit ipython to 8.12 in the jupyter example [#2001](https://github.com/rerun-io/rerun/pull/2001)
+- New manual job to publish a release based on pre-built wheels [#2025](https://github.com/rerun-io/rerun/pull/2025)
+- Use the correct rust analyzer settings [#2028](https://github.com/rerun-io/rerun/pull/2028)
+- New helper for sticking Serde-encodable data into arrow [#2004](https://github.com/rerun-io/rerun/pull/2004)
+- Fix `taplo-cli` failing to install [#2068](https://github.com/rerun-io/rerun/pull/2068)
+- `run_all.py`: add `--fast`, `--separate`, and `--close` [#2054](https://github.com/rerun-io/rerun/pull/2054)
+- Remove `Clipboard::set_text` [#2078](https://github.com/rerun-io/rerun/pull/2078)
+- run_all.py: print output on sequential run failure [#2079](https://github.com/rerun-io/rerun/pull/2079)
+- Use the american spelling of "gray" [#2099](https://github.com/rerun-io/rerun/pull/2099)
+- Make sure `rerun/rerun_py/re_viewer` build info is updated on each build [#2087](https://github.com/rerun-io/rerun/pull/2087)
+- Fix setup scripts for Mac M1/MacPort configuration [#2169](https://github.com/rerun-io/rerun/pull/2169) (thanks [@abey79](https://github.com/abey79)!)
+- Better error messages in `build.rs` [#2173](https://github.com/rerun-io/rerun/pull/2173)
+- `cargo install rerun-cli` [#2183](https://github.com/rerun-io/rerun/pull/2183)
+- Fix `cargo test` [#2199](https://github.com/rerun-io/rerun/pull/2199)
+- Fix run all for new rust-cli target & add rerun-web alias for quick running of the web player [#2203](https://github.com/rerun-io/rerun/pull/2203)
+
+#### 🤷‍♂️ Other
+- Fix secret in dispatch_lint.yml [4848f98f2605a3caf9b7695273e0871efa2d44c8](https://github.com/rerun-io/rerun/commit/4848f98f2605a3caf9b7695273e0871efa2d44c8)
+- Only maintain a single manual-dispatch job for testing workflows [98f7de3b52b0fea6abe364f9d0ce0bd4c459caf1](https://github.com/rerun-io/rerun/commit/98f7de3b52b0fea6abe364f9d0ce0bd4c459caf1)
+- Add other build parameterizations to manual_dispatch.yml [dbdf275eaf17220d14811dc34b69b6a76e948e73](https://github.com/rerun-io/rerun/commit/dbdf275eaf17220d14811dc34b69b6a76e948e73)
+- Use proper if gates on the manual_dispatch.yml jobs [9ad62011678caaed04260ba160763e24e64a7402](https://github.com/rerun-io/rerun/commit/9ad62011678caaed04260ba160763e24e64a7402)
+- Add ability to save cache to manual_disaptch.yml [5c61b37a1bc40f1a223c370b3b69b08654aada47](https://github.com/rerun-io/rerun/commit/5c61b37a1bc40f1a223c370b3b69b08654aada47)
+- Standard case of inputs [2729c71f1ba9f7cdbe64adc3c610caf9464324e4](https://github.com/rerun-io/rerun/commit/2729c71f1ba9f7cdbe64adc3c610caf9464324e4)
+- Add manual step for packaging to 'manual_dispatch.yml' [a3178e6143c068175b477cb236f2ba2477e083ea](https://github.com/rerun-io/rerun/commit/a3178e6143c068175b477cb236f2ba2477e083ea)
+- New workflow_dispatch for building wheels for a PR [3bc2cb73ece98f914254221ce0ea129015834f59](https://github.com/rerun-io/rerun/commit/3bc2cb73ece98f914254221ce0ea129015834f59)
+- Rename build_wheels_for_pr.yml -> manual_build_wheels_for_pr.yml [778c4d363b3814aeb777d07bfa63f081bc1dac32](https://github.com/rerun-io/rerun/commit/778c4d363b3814aeb777d07bfa63f081bc1dac32)
+- New manual workflow for running benches [840a127e3a74c3520a27c0b19eb1d3d9a7255b07](https://github.com/rerun-io/rerun/commit/840a127e3a74c3520a27c0b19eb1d3d9a7255b07)
+- New manual workflow for adhoc web builds [01080d6509e94fd2e2d3c4ff05beb0970ebe0b6e](https://github.com/rerun-io/rerun/commit/01080d6509e94fd2e2d3c4ff05beb0970ebe0b6e)
+- Fix name of on_push_main.yml [bf5f63344663b3ebfc74f847db696a749b3e716c](https://github.com/rerun-io/rerun/commit/bf5f63344663b3ebfc74f847db696a749b3e716c)
+- Fix usage of long commit in generate_prerelease_pip_index.py [579ce91556d6dd3cb9e6bd46971a7b6db6e42cdd](https://github.com/rerun-io/rerun/commit/579ce91556d6dd3cb9e6bd46971a7b6db6e42cdd)
+- Jobs with duplicated instances still need separate concurrency keys based on platform [0ad19980be99cb2f669d38c2f1410a38206cbe74](https://github.com/rerun-io/rerun/commit/0ad19980be99cb2f669d38c2f1410a38206cbe74)
+- New manual CI job for creating a release [fb2d41af5ec089f6c7583629eda3fb332e420488](https://github.com/rerun-io/rerun/commit/fb2d41af5ec089f6c7583629eda3fb332e420488)
+- Version check needs to run in bash [6feca463d21ea03538889df08064b6974edb1fd2](https://github.com/rerun-io/rerun/commit/6feca463d21ea03538889df08064b6974edb1fd2)
+- Update changelog with 0.5.1 release notes [40fc2fd7d61689100dc40bfe59e4ddfbcc819c7d](https://github.com/rerun-io/rerun/commit/40fc2fd7d61689100dc40bfe59e4ddfbcc819c7d)
+- `RecordingStream`: automatic `log_tick` timeline [#2072](https://github.com/rerun-io/rerun/pull/2072)
+- Add support for `f16` tensors [#1449](https://github.com/rerun-io/rerun/pull/1449)
+- Make `RecordingId` a string [#2088](https://github.com/rerun-io/rerun/pull/2088)
+- Update to latest `egui_tiles` [#2091](https://github.com/rerun-io/rerun/pull/2091)
+- Make every `RecordingId` typed and preclude the existence of 'Defaults' [#2110](https://github.com/rerun-io/rerun/pull/2110)
+- Add unit test of `re_smart_channel` `is_connected` [#2119](https://github.com/rerun-io/rerun/pull/2119)
+- `BeingRecordingMsg` -> `SetRecordingInfo` [#2149](https://github.com/rerun-io/rerun/pull/2149)
+- Update egui and eframe [#2184](https://github.com/rerun-io/rerun/pull/2184)
+- Update to egui 0.22 [#2195](https://github.com/rerun-io/rerun/pull/2195)
+- Simpler SIGINT handling [#2198](https://github.com/rerun-io/rerun/pull/2198)
+- `cargo update` [#2196](https://github.com/rerun-io/rerun/pull/2196)
+- Replace `ctrlc` crate with `tokio` [#2207](https://github.com/rerun-io/rerun/pull/2207)
+- Comment indicating blueprints aren't available in 0.6 [b6c05776ab48e759370d6fed645ffd0ea68ec8c0](https://github.com/rerun-io/rerun/commit/b6c05776ab48e759370d6fed645ffd0ea68ec8c0)
+
 
 ## [0.5.1](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.5.0) - Patch Release - 2023-05-01
 
