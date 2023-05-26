@@ -40,7 +40,7 @@ class EntityPath:
 class SdkCallbacks:
     store: Store
     ahrs: Mahony
-    _get_camera_intrinsics: Callable[[int, int], NDArray[np.float32]]
+    _get_camera_intrinsics: Callable[[dai.CameraBoardSocket, int, int], NDArray[np.float32]]
 
     def __init__(self, store: Store):
         viewer.init("Depthai Viewer")
@@ -49,7 +49,9 @@ class SdkCallbacks:
         self.ahrs = Mahony(frequency=100)
         self.ahrs.Q = np.array([1, 0, 0, 0], dtype=np.float64)
 
-    def set_camera_intrinsics_getter(self, camera_intrinsics_getter: Callable[[int, int], NDArray[np.float32]]) -> None:
+    def set_camera_intrinsics_getter(
+        self, camera_intrinsics_getter: Callable[[dai.CameraBoardSocket, int, int], NDArray[np.float32]]
+    ) -> None:
         self._get_camera_intrinsics = camera_intrinsics_getter
 
     def on_imu(self, packet: IMUPacket) -> None:
@@ -72,7 +74,10 @@ class SdkCallbacks:
         viewer.log_rigid3(EntityPath.RGB_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         h, w, _ = frame.frame.shape
         viewer.log_pinhole(
-            EntityPath.RGB_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
+            EntityPath.RGB_PINHOLE_CAMERA,
+            child_from_parent=self._get_camera_intrinsics(dai.CameraBoardSocket.RGB, w, h),
+            width=w,
+            height=h,
         )
         viewer.log_image(EntityPath.RGB_CAMERA_IMAGE, cv2.cvtColor(frame.frame, cv2.COLOR_BGR2RGB))
 
@@ -82,7 +87,10 @@ class SdkCallbacks:
         h, w = frame.frame.shape
         viewer.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         viewer.log_pinhole(
-            EntityPath.LEFT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
+            EntityPath.LEFT_PINHOLE_CAMERA,
+            child_from_parent=self._get_camera_intrinsics(dai.CameraBoardSocket.LEFT, w, h),
+            width=w,
+            height=h,
         )
         viewer.log_image(EntityPath.LEFT_CAMERA_IMAGE, frame.frame)
 
@@ -92,7 +100,10 @@ class SdkCallbacks:
         h, w = frame.frame.shape
         viewer.log_rigid3(EntityPath.MONO_CAMERA_TRANSFORM, child_from_parent=([0, 0, 0], self.ahrs.Q), xyz="RDF")
         viewer.log_pinhole(
-            EntityPath.RIGHT_PINHOLE_CAMERA, child_from_parent=self._get_camera_intrinsics(w, h), width=w, height=h
+            EntityPath.RIGHT_PINHOLE_CAMERA,
+            child_from_parent=self._get_camera_intrinsics(dai.CameraBoardSocket.RIGHT, w, h),
+            width=w,
+            height=h,
         )
         viewer.log_image(EntityPath.RIGHT_CAMERA_IMAGE, frame.frame)
 

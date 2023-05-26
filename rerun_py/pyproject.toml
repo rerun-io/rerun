@@ -10,7 +10,7 @@ dependencies = [
   "setuptools",
   "ahrs",
   "depthai",             # Atm python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==2.21.2.0.dev0+5004cc71950e6786feb36147b7919e146f4ef8da --force-reinstall # is required
-  "depthai-sdk>=1.10.0",
+  "depthai-sdk>=1.10.1",
   "websockets",
   "pydantic",
 ]
@@ -22,8 +22,8 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Visualization",
 ]
-description = "The Rerun Logging SDK"
-keywords = ["computer-vision", "logging", "rerun"]
+description = "Depthai Viewer"
+keywords = ["computer-vision", "logging", "depthai-viewer"]
 name = "depthai-viewer"
 requires-python = ">=3.8"
 
@@ -97,10 +97,5 @@ select = [
 ban-relative-imports = "all"
 
 [tool.maturin]
-# We use a python package from inside the rerun_sdk folder to avoid conflicting
-# with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
-# which then allows `import rerun` to work as expected.
-# See https://github.com/rerun-io/rerun/pull/1085 for more details
-include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
 locked = true
-python-packages = ["rerun_sdk/depthai_viewer", "rerun_sdk/rerun_demo"]
+python-packages = ["depthai_viewer"]

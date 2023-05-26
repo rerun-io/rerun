@@ -51,6 +51,13 @@ use parking_lot::Mutex;
 
 use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ScrollAreaDirection {
+    Vertical,
+    Horizontal,
+    Both,
+}
+
 #[derive(Clone)]
 pub struct ReUi {
     pub egui_ctx: egui::Context,
@@ -189,22 +196,61 @@ impl ReUi {
         });
     }
 
+    /// A scroll bar that is more visible than the default.
+    pub fn styled_scrollbar<R>(
+        &self,
+        ui: &mut egui::Ui,
+        direction: ScrollAreaDirection,
+        auto_shrink: [bool; 2],
+        contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) {
+        // Set a more visible scroll bar color
+        let mut style = ui.style_mut().clone();
+        let previous_active_bg_fill = style.visuals.widgets.active.bg_fill;
+        let previous_hovered_bg_fill = style.visuals.widgets.hovered.bg_fill;
+        let previous_inactive_bg_fill = style.visuals.widgets.inactive.bg_fill;
+        style.visuals.widgets.active.bg_fill = self.design_tokens.gray_400;
+        style.visuals.widgets.hovered.bg_fill = self.design_tokens.gray_400;
+        style.visuals.widgets.inactive.bg_fill = self.design_tokens.gray_300;
+        style.spacing.scroll_bar_inner_margin = 0.0;
+        ui.set_style(style);
+        match direction {
+            ScrollAreaDirection::Vertical => egui::ScrollArea::vertical(),
+            ScrollAreaDirection::Horizontal => egui::ScrollArea::horizontal(),
+            ScrollAreaDirection::Both => egui::ScrollArea::both(),
+        }
+        .auto_shrink(auto_shrink)
+        .show(ui, |ui| {
+            // Reset styling
+            let mut style = ui.style_mut().clone();
+            style.visuals.widgets.active.bg_fill = previous_active_bg_fill;
+            style.visuals.widgets.hovered.bg_fill = previous_hovered_bg_fill;
+            style.visuals.widgets.inactive.bg_fill = previous_inactive_bg_fill;
+            style.spacing.scroll_bar_inner_margin = 0.0;
+            ui.set_style(style);
+            contents(ui);
+        });
+    }
+
     pub fn labeled_dragvalue<Num: egui::emath::Numeric>(
         &self,
         ui: &mut egui::Ui,
         label: &str,
         value: &mut Num,
         range: RangeInclusive<Num>,
-    ) where
+    ) -> egui::Response
+    where
         Num: egui::emath::Numeric,
     {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.add_sized(
+            let response = ui.add_sized(
                 [Self::box_width(), Self::box_height()],
                 egui::DragValue::new(value).clamp_range(range),
             );
             ui.label(egui::RichText::new(label).color(self.design_tokens.gray_900));
-        });
+            response
+        })
+        .inner
     }
 
     pub fn labeled_toggle_switch(&self, ui: &mut egui::Ui, label: &str, value: &mut bool) {

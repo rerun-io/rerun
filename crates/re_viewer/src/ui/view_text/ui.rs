@@ -105,10 +105,15 @@ pub(crate) fn view_text(
     state.latest_time = time;
 
     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-        egui::ScrollArea::horizontal().show(ui, |ui| {
-            crate::profile_scope!("render table");
-            table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
-        })
+        ctx.re_ui.styled_scrollbar(
+            ui,
+            re_ui::ScrollAreaDirection::Horizontal,
+            [false; 2],
+            |ui| {
+                crate::profile_scope!("render table");
+                table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
+            },
+        );
     })
     .response
 }

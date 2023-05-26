@@ -70,12 +70,13 @@ macro_rules! profile_scope {
 }
 
 // ---------------------------------------------------------------------------
+type SysExePath = String;
 
 /// Where is this App running in?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppEnvironment {
     /// Created from the Rerun Python SDK.
-    PythonSdk(PythonVersion),
+    PythonSdk(PythonVersion, SysExePath),
 
     /// Created from the Rerun Rust SDK.
     RustSdk {
@@ -97,7 +98,9 @@ impl AppEnvironment {
     pub fn from_recording_source(source: &re_log_types::RecordingSource) -> Self {
         use re_log_types::RecordingSource;
         match source {
-            RecordingSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
+            RecordingSource::PythonSdk(python_version, sys_exe) => {
+                Self::PythonSdk(python_version.clone(), sys_exe.clone())
+            }
             RecordingSource::RustSdk {
                 rustc_version: rust_version,
                 llvm_version,

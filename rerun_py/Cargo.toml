@@ -8,7 +8,7 @@ version.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
-name = "rerun_bindings" # name of the .so library that the Python module will import
+name = "depthai_viewer_bindings" # name of the .so library that the Python module will import
 
 
 [features]
@@ -79,4 +79,4 @@ pyo3-build-config = "0.18.0"
 
 
 [package.metadata.maturin]
-name = "rerun_bindings"
+name = "depthai_viewer_bindings"

@@ -124,7 +124,7 @@ checksum = "216261ddc8289130e551ddcd5ce8a064710c0d064a4d2895c67151c92b5443f6"
 
 [[package]]
 name = "api_demo"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -1267,7 +1267,7 @@ dependencies = [
 
 [[package]]
 name = "depthai-viewer"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "backtrace",
@@ -1382,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "dna"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "depthai-viewer",
  "itertools",
@@ -2822,7 +2822,7 @@ dependencies = [
 
 [[package]]
 name = "minimal"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "depthai-viewer",
 ]
@@ -2835,7 +2835,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "minimal_options"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -3253,7 +3253,7 @@ dependencies = [
 
 [[package]]
 name = "objectron"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -3871,7 +3871,7 @@ checksum = "f2ff9a1f06a88b01621b7ae906ef0211290d1c8a168a15542486a8f61c0833b9"
 
 [[package]]
 name = "raw_mesh"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "bytes",
@@ -3911,7 +3911,7 @@ dependencies = [
 
 [[package]]
 name = "re_analytics"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "crossbeam",
@@ -3932,7 +3932,7 @@ dependencies = [
 
 [[package]]
 name = "re_arrow_store"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -3959,7 +3959,7 @@ dependencies = [
 
 [[package]]
 name = "re_build_build_info"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "time 0.3.20",
@@ -3967,18 +3967,18 @@ dependencies = [
 
 [[package]]
 name = "re_build_info"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 
 [[package]]
 name = "re_build_web_viewer"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "cargo_metadata",
 ]
 
 [[package]]
 name = "re_data_store"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "criterion",
@@ -4001,14 +4001,14 @@ dependencies = [
 
 [[package]]
 name = "re_error"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
 ]
 
 [[package]]
 name = "re_format"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "arrow2",
  "arrow2_convert",
@@ -4018,7 +4018,7 @@ dependencies = [
 
 [[package]]
 name = "re_int_histogram"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "criterion",
  "insta",
@@ -4029,7 +4029,7 @@ dependencies = [
 
 [[package]]
 name = "re_log"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "env_logger",
  "js-sys",
@@ -4042,7 +4042,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_encoding"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "criterion",
  "ehttp",
@@ -4067,7 +4067,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_types"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "array-init",
@@ -4105,7 +4105,7 @@ dependencies = [
 
 [[package]]
 name = "re_memory"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "backtrace",
@@ -4125,7 +4125,7 @@ dependencies = [
 
 [[package]]
 name = "re_query"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "arrow2",
  "criterion",
@@ -4143,7 +4143,7 @@ dependencies = [
 
 [[package]]
 name = "re_renderer"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -4196,7 +4196,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "arrow2_convert",
  "document-features",
@@ -4216,7 +4216,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk_comms"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -4232,7 +4232,7 @@ dependencies = [
 
 [[package]]
 name = "re_smart_channel"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "crossbeam",
  "instant",
@@ -4240,7 +4240,7 @@ dependencies = [
 
 [[package]]
 name = "re_string_interner"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "nohash-hasher",
@@ -4251,7 +4251,7 @@ dependencies = [
 
 [[package]]
 name = "re_tensor_ops"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "ndarray",
@@ -4261,7 +4261,7 @@ dependencies = [
 
 [[package]]
 name = "re_tuid"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "arrow2",
  "arrow2_convert",
@@ -4275,7 +4275,7 @@ dependencies = [
 
 [[package]]
 name = "re_ui"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "eframe",
  "egui",
@@ -4293,7 +4293,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
@@ -4363,7 +4363,7 @@ dependencies = [
 
 [[package]]
 name = "re_web_viewer_server"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "cargo_metadata",
  "ctrlc",
@@ -4380,7 +4380,7 @@ dependencies = [
 
 [[package]]
 name = "re_ws_comms"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -4452,7 +4452,7 @@ checksum = "216080ab382b992234dda86873c18d4c48358f5cfcb70fd693d7f6f2131b628b"
 
 [[package]]
 name = "rerun_py"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "arrow2",
  "depthai-viewer",
@@ -4556,7 +4556,7 @@ dependencies = [
 
 [[package]]
 name = "run_wasm"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "cargo-run-wasm",
  "pico-args",
@@ -5110,7 +5110,7 @@ dependencies = [
 
 [[package]]
 name = "test_image_memory"
-version = "0.6.0-alpha.0"
+version = "0.0.2"
 dependencies = [
  "depthai-viewer",
  "mimalloc",

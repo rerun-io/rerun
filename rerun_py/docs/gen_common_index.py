@@ -123,7 +123,7 @@ SECTION_TABLE: Final[List[Section]] = [
 ]
 
 # Virtual folder where we will generate the md files
-root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
+root = Path(__file__).parent.parent.joinpath("depthai_viewer").resolve()
 common_dir = Path("common")
 
 # We use griffe to access docstrings

@@ -35,7 +35,6 @@ color_wh_to_enum = {
 
 mono_wh_to_enum = {
     (640, 400): dai.MonoCameraProperties.SensorResolution.THE_400_P,
-    (640, 480): dai.MonoCameraProperties.SensorResolution.THE_480_P,
     (1280, 720): dai.MonoCameraProperties.SensorResolution.THE_720_P,
     (1280, 800): dai.MonoCameraProperties.SensorResolution.THE_800_P,
     (1920, 1200): dai.MonoCameraProperties.SensorResolution.THE_1200_P,
@@ -44,7 +43,7 @@ mono_wh_to_enum = {
 
 class SelectedDevice:
     id: str
-    intrinsic_matrix: Dict[Tuple[int, int], NDArray[np.float32]] = {}
+    intrinsic_matrix: Dict[Tuple[dai.CameraBoardSocket, int, int], NDArray[np.float32]] = {}
     calibration_data: Optional[dai.CalibrationHandler] = None
     use_encoding: bool = False
     _time_of_last_xlink_update: int = 0
@@ -63,16 +62,16 @@ class SelectedDevice:
         self.oak_cam = OakCamera(self.id)
         print("Oak cam: ", self.oak_cam)
 
-    def get_intrinsic_matrix(self, width: int, height: int) -> NDArray[np.float32]:
-        if self.intrinsic_matrix.get((width, height)) is not None:
-            return self.intrinsic_matrix.get((width, height))  # type: ignore[return-value]
+    def get_intrinsic_matrix(self, board_socket: dai.CameraBoardSocket, width: int, height: int) -> NDArray[np.float32]:
+        if self.intrinsic_matrix.get((board_socket, width, height)) is not None:
+            return self.intrinsic_matrix.get((board_socket, width, height))  # type: ignore[return-value]
         if self.calibration_data is None:
             raise Exception("Missing calibration data!")
         M_right = self.calibration_data.getCameraIntrinsics(  # type: ignore[union-attr]
-            dai.CameraBoardSocket.RIGHT, dai.Size2f(width, height)
+            board_socket, dai.Size2f(width, height)
         )
-        self.intrinsic_matrix[(width, height)] = np.array(M_right).reshape(3, 3)
-        return self.intrinsic_matrix[(width, height)]
+        self.intrinsic_matrix[(board_socket, width, height)] = np.array(M_right).reshape(3, 3)
+        return self.intrinsic_matrix[(board_socket, width, height)]
 
     def get_device_properties(self) -> Dict[str, Any]:
         dai_props = self.oak_cam.device.getConnectedCameraFeatures()
@@ -114,18 +113,18 @@ class SelectedDevice:
         )
         return device_properties
 
-    def update_pipeline(
-        self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
-    ) -> Tuple[bool, Dict[str, str]]:
+    def close_oak_cam(self) -> None:
         if self.oak_cam.running():
-            if runtime_only:
-                if config.depth is not None:
-                    return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
-                return False, {"message": "Depth is not enabled, can't send runtime controls!"}
-            print("Cam running, closing...")
-            self.oak_cam.device.close()
-            self.oak_cam = None
-            # Check if the device is available, timeout after 10 seconds
+            self.oak_cam.device.__exit__(0, 0, 0)
+
+    def reconnect_to_oak_cam(self) -> Tuple[bool, Dict[str, str]]:
+        """
+
+        Try to reconnect to the device with self.id.
+
+        Timeout after 10 seconds.
+        """
+        if self.oak_cam.device.isClosed():
             timeout_start = time.time()
             while time.time() - timeout_start < 10:
                 available_devices = [
@@ -135,11 +134,27 @@ class SelectedDevice:
                     break
             try:
                 self.oak_cam = OakCamera(self.id)
+                return True, {"message": "Successfully reconnected to device"}
             except RuntimeError as e:
                 print("Failed to create oak camera")
                 print(e)
                 self.oak_cam = None
-                return False, {"message": "Failed to create oak camera"}
+        return False, {"message": "Failed to create oak camera"}
+
+    def update_pipeline(
+        self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
+    ) -> Tuple[bool, Dict[str, str]]:
+        if self.oak_cam.running():
+            if runtime_only:
+                if config.depth is not None:
+                    return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
+                return False, {"message": "Depth is not enabled, can't send runtime controls!"}
+            print("Cam running, closing...")
+            self.close_oak_cam()
+            # Check if the device is available, timeout after 10 seconds
+            success, message = self.reconnect_to_oak_cam()
+            if not success:
+                return success, message
 
         self.use_encoding = self.oak_cam.device.getDeviceInfo().protocol == dai.XLinkProtocol.X_LINK_TCP_IP
         if self.use_encoding:
@@ -190,11 +205,8 @@ class SelectedDevice:
                 median=config.depth.median,
             )
             self.oak_cam.callback(self._stereo, callbacks.on_stereo_frame)
-            # if config.depth.pointcloud and config.depth.pointcloud.enabled:
-            #     self._pc = self.oak_cam.create_pointcloud(stereo=self._stereo, colorize=self._color)
-            #     self.oak_cam.callback(self._pc, callbacks.on_pointcloud)
 
-        if config.imu is not None:
+        if self.oak_cam.device.getConnectedIMU() != "NONE":
             print("Creating IMU")
             imu = self.oak_cam.create_imu()
             sensors = [
@@ -207,6 +219,8 @@ class SelectedDevice:
                 sensors, report_rate=config.imu.report_rate, batch_report_threshold=config.imu.batch_report_threshold
             )
             self.oak_cam.callback(imu, callbacks.on_imu)
+        else:
+            print("Connected cam doesn't have IMU, skipping IMU creation...")
 
         if config.ai_model and config.ai_model.path:
             if config.ai_model.path == "age-gender-recognition-retail-0013":
@@ -252,9 +266,9 @@ class DepthaiViewerBack:
     _device: Optional[SelectedDevice] = None
 
     # Queues for communicating with the API process
-    action_queue: Queue[Any]
-    result_queue: Queue[Any]
-    send_message_queue: Queue[Any]
+    action_queue: Queue  # type: ignore[type-arg]
+    result_queue: Queue  # type: ignore[type-arg]
+    send_message_queue: Queue  # type: ignore[type-arg]
 
     # Sdk callbacks for handling data from the device and sending it to the frontend
     sdk_callbacks: SdkCallbacks
@@ -286,9 +300,7 @@ class DepthaiViewerBack:
         print("Resetting...")
         if self._device:
             print("Closing device...")
-            self._device.oak_cam.device.close()
-            self._device.oak_cam.__exit__(None, None, None)
-            self._device.oak_cam = None
+            self._device.close_oak_cam()
             self.set_device(None)
         print("Done")
         return True, {"message": "Reset successful"}
@@ -345,7 +357,7 @@ class DepthaiViewerBack:
             except QueueEmptyException:
                 pass
 
-            if self._device and self._device.oak_cam:
+            if self._device:
                 self._device.update()
                 if self._device.oak_cam.device.isClosed():
                     # TODO(filip): Typehint the messages properly
