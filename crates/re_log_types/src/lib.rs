@@ -111,14 +111,19 @@ macro_rules! impl_into_enum {
 /// What type of `Recording` this is.
 ///
 /// `Data` recordings contain user-data logged via `log_` API calls.
-/// `Blueprint` recordings describe how that data is laid out.
+///
+/// In the future, `Blueprint` recordings describe how that data is laid out
+/// in the viewer, though this is not currently supported.
 ///
 /// Both of these types can go over the same stream and be stored in the
 /// same datastore, but the viewer wants to treat them very differently.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum RecordingType {
+    /// A recording of user-data.
     Data,
+
+    /// Not currently used: recording data associated with the blueprint state.
     Blueprint,
 }
 
