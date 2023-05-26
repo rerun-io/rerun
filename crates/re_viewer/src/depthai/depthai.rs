@@ -459,7 +459,7 @@ impl AiModel {
 
 impl PartialEq for AiModel {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
+        self.path == other.path && self.camera == other.camera
     }
 }
 

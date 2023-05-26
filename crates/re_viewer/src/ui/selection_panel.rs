@@ -218,32 +218,6 @@ fn blueprint_ui(
         }
 
         Item::SpaceView(space_view_id) => {
-            ui.horizontal(|ui| {
-                if ui
-                    .button("Add/remove entities")
-                    .on_hover_text("Manually add or remove entities from the Space View.")
-                    .clicked()
-                {
-                    viewport
-                        .show_add_remove_entities_window(*space_view_id);
-                }
-
-                if ui
-                    .button("Clone view")
-                    .on_hover_text("Create an exact duplicate of this Space View including all blueprint settings")
-                    .clicked()
-                {
-                    if let Some(space_view) = viewport.space_view(space_view_id) {
-                        let mut new_space_view = space_view.clone();
-                        new_space_view.id = super::SpaceViewId::random();
-                        viewport.add_space_view(new_space_view);
-                        viewport.mark_user_interaction();
-                    }
-                }
-            });
-
-            ui.add_space(ui.spacing().item_spacing.y);
-
             if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 space_view.selection_ui(ctx, ui);
             }

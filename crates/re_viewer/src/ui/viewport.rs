@@ -6,6 +6,7 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
+use re_log_types::Time;
 
 use crate::{
     depthai::depthai,
@@ -226,28 +227,60 @@ impl Viewport {
         self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
     }
 
+    /// Gets the space views that don't actually have an instance associated with them
+    fn get_space_views_to_delete(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpaceInfoCollection,
+    ) -> Vec<SpaceViewId> {
+        let mut space_views_to_delete = Vec::new();
+        let binding = all_possible_space_views(ctx, spaces_info);
+        let possible_space_views = binding
+            .iter()
+            .cloned()
+            .filter(|sv| sv.is_depthai_spaceview)
+            .collect_vec();
+        for space_view in &possible_space_views {
+            let mut found = false;
+            for existing_view in self.space_views.values() {
+                if existing_view.space_path == space_view.space_path {
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                space_views_to_delete.push(space_view.id);
+            }
+        }
+        for space_view in self.space_views.values() {
+            if !possible_space_views
+                .iter()
+                .map(|sv| sv.space_path.clone())
+                .contains(&space_view.space_path)
+            {
+                self.has_been_user_edited
+                    .insert(space_view.space_path.clone(), false);
+                space_views_to_delete.push(space_view.id);
+            }
+        }
+        space_views_to_delete
+    }
+
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
     ) {
         crate::profile_function!();
-        let mut space_views_to_remove = Vec::new();
 
-        // Get all the entity paths that aren't logged anymore
-        // First clear the has_been_user_edited entry, so if the entity path is a space path and it reappeaars later,
-        // it will get added back into the viewport
+        for space_view_id in &self.get_space_views_to_delete(ctx, spaces_info) {
+            self.remove(space_view_id);
+        }
+
         self.stats_panel_state.update(ctx);
 
-        // Remove all entities that are marked for removal from the space view.
-        // Remove the space view if it has no entities left
         for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(ctx, spaces_info);
-        }
-        for id in &space_views_to_remove {
-            if self.space_views.get(id).is_some() {
-                self.remove(id);
-            }
         }
         for space_view_candidate in default_created_space_views(ctx, spaces_info) {
             if !self
