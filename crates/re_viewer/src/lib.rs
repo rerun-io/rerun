@@ -23,15 +23,11 @@ pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
 
 pub mod external {
-    pub use eframe;
-    pub use egui;
-    pub use re_arrow_store;
-    pub use re_arrow_store::external::arrow2;
-    pub use re_data_store;
-    pub use re_log_types;
-    pub use re_memory;
-    pub use re_query;
-    pub use re_renderer;
+    pub use {eframe, egui};
+    pub use {
+        re_arrow_store, re_arrow_store::external::arrow2, re_data_store, re_log_types, re_memory,
+        re_query, re_renderer, re_ui,
+    };
 }
 
 // ----------------------------------------------------------------------------

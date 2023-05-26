@@ -87,31 +87,36 @@ impl MyApp {
         ui.separator();
 
         if let Some(log_db) = self.rerun_app.log_db() {
-            self.log_db_ui(ui, log_db);
+            log_db_ui(ui, log_db);
         } else {
             ui.label("No log database loaded yet.");
         }
     }
+}
 
-    #[allow(clippy::unused_self)]
-    fn log_db_ui(&self, ui: &mut egui::Ui, log_db: &re_data_store::LogDb) {
-        // Shows how you can inspect the loaded data:
+fn log_db_ui(ui: &mut egui::Ui, log_db: &re_data_store::LogDb) {
+    // Shows how you can inspect the loaded data:
 
-        if let Some(recording_info) = log_db.recording_info() {
-            ui.label(format!("Application ID: {}", recording_info.application_id));
-        }
-
-        // There can be many timelines, but the `log_time` timeline is always there:
-        let timeline = re_log_types::Timeline::log_time();
-
-        ui.separator();
-        ui.strong("Entities:");
-        for entity_path in log_db.entity_db.entity_paths() {
-            ui.collapsing(entity_path.to_string(), |ui| {
-                entity_ui(ui, log_db, timeline, entity_path);
-            });
-        }
+    if let Some(recording_info) = log_db.recording_info() {
+        ui.label(format!("Application ID: {}", recording_info.application_id));
     }
+
+    // There can be many timelines, but the `log_time` timeline is always there:
+    let timeline = re_log_types::Timeline::log_time();
+
+    ui.separator();
+
+    ui.strong("Entities:");
+
+    egui::ScrollArea::vertical()
+        .auto_shrink([false, true])
+        .show(ui, |ui| {
+            for entity_path in log_db.entity_db.entity_paths() {
+                ui.collapsing(entity_path.to_string(), |ui| {
+                    entity_ui(ui, log_db, timeline, entity_path);
+                });
+            }
+        });
 }
 
 fn entity_ui(

@@ -34,8 +34,8 @@ impl DataUi for EntityComponentWithInstances {
     ) {
         crate::profile_function!(self.component_name().full_name());
 
-        let mut instance_keys = match self.component_data.iter_instance_keys() {
-            Ok(instance_keys) => instance_keys,
+        let instance_keys: Vec<_> = match self.component_data.iter_instance_keys() {
+            Ok(instance_keys) => instance_keys.collect(),
             Err(err) => {
                 ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
                 return;
@@ -52,7 +52,7 @@ impl DataUi for EntityComponentWithInstances {
         if num_instances == 0 {
             ui.weak("(empty)");
         } else if num_instances == 1 {
-            if let Some(instance_key) = instance_keys.next() {
+            if let Some(instance_key) = instance_keys.get(0) {
                 ctx.component_ui_registry.ui(
                     ctx,
                     ui,
@@ -60,7 +60,7 @@ impl DataUi for EntityComponentWithInstances {
                     query,
                     &self.entity_path,
                     &self.component_data,
-                    &instance_key,
+                    instance_key,
                 );
             } else {
                 ui.label(ctx.re_ui.error_text("Error: missing instance key"));
@@ -88,15 +88,10 @@ impl DataUi for EntityComponentWithInstances {
                     re_ui::ReUi::setup_table_body(&mut body);
                     let row_height = re_ui::ReUi::table_line_height();
                     body.rows(row_height, num_instances, |index, mut row| {
-                        if let Some(instance_key) = self
-                            .component_data
-                            .iter_instance_keys()
-                            .ok()
-                            .and_then(|mut keys| keys.nth(index))
-                        {
+                        if let Some(instance_key) = instance_keys.get(index) {
                             row.col(|ui| {
                                 let instance_path =
-                                    InstancePath::instance(self.entity_path.clone(), instance_key);
+                                    InstancePath::instance(self.entity_path.clone(), *instance_key);
                                 item_ui::instance_path_button_to(
                                     ctx,
                                     ui,
@@ -113,7 +108,7 @@ impl DataUi for EntityComponentWithInstances {
                                     query,
                                     &self.entity_path,
                                     &self.component_data,
-                                    &instance_key,
+                                    instance_key,
                                 );
                             });
                         }
