@@ -381,8 +381,6 @@ class DepthaiViewerBack:
             started, message = self._device.update_pipeline(
                 self.store.pipeline_config, runtime_only, callbacks=self.sdk_callbacks
             )
-            if not started:
-                self.set_device(None)
         return started, message
 
     def run(self) -> None:

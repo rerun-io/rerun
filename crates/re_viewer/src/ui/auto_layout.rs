@@ -148,25 +148,65 @@ fn find_top_left_leaf(tree: &egui_dock::Tree<Tab>) -> NodeIndex {
     }
 }
 
-/// Is it possible to create a quad of left top 3d color left bottom 2d color
-/// right top 3d mono right bottom 2d mono, based on the current tree
-fn can_create_color_mono_quad(tree: &egui_dock::Tree<Tab>, space_views: Vec<SpaceView>) -> bool {
-    let Some(color3d_tab) = find_space_path_in_tree(tree, &depthai::entity_paths::COLOR_CAM_3D) else {
-        return false;
-    };
-    let Some((color3d_node_index, _)) = tree.find_tab(&color3d_tab) else {
-        return false;
-    };
-    let Some(mono3d_tab) = find_space_path_in_tree(tree, &depthai::entity_paths::MONO_CAM_3D) else {
-        return false;
-    };
-    let Some((mono3d_node_index, mono3d_tab_index)) = tree.find_tab(&mono3d_tab) else {
-        return false;
-    };
-    mono3d_node_index == color3d_node_index.right()
-}
+// /// Layout `CAM_B` `CAM_A` | `CAM_C` with 3d views on top and 2d views on the bottom.
+// fn create_inner_viewport_layout(spaces: &Vec<SpaceMakeInfo>) -> LayoutSplit {
+//     let mut groups: HashMap<EntityPathPart, (Vec<SpaceMakeInfo>, Vec<SpaceMakeInfo>)> =
+//         HashMap::default();
 
-/// Layout `CAM_B` `CAM_A` | `CAM_C` with 3d views on top and 2d views on the bottom.
+//     for space in spaces {
+//         if let Some(path) = &space.path {
+//             let base_path = match path.as_slice().first() {
+//                 Some(part) => part.clone(),
+//                 None => continue,
+//             };
+
+//             let (views_2d, views_3d) = groups.entry(base_path).or_default();
+
+//             if path.len() > 1 {
+//                 views_2d.push(space.clone());
+//             } else {
+//                 views_3d.push(space.clone());
+//             }
+//         }
+//     }
+
+//     let mut sorted_groups: BTreeMap<EntityPathPart, (Vec<SpaceMakeInfo>, Vec<SpaceMakeInfo>)> =
+//         BTreeMap::new();
+//     for (key, value) in groups {
+//         sorted_groups.insert(key, value);
+//     }
+
+//     let mut layouts: VecDeque<LayoutSplit> = VecDeque::new();
+
+//     for (_base_path, (views_2d, views_3d)) in sorted_groups {
+//         let layout_2d = LayoutSplit::Leaf(views_2d);
+//         let layout_3d = LayoutSplit::Leaf(views_3d);
+
+//         layouts.push_back(LayoutSplit::TopBottom(
+//             Box::new(layout_3d),
+//             0.5,
+//             Box::new(layout_2d),
+//         ));
+//     }
+//     if layouts.len() > 1 {
+//         create_horizontal_layout(&mut layouts).1
+//     } else {
+//         LayoutSplit::Leaf(spaces.clone())
+//     }
+// }
+
+// fn create_horizontal_layout(vertical_splits: &mut VecDeque<LayoutSplit>) -> (f32, LayoutSplit) {
+//     if vertical_splits.len() == 1 {
+//         return (1.0, vertical_splits.pop_front().unwrap());
+//     }
+//     let left = vertical_splits.pop_front().unwrap();
+//     let (mut n_splits, mut right) = create_horizontal_layout(vertical_splits);
+//     n_splits += 1.0;
+//     right = LayoutSplit::LeftRight(Box::new(left), 1.0 / n_splits, Box::new(right));
+//     (n_splits, right)
+// }
+
+/// Layout `CAM_A` `CAM_B` | `CAM_C` with 3d views on top and 2d views on the bottom in the same group. (only one 2d and one 3d view visible from the start)
 fn create_inner_viewport_layout(spaces: &Vec<SpaceMakeInfo>) -> LayoutSplit {
     let mut groups: HashMap<EntityPathPart, (Vec<SpaceMakeInfo>, Vec<SpaceMakeInfo>)> =
         HashMap::default();
@@ -193,35 +233,17 @@ fn create_inner_viewport_layout(spaces: &Vec<SpaceMakeInfo>) -> LayoutSplit {
     for (key, value) in groups {
         sorted_groups.insert(key, value);
     }
-
-    let mut layouts: VecDeque<LayoutSplit> = VecDeque::new();
-
+    let mut all_2d = Vec::new();
+    let mut all_3d = Vec::new();
     for (_base_path, (views_2d, views_3d)) in sorted_groups {
-        let layout_2d = LayoutSplit::Leaf(views_2d);
-        let layout_3d = LayoutSplit::Leaf(views_3d);
-
-        layouts.push_back(LayoutSplit::TopBottom(
-            Box::new(layout_3d),
-            0.5,
-            Box::new(layout_2d),
-        ));
+        all_2d.extend(views_2d);
+        all_3d.extend(views_3d);
     }
-    if layouts.len() > 1 {
-        create_horizontal_layout(&mut layouts).1
-    } else {
-        LayoutSplit::Leaf(spaces.clone())
-    }
-}
-
-fn create_horizontal_layout(vertical_splits: &mut VecDeque<LayoutSplit>) -> (f32, LayoutSplit) {
-    if vertical_splits.len() == 1 {
-        return (1.0, vertical_splits.pop_front().unwrap());
-    }
-    let left = vertical_splits.pop_front().unwrap();
-    let (mut n_splits, mut right) = create_horizontal_layout(vertical_splits);
-    n_splits += 1.0;
-    right = LayoutSplit::LeftRight(Box::new(left), 1.0 / n_splits, Box::new(right));
-    (n_splits, right)
+    LayoutSplit::TopBottom(
+        LayoutSplit::Leaf(all_3d).into(),
+        0.5,
+        LayoutSplit::Leaf(all_2d).into(),
+    )
 }
 
 /// Default layout of space views tuned for depthai-viewer
@@ -319,7 +341,24 @@ pub(crate) fn default_tree_from_space_views(
         );
     }
     if !is_maximized {
-        // Always set the config tab as the active tab
+        // Always set the color cam (if available - currently the approach is really bad as I just check for CAM_A,
+        // should be improved upon to search for camera name in connected_cameras) as the active tab and then the config tab as the active tab
+        let tree_clone = tree.clone();
+        let color_tabs = tree_clone.tabs().filter(|tab| {
+            if let Some(space_path) = tab.space_path.clone() {
+                if let Some(first_part) = space_path.as_slice().first() {
+                    first_part == &EntityPathPart::from("CAM_A")
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        });
+        for color_tab in color_tabs {
+            let (node_index, tab_index) = tree.find_tab(color_tab).unwrap();
+            tree.set_active_tab(node_index, tab_index);
+        }
         let (config_node, config_tab) = tree
             .find_tab(
                 tree.tabs()

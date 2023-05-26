@@ -73,6 +73,7 @@ __all__ = [
     "log_imu",
     "log_xlink_stats",
     "_backend",
+    "rerun_shutdown",
 ]
 
 
@@ -374,6 +375,18 @@ def serve(open_browser: bool = True, web_port: Optional[int] = None, ws_port: Op
         return
 
     bindings.serve(open_browser, web_port, ws_port)
+
+
+def version() -> str:
+    """
+    Get the version of the Rerun SDK.
+
+    Returns
+    -------
+    str
+        The version of the Rerun SDK.
+    """
+    return str(bindings.version())
 
 
 def start_web_viewer_server(port: int = 0) -> None:

@@ -6,7 +6,7 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
-use re_log_types::Time;
+use re_log_types::{EntityPathPart, Time};
 
 use crate::{
     depthai::depthai,
@@ -716,14 +716,12 @@ fn space_view_options_ui(
                 ui.style_mut().wrap = Some(false);
                 let entities = space_view.data_blueprint.entity_paths().clone();
                 let entities = entities.iter().filter(|ep| {
-                    let eps_to_skip = vec![
-                        depthai::entity_paths::RGB_PINHOLE_CAMERA.clone(),
-                        depthai::entity_paths::DEVICE_TRANSFORM.clone(),
-                        // depthai::entity_paths::LEFT_
-                        EntityPath::from("camera/left_mono"),
-                        EntityPath::from("camera/right_mono"),
-                    ];
-                    !eps_to_skip.contains(ep)
+                    if let Some(last_part) = ep.iter().last() {
+                        last_part != &EntityPathPart::from("transform")
+                            && last_part != &EntityPathPart::from("camera")
+                    } else {
+                        false
+                    }
                 });
                 for entity_path in entities {
                     // if matches!(entity_path, EntityPath::from("color"))

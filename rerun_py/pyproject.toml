@@ -3,17 +3,7 @@ build-backend = "maturin"
 requires = ["maturin>=0.14.0,<0.15"]
 
 [project]
-dependencies = [
-  "deprecated",
-  "numpy>=1.23",
-  "pyarrow==10.0.1",
-  "setuptools",
-  "ahrs",
-  # "depthai",             # Atm python3 -m pip install --extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/ depthai==2.21.2.0.dev0+5004cc71950e6786feb36147b7919e146f4ef8da --force-reinstall # is required
-  # "depthai-sdk>=1.10.1", # Atm latest develop is required
-  "websockets",
-  "pydantic",
-]
+dependencies = []
 classifiers = [
   "Programming Language :: Rust",
   "Programming Language :: Python :: Implementation :: CPython",

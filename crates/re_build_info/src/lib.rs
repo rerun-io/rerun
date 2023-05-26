@@ -14,7 +14,7 @@ pub use crate_version::CrateVersion;
 macro_rules! build_info {
     () => {
         $crate::BuildInfo {
-            crate_name: env!("CARGO_PKG_NAME"),
+            crate_name: "depthai-viewer", //env!("CARGO_PKG_NAME"),
             version: $crate::CrateVersion::parse(env!("CARGO_PKG_VERSION")),
             rustc_version: env!("RE_BUILD_RUSTC_VERSION"),
             llvm_version: env!("RE_BUILD_LLVM_VERSION"),

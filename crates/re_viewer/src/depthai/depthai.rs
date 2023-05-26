@@ -25,7 +25,7 @@ impl Default for CameraConfig {
             fps: 30,
             resolution: CameraSensorResolution::THE_1080_P,
             kind: CameraSensorKind::COLOR,
-            board_socket: CameraBoardSocket::CAM_B,
+            board_socket: CameraBoardSocket::CAM_A,
             name: String::from("color"),
             stream_enabled: true,
         }
@@ -444,13 +444,15 @@ impl AiModel {
         Self {
             path: String::new(),
             display_name: String::from("No model selected"),
-            camera: CameraBoardSocket::CAM_B,
+            camera: CameraBoardSocket::CAM_A,
         }
     }
 
     pub fn from_camera_features(camera_features: &[CameraFeatures]) -> Self {
         let mut model = Self::default();
-        if let Some(cam) = camera_features.iter().find(|cam| cam.name == "color") {
+        if let Some(cam) = camera_features.iter().find(|cam| cam.name == "Color") {
+            model.camera = cam.board_socket;
+        } else if let Some(cam) = camera_features.first() {
             model.camera = cam.board_socket;
         }
         model
@@ -500,22 +502,22 @@ fn default_neural_networks() -> Vec<AiModel> {
         AiModel {
             path: String::from("yolov8n_coco_640x352"),
             display_name: String::from("Yolo V8"),
-            camera: CameraBoardSocket::CAM_B,
+            camera: CameraBoardSocket::CAM_A,
         },
         AiModel {
             path: String::from("mobilenet-ssd"),
             display_name: String::from("MobileNet SSD"),
-            camera: CameraBoardSocket::CAM_B,
+            camera: CameraBoardSocket::CAM_A,
         },
         AiModel {
             path: String::from("face-detection-retail-0004"),
             display_name: String::from("Face Detection"),
-            camera: CameraBoardSocket::CAM_B,
+            camera: CameraBoardSocket::CAM_A,
         },
         AiModel {
             path: String::from("age-gender-recognition-retail-0013"),
             display_name: String::from("Age gender recognition"),
-            camera: CameraBoardSocket::CAM_B,
+            camera: CameraBoardSocket::CAM_A,
         },
     ]
 }
@@ -548,38 +550,6 @@ pub enum ChannelId {
     DepthImage,
     PinholeCamera,
     ImuData,
-}
-
-/// Entity paths for depthai-viewer space views
-/// !---- These have to match with EntityPath in rerun_py/rerun_sdk/depthai_viewer_backend/sdk_callbacks.py ----!
-pub mod entity_paths {
-    use lazy_static::lazy_static;
-    use re_log_types::EntityPath;
-
-    lazy_static! {
-        pub static ref RGB_PINHOLE_CAMERA: EntityPath = EntityPath::from("color/camera/rgb");
-        pub static ref LEFT_PINHOLE_CAMERA: EntityPath = EntityPath::from("mono/camera/left_mono");
-        pub static ref LEFT_CAMERA_IMAGE: EntityPath =
-            EntityPath::from("mono/camera/left_mono/Left mono");
-        pub static ref RIGHT_PINHOLE_CAMERA: EntityPath =
-            EntityPath::from("mono/camera/right_mono");
-        pub static ref RIGHT_CAMERA_IMAGE: EntityPath =
-            EntityPath::from("mono/camera/right_mono/Right mono");
-        pub static ref RGB_CAMERA_IMAGE: EntityPath =
-            EntityPath::from("color/camera/rgb/Color camera");
-        pub static ref DETECTIONS: EntityPath = EntityPath::from("color/camera/rgb/Detections");
-        pub static ref DETECTION: EntityPath = EntityPath::from("color/camera/rgb/Detection");
-        pub static ref DEVICE_TRANSFORM: EntityPath = EntityPath::from("camera");
-
-        // --- These are extra for the depthai-viewer ---
-        pub static ref COLOR_CAM_3D: EntityPath = EntityPath::from("color");
-        pub static ref MONO_CAM_3D: EntityPath = EntityPath::from("mono");
-        pub static ref DEPTH_RGB: EntityPath = EntityPath::from("color/camera/rgb/Depth");
-        pub static ref DEPTH_LEFT_MONO: EntityPath =
-            EntityPath::from("mono/camera/left_mono/Depth");
-        pub static ref DEPTH_RIGHT_MONO: EntityPath =
-            EntityPath::from("mono/camera/right_mono/Depth");
-    }
 }
 
 impl State {

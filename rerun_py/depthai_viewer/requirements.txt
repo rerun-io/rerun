@@ -1,0 +1,10 @@
+numpy>=1.23
+pyarrow==10.0.1
+setuptools
+ahrs
+# depthai_sdk conflicts with depthai, so it's installed seperatelly in __main__.py
+--extra-index-url https://artifacts.luxonis.com/artifactory/luxonis-python-snapshot-local/
+depthai==2.21.2.0.dev0+72cddbb885eb6495ce74ffbe80e1492c612a5452
+websockets
+pydantic
+deprecated

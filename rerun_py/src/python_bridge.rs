@@ -180,6 +180,7 @@ fn depthai_viewer_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+    m.add_function(wrap_pyfunction!(version, m)?)?;
 
     Ok(())
 }
@@ -313,6 +314,12 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     };
     python_session().connect(addr);
     Ok(())
+}
+
+#[pyfunction]
+fn version() -> PyResult<String> {
+    let build_info = re_build_info::build_info!();
+    Ok(build_info.version.to_string())
 }
 
 #[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
