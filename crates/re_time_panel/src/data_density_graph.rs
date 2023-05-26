@@ -540,7 +540,7 @@ fn show_row_ids_tooltip(
             }
             Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
                 // No extra info. This should never happen, but not worth printing a warning over.
-                // even if it does this will look still ok!
+                // Even if it does go here, the ui after will still look ok.
             }
         }
 
