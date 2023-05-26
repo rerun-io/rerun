@@ -13,26 +13,19 @@ impl DataUi for ComponentPath {
     ) {
         let store = &ctx.log_db.entity_db.data_store;
 
-        match re_query::get_component_with_instances(
+        if let Some((_, component_data)) = re_query::get_component_with_instances(
             store,
             query,
             self.entity_path(),
             self.component_name,
         ) {
-            Err(re_query::QueryError::PrimaryNotFound) => {
-                ui.label("<unset>");
+            super::component::EntityComponentWithInstances {
+                entity_path: self.entity_path.clone(),
+                component_data,
             }
-            Err(err) => {
-                // Any other failure to get a component is unexpected
-                ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
-            }
-            Ok((_, component_data)) => {
-                super::component::EntityComponentWithInstances {
-                    entity_path: self.entity_path.clone(),
-                    component_data,
-                }
-                .data_ui(ctx, ui, verbosity, query);
-            }
+            .data_ui(ctx, ui, verbosity, query);
+        } else {
+            ui.label("<unset>");
         }
     }
 }

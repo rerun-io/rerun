@@ -8,6 +8,9 @@ use re_log_types::{
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
+///
+/// Returns `None` if the component is not found.
+///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, component_types::Point2D, Component};
@@ -48,22 +51,20 @@ pub fn get_component_with_instances(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     component: ComponentName,
-) -> crate::Result<(RowId, ComponentWithInstances)> {
+) -> Option<(RowId, ComponentWithInstances)> {
     debug_assert_eq!(store.cluster_key(), InstanceKey::name());
 
     let components = [InstanceKey::name(), component];
 
-    let (row_id, mut cells) = store
-        .latest_at(query, ent_path, component, &components)
-        .ok_or(QueryError::PrimaryNotFound)?;
+    let (row_id, mut cells) = store.latest_at(query, ent_path, component, &components)?;
 
-    Ok((
+    Some((
         row_id,
         ComponentWithInstances {
             // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
             // by the store.
             instance_keys: cells[0].take().unwrap(),
-            values: cells[1].take().ok_or(QueryError::PrimaryNotFound)?,
+            values: cells[1].take()?,
         },
     ))
 }
@@ -124,33 +125,29 @@ pub fn query_entity_with_primary<Primary: Component>(
 ) -> crate::Result<EntityView<Primary>> {
     crate::profile_function!();
 
-    let (row_id, primary) = get_component_with_instances(store, query, ent_path, Primary::name())?;
+    let (row_id, primary) = get_component_with_instances(store, query, ent_path, Primary::name())
+        .ok_or(QueryError::PrimaryNotFound)?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
     // join. Series have a SetSorted option to specify this. join_asof might be
     // the right place to start digging.
 
-    let components: crate::Result<BTreeMap<ComponentName, ComponentWithInstances>> = components
+    let components: BTreeMap<ComponentName, ComponentWithInstances> = components
         .iter()
         // Filter out `Primary` and `InstanceKey` from the component list since they are
         // always queried above when creating the primary.
         .filter(|component| *component != &Primary::name() && *component != &InstanceKey::name())
         .filter_map(|component| {
-            match get_component_with_instances(store, query, ent_path, *component)
-                .map(|(_, cwi)| cwi)
-            {
-                Ok(component_result) => Some(Ok((*component, component_result))),
-                Err(QueryError::PrimaryNotFound) => None,
-                Err(err) => Some(Err(err)),
-            }
+            get_component_with_instances(store, query, ent_path, *component)
+                .map(|(_, component_result)| (*component, component_result))
         })
         .collect();
 
     Ok(EntityView {
         row_id,
         primary,
-        components: components?,
+        components,
         phantom: std::marker::PhantomData,
     })
 }
