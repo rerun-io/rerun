@@ -112,7 +112,6 @@ pub struct App {
 impl App {
     #[cfg(not(target_arch = "wasm32"))]
     fn spawn_backend(python_path: &Option<String>) -> Option<std::process::Child> {
-        // TODO(filip): Is there some way I can know for sure where depthai_viewer_backend is?
         let Some(py_path) = python_path else {
             panic!("Python path is missing, exiting...");
         };
@@ -125,7 +124,7 @@ impl App {
                 Some(child)
             }
             Err(err) => {
-                eprintln!("Failed to start depthai viewer: {err}");
+                eprintln!("Failed to start depthai viewer backend: {err}. Command: {py_path:?} -m depthai_viewer._backend.main");
                 None
             }
         };

@@ -43,10 +43,10 @@ def create_venv_and_install_dependencies() -> str:
             [pip_executable, "install", "-r", f"{script_path}/requirements.txt"], stdout=subprocess.PIPE
         )
 
-        packages_dir = site.getsitepackages()[0]
+        packages_dir = max(site.getsitepackages())
         # Create symlink for depthai_viewer and depthai_viewer_bindings
         venv_packages_dir = subprocess.check_output(
-            [py_executable, "-c", "import site; print(site.getsitepackages()[0], end='')"]
+            [py_executable, "-c", "import site; print(max(site.getsitepackages()), end='')"]
         ).decode()
         os.symlink(os.path.join(packages_dir, "depthai_viewer"), os.path.join(venv_packages_dir, "depthai_viewer"))
         os.symlink(
@@ -64,7 +64,7 @@ def create_venv_and_install_dependencies() -> str:
         shutil.rmtree(os.path.join(venv_dir, "..", item))
 
     # Return Python executable within the venv
-    return (
+    return os.path.normpath(
         os.path.join(venv_dir, "Scripts", "python")
         if sys.platform == "win32"
         else os.path.join(venv_dir, "bin", "python")
@@ -73,16 +73,14 @@ def create_venv_and_install_dependencies() -> str:
 
 def main() -> None:
     python_executable = create_venv_and_install_dependencies()
-
     # We don't need to call shutdown in this case. Rust should be handling everything
     unregister_shutdown()
-
     # Call the bindings.main using the Python executable in the venv
     subprocess.call(
         [
             python_executable,
             "-c",
-            f"from depthai_viewer import bindings; import sys; sys.exit(bindings.main(sys.argv, '{python_executable}'))",
+            f"from depthai_viewer import bindings; import sys; sys.exit(bindings.main(sys.argv, r'{python_executable}'))",
         ]
         + sys.argv[1:]
     )

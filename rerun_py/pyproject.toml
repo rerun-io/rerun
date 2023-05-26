@@ -3,7 +3,12 @@ build-backend = "maturin"
 requires = ["maturin>=0.14.0,<0.15"]
 
 [project]
-dependencies = []
+dependencies = [
+  "deprecated",
+  "numpy>=1.23",
+  "pyarrow==10.0.1",
+  "setuptools",
+]
 classifiers = [
   "Programming Language :: Rust",
   "Programming Language :: Python :: Implementation :: CPython",
