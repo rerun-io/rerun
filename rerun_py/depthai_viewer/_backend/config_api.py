@@ -7,11 +7,13 @@ from signal import SIGINT, signal
 from typing import Any, Dict, Optional, Tuple
 
 import depthai as dai
-from pydantic import BaseModel
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from depthai_viewer._backend.device_configuration import PipelineConfiguration, DeviceProperties
+from depthai_viewer._backend.device_configuration import (
+    DeviceProperties,
+    PipelineConfiguration,
+)
 from depthai_viewer._backend.store import Action
 from depthai_viewer._backend.topic import Topic
 
@@ -151,7 +153,14 @@ async def ws_api(websocket: WebSocketServerProtocol) -> None:
                         continue
                     device_properties = result.get("device_properties", None)
                     await websocket.send(
-                        json.dumps({"type": MessageType.DEVICE, "data": device_properties.dict() if device_properties else DeviceProperties(id="").dict()})  # type: ignore[union-attr]
+                        json.dumps(
+                            {
+                                "type": MessageType.DEVICE,
+                                "data": device_properties.dict()
+                                if device_properties
+                                else DeviceProperties(id="").dict(),
+                            }
+                        )  # type: ignore[union-attr]
                     )
                 else:
                     await websocket.send(error(result.get("message", "Unknown error"), ErrorAction.FULL_RESET))

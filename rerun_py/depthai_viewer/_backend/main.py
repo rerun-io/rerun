@@ -1,10 +1,10 @@
+import itertools
 import json
 import threading
 import time
 from queue import Empty as QueueEmptyException
 from queue import Queue
 from typing import Any, Dict, List, Optional, Tuple, Union
-import itertools
 
 import depthai as dai
 import depthai_sdk
@@ -15,20 +15,25 @@ from depthai_sdk.components import CameraComponent, NNComponent, StereoComponent
 from numpy.typing import NDArray
 
 import depthai_viewer as viewer
+from depthai_viewer._backend import classification_labels
 from depthai_viewer._backend.config_api import start_api
 from depthai_viewer._backend.device_configuration import (
+    CameraConfiguration,
     CameraFeatures,
     DeviceProperties,
-    PipelineConfiguration,
     ImuKind,
-    CameraConfiguration,
+    PipelineConfiguration,
+    calculate_isp_scale,
     compare_dai_camera_configs,
     resolution_to_enum,
-    calculate_isp_scale,
 )
-from depthai_viewer._backend.sdk_callbacks import *
+from depthai_viewer._backend.sdk_callbacks import (
+    AiModelCallbackArgs,
+    CameraCallbackArgs,
+    DepthCallbackArgs,
+    SdkCallbacks,
+)
 from depthai_viewer._backend.store import Store
-from depthai_viewer._backend import classification_labels
 
 viewer.init("Depthai Viewer")
 viewer.connect()
@@ -66,9 +71,7 @@ class SelectedDevice:
     def _get_possible_stereo_pairs_for_cam(
         self, cam: dai.CameraFeatures, connected_camera_features: List[dai.CameraFeatures]
     ) -> List[dai.CameraBoardSocket]:
-        """
-        Tries to find the possible stereo pairs for a camera.
-        """
+        """Tries to find the possible stereo pairs for a camera."""
         stereo_pairs = []
         if cam.name == "right":
             stereo_pairs.extend(

@@ -1,86 +1,105 @@
 """See `python3 -m rerun --help`."""
 
 import os
-import sys
-import subprocess
-from depthai_viewer import bindings, unregister_shutdown  # type: ignore[attr-defined]
-import site
-from depthai_viewer import version as depthai_viewer_version
 import shutil
+import site
+import subprocess
+import sys
+import traceback
+
+from depthai_viewer import unregister_shutdown  # type: ignore[attr-defined]
+from depthai_viewer import version as depthai_viewer_version
 
 
 def create_venv_and_install_dependencies() -> str:
-    print("Creating venv and installing dependencies...")
     script_path = os.path.dirname(os.path.abspath(__file__))
     venv_dir = os.path.join(script_path, "venv-" + depthai_viewer_version())
+    try:
+        # Create venv if it doesn't exist
+        if not os.path.exists(venv_dir):
+            print("Creating virtual environment...")
+            subprocess.run([sys.executable, "-m", "venv", venv_dir], check=True)
 
-    # Create venv if it doesn't exist
-    if not os.path.exists(venv_dir):
-        print("Creating venv...")
-        subprocess.check_call([sys.executable, "-m", "venv", venv_dir])
+            # Install dependencies
+            pip_executable = (
+                os.path.join(venv_dir, "Scripts", "pip")
+                if sys.platform == "win32"
+                else os.path.join(venv_dir, "bin", "pip")
+            )
+            py_executable = (
+                os.path.join(venv_dir, "Scripts", "python")
+                if sys.platform == "win32"
+                else os.path.join(venv_dir, "bin", "python")
+            )
 
-        # Install dependencies
-        pip_executable = (
-            os.path.join(venv_dir, "Scripts", "pip")
-            if sys.platform == "win32"
-            else os.path.join(venv_dir, "bin", "pip")
-        )
-        py_executable = (
+            # Install depthai_sdk first, then override depthai version with the one from requirements.txt
+            subprocess.run(
+                [
+                    pip_executable,
+                    "install",
+                    "git+https://github.com/luxonis/depthai.git@ac5b94eee908f5ea00c942e185fa135af771f82e#subdirectory=depthai_sdk",
+                ],
+                check=True,
+            )
+            subprocess.run(
+                [pip_executable, "install", "-r", f"{script_path}/requirements.txt"],
+                check=True,
+            )
+
+            packages_dir = max(site.getsitepackages())
+            # Create symlink for depthai_viewer and depthai_viewer_bindings
+            venv_packages_dir = subprocess.run(
+                [py_executable, "-c", "import site; print(max(site.getsitepackages()), end='')"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+            os.symlink(os.path.join(packages_dir, "depthai_viewer"), os.path.join(venv_packages_dir, "depthai_viewer"))
+            os.symlink(
+                os.path.join(packages_dir, "depthai_viewer_bindings"),
+                os.path.join(venv_packages_dir, "depthai_viewer_bindings"),
+            )
+
+        # Delete old requirements
+        for item in os.listdir(os.path.join(venv_dir, "..")):
+            if not item.startswith("venv-"):
+                continue
+            if item == os.path.basename(venv_dir):
+                continue
+            print(f"Removing old venv: {item}")
+            shutil.rmtree(os.path.join(venv_dir, "..", item))
+
+        # Return Python executable within the venv
+        return os.path.normpath(
             os.path.join(venv_dir, "Scripts", "python")
             if sys.platform == "win32"
             else os.path.join(venv_dir, "bin", "python")
         )
-        # Install depthai_sdk first, then override depthai version with the one from requirements.txt
-        subprocess.check_call(
-            [
-                pip_executable,
-                "install",
-                "git+https://github.com/luxonis/depthai.git@2825e21e179d7f01001b98693805ea50a80a50e1#subdirectory=depthai_sdk",
-            ],
-            stdout=subprocess.PIPE,
-        )
-        subprocess.check_call(
-            [pip_executable, "install", "-r", f"{script_path}/requirements.txt"], stdout=subprocess.PIPE
-        )
 
-        packages_dir = max(site.getsitepackages())
-        # Create symlink for depthai_viewer and depthai_viewer_bindings
-        venv_packages_dir = subprocess.check_output(
-            [py_executable, "-c", "import site; print(max(site.getsitepackages()), end='')"]
-        ).decode()
-        os.symlink(os.path.join(packages_dir, "depthai_viewer"), os.path.join(venv_packages_dir, "depthai_viewer"))
-        os.symlink(
-            os.path.join(packages_dir, "depthai_viewer_bindings"),
-            os.path.join(venv_packages_dir, "depthai_viewer_bindings"),
-        )
-
-    # Delete old requirements
-    for item in os.listdir(os.path.join(venv_dir, "..")):
-        if not item.startswith("venv-"):
-            continue
-        if item == os.path.basename(venv_dir):
-            continue
-        print(f"Removing old venv: {item}")
-        shutil.rmtree(os.path.join(venv_dir, "..", item))
-
-    # Return Python executable within the venv
-    return os.path.normpath(
-        os.path.join(venv_dir, "Scripts", "python")
-        if sys.platform == "win32"
-        else os.path.join(venv_dir, "bin", "python")
-    )
+    except Exception as e:
+        print(f"Error occurred during the creation of the virtual environment or installation of dependencies: {e}")
+        print(traceback.format_exc())
+        # Attempt to delete the partially created venv
+        try:
+            if os.path.exists(venv_dir):
+                print(f"Deleting partially created virtual environment: {venv_dir}")
+                shutil.rmtree(venv_dir)
+        except Exception as e:
+            print(f"Error occurred while attempting to delete the virtual environment: {e}")
+            print(traceback.format_exc())
+        exit(1)
 
 
 def main() -> None:
-    python_executable = create_venv_and_install_dependencies()
+    python_exe = create_venv_and_install_dependencies()
     # We don't need to call shutdown in this case. Rust should be handling everything
     unregister_shutdown()
     # Call the bindings.main using the Python executable in the venv
     subprocess.call(
         [
-            python_executable,
+            python_exe,
             "-c",
-            f"from depthai_viewer import bindings; import sys; sys.exit(bindings.main(sys.argv, r'{python_executable}'))",
+            f"from depthai_viewer import bindings; import sys; sys.exit(bindings.main(sys.argv, r'{python_exe}'))",
         ]
         + sys.argv[1:]
     )

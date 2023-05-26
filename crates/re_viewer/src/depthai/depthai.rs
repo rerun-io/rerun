@@ -269,7 +269,11 @@ impl DepthConfig {
     }
 
     pub fn only_runtime_configs_differ(&self, other: &DepthConfig) -> bool {
-        self.align == other.align && self != other
+        self.lr_check == other.lr_check
+            && self.align == other.align
+            && self.extended_disparity == other.extended_disparity
+            && self.subpixel_disparity == other.subpixel_disparity
+            && self != other
     }
 }
 

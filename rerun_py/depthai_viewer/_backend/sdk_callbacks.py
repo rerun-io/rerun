@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import cv2
 import depthai as dai
@@ -14,18 +14,13 @@ from depthai_sdk.classes.packets import (
     _Detection,
 )
 from numpy.typing import NDArray
+from pydantic import BaseModel
 
 import depthai_viewer as viewer
-from depthai_viewer._backend import classification_labels
+from depthai_viewer._backend.device_configuration import CameraConfiguration
 from depthai_viewer._backend.store import Store
 from depthai_viewer._backend.topic import Topic
 from depthai_viewer.components.rect2d import RectFormat
-
-from depthai_viewer._backend.device_configuration import CameraConfiguration
-
-from pydantic import BaseModel
-
-from typing import Union
 
 
 class EntityPath:
@@ -43,7 +38,7 @@ class EntityPath:
     MONO_CAMERA_TRANSFORM = "mono/camera"
 
 
-class CameraCallbackArgs(BaseModel):
+class CameraCallbackArgs(BaseModel):  # type: ignore[misc]
     board_socket: dai.CameraBoardSocket
     image_kind: dai.CameraSensorType
 
@@ -51,7 +46,7 @@ class CameraCallbackArgs(BaseModel):
         arbitrary_types_allowed = True
 
 
-class DepthCallbackArgs(BaseModel):
+class DepthCallbackArgs(BaseModel):  # type: ignore[misc]
     alignment_camera: CameraConfiguration
     stereo_pair: Tuple[dai.CameraBoardSocket, dai.CameraBoardSocket]
 
@@ -59,7 +54,7 @@ class DepthCallbackArgs(BaseModel):
         arbitrary_types_allowed = True
 
 
-class AiModelCallbackArgs(BaseModel):
+class AiModelCallbackArgs(BaseModel):  # type: ignore[misc]
     model_name: str
     camera: CameraConfiguration
     labels: Optional[List[str]] = None
@@ -104,7 +99,7 @@ class SdkCallbacks:
         child_from_parent: NDArray[np.float32]
         try:
             child_from_parent = self._get_camera_intrinsics(args.board_socket, w, h)
-        except:
+        except Exception:
             f_len = (w * h) ** 0.5
             child_from_parent = np.array([[f_len, 0, w / 2], [0, f_len, h / 2], [0, 0, 1]])
         viewer.log_pinhole(
@@ -118,7 +113,7 @@ class SdkCallbacks:
             if args.image_kind == dai.CameraSensorType.MONO
             else cv2.cvtColor(packet.frame, cv2.COLOR_BGR2RGB)
         )
-        viewer.log_image(f"{args.board_socket.name}/transform/camera/image", img_frame)
+        viewer.log_image(f"{args.board_socket.name}/transform/camera/Image", img_frame)
 
     def on_imu(self, packet: IMUPacket) -> None:
         for data in packet.data:
@@ -179,7 +174,7 @@ class SdkCallbacks:
             color = [255, 0, 0] if gender[0] > gender[1] else [0, 0, 255]
             # TODO(filip): maybe use viewer.log_annotation_context to log class colors for detections
             viewer.log_rect(
-                EntityPath.DETECTION,
+                f"{args.camera.board_socket.name}/transform/camera/Detection",
                 self._rect_from_detection(det),
                 rect_format=RectFormat.XYXY,
                 color=color,
