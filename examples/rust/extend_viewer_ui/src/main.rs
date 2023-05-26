@@ -1,4 +1,4 @@
-use re_viewer::external::{re_data_store, re_log_types};
+use re_viewer::external::{arrow2, re_arrow_store, re_data_store, re_log_types, re_query};
 
 #[global_allocator]
 static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
@@ -101,23 +101,77 @@ impl MyApp {
             ui.label(format!("Application ID: {}", recording_info.application_id));
         }
 
+        // There can be many timelines, but the `log_time` timeline is always there:
         let timeline = re_log_types::Timeline::log_time();
 
         ui.separator();
         ui.strong("Entities:");
         for entity_path in log_db.entity_db.entity_paths() {
             ui.collapsing(entity_path.to_string(), |ui| {
-                if let Some(mut components) = log_db
-                    .entity_db
-                    .data_store
-                    .all_components(&timeline, entity_path)
-                {
-                    components.sort();
-                    for component in components {
-                        ui.label(component.to_string());
-                    }
-                }
+                entity_ui(ui, log_db, timeline, entity_path);
             });
         }
     }
+}
+
+fn entity_ui(
+    ui: &mut egui::Ui,
+    log_db: &re_data_store::LogDb,
+    timeline: re_log_types::Timeline,
+    entity_path: &re_log_types::EntityPath,
+) {
+    // Each entity can have many components (e.g. position, color, radius, …):
+    if let Some(mut components) = log_db
+        .entity_db
+        .data_store
+        .all_components(&timeline, entity_path)
+    {
+        components.sort();
+        for component in components {
+            ui.collapsing(component.to_string(), |ui| {
+                component_ui(ui, log_db, timeline, entity_path, component);
+            });
+        }
+    }
+}
+
+fn component_ui(
+    ui: &mut egui::Ui,
+    log_db: &re_data_store::LogDb,
+    timeline: re_log_types::Timeline,
+    entity_path: &re_log_types::EntityPath,
+    component_name: re_log_types::ComponentName,
+) {
+    // You can query the data for any time point, but for now
+    // just show the last value logged for each component:
+    let query = re_arrow_store::LatestAtQuery::latest(timeline);
+
+    if let Some((_, component)) = re_query::get_component_with_instances(
+        &log_db.entity_db.data_store,
+        &query,
+        entity_path,
+        component_name,
+    ) {
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                // Iterate over all the instances (e.g. all the points in the point cloud):
+                for instance_key in component.iter_instance_keys().unwrap() {
+                    if let Some(value) = component.lookup_arrow(&instance_key) {
+                        use re_log_types::SizeBytes as _;
+
+                        let bytes = value.total_size_bytes();
+                        if bytes < 256 {
+                            // For small items, print them
+                            let mut repr = String::new();
+                            let display = arrow2::array::get_display(value.as_ref(), "null");
+                            display(&mut repr, 0).unwrap();
+                            ui.label(repr);
+                        } else {
+                            ui.label(format!("{bytes} bytes"));
+                        }
+                    }
+                }
+            });
+    };
 }
