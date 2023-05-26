@@ -28,6 +28,10 @@ on:
         required: false
         type: string
         default: ''
+      UPLOAD_COMMIT:
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-upload-web-demo
@@ -69,6 +73,7 @@ jobs:
           echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
 
       - name: "Upload web demo (commit)"
+        if: ${{ inputs.UPLOAD_COMMIT }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_demo"
