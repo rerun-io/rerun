@@ -49,10 +49,6 @@ pub struct View3DState {
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
 
-    /// Where in world space the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    hovered_point: Option<glam::Vec3>,
-
     // options:
     pub spin: bool,
     pub show_axes: bool,
@@ -79,7 +75,6 @@ impl PartialEq for View3DState {
             tracked_camera,
             camera_before_tracked_camera,
             eye_interpolation: _, // serde-skip
-            hovered_point: _,     // serde-skip
             spin,
             show_axes,
             show_bbox,
@@ -104,7 +99,6 @@ impl Default for View3DState {
             tracked_camera: None,
             camera_before_tracked_camera: None,
             eye_interpolation: Default::default(),
-            hovered_point: Default::default(),
             spin: false,
             show_axes: false,
             show_bbox: false,
@@ -434,8 +428,9 @@ pub fn view_3d(
         );
     }
 
-    // Double click changes camera
+    // Double click changes camera to focus on an entity.
     if response.double_clicked() {
+        // Clear out tracked camera if there's any.
         state.state_3d.tracked_camera = None;
         state.state_3d.camera_before_tracked_camera = None;
 
@@ -446,13 +441,17 @@ pub fn view_3d(
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_path.entity_path.clone());
-            } else if let Some(clicked_point) = state.state_3d.hovered_point {
+            } else if let HoveredSpace::ThreeD {
+                pos: Some(clicked_point),
+                ..
+            } = ctx.selection_state().hovered_space()
+            {
                 if let Some(mut new_orbit_eye) = state.state_3d.orbit_eye {
                     // TODO(andreas): It would be nice if we could focus on the center of the entity rather than the clicked point.
                     //                  We can figure out the transform/translation at the hovered path but that's usually not what we'd expect either
                     //                  (especially for entities with many instances, like a point cloud)
-                    new_orbit_eye.orbit_radius = new_orbit_eye.position().distance(clicked_point);
-                    new_orbit_eye.orbit_center = clicked_point;
+                    new_orbit_eye.orbit_radius = new_orbit_eye.position().distance(*clicked_point);
+                    new_orbit_eye.orbit_center = *clicked_point;
                     state.state_3d.interpolate_to_orbit_eye(new_orbit_eye);
                 }
             }
