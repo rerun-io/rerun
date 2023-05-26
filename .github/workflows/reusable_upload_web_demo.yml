@@ -90,14 +90,6 @@ jobs:
           path: "web_demo"
           destination: "rerun-demo/version/${{inputs.RELEASE_VERSION}}"
           parent: false
-      
-      - name: "Upload web demo (latest)"
-        if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_demo"
-          destination: "rerun-demo/version/latest"
-          parent: false
 
       - name: "Upload web demo (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
