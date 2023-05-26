@@ -1,5 +1,8 @@
 # Depthai Viewer changelog
 
+## 0.0.3
+
+- Added support for all devices
 
 ## 0.0.2
 
