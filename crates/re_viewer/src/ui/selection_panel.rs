@@ -132,7 +132,7 @@ fn has_data_section(item: &Item) -> bool {
 }
 
 /// What is selected? Not the contents, just the short id of it.
-pub fn what_is_selected_ui(
+fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     viewport: &mut Viewport,

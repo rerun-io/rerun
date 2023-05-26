@@ -8,7 +8,7 @@ use std::ops::RangeInclusive;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
 use re_data_store::TimeHistogram;
-use re_data_ui::DataUi;
+use re_data_ui::{item_ui, DataUi};
 use re_log_types::{TimeInt, TimeRange, TimeReal};
 use re_viewer_context::{Item, UiVerbosity, ViewerContext};
 
@@ -531,9 +531,19 @@ fn show_row_ids_tooltip(
             ui.label(format!("{num_messages} messages"));
         }
 
-        ui.add_space(8.0);
-        // TODO:
-        //crate::ui::selection_panel::what_is_selected_ui(ui, ctx, viewport, item);
+        match item {
+            Item::ComponentPath(path) => {
+                item_ui::component_path_button(ctx, ui, path);
+            }
+            Item::InstancePath(_, path) => {
+                item_ui::instance_path_button(ctx, ui, None, path);
+            }
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+                // No extra info. This should never happen, but not worth printing a warning over.
+                // even if it does this will look still ok!
+            }
+        }
+
         ui.add_space(8.0);
 
         let timeline = *ctx.rec_cfg.time_ctrl.timeline();

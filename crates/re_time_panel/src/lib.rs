@@ -18,9 +18,9 @@ use std::ops::RangeInclusive;
 use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
 
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::item_ui;
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
-use re_viewer_context::{Item, TimeControl, TimeView, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, TimeControl, TimeView, ViewerContext};
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -498,12 +498,7 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        item_ui::component_path_button_to(
-                            ctx,
-                            ui,
-                            component_name.short_name(),
-                            &component_path,
-                        );
+                        item_ui::component_path_button(ctx, ui, &component_path);
                     })
                     .response;
 
@@ -519,24 +514,20 @@ impl TimePanel {
                 let is_visible = ui.is_rect_visible(full_width_rect);
 
                 if is_visible {
-                    response.on_hover_ui(|ui| {
-                        let item = Item::ComponentPath(component_path.clone());
-                        // TODO:
-                        //what_is_selected_ui(ui, ctx, blueprint, &item);
-                        ui.add_space(8.0);
-                        let query = ctx.current_query();
-                        component_path.data_ui(ctx, ui, UiVerbosity::Small, &query);
-                    });
-
-                    // show the data in the time area:
-                    let item = Item::ComponentPath(component_path);
-                    paint_streams_guide_line(ctx, &item, ui, response_rect);
-
                     let empty_messages_over_time = TimeHistogram::default();
                     let messages_over_time = data
                         .times
                         .get(ctx.rec_cfg.time_ctrl.timeline())
                         .unwrap_or(&empty_messages_over_time);
+
+                    let total_num_messages = messages_over_time.total_count();
+                    response.on_hover_ui(|ui| {
+                        ui.label(format!("Number of events: {total_num_messages}"));
+                    });
+
+                    // show the data in the time area:
+                    let item = Item::ComponentPath(component_path);
+                    paint_streams_guide_line(ctx, &item, ui, response_rect);
 
                     let row_rect = Rect::from_x_y_ranges(
                         time_area_response.rect.x_range(),
