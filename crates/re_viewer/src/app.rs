@@ -849,6 +849,7 @@ impl App {
             }
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
         for log_db in self.log_dbs.values_mut() {
             log_db.clear_by_cutoff(2e9 as i64);
         }
