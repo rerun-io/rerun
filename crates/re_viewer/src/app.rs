@@ -900,6 +900,7 @@ impl App {
             }
         }
     }
+
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
         let selected_rec_id = self.state.selected_rec_id;
