@@ -25,8 +25,8 @@ pub use remote_viewer_app::RemoteViewerApp;
 pub mod external {
     pub use {eframe, egui};
     pub use {
-        re_arrow_store, re_arrow_store::external::arrow2, re_data_store, re_log_types, re_memory,
-        re_query, re_renderer, re_ui,
+        re_arrow_store, re_arrow_store::external::arrow2, re_data_store, re_log, re_log_types,
+        re_memory, re_query, re_renderer, re_ui,
     };
 }
 

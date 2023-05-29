@@ -1,4 +1,6 @@
-use re_viewer::external::{arrow2, re_arrow_store, re_data_store, re_log_types, re_query};
+use re_viewer::external::{
+    arrow2, eframe, egui, re_arrow_store, re_data_store, re_log, re_log_types, re_memory, re_query,
+};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -8,7 +10,7 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
     re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Direct `log` calls to stderr
     re_log::setup_native_logging();
 

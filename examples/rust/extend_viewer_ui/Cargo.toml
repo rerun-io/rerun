@@ -14,21 +14,15 @@ analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
 
 [dependencies]
 re_crash_handler = { path = "../../../crates/re_crash_handler" }
-re_log = { path = "../../../crates/re_log" }
-re_memory = { path = "../../../crates/re_memory" }
 re_viewer = { path = "../../../crates/re_viewer", default-features = false, features = [
   "webgl",
 ] }
+
 # We need re_sdk_comms to receive log events from and SDK:
 re_sdk_comms = { path = "../../../crates/re_sdk_comms", features = ["server"] }
 
-anyhow = "1.0"
-eframe = { version = "0.22", default_features = false, features = ["wgpu"] }
-egui = "0.22"
-
 # mimalloc is a much faster allocator:
 mimalloc = "0.1"
-
 
 # We need tokio for re_sdk_comms:
 tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }
