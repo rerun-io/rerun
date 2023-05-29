@@ -53,13 +53,11 @@ re_viewer = { workspace = true }
 
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 document-features = "0.2"
-glam.workspace = true
 image = { workspace = true, default-features = false, features = [
   "jpeg",
   "png",
 ] }
 itertools = { workspace = true }
-macaw.workspace = true
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy = { version = "0.18.0", features = ["half"] }
 once_cell = "1.12"

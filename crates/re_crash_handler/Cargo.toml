@@ -24,7 +24,6 @@ analytics = ["dep:re_analytics"]
 
 [dependencies]
 re_build_info.workspace = true
-re_log.workspace = true
 
 itertools.workspace = true
 parking_lot.workspace = true

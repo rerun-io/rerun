@@ -3911,7 +3911,6 @@ dependencies = [
  "parking_lot 0.12.1",
  "re_analytics",
  "re_build_info",
- "re_log",
 ]
 
 [[package]]
@@ -4047,7 +4046,6 @@ dependencies = [
  "image",
  "itertools",
  "lazy_static",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "num-derive",
@@ -4310,7 +4308,6 @@ dependencies = [
  "re_viewer_context",
  "re_ws_comms",
  "rfd",
- "rmp-serde",
  "serde",
  "slotmap",
  "smallvec",
@@ -4459,7 +4456,6 @@ dependencies = [
  "clap",
  "document-features",
  "itertools",
- "parking_lot 0.12.1",
  "puffin",
  "rayon",
  "re_analytics",
@@ -4503,10 +4499,8 @@ version = "0.7.0-alpha.0"
 dependencies = [
  "arrow2",
  "document-features",
- "glam",
  "image",
  "itertools",
- "macaw",
  "mimalloc",
  "numpy",
  "once_cell",

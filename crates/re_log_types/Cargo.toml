@@ -27,7 +27,7 @@ arrow_datagen = ["dep:rand"]
 ecolor = ["dep:ecolor"]
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
-glam = ["dep:glam", "dep:macaw"]
+glam = ["dep:glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
 image = ["dep:ecolor", "dep:image"]
@@ -84,7 +84,6 @@ glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false, features = [
   "jpeg",
 ] }
-macaw = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }
 rmp-serde = { version = "1.1", optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }

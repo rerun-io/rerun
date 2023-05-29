@@ -79,7 +79,6 @@ re_ws_comms = { workspace = true, features = ["client"] }
 anyhow.workspace = true
 document-features = "0.2"
 itertools.workspace = true
-parking_lot.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
