@@ -520,7 +520,9 @@ impl TimePanel {
                         .get(ctx.rec_cfg.time_ctrl.timeline())
                         .unwrap_or(&empty_messages_over_time);
 
-                    let total_num_messages = messages_over_time.total_count();
+                    // `data.times` does not contain timeless. Need to add those manually:
+                    let total_num_messages =
+                        messages_over_time.total_count() + data.num_timeless_messages() as u64;
                     response.on_hover_ui(|ui| {
                         ui.label(format!("Number of events: {total_num_messages}"));
                     });
