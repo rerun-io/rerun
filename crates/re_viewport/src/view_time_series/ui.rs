@@ -4,7 +4,7 @@ use egui::{
 };
 
 use re_arrow_store::TimeType;
-use re_time_panel::next_grid_tick_magnitude_ns;
+use re_format::next_grid_tick_magnitude_ns;
 use re_viewer_context::ViewerContext;
 
 use super::SceneTimeSeries;
@@ -179,7 +179,8 @@ pub(crate) fn view_time_series(
         } else {
             ui.visuals().widgets.inactive.fg_stroke
         };
-        re_time_panel::paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
+        ctx.re_ui
+            .paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
     }
 
     response
@@ -188,7 +189,7 @@ pub(crate) fn view_time_series(
 fn format_time(time_type: TimeType, time_int: i64) -> String {
     if time_type == TimeType::Time {
         let time = re_log_types::Time::from_ns_since_epoch(time_int);
-        re_time_panel::format_time_compact(time)
+        time.format_time_compact()
     } else {
         time_type.format(re_log_types::TimeInt::from(time_int))
     }

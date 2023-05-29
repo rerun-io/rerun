@@ -31,7 +31,6 @@ re_renderer = { workspace = true, default-features = false, features = [
   "serde",
 ] }
 re_tensor_ops.workspace = true
-re_time_panel.workspace = true # TODO(andreas): Unfortunate dependency, caused by `next_grid_tick_magnitude_ns`
 re_ui.workspace = true
 re_viewer_context.workspace = true
 
