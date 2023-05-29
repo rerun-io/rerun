@@ -523,17 +523,17 @@ fn show_row_ids_tooltip(
     egui_ctx: &egui::Context,
     item: &Item,
     time_range: TimeRange,
-    num_messages: usize,
+    num_events: usize,
 ) {
-    if num_messages == 0 {
+    if num_events == 0 {
         return;
     }
 
     egui::show_tooltip_at_pointer(egui_ctx, egui::Id::new("data_tooltip"), |ui| {
-        if num_messages == 1 {
-            ui.label(format!("{num_messages} message"));
+        if num_events == 1 {
+            ui.label(format!("{num_events} event"));
         } else {
-            ui.label(format!("{num_messages} messages"));
+            ui.label(format!("{num_events} events"));
         }
 
         ui.add_space(8.0);
