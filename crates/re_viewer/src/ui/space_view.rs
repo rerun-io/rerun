@@ -28,7 +28,7 @@ pub enum ScreenshotMode {
 
 /// A view of a space.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct SpaceView {
+pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
 
@@ -42,8 +42,6 @@ pub struct SpaceView {
     /// It determines which entities are part of the spaceview.
     pub data_blueprint: DataBlueprintTree,
 
-    pub view_state: ViewState,
-
     /// We only show data that match this category.
     pub category: ViewCategory,
 
@@ -51,7 +49,7 @@ pub struct SpaceView {
     pub entities_determined_by_user: bool,
 }
 
-impl SpaceView {
+impl SpaceViewBlueprint {
     pub fn new(
         category: ViewCategory,
         space_path: &EntityPath,
@@ -77,7 +75,6 @@ impl SpaceView {
             id: SpaceViewId::random(),
             space_path: space_path.clone(),
             data_blueprint: data_blueprint_tree,
-            view_state: ViewState::default(),
             category,
             entities_determined_by_user: false,
         }
@@ -148,19 +145,24 @@ impl SpaceView {
         }
     }
 
-    pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn selection_ui(
+        &mut self,
+        view_state: &mut SpaceViewState,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+    ) {
         #[allow(clippy::match_same_arms)]
         match self.category {
             ViewCategory::Text => {
-                self.view_state.state_text.selection_ui(ctx.re_ui, ui);
+                view_state.state_text.selection_ui(ctx.re_ui, ui);
             }
             ViewCategory::TextBox => {
-                self.view_state.state_textbox.selection_ui(ctx.re_ui, ui);
+                view_state.state_textbox.selection_ui(ctx.re_ui, ui);
             }
             ViewCategory::TimeSeries => {}
             ViewCategory::BarChart => {}
             ViewCategory::Spatial => {
-                self.view_state.state_spatial.selection_ui(
+                view_state.state_spatial.selection_ui(
                     ctx,
                     ui,
                     &self.data_blueprint,
@@ -169,10 +171,8 @@ impl SpaceView {
                 );
             }
             ViewCategory::Tensor => {
-                if let Some(selected_tensor) = &self.view_state.selected_tensor {
-                    if let Some(state_tensor) =
-                        self.view_state.state_tensors.get_mut(selected_tensor)
-                    {
+                if let Some(selected_tensor) = &view_state.selected_tensor {
+                    if let Some(state_tensor) = view_state.state_tensors.get_mut(selected_tensor) {
                         state_tensor.ui(ctx, ui);
                     }
                 }
@@ -182,6 +182,7 @@ impl SpaceView {
 
     pub(crate) fn scene_ui(
         &mut self,
+        view_state: &mut SpaceViewState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
@@ -204,26 +205,26 @@ impl SpaceView {
         match self.category {
             ViewCategory::Text => {
                 let mut scene = view_text::SceneText::default();
-                scene.load(ctx, &query, &self.view_state.state_text.filters);
-                self.view_state.ui_text(ctx, ui, &scene);
+                scene.load(ctx, &query, &view_state.state_text.filters);
+                view_state.ui_text(ctx, ui, &scene);
             }
 
             ViewCategory::TextBox => {
                 let mut scene = view_text_box::SceneTextBox::default();
                 scene.load(ctx, &query);
-                self.view_state.ui_textbox(ctx, ui, &scene);
+                view_state.ui_textbox(ctx, ui, &scene);
             }
 
             ViewCategory::TimeSeries => {
                 let mut scene = view_time_series::SceneTimeSeries::default();
                 scene.load(ctx, &query);
-                self.view_state.ui_time_series(ctx, ui, &scene);
+                view_state.ui_time_series(ctx, ui, &scene);
             }
 
             ViewCategory::BarChart => {
                 let mut scene = view_bar_chart::SceneBarChart::default();
                 scene.load(ctx, &query);
-                self.view_state.ui_bar_chart(ctx, ui, &scene);
+                view_state.ui_bar_chart(ctx, ui, &scene);
             }
 
             ViewCategory::Spatial => {
@@ -235,10 +236,10 @@ impl SpaceView {
                 );
                 let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
                 scene.load(ctx, &query, &transforms, highlights);
-                self.view_state
+                view_state
                     .state_spatial
                     .update_object_property_heuristics(ctx, &mut self.data_blueprint);
-                self.view_state.ui_spatial(
+                view_state.ui_spatial(
                     ctx,
                     ui,
                     &self.space_path,
@@ -252,7 +253,7 @@ impl SpaceView {
             ViewCategory::Tensor => {
                 let mut scene = view_tensor::SceneTensor::default();
                 scene.load(ctx, &query);
-                self.view_state.ui_tensor(ctx, ui, &scene);
+                view_state.ui_tensor(ctx, ui, &scene);
             }
         };
     }
@@ -306,8 +307,8 @@ impl SpaceView {
 // ----------------------------------------------------------------------------
 
 /// Camera position and similar.
-#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct ViewState {
+#[derive(Clone, Default)]
+pub struct SpaceViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstancePath>,
 
@@ -319,7 +320,7 @@ pub struct ViewState {
     state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
-impl ViewState {
+impl SpaceViewState {
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
     #[allow(clippy::too_many_arguments)]
     fn ui_spatial(
@@ -453,7 +454,7 @@ pub mod item_ui {
     pub fn space_view_button(
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view: &crate::ui::SpaceView,
+        space_view: &crate::ui::SpaceViewBlueprint,
     ) -> egui::Response {
         space_view_button_to(
             ctx,

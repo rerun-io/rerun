@@ -15,8 +15,10 @@ use crate::{
 };
 
 use super::{
-    data_blueprint::DataBlueprintGroup, space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::all_possible_space_views, view_category::ViewCategory, SpaceView,
+    data_blueprint::DataBlueprintGroup, space_view::SpaceViewState,
+    space_view_entity_picker::SpaceViewEntityPicker,
+    space_view_heuristics::all_possible_space_views, view_category::ViewCategory,
+    SpaceViewBlueprint,
 };
 
 // ----------------------------------------------------------------------------
@@ -29,7 +31,7 @@ pub type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 #[serde(default)]
 pub struct Viewport {
     /// Where the space views are stored.
-    pub(crate) space_views: HashMap<SpaceViewId, SpaceView>,
+    pub(crate) space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
 
     /// Which views are visible.
     pub(crate) visible: VisibilitySet,
@@ -67,15 +69,18 @@ impl Viewport {
         self.space_views.keys()
     }
 
-    pub(crate) fn space_view(&self, space_view: &SpaceViewId) -> Option<&SpaceView> {
+    pub(crate) fn space_view(&self, space_view: &SpaceViewId) -> Option<&SpaceViewBlueprint> {
         self.space_views.get(space_view)
     }
 
-    pub(crate) fn space_view_mut(&mut self, space_view_id: &SpaceViewId) -> Option<&mut SpaceView> {
+    pub(crate) fn space_view_mut(
+        &mut self,
+        space_view_id: &SpaceViewId,
+    ) -> Option<&mut SpaceViewBlueprint> {
         self.space_views.get_mut(space_view_id)
     }
 
-    pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceView> {
+    pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceViewBlueprint> {
         let Self {
             space_views,
             visible,
@@ -202,7 +207,7 @@ impl Viewport {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         group_handle: DataBlueprintGroupHandle,
-        space_view: &mut SpaceView,
+        space_view: &mut SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
         let Some(group) = space_view.data_blueprint.group(group_handle) else {
@@ -330,7 +335,7 @@ impl Viewport {
         self.has_been_user_edited = true;
     }
 
-    pub(crate) fn add_space_view(&mut self, mut space_view: SpaceView) -> SpaceViewId {
+    pub(crate) fn add_space_view(&mut self, mut space_view: SpaceViewBlueprint) -> SpaceViewId {
         let id = space_view.id;
 
         // Find a unique name for the space view
@@ -376,7 +381,7 @@ impl Viewport {
         }
     }
 
-    fn should_auto_add_space_view(&self, space_view_candidate: &SpaceView) -> bool {
+    fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
         for existing_view in self.space_views.values() {
             if existing_view.space_path == space_view_candidate.space_path {
                 if existing_view.entities_determined_by_user {
@@ -442,12 +447,14 @@ impl Viewport {
                     ui.available_size(),
                     &visible_space_views,
                     &self.space_views,
+                    &state.space_view_states,
                 )
             });
 
         ui.scope(|ui| {
             let mut tab_viewer = TabViewer {
                 ctx,
+                viewport_state: state,
                 space_views: &mut self.space_views,
                 maximized: &mut self.maximized,
             };
@@ -516,6 +523,7 @@ impl Viewport {
 #[derive(Clone, Default)]
 pub struct ViewportState {
     pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
+    pub(crate) space_view_states: HashMap<SpaceViewId, SpaceViewState>,
 }
 
 impl ViewportState {
@@ -626,8 +634,9 @@ fn visibility_button_ui(
 // ----------------------------------------------------------------------------
 
 struct TabViewer<'a, 'b> {
+    viewport_state: &'a mut ViewportState,
     ctx: &'a mut ViewerContext<'b>,
-    space_views: &'a mut HashMap<SpaceViewId, SpaceView>,
+    space_views: &'a mut HashMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
 }
 
@@ -642,12 +651,23 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let highlights =
             highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);
-        let space_view = self
+        let space_view_blueprint = self
             .space_views
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
+        let space_view_state = self
+            .viewport_state
+            .space_view_states
+            .entry(*space_view_id)
+            .or_default();
 
-        space_view_ui(self.ctx, ui, space_view, &highlights);
+        space_view_ui(
+            self.ctx,
+            ui,
+            space_view_blueprint,
+            space_view_state,
+            &highlights,
+        );
 
         Default::default()
     }
@@ -701,6 +721,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_id = *space_view_id;
 
         let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
+        let Some(space_view_state) = self.viewport_state.space_view_states.get(&space_view_id) else { return; };
 
         let num_space_views = tiles.tiles.values().filter(|tile| tile.is_pane()).count();
 
@@ -733,7 +754,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         // Show help last, since not all space views have help text
-        help_text_ui(ui, self.ctx.re_ui, space_view);
+        help_text_ui(ui, self.ctx.re_ui, space_view, space_view_state);
     }
 
     // Styling:
@@ -761,11 +782,16 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 }
 
-fn help_text_ui(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, space_view: &SpaceView) {
-    let help_text = match space_view.category {
+fn help_text_ui(
+    ui: &mut egui::Ui,
+    re_ui: &re_ui::ReUi,
+    space_view_blueprint: &SpaceViewBlueprint,
+    space_view_state: &SpaceViewState,
+) {
+    let help_text = match space_view_blueprint.category {
         ViewCategory::TimeSeries => Some(crate::ui::view_time_series::help_text(re_ui)),
         ViewCategory::BarChart => Some(crate::ui::view_bar_chart::help_text(re_ui)),
-        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text(re_ui)),
+        ViewCategory::Spatial => Some(space_view_state.state_spatial.help_text(re_ui)),
         ViewCategory::TextBox | ViewCategory::Text | ViewCategory::Tensor => None,
     };
 
@@ -777,7 +803,8 @@ fn help_text_ui(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, space_view: &SpaceView) 
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view: &mut SpaceView,
+    space_view_blueprint: &mut SpaceViewBlueprint,
+    space_view_state: &mut SpaceViewState,
     space_view_highlights: &SpaceViewHighlights,
 ) {
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
@@ -787,7 +814,7 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(ctx, ui, latest_at, space_view_highlights);
+    space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
 }
 
 // ----------------------------------------------------------------------------

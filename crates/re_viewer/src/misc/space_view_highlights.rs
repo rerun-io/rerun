@@ -9,7 +9,7 @@ use re_viewer_context::{
     HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SelectionState, SpaceViewId,
 };
 
-use crate::ui::SpaceView;
+use crate::ui::SpaceViewBlueprint;
 
 /// Highlights of a specific entity path in a specific space view.
 ///
@@ -90,7 +90,7 @@ impl SpaceViewHighlights {
 pub fn highlights_for_space_view(
     selection_state: &SelectionState,
     space_view_id: SpaceViewId,
-    space_views: &HashMap<SpaceViewId, SpaceView>,
+    space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> SpaceViewHighlights {
     crate::profile_function!();
 
