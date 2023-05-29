@@ -12,7 +12,11 @@ async fn main() -> anyhow::Result<()> {
     // Direct `log` calls to stderr
     re_log::setup_native_logging();
 
-    // Listen for SDK connection
+    // Log crashes and signals, and send them to analytics if
+    // the `analytics` feature is on in `Cargo.toml`
+    re_crash_handler::install_crash_handlers(re_viewer::build_info());
+
+    // Listen for TCP connections from logging SDKs
     let rx = re_sdk_comms::serve(
         "0.0.0.0",
         re_sdk_comms::DEFAULT_SERVER_PORT,

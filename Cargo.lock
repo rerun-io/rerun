@@ -1675,6 +1675,7 @@ dependencies = [
  "eframe",
  "egui",
  "mimalloc",
+ "re_crash_handler",
  "re_log",
  "re_memory",
  "re_sdk_comms",

@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
+re_crash_handler = { path = "../../../crates/re_crash_handler" }
 re_log = { path = "../../../crates/re_log" }
 re_memory = { path = "../../../crates/re_memory" }
 re_viewer = { path = "../../../crates/re_viewer", default-features = false, features = [
