@@ -2,16 +2,16 @@ use arrow2_convert::field::ArrowField;
 use re_data_store::store_one_component;
 use re_log_types::{Component, DataCell, DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::SpaceViewId;
-
-use crate::blueprint_components::{
-    panel::PanelState,
-    space_view::SpaceViewComponent,
-    viewport::{
-        AutoSpaceViews, SpaceViewMaximized, SpaceViewVisibility, ViewportLayout, VIEWPORT_PATH,
+use re_viewport::{
+    blueprint_components::{
+        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, SpaceViewVisibility,
+        ViewportLayout, VIEWPORT_PATH,
     },
+    SpaceViewBlueprint, Viewport,
 };
 
-use super::{Blueprint, SpaceView, Viewport};
+use super::Blueprint;
+use crate::blueprint_components::panel::PanelState;
 
 // Resolving and applying updates
 impl Blueprint {
@@ -73,8 +73,8 @@ pub fn sync_panel_expanded(
 
 pub fn sync_space_view(
     blueprint_db: &mut re_data_store::LogDb,
-    space_view: &SpaceView,
-    snapshot: Option<&SpaceView>,
+    space_view: &SpaceViewBlueprint,
+    snapshot: Option<&SpaceViewBlueprint>,
 ) {
     if Some(space_view) != snapshot {
         let entity_path = EntityPath::from(format!(

@@ -2,28 +2,29 @@ use ahash::HashMap;
 
 use re_data_store::{query_timeless_single, EntityPath};
 use re_viewer_context::SpaceViewId;
-
-use crate::blueprint_components::{
-    panel::PanelState,
-    space_view::SpaceViewComponent,
-    viewport::{
-        AutoSpaceViews, SpaceViewMaximized, SpaceViewVisibility, ViewportLayout, VIEWPORT_PATH,
+use re_viewport::{
+    blueprint_components::{
+        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, SpaceViewVisibility,
+        ViewportLayout, VIEWPORT_PATH,
     },
+    SpaceViewBlueprint, Viewport,
 };
 
-use super::{Blueprint, SpaceView, Viewport};
+use super::Blueprint;
+use crate::blueprint_components::panel::PanelState;
 
 impl Blueprint {
     pub fn from_db(egui_ctx: &egui::Context, blueprint_db: &re_data_store::LogDb) -> Self {
         let mut ret = Self::new(egui_ctx);
 
-        let space_views: HashMap<SpaceViewId, SpaceView> = if let Some(space_views) = blueprint_db
-            .entity_db
-            .tree
-            .children
-            .get(&re_data_store::EntityPathPart::Name(
-                SpaceViewComponent::SPACEVIEW_PREFIX.into(),
-            )) {
+        let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
+            blueprint_db
+                .entity_db
+                .tree
+                .children
+                .get(&re_data_store::EntityPathPart::Name(
+                    SpaceViewComponent::SPACEVIEW_PREFIX.into(),
+                )) {
             space_views
                 .children
                 .values()
@@ -61,14 +62,17 @@ fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::LogDb) -> O
         .map(|p| p.expanded)
 }
 
-fn load_space_view(path: &EntityPath, blueprint_db: &re_data_store::LogDb) -> Option<SpaceView> {
+fn load_space_view(
+    path: &EntityPath,
+    blueprint_db: &re_data_store::LogDb,
+) -> Option<SpaceViewBlueprint> {
     query_timeless_single::<SpaceViewComponent>(&blueprint_db.entity_db.data_store, path)
         .map(|c| c.space_view)
 }
 
 fn load_viewport(
     blueprint_db: &re_data_store::LogDb,
-    space_views: HashMap<SpaceViewId, SpaceView>,
+    space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> Viewport {
     let auto_space_views = query_timeless_single::<AutoSpaceViews>(
         &blueprint_db.entity_db.data_store,

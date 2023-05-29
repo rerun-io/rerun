@@ -1,0 +1,7 @@
+# Pip packages all developers need
+
+-r ../rerun_py/requirements-build.txt
+-r ../rerun_py/requirements-doc.txt
+-r ../rerun_py/requirements-lint.txt
+
+google-cloud-storage==2.9.0 # for scripts/upload_image.py

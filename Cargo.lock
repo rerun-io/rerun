@@ -1932,7 +1932,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12f597d56c1bd55a811a1be189459e8fad2bbc272616375602443bdfb37fa774"
 dependencies = [
  "bytemuck",
- "mint",
  "serde",
 ]
 
@@ -2802,12 +2801,6 @@ dependencies = [
  "adler",
  "simd-adler32",
 ]
-
-[[package]]
-name = "mint"
-version = "0.5.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e53debba6bda7a793e5f99b8dacf19e626084f525f7829104ba9898f367d85ff"
 
 [[package]]
 name = "mio"
@@ -4228,6 +4221,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_time_panel"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "egui",
+ "itertools",
+ "puffin",
+ "re_arrow_store",
+ "re_data_store",
+ "re_data_ui",
+ "re_log_types",
+ "re_ui",
+ "re_viewer_context",
+ "serde",
+ "time",
+ "vec1",
+]
+
+[[package]]
 name = "re_tuid"
 version = "0.7.0-alpha.0"
 dependencies = [
@@ -4267,23 +4278,13 @@ dependencies = [
  "anyhow",
  "arrow2",
  "arrow2_convert",
- "bytemuck",
  "cfg-if",
  "cocoa",
  "eframe",
  "egui",
  "egui-wgpu",
- "egui_extras",
- "egui_tiles",
- "enumset",
- "glam",
- "half 2.2.1",
  "image",
  "itertools",
- "lazy_static",
- "macaw",
- "ndarray",
- "nohash-hasher",
  "objc",
  "poll-promise",
  "puffin",
@@ -4300,20 +4301,16 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_query",
  "re_renderer",
  "re_smart_channel",
- "re_tensor_ops",
+ "re_time_panel",
  "re_ui",
  "re_viewer_context",
+ "re_viewport",
  "re_ws_comms",
  "rfd",
  "serde",
- "slotmap",
- "smallvec",
- "thiserror",
  "time",
- "vec1",
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
@@ -4350,6 +4347,49 @@ dependencies = [
  "slotmap",
  "thiserror",
  "uuid",
+ "wgpu",
+]
+
+[[package]]
+name = "re_viewport"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "ahash 0.8.3",
+ "anyhow",
+ "arrow2",
+ "arrow2_convert",
+ "bytemuck",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "egui_tiles",
+ "enumset",
+ "glam",
+ "half 2.2.1",
+ "image",
+ "itertools",
+ "lazy_static",
+ "macaw",
+ "ndarray",
+ "nohash-hasher",
+ "puffin",
+ "re_arrow_store",
+ "re_data_store",
+ "re_data_ui",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tensor_ops",
+ "re_time_panel",
+ "re_ui",
+ "re_viewer_context",
+ "serde",
+ "slotmap",
+ "smallvec",
+ "thiserror",
  "wgpu",
 ]
 
@@ -4515,6 +4555,8 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_viewer",
+ "re_viewer_context",
+ "re_viewport",
  "re_web_viewer_server",
  "re_ws_comms",
  "rerun",

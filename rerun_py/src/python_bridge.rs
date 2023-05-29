@@ -11,13 +11,11 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_viewer::{
-    blueprint_components::{
-        panel::PanelState,
-        space_view::SpaceViewComponent,
-        viewport::{AutoSpaceViews, SpaceViewId, VIEWPORT_PATH},
-    },
-    SpaceView, ViewCategory,
+use re_viewer::blueprint_components::panel::PanelState;
+use re_viewer_context::SpaceViewId;
+use re_viewport::{
+    blueprint_components::{AutoSpaceViews, SpaceViewComponent, VIEWPORT_PATH},
+    SpaceViewBlueprint, ViewCategory,
 };
 
 use re_log_types::{DataRow, RecordingType};
@@ -1175,7 +1173,7 @@ fn add_space_view(
 ) {
     let Some(blueprint) = get_blueprint_recording(blueprint) else { return };
 
-    let mut space_view = SpaceView::new(
+    let mut space_view = SpaceViewBlueprint::new(
         ViewCategory::Spatial,
         &origin.into(),
         &entity_paths
