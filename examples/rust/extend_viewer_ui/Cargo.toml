@@ -9,7 +9,10 @@ publish = false
 [dependencies]
 re_log = { path = "../../../crates/re_log" }
 re_memory = { path = "../../../crates/re_memory" }
-re_viewer = { path = "../../../crates/re_viewer" }
+re_viewer = { path = "../../../crates/re_viewer", default-features = false, features = [
+  # "analytics" # Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
+  "webgl",
+] }
 # We need re_sdk_comms to receive log events from and SDK:
 re_sdk_comms = { path = "../../../crates/re_sdk_comms", features = ["server"] }
 

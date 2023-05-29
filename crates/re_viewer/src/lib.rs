@@ -79,6 +79,7 @@ pub fn build_info() -> re_build_info::BuildInfo {
 // ---------------------------------------------------------------------------
 
 /// Where is this App running in?
+/// Used for analytics.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppEnvironment {
     /// Created from the Rerun Python SDK.

@@ -1,11 +1,15 @@
 use re_viewer::external::{arrow2, re_arrow_store, re_data_store, re_log_types, re_query};
 
+// By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
+// and prune the data store when it goes above a certain limit.
+// By using `mimalloc` we get faster allocations.
 #[global_allocator]
 static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
     re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Direct `log` calls to stderr
     re_log::setup_native_logging();
 
     // Listen for SDK connection
@@ -29,6 +33,7 @@ async fn main() -> anyhow::Result<()> {
         persist_state: true,
     };
 
+    // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
     let app_env = re_viewer::AppEnvironment::Custom("My Wrapper".to_owned());
 
     let window_title = "My Customized Viewer";
@@ -62,9 +67,11 @@ struct MyApp {
 
 impl eframe::App for MyApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        // Store viewer state on disk
         self.rerun_app.save(storage);
     }
 
+    /// Called whenever we need repainting, which could be 60 Hz.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // First add our panel(s):
         egui::SidePanel::right("my_side_panel")
@@ -94,9 +101,8 @@ impl MyApp {
     }
 }
 
+/// Show the content of the log database.
 fn log_db_ui(ui: &mut egui::Ui, log_db: &re_data_store::LogDb) {
-    // Shows how you can inspect the loaded data:
-
     if let Some(recording_info) = log_db.recording_info() {
         ui.label(format!("Application ID: {}", recording_info.application_id));
     }
@@ -131,7 +137,7 @@ fn entity_ui(
         .data_store
         .all_components(&timeline, entity_path)
     {
-        components.sort();
+        components.sort(); // Make the order predicatable
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
                 component_ui(ui, log_db, timeline, entity_path, component);
@@ -161,19 +167,22 @@ fn component_ui(
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 // Iterate over all the instances (e.g. all the points in the point cloud):
-                for instance_key in component.iter_instance_keys().unwrap() {
-                    if let Some(value) = component.lookup_arrow(&instance_key) {
-                        use re_log_types::SizeBytes as _;
+                if let Ok(instance_keys) = component.iter_instance_keys() {
+                    for instance_key in instance_keys {
+                        if let Some(value) = component.lookup_arrow(&instance_key) {
+                            use re_log_types::SizeBytes as _;
 
-                        let bytes = value.total_size_bytes();
-                        if bytes < 256 {
-                            // For small items, print them
-                            let mut repr = String::new();
-                            let display = arrow2::array::get_display(value.as_ref(), "null");
-                            display(&mut repr, 0).unwrap();
-                            ui.label(repr);
-                        } else {
-                            ui.label(format!("{bytes} bytes"));
+                            let bytes = value.total_size_bytes();
+                            if bytes < 256 {
+                                // Print small items:
+                                let mut repr = String::new();
+                                let display = arrow2::array::get_display(value.as_ref(), "null");
+                                if display(&mut repr, 0).is_ok() {
+                                    ui.label(repr);
+                                }
+                            } else {
+                                ui.label(format!("{bytes} bytes"));
+                            }
                         }
                     }
                 }

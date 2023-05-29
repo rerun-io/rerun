@@ -10,4 +10,4 @@ The example starts an SDK server which the Python or Rust logging SDK can connec
 ## Testing it
 Start it with `cargo run -p extend_viewer_ui`.
 
-The put some data into it with: `cargo run -p minimal_options -- --connect`
+Then put some data into it with: `cargo run -p minimal_options -- --connect`
