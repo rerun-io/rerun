@@ -1,3 +1,5 @@
+//! Detect and handle signals, panics, and other crashes, making sure to log them and optionally send them off to analytics.
+
 use re_build_info::BuildInfo;
 
 use parking_lot::Mutex;
@@ -180,10 +182,7 @@ fn install_signal_handler(build_info: BuildInfo) {
 
         // Send analytics - this also sleeps a while to give the analytics time to send the event.
         #[cfg(feature = "analytics")]
-        {
-            let build_info = BUILD_INFO
-                .lock()
-                .unwrap_or_else(|| re_build_info::build_info!());
+        if let Some(build_info) = *BUILD_INFO.lock() {
             send_signal_analytics(build_info, signal_name, callstack);
         }
 

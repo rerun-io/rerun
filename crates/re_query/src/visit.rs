@@ -74,7 +74,7 @@ macro_rules! create_visitor {
             crate::profile_function!();
 
             ::itertools::izip!(
-                self.primary.iter_instance_keys()?,
+                self.primary.iter_instance_keys(),
                 self.primary.iter_values::<Primary>()?,
                 $(
                     self.iter_component::<$CC>()?,

@@ -21,6 +21,7 @@ fn log_filter() -> String {
     rust_log
 }
 
+/// Directs [`log`] calls to stderr.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn setup_native_logging() {
     if std::env::var("RUST_BACKTRACE").is_err() {
