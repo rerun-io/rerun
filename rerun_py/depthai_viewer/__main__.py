@@ -2,12 +2,12 @@
 
 import os
 import shutil
-import sysconfig
 import subprocess
 import sys
+import sysconfig
 import traceback
 
-from depthai_viewer import bindings, unregister_shutdown
+from depthai_viewer import unregister_shutdown
 from depthai_viewer import version as depthai_viewer_version  # type: ignore[attr-defined]
 
 
@@ -37,7 +37,7 @@ def create_venv_and_install_dependencies() -> str:
                 [
                     pip_executable,
                     "install",
-                    "git+https://github.com/luxonis/depthai.git@ac5b94eee908f5ea00c942e185fa135af771f82e#subdirectory=depthai_sdk",
+                    "git+https://github.com/luxonis/depthai.git@a8dc6e5c26be6d81b8d539bdeb4661087a1d0519#subdirectory=depthai_sdk",
                 ],
                 check=True,
             )
@@ -98,7 +98,10 @@ def main() -> None:
         [
             python_exe,
             "-c",
-            f"from depthai_viewer import bindings, unregister_shutdown; import sys; unregister_shutdown(); sys.exit(bindings.main(sys.argv, r'{python_exe}'))",
+            f"""
+from depthai_viewer import bindings, unregister_shutdown;
+import sys; unregister_shutdown(); sys.exit(bindings.main(sys.argv, r'{python_exe}'))
+""",
         ]
         + sys.argv[1:]
     )
