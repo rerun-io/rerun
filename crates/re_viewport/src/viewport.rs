@@ -12,11 +12,9 @@ use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerConte
 use crate::{
     data_blueprint::DataBlueprintGroup,
     space_info::SpaceInfoCollection,
-    space_view::SpaceViewBlueprint,
-    space_view::SpaceViewState,
+    space_view::{SpaceViewBlueprint, SpaceViewState},
     space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::all_possible_space_views,
-    space_view_heuristics::default_created_space_views,
+    space_view_heuristics::{all_possible_space_views, default_created_space_views},
     space_view_highlights::{highlights_for_space_view, SpaceViewHighlights},
     view_category::ViewCategory,
 };
