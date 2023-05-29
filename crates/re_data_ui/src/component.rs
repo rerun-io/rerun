@@ -46,7 +46,7 @@ impl DataUi for EntityComponentWithInstances {
         if num_instances == 0 {
             ui.weak("(empty)");
         } else if num_instances == 1 {
-            if let Some(instance_key) = instance_keys.get(0) {
+            if let Some(instance_key) = instance_keys.first() {
                 ctx.component_ui_registry.ui(
                     ctx,
                     ui,
