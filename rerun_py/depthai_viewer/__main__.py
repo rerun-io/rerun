@@ -7,6 +7,7 @@ import subprocess
 import sys
 import traceback
 
+from depthai_viewer import bindings, unregister_shutdown
 from depthai_viewer import version as depthai_viewer_version  # type: ignore[attr-defined]
 
 
@@ -92,6 +93,7 @@ def create_venv_and_install_dependencies() -> str:
 def main() -> None:
     python_exe = create_venv_and_install_dependencies()
     # Call the bindings.main using the Python executable in the venv
+    unregister_shutdown()
     subprocess.call(
         [
             python_exe,

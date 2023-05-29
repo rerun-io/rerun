@@ -407,5 +407,4 @@ class DepthaiViewerBack:
 
 
 if __name__ == "__main__":
-    viewer.spawn(connect=True)
     DepthaiViewerBack()
