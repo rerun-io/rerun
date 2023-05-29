@@ -114,7 +114,6 @@ class SelectedDevice:
         imu = self.oak_cam.device.getConnectedIMU()
         imu = ImuKind.NINE_AXIS if "BNO" in imu else None if imu == "NONE" else ImuKind.SIX_AXIS
         device_properties = DeviceProperties(id=self.id, imu=imu)
-        calib_data = self.oak_cam.device.readCalibration()
         for cam in connected_cam_features:
             device_properties.cameras.append(
                 CameraFeatures(
