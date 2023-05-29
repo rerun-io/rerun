@@ -1,3 +1,5 @@
+//! This example shows how to wrap the Rerun Viewer in your own GUI.
+
 use re_viewer::external::{
     arrow2, eframe, egui, re_arrow_store, re_data_store, re_log, re_log_types, re_memory, re_query,
 };
@@ -18,7 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the `analytics` feature is on in `Cargo.toml`
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
-    // Listen for TCP connections from logging SDKs
+    // Listen for TCP connections from logging SDKs.
+    // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
     let rx = re_sdk_comms::serve(
         "0.0.0.0",
         re_sdk_comms::DEFAULT_SERVER_PORT,
