@@ -56,7 +56,6 @@ pub struct View3DState {
 
     /// Filled in at the start of each frame
     pub(crate) space_specs: SpaceSpecs,
-    space_camera: Vec<SpaceCamera3D>, // TODO(andreas): remove this once camera meshes are gone
 }
 
 impl Default for View3DState {
@@ -72,7 +71,6 @@ impl Default for View3DState {
             show_bbox: false,
             last_eye_interact_time: f64::NEG_INFINITY,
             space_specs: Default::default(),
-            space_camera: Default::default(),
         }
     }
 }
@@ -297,8 +295,6 @@ pub fn view_3d(
     entity_properties: &EntityPropertyMap,
 ) {
     crate::profile_function!();
-
-    state.state_3d.space_camera = scene.space_cameras.clone();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
