@@ -1,3 +1,5 @@
+//! Detect and handle signals, panics, and other crashes, making sure to log them and optionally send them off to analytics.
+
 use re_build_info::BuildInfo;
 
 use parking_lot::Mutex;
