@@ -23,7 +23,7 @@ re_viewer = { path = "../../../crates/re_viewer", default-features = false, feat
 re_sdk_comms = { path = "../../../crates/re_sdk_comms", features = ["server"] }
 
 anyhow = "1.0"
-eframe = { verison = "0.22", default_features = false, features = ["wgpu"] }
+eframe = { version = "0.22", default_features = false, features = ["wgpu"] }
 egui = "0.22"
 
 # mimalloc is a much faster allocator:
