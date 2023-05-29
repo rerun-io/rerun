@@ -14,6 +14,7 @@ mod space_view_entity_picker;
 mod space_view_heuristics;
 mod space_view_highlights;
 mod space_view_type;
+mod space_view_type_impl;
 mod transform_cache;
 mod view_bar_chart;
 mod view_category;

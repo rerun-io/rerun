@@ -46,10 +46,13 @@ pub trait SpaceViewType {
 }
 
 /// State of a space view.
-pub trait SpaceViewState {}
+pub trait SpaceViewState: std::any::Any {
+    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+}
 
 /// A scene is a collection of scene elements.
-pub struct Scene(Vec<Box<dyn SceneElement>>);
+pub struct Scene(pub Vec<Box<dyn SceneElement>>); // TODO: use tinyvec
 
 impl Scene {
     /// List of all archetypes this type of view supports.
