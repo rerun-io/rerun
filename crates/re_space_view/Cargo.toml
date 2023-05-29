@@ -25,6 +25,7 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 
 egui.workspace = true
+ahash.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true

@@ -4203,6 +4203,7 @@ dependencies = [
 name = "re_space_view"
 version = "0.7.0-alpha.0"
 dependencies = [
+ "ahash 0.8.3",
  "egui",
  "puffin",
  "re_arrow_store",

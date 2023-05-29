@@ -2,6 +2,11 @@
 //!
 //! Defines a framework & utilities for space views in the Rerun viewer.
 //! Does not implement any concrete space view.
+
+mod space_view_type;
+mod space_view_type_impl;
+mod space_view_type_registry;
+
 // ---------------------------------------------------------------------------
 
 /// Profiling macro for feature "puffin"
