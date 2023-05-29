@@ -1,6 +1,9 @@
 //! Miscellaneous tools to format and parse numbers, durations, etc.
 
 pub mod arrow;
+mod time;
+
+pub use time::next_grid_tick_magnitude_ns;
 
 // --- Numbers ---
 

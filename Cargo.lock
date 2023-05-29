@@ -4208,11 +4208,11 @@ dependencies = [
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
+ "re_format",
  "re_log_types",
  "re_ui",
  "re_viewer_context",
  "serde",
- "time",
  "vec1",
 ]
 
@@ -4361,7 +4361,6 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_tensor_ops",
- "re_time_panel",
  "re_ui",
  "re_viewer_context",
  "serde",

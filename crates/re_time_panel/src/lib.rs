@@ -4,14 +4,11 @@
 //! as well as all necessary ui elements that make it up.
 
 mod data_density_graph;
-mod format_time; // TODO(andreas): Move to re_format
 mod paint_ticks;
 mod time_axis;
 mod time_control_ui;
 mod time_ranges_ui;
 mod time_selection_ui;
-
-pub use format_time::{format_time_compact, next_grid_tick_magnitude_ns};
 
 use std::ops::RangeInclusive;
 
@@ -328,6 +325,7 @@ impl TimePanel {
         time_marker_ui(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
+            ctx.re_ui,
             ui,
             &time_area_painter,
             &timeline_rect,
@@ -627,6 +625,7 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
             time_marker_ui(
                 &time_ranges_ui,
                 &mut ctx.rec_cfg.time_ctrl,
+                ctx.re_ui,
                 ui,
                 &painter,
                 &time_range_rect,
@@ -987,6 +986,7 @@ fn interact_with_streams_rect(
 fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
+    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
@@ -1033,7 +1033,7 @@ fn time_marker_ui(
                 } else {
                     ui.visuals().widgets.inactive.fg_stroke
                 };
-                paint_time_cursor(
+                re_ui.paint_time_cursor(
                     time_area_painter,
                     x,
                     timeline_rect.top()..=ui.max_rect().bottom(),
@@ -1075,34 +1075,6 @@ fn time_marker_ui(
             }
         }
     }
-}
-
-pub fn paint_time_cursor(
-    painter: &egui::Painter,
-    x: f32,
-    y: RangeInclusive<f32>,
-    stroke: egui::Stroke,
-) {
-    let y_min = *y.start();
-    let y_max = *y.end();
-
-    let stroke = egui::Stroke {
-        width: 1.5 * stroke.width,
-        color: stroke.color,
-    };
-
-    let w = 10.0;
-    let triangle = vec![
-        pos2(x - 0.5 * w, y_min), // left top
-        pos2(x + 0.5 * w, y_min), // right top
-        pos2(x, y_min + w),       // bottom
-    ];
-    painter.add(egui::Shape::convex_polygon(
-        triangle,
-        stroke.color,
-        egui::Stroke::NONE,
-    ));
-    painter.vline(x, (y_min + w)..=y_max, stroke);
 }
 
 // ---------------------------------------------------------------------------
