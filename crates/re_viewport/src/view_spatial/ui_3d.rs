@@ -3,8 +3,9 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
+use re_components::ViewCoordinates;
 use re_data_store::EntityPropertyMap;
-use re_log_types::{EntityPath, ViewCoordinates};
+use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Size,

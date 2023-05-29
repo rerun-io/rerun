@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
+use re_components::Tensor;
 use re_data_store::EntityPath;
-use re_log_types::component_types::{self, Tensor};
 use re_viewer_context::{SceneQuery, ViewerContext};
 
 /// A bar chart scene, with everything needed to render it.
@@ -29,7 +29,7 @@ impl SceneBarChart {
             }
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            let tensor = store.query_latest_component::<component_types::Tensor>(ent_path, &query);
+            let tensor = store.query_latest_component::<Tensor>(ent_path, &query);
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {

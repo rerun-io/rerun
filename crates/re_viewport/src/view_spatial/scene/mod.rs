@@ -6,11 +6,9 @@ use std::{
 use ahash::HashMap;
 
 use nohash_hasher::IntMap;
+use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
-use re_log_types::{
-    component_types::{ClassId, InstanceKey, KeypointId},
-    DecodedTensor, DrawOrder, EntityPathHash,
-};
+use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_viewer_context::{auto_color, AnnotationMap, Annotations, SceneQuery, ViewerContext};
 

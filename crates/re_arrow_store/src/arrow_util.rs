@@ -224,7 +224,7 @@ impl ArrayExt for dyn Array {
 
 #[test]
 fn test_clean_for_polars_nomodify() {
-    use re_log_types::datagen::build_some_colors;
+    use re_components::datagen::build_some_colors;
     use re_log_types::DataCell;
 
     // Colors don't need polars cleaning
@@ -237,7 +237,8 @@ fn test_clean_for_polars_nomodify() {
 mod tests {
     use arrow2::datatypes::{DataType, Field, UnionMode};
     use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-    use re_log_types::{component_types::Vec3D, Component, DataCell};
+    use re_components::Vec3D;
+    use re_log_types::DataCell;
 
     use crate::ArrayExt;
 
@@ -248,7 +249,7 @@ mod tests {
         Vec3D(Vec3D),
     }
 
-    impl Component for TestComponentWithUnionAndFixedSizeList {
+    impl re_log_types::Component for TestComponentWithUnionAndFixedSizeList {
         fn name() -> re_log_types::ComponentName {
             "test_component_with_union_and_fixed_size_list".into()
         }

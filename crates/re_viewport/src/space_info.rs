@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
+use re_components::{DisconnectedSpace, Pinhole, Transform3D};
 use re_data_store::{log_db::EntityDb, EntityPath, EntityTree};
-use re_log_types::component_types::{DisconnectedSpace, Pinhole, Transform3D};
 
 use crate::transform_cache::UnreachableTransform;
 

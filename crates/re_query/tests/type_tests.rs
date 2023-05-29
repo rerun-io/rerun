@@ -1,7 +1,7 @@
 #[cfg(feature = "polars")]
 #[test]
 fn test_transform_to_polars() {
-    use re_log_types::component_types::{Quaternion, Transform3D, TranslationRotationScale3D};
+    use re_components::{Quaternion, Transform3D, TranslationRotationScale3D};
 
     let transforms = vec![Some(Transform3D::from_parent(TranslationRotationScale3D {
         rotation: Some(

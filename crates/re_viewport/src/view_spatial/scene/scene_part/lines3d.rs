@@ -1,8 +1,5 @@
+use re_components::{ColorRGBA, Component as _, InstanceKey, LineStrip3D, Radius};
 use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, LineStrip3D, Radius},
-    Component,
-};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};

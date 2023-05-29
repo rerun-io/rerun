@@ -5,11 +5,11 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Point2D, Vec3D},
+use re_components::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d, build_some_vec3d},
-    entity_path, Component, DataRow, EntityPath, Index, RowId, TimeType, Timeline,
+    ColorRGBA, InstanceKey, Point2D, Vec3D,
 };
+use re_log_types::{entity_path, Component, DataRow, EntityPath, Index, RowId, TimeType, Timeline};
 use re_query::query_entity_with_primary;
 
 // ---

@@ -1,12 +1,9 @@
 use re_arrow_store::{LatestAtQuery, TimeInt};
-use re_data_store::{EntityPath, LogDb, Timeline};
-use re_log_types::{
-    component_types::{
-        Box3D, LineStrip2D, LineStrip3D, Pinhole, Point2D, Point3D, Rect2D, Scalar, Tensor,
-        TextBox, TextEntry, Transform3D,
-    },
-    Arrow3D, Component, Mesh3D,
+use re_components::{
+    Arrow3D, Box3D, Component as _, LineStrip2D, LineStrip3D, Mesh3D, Pinhole, Point2D, Point3D,
+    Rect2D, Scalar, Tensor, TextBox, TextEntry, Transform3D,
 };
+use re_data_store::{EntityPath, LogDb, Timeline};
 
 #[derive(
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,

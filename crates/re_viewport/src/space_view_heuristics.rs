@@ -4,11 +4,9 @@ use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
+use re_components::{DisconnectedSpace, Pinhole, Tensor};
 use re_data_store::{ComponentName, EntityPath};
-use re_log_types::{
-    component_types::{DisconnectedSpace, Pinhole, Tensor},
-    Component,
-};
+use re_log_types::Component as _;
 use re_viewer_context::ViewerContext;
 
 use crate::{
@@ -187,7 +185,7 @@ fn default_created_space_views_from_candidates(
                 if let Some(tensor) = store.query_latest_component::<Tensor>(entity_path, &query) {
                     if let Some([height, width, _]) = tensor.image_height_width_channels() {
                         if store
-                            .query_latest_component::<re_log_types::DrawOrder>(entity_path, &query)
+                            .query_latest_component::<re_components::DrawOrder>(entity_path, &query)
                             .is_some()
                         {
                             // Put everything in the same bucket if it has a draw order.
@@ -268,10 +266,10 @@ fn is_default_added_to_space_view(
     timeline: Timeline,
 ) -> bool {
     let ignored_components = [
-        re_log_types::component_types::Transform3D::name(),
-        re_log_types::ViewCoordinates::name(),
-        re_log_types::component_types::InstanceKey::name(),
-        re_log_types::component_types::KeypointId::name(),
+        re_components::Transform3D::name(),
+        re_components::ViewCoordinates::name(),
+        re_components::InstanceKey::name(),
+        re_components::KeypointId::name(),
         DataStore::insert_id_key(),
     ];
 

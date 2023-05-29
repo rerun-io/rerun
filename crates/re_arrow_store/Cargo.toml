@@ -70,6 +70,8 @@ polars-ops = { workspace = true, optional = true, features = [
 
 
 [dev-dependencies]
+re_components = { workspace = true, features = ["arrow_datagen"] }
+
 anyhow.workspace = true
 criterion = "0.5"
 mimalloc.workspace = true

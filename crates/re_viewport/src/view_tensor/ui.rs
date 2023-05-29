@@ -4,11 +4,8 @@ use eframe::emath::Align2;
 use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
+use re_components::{DecodedTensor, Tensor, TensorDimension};
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::{
-    component_types::{self, Tensor},
-    DecodedTensor,
-};
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_viewer_context::{gpu_bridge, TensorStatsCache, ViewerContext};
@@ -498,7 +495,7 @@ pub fn selected_tensor_slice<'a, T: Copy>(
     slice
 }
 
-fn dimension_name(shape: &[component_types::TensorDimension], dim_idx: usize) -> String {
+fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
     let dim = &shape[dim_idx];
     dim.name.as_ref().map_or_else(
         || format!("Dimension {dim_idx} (size={})", dim.size),

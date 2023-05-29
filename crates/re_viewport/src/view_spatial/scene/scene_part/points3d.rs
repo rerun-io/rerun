@@ -1,8 +1,7 @@
-use re_data_store::{EntityPath, InstancePathHash};
-use re_log_types::{
-    component_types::{ClassId, ColorRGBA, InstanceKey, KeypointId, Label, Point3D, Radius},
-    Component,
+use re_components::{
+    ClassId, ColorRGBA, Component as _, InstanceKey, KeypointId, Label, Point3D, Radius,
 };
+use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 

@@ -55,10 +55,8 @@ fn main() {
 }
 
 fn log_messages() {
-    use re_log_types::{
-        datagen::{build_frame_nr, build_some_point2d},
-        LogMsg, TimeInt, TimePoint, Timeline,
-    };
+    use re_components::datagen::{build_frame_nr, build_some_point2d};
+    use re_log_types::{LogMsg, TimeInt, TimePoint, Timeline};
 
     // Note: we use Box in this function so that we also count the "static"
     // part of all the data, i.e. its `std::mem::size_of`.

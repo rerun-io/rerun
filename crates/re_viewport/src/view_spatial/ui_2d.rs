@@ -1,8 +1,8 @@
 use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
+use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityPropertyMap};
-use re_log_types::component_types::Pinhole;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
 

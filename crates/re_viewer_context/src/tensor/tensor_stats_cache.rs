@@ -1,10 +1,10 @@
-use re_log_types::{component_types, Tensor};
+use re_components::{Tensor, TensorId};
 
 use super::TensorStats;
 use crate::Cache;
 
 #[derive(Default)]
-pub struct TensorStatsCache(nohash_hasher::IntMap<component_types::TensorId, TensorStats>);
+pub struct TensorStatsCache(nohash_hasher::IntMap<TensorId, TensorStats>);
 
 impl TensorStatsCache {
     pub fn entry(&mut self, tensor: &Tensor) -> &TensorStats {

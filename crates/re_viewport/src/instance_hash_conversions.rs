@@ -1,5 +1,5 @@
 use re_data_store::InstancePathHash;
-use re_log_types::{component_types::InstanceKey, EntityPathHash};
+use re_log_types::{EntityPathHash, InstanceKey};
 use re_renderer::{PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId};
 
 #[inline]

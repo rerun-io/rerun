@@ -1,7 +1,8 @@
 use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
-use re_log_types::{component_types::Pinhole, EntityPath, ViewCoordinates};
+use re_components::{Pinhole, ViewCoordinates};
+use re_log_types::EntityPath;
 
 /// A logged camera that connects spaces.
 #[derive(Clone, PartialEq)]

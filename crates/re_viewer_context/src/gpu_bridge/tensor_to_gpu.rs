@@ -8,7 +8,7 @@ use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use egui::util::hash;
 use wgpu::TextureFormat;
 
-use re_log_types::component_types::{DecodedTensor, Tensor, TensorData};
+use re_components::{DecodedTensor, Tensor, TensorData};
 use re_renderer::{
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture},
@@ -42,7 +42,7 @@ pub fn tensor_to_gpu(
         tensor.shape()
     ));
 
-    use re_log_types::component_types::TensorDataMeaning;
+    use re_components::TensorDataMeaning;
 
     match tensor.meaning {
         TensorDataMeaning::Unknown => {
@@ -166,7 +166,7 @@ fn class_id_tensor_to_gpu(
             let data: Vec<u8> = (0..(colormap_width * colormap_height))
                 .flat_map(|id| {
                     let color = annotations
-                        .class_description(Some(re_log_types::component_types::ClassId(id as u16)))
+                        .class_description(Some(re_components::ClassId(id as u16)))
                         .annotation_info()
                         .color(None, DefaultColor::TransparentBlack);
                     color.to_array() // premultiplied!

@@ -5,11 +5,11 @@
 //! ```
 
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
-use re_log_types::{
-    component_types::{InstanceKey, Point2D, Rect2D},
+use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Component as _, DataRow, EntityPath, RowId, TimeType,
+    Point2D, Rect2D,
 };
+use re_log_types::{Component as _, DataRow, EntityPath, InstanceKey, RowId, TimeType};
 use re_query::range_entity_with_primary;
 
 fn main() {

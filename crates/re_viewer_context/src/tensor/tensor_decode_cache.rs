@@ -1,8 +1,6 @@
+use re_components::{DecodedTensor, Tensor, TensorId, TensorImageLoadError};
+
 use crate::Cache;
-use re_log_types::{
-    component_types::{Tensor, TensorId, TensorImageLoadError},
-    DecodedTensor,
-};
 
 struct DecodedTensorResult {
     /// Cached `Result` from decoding the `Tensor`

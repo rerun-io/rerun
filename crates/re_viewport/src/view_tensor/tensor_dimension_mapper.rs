@@ -1,4 +1,4 @@
-use re_log_types::component_types::TensorDimension;
+use re_components::TensorDimension;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 
 #[derive(Clone, Copy, PartialEq, Eq)]

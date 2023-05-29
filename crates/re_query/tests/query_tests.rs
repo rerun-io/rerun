@@ -1,12 +1,8 @@
 mod common;
 
 use re_arrow_store::DataStore;
-use re_log_types::{
-    component_types::InstanceKey,
-    component_types::{ColorRGBA, Point2D},
-    datagen::build_frame_nr,
-    Component, DataRow, RowId,
-};
+use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
+use re_log_types::{Component, DataRow, InstanceKey, RowId};
 use re_query::query_entity_with_primary;
 
 #[test]
