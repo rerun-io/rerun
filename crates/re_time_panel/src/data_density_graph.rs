@@ -8,11 +8,9 @@ use std::ops::RangeInclusive;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
 use re_data_store::TimeHistogram;
-use re_data_ui::DataUi;
+use re_data_ui::{item_ui, DataUi};
 use re_log_types::{TimeInt, TimeRange, TimeReal};
 use re_viewer_context::{Item, UiVerbosity, ViewerContext};
-
-use crate::ui::Blueprint;
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -365,7 +363,6 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 pub fn data_density_graph_ui(
     data_dentity_graph_painter: &mut DataDensityGraphPainter,
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
@@ -489,7 +486,6 @@ pub fn data_density_graph_ui(
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
             show_row_ids_tooltip(
                 ctx,
-                blueprint,
                 ui.ctx(),
                 &item,
                 hovered_time_range,
@@ -519,25 +515,35 @@ fn make_brighter(color: Color32) -> Color32 {
 
 fn show_row_ids_tooltip(
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
     egui_ctx: &egui::Context,
     item: &Item,
     time_range: TimeRange,
-    num_messages: usize,
+    num_events: usize,
 ) {
-    if num_messages == 0 {
+    if num_events == 0 {
         return;
     }
 
     egui::show_tooltip_at_pointer(egui_ctx, egui::Id::new("data_tooltip"), |ui| {
-        if num_messages == 1 {
-            ui.label(format!("{num_messages} message"));
+        if num_events == 1 {
+            ui.label(format!("{num_events} event"));
         } else {
-            ui.label(format!("{num_messages} messages"));
+            ui.label(format!("{num_events} events"));
         }
 
-        ui.add_space(8.0);
-        crate::ui::selection_panel::what_is_selected_ui(ui, ctx, blueprint, item);
+        match item {
+            Item::ComponentPath(path) => {
+                item_ui::component_path_button(ctx, ui, path);
+            }
+            Item::InstancePath(_, path) => {
+                item_ui::instance_path_button(ctx, ui, None, path);
+            }
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+                // No extra info. This should never happen, but not worth printing a warning over.
+                // Even if it does go here, the ui after will still look ok.
+            }
+        }
+
         ui.add_space(8.0);
 
         let timeline = *ctx.rec_cfg.time_ctrl.timeline();

@@ -11,7 +11,7 @@ use crate::blueprint_components::{
     },
 };
 
-use super::{Blueprint, SpaceView, Viewport};
+use super::{Blueprint, SpaceViewBlueprint, Viewport};
 
 // Resolving and applying updates
 impl Blueprint {
@@ -73,8 +73,8 @@ pub fn sync_panel_expanded(
 
 pub fn sync_space_view(
     blueprint_db: &mut re_data_store::LogDb,
-    space_view: &SpaceView,
-    snapshot: Option<&SpaceView>,
+    space_view: &SpaceViewBlueprint,
+    snapshot: Option<&SpaceViewBlueprint>,
 ) {
     if Some(space_view) != snapshot {
         let entity_path = EntityPath::from(format!(

@@ -4,18 +4,16 @@ use egui::{
 };
 
 use re_arrow_store::TimeType;
+use re_time_panel::next_grid_tick_magnitude_ns;
 use re_viewer_context::ViewerContext;
 
 use super::SceneTimeSeries;
-use crate::{
-    misc::format_time::next_grid_tick_magnitude_ns,
-    ui::{
-        spaceview_controls::{
-            HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, RESET_VIEW_BUTTON_TEXT,
-            SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
-        },
-        view_time_series::scene::PlotSeriesKind,
+use crate::ui::{
+    spaceview_controls::{
+        HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, RESET_VIEW_BUTTON_TEXT,
+        SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
     },
+    view_time_series::scene::PlotSeriesKind,
 };
 
 // ---
@@ -45,7 +43,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
-#[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct ViewTimeSeriesState;
 
 pub(crate) fn view_time_series(
@@ -181,12 +179,7 @@ pub(crate) fn view_time_series(
         } else {
             ui.visuals().widgets.inactive.fg_stroke
         };
-        crate::ui::time_panel::paint_time_cursor(
-            ui.painter(),
-            time_x,
-            response.rect.y_range(),
-            stroke,
-        );
+        re_time_panel::paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
     }
 
     response
@@ -195,7 +188,7 @@ pub(crate) fn view_time_series(
 fn format_time(time_type: TimeType, time_int: i64) -> String {
     if time_type == TimeType::Time {
         let time = re_log_types::Time::from_ns_since_epoch(time_int);
-        crate::misc::format_time::format_time_compact(time)
+        re_time_panel::format_time_compact(time)
     } else {
         time_type.format(re_log_types::TimeInt::from(time_int))
     }

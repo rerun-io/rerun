@@ -9,7 +9,7 @@ use crate::misc::space_info::SpaceInfoCollection;
 
 use super::{
     view_category::{categorize_entity_path, ViewCategory},
-    SpaceView,
+    SpaceViewBlueprint,
 };
 
 /// Window for adding/removing entities from a space view.
@@ -24,7 +24,7 @@ impl SpaceViewEntityPicker {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view: &mut SpaceView,
+        space_view: &mut SpaceViewBlueprint,
     ) -> bool {
         // This function fakes a modal window, since egui doesn't have them yet: https://github.com/emilk/egui/issues/686
 
@@ -80,7 +80,11 @@ impl SpaceViewEntityPicker {
     }
 }
 
-fn add_entities_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
+fn add_entities_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view: &mut SpaceViewBlueprint,
+) {
     let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
     let tree = &ctx.log_db.entity_db.tree;
     let entities_add_info = create_entity_add_info(ctx, tree, space_view, &spaces_info);
@@ -102,7 +106,7 @@ fn add_entities_tree_ui(
     spaces_info: &SpaceInfoCollection,
     name: &str,
     tree: &EntityTree,
-    space_view: &mut SpaceView,
+    space_view: &mut SpaceViewBlueprint,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     if tree.is_leaf() {
@@ -163,7 +167,7 @@ fn add_entities_line_ui(
     spaces_info: &SpaceInfoCollection,
     name: &str,
     entity_tree: &EntityTree,
-    space_view: &mut SpaceView,
+    space_view: &mut SpaceViewBlueprint,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     ui.horizontal(|ui| {
@@ -298,7 +302,7 @@ struct EntityAddInfo {
 fn create_entity_add_info(
     ctx: &mut ViewerContext<'_>,
     tree: &EntityTree,
-    space_view: &mut SpaceView,
+    space_view: &mut SpaceViewBlueprint,
     spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();

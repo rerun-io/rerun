@@ -5,7 +5,7 @@ use super::SceneTextBox;
 
 // --- Main view ---
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ViewTextBoxState {
     monospace: bool,
     word_wrap: bool,

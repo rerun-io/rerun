@@ -49,7 +49,7 @@ This is a living document. Strive to improve it on each new release.
     * [ ] A one-line summary of the release
     * [ ] A multi-line summary of the release
     * [ ] A gif showing a major new feature
-    * [ ] Run `pip install GitPython && scripts/generate_changelog.py`
+    * [ ] Run `git tag -d latest && git fetch --tags ; pip install GitPython && scripts/generate_changelog.py`
     * [ ] Edit PR descriptions/labels to improve the generated changelog
     * [ ] Copy-paste the results into `CHANGELOG.md`.
     * [ ] Editorialize the changelog if necessary
@@ -73,14 +73,15 @@ This is a living document. Strive to improve it on each new release.
     * https://github.com/rerun-io/rerun/actions/workflows/manual_build_release.yml
     * Choose the release branch, and enter the release number `0.x.y` or `0.x.y-alpha.z`.
 * [ ] Verify the build wheels and web artifacts look correct.
-* [ ] For the final release, manually run the workflow to publish the artifacts to pypi and create the Github release.
+* [ ] For the final release, manually run the workflow to publish the artifacts to pypi and create the GitHub release.
     * https://github.com/rerun-io/rerun/actions/workflows/manual_release.yml
     * Choose the release branch, and enter the release number `0.x.y`
-    * This will create the github release page in draft state.
+    * This will create the GitHub release page in draft state.
     * Publishing this release will create the release tag
-* [ ] Edit the GitHub release at https://github.com/rerun-io/rerun/releases/edit/v0.x.0
+* [ ] Edit the GitHub draft release at https://github.com/rerun-io/rerun/releases
   * [ ] Mark it as as the latest release
   * [ ] Paste in the `CHANGELOG.md`
+* [ ] `git pull --tags && git tag -d latest && git tag -a latest -m 'Latest release' && git push --tags origin latest --force`
 * [ ] Wait for documentation to build: https://docs.rs/releases/queue
 * [ ] Point <https://app.rerun.io/> to the latest release via instructions in <https://www.notion.so/rerunio/Ops-Notes-9232e436b80548a2b252c2312b4e4db6?pvs=4>.
 * [ ] Post on:
@@ -93,7 +94,7 @@ This is a living document. Strive to improve it on each new release.
 Before pushing the release tag:
   * [ ] `just py-run-all`
   * [ ] Test the web viewer:
-      * [ ] `cargo run -p rerun --features web_viewer -- --web-viewer ../nyud.rrd`
+      * [ ] `just py-run-all --fast --separate --web`
       * [ ] Test on:
           * [ ] Chromium
           * [ ] Firefox

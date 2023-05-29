@@ -18,7 +18,10 @@ use itertools::Itertools as _;
 use re_data_store::{EntityPath, EntityPathPart};
 use re_viewer_context::SpaceViewId;
 
-use super::{space_view::SpaceView, view_category::ViewCategory};
+use super::{
+    space_view::{SpaceViewBlueprint, SpaceViewState},
+    view_category::ViewCategory,
+};
 
 #[derive(Clone, Debug)]
 pub struct SpaceMakeInfo {
@@ -47,7 +50,8 @@ enum SplitDirection {
 pub(crate) fn tree_from_space_views(
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
-    space_views: &HashMap<SpaceViewId, SpaceView>,
+    space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
+    space_view_states: &HashMap<SpaceViewId, SpaceViewState>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
         .iter()
@@ -63,15 +67,19 @@ pub(crate) fn tree_from_space_views(
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = match space_view.category {
                 ViewCategory::Spatial => {
-                    let state_spatial = &space_view.view_state.state_spatial;
-                    match *state_spatial.nav_mode.get() {
-                        // This is the only thing where the aspect ratio makes complete sense.
-                        super::view_spatial::SpatialNavigationMode::TwoD => {
-                            let size = state_spatial.scene_bbox_accum.size();
-                            Some(size.x / size.y)
+                    if let Some(space_view_state) = space_view_states.get(space_view_id) {
+                        let state_spatial = &space_view_state.state_spatial;
+                        match *state_spatial.nav_mode.get() {
+                            // This is the only thing where the aspect ratio makes complete sense.
+                            super::view_spatial::SpatialNavigationMode::TwoD => {
+                                let size = state_spatial.scene_bbox_accum.size();
+                                Some(size.x / size.y)
+                            }
+                            // 3D scenes can be pretty flexible
+                            super::view_spatial::SpatialNavigationMode::ThreeD => None,
                         }
-                        // 3D scenes can be pretty flexible
-                        super::view_spatial::SpatialNavigationMode::ThreeD => None,
+                    } else {
+                        None
                     }
                 }
                 ViewCategory::TextBox | ViewCategory::Tensor | ViewCategory::TimeSeries => {

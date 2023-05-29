@@ -16,13 +16,13 @@ use crate::{
     ui::{view_category::categorize_entity_path, ViewCategory},
 };
 
-use super::{view_category::ViewCategorySet, SpaceView};
+use super::{view_category::ViewCategorySet, SpaceViewBlueprint};
 
 /// List out all space views we allow the user to create.
 pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
-) -> Vec<SpaceView> {
+) -> Vec<SpaceViewBlueprint> {
     crate::profile_function!();
 
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
@@ -40,7 +40,7 @@ pub fn all_possible_space_views(
             default_queried_entities_by_category(ctx, candidate_space_path, spaces_info)
                 .iter()
                 .map(|(category, entity_paths)| {
-                    SpaceView::new(*category, candidate_space_path, entity_paths)
+                    SpaceViewBlueprint::new(*category, candidate_space_path, entity_paths)
                 })
                 .collect::<Vec<_>>()
         })
@@ -61,7 +61,7 @@ fn contains_any_image(
 
 fn is_interesting_space_view_at_root(
     data_store: &re_arrow_store::DataStore,
-    candidate: &SpaceView,
+    candidate: &SpaceViewBlueprint,
     query: &LatestAtQuery,
 ) -> bool {
     // Not interesting if it has only data blueprint groups and no direct entities.
@@ -83,7 +83,7 @@ fn is_interesting_space_view_at_root(
 
 fn is_interesting_space_view_not_at_root(
     store: &re_arrow_store::DataStore,
-    candidate: &SpaceView,
+    candidate: &SpaceViewBlueprint,
     categories_with_interesting_roots: &ViewCategorySet,
     query: &LatestAtQuery,
 ) -> bool {
@@ -117,15 +117,15 @@ fn is_interesting_space_view_not_at_root(
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
-) -> Vec<SpaceView> {
+) -> Vec<SpaceViewBlueprint> {
     let candidates = all_possible_space_views(ctx, spaces_info);
     default_created_space_views_from_candidates(&ctx.log_db.entity_db.data_store, candidates)
 }
 
 fn default_created_space_views_from_candidates(
     store: &re_arrow_store::DataStore,
-    candidates: Vec<SpaceView>,
-) -> Vec<SpaceView> {
+    candidates: Vec<SpaceViewBlueprint>,
+) -> Vec<SpaceViewBlueprint> {
     crate::profile_function!();
 
     // All queries are "right most" on the log timeline.
@@ -162,8 +162,11 @@ fn default_created_space_views_from_candidates(
         // For tensors create one space view for each tensor (even though we're able to stack them in one view)
         if candidate.category == ViewCategory::Tensor {
             for entity_path in candidate.data_blueprint.entity_paths() {
-                let mut space_view =
-                    SpaceView::new(ViewCategory::Tensor, entity_path, &[entity_path.clone()]);
+                let mut space_view = SpaceViewBlueprint::new(
+                    ViewCategory::Tensor,
+                    entity_path,
+                    &[entity_path.clone()],
+                );
                 space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
                 space_views.push(space_view);
             }
@@ -224,8 +227,11 @@ fn default_created_space_views_from_candidates(
                         .cloned()
                         .collect_vec();
 
-                    let mut space_view =
-                        SpaceView::new(candidate.category, &candidate.space_path, &entities);
+                    let mut space_view = SpaceViewBlueprint::new(
+                        candidate.category,
+                        &candidate.space_path,
+                        &entities,
+                    );
                     space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
                     space_views.push(space_view);
                 }

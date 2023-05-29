@@ -62,7 +62,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone)]
 pub struct ViewSpatialState {
     /// How the scene is navigated.
     pub nav_mode: EditableAutoValue<SpatialNavigationMode>,
@@ -70,19 +70,15 @@ pub struct ViewSpatialState {
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     ///
     /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
-    #[serde(skip, default = "BoundingBox::nothing")]
     pub scene_bbox_accum: BoundingBox,
 
     /// Estimated bounding box of all data for the last scene query.
-    #[serde(skip, default = "BoundingBox::nothing")]
     pub scene_bbox: BoundingBox,
 
     /// Estimated number of primitives last frame. Used to inform some heuristics.
-    #[serde(skip)]
     pub scene_num_primitives: usize,
 
     /// Last frame's picking result.
-    #[serde(skip)]
     pub previous_picking_result: Option<PickingResult>,
 
     pub(super) state_2d: View2DState,
@@ -90,30 +86,6 @@ pub struct ViewSpatialState {
 
     /// Size of automatically sized objects. None if it wasn't configured.
     auto_size_config: re_renderer::AutoSizeConfig,
-}
-
-// TODO(#2089): This render-related state probably doesn't belong in the blueprint
-// in the blueprint in the first place. But since serde skips it we also have to ignore it.
-// or else we re-store state on every frame. Either way the fact that we don't get it
-// back out of the store is going to cause problems.
-impl PartialEq for ViewSpatialState {
-    fn eq(&self, other: &Self) -> bool {
-        let Self {
-            nav_mode,
-            scene_bbox_accum: _,        // serde-skip
-            scene_bbox: _,              // serde-skip
-            scene_num_primitives: _,    // serde-skip
-            previous_picking_result: _, // serde-skip
-            state_2d,
-            state_3d,
-            auto_size_config,
-        } = self;
-
-        *nav_mode == other.nav_mode
-            && *state_2d == other.state_2d
-            && *state_3d == other.state_3d
-            && *auto_size_config == other.auto_size_config
-    }
 }
 
 impl Default for ViewSpatialState {
