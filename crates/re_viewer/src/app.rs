@@ -849,6 +849,7 @@ impl App {
             }
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
         for log_db in self.log_dbs.values_mut() {
             log_db.clear_by_cutoff(2e9 as i64);
         }
@@ -900,6 +901,7 @@ impl App {
             }
         }
     }
+
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
         let selected_rec_id = self.state.selected_rec_id;

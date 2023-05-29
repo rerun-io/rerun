@@ -280,6 +280,7 @@ impl LogDb {
     }
 
     /// Free up some RAM by forgetting parts of the time that are more than `cutoff` ns in the past.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn clear_by_cutoff(&mut self, cutoff: i64) {
         let cutoff_time = Time::now().nanos_since_epoch() - cutoff;
         let oldest = self.entity_db.data_store.oldest_time_per_timeline();
