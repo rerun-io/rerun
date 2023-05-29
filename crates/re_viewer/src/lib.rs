@@ -6,18 +6,14 @@
 mod app;
 pub mod blueprint_components;
 pub mod env_vars;
-pub mod math;
-mod misc;
+#[cfg(not(target_arch = "wasm32"))]
+mod profiler;
 mod remote_viewer_app;
 mod ui;
 mod viewer_analytics;
 
-pub(crate) use misc::mesh_loader;
 use re_log_types::PythonVersion;
 pub(crate) use ui::{memory_panel, selection_panel};
-
-// TODO(jleibs): Do we want to expose this
-pub use ui::{SpaceViewBlueprint, ViewCategory};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
@@ -37,7 +33,7 @@ mod native;
 pub use native::{run_native_app, run_native_viewer_with_messages};
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use misc::profiler::Profiler;
+pub use profiler::Profiler;
 
 // ----------------------------------------------------------------------------
 // When compiling for web:

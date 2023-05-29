@@ -7,13 +7,11 @@ use re_log_types::{
     TimeType,
 };
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
+use re_viewport::{SpaceViewState, SpatialNavigationMode, Viewport, ViewportState};
 
 use crate::ui::Blueprint;
 
-use super::{
-    selection_history_ui::SelectionHistoryUi, space_view::SpaceViewState,
-    view_spatial::SpatialNavigationMode, Viewport, ViewportState,
-};
+use super::selection_history_ui::SelectionHistoryUi;
 
 // ---
 
@@ -177,7 +175,7 @@ fn what_is_selected_ui(
                 if let Some(space_view_id) = space_view_id {
                     if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                         ui.label("in Space View:");
-                        super::item_ui::space_view_button(ctx, ui, space_view);
+                        re_viewport::item_ui::space_view_button(ctx, ui, space_view);
                         ui.end_row();
                     }
                 }
@@ -203,7 +201,7 @@ fn what_is_selected_ui(
                             ui.end_row();
 
                             ui.label("in Space View:");
-                            super::item_ui::space_view_button_to(
+                            re_viewport::item_ui::space_view_button_to(
                                 ctx,
                                 ui,
                                 space_view.display_name.clone(),
@@ -490,8 +488,12 @@ fn depth_props_ui(
     if tensor.meaning != TensorDataMeaning::Depth {
         return Some(());
     }
-    let pinhole_ent_path =
-        crate::misc::queries::closest_pinhole_transform(ctx, entity_path, &query)?;
+    let pinhole_ent_path = ctx
+        .log_db
+        .entity_db
+        .data_store
+        .query_latest_component_at_closest_ancestor::<Pinhole>(entity_path, &query)?
+        .0;
 
     let mut backproject_depth = *entity_props.backproject_depth.get();
 
