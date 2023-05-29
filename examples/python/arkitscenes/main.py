@@ -189,7 +189,7 @@ def project_3d_bboxes_to_2d_keypoints(
     """
 
     translation, rotation_q = camera_from_world.translation, camera_from_world.rotation
-    rotation = R.from_quat(np.array(rotation_q))
+    rotation = R.from_quat(np.array(rotation_q.xyzw))
 
     # Transform 3D keypoints from world to camera frame
     world_to_camera_rotation = rotation.as_matrix()
