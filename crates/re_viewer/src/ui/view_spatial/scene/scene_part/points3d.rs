@@ -91,7 +91,7 @@ impl Points3DPart {
             let instance_path_hashes_for_picking = {
                 crate::profile_scope!("instance_hashes");
                 entity_view
-                    .iter_instance_keys()?
+                    .iter_instance_keys()
                     .map(|instance_key| {
                         instance_path_hash_for_picking(
                             ent_path,
@@ -128,7 +128,7 @@ impl Points3DPart {
                     .filter_map(|pt| pt.map(glam::Vec3::from))
             };
 
-            let picking_instance_ids = entity_view.iter_instance_keys()?.map(|instance_key| {
+            let picking_instance_ids = entity_view.iter_instance_keys().map(|instance_key| {
                 instance_key_to_picking_id(
                     instance_key,
                     entity_view.num_instances(),
@@ -149,7 +149,7 @@ impl Points3DPart {
                 for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = entity_view
-                        .iter_instance_keys()?
+                        .iter_instance_keys()
                         .position(|key| key == *highlighted_key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
                         point_range_builder = point_range_builder

@@ -5,7 +5,21 @@ type AppCreator =
 
 // NOTE: the name of this function is hard-coded in `crates/rerun/src/crash_handler.rs`!
 pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
-    let native_options = eframe::NativeOptions {
+    let native_options = eframe_options();
+
+    let window_title = "Rerun Viewer";
+    eframe::run_native(
+        window_title,
+        native_options,
+        Box::new(move |cc| {
+            let re_ui = crate::customize_eframe(cc);
+            app_creator(cc, re_ui)
+        }),
+    )
+}
+
+pub fn eframe_options() -> eframe::NativeOptions {
+    eframe::NativeOptions {
         // Controls where on disk the app state is persisted.
         app_id: Some("rerun".to_owned()),
 
@@ -31,17 +45,7 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
         multisampling: 0, // the 3D views do their own MSAA
 
         ..Default::default()
-    };
-
-    let window_title = "Rerun Viewer";
-    eframe::run_native(
-        window_title,
-        native_options,
-        Box::new(move |cc| {
-            let re_ui = crate::customize_eframe(cc);
-            app_creator(cc, re_ui)
-        }),
-    )
+    }
 }
 
 #[allow(clippy::unnecessary_wraps)]

@@ -90,7 +90,6 @@
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
-mod crash_handler;
 mod run;
 
 /// Module for integrating with the [`clap`](https://crates.io/crates/clap) command line argument parser.

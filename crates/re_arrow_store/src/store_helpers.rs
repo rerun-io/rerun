@@ -1,6 +1,6 @@
 use re_log_types::{
     ComponentName, DataCell, DataRow, DeserializableComponent, EntityPath, RowId,
-    SerializableComponent, TimeInt, TimePoint, Timeline,
+    SerializableComponent, TimePoint, Timeline,
 };
 
 use crate::{DataStore, LatestAtQuery};
@@ -65,7 +65,7 @@ impl DataStore {
     {
         crate::profile_function!();
 
-        let query = LatestAtQuery::new(Timeline::default(), TimeInt::MAX);
+        let query = LatestAtQuery::latest(Timeline::default());
         self.query_latest_component(entity_path, &query)
     }
 }

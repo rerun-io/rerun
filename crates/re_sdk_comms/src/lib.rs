@@ -11,15 +11,13 @@ pub(crate) mod tcp_client;
 mod buffered_client;
 
 #[cfg(feature = "client")]
-pub use buffered_client::Client;
+pub use {buffered_client::Client, tcp_client::ClientError};
 
 #[cfg(feature = "server")]
 mod server;
 
 #[cfg(feature = "server")]
-pub use server::{serve, ServerOptions};
-
-pub type Result<T> = anyhow::Result<T>;
+pub use server::{serve, ServerError, ServerOptions};
 
 pub const PROTOCOL_VERSION: u16 = 0;
 

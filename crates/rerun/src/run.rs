@@ -224,7 +224,7 @@ where
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    crate::crash_handler::install_crash_handlers(build_info);
+    re_crash_handler::install_crash_handlers(build_info);
 
     use clap::Parser as _;
     let args = Args::parse_from(args);
@@ -852,7 +852,7 @@ impl log::Log for StrictLogger {
         eprintln!("{level} logged in --strict mode: {}", record.args());
         eprintln!(
             "{}",
-            crate::crash_handler::callstack_from(&["log::__private_api_log"])
+            re_crash_handler::callstack_from(&["log::__private_api_log"])
         );
         std::process::exit(1);
     }

@@ -35,6 +35,13 @@ impl LatestAtQuery {
     pub const fn new(timeline: Timeline, at: TimeInt) -> Self {
         Self { timeline, at }
     }
+
+    pub const fn latest(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            at: TimeInt::MAX,
+        }
+    }
 }
 
 /// A query over a time range, for a given timeline.

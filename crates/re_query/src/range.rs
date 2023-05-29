@@ -72,13 +72,12 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         // this will allow us to build up the initial state and send an initial latest-at
         // entity-view if needed.
         for (i, primary) in components.iter().enumerate() {
-            let cwi = get_component_with_instances(
+            cwis_latest_raw[i] = get_component_with_instances(
                 store,
                 &LatestAtQuery::new(query.timeline, latest_time),
                 ent_path,
                 *primary,
             );
-            cwis_latest_raw[i] = cwi.ok();
         }
 
         if cwis_latest_raw[primary_col].is_some() {

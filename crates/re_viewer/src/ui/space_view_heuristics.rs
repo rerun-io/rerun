@@ -129,7 +129,7 @@ fn default_created_space_views_from_candidates(
     crate::profile_function!();
 
     // All queries are "right most" on the log timeline.
-    let query = LatestAtQuery::new(Timeline::log_time(), re_arrow_store::TimeInt::MAX);
+    let query = LatestAtQuery::latest(Timeline::log_time());
 
     // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
     let categories_with_interesting_roots = candidates
