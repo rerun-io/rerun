@@ -6,12 +6,17 @@ rust-version = "1.69"
 license = "MIT OR Apache-2.0"
 publish = false
 
+[features]
+default = []
+
+# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
+analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
+
 [dependencies]
 re_crash_handler = { path = "../../../crates/re_crash_handler" }
 re_log = { path = "../../../crates/re_log" }
 re_memory = { path = "../../../crates/re_memory" }
 re_viewer = { path = "../../../crates/re_viewer", default-features = false, features = [
-  # "analytics" # Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
   "webgl",
 ] }
 # We need re_sdk_comms to receive log events from and SDK:
