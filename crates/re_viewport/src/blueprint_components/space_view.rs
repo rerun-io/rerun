@@ -8,7 +8,7 @@ use crate::space_view::SpaceViewBlueprint;
 ///
 /// ## Example
 /// ```
-/// # use re_viewer::blueprint_components::space_view::SpaceViewComponent;
+/// # use re_viewport::blueprint_components::SpaceViewComponent;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(

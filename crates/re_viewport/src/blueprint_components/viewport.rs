@@ -13,7 +13,7 @@ pub const VIEWPORT_PATH: &str = "viewport";
 ///
 /// ## Example
 /// ```
-/// # use re_viewer::blueprint_components::viewport::AutoSpaceViews;
+/// # use re_viewport::blueprint_components::AutoSpaceViews;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
@@ -36,7 +36,7 @@ impl Component for AutoSpaceViews {
 ///
 /// ## Example
 /// ```
-/// # use re_viewer::blueprint_components::viewport::SpaceViewVisibility;
+/// # use re_viewport::blueprint_components::SpaceViewVisibility;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
@@ -61,7 +61,7 @@ impl Component for SpaceViewVisibility {
 ///
 /// ## Example
 /// ```
-/// # use re_viewer::blueprint_components::viewport::SpaceViewMaximized;
+/// # use re_viewport::blueprint_components::SpaceViewMaximized;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
@@ -86,7 +86,7 @@ impl Component for SpaceViewMaximized {
 ///
 /// ## Example
 /// ```
-/// # use re_viewer::blueprint_components::viewport::ViewportLayout;
+/// # use re_viewport::blueprint_components::ViewportLayout;
 /// # use arrow2_convert::field::ArrowField;
 /// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(

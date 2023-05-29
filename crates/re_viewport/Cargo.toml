@@ -24,9 +24,14 @@ re_format.workspace = true
 re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_log.workspace = true
 re_query.workspace = true
-re_renderer.workspace = true
+re_renderer = { workspace = true, default-features = false, features = [
+  "arrow",
+  "import-gltf",
+  "import-obj",
+  "serde",
+] }
 re_tensor_ops.workspace = true
-re_time_panel.workspace = true                                              # TODO(andreas): Unfortunate dependency, caused by `next_grid_tick_magnitude_ns`
+re_time_panel.workspace = true # TODO(andreas): Unfortunate dependency, caused by `next_grid_tick_magnitude_ns`
 re_ui.workspace = true
 re_viewer_context.workspace = true
 
@@ -35,7 +40,9 @@ anyhow.workspace = true
 arrow2.workspace = true
 arrow2_convert.workspace = true
 bytemuck.workspace = true
-eframe.workspace = true
+eframe = { workspace = true, default-features = false, features = [
+  "persistence",
+] }
 egui_extras.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
@@ -48,12 +55,12 @@ image = { workspace = true, default-features = false, features = [
 ] }
 itertools.workspace = true
 lazy_static.workspace = true
-macaw.workspace = true
+macaw = { workspace = true, features = ["with_serde"] }
 ndarray.workspace = true
 nohash-hasher = "0.2"
 serde = "1.0"
 slotmap.workspace = true
-smallvec.workspace = true
+smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 wgpu.workspace = true
 
