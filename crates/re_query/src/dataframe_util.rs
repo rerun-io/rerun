@@ -143,7 +143,7 @@ impl ComponentWithInstances {
         }
 
         let instance_keys: Vec<Option<InstanceKey>> =
-            self.iter_instance_keys()?.map(Some).collect_vec();
+            self.iter_instance_keys().map(Some).collect_vec();
 
         let values = self.values.try_to_native_opt()?.collect_vec();
 
@@ -157,7 +157,7 @@ where
     for<'a> &'a Primary::ArrayType: IntoIterator,
 {
     pub fn as_df1(&self) -> crate::Result<DataFrame> {
-        let instance_keys = self.primary.iter_instance_keys()?.map(Some).collect_vec();
+        let instance_keys = self.primary.iter_instance_keys().map(Some).collect_vec();
 
         let primary_values = self.primary.values.try_to_native_opt()?.collect_vec();
 
@@ -169,7 +169,7 @@ where
         C1: SerializableComponent + DeserializableComponent + Clone,
         for<'a> &'a C1::ArrayType: IntoIterator,
     {
-        let instance_keys = self.primary.iter_instance_keys()?.map(Some).collect_vec();
+        let instance_keys = self.primary.iter_instance_keys().map(Some).collect_vec();
 
         let primary_values = self.primary.values.try_to_native_opt()?.collect_vec();
 

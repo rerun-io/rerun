@@ -34,13 +34,7 @@ impl DataUi for EntityComponentWithInstances {
     ) {
         crate::profile_function!(self.component_name().full_name());
 
-        let instance_keys: Vec<_> = match self.component_data.iter_instance_keys() {
-            Ok(instance_keys) => instance_keys.collect(),
-            Err(err) => {
-                ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
-                return;
-            }
-        };
+        let instance_keys: Vec<_> = self.component_data.iter_instance_keys().collect();
 
         let num_instances = self.num_instances();
 

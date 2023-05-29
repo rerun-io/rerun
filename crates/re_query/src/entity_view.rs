@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, PrimitiveArray};
+use itertools::Either;
 use re_format::arrow;
 use re_log_types::{
     component_types::InstanceKey,
@@ -45,10 +46,14 @@ impl ComponentWithInstances {
     ///
     /// If the instance keys don't exist, generate them based on array-index position of the values
     #[inline]
-    pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
-        self.instance_keys
-            .try_to_native::<InstanceKey>()
-            .map_err(Into::into)
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
+        match self.instance_keys.try_to_native::<InstanceKey>() {
+            Ok(instance_keys) => Either::Left(instance_keys.into_iter()),
+            Err(err) => {
+                re_log::warn_once!("Instance keys of wrong type: {err}");
+                Either::Right(std::iter::empty())
+            }
+        }
     }
 
     /// Iterate over the values and convert them to a native `Component`
@@ -278,7 +283,7 @@ where
 {
     /// Iterate over the instance keys
     #[inline]
-    pub fn iter_instance_keys(&self) -> crate::Result<impl Iterator<Item = InstanceKey> + '_> {
+    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> + '_ {
         self.primary.iter_instance_keys()
     }
 
@@ -319,9 +324,9 @@ where
         let component = self.components.get(&C::name());
 
         if let Some(component) = component {
-            let primary_instance_key_iter = self.primary.iter_instance_keys()?;
+            let primary_instance_key_iter = self.primary.iter_instance_keys();
 
-            let mut component_instance_key_iter = component.iter_instance_keys()?;
+            let mut component_instance_key_iter = component.iter_instance_keys();
 
             let component_value_iter =
                 arrow_array_deserialize_iterator::<Option<C>>(component.values.as_arrow_ref())?;
