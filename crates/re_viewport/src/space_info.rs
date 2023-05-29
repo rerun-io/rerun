@@ -224,7 +224,7 @@ impl SpaceInfoCollection {
 
     /// Answers if an entity path (`from`) is reachable via a transform from some reference space (at `to_reference`)
     ///
-    /// For how, you need to check [`crate::misc::TransformCache`]!
+    /// For how, you need to check `TransformCache`!
     /// Note that in any individual frame, entities may or may not be reachable.
     pub fn is_reachable_by_transform(
         &self,
