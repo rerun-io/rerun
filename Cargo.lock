@@ -4206,6 +4206,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_time_panel"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "egui",
+ "itertools",
+ "puffin",
+ "re_arrow_store",
+ "re_data_store",
+ "re_data_ui",
+ "re_log_types",
+ "re_ui",
+ "re_viewer_context",
+ "serde",
+ "time",
+ "vec1",
+]
+
+[[package]]
 name = "re_tuid"
 version = "0.7.0-alpha.0"
 dependencies = [
@@ -4282,6 +4300,7 @@ dependencies = [
  "re_renderer",
  "re_smart_channel",
  "re_tensor_ops",
+ "re_time_panel",
  "re_ui",
  "re_viewer_context",
  "re_ws_comms",
@@ -4292,7 +4311,6 @@ dependencies = [
  "smallvec",
  "thiserror",
  "time",
- "vec1",
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
