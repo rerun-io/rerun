@@ -99,6 +99,7 @@ cargo publish $FLAGS -p re_tuid
 cargo publish $FLAGS -p re_format
 cargo publish $FLAGS -p re_string_interner
 cargo publish $FLAGS -p re_analytics
+cargo publish $FLAGS -p re_crash_handler
 cargo publish $FLAGS -p re_memory
 cargo publish $FLAGS -p re_log_types
 cargo publish $FLAGS -p re_smart_channel
