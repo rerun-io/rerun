@@ -1,23 +1,29 @@
+//! Rerun Time Panel
+//!
+//! This crate provides a panel that shows allows to control time & timelines,
+//! as well as all necessary ui elements that make it up.
+
 mod data_density_graph;
+mod format_time; // TODO(andreas): Move to re_format
 mod paint_ticks;
 mod time_axis;
+mod time_control_ui;
 mod time_ranges_ui;
 mod time_selection_ui;
+
+pub use format_time::{format_time_compact, next_grid_tick_magnitude_ns};
 
 use std::ops::RangeInclusive;
 
 use egui::{pos2, Color32, CursorIcon, NumExt, PointerButton, Rect, Shape, Vec2};
 
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::item_ui;
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
-use re_viewer_context::{Item, TimeControl, TimeView, UiVerbosity, ViewerContext};
-
-use crate::misc::TimeControlUi;
-
-use super::{selection_panel::what_is_selected_ui, Blueprint};
+use re_viewer_context::{Item, TimeControl, TimeView, ViewerContext};
 
 use time_axis::TimelineAxis;
+use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
 
 /// A panel that shows entity names to the left, time on the top.
@@ -25,7 +31,7 @@ use time_ranges_ui::TimeRangesUi;
 /// This includes the timeline controls and streams view.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct TimePanel {
+pub struct TimePanel {
     data_dentity_graph_painter: data_density_graph::DataDensityGraphPainter,
 
     /// Width of the entity name columns previous frame.
@@ -59,14 +65,14 @@ impl TimePanel {
     pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
         ui: &mut egui::Ui,
+        time_panel_expanded: bool,
     ) {
         let top_bar_height = 28.0;
         let margin = ctx.re_ui.bottom_panel_margin();
         let mut panel_frame = ctx.re_ui.bottom_panel_frame();
 
-        if blueprint.time_panel_expanded {
+        if time_panel_expanded {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
             panel_frame.inner_margin.bottom = 0.0;
 
@@ -92,7 +98,7 @@ impl TimePanel {
 
         egui::TopBottomPanel::show_animated_between_inside(
             ui,
-            blueprint.time_panel_expanded,
+            time_panel_expanded,
             collapsed,
             expanded,
             |ui: &mut egui::Ui, expansion: f32| {
@@ -134,7 +140,7 @@ impl TimePanel {
                         let mut top_rop_frame = egui::Frame::default();
                         top_rop_frame.inner_margin.left = 8.0;
                         top_rop_frame.show(ui, |ui| {
-                            self.expanded_ui(ctx, blueprint, ui);
+                            self.expanded_ui(ctx, ui);
                         });
                     });
                 }
@@ -184,12 +190,7 @@ impl TimePanel {
         }
     }
 
-    fn expanded_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
-        ui: &mut egui::Ui,
-    ) {
+    fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         self.data_dentity_graph_painter.begin_frame(ui.ctx());
@@ -299,13 +300,7 @@ impl TimePanel {
         ));
 
         // All the entity rows and their data density graphs:
-        self.tree_ui(
-            ctx,
-            blueprint,
-            &time_area_response,
-            &lower_time_area_painter,
-            ui,
-        );
+        self.tree_ui(ctx, &time_area_response, &lower_time_area_painter, ui);
 
         {
             // Paint a shadow between the stream names on the left
@@ -348,7 +343,6 @@ impl TimePanel {
     fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
@@ -367,7 +361,6 @@ impl TimePanel {
                 }
                 self.show_children(
                     ctx,
-                    blueprint,
                     time_area_response,
                     time_area_painter,
                     &ctx.log_db.entity_db.tree,
@@ -380,7 +373,6 @@ impl TimePanel {
     fn show_tree(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         last_path_part: &EntityPathPart,
@@ -414,14 +406,7 @@ impl TimePanel {
                 item_ui::entity_path_button_to(ctx, ui, None, &tree.path, text)
             })
             .body(|ui| {
-                self.show_children(
-                    ctx,
-                    blueprint,
-                    time_area_response,
-                    time_area_painter,
-                    tree,
-                    ui,
-                );
+                self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
             });
 
         let is_closed = body_returned.is_none();
@@ -458,7 +443,6 @@ impl TimePanel {
             data_density_graph::data_density_graph_ui(
                 &mut self.data_dentity_graph_painter,
                 ctx,
-                blueprint,
                 time_area_response,
                 time_area_painter,
                 ui,
@@ -474,7 +458,6 @@ impl TimePanel {
     fn show_children(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree: &EntityTree,
@@ -483,7 +466,6 @@ impl TimePanel {
         for (last_component, child) in &tree.children {
             self.show_tree(
                 ctx,
-                blueprint,
                 time_area_response,
                 time_area_painter,
                 last_component,
@@ -516,12 +498,7 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        item_ui::component_path_button_to(
-                            ctx,
-                            ui,
-                            component_name.short_name(),
-                            &component_path,
-                        );
+                        item_ui::component_path_button(ctx, ui, &component_path);
                     })
                     .response;
 
@@ -537,23 +514,22 @@ impl TimePanel {
                 let is_visible = ui.is_rect_visible(full_width_rect);
 
                 if is_visible {
-                    response.on_hover_ui(|ui| {
-                        let item = Item::ComponentPath(component_path.clone());
-                        what_is_selected_ui(ui, ctx, blueprint, &item);
-                        ui.add_space(8.0);
-                        let query = ctx.current_query();
-                        component_path.data_ui(ctx, ui, UiVerbosity::Small, &query);
-                    });
-
-                    // show the data in the time area:
-                    let item = Item::ComponentPath(component_path);
-                    paint_streams_guide_line(ctx, &item, ui, response_rect);
-
                     let empty_messages_over_time = TimeHistogram::default();
                     let messages_over_time = data
                         .times
                         .get(ctx.rec_cfg.time_ctrl.timeline())
                         .unwrap_or(&empty_messages_over_time);
+
+                    // `data.times` does not contain timeless. Need to add those manually:
+                    let total_num_messages =
+                        messages_over_time.total_count() + data.num_timeless_messages() as u64;
+                    response.on_hover_ui(|ui| {
+                        ui.label(format!("Number of events: {total_num_messages}"));
+                    });
+
+                    // show the data in the time area:
+                    let item = Item::ComponentPath(component_path);
+                    paint_streams_guide_line(ctx, &item, ui, response_rect);
 
                     let row_rect = Rect::from_x_y_ranges(
                         time_area_response.rect.x_range(),
@@ -563,7 +539,6 @@ impl TimePanel {
                     data_density_graph::data_density_graph_ui(
                         &mut self.data_dentity_graph_painter,
                         ctx,
-                        blueprint,
                         time_area_response,
                         time_area_painter,
                         ui,
@@ -690,7 +665,8 @@ fn paint_streams_guide_line(
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    crate::misc::help_hover_button(ui).on_hover_text(
+    // TODO(andreas): Nicer help text like on space views.
+    re_ui::help_hover_button(ui).on_hover_text(
         "\
         In the top row you can drag to move the time, or shift-drag to select a loop region.\n\
         \n\
@@ -1127,4 +1103,26 @@ pub fn paint_time_cursor(
         egui::Stroke::NONE,
     ));
     painter.vline(x, (y_min + w)..=y_max, stroke);
+}
+
+// ---------------------------------------------------------------------------
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_function {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_function!($($arg)*);
+    };
+}
+
+/// Profiling macro for feature "puffin"
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_scope {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_scope!($($arg)*);
+    };
 }

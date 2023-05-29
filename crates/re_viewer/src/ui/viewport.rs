@@ -770,7 +770,7 @@ fn help_text_ui(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, space_view: &SpaceView) 
     };
 
     if let Some(help_text) = help_text {
-        crate::misc::help_hover_button(ui).on_hover_text(help_text);
+        re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
 }
 

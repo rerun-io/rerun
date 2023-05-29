@@ -1,0 +1,33 @@
+[package]
+authors.workspace = true
+description = "The time panel of the Rerun Viewer, allowing to control the displayed timeline & time."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_time_panel"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_arrow_store.workspace = true
+re_data_store.workspace = true
+re_data_ui.workspace = true
+re_log_types.workspace = true
+re_ui.workspace = true
+re_viewer_context.workspace = true
+
+egui.workspace = true
+itertools.workspace = true
+serde = "1.0"
+time.workspace = true
+vec1 = "1.8"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin.workspace = true

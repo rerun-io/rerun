@@ -55,10 +55,9 @@ impl DataUi for InstancePath {
                         UiVerbosity::All => {}
                     }
 
-                    item_ui::component_path_button_to(
+                    item_ui::component_path_button(
                         ctx,
                         ui,
-                        component_name.short_name(),
                         &ComponentPath::new(self.entity_path.clone(), component_name),
                     );
 
