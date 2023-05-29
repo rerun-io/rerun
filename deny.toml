@@ -44,12 +44,13 @@ deny = [
 ]
 
 skip = [
-  { name = "ahash" },     # Popular crate + fast release schedule = lots of crates still using old versions
-  { name = "base64" },    # Too popular
-  { name = "memoffset" }, # Small crate
-  { name = "nix" },       # difficult to avoid :(
-  { name = "time" },      # Too popular
-  { name = "windows" },   # wgpu and rfd are sometimes on different versions
+  { name = "ahash" },      # Popular crate + fast release schedule = lots of crates still using old versions
+  { name = "base64" },     # Too popular
+  { name = "libloading" }, # wgpu pulls in two different versions. It is a small crate though.
+  { name = "memoffset" },  # Small crate
+  { name = "nix" },        # difficult to avoid :(
+  { name = "time" },       # Too popular
+  { name = "windows" },    # wgpu and rfd are sometimes on different versions
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool

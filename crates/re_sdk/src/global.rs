@@ -65,6 +65,33 @@ impl RecordingStream {
         rec
     }
 
+    // Internal implementation of `get()` that doesn't print a warning if no recording is found.
+    // Used from python-bridge.
+    #[inline]
+    #[doc(hidden)]
+    pub fn get_quiet(
+        which: RecordingType,
+        overrides: Option<RecordingStream>,
+    ) -> Option<RecordingStream> {
+        let rec = overrides.or_else(|| {
+            Self::get_any(RecordingScope::ThreadLocal, which)
+                .or_else(|| Self::get_any(RecordingScope::Global, which))
+        });
+
+        if rec.is_none() {
+            // NOTE: This is the one and only place where a warning about missing active recording
+            // should be printed, don't stutter!
+            re_log::debug_once!(
+                "There is no currently active {which} recording available \
+                for the current thread ({:?}): have you called `set_global()` and/or \
+                `set_thread_local()` first?",
+                std::thread::current().id(),
+            );
+        }
+
+        rec
+    }
+
     // --- Global ---
 
     /// Returns the currently active recording of the specified type in the global scope, if any.

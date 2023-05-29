@@ -72,22 +72,24 @@ fn global_web_viewer_server(
 
 #[pyfunction]
 fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
-    // Python catches SIGINT and waits for us to release the GIL before shtting down.
-    // That's no good, so we need to catch SIGINT ourselves and shut down:
-    ctrlc::set_handler(move || {
-        eprintln!("Ctrl-C detected in rerun_py. Shutting down.");
-        #[allow(clippy::exit)]
-        std::process::exit(42);
-    })
-    .expect("Error setting Ctrl-C handler");
-
     let build_info = re_build_info::build_info!();
     let call_src = rerun::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(build_info, call_src, argv))
+        .block_on(async {
+            // Python catches SIGINT and waits for us to release the GIL before shtting down.
+            // That's no good, so we need to catch SIGINT ourselves and shut down:
+            tokio::spawn(async move {
+                tokio::signal::ctrl_c().await.unwrap();
+                eprintln!("Ctrl-C detected in rerun_py. Shutting down.");
+                #[allow(clippy::exit)]
+                std::process::exit(42);
+            });
+
+            rerun::run(build_info, call_src, argv).await
+        })
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
@@ -335,7 +337,7 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 /// specified recording otherwise, if any.
 #[pyfunction]
 fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
-    RecordingStream::get(
+    RecordingStream::get_quiet(
         rerun::RecordingType::Data,
         recording.map(|rec| rec.0.clone()),
     )
@@ -406,7 +408,7 @@ fn set_thread_local_data_recording(
 /// specified recording otherwise, if any.
 #[pyfunction]
 fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
-    RecordingStream::get(
+    RecordingStream::get_quiet(
         rerun::RecordingType::Blueprint,
         overrides.map(|rec| rec.0.clone()),
     )

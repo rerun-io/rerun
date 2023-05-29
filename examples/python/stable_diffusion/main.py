@@ -14,7 +14,7 @@ if platform.system() == "Darwin":
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 import requests
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 import torch
 from huggingface_pipeline import StableDiffusionDepth2ImgPipeline
 from PIL import Image

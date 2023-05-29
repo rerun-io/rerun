@@ -14,7 +14,7 @@ mod viewer_analytics;
 
 pub(crate) use misc::mesh_loader;
 use re_log_types::PythonVersion;
-pub(crate) use ui::{memory_panel, selection_panel, time_panel};
+pub(crate) use ui::{memory_panel, selection_panel};
 
 // TODO(jleibs): Do we want to expose this
 pub use ui::{SpaceViewBlueprint, ViewCategory};

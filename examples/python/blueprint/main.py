@@ -3,7 +3,7 @@
 import argparse
 
 import numpy as np
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 import rerun.experimental as rr_exp
 
 

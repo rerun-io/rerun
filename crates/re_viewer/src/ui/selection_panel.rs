@@ -12,7 +12,7 @@ use crate::ui::Blueprint;
 
 use super::{
     selection_history_ui::SelectionHistoryUi, space_view::SpaceViewState,
-    view_spatial::SpatialNavigationMode, ViewportState,
+    view_spatial::SpatialNavigationMode, Viewport, ViewportState,
 };
 
 // ---
@@ -101,7 +101,7 @@ impl SelectionPanel {
         let selection = ctx.selection().to_vec();
         for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
-                what_is_selected_ui(ui, ctx, blueprint, item);
+                what_is_selected_ui(ui, ctx, &mut blueprint.viewport, item);
 
                 if has_data_section(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
@@ -132,10 +132,10 @@ fn has_data_section(item: &Item) -> bool {
 }
 
 /// What is selected? Not the contents, just the short id of it.
-pub fn what_is_selected_ui(
+fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
+    viewport: &mut Viewport,
     item: &Item,
 ) {
     match item {
@@ -157,7 +157,7 @@ pub fn what_is_selected_ui(
                 });
         }
         Item::SpaceView(space_view_id) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 ui.horizontal(|ui| {
                     ui.label("Space view:");
                     ui.text_edit_singleline(&mut space_view.display_name);
@@ -175,7 +175,7 @@ pub fn what_is_selected_ui(
                 ui.end_row();
 
                 if let Some(space_view_id) = space_view_id {
-                    if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                    if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                         ui.label("in Space View:");
                         super::item_ui::space_view_button(ctx, ui, space_view);
                         ui.end_row();
@@ -184,7 +184,7 @@ pub fn what_is_selected_ui(
             });
         }
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)

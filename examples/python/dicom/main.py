@@ -20,7 +20,7 @@ import numpy as np
 import numpy.typing as npt
 import pydicom as dicom
 import requests
-import rerun as rr
+import rerun as rr  # pip install rerun-sdk
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dicom.zip"

@@ -44,7 +44,7 @@ def run_py_example(path: str, viewer_port: Optional[int] = None, wait: bool = Tr
 
 def run_saved_example(path: str, wait: bool = True) -> Any:
     return start_process(
-        ["cargo", "run", "-p", "rerun", "--all-features", "--", "out.rrd"],
+        ["cargo", "run", "-p", "rerun-cli", "--all-features", "--", "out.rrd"],
         cwd=path,
         wait=wait,
     )
@@ -72,7 +72,11 @@ def collect_examples(fast: bool) -> List[str]:
             "examples/python/text_logging",
         ]
     else:
-        return [os.path.dirname(entry) for entry in glob("examples/python/**/main.py")]
+        slow_list = ["examples/python/ros/main.py"]
+
+        return [
+            os.path.dirname(main_path) for main_path in glob("examples/python/**/main.py") if main_path not in slow_list
+        ]
 
 
 def print_example_output(path: str, example: Any) -> None:
@@ -149,7 +153,7 @@ def run_viewer_build() -> None:
             "cargo",
             "build",
             "-p",
-            "rerun",
+            "rerun-cli",
             "--all-features",
             "--quiet",
         ]
@@ -262,7 +266,7 @@ def main() -> None:
 
     if not args.skip_build:
         run_sdk_build()
-    run_viewer_build()
+        run_viewer_build()
 
     if args.web:
         run_web(examples, separate=args.separate)

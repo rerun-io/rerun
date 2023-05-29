@@ -796,7 +796,7 @@ fn help_text_ui(
     };
 
     if let Some(help_text) = help_text {
-        crate::misc::help_hover_button(ui).on_hover_text(help_text);
+        re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
 }
 

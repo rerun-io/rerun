@@ -113,6 +113,20 @@ pub fn instance_path_button_to(
 }
 
 /// Show a component path and make it selectable.
+pub fn component_path_button(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    component_path: &ComponentPath,
+) -> egui::Response {
+    component_path_button_to(
+        ctx,
+        ui,
+        component_path.component_name.short_name(),
+        component_path,
+    )
+}
+
+/// Show a component path and make it selectable.
 pub fn component_path_button_to(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,

@@ -1059,7 +1059,7 @@ struct AppState {
     panel_selection: PanelSelection,
 
     selection_panel: crate::selection_panel::SelectionPanel,
-    time_panel: crate::time_panel::TimePanel,
+    time_panel: re_time_panel::TimePanel,
 
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(skip)]
@@ -1116,7 +1116,7 @@ impl AppState {
             render_ctx,
         };
 
-        time_panel.show_panel(&mut ctx, blueprint, ui);
+        time_panel.show_panel(&mut ctx, ui, blueprint.time_panel_expanded);
         selection_panel.show_panel(viewport_state, &mut ctx, ui, blueprint);
 
         let central_panel_frame = egui::Frame {
@@ -2035,7 +2035,8 @@ fn save_database_to_file(
         let file = std::fs::File::create(path.as_path())
             .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-        re_log_encoding::encoder::encode_owned(msgs, file)
+        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+        re_log_encoding::encoder::encode_owned(encoding_options, msgs, file)
             .map(|_| path)
             .context("Message encode")
     })
