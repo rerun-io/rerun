@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
-    component_types::InstanceKey, external::arrow2, DeserializableComponent, EntityPath, SizeBytes,
+    component_types::InstanceKey, external::arrow2, DeserializableComponent, EntityPath,
 };
 use re_query::ComponentWithInstances;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
