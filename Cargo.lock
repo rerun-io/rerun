@@ -4303,6 +4303,7 @@ dependencies = [
  "re_time_panel",
  "re_ui",
  "re_viewer_context",
+ "re_viewport",
  "re_ws_comms",
  "rfd",
  "rmp-serde",
@@ -4348,6 +4349,24 @@ dependencies = [
  "thiserror",
  "uuid",
  "wgpu",
+]
+
+[[package]]
+name = "re_viewport"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "egui",
+ "itertools",
+ "puffin",
+ "re_arrow_store",
+ "re_data_store",
+ "re_data_ui",
+ "re_log_types",
+ "re_ui",
+ "re_viewer_context",
+ "serde",
+ "time",
+ "vec1",
 ]
 
 [[package]]
