@@ -351,7 +351,7 @@ impl DeviceSettingsPanel {
                                 })
                                 .header_response
                                 .on_disabled_hover_ui(|ui| {
-                                    ui.label("Selected device doesn't support depth!");
+                                    ui.label("Selected device doesn't have any stereo pairs!");
                                 });
                             });
 

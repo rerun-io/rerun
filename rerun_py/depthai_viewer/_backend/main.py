@@ -72,17 +72,22 @@ class SelectedDevice:
         self, cam: dai.CameraFeatures, connected_camera_features: List[dai.CameraFeatures]
     ) -> List[dai.CameraBoardSocket]:
         """Tries to find the possible stereo pairs for a camera."""
-        stereo_pairs = []
+        calib_data = self.oak_cam.device.readCalibration()
+        try:
+            calib_data.getCameraIntrinsics(cam.socket)
+        except IndexError:
+            return []
+        possible_stereo_pairs = []
         if cam.name == "right":
-            stereo_pairs.extend(
+            possible_stereo_pairs.extend(
                 [features.socket for features in filter(lambda c: c.name == "left", connected_camera_features)]
             )
         elif cam.name == "left":
-            stereo_pairs.extend(
+            possible_stereo_pairs.extend(
                 [features.socket for features in filter(lambda c: c.name == "right", connected_camera_features)]
             )
         else:
-            stereo_pairs.extend(
+            possible_stereo_pairs.extend(
                 [
                     camera.socket
                     for camera in connected_camera_features
@@ -95,6 +100,13 @@ class SelectedDevice:
                     )
                 ]
             )
+        stereo_pairs = []
+        for pair in possible_stereo_pairs:
+            try:
+                calib_data.getCameraIntrinsics(pair)
+            except IndexError:
+                continue
+            stereo_pairs.append(pair)
         return stereo_pairs
 
     def get_device_properties(self) -> DeviceProperties:
@@ -102,6 +114,7 @@ class SelectedDevice:
         imu = self.oak_cam.device.getConnectedIMU()
         imu = ImuKind.NINE_AXIS if "BNO" in imu else None if imu == "NONE" else ImuKind.SIX_AXIS
         device_properties = DeviceProperties(id=self.id, imu=imu)
+        calib_data = self.oak_cam.device.readCalibration()
         for cam in connected_cam_features:
             device_properties.cameras.append(
                 CameraFeatures(
@@ -296,8 +309,11 @@ class SelectedDevice:
         if time.time_ns() - self._time_of_last_xlink_update >= 16e6:
             self._time_of_last_xlink_update = time.time_ns()
             if hasattr(self.oak_cam.device, "getProfilingData"):  # Only on latest develop
-                xlink_stats = self.oak_cam.device.getProfilingData()
-                viewer.log_xlink_stats(xlink_stats.numBytesWritten, xlink_stats.numBytesRead)
+                try:
+                    xlink_stats = self.oak_cam.device.getProfilingData()
+                    viewer.log_xlink_stats(xlink_stats.numBytesWritten, xlink_stats.numBytesRead)
+                except Exception:
+                    print("Couldn't get device profiling data")
 
 
 class DepthaiViewerBack:

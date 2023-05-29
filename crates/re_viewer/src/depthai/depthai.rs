@@ -170,6 +170,7 @@ pub struct CameraFeatures {
     pub supported_types: Vec<CameraSensorKind>,
     pub stereo_pairs: Vec<CameraBoardSocket>, // Which cameras can be paired with this one
     pub name: String,
+    pub intrinsics: Option<[[f32; 3]; 3]>
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug, Default)]
