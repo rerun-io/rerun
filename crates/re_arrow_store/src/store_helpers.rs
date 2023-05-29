@@ -1,6 +1,6 @@
 use re_log_types::{
     ComponentName, DataCell, DataRow, DeserializableComponent, EntityPath, RowId,
-    SerializableComponent, TimeInt, TimePoint, Timeline,
+    SerializableComponent, TimePoint, Timeline,
 };
 
 use crate::{DataStore, LatestAtQuery};

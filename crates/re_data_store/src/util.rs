@@ -1,7 +1,6 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{
-    DataRow, DeserializableComponent, EntityPath, RowId, SerializableComponent, TimeInt, TimePoint,
-    Timeline,
+    DataRow, DeserializableComponent, EntityPath, RowId, SerializableComponent, TimePoint, Timeline,
 };
 
 use crate::LogDb;
