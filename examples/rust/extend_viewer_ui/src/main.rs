@@ -178,21 +178,26 @@ fn component_ui(
                 // Iterate over all the instances (e.g. all the points in the point cloud):
                 for instance_key in component.iter_instance_keys() {
                     if let Some(value) = component.lookup_arrow(&instance_key) {
-                        use re_log_types::SizeBytes as _;
-
-                        let bytes = value.total_size_bytes();
-                        if bytes < 256 {
-                            // Print small items:
-                            let mut repr = String::new();
-                            let display = arrow2::array::get_display(value.as_ref(), "null");
-                            if display(&mut repr, 0).is_ok() {
-                                ui.label(repr);
-                            }
-                        } else {
-                            ui.label(format!("{bytes} bytes"));
-                        }
+                        ui.label(format_arrow(&*value));
                     }
                 }
             });
     };
+}
+
+fn format_arrow(value: &dyn arrow2::array::Array) -> String {
+    use re_log_types::SizeBytes as _;
+
+    let bytes = value.total_size_bytes();
+    if bytes < 256 {
+        // Print small items:
+        let mut string = String::new();
+        let display = arrow2::array::get_display(value, "null");
+        if display(&mut string, 0).is_ok() {
+            return string;
+        }
+    }
+
+    // Fallback:
+    format!("{bytes} bytes")
 }

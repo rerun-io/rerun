@@ -79,19 +79,27 @@ fn fallback_component_ui(
 ) {
     // No special ui implementation - use a generic one:
     if let Some(value) = component.lookup_arrow(instance_key) {
-        let bytes = value.total_size_bytes();
-        if bytes < 256 {
-            // For small items, print them
-            let mut repr = String::new();
-            let display = arrow2::array::get_display(value.as_ref(), "null");
-            display(&mut repr, 0).unwrap();
-            ui.label(repr);
-        } else {
-            ui.label(format!("{bytes} bytes"));
-        }
+        ui.label(format_arrow(&*value));
     } else {
         ui.weak("(null)");
     }
+}
+
+fn format_arrow(value: &dyn arrow2::array::Array) -> String {
+    use re_log_types::SizeBytes as _;
+
+    let bytes = value.total_size_bytes();
+    if bytes < 256 {
+        // Print small items:
+        let mut string = String::new();
+        let display = arrow2::array::get_display(value, "null");
+        if display(&mut string, 0).is_ok() {
+            return string;
+        }
+    }
+
+    // Fallback:
+    format!("{bytes} bytes")
 }
 
 // ----------------------------------------------------------------------------
