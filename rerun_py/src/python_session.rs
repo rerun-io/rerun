@@ -121,6 +121,11 @@ impl PythonSession {
         self.enabled
     }
 
+    pub fn version(&self) -> String {
+        let build_info = re_build_info::build_info!();
+        build_info.version.to_string()
+    }
+
     /// Enable or disable logging on this `Session`.
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;

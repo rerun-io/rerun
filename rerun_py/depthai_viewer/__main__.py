@@ -1,14 +1,13 @@
-"""See `python3 -m rerun --help`."""
+"""See `python3 -m depthai-viewer --help`."""
 
 import os
 import shutil
-import site
+import sysconfig
 import subprocess
 import sys
 import traceback
 
-from depthai_viewer import unregister_shutdown  # type: ignore[attr-defined]
-from depthai_viewer import version as depthai_viewer_version
+from depthai_viewer import version as depthai_viewer_version  # type: ignore[attr-defined]
 
 
 def create_venv_and_install_dependencies() -> str:
@@ -46,10 +45,10 @@ def create_venv_and_install_dependencies() -> str:
                 check=True,
             )
 
-            packages_dir = max(site.getsitepackages())
+            packages_dir = sysconfig.get_paths()["purelib"]
             # Create symlink for depthai_viewer and depthai_viewer_bindings
             venv_packages_dir = subprocess.run(
-                [py_executable, "-c", "import site; print(max(site.getsitepackages()), end='')"],
+                [py_executable, "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'], end='')"],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -92,14 +91,12 @@ def create_venv_and_install_dependencies() -> str:
 
 def main() -> None:
     python_exe = create_venv_and_install_dependencies()
-    # We don't need to call shutdown in this case. Rust should be handling everything
-    unregister_shutdown()
     # Call the bindings.main using the Python executable in the venv
     subprocess.call(
         [
             python_exe,
             "-c",
-            f"from depthai_viewer import bindings; import sys; sys.exit(bindings.main(sys.argv, r'{python_exe}'))",
+            f"from depthai_viewer import bindings, unregister_shutdown; import sys; unregister_shutdown(); sys.exit(bindings.main(sys.argv, r'{python_exe}'))",
         ]
         + sys.argv[1:]
     )

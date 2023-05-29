@@ -318,8 +318,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 
 #[pyfunction]
 fn version() -> PyResult<String> {
-    let build_info = re_build_info::build_info!();
-    Ok(build_info.version.to_string())
+    Ok(python_session().version())
 }
 
 #[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
