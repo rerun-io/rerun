@@ -33,8 +33,12 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    re_build_web_viewer::build(release, webgpu);
-    ExitCode::SUCCESS
+    if let Err(err) = re_build_web_viewer::build(release, webgpu) {
+        eprintln!("Failed to build web viewer: {err}");
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
 fn print_help() {
