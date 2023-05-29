@@ -53,7 +53,7 @@ pub fn query_timeless_single<C: DeserializableComponent>(
 where
     for<'b> &'b C::ArrayType: IntoIterator,
 {
-    let query = re_arrow_store::LatestAtQuery::new(Timeline::default(), TimeInt::MAX);
+    let query = re_arrow_store::LatestAtQuery::latest(Timeline::default());
     query_latest_single(data_store, entity_path, &query)
 }
 
