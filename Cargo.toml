@@ -49,6 +49,7 @@ re_tuid = { path = "crates/re_tuid", version = "0.7.0-alpha.0", default-features
 re_ui = { path = "crates/re_ui", version = "0.7.0-alpha.0", default-features = false }
 re_viewer = { path = "crates/re_viewer", version = "0.7.0-alpha.0", default-features = false }
 re_viewer_context = { path = "crates/re_viewer_context", version = "0.7.0-alpha.0", default-features = false }
+re_viewport = { path = "crates/re_viewport", version = "0.7.0-alpha.0", default-features = false }
 re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "0.7.0-alpha.0", default-features = false }
 re_ws_comms = { path = "crates/re_ws_comms", version = "0.7.0-alpha.0", default-features = false }
 rerun = { path = "crates/rerun", version = "0.7.0-alpha.0", default-features = false }

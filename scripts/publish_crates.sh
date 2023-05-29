@@ -115,6 +115,8 @@ cargo publish $FLAGS -p re_build_web_viewer
 cargo publish $FLAGS -p re_web_viewer_server
 cargo publish $FLAGS -p re_viewer_context
 cargo publish $FLAGS -p re_data_ui
+cargo publish $FLAGS -p re_time_panel
+cargo publish $FLAGS -p re_viewport
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun

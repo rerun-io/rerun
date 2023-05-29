@@ -48,6 +48,27 @@ impl DataStore {
         component
     }
 
+    /// Call `query_latest_component` at the given path, walking up the hierarchy until an instance is found.
+    pub fn query_latest_component_at_closest_ancestor<C: DeserializableComponent>(
+        &self,
+        entity_path: &EntityPath,
+        query: &LatestAtQuery,
+    ) -> Option<(EntityPath, C)>
+    where
+        for<'b> &'b C::ArrayType: IntoIterator,
+    {
+        crate::profile_function!();
+
+        let mut cur_path = Some(entity_path.clone());
+        while let Some(path) = cur_path {
+            if let Some(component) = self.query_latest_component::<C>(&path, query) {
+                return Some((path, component));
+            }
+            cur_path = path.parent();
+        }
+        None
+    }
+
     /// Get the latest value for a given [`re_log_types::Component`], assuming it is timeless.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this

@@ -2,16 +2,16 @@ use ahash::HashMap;
 
 use re_data_store::{query_timeless_single, EntityPath};
 use re_viewer_context::SpaceViewId;
-
-use crate::blueprint_components::{
-    panel::PanelState,
-    space_view::SpaceViewComponent,
-    viewport::{
-        AutoSpaceViews, SpaceViewMaximized, SpaceViewVisibility, ViewportLayout, VIEWPORT_PATH,
+use re_viewport::{
+    blueprint_components::{
+        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, SpaceViewVisibility,
+        ViewportLayout, VIEWPORT_PATH,
     },
+    SpaceViewBlueprint, Viewport,
 };
 
-use super::{Blueprint, SpaceViewBlueprint, Viewport};
+use super::Blueprint;
+use crate::blueprint_components::panel::PanelState;
 
 impl Blueprint {
     pub fn from_db(egui_ctx: &egui::Context, blueprint_db: &re_data_store::LogDb) -> Self {

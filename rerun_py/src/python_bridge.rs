@@ -11,12 +11,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_viewer::{
-    blueprint_components::{
-        panel::PanelState,
-        space_view::SpaceViewComponent,
-        viewport::{AutoSpaceViews, SpaceViewId, VIEWPORT_PATH},
-    },
+use re_viewer::blueprint_components::panel::PanelState;
+use re_viewer_context::SpaceViewId;
+use re_viewport::{
+    blueprint_components::{AutoSpaceViews, SpaceViewComponent, VIEWPORT_PATH},
     SpaceViewBlueprint, ViewCategory,
 };
 

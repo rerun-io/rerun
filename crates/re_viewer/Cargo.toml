@@ -45,21 +45,15 @@ re_data_ui.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
-re_log_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_log_types = { workspace = true, features = ["ecolor", "image"] }
 re_log.workspace = true
 re_memory.workspace = true
-re_query.workspace = true
-re_renderer = { workspace = true, default-features = false, features = [
-  "arrow",
-  "import-gltf",
-  "import-obj",
-  "serde",
-] }
+re_renderer = { workspace = true, default-features = false }
 re_smart_channel.workspace = true
-re_tensor_ops.workspace = true
 re_time_panel.workspace = true
 re_ui = { workspace = true, features = ["eframe"] }
 re_viewer_context.workspace = true
+re_viewport.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 # Internal (optional):
@@ -71,7 +65,6 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow2.workspace = true
 arrow2_convert.workspace = true
-bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
@@ -80,30 +73,15 @@ eframe = { workspace = true, default-features = false, features = [
   "wgpu",
 ] }
 egui.workspace = true
-egui_extras.workspace = true
-egui_tiles.workspace = true
 egui-wgpu.workspace = true
-enumset.workspace = true
-glam = { workspace = true, features = [
-  "mint",
-] } # can't update glam until a new version of `macaw` is released
-half.workspace = true
 image = { workspace = true, default-features = false, features = [
   "jpeg",
   "png",
 ] }
 itertools = { workspace = true }
-lazy_static.workspace = true
-macaw = { workspace = true, features = ["with_serde"] }
-ndarray = "0.15"
-nohash-hasher = "0.2"
 poll-promise = "0.2"
 rfd.workspace = true
-rmp-serde = { version = "1.1" }
 serde = { version = "1", features = ["derive"] }
-slotmap.workspace = true
-smallvec = { workspace = true, features = ["serde"] }
-thiserror.workspace = true
 time = { workspace = true, features = ["formatting"] }
 web-time.workspace = true
 wgpu.workspace = true
