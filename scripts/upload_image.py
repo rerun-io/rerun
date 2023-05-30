@@ -9,6 +9,15 @@ Requires the following packages:
 Before running, you have to authenticate via the Google Cloud CLI:
 - Install it (https://cloud.google.com/storage/docs/gsutil_install)
 - Set up credentials (https://cloud.google.com/storage/docs/gsutil_install#authenticate)
+
+If you get this error:
+
+    File "…/site-packages/cryptography/hazmat/primitives/asymmetric/utils.py", line 6, in <module>
+        from cryptography.hazmat.bindings._rust import asn1
+    pyo3_runtime.PanicException: Python API call failed
+
+Then run `python3 -m pip install cryptography==38.0.4`
+(https://levelup.gitconnected.com/fix-attributeerror-module-lib-has-no-attribute-openssl-521a35d83769)
 """
 
 import argparse
