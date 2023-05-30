@@ -5,7 +5,8 @@ import shutil
 import subprocess
 import sys
 import traceback
-from depthai_viewer import unregister_shutdown, bindings
+
+from depthai_viewer import bindings, unregister_shutdown
 from depthai_viewer import version as depthai_viewer_version  # type: ignore[attr-defined]
 
 

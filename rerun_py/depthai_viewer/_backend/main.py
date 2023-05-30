@@ -39,23 +39,51 @@ viewer.init("Depthai Viewer")
 viewer.connect()
 
 
+class XlinkStatistics:
+    _device: dai.Device
+    _time_of_last_update: float = 0  # s since epoch
+
+    def __init__(self, device: dai.Device):
+        self._device = device
+
+    def update(self) -> None:
+        if time.time() - self._time_of_last_update >= 32e-3:
+            self._time_of_last_update = time.time()
+            if hasattr(self._device, "getProfilingData"):  # Only on latest develop
+                try:
+                    xlink_stats = self._device.getProfilingData()
+                    viewer.log_xlink_stats(
+                        xlink_stats.numBytesWritten, xlink_stats.numBytesRead, self._time_of_last_update
+                    )
+                except Exception:
+                    print("Couldn't get device profiling data")
+
+
 class SelectedDevice:
     id: str
     intrinsic_matrix: Dict[Tuple[dai.CameraBoardSocket, int, int], NDArray[np.float32]] = {}
     calibration_data: Optional[dai.CalibrationHandler] = None
     use_encoding: bool = False
-    _time_of_last_xlink_update: int = 0
+
+    _oak_cam: Optional[OakCamera] = None
     _cameras: List[CameraComponent] = []
     _stereo: StereoComponent = None
     _nnet: NNComponent = None
-    # _pc: PointcloudComponent = None
-
-    oak_cam: OakCamera = None
+    _xlink_statistics: Optional[XlinkStatistics] = None
 
     def __init__(self, device_id: str):
         self.id = device_id
-        self.oak_cam = OakCamera(self.id)
-        print("Oak cam: ", self.oak_cam)
+        self.set_oak_cam(OakCamera(device_id))
+        print("Oak cam: ", self._oak_cam)
+
+    def set_oak_cam(self, oak_cam: Optional[OakCamera]) -> None:
+        self._oak_cam = oak_cam
+        self._xlink_statistics = None
+        if self._oak_cam is not None:
+            self._xlink_statistics = XlinkStatistics(self._oak_cam.device)
+
+    def is_closed(self) -> bool:
+        return self._oak_cam is not None and self._oak_cam.device.isClosed()
 
     def get_intrinsic_matrix(self, board_socket: dai.CameraBoardSocket, width: int, height: int) -> NDArray[np.float32]:
         if self.intrinsic_matrix.get((board_socket, width, height)) is not None:
@@ -72,7 +100,9 @@ class SelectedDevice:
         self, cam: dai.CameraFeatures, connected_camera_features: List[dai.CameraFeatures]
     ) -> List[dai.CameraBoardSocket]:
         """Tries to find the possible stereo pairs for a camera."""
-        calib_data = self.oak_cam.device.readCalibration()
+        if self._oak_cam is None:
+            return []
+        calib_data = self._oak_cam.device.readCalibration()
         try:
             calib_data.getCameraIntrinsics(cam.socket)
         except IndexError:
@@ -110,8 +140,10 @@ class SelectedDevice:
         return stereo_pairs
 
     def get_device_properties(self) -> DeviceProperties:
-        connected_cam_features = self.oak_cam.device.getConnectedCameraFeatures()
-        imu = self.oak_cam.device.getConnectedIMU()
+        if self._oak_cam is None:
+            raise Exception("No device selected!")
+        connected_cam_features = self._oak_cam.device.getConnectedCameraFeatures()
+        imu = self._oak_cam.device.getConnectedIMU()
         imu = ImuKind.NINE_AXIS if "BNO" in imu else None if imu == "NONE" else ImuKind.SIX_AXIS
         device_properties = DeviceProperties(id=self.id, imu=imu)
         for cam in connected_cam_features:
@@ -138,8 +170,10 @@ class SelectedDevice:
         return device_properties
 
     def close_oak_cam(self) -> None:
-        if self.oak_cam.running():
-            self.oak_cam.device.__exit__(0, 0, 0)
+        if self._oak_cam is None:
+            return
+        if self._oak_cam.running():
+            self._oak_cam.device.__exit__(0, 0, 0)
 
     def reconnect_to_oak_cam(self) -> Tuple[bool, Dict[str, str]]:
         """
@@ -148,7 +182,9 @@ class SelectedDevice:
 
         Timeout after 10 seconds.
         """
-        if self.oak_cam.device.isClosed():
+        if self._oak_cam is None:
+            return False, {"message": "No device selected, can't reconnect!"}
+        if self._oak_cam.device.isClosed():
             timeout_start = time.time()
             while time.time() - timeout_start < 10:
                 available_devices = [
@@ -157,12 +193,12 @@ class SelectedDevice:
                 if self.id in available_devices:
                     break
             try:
-                self.oak_cam = OakCamera(self.id)
+                self.set_oak_cam(OakCamera(self.id))
                 return True, {"message": "Successfully reconnected to device"}
             except RuntimeError as e:
                 print("Failed to create oak camera")
                 print(e)
-                self.oak_cam = None
+                self.set_oak_cam(None)
         return False, {"message": "Failed to create oak camera"}
 
     def _get_component_by_socket(self, socket: dai.CameraBoardSocket) -> Optional[CameraComponent]:
@@ -183,7 +219,9 @@ class SelectedDevice:
     def update_pipeline(
         self, config: PipelineConfiguration, runtime_only: bool, callbacks: "SdkCallbacks"
     ) -> Tuple[bool, Dict[str, str]]:
-        if self.oak_cam.running():
+        if self._oak_cam is None:
+            return False, {"message": "No device selected, can't update pipeline!"}
+        if self._oak_cam.running():
             if runtime_only:
                 if config.depth is not None:
                     return True, self._stereo.control.send_controls(config.depth.to_runtime_controls())
@@ -195,14 +233,14 @@ class SelectedDevice:
                 return success, message
 
         self._cameras = []
-        self.use_encoding = self.oak_cam.device.getDeviceInfo().protocol == dai.XLinkProtocol.X_LINK_TCP_IP
+        self.use_encoding = self._oak_cam.device.getDeviceInfo().protocol == dai.XLinkProtocol.X_LINK_TCP_IP
         if self.use_encoding:
             print("Connected device is PoE: Using encoding...")
         else:
             print("Connected device is USB: Not using encoding...")
         for cam in config.cameras:
             print("Creating camera: ", cam)
-            sdk_cam = self.oak_cam.create_camera(
+            sdk_cam = self._oak_cam.create_camera(
                 cam.board_socket,
                 cam.resolution.as_sdk_resolution(),
                 cam.fps,
@@ -210,7 +248,7 @@ class SelectedDevice:
             )
             if cam.stream_enabled:
                 callback_args = CameraCallbackArgs(board_socket=cam.board_socket, image_kind=cam.kind)
-                self.oak_cam.callback(
+                self._oak_cam.callback(
                     sdk_cam, callbacks.build_callback(callback_args), enable_visualizer=self.use_encoding
                 )
             self._cameras.append(sdk_cam)
@@ -229,7 +267,7 @@ class SelectedDevice:
             if right_cam.node.getResolutionWidth() > 1280:
                 print("Right cam width > 1280, setting isp scale to get 800")
                 right_cam.config_color_camera(isp_scale=calculate_isp_scale(right_cam.node.getResolutionWidth()))
-            self._stereo = self.oak_cam.create_stereo(left=left_cam, right=right_cam, name="depth")
+            self._stereo = self._oak_cam.create_stereo(left=left_cam, right=right_cam, name="depth")
 
             # We used to be able to pass in the board socket to align to, but this was removed in depthai 1.10.0
             align = config.depth.align
@@ -250,26 +288,26 @@ class SelectedDevice:
             aligned_camera = self._get_camera_config_by_socket(config, config.depth.align)
             if not aligned_camera:
                 return False, {"message": f"{config.depth.align} is not configured. Couldn't create stereo pair."}
-            self.oak_cam.callback(
+            self._oak_cam.callback(
                 self._stereo,
                 callbacks.build_callback(
                     DepthCallbackArgs(alignment_camera=aligned_camera, stereo_pair=config.depth.stereo_pair)
                 ),
             )
 
-        if self.oak_cam.device.getConnectedIMU() != "NONE":
+        if self._oak_cam.device.getConnectedIMU() != "NONE":
             print("Creating IMU")
-            imu = self.oak_cam.create_imu()
+            imu = self._oak_cam.create_imu()
             sensors = [
                 dai.IMUSensor.ACCELEROMETER_RAW,
                 dai.IMUSensor.GYROSCOPE_RAW,
             ]
-            if "BNO" in self.oak_cam.device.getConnectedIMU():
+            if "BNO" in self._oak_cam.device.getConnectedIMU():
                 sensors.append(dai.IMUSensor.MAGNETOMETER_CALIBRATED)
             imu.config_imu(
                 sensors, report_rate=config.imu.report_rate, batch_report_threshold=config.imu.batch_report_threshold
             )
-            self.oak_cam.callback(imu, callbacks.on_imu)
+            self._oak_cam.callback(imu, callbacks.on_imu)
         else:
             print("Connected cam doesn't have IMU, skipping IMU creation...")
 
@@ -279,17 +317,17 @@ class SelectedDevice:
                 return False, {"message": f"{config.ai_model.camera} is not configured."}
             labels: Optional[List[str]] = None
             if config.ai_model.path == "age-gender-recognition-retail-0013":
-                face_detection = self.oak_cam.create_nn("face-detection-retail-0004", cam_component)
-                self._nnet = self.oak_cam.create_nn("age-gender-recognition-retail-0013", input=face_detection)
+                face_detection = self._oak_cam.create_nn("face-detection-retail-0004", cam_component)
+                self._nnet = self._oak_cam.create_nn("age-gender-recognition-retail-0013", input=face_detection)
 
             else:
-                self._nnet = self.oak_cam.create_nn(config.ai_model.path, cam_component)
+                self._nnet = self._oak_cam.create_nn(config.ai_model.path, cam_component)
                 labels = getattr(classification_labels, config.ai_model.path.upper().replace("-", "_"), None)
 
             camera = self._get_camera_config_by_socket(config, config.ai_model.camera)
             if not camera:
                 return False, {"message": f"{config.ai_model.camera} is not configured. Couldn't create NN."}
-            self.oak_cam.callback(
+            self._oak_cam.callback(
                 self._nnet,
                 callbacks.build_callback(
                     AiModelCallbackArgs(model_name=config.ai_model.path, camera=camera, labels=labels)
@@ -297,27 +335,23 @@ class SelectedDevice:
                 True,
             )  # in depthai-sdk=1.10.0 nnet callbacks don't work without visualizer enabled
         try:
-            self.oak_cam.start(blocking=False)
+            self._oak_cam.start(blocking=False)
         except RuntimeError as e:
             print("Couldn't start pipeline: ", e)
             return False, {"message": "Couldn't start pipeline"}
-        running = self.oak_cam.running()
+        running = self._oak_cam.running()
         if running:
-            self.oak_cam.poll()
-            self.calibration_data = self.oak_cam.device.readCalibration()
+            self._oak_cam.poll()
+            self.calibration_data = self._oak_cam.device.readCalibration()
             self.intrinsic_matrix = {}
         return running, {"message": "Pipeline started" if running else "Couldn't start pipeline"}
 
     def update(self) -> None:
-        self.oak_cam.poll()
-        if time.time_ns() - self._time_of_last_xlink_update >= 16e6:
-            self._time_of_last_xlink_update = time.time_ns()
-            if hasattr(self.oak_cam.device, "getProfilingData"):  # Only on latest develop
-                try:
-                    xlink_stats = self.oak_cam.device.getProfilingData()
-                    viewer.log_xlink_stats(xlink_stats.numBytesWritten, xlink_stats.numBytesRead)
-                except Exception:
-                    print("Couldn't get device profiling data")
+        if self._oak_cam is None:
+            return
+        self._oak_cam.poll()
+        if self._xlink_statistics is not None:
+            self._xlink_statistics.update()
 
 
 class DepthaiViewerBack:
@@ -418,7 +452,7 @@ class DepthaiViewerBack:
 
             if self._device:
                 self._device.update()
-                if self._device.oak_cam.device.isClosed():
+                if self._device.is_closed():
                     # TODO(filip): Typehint the messages properly
                     self.on_reset()
                     self.send_message_queue.put(

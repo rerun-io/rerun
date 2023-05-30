@@ -77,7 +77,7 @@ impl Default for StatsPanelState {
             magnetometer_history: History::new(0..1000, 5.0),
             start_time: instant::Instant::now(),
             imu_tab_visible: false,
-            xlink_stats_history: History::new(0..1000, 1.0),
+            xlink_stats_history: History::new(0..1000, 5.0),
             avg_xlink_stats_plot_history: History::new(0..1000, 5.0),
         }
     }
@@ -126,15 +126,18 @@ impl StatsPanelState {
                     (xlink_stats.bytes_written / 1e6 as i64) as f64,
                     (xlink_stats.bytes_read / 1e6 as i64) as f64,
                 );
-                if let Some((time, [_, _, total_written, total_read])) =
+                if let Some((then, [_, _, total_written, total_read])) =
                     self.xlink_stats_history.iter().last()
                 {
-                    written = (written - total_written) / (now - time);
-                    read = (read - total_read) / (now - time);
+                    if xlink_stats.timestamp == then {
+                        return;
+                    }
+                    written = (written - total_written) / (xlink_stats.timestamp - then);
+                    read = (read - total_read) / (xlink_stats.timestamp - then);
                 }
 
                 self.xlink_stats_history.add(
-                    now,
+                    xlink_stats.timestamp,
                     [
                         written,
                         read,
@@ -143,7 +146,7 @@ impl StatsPanelState {
                     ],
                 );
                 self.avg_xlink_stats_plot_history.add(
-                    now,
+                    xlink_stats.timestamp,
                     [
                         self.xlink_stats_history
                             .iter()
@@ -240,7 +243,11 @@ impl<'a, 'b> StatsTabs<'a, 'b> {
                     "{display_name}: avg. Sent from device {:.2} MB/s, avg. Sent to Device: {:.2} MB/s",
                     latest[0], latest[1]
                 ));
-                Plot::new(display_name).show(ui, |plot_ui| {
+                Plot::new(display_name)
+                .allow_drag(false)
+                .allow_scroll(false)
+                .allow_zoom(false)
+                .show(ui, |plot_ui| {
                     plot_ui.line(
                         Line::new(PlotPoints::new(
                             history
@@ -248,13 +255,13 @@ impl<'a, 'b> StatsTabs<'a, 'b> {
                                 .map(|(t, [written, _])| [t, written])
                                 .collect_vec(),
                         ))
-                        .color(egui::Color32::BLUE),
+                        .color(egui::Color32::RED),
                     );
                     plot_ui.line(
                         Line::new(PlotPoints::new(
                             history.iter().map(|(t, [_, read])| [t, read]).collect_vec(),
                         ))
-                        .color(egui::Color32::RED),
+                        .color(egui::Color32::GREEN),
                     );
                 });
             });
