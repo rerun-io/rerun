@@ -60,8 +60,6 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
     ) {
-        crate::profile_function!();
-
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {

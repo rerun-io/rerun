@@ -2,11 +2,10 @@
 //!
 //! Provides Rerun Space Views that deal with text only.
 
-mod text;
-mod text_box;
+mod scene_element;
+mod space_view_type;
 
-pub use text::TextSpaceView;
-pub use text_box::TextBoxSpaceView;
+pub use space_view_type::TextSpaceView;
 
 // ---------------------------------------------------------------------------
 
