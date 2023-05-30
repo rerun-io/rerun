@@ -7,7 +7,10 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    DataBlueprintGroupHandle, EmptySpaceViewState, Item, SpaceViewClassName,
+    SpaceViewClassRegistry, SpaceViewId, ViewerContext,
+};
 
 use crate::{
     data_blueprint::DataBlueprintGroup,
@@ -521,12 +524,41 @@ impl Viewport {
 #[derive(Default)]
 pub struct ViewportState {
     pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
-    pub space_view_states: HashMap<SpaceViewId, SpaceViewState>,
+    space_view_states: HashMap<SpaceViewId, SpaceViewState>,
 }
 
 impl ViewportState {
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
         self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
+    }
+
+    pub fn space_view_state(
+        &mut self,
+        space_view_class_registry: &SpaceViewClassRegistry,
+        space_view_id: SpaceViewId,
+        space_view_class: SpaceViewClassName,
+    ) -> &mut SpaceViewState {
+        self.space_view_states
+            .entry(space_view_id)
+            .or_insert_with(|| {
+                let state = if let Ok(state) = space_view_class_registry.query(space_view_class) {
+                    state.new_state()
+                } else {
+                    re_log::error_once!(
+                        "Space View class \"{}\" is not registered.",
+                        space_view_class
+                    );
+                    Box::<EmptySpaceViewState>::default()
+                };
+                SpaceViewState {
+                    state,
+                    selected_tensor: Default::default(),
+                    state_time_series: Default::default(),
+                    state_bar_chart: Default::default(),
+                    state_spatial: Default::default(),
+                    state_tensors: Default::default(),
+                }
+            })
     }
 }
 
@@ -653,11 +685,11 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             .space_views
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
-        let space_view_state = self
-            .viewport_state
-            .space_view_states
-            .entry(*space_view_id)
-            .or_default();
+        let space_view_state = self.viewport_state.space_view_state(
+            self.ctx.space_view_class_registry,
+            space_view_blueprint.id,
+            space_view_blueprint.class,
+        );
 
         space_view_ui(
             self.ctx,

@@ -33,8 +33,8 @@ pub use selection_state::{
 };
 pub use space_view::{
     ArchetypeDefinition, EmptySpaceViewState, Scene, SceneElement, SpaceViewClass,
-    SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewState,
-    SpaceViewTypeRegistryError,
+    SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    SpaceViewState,
 };
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};

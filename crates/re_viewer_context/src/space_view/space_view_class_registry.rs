@@ -3,7 +3,7 @@ use ahash::HashMap;
 use crate::{SpaceViewClass, SpaceViewClassName};
 
 #[derive(Debug, thiserror::Error)]
-pub enum SpaceViewTypeRegistryError {
+pub enum SpaceViewClassRegistryError {
     #[error("Space view with typename \"{0}\" was already registered.")]
     DuplicateTypeName(SpaceViewClassName),
 
@@ -24,14 +24,14 @@ impl SpaceViewClassRegistry {
     pub fn add(
         &mut self,
         space_view_type: impl SpaceViewClass + 'static,
-    ) -> Result<(), SpaceViewTypeRegistryError> {
+    ) -> Result<(), SpaceViewClassRegistryError> {
         let type_name = space_view_type.name();
         if self
             .0
             .insert(type_name, Box::new(space_view_type))
             .is_some()
         {
-            return Err(SpaceViewTypeRegistryError::DuplicateTypeName(type_name));
+            return Err(SpaceViewClassRegistryError::DuplicateTypeName(type_name));
         }
 
         Ok(())
@@ -41,10 +41,14 @@ impl SpaceViewClassRegistry {
     pub fn query(
         &self,
         name: SpaceViewClassName,
-    ) -> Result<&dyn SpaceViewClass, SpaceViewTypeRegistryError> {
+    ) -> Result<&dyn SpaceViewClass, SpaceViewClassRegistryError> {
         self.0
             .get(&name)
             .map(|boxed| boxed.as_ref())
-            .ok_or(SpaceViewTypeRegistryError::TypeNotFound(name))
+            .ok_or(SpaceViewClassRegistryError::TypeNotFound(name))
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &dyn SpaceViewClass> {
+        self.0.values().map(|boxed| boxed.as_ref())
     }
 }

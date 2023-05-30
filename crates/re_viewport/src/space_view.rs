@@ -1,7 +1,7 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_viewer_context::{EmptySpaceViewState, SpaceViewClassName, SpaceViewId, ViewerContext};
+use re_viewer_context::{SpaceViewClassName, SpaceViewId, ViewerContext};
 
 use crate::{
     data_blueprint::DataBlueprintTree,
@@ -31,7 +31,7 @@ pub enum ScreenshotMode {
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
-    pub space_view_class: SpaceViewClassName,
+    pub class: SpaceViewClassName,
 
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
@@ -75,7 +75,7 @@ impl SpaceViewBlueprint {
 
         Self {
             display_name,
-            space_view_class,
+            class: space_view_class,
             id: SpaceViewId::random(),
             space_path: space_path.clone(),
             data_blueprint: data_blueprint_tree,
@@ -155,7 +155,7 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
-        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.space_view_class) {
+        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
             crate::profile_scope!("selection_ui: ", space_view_class.name());
             space_view_class.selection_ui(ctx, ui, view_state.state.as_mut());
         } else {
@@ -213,7 +213,7 @@ impl SpaceViewBlueprint {
             entity_props_map: self.data_blueprint.data_blueprints_projected(),
         };
 
-        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.space_view_class) {
+        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
             let mut scene = space_view_class.new_scene();
             {
                 crate::profile_scope!("scene populate: ", space_view_class.name());
@@ -327,29 +327,15 @@ impl SpaceViewBlueprint {
 /// Camera position and similar.
 pub struct SpaceViewState {
     // TODO(andreas): Reduce this struct to just this field.
-    state: Box<dyn re_viewer_context::SpaceViewState>,
+    pub state: Box<dyn re_viewer_context::SpaceViewState>,
 
     /// Selects in [`Self::state_tensors`].
-    selected_tensor: Option<InstancePath>,
+    pub selected_tensor: Option<InstancePath>,
 
-    state_time_series: view_time_series::ViewTimeSeriesState,
-    state_bar_chart: view_bar_chart::BarChartState,
+    pub state_time_series: view_time_series::ViewTimeSeriesState,
+    pub state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
-    state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
-}
-
-#[allow(clippy::derivable_impls)] // Clippy claims default is derivable, but it's not.
-impl Default for SpaceViewState {
-    fn default() -> Self {
-        Self {
-            state: Box::<EmptySpaceViewState>::default(),
-            selected_tensor: Default::default(),
-            state_time_series: Default::default(),
-            state_bar_chart: Default::default(),
-            state_spatial: Default::default(),
-            state_tensors: Default::default(),
-        }
-    }
+    pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
 impl SpaceViewState {

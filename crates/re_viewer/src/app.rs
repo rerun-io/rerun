@@ -15,8 +15,8 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
-    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry,
-    SpaceViewTypeRegistryError, ViewerContext,
+    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, ViewerContext,
 };
 use re_viewport::ViewportState;
 
@@ -98,9 +98,10 @@ pub struct App {
     space_view_class_registry: SpaceViewClassRegistry,
 }
 
+/// Add built-in space views to the registry.
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
-) -> Result<(), SpaceViewTypeRegistryError> {
+) -> Result<(), SpaceViewClassRegistryError> {
     space_view_class_registry.add(re_space_view_text::TextSpaceView::default())?;
     space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
     Ok(())
@@ -176,6 +177,14 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: crate::Profiler) {
         self.state.profiler = profiler;
+    }
+
+    /// Adds a new space view class to the viewer.
+    pub fn add_space_view_class(
+        &mut self,
+        space_view_class: impl SpaceViewClass + 'static,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        self.space_view_class_registry.add(space_view_class)
     }
 
     /// Creates a promise with the specified name that will run `f` on a background

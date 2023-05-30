@@ -88,6 +88,7 @@ impl Scene {
         space_view_state: &dyn SpaceViewState,
     ) {
         for element in &mut self.0 {
+            // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
             element.populate(ctx, query, space_view_state);
         }
     }
