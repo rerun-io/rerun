@@ -842,7 +842,6 @@ fn help_text_ui(
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-
     space_view_blueprint: &mut SpaceViewBlueprint,
     space_view_state: &mut SpaceViewState,
     space_view_highlights: &SpaceViewHighlights,
