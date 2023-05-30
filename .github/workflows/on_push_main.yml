@@ -60,7 +60,7 @@ jobs:
     secrets: inherit
 
   upload-web-demo:
-    name: 'Upload Web'
+    name: 'Upload Web Demo'
     needs: [build-web-demo]
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:

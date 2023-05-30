@@ -113,6 +113,26 @@ jobs:
       RRD_ARTIFACT_NAME: linux-rrd
       RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
     secrets: inherit
+  
+  build-web-demo:
+    name: 'Build Web Demo'
+    needs: [build-linux, build-web]
+    uses: ./.github/workflows/reusable_build_web_demo.yml
+    with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      WHEEL_ARTIFACT_NAME: linux-wheel
+    secrets: inherit
+
+  upload-web-demo:
+    name: 'Upload Web'
+    needs: [build-web-demo]
+    uses: ./.github/workflows/reusable_upload_web_demo.yml
+    with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      MARK_PRERELEASE_FOR_MAINLINE: false
+      MARK_TAGGED_VERSION: true
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
+    secrets: inherit
 
   generate-wheel-index:
     name: 'Generate Pip Index'
