@@ -48,6 +48,10 @@ pub fn all_possible_space_views(
                 })
                 .collect::<Vec<_>>()
         })
+        // TODO(andreas): Hack to get in custom space views.
+        // .chain(ctx.space_view_class_registry.iter().map(|class| {
+        //     SpaceViewBlueprint::new(class.name(), ViewCategory::Text, &EntityPath::root(), &[])
+        // }))
         .collect()
 }
 

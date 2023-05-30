@@ -65,8 +65,8 @@ impl SpaceViewBlueprint {
         let display_name = if let Some(name) = space_path.iter().last() {
             name.to_string()
         } else {
-            // Include category name in the display for root paths because they look a tad bit too short otherwise.
-            format!("/ ({category})")
+            // Include class name in the display for root paths because they look a tad bit too short otherwise.
+            format!("/ ({space_view_class})")
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();

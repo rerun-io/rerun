@@ -481,11 +481,19 @@ impl Viewport {
                 .into_iter()
                 .sorted_by_key(|space_view| space_view.space_path.to_string())
             {
+                let icon = if let Ok(class) = ctx.space_view_class_registry.query(space_view.class)
+                {
+                    class.icon()
+                } else {
+                    // TODO(andreas): Error handling if class is not found once categories are gone.
+                    space_view.category.icon()
+                };
+
                 if ctx
                     .re_ui
                     .selectable_label_with_icon(
                         ui,
-                        space_view.category.icon(),
+                        icon,
                         if space_view.space_path.is_root() {
                             space_view.display_name.clone()
                         } else {
