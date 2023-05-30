@@ -99,6 +99,7 @@ cargo publish $FLAGS -p re_tuid
 cargo publish $FLAGS -p re_format
 cargo publish $FLAGS -p re_string_interner
 cargo publish $FLAGS -p re_analytics
+cargo publish $FLAGS -p re_crash_handler
 cargo publish $FLAGS -p re_memory
 cargo publish $FLAGS -p re_log_types
 cargo publish $FLAGS -p re_smart_channel
@@ -115,6 +116,8 @@ cargo publish $FLAGS -p re_build_web_viewer
 cargo publish $FLAGS -p re_web_viewer_server
 cargo publish $FLAGS -p re_viewer_context
 cargo publish $FLAGS -p re_data_ui
+cargo publish $FLAGS -p re_time_panel
+cargo publish $FLAGS -p re_viewport
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun

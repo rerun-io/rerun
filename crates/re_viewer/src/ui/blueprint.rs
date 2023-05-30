@@ -1,9 +1,7 @@
 use re_viewer_context::Item;
 
-use crate::misc::space_info::SpaceInfoCollection;
 use re_viewer_context::ViewerContext;
-
-use super::{viewport::Viewport, ViewportState};
+use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
 
 /// Defines the layout of the whole Viewer (or will, eventually).
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]

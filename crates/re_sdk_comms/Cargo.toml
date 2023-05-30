@@ -31,8 +31,8 @@ re_log_types = { workspace = true, features = ["serde"] }
 re_smart_channel.workspace = true
 
 ahash.workspace = true
-anyhow.workspace = true
 crossbeam.workspace = true
 document-features = "0.2"
 rand = { version = "0.8.5", features = ["small_rng"] }
+thiserror.workspace = true
 tokio.workspace = true

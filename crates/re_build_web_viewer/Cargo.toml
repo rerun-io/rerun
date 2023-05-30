@@ -17,4 +17,6 @@ all-features = true
 
 
 [dependencies]
+anyhow.workspace = true
 cargo_metadata = "0.15"
+wasm-bindgen-cli-support = "0.2.86"

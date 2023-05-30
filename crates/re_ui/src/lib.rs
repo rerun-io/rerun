@@ -46,7 +46,7 @@ pub struct TopBarStyle {
 
 // ----------------------------------------------------------------------------
 
-use std::sync::Arc;
+use std::{ops::RangeInclusive, sync::Arc};
 
 use parking_lot::Mutex;
 
@@ -625,6 +625,37 @@ impl ReUi {
         );
         style.background = self.egui_ctx.style().visuals.widgets.noninteractive.bg_fill;
         style
+    }
+
+    /// Paints a time cursor for indicating the time on a time axis along x.
+    #[allow(clippy::unused_self)]
+    pub fn paint_time_cursor(
+        &self,
+        painter: &egui::Painter,
+        x: f32,
+        y: RangeInclusive<f32>,
+        stroke: egui::Stroke,
+    ) {
+        let y_min = *y.start();
+        let y_max = *y.end();
+
+        let stroke = egui::Stroke {
+            width: 1.5 * stroke.width,
+            color: stroke.color,
+        };
+
+        let w = 10.0;
+        let triangle = vec![
+            pos2(x - 0.5 * w, y_min), // left top
+            pos2(x + 0.5 * w, y_min), // right top
+            pos2(x, y_min + w),       // bottom
+        ];
+        painter.add(egui::Shape::convex_polygon(
+            triangle,
+            stroke.color,
+            egui::Stroke::NONE,
+        ));
+        painter.vline(x, (y_min + w)..=y_max, stroke);
     }
 }
 

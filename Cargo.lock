@@ -1668,6 +1668,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "extend_viewer_ui"
+version = "0.6.0"
+dependencies = [
+ "mimalloc",
+ "re_crash_handler",
+ "re_sdk_comms",
+ "re_viewer",
+ "tokio",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1921,7 +1932,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12f597d56c1bd55a811a1be189459e8fad2bbc272616375602443bdfb37fa774"
 dependencies = [
  "bytemuck",
- "mint",
  "serde",
 ]
 
@@ -2791,12 +2801,6 @@ dependencies = [
  "adler",
  "simd-adler32",
 ]
-
-[[package]]
-name = "mint"
-version = "0.5.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e53debba6bda7a793e5f99b8dacf19e626084f525f7829104ba9898f367d85ff"
 
 [[package]]
 name = "mio"
@@ -3887,7 +3891,21 @@ version = "0.7.0-alpha.0"
 name = "re_build_web_viewer"
 version = "0.7.0-alpha.0"
 dependencies = [
+ "anyhow",
  "cargo_metadata",
+ "wasm-bindgen-cli-support",
+]
+
+[[package]]
+name = "re_crash_handler"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "backtrace",
+ "itertools",
+ "libc",
+ "parking_lot 0.12.1",
+ "re_analytics",
+ "re_build_info",
 ]
 
 [[package]]
@@ -4023,7 +4041,6 @@ dependencies = [
  "image",
  "itertools",
  "lazy_static",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "num-derive",
@@ -4165,7 +4182,6 @@ name = "re_sdk_comms"
 version = "0.7.0-alpha.0"
 dependencies = [
  "ahash 0.8.3",
- "anyhow",
  "crossbeam",
  "document-features",
  "rand",
@@ -4173,6 +4189,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_smart_channel",
+ "thiserror",
  "tokio",
 ]
 
@@ -4215,11 +4232,11 @@ dependencies = [
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
+ "re_format",
  "re_log_types",
  "re_ui",
  "re_viewer_context",
  "serde",
- "time",
  "vec1",
 ]
 
@@ -4263,23 +4280,13 @@ dependencies = [
  "anyhow",
  "arrow2",
  "arrow2_convert",
- "bytemuck",
  "cfg-if",
  "cocoa",
  "eframe",
  "egui",
  "egui-wgpu",
- "egui_extras",
- "egui_tiles",
- "enumset",
- "glam",
- "half 2.2.1",
  "image",
  "itertools",
- "lazy_static",
- "macaw",
- "ndarray",
- "nohash-hasher",
  "objc",
  "poll-promise",
  "puffin",
@@ -4296,20 +4303,15 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_query",
  "re_renderer",
  "re_smart_channel",
- "re_tensor_ops",
  "re_time_panel",
  "re_ui",
  "re_viewer_context",
+ "re_viewport",
  "re_ws_comms",
  "rfd",
- "rmp-serde",
  "serde",
- "slotmap",
- "smallvec",
- "thiserror",
  "time",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4347,6 +4349,48 @@ dependencies = [
  "slotmap",
  "thiserror",
  "uuid",
+ "wgpu",
+]
+
+[[package]]
+name = "re_viewport"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "ahash 0.8.3",
+ "anyhow",
+ "arrow2",
+ "arrow2_convert",
+ "bytemuck",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "egui_tiles",
+ "enumset",
+ "glam",
+ "half 2.2.1",
+ "image",
+ "itertools",
+ "lazy_static",
+ "macaw",
+ "ndarray",
+ "nohash-hasher",
+ "puffin",
+ "re_arrow_store",
+ "re_data_store",
+ "re_data_ui",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tensor_ops",
+ "re_ui",
+ "re_viewer_context",
+ "serde",
+ "slotmap",
+ "smallvec",
+ "thiserror",
  "wgpu",
 ]
 
@@ -4450,17 +4494,15 @@ name = "rerun"
 version = "0.7.0-alpha.0"
 dependencies = [
  "anyhow",
- "backtrace",
  "clap",
  "document-features",
  "itertools",
- "libc",
- "parking_lot 0.12.1",
  "puffin",
  "rayon",
  "re_analytics",
  "re_build_build_info",
  "re_build_info",
+ "re_crash_handler",
  "re_data_store",
  "re_format",
  "re_log",
@@ -4498,10 +4540,8 @@ version = "0.7.0-alpha.0"
 dependencies = [
  "arrow2",
  "document-features",
- "glam",
  "image",
  "itertools",
- "macaw",
  "mimalloc",
  "numpy",
  "once_cell",
@@ -4516,6 +4556,8 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_viewer",
+ "re_viewer_context",
+ "re_viewport",
  "re_web_viewer_server",
  "re_ws_comms",
  "rerun",

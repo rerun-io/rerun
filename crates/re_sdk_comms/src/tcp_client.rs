@@ -3,6 +3,21 @@ use std::{
     net::{SocketAddr, TcpStream},
 };
 
+#[derive(thiserror::Error, Debug)]
+pub enum ClientError {
+    #[error("Failed to connect to Rerun server at {addrs:?}: {err}")]
+    Connect {
+        addrs: Vec<SocketAddr>,
+        err: std::io::Error,
+    },
+
+    #[error("Failed to send to Rerun server at {addrs:?}: {err}")]
+    Send {
+        addrs: Vec<SocketAddr>,
+        err: std::io::Error,
+    },
+}
+
 /// State of the [`TcpStream`]
 ///
 /// Because the [`TcpClient`] lazily connects on [`TcpClient::send`], it needs a
@@ -63,7 +78,7 @@ impl TcpClient {
     /// Returns `false` on failure. Does nothing if already connected.
     ///
     /// [`Self::send`] will call this.
-    pub fn connect(&mut self) -> anyhow::Result<()> {
+    pub fn connect(&mut self) -> Result<(), ClientError> {
         if let TcpStreamState::Connected(_) = self.stream_state {
             Ok(())
         } else {
@@ -72,7 +87,10 @@ impl TcpClient {
                 Ok(mut stream) => {
                     if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
                         self.stream_state = TcpStreamState::Disconnected;
-                        anyhow::bail!("Failed to send to Rerun server at {:?}: {err}", self.addrs);
+                        Err(ClientError::Send {
+                            addrs: self.addrs.clone(),
+                            err,
+                        })
                     } else {
                         self.stream_state = TcpStreamState::Connected(stream);
                         Ok(())
@@ -80,17 +98,17 @@ impl TcpClient {
                 }
                 Err(err) => {
                     self.stream_state = TcpStreamState::Disconnected;
-                    anyhow::bail!(
-                        "Failed to connect to Rerun server at {:?}: {err}",
-                        self.addrs
-                    );
+                    Err(ClientError::Connect {
+                        addrs: self.addrs.clone(),
+                        err,
+                    })
                 }
             }
         }
     }
 
-    /// blocks until it is sent
-    pub fn send(&mut self, packet: &[u8]) -> anyhow::Result<()> {
+    /// Blocks until it is sent.
+    pub fn send(&mut self, packet: &[u8]) -> Result<(), ClientError> {
         use std::io::Write as _;
 
         self.connect()?;
@@ -99,12 +117,18 @@ impl TcpClient {
             re_log::trace!("Sending a packet of size {}…", packet.len());
             if let Err(err) = stream.write(&(packet.len() as u32).to_le_bytes()) {
                 self.stream_state = TcpStreamState::Disconnected;
-                anyhow::bail!("Failed to send to Rerun server at {:?}: {err}", self.addrs);
+                return Err(ClientError::Send {
+                    addrs: self.addrs.clone(),
+                    err,
+                });
             }
 
             if let Err(err) = stream.write(packet) {
                 self.stream_state = TcpStreamState::Disconnected;
-                anyhow::bail!("Failed to send to Rerun server at {:?}: {err}", self.addrs);
+                return Err(ClientError::Send {
+                    addrs: self.addrs.clone(),
+                    err,
+                });
             }
 
             Ok(())

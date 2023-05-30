@@ -82,6 +82,7 @@ impl ViewerAnalytics {
             AppEnvironment::RustSdk { .. } => "rust_sdk",
             AppEnvironment::RerunCli { .. } => "rerun_cli",
             AppEnvironment::Web => "web_viewer",
+            AppEnvironment::Custom(_) => "custom",
         };
         self.register("app_env", app_env_str);
 

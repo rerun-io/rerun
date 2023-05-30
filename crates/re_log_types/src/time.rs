@@ -99,6 +99,53 @@ impl Time {
         }
     }
 
+    /// Useful when showing dates/times on a timeline
+    /// and you want it compact.
+    ///
+    /// Shows dates when zoomed out, shows times when zoomed in,
+    /// shows relative millisecond when really zoomed in.
+    pub fn format_time_compact(&self) -> String {
+        let ns = self.nanos_since_epoch();
+        let relative_ns = ns % 1_000_000_000;
+        let is_whole_second = relative_ns == 0;
+        if is_whole_second {
+            if let Some(datetime) = self.to_datetime() {
+                let is_whole_minute = ns % 60_000_000_000 == 0;
+                let time_format = if self.is_exactly_midnight() {
+                    "[year]-[month]-[day]Z"
+                } else if is_whole_minute {
+                    "[hour]:[minute]Z"
+                } else {
+                    "[hour]:[minute]:[second]Z"
+                };
+                let parsed_format = time::format_description::parse(time_format).unwrap();
+                return datetime.format(&parsed_format).unwrap();
+            }
+
+            crate::Duration::from_nanos(ns).to_string()
+        } else {
+            // We are in the sub-second resolution.
+            // Showing the full time (HH:MM:SS.XXX or 3h 2m 6s …) becomes too long,
+            // so instead we switch to showing the time as milliseconds since the last whole second:
+            let ms = relative_ns as f64 * 1e-6;
+            if relative_ns % 1_000_000 == 0 {
+                format!("{ms:+.0} ms")
+            } else if relative_ns % 100_000 == 0 {
+                format!("{ms:+.1} ms")
+            } else if relative_ns % 10_000 == 0 {
+                format!("{ms:+.2} ms")
+            } else if relative_ns % 1_000 == 0 {
+                format!("{ms:+.3} ms")
+            } else if relative_ns % 100 == 0 {
+                format!("{ms:+.4} ms")
+            } else if relative_ns % 10 == 0 {
+                format!("{ms:+.5} ms")
+            } else {
+                format!("{ms:+.6} ms")
+            }
+        }
+    }
+
     #[inline]
     pub fn lerp(range: RangeInclusive<Time>, t: f32) -> Time {
         let (min, max) = (range.start().0, range.end().0);

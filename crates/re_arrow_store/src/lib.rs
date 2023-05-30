@@ -53,6 +53,10 @@ pub use arrow2::io::ipc::read::{StreamReader, StreamState};
 #[doc(no_inline)]
 pub use re_log_types::{TimeInt, TimeRange, TimeType, Timeline}; // for politeness sake
 
+pub mod external {
+    pub use arrow2;
+}
+
 // ---
 
 /// Native-only profiling macro for puffin.

@@ -2,16 +2,16 @@ use arrow2_convert::field::ArrowField;
 use re_data_store::store_one_component;
 use re_log_types::{Component, DataCell, DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::SpaceViewId;
-
-use crate::blueprint_components::{
-    panel::PanelState,
-    space_view::SpaceViewComponent,
-    viewport::{
-        AutoSpaceViews, SpaceViewMaximized, SpaceViewVisibility, ViewportLayout, VIEWPORT_PATH,
+use re_viewport::{
+    blueprint_components::{
+        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, SpaceViewVisibility,
+        ViewportLayout, VIEWPORT_PATH,
     },
+    SpaceViewBlueprint, Viewport,
 };
 
-use super::{Blueprint, SpaceViewBlueprint, Viewport};
+use super::Blueprint;
+use crate::blueprint_components::panel::PanelState;
 
 // Resolving and applying updates
 impl Blueprint {

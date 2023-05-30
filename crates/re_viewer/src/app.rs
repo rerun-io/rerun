@@ -5,6 +5,7 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
+use re_viewport::ViewportState;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -18,10 +19,7 @@ use re_viewer_context::{
     AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, ViewerContext,
 };
 
-use crate::{
-    ui::{Blueprint, ViewportState},
-    viewer_analytics::ViewerAnalytics,
-};
+use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics};
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
@@ -679,7 +677,7 @@ fn paint_background_fill(ui: &mut egui::Ui) {
     // Of course this does some over-draw, but we have to live with that.
 
     ui.painter().rect_filled(
-        ui.ctx().screen_rect().shrink(0.5),
+        ui.max_rect().shrink(0.5),
         re_ui::ReUi::native_window_rounding(),
         ui.visuals().panel_fill,
     );
@@ -952,7 +950,8 @@ impl App {
         self.log_db().map_or(false, |log_db| !log_db.is_empty())
     }
 
-    fn log_db(&self) -> Option<&LogDb> {
+    /// Get access to the currently shown [`LogDb`], if any.
+    pub fn log_db(&self) -> Option<&LogDb> {
         self.state
             .selected_rec_id
             .as_ref()
