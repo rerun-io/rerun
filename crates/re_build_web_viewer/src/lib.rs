@@ -2,6 +2,7 @@
 
 //! Build the Rerun web-viewer .wasm and generate the .js bindings for it.
 
+use anyhow::Context as _;
 use cargo_metadata::camino::Utf8PathBuf;
 
 fn target_directory() -> Utf8PathBuf {
@@ -14,7 +15,7 @@ fn target_directory() -> Utf8PathBuf {
 }
 
 /// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `./web_viewer` folder.
-pub fn build(release: bool, webgpu: bool) {
+pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
     eprintln!("Building web viewer wasm…");
     eprintln!("We assume you've already run ./scripts/setup_web.sh");
 
@@ -93,7 +94,7 @@ pub fn build(release: bool, webgpu: bool) {
     let status = cmd
         .current_dir(root_dir)
         .status()
-        .expect("Failed to build Wasm");
+        .context("Failed to build Wasm")?;
     assert!(status.success(), "Failed to build Wasm");
 
     // --------------------------------------------------------------------------------
@@ -106,29 +107,16 @@ pub fn build(release: bool, webgpu: bool) {
         .join(build)
         .join(format!("{crate_name}.wasm"));
 
-    let mut cmd = std::process::Command::new("wasm-bindgen");
-    cmd.args([
-        target_wasm_path.as_str(),
-        "--out-dir",
-        build_dir.as_str(),
-        "--out-name",
-        target_name.as_str(),
-        "--no-modules",
-        "--no-typescript",
-    ]);
-    if !release {
-        cmd.arg("--debug");
-    }
-
-    eprintln!("> {cmd:?}");
-    let status = cmd
-        .current_dir(root_dir)
-        .status()
-        .expect("Failed to run wasm-bindgen");
-    assert!(status.success(), "Failed to run wasm-bindgen");
+    // wasm-bindgen --target web target_wasm_path --no-typescript --out-name target_name --out-dir build_dir
+    wasm_bindgen_cli_support::Bindgen::new()
+        .no_modules(true)?
+        .input_path(target_wasm_path.as_str())
+        .typescript(false)
+        .out_name(target_name.as_str())
+        .generate(build_dir.as_str())
+        .context("Failed to run wasm-bindgen")?;
 
     // --------------------------------------------------------------------------------
-    // Optimize the wasm
 
     if release {
         eprintln!("Optimizing wasm with wasm-opt…");
@@ -143,9 +131,13 @@ pub fn build(release: bool, webgpu: bool) {
         let status = cmd
             .current_dir(root_dir)
             .status()
-            .expect("Failed to run wasm-opt");
+            .context("Failed to run wasm-opt")?;
         assert!(status.success(), "Failed to run wasm-opt");
     }
 
+    // --------------------------------------------------------------------------------
+
     eprintln!("Finished {wasm_path}");
+
+    Ok(())
 }

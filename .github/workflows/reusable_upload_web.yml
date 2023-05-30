@@ -32,6 +32,10 @@ on:
         required: false
         type: string
         default: ''
+      UPLOAD_COMMIT:
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-upload-web
@@ -80,6 +84,7 @@ jobs:
           echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
 
       - name: "Upload web-viewer (commit)"
+        if: ${{ inputs.UPLOAD_COMMIT }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_viewer"
@@ -87,6 +92,7 @@ jobs:
           parent: false
 
       - name: "Upload RRD (commit)"
+        if: ${{ inputs.UPLOAD_COMMIT }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "rrd"

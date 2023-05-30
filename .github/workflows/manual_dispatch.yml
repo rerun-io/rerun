@@ -36,16 +36,10 @@ on:
         default: 'linux'
 
       BUILD_WEB:
-        description: 'Run reusable_build_web'
-        type: boolean
+        description: 'Run reusable_build_web/reusable_build_web_demo (Full build: app,demo)'
+        type: string
         required: false
-        default: true
-
-      BUILD_WEB_DEMO:
-        description: 'Run reusable_build_web'
-        type: boolean
-        required: false
-        default: true
+        default: 'app,demo'
 
       RELEASE_VERSION:
         description: 'Release Version Number (Must match Cargo.toml)'
@@ -218,7 +212,7 @@ jobs:
 
   build-web:
     name: 'Build Web'
-    if: ${{ github.event.inputs.BUILD_WEB == 'true'}}
+    if: ${{ contains(github.event.inputs.BUILD_WEB, 'app') }}
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
@@ -228,7 +222,7 @@ jobs:
   upload-web:
     name: 'Upload Web'
     needs: [min-test-wheel, build-web]
-    if: ${{ (github.event.inputs.BUILD_WEB == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
+    if: ${{ contains(github.event.inputs.BUILD_WEB, 'app') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
@@ -240,7 +234,7 @@ jobs:
   build-web-demo:
     name: 'Build Web Demo'
     needs: [min-test-wheel, build-web]
-    if: ${{ github.event.inputs.BUILD_WEB_DEMO == 'true'}}
+    if: ${{ contains(github.event.inputs.BUILD_WEB, 'demo') }}
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}
@@ -250,7 +244,7 @@ jobs:
   upload-web-demo:
     name: 'Upload Web Demo'
     needs: [build-web-demo]
-    if: ${{ (github.event.inputs.BUILD_WEB_DEMO == 'true') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
+    if: ${{ contains(github.event.inputs.BUILD_WEB, 'demo') && (github.event.inputs.UPLOAD_GCLOUD == 'true') }}
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: manual-dispatch-${{ github.run_id}}

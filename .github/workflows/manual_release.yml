@@ -91,4 +91,8 @@ jobs:
           generateReleaseNotes: true
           allowUpdates: true
           draft: true
+      
+      - name: Release Web Demo
+        run: |
+          gsutil -m cp -r "gs://rerun-demo/commit/${{ env.SHORT_SHA }}/*" "gs://rerun-demo/version/latest/"
 

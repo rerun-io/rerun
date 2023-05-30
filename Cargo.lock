@@ -3891,7 +3891,9 @@ version = "0.7.0-alpha.0"
 name = "re_build_web_viewer"
 version = "0.7.0-alpha.0"
 dependencies = [
+ "anyhow",
  "cargo_metadata",
+ "wasm-bindgen-cli-support",
 ]
 
 [[package]]
