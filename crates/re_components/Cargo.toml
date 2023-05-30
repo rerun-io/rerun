@@ -33,7 +33,7 @@ glam = ["dep:glam"]
 image = ["dep:ecolor", "dep:image"]
 
 ## Enable (de)serialization using serde.
-serde = ["dep:rmp-serde", "dep:serde", "half/serde", "re_log_types/serde"]
+serde = ["dep:serde", "half/serde", "re_log_types/serde"]
 
 
 [dependencies]
@@ -45,11 +45,7 @@ re_log.workspace = true
 # External
 ahash.workspace = true
 array-init = "2.1.0"
-arrow2 = { workspace = true, features = [
-  "io_ipc",
-  "io_print",
-  "compute_concatenate",
-] }
+arrow2.workspace = true
 arrow2_convert.workspace = true
 bytemuck = "1.11"
 document-features = "0.2"
@@ -59,7 +55,6 @@ lazy_static.workspace = true
 ndarray.workspace = true
 nohash-hasher = "0.2"
 thiserror.workspace = true
-time = { workspace = true, features = ["formatting", "macros"] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 
@@ -70,7 +65,6 @@ image = { workspace = true, optional = true, default-features = false, features 
   "jpeg",
 ] }
 rand = { version = "0.8", optional = true }
-rmp-serde = { version = "1.1", optional = true }
 serde = { version = "1", optional = true, features = ["derive", "rc"] }
 
 # Native dependencies:
@@ -80,4 +74,5 @@ puffin.workspace = true
 
 
 [dev-dependencies]
+rmp-serde = "1.1"
 similar-asserts = "1.4.2"
