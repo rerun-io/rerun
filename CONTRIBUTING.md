@@ -70,5 +70,7 @@ To check everything in one go, run `./scripts/check.sh`. `check.sh` should ideal
 ### Optional
 You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo cranky` each time you change a rust file. See [`bacon.toml`](bacon.toml) for more.
 
+You can set up [`sccache`](https://github.com/mozilla/sccache) to speed up re-compilation (e.g. when switching branches). You can control the size of the cache with `export SCCACHE_CACHE_SIZE="256G"`.
+
 ### Other
 You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=trace`.

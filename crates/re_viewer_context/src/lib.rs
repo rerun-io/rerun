@@ -40,6 +40,10 @@ mod clipboard;
 #[cfg(not(target_arch = "wasm32"))]
 pub use clipboard::Clipboard;
 
+pub mod external {
+    pub use {re_arrow_store, re_data_store, re_log_types, re_query, re_ui};
+}
+
 // ---------------------------------------------------------------------------
 
 /// A unique id for each space view.

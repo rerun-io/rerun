@@ -11,9 +11,6 @@ set -x
 # For compiling to Wasm:
 rustup target add wasm32-unknown-unknown
 
-# For generating JS bindings:
-cargo install wasm-bindgen-cli --version 0.2.86
-
 # For local tests with `start_server.sh`:
 # cargo install basic-http-server
 

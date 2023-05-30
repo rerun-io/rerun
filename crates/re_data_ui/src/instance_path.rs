@@ -1,6 +1,6 @@
 use re_data_store::InstancePath;
 use re_log_types::ComponentPath;
-use re_query::{get_component_with_instances, QueryError};
+use re_query::get_component_with_instances;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -29,16 +29,14 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for component_name in components {
-                    let component_data = get_component_with_instances(
+                    let Some((_, component_data)) = get_component_with_instances(
                         store,
                         query,
                         &self.entity_path,
                         component_name,
-                    );
-
-                    if matches!(component_data, Err(QueryError::PrimaryNotFound)) {
+                    ) else {
                         continue; // no need to show components that are unset at this point in time
-                    }
+                    };
 
                     // Certain fields are hidden.
                     if HIDDEN_COMPONENTS_FOR_ALL_VERBOSITY.contains(&component_name.as_str()) {
@@ -55,41 +53,28 @@ impl DataUi for InstancePath {
                         UiVerbosity::All => {}
                     }
 
-                    item_ui::component_path_button_to(
+                    item_ui::component_path_button(
                         ctx,
                         ui,
-                        component_name.short_name(),
                         &ComponentPath::new(self.entity_path.clone(), component_name),
                     );
 
-                    match component_data {
-                        Err(err) => {
-                            ui.label(ctx.re_ui.error_text(format!("Error: {err}")));
+                    if self.instance_key.is_splat() {
+                        super::component::EntityComponentWithInstances {
+                            entity_path: self.entity_path.clone(),
+                            component_data,
                         }
-                        Ok((_, component_data)) => {
-                            if self.instance_key.is_splat() {
-                                super::component::EntityComponentWithInstances {
-                                    entity_path: self.entity_path.clone(),
-                                    component_data,
-                                }
-                                .data_ui(
-                                    ctx,
-                                    ui,
-                                    UiVerbosity::Small,
-                                    query,
-                                );
-                            } else {
-                                ctx.component_ui_registry.ui(
-                                    ctx,
-                                    ui,
-                                    UiVerbosity::Small,
-                                    query,
-                                    &self.entity_path,
-                                    &component_data,
-                                    &self.instance_key,
-                                );
-                            }
-                        }
+                        .data_ui(ctx, ui, UiVerbosity::Small, query);
+                    } else {
+                        ctx.component_ui_registry.ui(
+                            ctx,
+                            ui,
+                            UiVerbosity::Small,
+                            query,
+                            &self.entity_path,
+                            &component_data,
+                            &self.instance_key,
+                        );
                     }
 
                     ui.end_row();

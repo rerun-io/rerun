@@ -30,7 +30,7 @@ use crate::Component;
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Arrow3D {
     pub origin: Vec3D,

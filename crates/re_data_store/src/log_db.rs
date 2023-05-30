@@ -43,6 +43,12 @@ impl Default for EntityDb {
 }
 
 impl EntityDb {
+    /// A sorted list of all the entity paths in this database.
+    pub fn entity_paths(&self) -> Vec<&EntityPath> {
+        use itertools::Itertools as _;
+        self.entity_path_from_hash.values().sorted().collect()
+    }
+
     #[inline]
     pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
         self.entity_path_from_hash.get(entity_path_hash)

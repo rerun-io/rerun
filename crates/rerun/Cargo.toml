@@ -25,6 +25,7 @@ default = ["analytics", "demo", "glam", "image", "sdk", "server"]
 ## Enable telemetry using our analytics SDK.
 analytics = [
   "dep:re_analytics",
+  "re_crash_handler/analytics",
   "re_viewer?/analytics",
   "re_web_viewer_server?/analytics",
 ]
@@ -65,6 +66,7 @@ web_viewer = [
 
 [dependencies]
 re_build_info.workspace = true
+re_crash_handler.workspace = true
 re_data_store.workspace = true
 re_format.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
@@ -76,8 +78,7 @@ re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
 document-features = "0.2"
-itertools = { workspace = true }
-parking_lot.workspace = true
+itertools.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
@@ -90,15 +91,10 @@ webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-backtrace = "0.3"
 clap = { workspace = true, features = ["derive"] }
 puffin.workspace = true
 rayon.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-
-# Native unix dependencies:
-[target.'cfg(not(any(target_arch = "wasm32", target_os = "windows")))'.dependencies]
-libc = "0.2"
 
 
 [build-dependencies]

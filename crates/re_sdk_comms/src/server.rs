@@ -1,13 +1,49 @@
-//! TODO(emilk): use tokio instead
-
 use std::{io::ErrorKind, time::Instant};
 
-use anyhow::Context;
 use rand::{Rng as _, SeedableRng};
 
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
 use re_smart_channel::{Receiver, Sender};
 use tokio::net::{TcpListener, TcpStream};
+
+#[derive(thiserror::Error, Debug)]
+pub enum ServerError {
+    #[error("Failed to bind TCP address {bind_addr:?}. Another Rerun instance is probably running. {err}")]
+    TcpBindError {
+        bind_addr: String,
+        err: std::io::Error,
+    },
+}
+
+#[derive(thiserror::Error, Debug)]
+enum VersionError {
+    #[error("SDK client is using an older protocol version ({client_version}) than the SDK server ({server_version})")]
+    ClientIsOlder {
+        client_version: u16,
+        server_version: u16,
+    },
+
+    #[error("SDK client is using a newer protocol version ({client_version}) than the SDK server ({server_version})")]
+    ClientIsNewer {
+        client_version: u16,
+        server_version: u16,
+    },
+}
+
+#[derive(thiserror::Error, Debug)]
+enum ConnectionError {
+    #[error(transparent)]
+    VersionError(#[from] VersionError),
+
+    #[error(transparent)]
+    SendError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    DecodeError(#[from] re_log_encoding::decoder::DecodeError),
+
+    #[error("The receiving end of the channel was closed")]
+    ChannelDisconnected(#[from] re_smart_channel::SendError<LogMsg>),
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ServerOptions {
@@ -34,14 +70,14 @@ impl Default for ServerOptions {
 /// # use re_sdk_comms::{serve, ServerOptions};
 /// #[tokio::main]
 /// async fn main() {
-///     let log_msg_rx = serve("0.0.0.0", 80, ServerOptions::default()).await.unwrap();
+///     let log_msg_rx = serve("0.0.0.0", re_sdk_comms::DEFAULT_SERVER_PORT, ServerOptions::default()).await.unwrap();
 /// }
 /// ```
 pub async fn serve(
     bind_ip: &str,
     port: u16,
     options: ServerOptions,
-) -> anyhow::Result<Receiver<LogMsg>> {
+) -> Result<Receiver<LogMsg>, ServerError> {
     let (tx, rx) = re_smart_channel::smart_channel(
         // NOTE: We don't know until we start actually accepting clients!
         re_smart_channel::SmartMessageSource::Unknown,
@@ -49,11 +85,13 @@ pub async fn serve(
     );
 
     let bind_addr = format!("{bind_ip}:{port}");
-    let listener = TcpListener::bind(&bind_addr).await.with_context(|| {
-        format!(
-            "Failed to bind TCP address {bind_addr:?}. Another Rerun instance is probably running."
-        )
-    })?;
+    let listener =
+        TcpListener::bind(&bind_addr)
+            .await
+            .map_err(|err| ServerError::TcpBindError {
+                bind_addr: bind_addr.clone(),
+                err,
+            })?;
 
     if options.quiet {
         re_log::debug!(
@@ -102,14 +140,14 @@ fn spawn_client(
         }
 
         if let Err(err) = run_client(stream, &tx, options).await {
-            if let Some(err) = err.downcast_ref::<std::io::Error>() {
+            if let ConnectionError::SendError(err) = &err {
                 if err.kind() == ErrorKind::UnexpectedEof {
                     // Client gracefully severed the connection.
                     tx.quit(None).ok(); // best-effort at this point
                     return;
                 }
             }
-            re_log::warn!("Closing connection to client: {err}");
+            re_log::warn!("Closing connection to client at {addr_string}: {err}");
             let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.to_string().into();
             tx.quit(Some(err)).ok(); // best-effort at this point
         }
@@ -120,7 +158,7 @@ async fn run_client(
     mut stream: TcpStream,
     tx: &Sender<LogMsg>,
     options: ServerOptions,
-) -> anyhow::Result<()> {
+) -> Result<(), ConnectionError> {
     #![allow(clippy::read_zero_byte_vec)] // false positive: https://github.com/rust-lang/rust-clippy/issues/9274
 
     use tokio::io::AsyncReadExt as _;
@@ -131,19 +169,17 @@ async fn run_client(
 
     match client_version.cmp(&crate::PROTOCOL_VERSION) {
         std::cmp::Ordering::Less => {
-            anyhow::bail!(
-                "sdk client is using an older protocol version ({}) than the sdk server ({}).",
+            return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
                 client_version,
-                crate::PROTOCOL_VERSION
-            );
+                server_version: crate::PROTOCOL_VERSION,
+            }));
         }
         std::cmp::Ordering::Equal => {}
         std::cmp::Ordering::Greater => {
-            anyhow::bail!(
-                "sdk client is using a newer protocol version ({}) than the sdk server ({}).",
+            return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
                 client_version,
-                crate::PROTOCOL_VERSION
-            );
+                server_version: crate::PROTOCOL_VERSION,
+            }));
         }
     }
 
