@@ -7,6 +7,8 @@ mod space_view_type;
 mod space_view_type_impl;
 mod space_view_type_registry;
 
+pub use space_view_type_registry::SpaceViewTypeRegistry;
+
 // ---------------------------------------------------------------------------
 
 /// Profiling macro for feature "puffin"

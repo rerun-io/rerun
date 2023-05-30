@@ -2,7 +2,7 @@ use re_viewer_context::ViewerContext;
 
 use crate::space_view_type::{Scene, SceneElement, SpaceViewState, SpaceViewType};
 
-/// Utility for implementing SpaceViewType.
+/// Utility for implementing [`SpaceViewType`] with a concrete state type.
 pub trait SpaceViewTypeImpl {
     type State: SpaceViewState + Default + 'static;
 
@@ -71,7 +71,7 @@ impl<T: SpaceViewTypeImpl> SpaceViewType for T {
     }
 }
 
-/// Utility for implementing SpaceViewType with a single scene element.
+/// Utility for implementing [`SpaceViewType`] with a single scene element and a concrete state type.
 pub trait SingleItemSpaceViewTypeImpl {
     type State: SpaceViewState + Default + 'static;
     type Element: SceneElement + Default + 'static;

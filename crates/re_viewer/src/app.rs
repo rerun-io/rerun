@@ -92,6 +92,9 @@ pub struct App {
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
+
+    /// All known space view types.
+    space_view_type_registry: SpaceViewTypeRegistry,
 }
 
 impl App {
