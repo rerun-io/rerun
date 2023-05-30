@@ -74,7 +74,7 @@ pub trait SpaceViewState: std::any::Any {
 }
 
 /// A scene is a collection of scene elements.
-pub struct Scene(pub Vec<Box<dyn SceneElement>>); // TODO: use tinyvec
+pub struct Scene(pub Vec<Box<dyn SceneElement>>);
 
 impl Scene {
     /// List of all archetypes this type of view supports.
@@ -96,6 +96,7 @@ impl Scene {
     }
 }
 
+/// Element of a scene derived from a single archetype query.
 pub trait SceneElement {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;

@@ -6,7 +6,7 @@ use re_log_types::{
 };
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext,
+    ArchetypeDefinition, SceneElement, SceneElementImpl, SceneQuery, SpaceViewState, ViewerContext,
 };
 
 use super::space_view_type::TextSpaceViewState;
@@ -34,7 +34,9 @@ pub struct SceneText {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl SceneElement for SceneText {
+impl SceneElementImpl for SceneText {
+    type State = TextSpaceViewState;
+
     fn archetype(&self) -> ArchetypeDefinition {
         vec![component_types::TextEntry::name()]
     }
@@ -43,22 +45,16 @@ impl SceneElement for SceneText {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
+        state: &TextSpaceViewState,
     ) {
         let store = &ctx.log_db.entity_db.data_store;
-
-        // TODO: make this less cumbersome, and handle error.
-        let space_view_state = space_view_state
-            .as_any()
-            .downcast_ref::<TextSpaceViewState>()
-            .expect("Unexpected space view state type");
 
         for entity_path in query.entity_paths {
             let ent_path = entity_path;
 
             // Early filtering: if we're not showing it the view, there isn't much point
             // in querying it to begin with... at least for now.
-            if !space_view_state.filters.is_entity_path_visible(ent_path) {
+            if !state.filters.is_entity_path_visible(ent_path) {
                 return;
             }
 
@@ -84,9 +80,9 @@ impl SceneElement for SceneText {
                         let component_types::TextEntry { body, level } = text_entry;
 
                         // Early filtering once more, see above.
-                        let is_visible = level.as_ref().map_or(true, |lvl| {
-                            space_view_state.filters.is_log_level_visible(lvl)
-                        });
+                        let is_visible = level
+                            .as_ref()
+                            .map_or(true, |lvl| state.filters.is_log_level_visible(lvl));
 
                         if is_visible {
                             self.text_entries.push(TextEntry {

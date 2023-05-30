@@ -1,4 +1,6 @@
-use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext};
+use crate::{
+    Scene, SceneElement, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext,
+};
 
 /// Utility for implementing [`SpaceViewClass`] with a concrete [`SpaceViewState`] type.
 ///
@@ -77,7 +79,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
     ) {
-        self.selection_ui(ctx, ui, state.as_any_mut().downcast_mut().unwrap());
+        typed_state_wrapper(state, |state| self.selection_ui(ctx, ui, state));
     }
 
     #[inline]
@@ -88,7 +90,18 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         state: &mut dyn SpaceViewState,
         scene: Scene,
     ) {
-        self.ui(ctx, ui, state.as_any_mut().downcast_mut().unwrap(), scene);
+        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene));
+    }
+}
+
+fn typed_state_wrapper<T: SpaceViewState, F: FnOnce(&mut T)>(
+    state: &mut dyn SpaceViewState,
+    fun: F,
+) {
+    if let Some(state) = state.as_any_mut().downcast_mut() {
+        fun(state);
+    } else {
+        re_log::error_once!("Incorrect type of space view state.");
     }
 }
 
