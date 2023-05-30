@@ -45,6 +45,7 @@ jobs:
       MARK_TAGGED_VERSION: false
       ADHOC_NAME: ${{ github.event.inputs.ADHOC_NAME }}
       RRD_ARTIFACT_NAME: linux-rrd-fast
+      UPLOAD_COMMIT: false
     secrets: inherit
   
   build-web-demo-adhoc:
@@ -65,4 +66,5 @@ jobs:
       MARK_PRERELEASE_FOR_MAINLINE: false
       MARK_TAGGED_VERSION: false
       ADHOC_NAME: ${{ github.event.inputs.ADHOC_NAME }}
+      UPLOAD_COMMIT: false
     secrets: inherit
