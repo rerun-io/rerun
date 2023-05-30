@@ -108,7 +108,7 @@ impl ViewerAnalytics {
                 }
                 _ => {}
             }
-            if let AppEnvironment::PythonSdk(version, _) = app_env {
+            if let AppEnvironment::PythonSdk(version, ..) = app_env {
                 event = event.with_prop("python_version", version.to_string());
             }
 
@@ -151,7 +151,7 @@ impl ViewerAnalytics {
 
             let recording_source = match &rec_info.recording_source {
                 RecordingSource::Unknown => "unknown".to_owned(),
-                RecordingSource::PythonSdk(_version, _) => "python_sdk".to_owned(),
+                RecordingSource::PythonSdk(_version, ..) => "python_sdk".to_owned(),
                 RecordingSource::RustSdk { .. } => "rust_sdk".to_owned(),
                 RecordingSource::Other(other) => other.clone(),
             };
@@ -170,7 +170,7 @@ impl ViewerAnalytics {
                 self.register("llvm_version", llvm_version.to_string());
                 self.deregister("python_version"); // can't be both!
             }
-            if let RecordingSource::PythonSdk(version, _) = &rec_info.recording_source {
+            if let RecordingSource::PythonSdk(version, ..) = &rec_info.recording_source {
                 self.register("python_version", version.to_string());
                 self.deregister("rust_version"); // can't be both!
                 self.deregister("llvm_version"); // can't be both!

@@ -250,9 +250,9 @@ fn time(timeless: bool) -> TimePoint {
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
-fn main(py: Python<'_>, argv: Vec<String>, sys_exe: String) -> PyResult<u8> {
+fn main(py: Python<'_>, argv: Vec<String>, sys_exe: String, venv_site: String) -> PyResult<u8> {
     let build_info = re_build_info::build_info!();
-    let call_src = depthai_viewer::CallSource::Python(python_version(py), sys_exe);
+    let call_src = depthai_viewer::CallSource::Python(python_version(py), sys_exe, venv_site);
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

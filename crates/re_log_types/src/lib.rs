@@ -273,6 +273,7 @@ impl std::fmt::Display for PythonVersion {
 }
 
 type SysExePath = String;
+type VenvSitePackages = String;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -280,7 +281,7 @@ pub enum RecordingSource {
     Unknown,
 
     /// The official Rerun Python Logging SDK
-    PythonSdk(PythonVersion, SysExePath),
+    PythonSdk(PythonVersion, SysExePath, VenvSitePackages),
 
     /// The official Rerun Rust Logging SDK
     RustSdk {
@@ -296,7 +297,7 @@ impl std::fmt::Display for RecordingSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unknown => "Unknown".fmt(f),
-            Self::PythonSdk(version, _) => write!(f, "Python {version} SDK"),
+            Self::PythonSdk(version, _, _) => write!(f, "Python {version} SDK"),
             Self::RustSdk {
                 rustc_version: rust_version,
                 llvm_version: _,

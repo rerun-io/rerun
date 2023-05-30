@@ -6,7 +6,6 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> anyhow::Result<std::process::ExitCode> {
-    println!("Running from CLI!!!");
     re_log::setup_native_logging();
     let build_info = re_build_info::build_info!();
     depthai_viewer::run(

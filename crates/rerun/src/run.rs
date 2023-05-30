@@ -156,6 +156,7 @@ enum AnalyticsCommands {
 }
 
 type SysExePath = String;
+type VenvSitePackages = String;
 
 /// Where are we calling [`run`] from?
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -164,7 +165,7 @@ pub enum CallSource {
     Cli,
 
     /// Called from the Rerun Python SDK.
-    Python(PythonVersion, SysExePath),
+    Python(PythonVersion, SysExePath, VenvSitePackages),
 }
 
 #[cfg(feature = "native_viewer")]
@@ -179,8 +180,8 @@ impl CallSource {
                 rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
                 llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
             },
-            CallSource::Python(python_version, sys_exe) => {
-                re_viewer::AppEnvironment::PythonSdk(python_version.clone(), sys_exe.clone())
+            CallSource::Python(python_version, sys_exe, venv_site) => {
+                re_viewer::AppEnvironment::PythonSdk(python_version.clone(), sys_exe.clone(), venv_site.clone())
             }
         }
     }

@@ -115,11 +115,16 @@ class SelectedDevice:
         imu = ImuKind.NINE_AXIS if "BNO" in imu else None if imu == "NONE" else ImuKind.SIX_AXIS
         device_properties = DeviceProperties(id=self.id, imu=imu)
         for cam in connected_cam_features:
+            prioritized_type = cam.supportedTypes[0]
             device_properties.cameras.append(
                 CameraFeatures(
                     board_socket=cam.socket,
                     max_fps=60,
-                    resolutions=[resolution_to_enum[(conf.width, conf.height)] for conf in cam.configs],
+                    resolutions=[
+                        resolution_to_enum[(conf.width, conf.height)]
+                        for conf in cam.configs
+                        if conf.type == prioritized_type  # Only support the prioritized type for now
+                    ],
                     supported_types=cam.supportedTypes,
                     stereo_pairs=self._get_possible_stereo_pairs_for_cam(cam, connected_cam_features),
                     name=cam.name.capitalize(),

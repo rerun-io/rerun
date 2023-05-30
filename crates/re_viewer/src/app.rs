@@ -50,6 +50,13 @@ pub struct StartupOptions {
     pub persist_state: bool,
 }
 
+
+#[derive(Clone, Default)]
+pub struct BackendEnvironment {
+    pub python_path: String,
+    pub venv_site_packages: String
+}
+
 // ----------------------------------------------------------------------------
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -103,20 +110,22 @@ pub struct App {
     icon_status: AppIconStatus,
 
     #[cfg(not(target_arch = "wasm32"))]
-    python_path: Option<String>,
+    backend_environment: Option<BackendEnvironment>,
 
     #[cfg(not(target_arch = "wasm32"))]
     backend_handle: Option<std::process::Child>,
 }
 
+
 impl App {
     #[cfg(not(target_arch = "wasm32"))]
-    fn spawn_backend(python_path: &Option<String>) -> Option<std::process::Child> {
-        let Some(py_path) = python_path else {
-            panic!("Python path is missing, exiting...");
+    fn spawn_backend(environment: &Option<BackendEnvironment>) -> Option<std::process::Child> {
+        let Some(environment) = environment else {
+            panic!("Backend environemnt is missing, exiting...");
         };
-        let backend_handle = match std::process::Command::new(py_path)
+        let backend_handle = match std::process::Command::new(environment.python_path.clone())
             .args(["-m", "depthai_viewer._backend.main"])
+            .env("PYTHONPATH", environment.venv_site_packages.clone())
             .spawn()
         {
             Ok(child) => {
@@ -124,14 +133,10 @@ impl App {
                 Some(child)
             }
             Err(err) => {
-                eprintln!("Failed to start depthai viewer backend: {err}. Command: {py_path:?} -m depthai_viewer._backend.main");
+                eprintln!("Failed to start depthai viewer backend: {err}.");
                 None
             }
         };
-        // assert!(
-        //     backend_handle.is_some(),
-        //     "Couldn't start backend, exiting..."
-        // );
         backend_handle
     }
 
@@ -165,8 +170,11 @@ impl App {
         analytics.on_viewer_started(&build_info, app_env);
 
         #[cfg(not(target_arch = "wasm32"))]
-        let python_path = match app_env {
-            AppEnvironment::PythonSdk(_, py_path) => Some(py_path.clone()),
+        let backend_environment = match app_env {
+            AppEnvironment::PythonSdk(_, py_path, venv_site_packages) => Some(BackendEnvironment{
+                python_path: py_path.clone(),
+                venv_site_packages: venv_site_packages.clone()
+            }),
             _ => None,
         };
 
@@ -198,9 +206,9 @@ impl App {
             icon_status: AppIconStatus::NotSetTryAgain,
 
             #[cfg(not(target_arch = "wasm32"))]
-            python_path: python_path.clone(),
+            backend_environment: backend_environment.clone(),
             #[cfg(not(target_arch = "wasm32"))]
-            backend_handle: App::spawn_backend(&python_path),
+            backend_handle: App::spawn_backend(&backend_environment),
         }
     }
 
@@ -488,19 +496,19 @@ impl eframe::App for App {
                             handle.kill();
                             self.state.depthai_state.reset();
                             re_log::debug!("Backend process has exited, restarting!");
-                            self.backend_handle = App::spawn_backend(&self.python_path);
+                            self.backend_handle = App::spawn_backend(&self.backend_environment);
                         }
                     }
                     Err(_) => {}
                 },
-                None => self.backend_handle = App::spawn_backend(&self.python_path),
+                None => self.backend_handle = App::spawn_backend(&self.backend_environment),
             };
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
             if self.backend_handle.is_none() {
-                self.backend_handle = App::spawn_backend(&self.python_path);
+                self.backend_handle = App::spawn_backend(&self.backend_environment);
             };
         }
 
