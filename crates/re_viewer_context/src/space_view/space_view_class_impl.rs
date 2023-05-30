@@ -1,6 +1,10 @@
 use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext};
 
-/// Utility for implementing [`SpaceViewClass`] with a concrete state type.
+/// Utility for implementing [`SpaceViewClass`] with a concrete [`SpaceViewState`] type.
+///
+/// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
+/// The class defines all aspects of its behavior.
+/// It determines which entities are queried, how they are rendered, and how the user can interact with them.
 pub trait SpaceViewClassImpl {
     type State: SpaceViewState + Default + 'static;
 
@@ -23,14 +27,14 @@ pub trait SpaceViewClassImpl {
     fn new_scene(&self) -> Scene;
 
     /// Ui shown when the user selects a space view of this class.
+    ///
+    /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
     fn selection_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, state: &mut Self::State);
 
     /// Draws the ui for this space view class and handles ui events.
     ///
-    /// The scene passed in was previously created by [`Self::new_scene`] and got populated.
-    /// The state passed in was previously created by [`Self::new_state`] and is kept frame-to-frame.
-    ///
-    /// TODO(andreas): This is called after `re_renderer` driven content has been passed to the ui.
+    /// The scene passed in was previously created by [`Self::new_scene`] and got populated by the time it is passed.
+    /// The state passed is kept frame-to-frame.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
