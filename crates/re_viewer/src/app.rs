@@ -101,7 +101,8 @@ pub struct App {
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
 ) -> Result<(), SpaceViewTypeRegistryError> {
-    space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
+    space_view_class_registry.add(re_space_view_text::TextSpaceView::default())?;
+    space_view_class_registry.add(re_space_view_text::TextBoxSpaceView::default())?;
     Ok(())
 }
 

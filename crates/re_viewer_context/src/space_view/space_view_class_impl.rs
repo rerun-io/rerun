@@ -4,28 +4,28 @@ use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerCon
 pub trait SpaceViewClassImpl {
     type State: SpaceViewState + Default + 'static;
 
-    /// Name of this space view type.
+    /// Name of this space view class.
     ///
     /// Used for both ui display and identification.
     /// Must be unique within a viewer session.
-    fn type_name(&self) -> SpaceViewClassName;
+    fn name(&self) -> SpaceViewClassName;
 
-    /// Icon used to identify this space view type.
-    fn type_icon(&self) -> &'static re_ui::Icon;
+    /// Icon used to identify this space view class.
+    fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
-    /// Returns a new scene for this space view type.
+    /// Returns a new scene for this space view class.
     ///
     /// Called both to determine the supported archetypes and
     /// to populate a scene every frame.
     fn new_scene(&self) -> Scene;
 
-    /// Ui shown when the user selects a space view of this type.
+    /// Ui shown when the user selects a space view of this class.
     fn selection_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, state: &mut Self::State);
 
-    /// Draws the ui for this space view type and handles ui events.
+    /// Draws the ui for this space view class and handles ui events.
     ///
     /// The scene passed in was previously created by [`Self::new_scene`] and got populated.
     /// The state passed in was previously created by [`Self::new_state`] and is kept frame-to-frame.
@@ -42,13 +42,13 @@ pub trait SpaceViewClassImpl {
 
 impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     #[inline]
-    fn type_name(&self) -> SpaceViewClassName {
-        self.type_name()
+    fn name(&self) -> SpaceViewClassName {
+        self.name()
     }
 
     #[inline]
-    fn type_icon(&self) -> &'static re_ui::Icon {
-        self.type_icon()
+    fn icon(&self) -> &'static re_ui::Icon {
+        self.icon()
     }
 
     #[inline]
@@ -93,6 +93,10 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
 pub struct EmptySpaceViewState;
 
 impl SpaceViewState for EmptySpaceViewState {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }

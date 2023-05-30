@@ -16,30 +16,30 @@ re_string_interner::declare_new_type!(
 ///
 /// TODO: Lots of documentation.
 pub trait SpaceViewClass {
-    /// Name of this space view type.
+    /// Name of this space view class.
     ///
     /// Used for both ui display and identification.
     /// Must be unique within a viewer session.
-    fn type_name(&self) -> SpaceViewClassName;
+    fn name(&self) -> SpaceViewClassName;
 
-    /// Icon used to identify this space view type.
-    fn type_icon(&self) -> &'static re_ui::Icon;
+    /// Icon used to identify this space view class.
+    fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
-    /// Returns a new scene for this space view type.
+    /// Returns a new scene for this space view class.
     ///
     /// Called both to determine the supported archetypes and
     /// to populate a scene every frame.
     fn new_scene(&self) -> Scene;
 
-    /// Called once for every new space view instance of this type.
-    ///
+    /// Called once for every new space view instance of this class.
+    ///class
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
     fn new_state(&self) -> Box<dyn SpaceViewState>;
 
-    /// Ui shown when the user selects a space view of this type.
+    /// Ui shown when the user selects a space view of this class.
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -65,6 +65,9 @@ pub trait SpaceViewClass {
 /// State of a space view.
 pub trait SpaceViewState: std::any::Any {
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    fn as_any(&self) -> &dyn std::any::Any;
+
+    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
@@ -78,9 +81,14 @@ impl Scene {
     }
 
     /// Populates the scene for a given query.
-    pub fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        space_view_state: &dyn SpaceViewState,
+    ) {
         for element in &mut self.0 {
-            element.populate(ctx, query);
+            element.populate(ctx, query, space_view_state);
         }
     }
 }
@@ -92,7 +100,12 @@ pub trait SceneElement {
     /// Queries the data store and performs data conversions to make it ready for display.
     ///
     /// Musn't query any data outside of the archetype.
-    fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>);
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        space_view_state: &dyn SpaceViewState,
+    );
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;

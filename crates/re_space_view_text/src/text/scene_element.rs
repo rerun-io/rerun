@@ -5,11 +5,11 @@ use re_log_types::{
     Component, RowId,
 };
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{SceneQuery, ViewerContext};
+use re_viewer_context::{
+    ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext,
+};
 
-use super::ui::ViewTextFilters;
-
-// ---
+use super::space_view_type::TextSpaceViewState;
 
 #[derive(Debug, Clone)]
 pub struct TextEntry {
@@ -34,24 +34,31 @@ pub struct SceneText {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl SceneText {
-    /// Loads all text components into the scene according to the given query.
-    pub(crate) fn load(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        filters: &ViewTextFilters,
-    ) {
-        crate::profile_function!();
+impl SceneElement for SceneText {
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec![component_types::TextEntry::name()]
+    }
 
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        space_view_state: &dyn SpaceViewState,
+    ) {
         let store = &ctx.log_db.entity_db.data_store;
+
+        // TODO: make this less cumbersome, and handle error.
+        let space_view_state = space_view_state
+            .as_any()
+            .downcast_ref::<TextSpaceViewState>()
+            .expect("Unexpected space view state type");
 
         for entity_path in query.entity_paths {
             let ent_path = entity_path;
 
             // Early filtering: if we're not showing it the view, there isn't much point
             // in querying it to begin with... at least for now.
-            if !filters.is_entity_path_visible(ent_path) {
+            if !space_view_state.filters.is_entity_path_visible(ent_path) {
                 return;
             }
 
@@ -77,9 +84,9 @@ impl SceneText {
                         let component_types::TextEntry { body, level } = text_entry;
 
                         // Early filtering once more, see above.
-                        let is_visible = level
-                            .as_ref()
-                            .map_or(true, |lvl| filters.is_log_level_visible(lvl));
+                        let is_visible = level.as_ref().map_or(true, |lvl| {
+                            space_view_state.filters.is_log_level_visible(lvl)
+                        });
 
                         if is_visible {
                             self.text_entries.push(TextEntry {
@@ -100,5 +107,9 @@ impl SceneText {
                 }
             }
         }
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

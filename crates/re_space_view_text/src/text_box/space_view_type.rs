@@ -5,6 +5,7 @@ use re_viewer_context::{
 
 use super::scene_element::SceneTextBox;
 
+// TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq)]
 pub struct TextBoxSpaceViewState {
     monospace: bool,
@@ -21,6 +22,10 @@ impl Default for TextBoxSpaceViewState {
 }
 
 impl SpaceViewState for TextBoxSpaceViewState {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -32,16 +37,16 @@ pub struct TextBoxSpaceView;
 impl SpaceViewClassImpl for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
 
-    fn type_name(&self) -> SpaceViewClassName {
-        "Text Box".into()
+    fn name(&self) -> SpaceViewClassName {
+        "Text".into()
     }
 
-    fn type_icon(&self) -> &'static re_ui::Icon {
+    fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "Displays text from a text box component.".into()
+        "Displays text from a text entry components.".into()
     }
 
     fn new_scene(&self) -> Scene {
@@ -55,6 +60,8 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
     ) {
+        crate::profile_function!();
+
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {

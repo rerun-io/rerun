@@ -1,7 +1,9 @@
 use re_arrow_store::LatestAtQuery;
 use re_log_types::{component_types, Component};
 use re_query::{query_entity_with_primary, QueryError};
-use re_viewer_context::{ArchetypeDefinition, SceneElement, SceneQuery, ViewerContext};
+use re_viewer_context::{
+    ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext,
+};
 
 // ---
 
@@ -21,7 +23,12 @@ impl SceneElement for SceneTextBox {
         vec![component_types::TextBox::name()]
     }
 
-    fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        _state: &dyn SpaceViewState,
+    ) {
         let store = &ctx.log_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {

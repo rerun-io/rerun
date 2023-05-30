@@ -25,7 +25,7 @@ impl SpaceViewClassRegistry {
         &mut self,
         space_view_type: impl SpaceViewClass + 'static,
     ) -> Result<(), SpaceViewTypeRegistryError> {
-        let type_name = space_view_type.type_name();
+        let type_name = space_view_type.name();
         if self
             .0
             .insert(type_name, Box::new(space_view_type))

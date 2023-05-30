@@ -11,7 +11,7 @@ use crate::{
     transform_cache::TransformCache,
     view_bar_chart,
     view_category::{categorize_entity_path, ViewCategory},
-    view_spatial, view_tensor, view_text, view_time_series,
+    view_spatial, view_tensor, view_time_series,
 };
 
 // ----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ pub enum ScreenshotMode {
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
-    pub space_view_type: SpaceViewClassName,
+    pub space_view_class: SpaceViewClassName,
 
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
@@ -53,7 +53,7 @@ pub struct SpaceViewBlueprint {
 
 impl SpaceViewBlueprint {
     pub fn new(
-        space_view_type: SpaceViewClassName,
+        space_view_class: SpaceViewClassName,
         category: ViewCategory,
         space_path: &EntityPath,
         queries_entities: &[EntityPath],
@@ -75,7 +75,7 @@ impl SpaceViewBlueprint {
 
         Self {
             display_name,
-            space_view_type,
+            space_view_class,
             id: SpaceViewId::random(),
             space_path: space_path.clone(),
             data_blueprint: data_blueprint_tree,
@@ -155,16 +155,15 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
-        if let Ok(space_view_type) = ctx.space_view_class_registry.query(self.space_view_type) {
-            space_view_type.selection_ui(ctx, ui, view_state.state.as_mut());
+        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.space_view_class) {
+            crate::profile_scope!("selection_ui: ", space_view_class.name());
+            space_view_class.selection_ui(ctx, ui, view_state.state.as_mut());
         } else {
             // Legacy handling
 
             #[allow(clippy::match_same_arms)]
             match self.category {
-                ViewCategory::Text => {
-                    view_state.state_text.selection_ui(ctx.re_ui, ui);
-                }
+                ViewCategory::Text => {}
                 ViewCategory::TextBox => {
                     // migrated.
                 }
@@ -214,22 +213,22 @@ impl SpaceViewBlueprint {
             entity_props_map: self.data_blueprint.data_blueprints_projected(),
         };
 
-        if let Ok(space_view_type) = ctx.space_view_class_registry.query(self.space_view_type) {
-            let mut scene = space_view_type.new_scene();
-            scene.populate(ctx, &query);
+        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.space_view_class) {
+            let mut scene = space_view_class.new_scene();
+            {
+                crate::profile_scope!("scene populate: ", space_view_class.name());
+                scene.populate(ctx, &query, view_state.state.as_ref());
+            }
             // TODO(andreas): Pass scene to renderer.
             // TODO(andreas): Setup re_renderer view.
-            space_view_type.ui(ctx, ui, view_state.state.as_mut(), scene);
+            {
+                crate::profile_scope!("ui: ", space_view_class.name());
+                space_view_class.ui(ctx, ui, view_state.state.as_mut(), scene);
+            }
         } else {
             // Legacy handling
             match self.category {
-                ViewCategory::Text => {
-                    let mut scene = view_text::SceneText::default();
-                    scene.load(ctx, &query, &view_state.state_text.filters);
-                    view_state.ui_text(ctx, ui, &scene);
-                }
-
-                ViewCategory::TextBox => {
+                ViewCategory::Text | ViewCategory::TextBox => {
                     // migrated.
                 }
 
@@ -333,7 +332,6 @@ pub struct SpaceViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstancePath>,
 
-    state_text: view_text::ViewTextState,
     state_time_series: view_time_series::ViewTimeSeriesState,
     state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
@@ -346,7 +344,6 @@ impl Default for SpaceViewState {
         Self {
             state: Box::<EmptySpaceViewState>::default(),
             selected_tensor: Default::default(),
-            state_text: Default::default(),
             state_time_series: Default::default(),
             state_bar_chart: Default::default(),
             state_spatial: Default::default(),
@@ -422,21 +419,6 @@ impl SpaceViewState {
                 }
             }
         }
-    }
-
-    fn ui_text(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene: &view_text::SceneText,
-    ) {
-        egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
-            ..egui::Frame::default()
-        }
-        .show(ui, |ui| {
-            view_text::view_text(ctx, ui, &mut self.state_text, scene);
-        });
     }
 
     fn ui_bar_chart(
