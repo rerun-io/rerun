@@ -11,7 +11,8 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::Point2D, Component};
+/// # use re_components::Point2D;
+/// # use re_log_types::{Timeline, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -82,7 +83,8 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, Component};
+/// # use re_components::{Point2D, ColorRGBA};
+/// # use re_log_types::{Timeline, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
