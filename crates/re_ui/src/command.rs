@@ -40,12 +40,11 @@ pub enum Command {
     SelectionNext,
 
     ToggleCommandPalette,
-
     // Playback:
-    PlaybackTogglePlayPause,
-    PlaybackStepBack,
-    PlaybackStepForward,
-    PlaybackRestart,
+    // PlaybackTogglePlayPause,
+    // PlaybackStepBack,
+    // PlaybackStepForward,
+    // PlaybackRestart,
 }
 
 impl Command {
@@ -114,18 +113,18 @@ impl Command {
                 ("Command palette…", "Toggle the command palette window")
             }
 
-            Command::PlaybackTogglePlayPause => {
-                ("Toggle play/pause", "Either play or pause the time")
-            }
-            Command::PlaybackStepBack => (
-                "Step time back",
-                "Move the time marker back to the previous point in time with any data",
-            ),
-            Command::PlaybackStepForward => (
-                "Step time forward",
-                "Move the time marker to the next point in time with any data",
-            ),
-            Command::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
+            // Command::PlaybackTogglePlayPause => {
+            //     ("Toggle play/pause", "Either play or pause the time")
+            // }
+            // Command::PlaybackStepBack => (
+            //     "Step time back",
+            //     "Move the time marker back to the previous point in time with any data",
+            // ),
+            // Command::PlaybackStepForward => (
+            //     "Step time forward",
+            //     "Move the time marker to the next point in time with any data",
+            // ),
+            // Command::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
         }
     }
 
@@ -181,11 +180,10 @@ impl Command {
             Command::SelectionPrevious => Some(ctrl_shift(Key::ArrowLeft)),
             Command::SelectionNext => Some(ctrl_shift(Key::ArrowRight)),
             Command::ToggleCommandPalette => Some(cmd(Key::P)),
-
-            Command::PlaybackTogglePlayPause => Some(key(Key::Space)),
-            Command::PlaybackStepBack => Some(key(Key::ArrowLeft)),
-            Command::PlaybackStepForward => Some(key(Key::ArrowRight)),
-            Command::PlaybackRestart => Some(cmd(Key::ArrowLeft)),
+            // Command::PlaybackTogglePlayPause => Some(key(Key::Space)),
+            // Command::PlaybackStepBack => Some(key(Key::ArrowLeft)),
+            // Command::PlaybackStepForward => Some(key(Key::ArrowRight)),
+            // Command::PlaybackRestart => Some(cmd(Key::ArrowLeft)),
         }
     }
 

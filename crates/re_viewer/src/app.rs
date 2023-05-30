@@ -50,11 +50,10 @@ pub struct StartupOptions {
     pub persist_state: bool,
 }
 
-
 #[derive(Clone, Default)]
 pub struct BackendEnvironment {
     pub python_path: String,
-    pub venv_site_packages: String
+    pub venv_site_packages: String,
 }
 
 // ----------------------------------------------------------------------------
@@ -116,7 +115,6 @@ pub struct App {
     backend_handle: Option<std::process::Child>,
 }
 
-
 impl App {
     #[cfg(not(target_arch = "wasm32"))]
     fn spawn_backend(environment: &Option<BackendEnvironment>) -> Option<std::process::Child> {
@@ -171,9 +169,9 @@ impl App {
 
         #[cfg(not(target_arch = "wasm32"))]
         let backend_environment = match app_env {
-            AppEnvironment::PythonSdk(_, py_path, venv_site_packages) => Some(BackendEnvironment{
+            AppEnvironment::PythonSdk(_, py_path, venv_site_packages) => Some(BackendEnvironment {
                 python_path: py_path.clone(),
-                venv_site_packages: venv_site_packages.clone()
+                venv_site_packages: venv_site_packages.clone(),
             }),
             _ => None,
         };
@@ -375,20 +373,18 @@ impl App {
             }
             Command::ToggleCommandPalette => {
                 self.cmd_palette.toggle();
-            }
-
-            Command::PlaybackTogglePlayPause => {
-                self.run_time_control_command(TimeControlCommand::TogglePlayPause);
-            }
-            Command::PlaybackStepBack => {
-                self.run_time_control_command(TimeControlCommand::StepBack);
-            }
-            Command::PlaybackStepForward => {
-                self.run_time_control_command(TimeControlCommand::StepForward);
-            }
-            Command::PlaybackRestart => {
-                self.run_time_control_command(TimeControlCommand::Restart);
-            }
+            } // Command::PlaybackTogglePlayPause => {
+              //     self.run_time_control_command(TimeControlCommand::TogglePlayPause);
+              // }
+              // Command::PlaybackStepBack => {
+              //     self.run_time_control_command(TimeControlCommand::StepBack);
+              // }
+              // Command::PlaybackStepForward => {
+              //     self.run_time_control_command(TimeControlCommand::StepForward);
+              // }
+              // Command::PlaybackRestart => {
+              //     self.run_time_control_command(TimeControlCommand::Restart);
+              // }
         }
     }
 
