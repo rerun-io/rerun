@@ -85,7 +85,7 @@ impl Default for View3DState {
 
 impl View3DState {
     pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
-        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs, &[]));
         self.tracked_camera = None;
         self.camera_before_tracked_camera = None;
     }
@@ -116,7 +116,7 @@ impl View3DState {
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.space_specs));
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.space_specs, space_cameras));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -209,7 +209,7 @@ impl EyeInterpolation {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct SpaceSpecs {
     pub up: Option<glam::Vec3>,
     pub right: Option<glam::Vec3>,
@@ -289,6 +289,7 @@ pub fn view_3d(
         state
             .state_3d
             .update_eye(&response, &state.scene_bbox_accum, &scene.space_cameras);
+
     let did_interact_with_eye = orbit_eye.update(&response, orbit_eye_drag_threshold);
 
     let orbit_eye = *orbit_eye;
@@ -624,7 +625,50 @@ fn add_picking_ray(
     }
 }
 
-fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
+/// Look down and forward on the space camera.
+fn focus_on_space_camera(
+    scene_bbox: &macaw::BoundingBox,
+    space_specs: &SpaceSpecs,
+    camera: &SpaceCamera3D,
+) -> OrbitEye {
+    let Some(up) = camera.view_coordinates.up() else {
+        return default_eye(scene_bbox, space_specs, &[]);
+    };
+    let Some(fwd) = camera.view_coordinates.forward() else {
+        return default_eye(scene_bbox, space_specs, &[]);
+    };
+    let [x, y, z] = up.as_vec3();
+    let up = vec3(x, y, z);
+    let [x, y, z] = fwd.as_vec3();
+    let fwd = vec3(x, y, z);
+    let down = -up;
+    let look_dir = camera
+        .world_from_cam()
+        .transform_vector3(fwd + 0.5 * down)
+        .normalize();
+    let look_up = camera.world_from_cam().transform_vector3(up);
+    let mut radius = camera.picture_plane_distance.unwrap_or(1.0);
+    if !radius.is_finite() || radius == 0.0 {
+        radius = 1.0;
+    }
+    let center = camera.position();
+    let eye_pos = center - radius * look_dir;
+    OrbitEye::new(
+        center,
+        radius,
+        Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
+        Vec3::ZERO,
+    )
+}
+
+fn default_eye(
+    scene_bbox: &macaw::BoundingBox,
+    space_specs: &SpaceSpecs,
+    space_cameras: &[SpaceCamera3D],
+) -> OrbitEye {
+    if let Some(space_camera) = space_cameras.get(0) {
+        return focus_on_space_camera(scene_bbox, space_specs, space_camera);
+    }
     let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -660,3 +704,66 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
         space_specs.up.unwrap_or(Vec3::ZERO),
     )
 }
+
+// fn default_eye(
+//     scene_bbox: &macaw::BoundingBox,
+//     space_specs: &SpaceSpecs,
+//     space_cameras: &[SpaceCamera3D],
+// ) -> OrbitEye {
+//     println!("Space cameras: {:?}", space_cameras[0].ent_path);
+
+//     if let Some(space_camera) = space_cameras.get(0) {
+//         return focus_on_space_camera(scene_bbox, space_specs, space_camera);
+//     }
+//     let mut center = scene_bbox.center();
+//     if !center.is_finite() {
+//         center = Vec3::ZERO;
+//     }
+
+//     let mut radius = 2.0 * scene_bbox.half_size().length();
+//     if !radius.is_finite() || radius == 0.0 {
+//         radius = 1.0;
+//     }
+
+//     let space_camera = space_cameras.get(0);
+//     let mut look_up = space_specs.up.unwrap_or(Vec3::Z);
+
+//     let look_dir = if let Some(right) = space_specs.right {
+//         // Make sure right is to the right, and up is up:
+//         let fwd = look_up.cross(right);
+//         0.75 * fwd + 0.25 * right - 0.25 * look_up
+//     } else if let Some(space_camera) = space_camera {
+//         // Look down and forward on the first cam in this space
+//         let down = -match space_camera.view_coordinates.up() {
+//             Some(up) => {
+//                 let [x, y, z] = up.as_vec3();
+//                 let as_vec = vec3(x, y, z);
+//                 look_up = space_camera.world_from_cam().transform_vector3(as_vec);
+//                 as_vec
+//             }
+//             None => Vec3::X,
+//         };
+//         let forward = match space_camera.view_coordinates.forward() {
+//             Some(forward) => {
+//                 let [x, y, z] = forward.as_vec3();
+//                 vec3(x, y, z)
+//             }
+//             None => Vec3::Y,
+//         };
+//         space_camera
+//             .world_from_cam()
+//             .transform_vector3(forward + 0.5 * down)
+//     } else {
+//         // Look along the cardinal directions:
+//         vec3(1.0, 1.0, 1.0)
+//     };
+//     let look_dir = look_dir.normalize();
+//     let eye_pos = center - 1.0 * look_dir;
+//     let space_camera = space_camera.unwrap();
+//     OrbitEye::new(
+//         center,
+//         radius,
+//         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
+//         space_specs.up.unwrap_or(Vec3::ZERO),
+//     )
+// }
