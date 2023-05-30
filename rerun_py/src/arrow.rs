@@ -9,7 +9,7 @@ use pyo3::{
     types::{IntoPyDict, PyString},
     PyAny, PyResult,
 };
-use re_log_types::{component_types, DataCell, DataRow, EntityPath, RowId, TimePoint};
+use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimePoint};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -41,12 +41,12 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         // Force the type to be correct.
         // https://github.com/rerun-io/rerun/issues/795
         if let Some(name) = name {
-            if name == <component_types::Tensor as re_log_types::Component>::name() {
-                field.data_type = <component_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            } else if name == <component_types::Rect2D as re_log_types::Component>::name() {
-                field.data_type = <component_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
-            } else if name == <component_types::Transform3D as re_log_types::Component>::name() {
-                field.data_type = <component_types::Transform3D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            if name == <re_components::Tensor as re_log_types::Component>::name() {
+                field.data_type = <re_components::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            } else if name == <re_components::Rect2D as re_log_types::Component>::name() {
+                field.data_type = <re_components::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            } else if name == <re_components::Transform3D as re_log_types::Component>::name() {
+                field.data_type = <re_components::Transform3D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }
 
@@ -69,7 +69,7 @@ pub fn get_registered_component_names(py: pyo3::Python<'_>) -> PyResult<&PyDict>
         .get_item("Field")
         .ok_or_else(|| PyAttributeError::new_err("Module 'pyarrow' has no attribute 'Field'"))?;
 
-    let fields = component_types::iter_registered_field_types()
+    let fields = re_components::iter_registered_field_types()
         .map(|field| {
             let schema = Box::new(ffi::export_field_to_c(field));
             let schema_ptr = &*schema as *const ffi::ArrowSchema;

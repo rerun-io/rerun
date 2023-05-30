@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use re_log_types::component_types::{
+use re_components::{
     Tensor, TensorCastError, TensorData, TensorDataMeaning, TensorDimension, TensorId,
 };
 

@@ -102,6 +102,7 @@ cargo publish $FLAGS -p re_analytics
 cargo publish $FLAGS -p re_crash_handler
 cargo publish $FLAGS -p re_memory
 cargo publish $FLAGS -p re_log_types
+cargo publish $FLAGS -p re_components
 cargo publish $FLAGS -p re_smart_channel
 cargo publish $FLAGS -p re_log_encoding
 cargo publish $FLAGS -p re_tensor_ops

@@ -1,8 +1,5 @@
+use re_components::{Arrow3D, ColorRGBA, Component as _, InstanceKey, Label, Radius};
 use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Label, Radius},
-    Arrow3D, Component,
-};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
@@ -52,7 +49,7 @@ impl Arrows3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
             //let label = annotation_info.label(label);
 
-            let re_log_types::Arrow3D { origin, vector } = arrow;
+            let re_components::Arrow3D { origin, vector } = arrow;
 
             let vector = glam::Vec3::from(vector);
             let origin = glam::Vec3::from(origin);

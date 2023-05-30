@@ -216,19 +216,19 @@ impl std::ops::DerefMut for TableId {
 /// ```ignore
 /// let row0 = {
 ///     let num_instances = 2;
-///     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-///     let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
+///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
 ///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))
 /// };
 /// let row1 = {
 ///     let num_instances = 0;
-///     let colors: &[ColorRGBA] = &[];
+///     let colors: &[MyColor] = &[];
 ///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
 /// };
 /// let row2 = {
 ///     let num_instances = 1;
-///     let colors: &[_] = &[ColorRGBA::from_rgb(255, 255, 255)];
+///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
 ///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))
 /// };
@@ -255,7 +255,7 @@ impl std::ops::DerefMut for TableId {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, Point2D},
+/// #     example_components::{MyColor, MyLabel, MyPoint},
 /// #     DataRow, DataTable, RowId, TableId, Timeline, TimePoint,
 /// # };
 /// #
@@ -270,9 +270,9 @@ impl std::ops::DerefMut for TableId {
 /// #
 /// let row0 = {
 ///     let num_instances = 2;
-///     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-///     let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-///     let labels: &[Label] = &[];
+///     let points: &[MyPoint] = &[MyPoint { x: 10.0, y: 10.0 }, MyPoint { x: 20.0, y: 20.0 }];
+///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
+///     let labels: &[MyLabel] = &[];
 ///
 ///     DataRow::from_cells3(
 ///         RowId::random(),
@@ -285,15 +285,15 @@ impl std::ops::DerefMut for TableId {
 ///
 /// let row1 = {
 ///     let num_instances = 0;
-///     let colors: &[ColorRGBA] = &[];
+///     let colors: &[MyColor] = &[];
 ///
 ///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
 /// };
 ///
 /// let row2 = {
 ///     let num_instances = 1;
-///     let colors: &[_] = &[ColorRGBA::from_rgb(255, 255, 255)];
-///     let labels: &[_] = &[Label("hey".into())];
+///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
+///     let labels: &[_] = &[MyLabel("hey".into())];
 ///
 ///     DataRow::from_cells2(
 ///         RowId::random(),
@@ -1056,388 +1056,4 @@ impl std::fmt::Display for DataTable {
         )
         .fmt(f)
     }
-}
-
-// ---
-
-#[cfg(not(target_arch = "wasm32"))]
-impl DataTable {
-    /// Crafts a simple but interesting `DataTable`.
-    pub fn example(timeless: bool) -> Self {
-        use crate::{
-            component_types::{ColorRGBA, Label, Point2D},
-            Time,
-        };
-
-        let table_id = TableId::random();
-
-        let mut tick = 0i64;
-        let mut timepoint = |frame_nr: i64| {
-            let tp = if timeless {
-                TimePoint::timeless()
-            } else {
-                TimePoint::from([
-                    (Timeline::log_time(), Time::now().into()),
-                    (Timeline::log_tick(), tick.into()),
-                    (Timeline::new_sequence("frame_nr"), frame_nr.into()),
-                ])
-            };
-            tick += 1;
-            tp
-        };
-
-        let row0 = {
-            let num_instances = 2;
-            let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-            let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-            let labels: &[Label] = &[];
-
-            DataRow::from_cells3(
-                RowId::random(),
-                "a",
-                timepoint(1),
-                num_instances,
-                (points, colors, labels),
-            )
-        };
-
-        let row1 = {
-            let num_instances = 0;
-            let colors: &[ColorRGBA] = &[];
-
-            DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors)
-        };
-
-        let row2 = {
-            let num_instances = 1;
-            let colors: &[_] = &[ColorRGBA::from_rgb(255, 255, 255)];
-            let labels: &[_] = &[Label("hey".into())];
-
-            DataRow::from_cells2(
-                RowId::random(),
-                "c",
-                timepoint(2),
-                num_instances,
-                (colors, labels),
-            )
-        };
-
-        let mut table = DataTable::from_rows(table_id, [row0, row1, row2]);
-        table.compute_all_size_bytes();
-
-        table
-    }
-}
-
-#[test]
-fn data_table_sizes_basics() {
-    use crate::Component as _;
-    use arrow2::array::{BooleanArray, UInt64Array};
-
-    fn expect(mut cell: DataCell, num_rows: usize, num_bytes: u64) {
-        cell.compute_size_bytes();
-
-        let row = DataRow::from_cells1(
-            RowId::random(),
-            "a/b/c",
-            TimePoint::default(),
-            cell.num_instances(),
-            cell,
-        );
-
-        let table = DataTable::from_rows(
-            TableId::random(),
-            std::iter::repeat_with(|| row.clone()).take(num_rows),
-        );
-        assert_eq!(num_bytes, table.heap_size_bytes());
-
-        let mut table = DataTable::from_arrow_msg(&table.to_arrow_msg().unwrap()).unwrap();
-        table.compute_all_size_bytes();
-        let num_bytes = table.heap_size_bytes();
-        assert_eq!(num_bytes, table.heap_size_bytes());
-    }
-
-    // boolean
-    let mut cell = DataCell::from_arrow(
-        "some_bools".into(),
-        BooleanArray::from(vec![Some(true), Some(false), Some(true)]).boxed(),
-    );
-    cell.compute_size_bytes();
-    expect(
-        cell.clone(), //
-        10_000,       // num_rows
-        2_690_064,    // expected_num_bytes
-    );
-    expect(
-        DataCell::from_arrow("some_bools".into(), cell.to_arrow().sliced(1, 1)),
-        10_000,    // num_rows
-        2_690_064, // expected_num_bytes
-    );
-
-    // primitive
-    let mut cell = DataCell::from_arrow(
-        "some_u64s".into(),
-        UInt64Array::from_vec(vec![1, 2, 3]).boxed(),
-    );
-    cell.compute_size_bytes();
-    expect(
-        cell.clone(), //
-        10_000,       // num_rows
-        2_840_064,    // expected_num_bytes
-    );
-    expect(
-        DataCell::from_arrow("some_u64s".into(), cell.to_arrow().sliced(1, 1)),
-        10_000,    // num_rows
-        2_680_064, // expected_num_bytes
-    );
-
-    // utf8 (and more generally: dyn_binary)
-    let mut cell = DataCell::from_native(
-        [
-            crate::component_types::Label("hey".into()),
-            crate::component_types::Label("hey".into()),
-            crate::component_types::Label("hey".into()),
-        ]
-        .as_slice(),
-    );
-    cell.compute_size_bytes();
-    expect(
-        cell.clone(), //
-        10_000,       // num_rows
-        3_090_064,    // expected_num_bytes
-    );
-    expect(
-        DataCell::from_arrow(
-            crate::component_types::Label::name(),
-            cell.to_arrow().sliced(1, 1),
-        ),
-        10_000,    // num_rows
-        2_950_064, // expected_num_bytes
-    );
-
-    // struct
-    let mut cell = DataCell::from_native(
-        [
-            crate::component_types::Point2D::new(42.0, 666.0),
-            crate::component_types::Point2D::new(42.0, 666.0),
-            crate::component_types::Point2D::new(42.0, 666.0),
-        ]
-        .as_slice(),
-    );
-    cell.compute_size_bytes();
-    expect(
-        cell.clone(), //
-        10_000,       // num_rows
-        5_260_064,    // expected_num_bytes
-    );
-    expect(
-        DataCell::from_arrow(
-            crate::component_types::Point2D::name(),
-            cell.to_arrow().sliced(1, 1),
-        ),
-        10_000,    // num_rows
-        5_100_064, // expected_num_bytes
-    );
-
-    // struct + fixedsizelist
-    let mut cell = DataCell::from_native(
-        [
-            crate::component_types::Vec2D::from([42.0, 666.0]),
-            crate::component_types::Vec2D::from([42.0, 666.0]),
-            crate::component_types::Vec2D::from([42.0, 666.0]),
-        ]
-        .as_slice(),
-    );
-    cell.compute_size_bytes();
-    expect(
-        cell.clone(), //
-        10_000,       // num_rows
-        4_080_064,    // expected_num_bytes
-    );
-    expect(
-        DataCell::from_arrow(
-            crate::component_types::Point2D::name(),
-            cell.to_arrow().sliced(1, 1),
-        ),
-        10_000,    // num_rows
-        3_920_064, // expected_num_bytes
-    );
-
-    // variable list
-    let mut cell = DataCell::from_native(
-        [
-            crate::component_types::LineStrip2D::from(vec![
-                [42.0, 666.0],
-                [42.0, 666.0],
-                [42.0, 666.0],
-            ]),
-            crate::component_types::LineStrip2D::from(vec![
-                [42.0, 666.0],
-                [42.0, 666.0],
-                [42.0, 666.0],
-            ]),
-            crate::component_types::LineStrip2D::from(vec![
-                [42.0, 666.0],
-                [42.0, 666.0],
-                [42.0, 666.0],
-            ]),
-        ]
-        .as_slice(),
-    );
-    cell.compute_size_bytes();
-    expect(
-        cell.clone(), //
-        10_000,       // num_rows
-        6_120_064,    // expected_num_bytes
-    );
-    expect(
-        DataCell::from_arrow(
-            crate::component_types::Point2D::name(),
-            cell.to_arrow().sliced(1, 1),
-        ),
-        10_000,    // num_rows
-        5_560_064, // expected_num_bytes
-    );
-}
-
-#[test]
-fn data_table_sizes_unions() {
-    use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-
-    fn expect(mut cell: DataCell, num_rows: usize, num_bytes: u64) {
-        cell.compute_size_bytes();
-
-        let row = DataRow::from_cells1(
-            RowId::random(),
-            "a/b/c",
-            TimePoint::default(),
-            cell.num_instances(),
-            cell,
-        );
-
-        let table = DataTable::from_rows(
-            TableId::random(),
-            std::iter::repeat_with(|| row.clone()).take(num_rows),
-        );
-        assert_eq!(num_bytes, table.heap_size_bytes());
-
-        let err_margin = (num_bytes as f64 * 0.01) as u64;
-        let num_bytes_min = num_bytes;
-        let num_bytes_max = num_bytes + err_margin;
-
-        let mut table = DataTable::from_arrow_msg(&table.to_arrow_msg().unwrap()).unwrap();
-        table.compute_all_size_bytes();
-        let num_bytes = table.heap_size_bytes();
-        assert!(
-            num_bytes_min <= num_bytes && num_bytes <= num_bytes_max,
-            "{num_bytes_min} <= {num_bytes} <= {num_bytes_max}"
-        );
-    }
-
-    // This test uses an artificial enum type to test the union serialization.
-    // The transform type does *not* represent our current transform representation.
-
-    // --- Dense ---
-
-    #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
-    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-    #[arrow_field(type = "dense")]
-    enum DenseTransform {
-        Unknown,
-        Transform3D(crate::component_types::Transform3DRepr),
-        Pinhole(crate::component_types::Pinhole),
-    }
-
-    impl crate::Component for DenseTransform {
-        #[inline]
-        fn name() -> crate::ComponentName {
-            "rerun.dense_transform".into()
-        }
-    }
-
-    // dense union (uniform)
-    expect(
-        DataCell::from_native(
-            [
-                DenseTransform::Unknown,
-                DenseTransform::Unknown,
-                DenseTransform::Unknown,
-            ]
-            .as_slice(),
-        ),
-        10_000,     // num_rows
-        49_030_064, // expected_num_bytes
-    );
-
-    // dense union (varying)
-    expect(
-        DataCell::from_native(
-            [
-                DenseTransform::Unknown,
-                DenseTransform::Transform3D(
-                    crate::component_types::TranslationAndMat3 {
-                        translation: Some([10.0, 11.0, 12.0].into()),
-                        matrix: [[13.0, 14.0, 15.0], [16.0, 17.0, 18.0], [19.0, 20.0, 21.0]].into(),
-                    }
-                    .into(),
-                ),
-                DenseTransform::Pinhole(crate::component_types::Pinhole {
-                    image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]]
-                        .into(),
-                    resolution: Some([123.0, 456.0].into()),
-                }),
-            ]
-            .as_slice(),
-        ),
-        10_000,     // num_rows
-        49_020_064, // expected_num_bytes
-    );
-
-    // --- Sparse ---
-
-    #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
-    #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-    #[arrow_field(type = "sparse")]
-    enum SparseTransform {
-        Unknown,
-        Pinhole(crate::component_types::Pinhole),
-    }
-
-    impl crate::Component for SparseTransform {
-        #[inline]
-        fn name() -> crate::ComponentName {
-            "rerun.sparse_transform".into()
-        }
-    }
-
-    // sparse union (uniform)
-    expect(
-        DataCell::from_native(
-            [
-                SparseTransform::Unknown,
-                SparseTransform::Unknown,
-                SparseTransform::Unknown,
-            ]
-            .as_slice(),
-        ),
-        10_000,     // num_rows
-        22_180_064, // expected_num_bytes
-    );
-
-    // sparse union (varying)
-    expect(
-        DataCell::from_native(
-            [
-                SparseTransform::Unknown,
-                SparseTransform::Pinhole(crate::component_types::Pinhole {
-                    image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]]
-                        .into(),
-                    resolution: Some([123.0, 456.0].into()),
-                }),
-            ]
-            .as_slice(),
-        ),
-        10_000,     // num_rows
-        21_730_064, // expected_num_bytes
-    );
 }

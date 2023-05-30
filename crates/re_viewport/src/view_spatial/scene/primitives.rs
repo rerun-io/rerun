@@ -1,6 +1,6 @@
 use egui::Color32;
 use re_data_store::EntityPath;
-use re_log_types::component_types::InstanceKey;
+use re_log_types::InstanceKey;
 use re_renderer::{
     renderer::{DepthClouds, MeshInstance},
     LineStripSeriesBuilder, PointCloudBuilder,

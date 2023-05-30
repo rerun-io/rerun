@@ -1,8 +1,7 @@
-use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{Box3D, ClassId, ColorRGBA, InstanceKey, Label, Quaternion, Radius, Vec3D},
-    Component,
+use re_components::{
+    Box3D, ClassId, ColorRGBA, Component as _, InstanceKey, Label, Quaternion, Radius, Vec3D,
 };
+use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};

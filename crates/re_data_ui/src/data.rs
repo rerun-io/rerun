@@ -1,9 +1,9 @@
 use egui::Vec2;
 
-use re_format::format_f32;
-use re_log_types::component_types::{
+use re_components::{
     ColorRGBA, LineStrip2D, LineStrip3D, Mat3x3, Rect2D, Vec2D, Vec3D, Vec4D, ViewCoordinates,
 };
+use re_format::format_f32;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;

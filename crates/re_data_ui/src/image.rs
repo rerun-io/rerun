@@ -1,10 +1,7 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
-use re_log_types::{
-    component_types::{ClassId, Tensor, TensorDataMeaning},
-    DecodedTensor, TensorElement,
-};
+use re_components::{ClassId, DecodedTensor, Tensor, TensorDataMeaning, TensorElement};
 use re_renderer::renderer::ColormappedTexture;
 use re_ui::ReUi;
 use re_viewer_context::{
@@ -14,9 +11,7 @@ use re_viewer_context::{
 
 use super::EntityDataUi;
 
-pub fn format_tensor_shape_single_line(
-    shape: &[re_log_types::component_types::TensorDimension],
-) -> String {
+pub fn format_tensor_shape_single_line(shape: &[re_components::TensorDimension]) -> String {
     format!("[{}]", shape.iter().join(", "))
 }
 
@@ -154,9 +149,7 @@ fn tensor_ui(
 
                     if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
                         if channels == 3 {
-                            if let re_log_types::component_types::TensorData::U8(data) =
-                                &tensor.data
-                            {
+                            if let re_components::TensorData::U8(data) = &tensor.data {
                                 ui.collapsing("Histogram", |ui| {
                                     rgb8_histogram_ui(ui, data.as_slice());
                                 });
@@ -261,18 +254,18 @@ pub fn tensor_summary_ui_grid_contents(
     }
 
     match data {
-        re_log_types::component_types::TensorData::U8(_)
-        | re_log_types::component_types::TensorData::U16(_)
-        | re_log_types::component_types::TensorData::U32(_)
-        | re_log_types::component_types::TensorData::U64(_)
-        | re_log_types::component_types::TensorData::I8(_)
-        | re_log_types::component_types::TensorData::I16(_)
-        | re_log_types::component_types::TensorData::I32(_)
-        | re_log_types::component_types::TensorData::I64(_)
-        | re_log_types::component_types::TensorData::F16(_)
-        | re_log_types::component_types::TensorData::F32(_)
-        | re_log_types::component_types::TensorData::F64(_) => {}
-        re_log_types::component_types::TensorData::JPEG(jpeg_bytes) => {
+        re_components::TensorData::U8(_)
+        | re_components::TensorData::U16(_)
+        | re_components::TensorData::U32(_)
+        | re_components::TensorData::U64(_)
+        | re_components::TensorData::I8(_)
+        | re_components::TensorData::I16(_)
+        | re_components::TensorData::I32(_)
+        | re_components::TensorData::I64(_)
+        | re_components::TensorData::F16(_)
+        | re_components::TensorData::F32(_)
+        | re_components::TensorData::F64(_) => {}
+        re_components::TensorData::JPEG(jpeg_bytes) => {
             re_ui.grid_left_hand_label(ui, "Encoding");
             ui.label(format!(
                 "{} JPEG",
@@ -692,8 +685,8 @@ fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &Tensor, _encoded_tensor: &
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn save_image(tensor: &re_log_types::component_types::Tensor, dynamic_image: &image::DynamicImage) {
-    use re_log_types::component_types::TensorData;
+fn save_image(tensor: &re_components::Tensor, dynamic_image: &image::DynamicImage) {
+    use re_components::TensorData;
 
     match &tensor.data {
         TensorData::JPEG(bytes) => {

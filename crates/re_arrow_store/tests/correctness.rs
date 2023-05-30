@@ -10,12 +10,11 @@ use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionTarget, LatestAtQuery, WriteError,
 };
+use re_components::datagen::{
+    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
+};
 use re_log_types::{
-    component_types::InstanceKey,
-    datagen::{
-        build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
-    },
-    Component as _, DataCell, Duration, EntityPath, Time, TimeType, Timeline,
+    Component as _, DataCell, Duration, EntityPath, InstanceKey, Time, TimeType, Timeline,
 };
 
 // ---
@@ -220,7 +219,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         prelude::{DataFrame, JoinType},
         series::Series,
     };
-    use re_log_types::component_types::{ColorRGBA, Point2D};
+    use re_components::{ColorRGBA, Point2D};
     use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
 
     let ent_path = EntityPath::from("this/that");

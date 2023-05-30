@@ -2,6 +2,7 @@ use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
+
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
     DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
@@ -931,6 +932,7 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
+    use re_components::datagen::data_table_example;
     use re_log_types::RowId;
 
     use super::*;
@@ -951,7 +953,7 @@ mod tests {
 
         let rec_info = rec_stream.recording_info().cloned().unwrap();
 
-        let mut table = DataTable::example(false);
+        let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec_stream.record_row(row);
@@ -1016,7 +1018,7 @@ mod tests {
 
         let rec_info = rec_stream.recording_info().cloned().unwrap();
 
-        let mut table = DataTable::example(false);
+        let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec_stream.record_row(row);
@@ -1096,7 +1098,7 @@ mod tests {
 
         let rec_info = rec_stream.recording_info().cloned().unwrap();
 
-        let mut table = DataTable::example(false);
+        let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec_stream.record_row(row);
@@ -1164,7 +1166,7 @@ mod tests {
             .memory()
             .unwrap();
 
-        let mut table = DataTable::example(false);
+        let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
             rec_stream.record_row(row);

@@ -1,7 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_log_types::{
-    component_types::InstanceKey, external::arrow2, DeserializableComponent, EntityPath,
-};
+use re_log_types::{external::arrow2, DeserializableComponent, EntityPath, InstanceKey};
 use re_query::ComponentWithInstances;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
@@ -38,32 +36,32 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     // The things that are out-commented are components we have, but
     // where the default arrow-format for them looks good enough (at least for now).
     // Basically: adding custom UI:s for these out-commented components would be nice, but is not a must.
-    add::<re_log_types::component_types::AnnotationContext>(&mut registry);
-    // add::<re_log_types::component_types::Arrow3D>(&mut registry);
-    // add::<re_log_types::component_types::Box3D>(&mut registry);
-    add::<re_log_types::component_types::ClassId>(&mut registry);
-    add::<re_log_types::component_types::ColorRGBA>(&mut registry);
-    // add::<re_log_types::component_types::InstanceKey>(&mut registry);
-    add::<re_log_types::component_types::KeypointId>(&mut registry);
-    // add::<re_log_types::component_types::Label>(&mut registry);
-    add::<re_log_types::component_types::LineStrip2D>(&mut registry);
-    add::<re_log_types::component_types::LineStrip3D>(&mut registry);
-    add::<re_log_types::component_types::Mesh3D>(&mut registry);
-    // add::<re_log_types::component_types::Point2D>(&mut registry);
-    // add::<re_log_types::component_types::Point3D>(&mut registry);
-    add::<re_log_types::component_types::Pinhole>(&mut registry);
-    // add::<re_log_types::component_types::Quaternion>(&mut registry);
-    // add::<re_log_types::component_types::Radius>(&mut registry);
-    add::<re_log_types::component_types::Rect2D>(&mut registry);
-    // add::<re_log_types::component_types::Scalar>(&mut registry);
-    // add::<re_log_types::component_types::ScalarPlotProps>(&mut registry);
-    // add::<re_log_types::component_types::Size3D>(&mut registry);
-    add::<re_log_types::component_types::Tensor>(&mut registry);
-    add::<re_log_types::component_types::TextEntry>(&mut registry);
-    add::<re_log_types::component_types::Transform3D>(&mut registry);
-    add::<re_log_types::component_types::Vec2D>(&mut registry);
-    add::<re_log_types::component_types::Vec3D>(&mut registry);
-    add::<re_log_types::ViewCoordinates>(&mut registry);
+    add::<re_components::AnnotationContext>(&mut registry);
+    // add::<re_components::Arrow3D>(&mut registry);
+    // add::<re_components::Box3D>(&mut registry);
+    add::<re_components::ClassId>(&mut registry);
+    add::<re_components::ColorRGBA>(&mut registry);
+    // add::<re_log_types::InstanceKey>(&mut registry);
+    add::<re_components::KeypointId>(&mut registry);
+    // add::<re_components::Label>(&mut registry);
+    add::<re_components::LineStrip2D>(&mut registry);
+    add::<re_components::LineStrip3D>(&mut registry);
+    add::<re_components::Mesh3D>(&mut registry);
+    // add::<re_components::Point2D>(&mut registry);
+    // add::<re_components::Point3D>(&mut registry);
+    add::<re_components::Pinhole>(&mut registry);
+    // add::<re_components::Quaternion>(&mut registry);
+    // add::<re_components::Radius>(&mut registry);
+    add::<re_components::Rect2D>(&mut registry);
+    // add::<re_components::Scalar>(&mut registry);
+    // add::<re_components::ScalarPlotProps>(&mut registry);
+    // add::<re_components::Size3D>(&mut registry);
+    add::<re_components::Tensor>(&mut registry);
+    add::<re_components::TextEntry>(&mut registry);
+    add::<re_components::Transform3D>(&mut registry);
+    add::<re_components::Vec2D>(&mut registry);
+    add::<re_components::Vec3D>(&mut registry);
+    add::<re_components::ViewCoordinates>(&mut registry);
 
     registry
 }
@@ -104,7 +102,7 @@ fn format_arrow(value: &dyn arrow2::array::Array) -> String {
 
 // ----------------------------------------------------------------------------
 
-impl DataUi for re_log_types::component_types::TextEntry {
+impl DataUi for re_components::TextEntry {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -142,7 +140,7 @@ impl DataUi for re_log_types::component_types::TextEntry {
     }
 }
 
-impl DataUi for re_log_types::component_types::Mesh3D {
+impl DataUi for re_components::Mesh3D {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -151,13 +149,13 @@ impl DataUi for re_log_types::component_types::Mesh3D {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            re_log_types::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
-            re_log_types::Mesh3D::Raw(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
+            re_components::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
+            re_components::Mesh3D::Raw(mesh) => mesh.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
 
-impl DataUi for re_log_types::component_types::EncodedMesh3D {
+impl DataUi for re_components::EncodedMesh3D {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -169,7 +167,7 @@ impl DataUi for re_log_types::component_types::EncodedMesh3D {
     }
 }
 
-impl DataUi for re_log_types::component_types::RawMesh3D {
+impl DataUi for re_components::RawMesh3D {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,

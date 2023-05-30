@@ -3,10 +3,10 @@ use std::sync::atomic::AtomicU64;
 
 use ahash::HashMap;
 use arrow2::datatypes::DataType;
-use smallvec::SmallVec;
-
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
+use smallvec::SmallVec;
+
 use re_log_types::{
     ComponentName, DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec,
     NumInstancesVec, RowId, RowIdVec, SizeBytes, TimeInt, TimePoint, TimeRange, Timeline,
@@ -324,7 +324,8 @@ impl DataStore {
 /// ```
 #[test]
 fn datastore_internal_repr() {
-    use re_log_types::{component_types::InstanceKey, Component as _, DataTable};
+    use re_components::datagen::data_table_example;
+    use re_log_types::{Component as _, InstanceKey};
 
     let mut store = DataStore::new(
         InstanceKey::name(),
@@ -335,11 +336,11 @@ fn datastore_internal_repr() {
         },
     );
 
-    let timeless = DataTable::example(true);
+    let timeless = data_table_example(true);
     eprintln!("{timeless}");
     store.insert_table(&timeless).unwrap();
 
-    let temporal = DataTable::example(false);
+    let temporal = data_table_example(false);
     eprintln!("{temporal}");
     store.insert_table(&temporal).unwrap();
 

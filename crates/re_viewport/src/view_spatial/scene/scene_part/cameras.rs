@@ -1,9 +1,8 @@
-use re_data_store::{EntityPath, EntityProperties};
-use re_log_types::{
-    component_types::{InstanceKey, Pinhole},
+use re_components::{
     coordinates::{Handedness, SignedAxis3},
-    ViewCoordinates,
+    InstanceKey, Pinhole, ViewCoordinates,
 };
+use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_viewer_context::TimeControl;
 use re_viewer_context::{SceneQuery, ViewerContext};

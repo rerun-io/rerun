@@ -4,12 +4,12 @@ use lazy_static::lazy_static;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{ClassId, KeypointId},
+use re_components::{
     context::{AnnotationInfo, ClassDescription},
-    AnnotationContext, RowId,
+    AnnotationContext, ClassId, KeypointId,
 };
+use re_data_store::EntityPath;
+use re_log_types::RowId;
 use re_query::query_entity_with_primary;
 
 use crate::DefaultColor;

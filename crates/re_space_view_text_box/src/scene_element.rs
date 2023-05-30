@@ -1,5 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_log_types::{component_types, Component};
+use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
     ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext,
@@ -20,7 +20,7 @@ pub struct SceneTextBox {
 
 impl SceneElement for SceneTextBox {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec![component_types::TextBox::name()]
+        vec![re_components::TextBox::name()]
     }
 
     fn populate(
@@ -37,19 +37,14 @@ impl SceneElement for SceneTextBox {
             }
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            match query_entity_with_primary::<component_types::TextBox>(
-                store,
-                &query,
-                ent_path,
-                &[],
-            )
-            .and_then(|ent_view| {
-                for text_entry in ent_view.iter_primary()?.flatten() {
-                    let component_types::TextBox { body } = text_entry;
-                    self.text_entries.push(TextBoxEntry { body });
-                }
-                Ok(())
-            }) {
+            match query_entity_with_primary::<re_components::TextBox>(store, &query, ent_path, &[])
+                .and_then(|ent_view| {
+                    for text_entry in ent_view.iter_primary()?.flatten() {
+                        let re_components::TextBox { body } = text_entry;
+                        self.text_entries.push(TextBoxEntry { body });
+                    }
+                    Ok(())
+                }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(_) => {
                     re_log::warn_once!("text-box query failed for {ent_path:?}");

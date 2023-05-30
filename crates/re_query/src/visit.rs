@@ -7,7 +7,7 @@
 //! # Usage
 //! ```
 //! # use re_query::EntityView;
-//! # use re_log_types::component_types::{ColorRGBA, InstanceKey, Point2D};
+//! # use re_components::{ColorRGBA, InstanceKey, Point2D};
 //!
 //! let instances = InstanceKey::from_iter(0..3);
 //!
@@ -43,9 +43,7 @@
 //! assert_eq!(colors.as_slice(), colors_out.as_slice());
 //! ```
 
-use re_log_types::{
-    component_types::InstanceKey, Component, DeserializableComponent, SerializableComponent,
-};
+use re_log_types::{Component, DeserializableComponent, InstanceKey, SerializableComponent};
 
 use crate::EntityView;
 

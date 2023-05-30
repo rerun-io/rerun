@@ -1,9 +1,6 @@
 use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{self, InstanceKey},
-    Component, RowId,
-};
+use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{ArchetypeDefinition, SceneElementImpl, SceneQuery, ViewerContext};
 
@@ -36,7 +33,7 @@ impl SceneElementImpl for SceneText {
     type State = TextSpaceViewState;
 
     fn archetype(&self) -> ArchetypeDefinition {
-        vec![component_types::TextEntry::name()]
+        vec![re_components::TextEntry::name()]
     }
 
     fn populate(
@@ -63,19 +60,19 @@ impl SceneElementImpl for SceneText {
 
             let components = [
                 InstanceKey::name(),
-                component_types::TextEntry::name(),
-                component_types::ColorRGBA::name(),
+                re_components::TextEntry::name(),
+                re_components::ColorRGBA::name(),
             ];
-            let ent_views = range_entity_with_primary::<component_types::TextEntry, 3>(
+            let ent_views = range_entity_with_primary::<re_components::TextEntry, 3>(
                 store, &query, ent_path, components,
             );
 
             for (time, ent_view) in ent_views {
                 match ent_view.visit2(
                     |_instance,
-                     text_entry: component_types::TextEntry,
-                     color: Option<component_types::ColorRGBA>| {
-                        let component_types::TextEntry { body, level } = text_entry;
+                     text_entry: re_components::TextEntry,
+                     color: Option<re_components::ColorRGBA>| {
+                        let re_components::TextEntry { body, level } = text_entry;
 
                         // Early filtering once more, see above.
                         let is_visible = level

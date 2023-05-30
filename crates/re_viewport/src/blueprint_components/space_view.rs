@@ -1,6 +1,6 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-use re_data_store::ComponentName;
-use re_log_types::{serde_field::SerdeField, Component};
+
+use re_log_types::{serde_field::SerdeField, Component, ComponentName};
 
 use crate::space_view::SpaceViewBlueprint;
 

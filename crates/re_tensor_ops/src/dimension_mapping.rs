@@ -1,4 +1,4 @@
-use re_log_types::component_types;
+use re_components::TensorDimension;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DimensionSelector {
@@ -34,7 +34,7 @@ pub struct DimensionMapping {
 }
 
 impl DimensionMapping {
-    pub fn create(shape: &[component_types::TensorDimension]) -> DimensionMapping {
+    pub fn create(shape: &[TensorDimension]) -> DimensionMapping {
         match shape.len() {
             0 => DimensionMapping {
                 selectors: Default::default(),
@@ -113,7 +113,7 @@ impl DimensionMapping {
 }
 
 #[allow(clippy::collapsible_else_if)]
-fn find_width_height_dim_indices(shape: &[component_types::TensorDimension]) -> (usize, usize) {
+fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
     assert!(shape.len() >= 2);
 
     let mut width = None;
@@ -174,9 +174,7 @@ fn is_name_like_height(lowercase: &str) -> bool {
 }
 
 /// Returns the longest and second longest dimensions
-fn longest_and_second_longest_dim_indices(
-    shape: &[component_types::TensorDimension],
-) -> (usize, usize) {
+fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
     let mut longest_idx = 0;
     let mut second_longest_idx = 0;
 
@@ -198,12 +196,12 @@ fn longest_and_second_longest_dim_indices(
 
 #[test]
 fn test_find_width_height_dim_indices() {
-    fn named(size: u64, name: &str) -> component_types::TensorDimension {
-        component_types::TensorDimension::named(size, name.to_owned())
+    fn named(size: u64, name: &str) -> TensorDimension {
+        TensorDimension::named(size, name.to_owned())
     }
 
-    fn dim(size: u64) -> component_types::TensorDimension {
-        component_types::TensorDimension::unnamed(size)
+    fn dim(size: u64) -> TensorDimension {
+        TensorDimension::unnamed(size)
     }
     let wh = find_width_height_dim_indices;
 

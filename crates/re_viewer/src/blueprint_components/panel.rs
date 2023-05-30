@@ -1,6 +1,4 @@
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
-use re_data_store::ComponentName;
-use re_log_types::Component;
 
 /// A Panel component
 ///
@@ -31,9 +29,9 @@ impl PanelState {
     pub const TIMELINE_VIEW_PATH: &str = "timeline_view";
 }
 
-impl Component for PanelState {
+impl re_log_types::Component for PanelState {
     #[inline]
-    fn name() -> ComponentName {
+    fn name() -> re_log_types::ComponentName {
         "rerun.blueprint.panel_view".into()
     }
 }

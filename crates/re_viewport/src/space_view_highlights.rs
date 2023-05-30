@@ -3,7 +3,7 @@ use egui::NumExt;
 use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
 
-use re_log_types::{component_types::InstanceKey, EntityPath, EntityPathHash};
+use re_log_types::{EntityPath, EntityPathHash, InstanceKey};
 use re_renderer::OutlineMaskPreference;
 use re_viewer_context::{
     HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SelectionState, SpaceViewId,

@@ -1,4 +1,4 @@
-use re_log_types::{component_types::TensorCastError, DecodedTensor, TensorDataType};
+use re_components::{DecodedTensor, TensorCastError, TensorDataType};
 use re_renderer::{
     renderer::ColormappedTexture,
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},

@@ -6,8 +6,8 @@ use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    component_types::InstanceKey, ComponentName, DataCell, DataCellColumn, DataCellError, DataRow,
-    DataTable, RowId, SizeBytes as _, TimeInt, TimePoint, TimeRange,
+    ComponentName, DataCell, DataCellColumn, DataCellError, DataRow, DataTable, InstanceKey, RowId,
+    SizeBytes as _, TimeInt, TimePoint, TimeRange,
 };
 
 use crate::{

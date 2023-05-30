@@ -2,11 +2,11 @@ use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
+use re_components::{Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::{EditableAutoValue, EntityPath, EntityPropertyMap};
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
-use re_log_types::component_types::{Pinhole, Tensor, TensorDataMeaning};
 use re_renderer::OutlineConfig;
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
@@ -765,7 +765,7 @@ pub fn picking(
         };
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
-            instance_path.instance_key = re_log_types::component_types::InstanceKey::SPLAT;
+            instance_path.instance_key = re_log_types::InstanceKey::SPLAT;
         }
 
         hovered_items.push(Item::InstancePath(

@@ -177,9 +177,9 @@ impl std::ops::DerefMut for RowId {
 /// Consider this example:
 /// ```ignore
 /// let num_instances = 2;
-/// let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-/// let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-/// let labels: &[Label] = &[];
+/// let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+/// let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
+/// let labels: &[MyLabel] = &[];
 /// let row = DataRow::from_cells3(row_id, timepoint, ent_path, num_instances, (points, colors, labels));
 /// ```
 ///
@@ -199,7 +199,7 @@ impl std::ops::DerefMut for RowId {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, Point2D},
+/// #     example_components::{MyColor, MyLabel, MyPoint},
 /// #     DataRow, RowId, Timeline,
 /// # };
 /// #
@@ -210,9 +210,9 @@ impl std::ops::DerefMut for RowId {
 /// # ];
 /// #
 /// let num_instances = 2;
-/// let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-/// let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-/// let labels: &[Label] = &[];
+/// let points: &[MyPoint] = &[MyPoint { x: 10.0, y: 10.0}, MyPoint { x: 20.0, y: 20.0 }];
+/// let colors: &[_] = &[MyColor(0xff7f7f7f)];
+/// let labels: &[MyLabel] = &[];
 ///
 /// let row = DataRow::from_cells3(
 ///     row_id,
@@ -670,86 +670,5 @@ impl std::fmt::Display for DataRow {
             self.cells.iter().map(|cell| cell.component_name()),
         )
         .fmt(f)
-    }
-}
-
-// ---
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::{
-        component_types::{ColorRGBA, Label, Point2D},
-        Component as _,
-    };
-
-    #[test]
-    fn data_row_error_num_instances() {
-        let row_id = RowId::ZERO;
-        let timepoint = TimePoint::timeless();
-
-        let num_instances = 2;
-        let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-        let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-        let labels: &[Label] = &[];
-
-        // 0 = clear: legal
-        DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, labels)
-            .unwrap();
-
-        // 1 = splat: legal
-        DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, colors)
-            .unwrap();
-
-        // num_instances = standard: legal
-        DataRow::try_from_cells1(row_id, "a/b/c", timepoint.clone(), num_instances, points)
-            .unwrap();
-
-        // anything else is illegal
-        let points: &[Point2D] = &[
-            [10.0, 10.0].into(),
-            [20.0, 20.0].into(),
-            [30.0, 30.0].into(),
-        ];
-        let err = DataRow::try_from_cells1(row_id, "a/b/c", timepoint, num_instances, points)
-            .unwrap_err();
-
-        match err {
-            DataRowError::WrongNumberOfInstances {
-                entity_path,
-                component,
-                expected_num_instances,
-                num_instances,
-            } => {
-                assert_eq!(EntityPath::from("a/b/c"), entity_path);
-                assert_eq!(Point2D::name(), component);
-                assert_eq!(2, expected_num_instances);
-                assert_eq!(3, num_instances);
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[test]
-    fn data_row_error_duped_components() {
-        let row_id = RowId::ZERO;
-        let timepoint = TimePoint::timeless();
-
-        let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-
-        let err =
-            DataRow::try_from_cells2(row_id, "a/b/c", timepoint, 2, (points, points)).unwrap_err();
-
-        match err {
-            DataRowError::DupedComponent {
-                entity_path,
-                component,
-            } => {
-                assert_eq!(EntityPath::from("a/b/c"), entity_path);
-                assert_eq!(Point2D::name(), component);
-            }
-            _ => unreachable!(),
-        }
     }
 }

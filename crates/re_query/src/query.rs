@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{
-    component_types::InstanceKey, Component, ComponentName, DataRow, EntityPath, RowId,
-};
+use re_log_types::{Component, ComponentName, DataRow, EntityPath, InstanceKey, RowId};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
@@ -13,7 +11,8 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::Point2D, Component};
+/// # use re_components::Point2D;
+/// # use re_log_types::{Timeline, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -84,7 +83,8 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, component_types::{Point2D, ColorRGBA}, Component};
+/// # use re_components::{Point2D, ColorRGBA};
+/// # use re_log_types::{Timeline, Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
@@ -154,10 +154,7 @@ pub fn query_entity_with_primary<Primary: Component>(
 
 /// Helper used to create an example store we can use for querying in doctests
 pub fn __populate_example_store() -> DataStore {
-    use re_log_types::{
-        component_types::{ColorRGBA, Point2D},
-        datagen::build_frame_nr,
-    };
+    use re_components::{datagen::build_frame_nr, ColorRGBA, Point2D};
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
@@ -195,7 +192,8 @@ pub fn __populate_example_store() -> DataStore {
 #[test]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
-    use re_log_types::{component_types::Point2D, Component as _, Timeline};
+    use re_components::Point2D;
+    use re_log_types::{Component as _, Timeline};
 
     let store = __populate_example_store();
 
@@ -230,10 +228,8 @@ fn simple_get_component() {
 #[test]
 fn simple_query_entity() {
     use re_arrow_store::LatestAtQuery;
-    use re_log_types::{
-        component_types::{ColorRGBA, Point2D},
-        Component as _, Timeline,
-    };
+    use re_components::{ColorRGBA, Point2D};
+    use re_log_types::{Component as _, Timeline};
 
     let store = __populate_example_store();
 

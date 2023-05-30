@@ -1,9 +1,6 @@
 use re_arrow_store::LatestAtQuery;
+use re_components::{DecodedTensor, InstanceKey, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
-use re_log_types::{
-    component_types::{InstanceKey, Tensor},
-    DecodedTensor,
-};
 use re_viewer_context::{SceneQuery, TensorDecodeCache, ViewerContext};
 
 /// A tensor scene, with everything needed to render it.

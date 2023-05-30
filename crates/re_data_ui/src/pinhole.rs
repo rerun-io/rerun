@@ -1,4 +1,4 @@
-use re_log_types::component_types::Pinhole;
+use re_components::Pinhole;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use crate::DataUi;
@@ -29,7 +29,7 @@ impl DataUi for Pinhole {
                     ui.indent("pinole", |ui| {
                         ui.horizontal(|ui| {
                             ui.label("resolution:");
-                            if let Some(re_log_types::component_types::Vec2D([x, y])) = resolution {
+                            if let Some(re_components::Vec2D([x, y])) = resolution {
                                 ui.monospace(format!("{x}x{y}"));
                             } else {
                                 ui.weak("(none)");

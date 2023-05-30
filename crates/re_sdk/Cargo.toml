@@ -25,13 +25,14 @@ default = ["demo", "glam", "image"]
 demo = []
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
-glam = ["re_log_types/glam"]
+glam = ["re_components/glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate.
-image = ["re_log_types/image"]
+image = ["re_components/image"]
 
 
 [dependencies]
+re_components.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
