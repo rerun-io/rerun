@@ -552,10 +552,11 @@ impl ViewportState {
                 let state = if let Ok(state) = space_view_class_registry.query(space_view_class) {
                     state.new_state()
                 } else {
-                    re_log::error_once!(
-                        "Space View class \"{}\" is not registered.",
-                        space_view_class
-                    );
+                    // TODO(andreas): Enable this once categories are gone.
+                    // re_log::error_once!(
+                    //     "Space View class \"{}\" is not registered.",
+                    //     space_view_class
+                    // );
                     Box::<EmptySpaceViewState>::default()
                 };
                 SpaceViewState {
