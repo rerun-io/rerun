@@ -15,9 +15,9 @@ pub enum SpaceViewTypeRegistryError {
 ///
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
-pub struct SpaceViewTypeRegistry(HashMap<SpaceViewClassName, Box<dyn SpaceViewClass>>);
+pub struct SpaceViewClassRegistry(HashMap<SpaceViewClassName, Box<dyn SpaceViewClass>>);
 
-impl SpaceViewTypeRegistry {
+impl SpaceViewClassRegistry {
     /// Adds a new space view type.
     ///
     /// Fails if a space view type with the same name was already registered.

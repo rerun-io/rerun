@@ -11,4 +11,4 @@ pub use space_view_class::{
     ArchetypeDefinition, Scene, SceneElement, SpaceViewClass, SpaceViewClassName, SpaceViewState,
 };
 pub use space_view_class_impl::{EmptySpaceViewState, SpaceViewClassImpl};
-pub use space_view_class_registry::{SpaceViewTypeRegistry, SpaceViewTypeRegistryError};
+pub use space_view_class_registry::{SpaceViewClassRegistry, SpaceViewTypeRegistryError};

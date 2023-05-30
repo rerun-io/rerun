@@ -9,7 +9,7 @@ use re_log_types::{
     component_types::{DisconnectedSpace, Pinhole, Tensor},
     Component,
 };
-use re_viewer_context::{SpaceViewClassName, SpaceViewTypeRegistry, ViewerContext};
+use re_viewer_context::{SpaceViewClassName, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -20,7 +20,6 @@ use crate::{
 /// List out all space views we allow the user to create.
 pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
-    _space_view_type_registry: &SpaceViewTypeRegistry, // TODO(andreas): Make use of this instead of categories.
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
     crate::profile_function!();
@@ -121,10 +120,9 @@ fn is_interesting_space_view_not_at_root(
 /// List out all space views we generate by default for the available data.
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
-    space_view_type_registry: &SpaceViewTypeRegistry,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
-    let candidates = all_possible_space_views(ctx, space_view_type_registry, spaces_info);
+    let candidates = all_possible_space_views(ctx, spaces_info);
     default_created_space_views_from_candidates(&ctx.log_db.entity_db.data_store, candidates)
 }
 

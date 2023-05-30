@@ -33,7 +33,7 @@ pub use selection_state::{
 };
 pub use space_view::{
     ArchetypeDefinition, EmptySpaceViewState, Scene, SceneElement, SpaceViewClass,
-    SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, SpaceViewTypeRegistry,
+    SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewState,
     SpaceViewTypeRegistryError,
 };
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

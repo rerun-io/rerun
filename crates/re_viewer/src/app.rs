@@ -15,7 +15,7 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
-    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewTypeRegistry,
+    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry,
     SpaceViewTypeRegistryError, ViewerContext,
 };
 use re_viewport::ViewportState;
@@ -95,13 +95,13 @@ pub struct App {
     analytics: ViewerAnalytics,
 
     /// All known space view types.
-    space_view_type_registry: SpaceViewTypeRegistry,
+    space_view_class_registry: SpaceViewClassRegistry,
 }
 
-fn populate_space_view_type_registry_with_builtin(
-    space_view_type_registry: &mut SpaceViewTypeRegistry,
+fn populate_space_view_class_registry_with_builtin(
+    space_view_class_registry: &mut SpaceViewClassRegistry,
 ) -> Result<(), SpaceViewTypeRegistryError> {
-    space_view_type_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
+    space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
     Ok(())
 }
 
@@ -134,9 +134,9 @@ impl App {
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
 
-        let mut space_view_type_registry = SpaceViewTypeRegistry::default();
+        let mut space_view_class_registry = SpaceViewClassRegistry::default();
         if let Err(err) =
-            populate_space_view_type_registry_with_builtin(&mut space_view_type_registry)
+            populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
         {
             re_log::error!(
                 "Failed to populate space view type registry with builtin space views: {}",
@@ -166,7 +166,7 @@ impl App {
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
 
-            space_view_type_registry,
+            space_view_class_registry,
 
             analytics,
         }
@@ -651,7 +651,7 @@ impl eframe::App for App {
                                 log_db,
                                 &self.re_ui,
                                 &self.component_ui_registry,
-                                &self.space_view_type_registry,
+                                &self.space_view_class_registry,
                                 &self.rx,
                             );
 
@@ -1104,7 +1104,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
-        space_view_type_registry: &SpaceViewTypeRegistry,
+        space_view_class_registry: &SpaceViewClassRegistry,
         rx: &Receiver<LogMsg>,
     ) {
         crate::profile_function!();
@@ -1133,6 +1133,7 @@ impl AppState {
         let mut ctx = ViewerContext {
             app_options: options,
             cache,
+            space_view_class_registry,
             component_ui_registry,
             log_db,
             rec_cfg,
@@ -1141,13 +1142,7 @@ impl AppState {
         };
 
         time_panel.show_panel(&mut ctx, ui, blueprint.time_panel_expanded);
-        selection_panel.show_panel(
-            viewport_state,
-            &mut ctx,
-            ui,
-            space_view_type_registry,
-            blueprint,
-        );
+        selection_panel.show_panel(viewport_state, &mut ctx, ui, blueprint);
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -1159,12 +1154,7 @@ impl AppState {
             .frame(central_panel_frame)
             .show_inside(ui, |ui| match *panel_selection {
                 PanelSelection::Viewport => {
-                    blueprint.blueprint_panel_and_viewport(
-                        viewport_state,
-                        &mut ctx,
-                        ui,
-                        space_view_type_registry,
-                    );
+                    blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
                 }
             });
 

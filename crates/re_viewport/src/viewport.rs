@@ -7,9 +7,7 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_viewer_context::{
-    DataBlueprintGroupHandle, Item, SpaceViewId, SpaceViewTypeRegistry, ViewerContext,
-};
+use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
 
 use crate::{
     data_blueprint::DataBlueprintGroup,
@@ -55,15 +53,11 @@ pub struct Viewport {
 
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
-    pub fn new(
-        ctx: &mut ViewerContext<'_>,
-        space_view_type_registry: &SpaceViewTypeRegistry,
-        spaces_info: &SpaceInfoCollection,
-    ) -> Self {
+    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
         crate::profile_function!();
 
         let mut viewport = Self::default();
-        for space_view in default_created_space_views(ctx, space_view_type_registry, spaces_info) {
+        for space_view in default_created_space_views(ctx, spaces_info) {
             viewport.add_space_view(space_view);
         }
         viewport
@@ -368,7 +362,6 @@ impl Viewport {
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        space_view_type_registry: &SpaceViewTypeRegistry,
         spaces_info: &SpaceInfoCollection,
     ) {
         crate::profile_function!();
@@ -378,9 +371,7 @@ impl Viewport {
         }
 
         if self.auto_space_views {
-            for space_view_candidate in
-                default_created_space_views(ctx, space_view_type_registry, spaces_info)
-            {
+            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.add_space_view(space_view_candidate);
                 }
@@ -416,7 +407,6 @@ impl Viewport {
         state: &mut ViewportState,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
-        space_view_type_registry: &SpaceViewTypeRegistry,
     ) {
         if let Some(window) = &mut state.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
@@ -463,7 +453,6 @@ impl Viewport {
             let mut tab_viewer = TabViewer {
                 ctx,
                 viewport_state: state,
-                space_view_type_registry,
                 space_views: &mut self.space_views,
                 maximized: &mut self.maximized,
             };
@@ -476,7 +465,6 @@ impl Viewport {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_type_registry: &SpaceViewTypeRegistry,
         spaces_info: &SpaceInfoCollection,
     ) {
         #![allow(clippy::collapsible_if)]
@@ -486,7 +474,7 @@ impl Viewport {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            for space_view in all_possible_space_views(ctx, space_view_type_registry, spaces_info)
+            for space_view in all_possible_space_views(ctx, spaces_info)
                 .into_iter()
                 .sorted_by_key(|space_view| space_view.space_path.to_string())
             {
@@ -646,7 +634,6 @@ fn visibility_button_ui(
 struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
     ctx: &'a mut ViewerContext<'b>,
-    space_view_type_registry: &'a SpaceViewTypeRegistry,
     space_views: &'a mut HashMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
 }
@@ -675,7 +662,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         space_view_ui(
             self.ctx,
             ui,
-            self.space_view_type_registry,
             space_view_blueprint,
             space_view_state,
             &highlights,
@@ -815,7 +801,7 @@ fn help_text_ui(
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view_type_registry: &SpaceViewTypeRegistry,
+
     space_view_blueprint: &mut SpaceViewBlueprint,
     space_view_state: &mut SpaceViewState,
     space_view_highlights: &SpaceViewHighlights,
@@ -827,14 +813,7 @@ fn space_view_ui(
         return
     };
 
-    space_view_blueprint.scene_ui(
-        space_view_state,
-        ctx,
-        ui,
-        space_view_type_registry,
-        latest_at,
-        space_view_highlights,
-    );
+    space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
 }
 
 // ----------------------------------------------------------------------------

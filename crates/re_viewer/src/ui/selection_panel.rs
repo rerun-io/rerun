@@ -6,7 +6,7 @@ use re_log_types::{
     component_types::{Pinhole, Tensor, TensorDataMeaning},
     TimeType,
 };
-use re_viewer_context::{Item, SpaceViewId, SpaceViewTypeRegistry, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
 use re_viewport::{SpaceViewState, SpatialNavigationMode, Viewport, ViewportState};
 
 use crate::ui::Blueprint;
@@ -28,7 +28,6 @@ impl SelectionPanel {
         viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_type_registry: &SpaceViewTypeRegistry,
         blueprint: &mut Blueprint,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -73,13 +72,7 @@ impl SelectionPanel {
                             ..Default::default()
                         }
                         .show(ui, |ui| {
-                            self.contents(
-                                viewport_state,
-                                ctx,
-                                ui,
-                                space_view_type_registry,
-                                blueprint,
-                            );
+                            self.contents(viewport_state, ctx, ui, blueprint);
                         });
                     });
             },
@@ -92,7 +85,6 @@ impl SelectionPanel {
         viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_type_registry: &SpaceViewTypeRegistry,
         blueprint: &mut Blueprint,
     ) {
         crate::profile_function!();
@@ -117,14 +109,7 @@ impl SelectionPanel {
 
                 ctx.re_ui
                     .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                        blueprint_ui(
-                            viewport_state,
-                            ui,
-                            ctx,
-                            space_view_type_registry,
-                            blueprint,
-                            item,
-                        );
+                        blueprint_ui(viewport_state, ui, ctx, blueprint, item);
                     });
 
                 if i + 1 < num_selections {
@@ -236,7 +221,6 @@ fn blueprint_ui(
     viewport_state: &mut ViewportState,
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    space_view_type_registry: &SpaceViewTypeRegistry,
     blueprint: &mut Blueprint,
     item: &Item,
 ) {
@@ -279,7 +263,7 @@ fn blueprint_ui(
                     .entry(*space_view_id)
                     .or_default();
 
-                space_view.selection_ui(space_view_state, ctx, ui, space_view_type_registry);
+                space_view.selection_ui(space_view_state, ctx, ui);
             }
         }
 

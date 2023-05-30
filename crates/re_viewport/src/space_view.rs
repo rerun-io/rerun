@@ -1,9 +1,7 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_viewer_context::{
-    EmptySpaceViewState, SpaceViewClassName, SpaceViewId, SpaceViewTypeRegistry, ViewerContext,
-};
+use re_viewer_context::{EmptySpaceViewState, SpaceViewClassName, SpaceViewId, ViewerContext};
 
 use crate::{
     data_blueprint::DataBlueprintTree,
@@ -156,9 +154,8 @@ impl SpaceViewBlueprint {
         view_state: &mut SpaceViewState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_type_registry: &SpaceViewTypeRegistry,
     ) {
-        if let Ok(space_view_type) = space_view_type_registry.query(self.space_view_type) {
+        if let Ok(space_view_type) = ctx.space_view_class_registry.query(self.space_view_type) {
             space_view_type.selection_ui(ctx, ui, view_state.state.as_mut());
         } else {
             // Legacy handling
@@ -200,7 +197,6 @@ impl SpaceViewBlueprint {
         view_state: &mut SpaceViewState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_type_registry: &SpaceViewTypeRegistry,
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,
     ) {
@@ -218,7 +214,7 @@ impl SpaceViewBlueprint {
             entity_props_map: self.data_blueprint.data_blueprints_projected(),
         };
 
-        if let Ok(space_view_type) = space_view_type_registry.query(self.space_view_type) {
+        if let Ok(space_view_type) = ctx.space_view_class_registry.query(self.space_view_type) {
             let mut scene = space_view_type.new_scene();
             scene.populate(ctx, &query);
             // TODO(andreas): Pass scene to renderer.
