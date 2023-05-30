@@ -43,7 +43,6 @@ bytemuck.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "persistence",
 ] }
-egui_extras.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
 enumset.workspace = true

@@ -26,8 +26,6 @@ re_query.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 
-arrow2.workspace = true
-arrow2_convert.workspace = true
 egui.workspace = true
 egui_extras.workspace = true
 
