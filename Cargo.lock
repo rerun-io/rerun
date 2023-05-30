@@ -4205,14 +4205,18 @@ version = "0.7.0-alpha.0"
 dependencies = [
  "ahash 0.8.3",
  "egui",
+ "nohash-hasher",
  "puffin",
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
  "re_format",
  "re_log_types",
+ "re_string_interner",
  "re_ui",
  "re_viewer_context",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -4319,6 +4323,7 @@ dependencies = [
  "re_memory",
  "re_renderer",
  "re_smart_channel",
+ "re_space_view",
  "re_time_panel",
  "re_ui",
  "re_viewer_context",

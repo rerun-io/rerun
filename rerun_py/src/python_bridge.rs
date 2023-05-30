@@ -1174,6 +1174,7 @@ fn add_space_view(
     let Some(blueprint) = get_blueprint_recording(blueprint) else { return };
 
     let mut space_view = SpaceViewBlueprint::new(
+        "Spatial".into(),
         ViewCategory::Spatial,
         &origin.into(),
         &entity_paths

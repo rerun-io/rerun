@@ -1,6 +1,7 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
+use re_space_view::SpaceViewTypeName;
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::{
@@ -31,6 +32,7 @@ pub enum ScreenshotMode {
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
+    pub space_view_type: SpaceViewTypeName,
 
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
@@ -43,6 +45,7 @@ pub struct SpaceViewBlueprint {
     pub data_blueprint: DataBlueprintTree,
 
     /// We only show data that match this category.
+    /// TODO(andreas): This is obsolete and should be fully replaced by the space view type framework.
     pub category: ViewCategory,
 
     /// True if the user is expected to add entities themselves. False otherwise.
@@ -51,6 +54,7 @@ pub struct SpaceViewBlueprint {
 
 impl SpaceViewBlueprint {
     pub fn new(
+        space_view_type: SpaceViewTypeName,
         category: ViewCategory,
         space_path: &EntityPath,
         queries_entities: &[EntityPath],
@@ -72,6 +76,7 @@ impl SpaceViewBlueprint {
 
         Self {
             display_name,
+            space_view_type,
             id: SpaceViewId::random(),
             space_path: space_path.clone(),
             data_blueprint: data_blueprint_tree,

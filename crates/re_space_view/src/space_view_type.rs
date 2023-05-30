@@ -6,12 +6,21 @@ use re_viewer_context::{SceneQuery, ViewerContext};
 /// TODO(andreas/clement): More formal definition of an archetype.
 pub type ArchetypeDefinition = Vec<ComponentName>;
 
+re_string_interner::declare_new_type!(
+    /// The unique name of a space view type.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    pub struct SpaceViewTypeName;
+);
+
 /// Defines a type of space view.
 ///
-/// TODO: Lots of documentation
+/// TODO: Lots of documentation1
 pub trait SpaceViewType {
-    /// Name of this type as shown in the ui.
-    fn type_display_name(&self) -> &'static str;
+    /// Name of this space view type.
+    ///
+    /// Used for both ui display and identification.
+    /// Must be unique within a viewer session.
+    fn type_name(&self) -> SpaceViewTypeName;
 
     /// Icon used to identify this space view type.
     fn type_icon(&self) -> &'static str;

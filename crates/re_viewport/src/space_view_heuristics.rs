@@ -9,6 +9,7 @@ use re_log_types::{
     component_types::{DisconnectedSpace, Pinhole, Tensor},
     Component,
 };
+use re_space_view::{SpaceViewTypeName, SpaceViewTypeRegistry};
 use re_viewer_context::ViewerContext;
 
 use crate::{
@@ -20,6 +21,7 @@ use crate::{
 /// List out all space views we allow the user to create.
 pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
+    space_view_type_registry: &SpaceViewTypeRegistry,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
     crate::profile_function!();
@@ -39,7 +41,12 @@ pub fn all_possible_space_views(
             default_queried_entities_by_category(ctx, candidate_space_path, spaces_info)
                 .iter()
                 .map(|(category, entity_paths)| {
-                    SpaceViewBlueprint::new(*category, candidate_space_path, entity_paths)
+                    SpaceViewBlueprint::new(
+                        category_to_type(*category),
+                        *category,
+                        candidate_space_path,
+                        entity_paths,
+                    )
                 })
                 .collect::<Vec<_>>()
         })
@@ -115,9 +122,10 @@ fn is_interesting_space_view_not_at_root(
 /// List out all space views we generate by default for the available data.
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
+    space_view_type_registry: &SpaceViewTypeRegistry,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
-    let candidates = all_possible_space_views(ctx, spaces_info);
+    let candidates = all_possible_space_views(ctx, space_view_type_registry, spaces_info);
     default_created_space_views_from_candidates(&ctx.log_db.entity_db.data_store, candidates)
 }
 
@@ -162,6 +170,7 @@ fn default_created_space_views_from_candidates(
         if candidate.category == ViewCategory::Tensor {
             for entity_path in candidate.data_blueprint.entity_paths() {
                 let mut space_view = SpaceViewBlueprint::new(
+                    category_to_type(ViewCategory::Tensor),
                     ViewCategory::Tensor,
                     entity_path,
                     &[entity_path.clone()],
@@ -227,6 +236,7 @@ fn default_created_space_views_from_candidates(
                         .collect_vec();
 
                     let mut space_view = SpaceViewBlueprint::new(
+                        candidate.space_view_type,
                         candidate.category,
                         &candidate.space_path,
                         &entities,
@@ -346,4 +356,17 @@ fn default_queried_entities_by_category(
     );
 
     groups
+}
+
+// TODO(andreas): This is for transitioning to types only.
+fn category_to_type(category: ViewCategory) -> SpaceViewTypeName {
+    match category {
+        ViewCategory::Text => "Text",
+        ViewCategory::TextBox => "Text Box",
+        ViewCategory::TimeSeries => "Time Series",
+        ViewCategory::BarChart => "Bar Chart",
+        ViewCategory::Spatial => "Spatial",
+        ViewCategory::Tensor => "Tensor",
+    }
+    .into()
 }

@@ -23,9 +23,13 @@ re_format.workspace = true
 re_log_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
+re_string_interner.workspace = true
 
-egui.workspace = true
 ahash.workspace = true
+egui.workspace = true
+nohash-hasher.workspace = true
+thiserror.workspace = true
+serde = "1.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true

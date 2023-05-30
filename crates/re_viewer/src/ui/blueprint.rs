@@ -1,3 +1,4 @@
+use re_space_view::SpaceViewTypeRegistry;
 use re_viewer_context::Item;
 
 use re_viewer_context::ViewerContext;
@@ -29,6 +30,7 @@ impl Blueprint {
     pub fn blueprint_panel_and_viewport(
         &mut self,
         viewport_state: &mut ViewportState,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
@@ -36,9 +38,10 @@ impl Blueprint {
 
         let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
 
-        self.viewport.on_frame_start(ctx, &spaces_info);
+        self.viewport
+            .on_frame_start(ctx, space_view_type_registry, &spaces_info);
 
-        self.blueprint_panel(ctx, ui, &spaces_info);
+        self.blueprint_panel(ctx, ui, space_view_type_registry, &spaces_info);
 
         let viewport_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -61,6 +64,7 @@ impl Blueprint {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         spaces_info: &SpaceInfoCollection,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -75,7 +79,7 @@ impl Blueprint {
             .default_width((0.35 * screen_width).min(200.0).round());
 
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
-            self.title_bar_ui(ctx, ui, spaces_info);
+            self.title_bar_ui(ctx, ui, space_view_type_registry, spaces_info);
 
             egui::Frame {
                 inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
@@ -91,6 +95,7 @@ impl Blueprint {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         spaces_info: &SpaceInfoCollection,
     ) {
         egui::TopBottomPanel::top("blueprint_panel_title_bar")
@@ -109,9 +114,13 @@ impl Blueprint {
                         ui.available_size_before_wrap(),
                         egui::Layout::right_to_left(egui::Align::Center),
                         |ui| {
-                            self.viewport
-                                .add_new_spaceview_button_ui(ctx, ui, spaces_info);
-                            self.reset_button_ui(ctx, ui, spaces_info);
+                            self.viewport.add_new_spaceview_button_ui(
+                                ctx,
+                                ui,
+                                space_view_type_registry,
+                                spaces_info,
+                            );
+                            self.reset_button_ui(ctx, ui, space_view_type_registry, spaces_info);
                         },
                     );
                 });
@@ -122,6 +131,7 @@ impl Blueprint {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         spaces_info: &SpaceInfoCollection,
     ) {
         if ctx
@@ -130,7 +140,7 @@ impl Blueprint {
             .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
             .clicked()
         {
-            self.viewport = Viewport::new(ctx, spaces_info);
+            self.viewport = Viewport::new(ctx, space_view_type_registry, spaces_info);
         }
     }
 

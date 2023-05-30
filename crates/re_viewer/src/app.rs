@@ -5,6 +5,7 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
+use re_space_view::SpaceViewTypeRegistry;
 use re_viewport::ViewportState;
 use web_time::Instant;
 
@@ -94,7 +95,7 @@ pub struct App {
     analytics: ViewerAnalytics,
 
     /// All known space view types.
-    space_view_type_registry: SpaceViewTypeRegistry,
+    space_view_type_registry: re_space_view::SpaceViewTypeRegistry,
 }
 
 impl App {
@@ -126,6 +127,9 @@ impl App {
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
 
+        let space_view_type_registry = SpaceViewTypeRegistry::default();
+        // TODO: populate
+
         Self {
             build_info,
             startup_options,
@@ -147,6 +151,8 @@ impl App {
 
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
+
+            space_view_type_registry,
 
             analytics,
         }
@@ -631,6 +637,7 @@ impl eframe::App for App {
                                 log_db,
                                 &self.re_ui,
                                 &self.component_ui_registry,
+                                &self.space_view_type_registry,
                                 &self.rx,
                             );
 
@@ -1083,6 +1090,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         rx: &Receiver<LogMsg>,
     ) {
         crate::profile_function!();
@@ -1131,7 +1139,12 @@ impl AppState {
             .frame(central_panel_frame)
             .show_inside(ui, |ui| match *panel_selection {
                 PanelSelection::Viewport => {
-                    blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
+                    blueprint.blueprint_panel_and_viewport(
+                        viewport_state,
+                        space_view_type_registry,
+                        &mut ctx,
+                        ui,
+                    );
                 }
             });
 

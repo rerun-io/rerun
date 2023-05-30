@@ -7,6 +7,7 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
+use re_space_view::SpaceViewTypeRegistry;
 use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
 
 use crate::{
@@ -53,11 +54,15 @@ pub struct Viewport {
 
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
-    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
+    pub fn new(
+        ctx: &mut ViewerContext<'_>,
+        space_view_type_registry: &SpaceViewTypeRegistry,
+        spaces_info: &SpaceInfoCollection,
+    ) -> Self {
         crate::profile_function!();
 
         let mut viewport = Self::default();
-        for space_view in default_created_space_views(ctx, spaces_info) {
+        for space_view in default_created_space_views(ctx, space_view_type_registry, spaces_info) {
             viewport.add_space_view(space_view);
         }
         viewport
@@ -362,6 +367,7 @@ impl Viewport {
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         spaces_info: &SpaceInfoCollection,
     ) {
         crate::profile_function!();
@@ -371,7 +377,9 @@ impl Viewport {
         }
 
         if self.auto_space_views {
-            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
+            for space_view_candidate in
+                default_created_space_views(ctx, space_view_type_registry, spaces_info)
+            {
                 if self.should_auto_add_space_view(&space_view_candidate) {
                     self.add_space_view(space_view_candidate);
                 }
@@ -465,6 +473,7 @@ impl Viewport {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         spaces_info: &SpaceInfoCollection,
     ) {
         #![allow(clippy::collapsible_if)]
@@ -474,7 +483,7 @@ impl Viewport {
         ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
-            for space_view in all_possible_space_views(ctx, spaces_info)
+            for space_view in all_possible_space_views(ctx, space_view_type_registry, spaces_info)
                 .into_iter()
                 .sorted_by_key(|space_view| space_view.space_path.to_string())
             {
