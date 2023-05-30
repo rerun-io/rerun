@@ -52,7 +52,7 @@ mod load_file;
 pub mod datagen;
 
 // ----------------------------------------------------------------------------
-// TODO: split into modules, like we do in re_sdk/src/lib.rs
+// TODO(emilk): split into modules, like we do in re_sdk/src/lib.rs
 
 pub use self::{
     arrow::Arrow3D,

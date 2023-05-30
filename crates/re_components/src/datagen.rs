@@ -50,12 +50,12 @@ pub fn build_some_vec3d(len: usize) -> Vec<crate::Vec3D> {
         .collect()
 }
 
-/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`crate::TimePoint`].
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`re_log_types::TimePoint`].
 pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
     (Timeline::log_time(), log_time.into())
 }
 
-/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`crate::TimePoint`].
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`re_log_types::TimePoint`].
 pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
     (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }
@@ -83,7 +83,7 @@ pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Ve
     instances
 }
 
-/// Crafts a simple but interesting [`DataTable`].
+/// Crafts a simple but interesting [`re_log_types::DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
 pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
     use crate::{ColorRGBA, Label, Point2D};

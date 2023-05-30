@@ -327,8 +327,8 @@ pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,
 
-    /// The data is an annotated [`re_components::ClassId`] which should be
-    /// looked up using the appropriate [`crate::context::AnnotationContext`]
+    /// The data is an annotated [`crate::ClassId`] which should be
+    /// looked up using the appropriate [`crate::AnnotationContext`]
     ClassId,
 
     /// Image data interpreted as depth map.

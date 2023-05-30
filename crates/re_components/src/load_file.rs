@@ -1,6 +1,6 @@
 use re_log_types::DataCell;
 
-/// Errors from [`DataCell::data_cell_from_file_path`] and [`data_cell_from_mesh_file_path`].
+/// Errors from [`data_cell_from_file_path`] and [`data_cell_from_mesh_file_path`].
 #[derive(thiserror::Error, Debug)]
 pub enum FromFileError {
     #[error(transparent)]
