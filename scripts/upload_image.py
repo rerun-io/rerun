@@ -12,7 +12,7 @@ Before running, you have to authenticate via the Google Cloud CLI:
 
 If you get this error:
 
-    File "/Users/emilk/.pyenv/versions/3.8.12/lib/python3.8/site-packages/cryptography/hazmat/primitives/asymmetric/utils.py", line 6, in <module>
+    File "…/site-packages/cryptography/hazmat/primitives/asymmetric/utils.py", line 6, in <module>
         from cryptography.hazmat.bindings._rust import asn1
     pyo3_runtime.PanicException: Python API call failed
 
