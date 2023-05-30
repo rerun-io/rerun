@@ -177,9 +177,9 @@ impl std::ops::DerefMut for RowId {
 /// Consider this example:
 /// ```ignore
 /// let num_instances = 2;
-/// let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-/// let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-/// let labels: &[Label] = &[];
+/// let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+/// let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
+/// let labels: &[MyLabel] = &[];
 /// let row = DataRow::from_cells3(row_id, timepoint, ent_path, num_instances, (points, colors, labels));
 /// ```
 ///
@@ -199,7 +199,7 @@ impl std::ops::DerefMut for RowId {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, Point2D},
+/// #     example_components::{MyColor, MyLabel, MyPoint},
 /// #     DataRow, RowId, Timeline,
 /// # };
 /// #
@@ -210,9 +210,9 @@ impl std::ops::DerefMut for RowId {
 /// # ];
 /// #
 /// let num_instances = 2;
-/// let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-/// let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-/// let labels: &[Label] = &[];
+/// let points: &[MyPoint] = &[MyPoint { x: 10.0, y: 10.0}, MyPoint { x: 20.0, y: 20.0 }];
+/// let colors: &[_] = &[MyColor(0xff7f7f7f)];
+/// let labels: &[MyLabel] = &[];
 ///
 /// let row = DataRow::from_cells3(
 ///     row_id,

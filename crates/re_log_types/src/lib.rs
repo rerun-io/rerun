@@ -22,6 +22,7 @@ mod component;
 mod data_cell;
 mod data_row;
 mod data_table;
+pub mod example_components;
 pub mod hash;
 mod index;
 mod instance_key;

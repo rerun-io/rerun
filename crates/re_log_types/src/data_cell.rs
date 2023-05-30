@@ -40,10 +40,10 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 ///
 /// Consider this example:
 /// ```ignore
-/// let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into(), [30.0, 30.0].into()];
+/// let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into(), [30.0, 30.0].into()];
 /// let cell = DataCell::from(points);
 /// // Or, alternatively:
-/// let cell = DataCell::from_component::<Point2D>([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]]);
+/// let cell = DataCell::from_component::<MyPoint>([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]]);
 /// ```
 ///
 /// The cell's datatype is now a `StructArray`:
@@ -70,24 +70,28 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # use itertools::Itertools as _;
 /// #
 /// # use re_log_types::{DataCell, Component as _};
-/// # use re_components::Point2D;
+/// # use re_log_types::example_components::MyPoint;
 /// #
-/// let points: &[Point2D] = &[
-///     [10.0, 10.0].into(),
-///     [20.0, 20.0].into(),
-///     [30.0, 30.0].into(),
+/// let points: &[MyPoint] = &[
+///     MyPoint { x: 10.0, y: 10.0 },
+///     MyPoint { x: 20.0, y: 20.0 },
+///     MyPoint { x: 30.0, y: 30.0 },
 /// ];
 /// let _cell = DataCell::from(points);
 ///
 /// // Or, alternatively:
-/// let cell = DataCell::from_component::<Point2D>([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]]);
+/// let cell = DataCell::from_component::<MyPoint>([
+///     MyPoint { x: 10.0, y: 10.0 },
+///     MyPoint { x: 20.0, y: 20.0 },
+///     MyPoint { x: 30.0, y: 30.0 },
+/// ]);
 ///
 /// eprintln!("{:#?}", cell.datatype());
 /// eprintln!("{cell}");
 /// #
-/// # assert_eq!(Point2D::name(), cell.component_name());
+/// # assert_eq!(MyPoint::name(), cell.component_name());
 /// # assert_eq!(3, cell.num_instances());
-/// # assert_eq!(cell.datatype(), &Point2D::data_type());
+/// # assert_eq!(cell.datatype(), &MyPoint::data_type());
 /// #
 /// # assert_eq!(points, cell.to_native().collect_vec().as_slice());
 /// ```

@@ -216,19 +216,19 @@ impl std::ops::DerefMut for TableId {
 /// ```ignore
 /// let row0 = {
 ///     let num_instances = 2;
-///     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-///     let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
+///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
+///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
 ///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))
 /// };
 /// let row1 = {
 ///     let num_instances = 0;
-///     let colors: &[ColorRGBA] = &[];
+///     let colors: &[MyColor] = &[];
 ///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
 /// };
 /// let row2 = {
 ///     let num_instances = 1;
-///     let colors: &[_] = &[ColorRGBA::from_rgb(255, 255, 255)];
+///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
 ///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))
 /// };
@@ -255,7 +255,7 @@ impl std::ops::DerefMut for TableId {
 ///
 /// ```rust
 /// # use re_log_types::{
-/// #     component_types::{ColorRGBA, Label, Point2D},
+/// #     example_components::{MyColor, MyLabel, MyPoint},
 /// #     DataRow, DataTable, RowId, TableId, Timeline, TimePoint,
 /// # };
 /// #
@@ -270,9 +270,9 @@ impl std::ops::DerefMut for TableId {
 /// #
 /// let row0 = {
 ///     let num_instances = 2;
-///     let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-///     let colors: &[_] = &[ColorRGBA::from_rgb(128, 128, 128)];
-///     let labels: &[Label] = &[];
+///     let points: &[MyPoint] = &[MyPoint { x: 10.0, y: 10.0 }, MyPoint { x: 20.0, y: 20.0 }];
+///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
+///     let labels: &[MyLabel] = &[];
 ///
 ///     DataRow::from_cells3(
 ///         RowId::random(),
@@ -285,15 +285,15 @@ impl std::ops::DerefMut for TableId {
 ///
 /// let row1 = {
 ///     let num_instances = 0;
-///     let colors: &[ColorRGBA] = &[];
+///     let colors: &[MyColor] = &[];
 ///
 ///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)
 /// };
 ///
 /// let row2 = {
 ///     let num_instances = 1;
-///     let colors: &[_] = &[ColorRGBA::from_rgb(255, 255, 255)];
-///     let labels: &[_] = &[Label("hey".into())];
+///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
+///     let labels: &[_] = &[MyLabel("hey".into())];
 ///
 ///     DataRow::from_cells2(
 ///         RowId::random(),
