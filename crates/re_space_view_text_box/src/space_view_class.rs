@@ -37,7 +37,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
     type SceneElementTuple = (SceneTextBox,);
 
     fn name(&self) -> SpaceViewClassName {
-        "Text".into()
+        "Text Box".into()
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
