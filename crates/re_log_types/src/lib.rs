@@ -18,7 +18,6 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
-mod boxes;
 mod component;
 mod data_cell;
 mod data_row;
