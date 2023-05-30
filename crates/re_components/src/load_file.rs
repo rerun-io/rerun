@@ -43,7 +43,7 @@ pub fn data_cell_from_file_path(file_path: &std::path::Path) -> Result<DataCell,
 
         #[cfg(feature = "image")]
         _ => {
-            // Assume and image (there are so many image extensions):
+            // Assume an image (there are so many image extensions):
             let tensor = crate::Tensor::from_image_file(file_path)?;
             Ok(DataCell::try_from_native(std::iter::once(&tensor))?)
         }

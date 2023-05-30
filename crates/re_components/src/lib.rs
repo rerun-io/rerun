@@ -24,7 +24,6 @@ mod class_id;
 mod color;
 pub mod context;
 pub mod coordinates;
-mod data_cell_ext;
 mod disconnected_space;
 mod draw_order;
 mod keypoint_id;
@@ -45,6 +44,9 @@ mod text_box;
 mod text_entry;
 mod transform3d;
 mod vec;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod load_file;
 
 #[cfg(feature = "arrow_datagen")]
 pub mod datagen;
@@ -91,9 +93,7 @@ pub use self::{
 pub use self::tensor::{TensorImageLoadError, TensorImageSaveError};
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::data_cell_ext::{
-    data_cell_from_file_path, data_cell_from_mesh_file_path, FromFileError,
-};
+pub use self::load_file::{data_cell_from_file_path, data_cell_from_mesh_file_path, FromFileError};
 
 // This is a component
 pub use re_log_types::InstanceKey;

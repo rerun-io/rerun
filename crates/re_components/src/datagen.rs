@@ -2,7 +2,7 @@
 
 // TODO(#1810): It really is time for whole module to disappear.
 
-use re_log_types::{DataTable, InstanceKey, Time, TimeInt, TimeType, Timeline};
+use re_log_types::{InstanceKey, Time, TimeInt, TimeType, Timeline};
 
 /// Create `len` dummy rectangles
 pub fn build_some_rects(len: usize) -> Vec<crate::Rect2D> {
@@ -83,11 +83,11 @@ pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Ve
     instances
 }
 
-/// Crafts a simple but interesting `DataTable`.
+/// Crafts a simple but interesting [`DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
-pub fn data_table_example(timeless: bool) -> DataTable {
+pub fn data_table_example(timeless: bool) -> re_log_types::DataTable {
     use crate::{ColorRGBA, Label, Point2D};
-    use re_log_types::{DataRow, RowId, TableId, TimePoint};
+    use re_log_types::{DataRow, DataTable, RowId, TableId, TimePoint};
 
     let table_id = TableId::random();
 

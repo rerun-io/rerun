@@ -1,5 +1,5 @@
 use re_components::{
-    Component as _, Box3D, ClassId, ColorRGBA, InstanceKey, Label, Quaternion, Radius, Vec3D,
+    Box3D, ClassId, ColorRGBA, Component as _, InstanceKey, Label, Quaternion, Radius, Vec3D,
 };
 use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
