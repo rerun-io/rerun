@@ -3,8 +3,7 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState,
-    ViewerContext,
+    level_to_rich_text, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
 };
 
 use super::scene_element::{SceneText, TextEntry};
@@ -38,6 +37,7 @@ pub struct TextSpaceView;
 
 impl SpaceViewClassImpl for TextSpaceView {
     type State = TextSpaceViewState;
+    type SceneElementTuple = (SceneText,);
 
     fn name(&self) -> SpaceViewClassName {
         "Text Box".into()
@@ -51,9 +51,8 @@ impl SpaceViewClassImpl for TextSpaceView {
         "Displays text from a text box component.".into()
     }
 
-    fn new_scene(&self) -> Scene {
-        // TODO: make this more ergonomic
-        Scene(vec![Box::<SceneText>::default()])
+    fn new_scene(&self) -> Self::SceneElementTuple {
+        (SceneText::default(),)
     }
 
     fn selection_ui(
@@ -111,21 +110,15 @@ impl SpaceViewClassImpl for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: Scene,
+        scene_elements: Self::SceneElementTuple,
     ) {
+        let scene = scene_elements.0;
+
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
-            // TODO: make this more ergonomic.
-            let Some(scene) = scene
-                .0
-                .first()
-                .and_then(|element| element.as_any().downcast_ref::<SceneText>()) else {
-                    return; // TODO: Error handling.
-                };
-
             // Update filters if necessary.
             state.filters.update(ctx, &scene.text_entries);
 

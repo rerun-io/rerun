@@ -5,11 +5,9 @@ use re_log_types::{
     Component, RowId,
 };
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{
-    ArchetypeDefinition, SceneElement, SceneElementImpl, SceneQuery, SpaceViewState, ViewerContext,
-};
+use re_viewer_context::{ArchetypeDefinition, SceneElementImpl, SceneQuery, ViewerContext};
 
-use super::space_view_type::TextSpaceViewState;
+use super::space_view_class::TextSpaceViewState;
 
 #[derive(Debug, Clone)]
 pub struct TextEntry {

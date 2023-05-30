@@ -1,14 +1,21 @@
-use crate::{
-    Scene, SceneElement, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext,
-};
+use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext};
 
-/// Utility for implementing [`SpaceViewClass`] with a concrete [`SpaceViewState`] type.
+use super::scene_element_list::SceneElementListConversionError;
+
+/// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`SceneElement`] type.
 ///
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
 pub trait SpaceViewClassImpl {
+    /// State of a space view.
     type State: SpaceViewState + Default + 'static;
+
+    /// A tuple of [`crate::SceneElement`] types that are supported by this space view class.
+    type SceneElementTuple: Into<Scene>
+        + TryFrom<Scene, Error = SceneElementListConversionError>
+        + Default
+        + 'static;
 
     /// Name of this space view class.
     ///
@@ -26,7 +33,7 @@ pub trait SpaceViewClassImpl {
     ///
     /// Called both to determine the supported archetypes and
     /// to populate a scene every frame.
-    fn new_scene(&self) -> Scene;
+    fn new_scene(&self) -> Self::SceneElementTuple;
 
     /// Ui shown when the user selects a space view of this class.
     ///
@@ -42,7 +49,7 @@ pub trait SpaceViewClassImpl {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: Scene,
+        scene_elements: Self::SceneElementTuple,
     );
 }
 
@@ -64,7 +71,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
 
     #[inline]
     fn new_scene(&self) -> Scene {
-        self.new_scene()
+        self.new_scene().into()
     }
 
     #[inline]
@@ -90,7 +97,15 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         state: &mut dyn SpaceViewState,
         scene: Scene,
     ) {
-        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene));
+        let scene_elements = match T::SceneElementTuple::try_from(scene) {
+            Ok(scene_elements) => scene_elements,
+            Err(err) => {
+                re_log::error_once!("Incorrect scene type for space view class: {}", err);
+                return;
+            }
+        };
+
+        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene_elements));
     }
 }
 

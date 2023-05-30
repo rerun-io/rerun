@@ -1,7 +1,4 @@
-use crate::{
-    ArchetypeDefinition, Scene, SceneElement, SceneQuery, SpaceViewClass, SpaceViewClassName,
-    SpaceViewState, ViewerContext,
-};
+use crate::{ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext};
 
 /// Element of a scene derived from a single archetype query.
 pub trait SceneElementImpl {
@@ -42,7 +39,7 @@ impl<T: SceneElementImpl + 'static> SceneElement for T {
         }
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
         self
     }
 }

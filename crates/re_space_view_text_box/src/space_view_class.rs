@@ -1,7 +1,5 @@
 use egui::Label;
-use re_viewer_context::{
-    Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
-};
+use re_viewer_context::{SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext};
 
 use super::scene_element::SceneTextBox;
 
@@ -36,6 +34,7 @@ pub struct TextBoxSpaceView;
 
 impl SpaceViewClassImpl for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
+    type SceneElementTuple = (SceneTextBox,);
 
     fn name(&self) -> SpaceViewClassName {
         "Text".into()
@@ -49,9 +48,8 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         "Displays text from a text entry components.".into()
     }
 
-    fn new_scene(&self) -> Scene {
-        // TODO: make this more ergonomic
-        Scene(vec![Box::<SceneTextBox>::default()])
+    fn new_scene(&self) -> Self::SceneElementTuple {
+        (SceneTextBox::default(),)
     }
 
     fn selection_ui(
@@ -76,8 +74,10 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: Scene,
+        scene_elements: Self::SceneElementTuple,
     ) {
+        let scene = scene_elements.0;
+
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
             ..egui::Frame::default()
@@ -87,14 +87,6 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
                 egui::ScrollArea::both()
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
-                        // TODO: make this more ergonomic.
-                        let Some(scene) = scene
-                            .0
-                            .first()
-                            .and_then(|element| element.as_any().downcast_ref::<SceneTextBox>()) else {
-                                return; // TODO: Error handling.
-                            };
-
                         // TODO(jleibs): better handling for multiple results
                         if scene.text_entries.len() == 1 {
                             let mut text = egui::RichText::new(&scene.text_entries[0].body);

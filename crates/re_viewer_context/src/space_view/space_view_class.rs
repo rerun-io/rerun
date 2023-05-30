@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{SceneQuery, ViewerContext};
 use re_log_types::ComponentName;
 
@@ -89,6 +91,7 @@ impl Scene {
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
     ) {
+        // TODO(andreas): This is a great entry point for parallelization.
         for element in &mut self.0 {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
             element.populate(ctx, query, space_view_state);
@@ -97,7 +100,7 @@ impl Scene {
 }
 
 /// Element of a scene derived from a single archetype query.
-pub trait SceneElement {
+pub trait SceneElement: Any {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
 
@@ -111,8 +114,8 @@ pub trait SceneElement {
         space_view_state: &dyn SpaceViewState,
     );
 
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
+    /// Converts a box of itself a Box of [`std::any::Any`], which enables downcasting to concrete types.
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
 
     // TODO(andreas): Add method for getting draw data for a re_renderer::ViewBuilder.
 }

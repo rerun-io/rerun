@@ -4,6 +4,7 @@
 //! Does not implement any concrete space view.
 
 mod scene_element_impl;
+mod scene_element_list;
 mod space_view_class;
 mod space_view_class_impl;
 mod space_view_class_registry;
