@@ -2,7 +2,7 @@ use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerCon
 
 use super::scene_element_list::SceneElementListConversionError;
 
-/// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`SceneElement`] type.
+/// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::SceneElement`] type.
 ///
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
