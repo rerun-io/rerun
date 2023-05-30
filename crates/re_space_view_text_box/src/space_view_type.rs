@@ -1,6 +1,6 @@
 use egui::Label;
 use re_viewer_context::{
-    Scene, SpaceViewState, SpaceViewTypeImpl, SpaceViewTypeName, ViewerContext,
+    Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
 };
 
 use super::scene_element::SceneTextBox;
@@ -29,10 +29,10 @@ impl SpaceViewState for TextBoxSpaceViewState {
 #[derive(Default)]
 pub struct TextBoxSpaceView;
 
-impl SpaceViewTypeImpl for TextBoxSpaceView {
+impl SpaceViewClassImpl for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
 
-    fn type_name(&self) -> SpaceViewTypeName {
+    fn type_name(&self) -> SpaceViewClassName {
         "Text Box".into()
     }
 

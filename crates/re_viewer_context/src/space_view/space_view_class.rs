@@ -9,18 +9,18 @@ pub type ArchetypeDefinition = Vec<ComponentName>;
 re_string_interner::declare_new_type!(
     /// The unique name of a space view type.
     #[derive(serde::Deserialize, serde::Serialize)]
-    pub struct SpaceViewTypeName;
+    pub struct SpaceViewClassName;
 );
 
 /// Defines a type of space view.
 ///
 /// TODO: Lots of documentation.
-pub trait SpaceViewType {
+pub trait SpaceViewClass {
     /// Name of this space view type.
     ///
     /// Used for both ui display and identification.
     /// Must be unique within a viewer session.
-    fn type_name(&self) -> SpaceViewTypeName;
+    fn type_name(&self) -> SpaceViewClassName;
 
     /// Icon used to identify this space view type.
     fn type_icon(&self) -> &'static re_ui::Icon;

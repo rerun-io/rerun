@@ -1,14 +1,14 @@
-use crate::{Scene, SpaceViewState, SpaceViewType, SpaceViewTypeName, ViewerContext};
+use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext};
 
-/// Utility for implementing [`SpaceViewType`] with a concrete state type.
-pub trait SpaceViewTypeImpl {
+/// Utility for implementing [`SpaceViewClass`] with a concrete state type.
+pub trait SpaceViewClassImpl {
     type State: SpaceViewState + Default + 'static;
 
     /// Name of this space view type.
     ///
     /// Used for both ui display and identification.
     /// Must be unique within a viewer session.
-    fn type_name(&self) -> SpaceViewTypeName;
+    fn type_name(&self) -> SpaceViewClassName;
 
     /// Icon used to identify this space view type.
     fn type_icon(&self) -> &'static re_ui::Icon;
@@ -40,9 +40,9 @@ pub trait SpaceViewTypeImpl {
     );
 }
 
-impl<T: SpaceViewTypeImpl> SpaceViewType for T {
+impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     #[inline]
-    fn type_name(&self) -> SpaceViewTypeName {
+    fn type_name(&self) -> SpaceViewClassName {
         self.type_name()
     }
 

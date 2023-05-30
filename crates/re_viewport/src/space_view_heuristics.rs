@@ -9,7 +9,7 @@ use re_log_types::{
     component_types::{DisconnectedSpace, Pinhole, Tensor},
     Component,
 };
-use re_viewer_context::{SpaceViewTypeName, SpaceViewTypeRegistry, ViewerContext};
+use re_viewer_context::{SpaceViewClassName, SpaceViewTypeRegistry, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -358,7 +358,7 @@ fn default_queried_entities_by_category(
 }
 
 // TODO(andreas): This is for transitioning to types only.
-fn category_to_type(category: ViewCategory) -> SpaceViewTypeName {
+fn category_to_type(category: ViewCategory) -> SpaceViewClassName {
     match category {
         ViewCategory::Text => "Text",
         ViewCategory::TextBox => "Text Box",

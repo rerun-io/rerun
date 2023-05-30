@@ -1,21 +1,21 @@
 use ahash::HashMap;
 
-use crate::{SpaceViewType, SpaceViewTypeName};
+use crate::{SpaceViewClass, SpaceViewClassName};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SpaceViewTypeRegistryError {
     #[error("Space view with typename \"{0}\" was already registered.")]
-    DuplicateTypeName(SpaceViewTypeName),
+    DuplicateTypeName(SpaceViewClassName),
 
     #[error("Space view with typename \"{0}\" was not found.")]
-    TypeNotFound(SpaceViewTypeName),
+    TypeNotFound(SpaceViewClassName),
 }
 
 /// Registry of all known space view types.
 ///
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
-pub struct SpaceViewTypeRegistry(HashMap<SpaceViewTypeName, Box<dyn SpaceViewType>>);
+pub struct SpaceViewTypeRegistry(HashMap<SpaceViewClassName, Box<dyn SpaceViewClass>>);
 
 impl SpaceViewTypeRegistry {
     /// Adds a new space view type.
@@ -23,7 +23,7 @@ impl SpaceViewTypeRegistry {
     /// Fails if a space view type with the same name was already registered.
     pub fn add(
         &mut self,
-        space_view_type: impl SpaceViewType + 'static,
+        space_view_type: impl SpaceViewClass + 'static,
     ) -> Result<(), SpaceViewTypeRegistryError> {
         let type_name = space_view_type.type_name();
         if self
@@ -40,8 +40,8 @@ impl SpaceViewTypeRegistry {
     /// Queries a space view type by name.
     pub fn query(
         &self,
-        name: SpaceViewTypeName,
-    ) -> Result<&dyn SpaceViewType, SpaceViewTypeRegistryError> {
+        name: SpaceViewClassName,
+    ) -> Result<&dyn SpaceViewClass, SpaceViewTypeRegistryError> {
         self.0
             .get(&name)
             .map(|boxed| boxed.as_ref())

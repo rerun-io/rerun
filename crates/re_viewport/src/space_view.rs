@@ -2,7 +2,7 @@ use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_viewer_context::{
-    EmptySpaceViewState, SpaceViewId, SpaceViewTypeName, SpaceViewTypeRegistry, ViewerContext,
+    EmptySpaceViewState, SpaceViewClassName, SpaceViewId, SpaceViewTypeRegistry, ViewerContext,
 };
 
 use crate::{
@@ -33,7 +33,7 @@ pub enum ScreenshotMode {
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
-    pub space_view_type: SpaceViewTypeName,
+    pub space_view_type: SpaceViewClassName,
 
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
@@ -55,7 +55,7 @@ pub struct SpaceViewBlueprint {
 
 impl SpaceViewBlueprint {
     pub fn new(
-        space_view_type: SpaceViewTypeName,
+        space_view_type: SpaceViewClassName,
         category: ViewCategory,
         space_path: &EntityPath,
         queries_entities: &[EntityPath],
