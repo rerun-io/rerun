@@ -14,7 +14,7 @@ re_string_interner::declare_new_type!(
 
 /// Defines a type of space view.
 ///
-/// TODO: Lots of documentation1
+/// TODO: Lots of documentation.
 pub trait SpaceViewType {
     /// Name of this space view type.
     ///
@@ -23,7 +23,7 @@ pub trait SpaceViewType {
     fn type_name(&self) -> SpaceViewTypeName;
 
     /// Icon used to identify this space view type.
-    fn type_icon(&self) -> &'static str;
+    fn type_icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
@@ -38,6 +38,14 @@ pub trait SpaceViewType {
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
     fn new_state(&self) -> Box<dyn SpaceViewState>;
+
+    /// Ui shown when the user selects a space view of this type.
+    fn selection_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut dyn SpaceViewState,
+    );
 
     /// Draws the ui for this space view type and handles ui events.
     ///
@@ -65,12 +73,12 @@ pub struct Scene(pub Vec<Box<dyn SceneElement>>); // TODO: use tinyvec
 
 impl Scene {
     /// List of all archetypes this type of view supports.
-    fn supported_archetypes(&self) -> Vec<ArchetypeDefinition> {
+    pub fn supported_archetypes(&self) -> Vec<ArchetypeDefinition> {
         self.0.iter().map(|e| e.archetype()).collect()
     }
 
     /// Populates the scene for a given query.
-    fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         for element in &mut self.0 {
             element.populate(ctx, query);
         }
@@ -85,6 +93,9 @@ pub trait SceneElement {
     ///
     /// Musn't query any data outside of the archetype.
     fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>);
+
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
+    fn as_any(&self) -> &dyn std::any::Any;
 
     // TODO(andreas): Add method for getting draw data for a re_renderer::ViewBuilder.
 }

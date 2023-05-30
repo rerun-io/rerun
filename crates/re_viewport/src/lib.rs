@@ -31,6 +31,8 @@ pub use view_category::ViewCategory;
 pub use view_spatial::SpatialNavigationMode; // TODO(andreas): Remove, have two kinds of space views instead.
 pub use viewport::{Viewport, ViewportState};
 
+pub use view_text_box::TextBoxSpaceView;
+
 // ---------------------------------------------------------------------------
 
 // TODO(andreas): This should be part of re_data_ui::item_ui.

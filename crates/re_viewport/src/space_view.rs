@@ -1,7 +1,7 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::SpaceViewTypeName;
+use re_space_view::{EmptySpaceViewState, SpaceViewTypeName, SpaceViewTypeRegistry};
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     transform_cache::TransformCache,
     view_bar_chart,
     view_category::{categorize_entity_path, ViewCategory},
-    view_spatial, view_tensor, view_text, view_text_box, view_time_series,
+    view_spatial, view_tensor, view_text, view_time_series,
 };
 
 // ----------------------------------------------------------------------------
@@ -155,30 +155,39 @@ impl SpaceViewBlueprint {
         view_state: &mut SpaceViewState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_view_type_registry: &SpaceViewTypeRegistry,
     ) {
-        #[allow(clippy::match_same_arms)]
-        match self.category {
-            ViewCategory::Text => {
-                view_state.state_text.selection_ui(ctx.re_ui, ui);
-            }
-            ViewCategory::TextBox => {
-                view_state.state_textbox.selection_ui(ctx.re_ui, ui);
-            }
-            ViewCategory::TimeSeries => {}
-            ViewCategory::BarChart => {}
-            ViewCategory::Spatial => {
-                view_state.state_spatial.selection_ui(
-                    ctx,
-                    ui,
-                    &self.data_blueprint,
-                    &self.space_path,
-                    self.id,
-                );
-            }
-            ViewCategory::Tensor => {
-                if let Some(selected_tensor) = &view_state.selected_tensor {
-                    if let Some(state_tensor) = view_state.state_tensors.get_mut(selected_tensor) {
-                        state_tensor.ui(ctx, ui);
+        if let Ok(space_view_type) = space_view_type_registry.query(self.space_view_type) {
+            space_view_type.selection_ui(ctx, ui, view_state.state.as_mut());
+        } else {
+            // Legacy handling
+
+            #[allow(clippy::match_same_arms)]
+            match self.category {
+                ViewCategory::Text => {
+                    view_state.state_text.selection_ui(ctx.re_ui, ui);
+                }
+                ViewCategory::TextBox => {
+                    // migrated.
+                }
+                ViewCategory::TimeSeries => {}
+                ViewCategory::BarChart => {}
+                ViewCategory::Spatial => {
+                    view_state.state_spatial.selection_ui(
+                        ctx,
+                        ui,
+                        &self.data_blueprint,
+                        &self.space_path,
+                        self.id,
+                    );
+                }
+                ViewCategory::Tensor => {
+                    if let Some(selected_tensor) = &view_state.selected_tensor {
+                        if let Some(state_tensor) =
+                            view_state.state_tensors.get_mut(selected_tensor)
+                        {
+                            state_tensor.ui(ctx, ui);
+                        }
                     }
                 }
             }
@@ -190,6 +199,7 @@ impl SpaceViewBlueprint {
         view_state: &mut SpaceViewState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_view_type_registry: &SpaceViewTypeRegistry,
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,
     ) {
@@ -207,60 +217,67 @@ impl SpaceViewBlueprint {
             entity_props_map: self.data_blueprint.data_blueprints_projected(),
         };
 
-        match self.category {
-            ViewCategory::Text => {
-                let mut scene = view_text::SceneText::default();
-                scene.load(ctx, &query, &view_state.state_text.filters);
-                view_state.ui_text(ctx, ui, &scene);
-            }
+        if let Ok(space_view_type) = space_view_type_registry.query(self.space_view_type) {
+            let mut scene = space_view_type.new_scene();
+            scene.populate(ctx, &query);
+            // TODO(andreas): Pass scene to renderer.
+            // TODO(andreas): Setup re_renderer view.
+            space_view_type.ui(ctx, ui, view_state.state.as_mut(), scene);
+        } else {
+            // Legacy handling
+            match self.category {
+                ViewCategory::Text => {
+                    let mut scene = view_text::SceneText::default();
+                    scene.load(ctx, &query, &view_state.state_text.filters);
+                    view_state.ui_text(ctx, ui, &scene);
+                }
 
-            ViewCategory::TextBox => {
-                let mut scene = view_text_box::SceneTextBox::default();
-                scene.load(ctx, &query);
-                view_state.ui_textbox(ctx, ui, &scene);
-            }
+                ViewCategory::TextBox => {
+                    // migrated.
+                }
 
-            ViewCategory::TimeSeries => {
-                let mut scene = view_time_series::SceneTimeSeries::default();
-                scene.load(ctx, &query);
-                view_state.ui_time_series(ctx, ui, &scene);
-            }
+                ViewCategory::TimeSeries => {
+                    let mut scene = view_time_series::SceneTimeSeries::default();
+                    scene.load(ctx, &query);
+                    view_state.ui_time_series(ctx, ui, &scene);
+                }
 
-            ViewCategory::BarChart => {
-                let mut scene = view_bar_chart::SceneBarChart::default();
-                scene.load(ctx, &query);
-                view_state.ui_bar_chart(ctx, ui, &scene);
-            }
+                ViewCategory::BarChart => {
+                    let mut scene = view_bar_chart::SceneBarChart::default();
+                    scene.load(ctx, &query);
+                    view_state.ui_bar_chart(ctx, ui, &scene);
+                }
 
-            ViewCategory::Spatial => {
-                let transforms = TransformCache::determine_transforms(
-                    &ctx.log_db.entity_db,
-                    &ctx.rec_cfg.time_ctrl,
-                    &self.space_path,
-                    self.data_blueprint.data_blueprints_projected(),
-                );
-                let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
-                scene.load(ctx, &query, &transforms, highlights);
-                view_state
-                    .state_spatial
-                    .update_object_property_heuristics(ctx, &mut self.data_blueprint);
-                view_state.ui_spatial(
-                    ctx,
-                    ui,
-                    &self.space_path,
-                    scene,
-                    self.id,
-                    highlights,
-                    self.data_blueprint.data_blueprints_projected(),
-                );
-            }
+                ViewCategory::Spatial => {
+                    let transforms = TransformCache::determine_transforms(
+                        &ctx.log_db.entity_db,
+                        &ctx.rec_cfg.time_ctrl,
+                        &self.space_path,
+                        self.data_blueprint.data_blueprints_projected(),
+                    );
+                    let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
+                    scene.load(ctx, &query, &transforms, highlights);
+                    view_state
+                        .state_spatial
+                        .update_object_property_heuristics(ctx, &mut self.data_blueprint);
+                    view_state.ui_spatial(
+                        ctx,
+                        ui,
+                        &self.space_path,
+                        scene,
+                        self.id,
+                        highlights,
+                        self.data_blueprint.data_blueprints_projected(),
+                    );
+                }
 
-            ViewCategory::Tensor => {
-                let mut scene = view_tensor::SceneTensor::default();
-                scene.load(ctx, &query);
-                view_state.ui_tensor(ctx, ui, &scene);
-            }
-        };
+                ViewCategory::Tensor => {
+                    let mut scene = view_tensor::SceneTensor::default();
+                    scene.load(ctx, &query);
+                    view_state.ui_tensor(ctx, ui, &scene);
+                }
+            };
+        }
     }
 
     /// Removes a subtree of entities from the blueprint tree.
@@ -312,17 +329,33 @@ impl SpaceViewBlueprint {
 // ----------------------------------------------------------------------------
 
 /// Camera position and similar.
-#[derive(Clone, Default)]
 pub struct SpaceViewState {
+    // TODO(andreas): Reduce this struct to just this field.
+    state: Box<dyn re_space_view::SpaceViewState>,
+
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstancePath>,
 
     state_text: view_text::ViewTextState,
-    state_textbox: view_text_box::ViewTextBoxState,
     state_time_series: view_time_series::ViewTimeSeriesState,
     state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
     state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
+}
+
+#[allow(clippy::derivable_impls)] // Clippy claims default is derivable, but it's not.
+impl Default for SpaceViewState {
+    fn default() -> Self {
+        Self {
+            state: Box::<EmptySpaceViewState>::default(),
+            selected_tensor: Default::default(),
+            state_text: Default::default(),
+            state_time_series: Default::default(),
+            state_bar_chart: Default::default(),
+            state_spatial: Default::default(),
+            state_tensors: Default::default(),
+        }
+    }
 }
 
 impl SpaceViewState {
@@ -406,21 +439,6 @@ impl SpaceViewState {
         }
         .show(ui, |ui| {
             view_text::view_text(ctx, ui, &mut self.state_text, scene);
-        });
-    }
-
-    fn ui_textbox(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene: &view_text_box::SceneTextBox,
-    ) {
-        egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
-            ..egui::Frame::default()
-        }
-        .show(ui, |ui| {
-            view_text_box::view_text_box(ctx, ui, &mut self.state_textbox, scene);
         });
     }
 

@@ -5,7 +5,7 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
-use re_space_view::SpaceViewTypeRegistry;
+use re_space_view::{SpaceViewTypeRegistry, SpaceViewTypeRegistryError};
 use re_viewport::ViewportState;
 use web_time::Instant;
 
@@ -98,6 +98,13 @@ pub struct App {
     space_view_type_registry: re_space_view::SpaceViewTypeRegistry,
 }
 
+fn populate_space_view_type_registry_with_builtin(
+    space_view_type_registry: &mut SpaceViewTypeRegistry,
+) -> Result<(), SpaceViewTypeRegistryError> {
+    space_view_type_registry.add(re_viewport::TextBoxSpaceView::default())?;
+    Ok(())
+}
+
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
@@ -127,8 +134,15 @@ impl App {
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
 
-        let space_view_type_registry = SpaceViewTypeRegistry::default();
-        // TODO: populate
+        let mut space_view_type_registry = SpaceViewTypeRegistry::default();
+        if let Err(err) =
+            populate_space_view_type_registry_with_builtin(&mut space_view_type_registry)
+        {
+            re_log::error!(
+                "Failed to populate space view type registry with builtin space views: {}",
+                err
+            );
+        }
 
         Self {
             build_info,
@@ -1127,7 +1141,13 @@ impl AppState {
         };
 
         time_panel.show_panel(&mut ctx, ui, blueprint.time_panel_expanded);
-        selection_panel.show_panel(viewport_state, &mut ctx, ui, blueprint);
+        selection_panel.show_panel(
+            viewport_state,
+            &mut ctx,
+            ui,
+            space_view_type_registry,
+            blueprint,
+        );
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -1141,9 +1161,9 @@ impl AppState {
                 PanelSelection::Viewport => {
                     blueprint.blueprint_panel_and_viewport(
                         viewport_state,
-                        space_view_type_registry,
                         &mut ctx,
                         ui,
+                        space_view_type_registry,
                     );
                 }
             });

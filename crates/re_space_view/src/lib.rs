@@ -7,8 +7,11 @@ mod space_view_type;
 mod space_view_type_impl;
 mod space_view_type_registry;
 
-pub use space_view_type::{SpaceViewType, SpaceViewTypeName};
-pub use space_view_type_registry::SpaceViewTypeRegistry;
+pub use space_view_type::{
+    ArchetypeDefinition, Scene, SceneElement, SpaceViewState, SpaceViewType, SpaceViewTypeName,
+};
+pub use space_view_type_impl::{EmptySpaceViewState, SpaceViewTypeImpl};
+pub use space_view_type_registry::{SpaceViewTypeRegistry, SpaceViewTypeRegistryError};
 
 // ---------------------------------------------------------------------------
 

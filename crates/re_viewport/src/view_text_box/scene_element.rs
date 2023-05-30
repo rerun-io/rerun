@@ -1,7 +1,8 @@
 use re_arrow_store::LatestAtQuery;
 use re_log::warn_once;
-use re_log_types::component_types;
+use re_log_types::{component_types, Component};
 use re_query::{query_entity_with_primary, QueryError};
+use re_space_view::{ArchetypeDefinition, SceneElement};
 use re_viewer_context::{SceneQuery, ViewerContext};
 
 // ---
@@ -17,9 +18,12 @@ pub struct SceneTextBox {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl SceneTextBox {
-    /// Loads all text components into the scene according to the given query.
-    pub(crate) fn load(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
+impl SceneElement for SceneTextBox {
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec![component_types::TextBox::name()]
+    }
+
+    fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         let store = &ctx.log_db.entity_db.data_store;
@@ -49,5 +53,9 @@ impl SceneTextBox {
                 }
             }
         }
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

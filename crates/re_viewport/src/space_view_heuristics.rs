@@ -21,7 +21,7 @@ use crate::{
 /// List out all space views we allow the user to create.
 pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
-    space_view_type_registry: &SpaceViewTypeRegistry,
+    _space_view_type_registry: &SpaceViewTypeRegistry, // TODO(andreas): Make use of this instead of categories.
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
     crate::profile_function!();

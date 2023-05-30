@@ -6,6 +6,9 @@ use crate::space_view_type::{SpaceViewType, SpaceViewTypeName};
 pub enum SpaceViewTypeRegistryError {
     #[error("Space view with typename \"{0}\" was already registered.")]
     DuplicateTypeName(SpaceViewTypeName),
+
+    #[error("Space view with typename \"{0}\" was not found.")]
+    TypeNotFound(SpaceViewTypeName),
 }
 
 /// Registry of all known space view types.
@@ -32,5 +35,16 @@ impl SpaceViewTypeRegistry {
         }
 
         Ok(())
+    }
+
+    /// Queries a space view type by name.
+    pub fn query(
+        &self,
+        name: SpaceViewTypeName,
+    ) -> Result<&dyn SpaceViewType, SpaceViewTypeRegistryError> {
+        self.0
+            .get(&name)
+            .map(|boxed| boxed.as_ref())
+            .ok_or(SpaceViewTypeRegistryError::TypeNotFound(name))
     }
 }

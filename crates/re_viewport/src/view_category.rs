@@ -7,7 +7,6 @@ use re_log_types::{
     },
     Arrow3D, Component, Mesh3D,
 };
-use re_space_view::SpaceViewTypeName;
 
 #[derive(
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,

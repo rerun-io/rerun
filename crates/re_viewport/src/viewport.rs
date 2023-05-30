@@ -415,6 +415,7 @@ impl Viewport {
         state: &mut ViewportState,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
+        space_view_type_registry: &SpaceViewTypeRegistry,
     ) {
         if let Some(window) = &mut state.space_view_entity_window {
             if let Some(space_view) = self.space_views.get_mut(&window.space_view_id) {
@@ -461,6 +462,7 @@ impl Viewport {
             let mut tab_viewer = TabViewer {
                 ctx,
                 viewport_state: state,
+                space_view_type_registry,
                 space_views: &mut self.space_views,
                 maximized: &mut self.maximized,
             };
@@ -527,7 +529,7 @@ impl Viewport {
 
 /// State for the blueprint that persists across frames but otherwise
 /// is not saved.
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct ViewportState {
     pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
     pub space_view_states: HashMap<SpaceViewId, SpaceViewState>,
@@ -643,6 +645,7 @@ fn visibility_button_ui(
 struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
     ctx: &'a mut ViewerContext<'b>,
+    space_view_type_registry: &'a SpaceViewTypeRegistry,
     space_views: &'a mut HashMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
 }
@@ -671,6 +674,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         space_view_ui(
             self.ctx,
             ui,
+            self.space_view_type_registry,
             space_view_blueprint,
             space_view_state,
             &highlights,
@@ -810,6 +814,7 @@ fn help_text_ui(
 fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
+    space_view_type_registry: &SpaceViewTypeRegistry,
     space_view_blueprint: &mut SpaceViewBlueprint,
     space_view_state: &mut SpaceViewState,
     space_view_highlights: &SpaceViewHighlights,
@@ -821,7 +826,14 @@ fn space_view_ui(
         return
     };
 
-    space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
+    space_view_blueprint.scene_ui(
+        space_view_state,
+        ctx,
+        ui,
+        space_view_type_registry,
+        latest_at,
+        space_view_highlights,
+    );
 }
 
 // ----------------------------------------------------------------------------

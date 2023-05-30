@@ -30,9 +30,9 @@ impl Blueprint {
     pub fn blueprint_panel_and_viewport(
         &mut self,
         viewport_state: &mut ViewportState,
-        space_view_type_registry: &SpaceViewTypeRegistry,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        space_view_type_registry: &SpaceViewTypeRegistry,
     ) {
         crate::profile_function!();
 
@@ -51,7 +51,8 @@ impl Blueprint {
         egui::CentralPanel::default()
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(viewport_state, ui, ctx);
+                self.viewport
+                    .viewport_ui(viewport_state, ui, ctx, space_view_type_registry);
             });
 
         // If the viewport was user-edited, then disable auto space views

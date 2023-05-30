@@ -1,5 +1,4 @@
-mod scene;
-pub(crate) use self::scene::SceneTextBox;
+mod scene_element;
+mod space_view_type;
 
-mod ui;
-pub(crate) use self::ui::{view_text_box, ViewTextBoxState};
+pub use self::space_view_type::TextBoxSpaceView;
