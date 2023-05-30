@@ -7,4 +7,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-The different types that make up the rerun log format.
+The basic building blocks of the Rerun data types and tables.

@@ -25,7 +25,7 @@ pub(crate) use meshes::MeshPart;
 
 pub(crate) use points2d::Points2DPart;
 pub(crate) use points3d::Points3DPart;
-use re_log_types::component_types::{ClassId, ColorRGBA, KeypointId, Radius};
+use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 
 use super::{EntityDepthOffsets, SceneSpatial};
 use crate::{
@@ -56,7 +56,7 @@ pub trait ScenePart {
 /// Right now this is a bit hard to do since number of instances depends on the Primary. This is expected to change soon.
 pub fn instance_path_hash_for_picking(
     ent_path: &EntityPath,
-    instance_key: re_log_types::component_types::InstanceKey,
+    instance_key: re_log_types::InstanceKey,
     num_instances: usize,
     any_part_selected: bool,
 ) -> InstancePathHash {
@@ -74,15 +74,15 @@ pub fn instance_path_hash_for_picking(
 ///                 (gpu picking would always get the "most fine grained hash" which we could then resolve to groups etc. depending on selection state)
 /// Right now this is a bit hard to do since number of instances depends on the Primary. This is expected to change soon.
 pub fn instance_key_for_picking(
-    instance_key: re_log_types::component_types::InstanceKey,
+    instance_key: re_log_types::InstanceKey,
     num_instances: usize,
     any_part_selected: bool,
-) -> re_log_types::component_types::InstanceKey {
+) -> re_log_types::InstanceKey {
     // If no part of the entity is selected or if there is only one instance, selecting
     // should select the entire entity, not the specific instance.
     // (the splat key means that no particular instance is selected but all at once instead)
     if num_instances == 1 || !any_part_selected {
-        re_log_types::component_types::InstanceKey::SPLAT
+        re_log_types::InstanceKey::SPLAT
     } else {
         instance_key
     }
@@ -90,7 +90,7 @@ pub fn instance_key_for_picking(
 
 /// See [`instance_key_for_picking`]
 pub fn instance_key_to_picking_id(
-    instance_key: re_log_types::component_types::InstanceKey,
+    instance_key: re_log_types::InstanceKey,
     num_instances: usize,
     any_part_selected: bool,
 ) -> re_renderer::PickingLayerInstanceId {

@@ -3,9 +3,6 @@
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!
-//!
-//!
-//!
 //! ## Mono-components
 //!
 //! Some components, mostly transform related ones, are "mono-components".
@@ -22,22 +19,19 @@
 
 pub mod arrow_msg;
 mod component;
-pub mod component_types;
-mod data;
 mod data_cell;
 mod data_row;
 mod data_table;
+pub mod example_components;
 pub mod hash;
 mod index;
+mod instance_key;
 pub mod path;
 mod size_bytes;
 mod time;
 pub mod time_point;
 mod time_range;
 mod time_real;
-
-#[cfg(feature = "arrow_datagen")]
-pub mod datagen;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod data_table_batcher;
@@ -49,15 +43,6 @@ use std::sync::Arc;
 
 pub use self::arrow_msg::ArrowMsg;
 pub use self::component::{Component, DeserializableComponent, SerializableComponent};
-pub use self::component_types::context;
-pub use self::component_types::coordinates;
-pub use self::component_types::AnnotationContext;
-pub use self::component_types::Arrow3D;
-pub use self::component_types::DecodedTensor;
-pub use self::component_types::DrawOrder;
-pub use self::component_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
-pub use self::component_types::{Tensor, ViewCoordinates};
-pub use self::data::*;
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{DataRow, DataRowError, DataRowResult, RowId};
 pub use self::data_table::{
@@ -67,15 +52,13 @@ pub use self::data_table::{
     METADATA_KIND_CONTROL, METADATA_KIND_DATA,
 };
 pub use self::index::*;
+pub use self::instance_key::InstanceKey;
 pub use self::path::*;
 pub use self::size_bytes::SizeBytes;
 pub use self::time::{Duration, Time};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::data_cell::FromFileError;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{
@@ -86,12 +69,6 @@ pub mod external {
     pub use arrow2;
     pub use arrow2_convert;
     pub use re_tuid;
-
-    #[cfg(feature = "glam")]
-    pub use glam;
-
-    #[cfg(feature = "image")]
-    pub use image;
 }
 
 #[macro_export]
@@ -408,7 +385,7 @@ impl PathOp {
 
 // ---------------------------------------------------------------------------
 
-/// Profiling macro for feature "puffin"
+/// Wrapper around puffin profiler on native, no-op on weasm
 #[doc(hidden)]
 #[macro_export]
 macro_rules! profile_function {
@@ -418,7 +395,7 @@ macro_rules! profile_function {
     };
 }
 
-/// Profiling macro for feature "puffin"
+/// Wrapper around puffin profiler on native, no-op on weasm
 #[doc(hidden)]
 #[macro_export]
 macro_rules! profile_scope {

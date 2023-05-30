@@ -1,8 +1,5 @@
+use re_components::{ColorRGBA, Component, InstanceKey, Mesh3D};
 use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey},
-    Component, Mesh3D,
-};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
@@ -32,7 +29,7 @@ impl MeshPart {
         let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
         let visitor =
-            |instance_key: InstanceKey, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
+            |instance_key: InstanceKey, mesh: re_components::Mesh3D, _color: Option<ColorRGBA>| {
                 let picking_instance_hash = instance_path_hash_for_picking(
                     ent_path,
                     instance_key,

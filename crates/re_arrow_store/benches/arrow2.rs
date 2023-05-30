@@ -8,11 +8,13 @@ use std::sync::Arc;
 use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
 use criterion::{criterion_group, Criterion};
 use itertools::Itertools;
-use re_log_types::{
-    component_types::{InstanceKey, Point2D, Rect2D},
+use re_components::{
     datagen::{build_some_instances, build_some_point2d, build_some_rects},
-    external::arrow2_convert::serialize::TryIntoArrow,
-    DataCell, SerializableComponent, SizeBytes as _,
+    Point2D, Rect2D,
+};
+use re_log_types::{
+    external::arrow2_convert::serialize::TryIntoArrow, DataCell, InstanceKey,
+    SerializableComponent, SizeBytes as _,
 };
 
 // ---

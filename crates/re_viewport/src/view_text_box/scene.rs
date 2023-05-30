@@ -1,6 +1,5 @@
 use re_arrow_store::LatestAtQuery;
 use re_log::warn_once;
-use re_log_types::component_types;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{SceneQuery, ViewerContext};
 
@@ -30,19 +29,14 @@ impl SceneTextBox {
             }
 
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            match query_entity_with_primary::<component_types::TextBox>(
-                store,
-                &query,
-                ent_path,
-                &[],
-            )
-            .and_then(|ent_view| {
-                for text_entry in ent_view.iter_primary()?.flatten() {
-                    let component_types::TextBox { body } = text_entry;
-                    self.text_entries.push(TextBoxEntry { body });
-                }
-                Ok(())
-            }) {
+            match query_entity_with_primary::<re_components::TextBox>(store, &query, ent_path, &[])
+                .and_then(|ent_view| {
+                    for text_entry in ent_view.iter_primary()?.flatten() {
+                        let re_components::TextBox { body } = text_entry;
+                        self.text_entries.push(TextBoxEntry { body });
+                    }
+                    Ok(())
+                }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(_) => {
                     warn_once!("text-box query failed for {ent_path:?}");

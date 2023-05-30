@@ -1,4 +1,4 @@
-use re_log_types::component_types::{
+use re_components::{
     Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, Transform3DRepr,
     TranslationAndMat3, TranslationRotationScale3D,
 };

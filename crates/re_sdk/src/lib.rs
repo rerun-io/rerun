@@ -72,7 +72,7 @@ pub mod time {
 /// They all implement the [`Component`] trait,
 /// and can be used in [`MsgSender::with_component`].
 pub mod components {
-    pub use re_log_types::component_types::{
+    pub use re_components::{
         AnnotationContext, AnnotationInfo, Arrow3D, Box3D, ClassDescription, ClassId, ColorRGBA,
         DisconnectedSpace, DrawOrder, EncodedMesh3D, InstanceKey, KeypointId, Label, LineStrip2D,
         LineStrip3D, Mat3x3, Mesh3D, MeshFormat, MeshId, Pinhole, Point2D, Point3D, Quaternion,
@@ -84,7 +84,7 @@ pub mod components {
 
 /// Transform helpers, for use with [`components::Transform3D`].
 pub mod transform {
-    pub use re_log_types::component_types::{
+    pub use re_components::{
         Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3DRepr, TranslationAndMat3,
         TranslationRotationScale3D,
     };
@@ -92,7 +92,7 @@ pub mod transform {
 
 /// Coordinate system helpers, for use with [`components::ViewCoordinates`].
 pub mod coordinates {
-    pub use re_log_types::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
+    pub use re_components::coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
 /// Re-exports of other crates.
@@ -103,10 +103,10 @@ pub mod external {
     pub use re_sdk_comms;
 
     #[cfg(feature = "glam")]
-    pub use re_log_types::external::glam;
+    pub use re_components::external::glam;
 
     #[cfg(feature = "image")]
-    pub use re_log_types::external::image;
+    pub use re_components::external::image;
 }
 
 // -----
@@ -194,4 +194,26 @@ fn called_from_official_rust_example() -> bool {
         }
     }
     is_official_example
+}
+
+// ---------------------------------------------------------------------------
+
+/// Wrapper around puffin profiler on native, no-op on weasm
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_function {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_function!($($arg)*);
+    };
+}
+
+/// Wrapper around puffin profiler on native, no-op on weasm
+#[doc(hidden)]
+#[macro_export]
+macro_rules! profile_scope {
+    ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        puffin::profile_scope!($($arg)*);
+    };
 }

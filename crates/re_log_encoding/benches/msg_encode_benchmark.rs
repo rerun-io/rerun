@@ -4,8 +4,9 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use re_components::datagen::{build_frame_nr, build_some_colors, build_some_point2d};
+
 use re_log_types::{
-    datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     entity_path, DataRow, DataTable, Index, LogMsg, RecordingId, RecordingType, RowId, TableId,
 };
 

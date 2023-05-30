@@ -7,13 +7,10 @@ use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionTarget,
     TimeInt, TimeRange, Timeline,
 };
-use re_log_types::{
-    component_types::InstanceKey,
-    datagen::{
-        build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
-    },
-    Component as _, DataTable, EntityPath, TableId,
+use re_components::datagen::{
+    build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
 };
+use re_log_types::{Component as _, DataTable, EntityPath, InstanceKey, TableId};
 
 // --- Dump ---
 

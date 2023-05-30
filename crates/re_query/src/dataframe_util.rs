@@ -6,9 +6,8 @@ use itertools::Itertools;
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
 use re_log_types::{
-    component_types::InstanceKey,
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, Component,
-    DeserializableComponent, SerializableComponent,
+    DeserializableComponent, InstanceKey, SerializableComponent,
 };
 
 use crate::{
@@ -181,7 +180,7 @@ where
 
 #[test]
 fn test_df_builder() {
-    use re_log_types::component_types::{ColorRGBA, Point2D};
+    use re_components::{ColorRGBA, Point2D};
 
     let points = vec![
         Some(Point2D { x: 1.0, y: 2.0 }),

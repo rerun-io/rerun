@@ -5,10 +5,10 @@ pub struct TensorStats {
 }
 
 impl TensorStats {
-    pub fn new(tensor: &re_log_types::component_types::Tensor) -> Self {
+    pub fn new(tensor: &re_components::Tensor) -> Self {
         use half::f16;
         use ndarray::ArrayViewD;
-        use re_log_types::TensorDataType;
+        use re_components::TensorDataType;
 
         macro_rules! declare_tensor_range_int {
             ($name: ident, $typ: ty) => {

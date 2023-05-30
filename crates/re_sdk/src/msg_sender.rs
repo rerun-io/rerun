@@ -1,4 +1,4 @@
-use re_log_types::{component_types::InstanceKey, DataRow, DataTableError, RecordingId, RowId};
+use re_log_types::{DataRow, DataTableError, InstanceKey, RecordingId, RowId};
 
 use crate::{
     log::DataCell,
@@ -112,9 +112,9 @@ impl MsgSender {
     /// All other extensions will return an error.
     pub fn from_file_path(
         file_path: &std::path::Path,
-    ) -> Result<Self, re_log_types::FromFileError> {
+    ) -> Result<Self, re_components::FromFileError> {
         let ent_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
-        let cell = DataCell::from_file_path(file_path)?;
+        let cell = re_components::data_cell_from_file_path(file_path)?;
 
         let mut timepoint = TimePoint::from([(Timeline::log_time(), Time::now().into())]);
 

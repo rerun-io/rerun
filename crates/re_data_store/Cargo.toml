@@ -45,10 +45,11 @@ puffin.workspace = true
 
 
 [dev-dependencies]
+re_components = { workspace = true, features = ["arrow_datagen"] }
+re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 criterion = "0.5"
 mimalloc.workspace = true
 rand = "0.8"
-re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 
 [lib]
 bench = false

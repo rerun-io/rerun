@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use re_log_types::{component_types::InstanceKey, EntityPath, EntityPathHash};
+use re_log_types::{EntityPath, EntityPathHash, InstanceKey};
 
 use crate::log_db::EntityDb;
 

@@ -1,8 +1,5 @@
 use re_arrow_store::TimeRange;
-use re_log_types::{
-    component_types::{self, InstanceKey},
-    Component,
-};
+use re_log_types::{Component, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{AnnotationMap, DefaultColor, SceneQuery, ViewerContext};
 
@@ -93,13 +90,13 @@ impl SceneTimeSeries {
 
             let components = [
                 InstanceKey::name(),
-                component_types::Scalar::name(),
-                component_types::ScalarPlotProps::name(),
-                component_types::ColorRGBA::name(),
-                component_types::Radius::name(),
-                component_types::Label::name(),
+                re_components::Scalar::name(),
+                re_components::ScalarPlotProps::name(),
+                re_components::ColorRGBA::name(),
+                re_components::Radius::name(),
+                re_components::Label::name(),
             ];
-            let ent_views = range_entity_with_primary::<component_types::Scalar, 6>(
+            let ent_views = range_entity_with_primary::<re_components::Scalar, 6>(
                 store, &query, ent_path, components,
             );
 
@@ -108,11 +105,11 @@ impl SceneTimeSeries {
 
                 match ent_view.visit5(
                     |_instance,
-                     scalar: component_types::Scalar,
-                     props: Option<component_types::ScalarPlotProps>,
-                     color: Option<component_types::ColorRGBA>,
-                     radius: Option<component_types::Radius>,
-                     label: Option<component_types::Label>| {
+                     scalar: re_components::Scalar,
+                     props: Option<re_components::ScalarPlotProps>,
+                     color: Option<re_components::ColorRGBA>,
+                     radius: Option<re_components::Radius>,
+                     label: Option<re_components::Label>| {
                         // TODO(andreas): Support entity path
                         let color = annotation_info
                             .color(color.map(|c| c.to_array()).as_ref(), default_color);

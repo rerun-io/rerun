@@ -5,13 +5,14 @@
 //! ```
 
 use polars_core::prelude::*;
+
 use re_arrow_store::polars_util::latest_components;
 use re_arrow_store::{test_row, DataStore, LatestAtQuery, TimeType, Timeline};
-use re_log_types::{
-    component_types::{InstanceKey, Point2D, Rect2D},
+use re_components::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    Component, EntityPath,
+    Point2D, Rect2D,
 };
+use re_log_types::{Component, EntityPath, InstanceKey};
 
 fn main() {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());

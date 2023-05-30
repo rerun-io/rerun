@@ -40,10 +40,10 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 ///
 /// Consider this example:
 /// ```ignore
-/// let points: &[Point2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into(), [30.0, 30.0].into()];
+/// let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into(), [30.0, 30.0].into()];
 /// let cell = DataCell::from(points);
 /// // Or, alternatively:
-/// let cell = DataCell::from_component::<Point2D>([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]]);
+/// let cell = DataCell::from_component::<MyPoint>([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]]);
 /// ```
 ///
 /// The cell's datatype is now a `StructArray`:
@@ -70,24 +70,28 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # use itertools::Itertools as _;
 /// #
 /// # use re_log_types::{DataCell, Component as _};
-/// # use re_log_types::component_types::Point2D;
+/// # use re_log_types::example_components::MyPoint;
 /// #
-/// let points: &[Point2D] = &[
-///     [10.0, 10.0].into(),
-///     [20.0, 20.0].into(),
-///     [30.0, 30.0].into(),
+/// let points: &[MyPoint] = &[
+///     MyPoint { x: 10.0, y: 10.0 },
+///     MyPoint { x: 20.0, y: 20.0 },
+///     MyPoint { x: 30.0, y: 30.0 },
 /// ];
 /// let _cell = DataCell::from(points);
 ///
 /// // Or, alternatively:
-/// let cell = DataCell::from_component::<Point2D>([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]]);
+/// let cell = DataCell::from_component::<MyPoint>([
+///     MyPoint { x: 10.0, y: 10.0 },
+///     MyPoint { x: 20.0, y: 20.0 },
+///     MyPoint { x: 30.0, y: 30.0 },
+/// ]);
 ///
 /// eprintln!("{:#?}", cell.datatype());
 /// eprintln!("{cell}");
 /// #
-/// # assert_eq!(Point2D::name(), cell.component_name());
+/// # assert_eq!(MyPoint::name(), cell.component_name());
 /// # assert_eq!(3, cell.num_instances());
-/// # assert_eq!(cell.datatype(), &Point2D::data_type());
+/// # assert_eq!(cell.datatype(), &MyPoint::data_type());
 /// #
 /// # assert_eq!(points, cell.to_native().collect_vec().as_slice());
 /// ```
@@ -587,98 +591,9 @@ impl DataCellInner {
     }
 }
 
-// ----------------------------------------------------------------------------
-
-#[cfg(not(target_arch = "wasm32"))]
-/// Errors from [`DataCell::from_file_path`]
-#[derive(thiserror::Error, Debug)]
-pub enum FromFileError {
-    #[error(transparent)]
-    FileRead(#[from] std::io::Error),
-
-    #[error(transparent)]
-    DataCellError(#[from] crate::DataCellError),
-
-    #[cfg(feature = "image")]
-    #[error(transparent)]
-    TensorImageLoad(#[from] crate::component_types::TensorImageLoadError),
-
-    #[error("Unsupported file extension '{extension}' for file {path:?}. To load image files, make sure you compile with the 'image' feature")]
-    UnknownExtension {
-        extension: String,
-        path: std::path::PathBuf,
-    },
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl DataCell {
-    /// Read the file at the given path.
-    ///
-    /// Supported file extensions are:
-    ///  * `glb`, `gltf`, `obj`: encoded meshes, leaving it to the viewer to decode
-    ///  * `jpg`, `jpeg`: encoded JPEG, leaving it to the viewer to decode. Requires the `image` feature.
-    ///  * `png` and other image formats: decoded here. Requires the `image` feature.
-    ///
-    /// All other extensions will return an error.
-    pub fn from_file_path(file_path: &std::path::Path) -> Result<Self, FromFileError> {
-        let extension = file_path
-            .extension()
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-            .to_string_lossy()
-            .to_string();
-
-        match extension.as_str() {
-            "glb" => Self::from_mesh_file_path(file_path, crate::MeshFormat::Glb),
-            "glft" => Self::from_mesh_file_path(file_path, crate::MeshFormat::Gltf),
-            "obj" => Self::from_mesh_file_path(file_path, crate::MeshFormat::Obj),
-
-            #[cfg(feature = "image")]
-            _ => {
-                // Assume and image (there are so many image extensions):
-                let tensor = crate::Tensor::from_image_file(file_path)?;
-                Ok(Self::try_from_native(std::iter::once(&tensor))?)
-            }
-
-            #[cfg(not(feature = "image"))]
-            _ => Err(FromFileError::UnknownExtension {
-                extension,
-                path: file_path.to_owned(),
-            }),
-        }
-    }
-
-    /// Read the mesh file at the given path.
-    ///
-    /// Supported file extensions are:
-    ///  * `glb`, `gltf`, `obj`: encoded meshes, leaving it to the viewer to decode
-    ///
-    /// All other extensions will return an error.
-    pub fn from_mesh_file_path(
-        file_path: &std::path::Path,
-        format: crate::MeshFormat,
-    ) -> Result<Self, FromFileError> {
-        let mesh = crate::EncodedMesh3D {
-            mesh_id: crate::MeshId::random(),
-            format,
-            bytes: std::fs::read(file_path)?.into(),
-            transform: [
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 1.0],
-                [0.0, 0.0, 0.0],
-            ],
-        };
-        let mesh = crate::Mesh3D::Encoded(mesh);
-        Ok(Self::try_from_native(std::iter::once(&mesh))?)
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 #[test]
 fn data_cell_sizes() {
-    use crate::{component_types::InstanceKey, Component as _};
+    use crate::{Component as _, DataCell, InstanceKey};
     use arrow2::array::UInt64Array;
 
     // not computed

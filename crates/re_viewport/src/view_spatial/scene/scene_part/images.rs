@@ -2,11 +2,12 @@ use std::collections::BTreeMap;
 
 use egui::NumExt;
 
-use re_data_store::{EntityPath, EntityProperties};
-use re_log_types::{
-    component_types::{ColorRGBA, InstanceKey, Pinhole, Tensor, TensorData, TensorDataMeaning},
-    Component, DecodedTensor, DrawOrder, EntityPathHash,
+use re_components::{
+    ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor, TensorData,
+    TensorDataMeaning,
 };
+use re_data_store::{EntityPath, EntityProperties};
+use re_log_types::EntityPathHash;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, RectangleOptions},

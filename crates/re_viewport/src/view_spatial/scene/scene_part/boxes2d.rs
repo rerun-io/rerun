@@ -1,8 +1,6 @@
+use re_components::{ClassId, ColorRGBA, InstanceKey, Label, Radius, Rect2D};
 use re_data_store::EntityPath;
-use re_log_types::{
-    component_types::{ClassId, ColorRGBA, InstanceKey, Label, Radius, Rect2D},
-    Component,
-};
+use re_log_types::Component as _;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};

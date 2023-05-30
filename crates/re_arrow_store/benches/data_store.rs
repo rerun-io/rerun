@@ -8,11 +8,13 @@ use re_arrow_store::{
     DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt,
     TimeRange,
 };
-use re_log_types::{
-    component_types::{InstanceKey, Rect2D},
+use re_components::{
     datagen::{build_frame_nr, build_some_instances, build_some_rects},
-    Component as _, ComponentName, DataCell, DataRow, DataTable, EntityPath, RowId, TableId,
-    TimeType, Timeline,
+    Rect2D,
+};
+use re_log_types::{
+    Component as _, ComponentName, DataCell, DataRow, DataTable, EntityPath, InstanceKey, RowId,
+    TableId, TimeType, Timeline,
 };
 
 criterion_group!(benches, insert, latest_at, latest_at_missing, range, gc);

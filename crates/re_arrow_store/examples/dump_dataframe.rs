@@ -5,14 +5,11 @@
 //! ```
 
 use re_arrow_store::{test_row, DataStore};
-use re_log_types::{
-    component_types::InstanceKey,
-    datagen::{
-        build_frame_nr, build_log_time, build_some_instances, build_some_instances_from,
-        build_some_point2d, build_some_rects,
-    },
-    Component as _, EntityPath, Time,
+use re_components::datagen::{
+    build_frame_nr, build_log_time, build_some_instances, build_some_instances_from,
+    build_some_point2d, build_some_rects,
 };
+use re_log_types::{Component as _, EntityPath, InstanceKey, Time};
 
 // ---
 

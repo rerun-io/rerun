@@ -2,7 +2,7 @@
 
 use ahash::HashSet;
 use re_data_store::InstancePathHash;
-use re_log_types::component_types::InstanceKey;
+use re_log_types::InstanceKey;
 use re_renderer::PickingLayerProcessor;
 
 use super::{Image, SceneSpatialPrimitives, SceneSpatialUiData};

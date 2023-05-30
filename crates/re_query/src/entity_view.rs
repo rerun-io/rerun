@@ -4,11 +4,11 @@ use arrow2::array::{Array, PrimitiveArray};
 use itertools::Either;
 use re_format::arrow;
 use re_log_types::{
-    component_types::InstanceKey,
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, field::ArrowField, serialize::ArrowSerialize,
     },
-    Component, ComponentName, DataCell, DeserializableComponent, RowId, SerializableComponent,
+    Component, ComponentName, DataCell, DeserializableComponent, InstanceKey, RowId,
+    SerializableComponent,
 };
 
 use crate::QueryError;
@@ -385,7 +385,7 @@ where
 #[test]
 fn lookup_value() {
     use arrow2::array::MutableArray;
-    use re_log_types::component_types::{InstanceKey, Point2D, Rect2D};
+    use re_components::{InstanceKey, Point2D, Rect2D};
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
 
     let instance_keys = InstanceKey::from_iter(0..5);
@@ -457,7 +457,7 @@ fn lookup_value() {
 
 #[test]
 fn lookup_splat() {
-    use re_log_types::component_types::{InstanceKey, Point2D};
+    use re_components::{InstanceKey, Point2D};
     let instances = [
         InstanceKey::SPLAT, //
     ];

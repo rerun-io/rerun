@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_log_types::{Mesh3D, MeshId};
+use re_components::{Mesh3D, MeshId};
 use re_renderer::RenderContext;
 use re_viewer_context::Cache;
 

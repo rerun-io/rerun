@@ -108,7 +108,7 @@ pub enum NeedsRepaint {
 
 // ---------------------------------------------------------------------------
 
-/// Profiling macro for feature "puffin"
+/// Wrapper around puffin profiler on native, no-op on weasm
 #[doc(hidden)]
 #[macro_export]
 macro_rules! profile_function {
@@ -118,7 +118,7 @@ macro_rules! profile_function {
     };
 }
 
-/// Profiling macro for feature "puffin"
+/// Wrapper around puffin profiler on native, no-op on weasm
 #[doc(hidden)]
 #[macro_export]
 macro_rules! profile_scope {
