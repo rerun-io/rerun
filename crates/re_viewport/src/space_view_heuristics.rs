@@ -9,8 +9,7 @@ use re_log_types::{
     component_types::{DisconnectedSpace, Pinhole, Tensor},
     Component,
 };
-use re_space_view::{SpaceViewTypeName, SpaceViewTypeRegistry};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SpaceViewTypeName, SpaceViewTypeRegistry, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,

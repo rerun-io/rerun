@@ -7,8 +7,9 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_space_view::SpaceViewTypeRegistry;
-use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    DataBlueprintGroupHandle, Item, SpaceViewId, SpaceViewTypeRegistry, ViewerContext,
+};
 
 use crate::{
     data_blueprint::DataBlueprintGroup,

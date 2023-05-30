@@ -1,7 +1,4 @@
-use re_space_view::SpaceViewTypeRegistry;
-use re_viewer_context::Item;
-
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{Item, SpaceViewTypeRegistry, ViewerContext};
 use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
 
 /// Defines the layout of the whole Viewer (or will, eventually).

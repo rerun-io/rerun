@@ -19,7 +19,6 @@ mod view_category;
 mod view_spatial;
 mod view_tensor;
 mod view_text;
-mod view_text_box;
 mod view_time_series;
 mod viewport;
 
@@ -30,8 +29,6 @@ pub use space_view::{SpaceViewBlueprint, SpaceViewState};
 pub use view_category::ViewCategory;
 pub use view_spatial::SpatialNavigationMode; // TODO(andreas): Remove, have two kinds of space views instead.
 pub use viewport::{Viewport, ViewportState};
-
-pub use view_text_box::TextBoxSpaceView;
 
 // ---------------------------------------------------------------------------
 

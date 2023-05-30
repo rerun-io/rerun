@@ -1,6 +1,7 @@
 use egui::Label;
-use re_space_view::{SpaceViewState, SpaceViewTypeImpl};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{
+    Scene, SpaceViewState, SpaceViewTypeImpl, SpaceViewTypeName, ViewerContext,
+};
 
 use super::scene_element::SceneTextBox;
 
@@ -31,7 +32,7 @@ pub struct TextBoxSpaceView;
 impl SpaceViewTypeImpl for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
 
-    fn type_name(&self) -> re_space_view::SpaceViewTypeName {
+    fn type_name(&self) -> SpaceViewTypeName {
         "Text Box".into()
     }
 
@@ -43,9 +44,9 @@ impl SpaceViewTypeImpl for TextBoxSpaceView {
         "Displays text from a text box component.".into()
     }
 
-    fn new_scene(&self) -> re_space_view::Scene {
+    fn new_scene(&self) -> Scene {
         // TODO: make this more ergonomic
-        re_space_view::Scene(vec![Box::<SceneTextBox>::default()])
+        Scene(vec![Box::<SceneTextBox>::default()])
     }
 
     fn selection_ui(
@@ -54,8 +55,6 @@ impl SpaceViewTypeImpl for TextBoxSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
     ) {
-        crate::profile_function!();
-
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {
@@ -72,10 +71,8 @@ impl SpaceViewTypeImpl for TextBoxSpaceView {
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: re_space_view::Scene,
+        scene: Scene,
     ) {
-        crate::profile_function!();
-
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
             ..egui::Frame::default()

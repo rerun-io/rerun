@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use crate::space_view_type::{SpaceViewType, SpaceViewTypeName};
+use crate::{SpaceViewType, SpaceViewTypeName};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SpaceViewTypeRegistryError {

@@ -1,6 +1,4 @@
-use re_viewer_context::ViewerContext;
-
-use crate::space_view_type::{Scene, SpaceViewState, SpaceViewType, SpaceViewTypeName};
+use crate::{Scene, SpaceViewState, SpaceViewType, SpaceViewTypeName, ViewerContext};
 
 /// Utility for implementing [`SpaceViewType`] with a concrete state type.
 pub trait SpaceViewTypeImpl {

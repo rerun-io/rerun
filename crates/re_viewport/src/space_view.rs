@@ -1,8 +1,9 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{EmptySpaceViewState, SpaceViewTypeName, SpaceViewTypeRegistry};
-use re_viewer_context::{SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    EmptySpaceViewState, SpaceViewId, SpaceViewTypeName, SpaceViewTypeRegistry, ViewerContext,
+};
 
 use crate::{
     data_blueprint::DataBlueprintTree,
@@ -331,7 +332,7 @@ impl SpaceViewBlueprint {
 /// Camera position and similar.
 pub struct SpaceViewState {
     // TODO(andreas): Reduce this struct to just this field.
-    state: Box<dyn re_space_view::SpaceViewState>,
+    state: Box<dyn re_viewer_context::SpaceViewState>,
 
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstancePath>,

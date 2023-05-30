@@ -1,9 +1,7 @@
 use re_arrow_store::LatestAtQuery;
-use re_log::warn_once;
 use re_log_types::{component_types, Component};
 use re_query::{query_entity_with_primary, QueryError};
-use re_space_view::{ArchetypeDefinition, SceneElement};
-use re_viewer_context::{SceneQuery, ViewerContext};
+use re_viewer_context::{ArchetypeDefinition, SceneElement, SceneQuery, ViewerContext};
 
 // ---
 
@@ -24,8 +22,6 @@ impl SceneElement for SceneTextBox {
     }
 
     fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
-
         let store = &ctx.log_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
@@ -49,7 +45,7 @@ impl SceneElement for SceneTextBox {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(_) => {
-                    warn_once!("text-box query failed for {ent_path:?}");
+                    re_log::warn_once!("text-box query failed for {ent_path:?}");
                 }
             }
         }

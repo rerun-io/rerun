@@ -6,8 +6,7 @@ use re_log_types::{
     component_types::{Pinhole, Tensor, TensorDataMeaning},
     TimeType,
 };
-use re_space_view::SpaceViewTypeRegistry;
-use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, SpaceViewId, SpaceViewTypeRegistry, UiVerbosity, ViewerContext};
 use re_viewport::{SpaceViewState, SpatialNavigationMode, Viewport, ViewportState};
 
 use crate::ui::Blueprint;

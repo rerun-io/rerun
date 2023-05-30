@@ -1,5 +1,5 @@
+use crate::{SceneQuery, ViewerContext};
 use re_log_types::ComponentName;
-use re_viewer_context::{SceneQuery, ViewerContext};
 
 /// First element is the primary component, all others are optional.
 ///

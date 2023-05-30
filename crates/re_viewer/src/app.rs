@@ -5,8 +5,6 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
-use re_space_view::{SpaceViewTypeRegistry, SpaceViewTypeRegistryError};
-use re_viewport::ViewportState;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -17,8 +15,10 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
-    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, ViewerContext,
+    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewTypeRegistry,
+    SpaceViewTypeRegistryError, ViewerContext,
 };
+use re_viewport::ViewportState;
 
 use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics};
 
@@ -95,13 +95,13 @@ pub struct App {
     analytics: ViewerAnalytics,
 
     /// All known space view types.
-    space_view_type_registry: re_space_view::SpaceViewTypeRegistry,
+    space_view_type_registry: SpaceViewTypeRegistry,
 }
 
 fn populate_space_view_type_registry_with_builtin(
     space_view_type_registry: &mut SpaceViewTypeRegistry,
 ) -> Result<(), SpaceViewTypeRegistryError> {
-    space_view_type_registry.add(re_viewport::TextBoxSpaceView::default())?;
+    space_view_type_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
     Ok(())
 }
 

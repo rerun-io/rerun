@@ -30,7 +30,6 @@ re_renderer = { workspace = true, default-features = false, features = [
   "import-obj",
   "serde",
 ] }
-re_space_view.workspace = true
 re_tensor_ops.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
