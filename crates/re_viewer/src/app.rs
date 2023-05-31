@@ -51,6 +51,10 @@ pub struct StartupOptions {
     /// We use this to generate screenshots of our exmples.
     #[cfg(not(target_arch = "wasm32"))]
     pub screenshot_to_path_then_quit: Option<std::path::PathBuf>,
+
+    /// Set the screen resolution in logical points.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub resolution_in_points: Option<[f32; 2]>,
 }
 
 impl Default for StartupOptions {
@@ -58,8 +62,12 @@ impl Default for StartupOptions {
         Self {
             memory_limit: re_memory::MemoryLimit::default(),
             persist_state: true,
+
             #[cfg(not(target_arch = "wasm32"))]
             screenshot_to_path_then_quit: None,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            resolution_in_points: None,
         }
     }
 }
@@ -540,6 +548,10 @@ impl eframe::App for App {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
 
+        if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
+            frame.set_window_size(resolution_in_points.into());
+        }
+
         self.screenshotter.update(egui_ctx, frame);
 
         if self.startup_options.memory_limit.limit.is_none() {
@@ -549,8 +561,7 @@ impl eframe::App for App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if self.screenshotter.is_screenshotting() {
-            // Set a standard screenshot resolution (for our docs and examples).
-            frame.set_window_size(egui::Vec2::new(800.0, 600.0));
+            // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
             egui_ctx.set_pixels_per_point(2.0);
         } else {
             // Ensure zoom factor is sane and in 10% steps at all times before applying it.
