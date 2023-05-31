@@ -47,6 +47,10 @@ pub enum Command {
     PlaybackStepBack,
     PlaybackStepForward,
     PlaybackRestart,
+
+    // Dev-tools:
+    #[cfg(not(target_arch = "wasm32"))]
+    ScreenshotWholeApp,
 }
 
 impl Command {
@@ -128,6 +132,12 @@ impl Command {
                 "Move the time marker to the next point in time with any data",
             ),
             Command::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ScreenshotWholeApp => (
+                "Screenshot",
+                "Copy screenshot of the whole app to clipboard",
+            ),
         }
     }
 
@@ -189,6 +199,9 @@ impl Command {
             Command::PlaybackStepBack => Some(key(Key::ArrowLeft)),
             Command::PlaybackStepForward => Some(key(Key::ArrowRight)),
             Command::PlaybackRestart => Some(cmd(Key::ArrowLeft)),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ScreenshotWholeApp => None,
         }
     }
 

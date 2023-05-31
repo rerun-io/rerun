@@ -389,6 +389,11 @@ impl App {
             Command::PlaybackRestart => {
                 self.run_time_control_command(TimeControlCommand::Restart);
             }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ScreenshotWholeApp => {
+                _frame.request_screenshot();
+            }
         }
     }
 
@@ -700,6 +705,15 @@ impl eframe::App for App {
             // create this same blueprint in `load_or_create_blueprint`, but we couldn't
             // keep it around for borrow-checker reasons.
             re_log::warn_once!("Blueprint unexpectedly missing from store.");
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn post_rendering(&mut self, _window_size: [u32; 2], frame: &eframe::Frame) {
+        if let Some(screenshot) = frame.screenshot() {
+            re_viewer_context::Clipboard::with(|cb| {
+                cb.set_image(screenshot.size, bytemuck::cast_slice(&screenshot.pixels));
+            });
         }
     }
 }

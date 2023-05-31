@@ -4358,6 +4358,7 @@ dependencies = [
  "anyhow",
  "arrow2",
  "arrow2_convert",
+ "bytemuck",
  "cfg-if",
  "cocoa",
  "eframe",
