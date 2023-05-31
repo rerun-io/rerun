@@ -520,6 +520,7 @@ async fn run_impl(
     }
 }
 
+#[cfg(feature = "native_viewer")]
 fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
     fn parse_size_inner(size: &str) -> Option<[f32; 2]> {
         let (w, h) = size.split_once('x')?;
