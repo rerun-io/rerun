@@ -41,7 +41,7 @@ pub struct TransformCache {
 
 #[derive(Clone, Copy)]
 pub enum UnreachableTransform {
-    /// [`super::space_info::SpaceInfoCollection`] is outdated and can't find a corresponding space info for the given path.
+    /// `SpaceInfoCollection` is outdated and can't find a corresponding space info for the given path.
     ///
     /// If at all, this should only happen for a single frame until space infos are rebuilt.
     UnknownSpaceInfo,

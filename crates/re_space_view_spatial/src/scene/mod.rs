@@ -94,7 +94,7 @@ pub struct SceneSpatial {
     num_logged_3d_objects: usize,
 
     /// All space cameras in this scene.
-    /// TODO(andreas): Does this belong to [`SceneSpatialUiData`]?
+    /// TODO(andreas): Does this belong to `SceneSpatialUiData`?
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
