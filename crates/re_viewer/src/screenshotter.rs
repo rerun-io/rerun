@@ -24,6 +24,9 @@ impl Screenshotter {
     }
 
     /// If true, temporarily re-style the UI to make it suitable for capture!
+    ///
+    /// We do the re-styling to create consistent screenshots across platforms.
+    /// In particular, we style the UI to look like the web viewer.
     pub fn is_screenshotting(&self) -> bool {
         self.countdown.is_some()
     }
