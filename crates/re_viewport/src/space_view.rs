@@ -156,7 +156,7 @@ impl SpaceViewBlueprint {
         ui: &mut egui::Ui,
     ) {
         if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
-            re_tracing::profile_scope!("selection_ui: ", space_view_class.name());
+            re_tracing::profile_scope!("selection_ui", space_view_class.name());
             space_view_class.selection_ui(ctx, ui, view_state.state.as_mut());
         } else {
             // Legacy handling
@@ -216,13 +216,13 @@ impl SpaceViewBlueprint {
         if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
             let mut scene = space_view_class.new_scene();
             {
-                re_tracing::profile_scope!("scene populate: ", space_view_class.name());
+                re_tracing::profile_scope!("scene.populate", space_view_class.name());
                 scene.populate(ctx, &query, view_state.state.as_ref());
             }
             // TODO(andreas): Pass scene to renderer.
             // TODO(andreas): Setup re_renderer view.
             {
-                re_tracing::profile_scope!("ui: ", space_view_class.name());
+                re_tracing::profile_scope!("ui", space_view_class.name());
                 space_view_class.ui(ctx, ui, view_state.state.as_mut(), scene);
             }
         } else {
