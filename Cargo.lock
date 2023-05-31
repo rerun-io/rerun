@@ -3183,6 +3183,7 @@ dependencies = [
  "glam",
  "prost",
  "prost-build",
+ "protoc-prebuilt",
  "rerun",
 ]
 
@@ -3633,6 +3634,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213622a1460818959ac1181aaeb2dc9c7f63df720db7d788b3e24eacd1983e13"
 dependencies = [
  "prost",
+]
+
+[[package]]
+name = "protoc-prebuilt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37aee930fb53074ec083bf049aa6133bb1a93cce8fc39f83e07f36a0937304dd"
+dependencies = [
+ "ureq",
+ "zip",
 ]
 
 [[package]]
