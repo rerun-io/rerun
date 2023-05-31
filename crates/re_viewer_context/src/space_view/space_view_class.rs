@@ -53,7 +53,7 @@ pub trait SpaceViewClass {
     /// Executed before the scene is populated.
     ///
     /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    fn prepare_populate(&self, ctx: &mut ViewerContext<'_>, state: &mut dyn SpaceViewState) {}
+    fn prepare_populate(&self, _ctx: &mut ViewerContext<'_>, _state: &mut dyn SpaceViewState) {}
 
     /// Ui shown when the user selects a space view of this class.
     ///
