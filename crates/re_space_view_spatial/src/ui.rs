@@ -8,10 +8,10 @@ use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
-use re_space_view::{DataBlueprintTree, ScreenshotMode, SpaceViewHighlights};
+use re_space_view::{DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{
-    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
-    TensorStatsCache, UiVerbosity, ViewerContext,
+    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
+    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
 use super::{

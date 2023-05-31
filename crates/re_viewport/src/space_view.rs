@@ -1,9 +1,9 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataBlueprintTree, ScreenshotMode, SpaceViewHighlights};
+use re_space_view::{DataBlueprintTree, ScreenshotMode};
 use re_space_view_spatial::{SceneSpatial, TransformCache, ViewSpatialState};
-use re_viewer_context::{SpaceViewClassName, SpaceViewId, ViewerContext};
+use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -186,7 +186,7 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
-        highlights: &SpaceViewHighlights,
+        highlights: SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
 
@@ -208,10 +208,8 @@ impl SpaceViewBlueprint {
                 space_view_class.prepare_populate(ctx, view_state.state.as_mut());
             }
             let mut scene = space_view_class.new_scene();
-            {
-                re_tracing::profile_scope!("scene.populate", space_view_class.name());
-                scene.populate(ctx, &query, view_state.state.as_ref());
-            }
+            scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
+
             // TODO(andreas): Pass scene to renderer.
             // TODO(andreas): Setup re_renderer view.
             {
@@ -245,7 +243,7 @@ impl SpaceViewBlueprint {
                         self.data_blueprint.data_blueprints_projected(),
                     );
                     let mut scene = SceneSpatial::new(ctx.render_ctx);
-                    scene.load(ctx, &query, &transforms, highlights);
+                    scene.load(ctx, &query, &transforms, &highlights);
                     view_state
                         .state_spatial
                         .update_object_property_heuristics(ctx, &mut self.data_blueprint);
@@ -255,7 +253,7 @@ impl SpaceViewBlueprint {
                         &self.space_path,
                         scene,
                         self.id,
-                        highlights,
+                        &highlights,
                         self.data_blueprint.data_blueprints_projected(),
                     );
                 }

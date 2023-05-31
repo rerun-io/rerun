@@ -28,7 +28,7 @@ pub(crate) use points3d::Points3DPart;
 
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
-use re_space_view::SpaceViewHighlights;
+use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, SceneQuery, ViewerContext,
 };

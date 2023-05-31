@@ -10,7 +10,7 @@ use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
-use re_space_view::SpaceViewHighlights;
+use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{auto_color, AnnotationMap, Annotations, SceneQuery, ViewerContext};
 
 use super::SpatialNavigationMode;

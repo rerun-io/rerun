@@ -2,7 +2,8 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneContextCollection, SceneElementImpl, SceneQuery, ViewerContext,
+    ArchetypeDefinition, SceneContextCollection, SceneElementImpl, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
 };
 
 use crate::space_view_class::TextBoxSpaceViewState;
@@ -33,6 +34,7 @@ impl SceneElementImpl for SceneTextBox {
         query: &SceneQuery<'_>,
         _space_view_state: &Self::State,
         _contexts: &SceneContextCollection,
+        _highlights: &SpaceViewHighlights,
     ) {
         let store = &ctx.store_db.entity_db.data_store;
 

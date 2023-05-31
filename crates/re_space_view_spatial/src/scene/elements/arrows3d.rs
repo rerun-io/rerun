@@ -2,7 +2,7 @@ use re_components::{Arrow3D, ColorRGBA, Component as _, InstanceKey, Label, Radi
 use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
-use re_space_view::SpaceViewHighlights;
+use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{

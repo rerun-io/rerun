@@ -1,4 +1,7 @@
-use crate::{ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext};
+use crate::{
+    ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewHighlights, SpaceViewState,
+    ViewerContext,
+};
 
 use super::scene::SceneContextCollection;
 
@@ -18,6 +21,7 @@ pub trait SceneElementImpl {
         query: &SceneQuery<'_>,
         space_view_state: &Self::State,
         contexts: &SceneContextCollection,
+        highlights: &SpaceViewHighlights,
     );
 }
 
@@ -32,9 +36,10 @@ impl<T: SceneElementImpl + 'static> SceneElement for T {
         query: &crate::SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         contexts: &SceneContextCollection,
+        highlights: &SpaceViewHighlights,
     ) {
         if let Some(state) = space_view_state.as_any().downcast_ref() {
-            self.populate(ctx, query, state, contexts);
+            self.populate(ctx, query, state, contexts, highlights);
         } else {
             re_log::error_once!("Incorrect type of space view state.");
         }

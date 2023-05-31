@@ -2,7 +2,7 @@ use std::any::Any;
 
 use ahash::HashMap;
 
-use crate::{ArchetypeDefinition, SceneQuery, SpaceViewState, ViewerContext};
+use crate::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, SpaceViewState, ViewerContext};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SceneItemCollectionLookupError {
@@ -112,15 +112,15 @@ scene_element_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4
 scene_element_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4, 5 => T5, 6 => T6);
 scene_element_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4, 5 => T5, 6 => T6, 7 => T7);
 scene_element_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4, 5 => T5, 6 => T6, 7 => T7, 8 => T8);
-// ...
 
-/// A scene is a collection of scene contexts and elements.
+/// A scene is a collection of scene contexts and elements, as well as a collection of highlights.
 ///
 /// When populating a scene, first all contexts are populated,
 /// and then all elements with read access to the previously established context objects.
 pub struct Scene {
     pub contexts: SceneContextCollection,
     pub elements: SceneElementCollection,
+    pub highlights: SpaceViewHighlights,
 }
 
 impl Scene {
@@ -140,7 +140,12 @@ impl Scene {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
+        highlights: SpaceViewHighlights,
     ) {
+        re_tracing::profile_function!();
+
+        self.highlights = highlights;
+
         // TODO(andreas): Both loops are great candidates for parallelization.
         for context in self.contexts.0.values_mut() {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
@@ -148,7 +153,13 @@ impl Scene {
         }
         for element in self.elements.0.values_mut() {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
-            element.populate(ctx, query, space_view_state, &self.contexts);
+            element.populate(
+                ctx,
+                query,
+                space_view_state,
+                &self.contexts,
+                &self.highlights,
+            );
         }
     }
 }
@@ -167,6 +178,7 @@ pub trait SceneElement: Any {
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         contexts: &SceneContextCollection,
+        highlights: &SpaceViewHighlights,
     );
 
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.

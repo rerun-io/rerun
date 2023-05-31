@@ -4,7 +4,10 @@ use macaw::IsoTransform;
 use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityPropertyMap};
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
+use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
+use re_viewer_context::{
+    gpu_bridge, HoveredSpace, SpaceViewHighlights, SpaceViewId, ViewerContext,
+};
 
 use super::{
     eye::Eye,
@@ -15,10 +18,6 @@ use crate::{
     scene::SceneSpatial,
     ui::{outline_config, ViewSpatialState},
     ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-};
-use re_space_view::{
-    controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER},
-    SpaceViewHighlights,
 };
 
 // ---

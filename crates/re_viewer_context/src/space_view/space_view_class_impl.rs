@@ -68,6 +68,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         Scene {
             contexts: T::SceneContextTuple::default().into(),
             elements: T::SceneElementTuple::default().into(),
+            highlights: Default::default(),
         }
     }
 

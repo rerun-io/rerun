@@ -4,9 +4,9 @@ use re_components::{
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
-use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::TimeControl;
 use re_viewer_context::{SceneQuery, ViewerContext};
+use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use super::{instance_path_hash_for_picking, ScenePart};
 use crate::{

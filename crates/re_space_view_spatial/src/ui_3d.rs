@@ -10,14 +10,13 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Size,
 };
-use re_space_view::{
-    controls::{
-        DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-        ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
-    },
-    SpaceViewHighlights,
+use re_space_view::controls::{
+    DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
+    ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
-use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, HoveredSpace, Item, SpaceViewHighlights, SpaceViewId, ViewerContext,
+};
 
 use crate::{
     scene::SceneSpatial,

@@ -4,9 +4,7 @@
 
 pub mod controls;
 mod data_blueprint;
-mod highlights;
 mod screenshot;
 
 pub use data_blueprint::{DataBlueprintGroup, DataBlueprintTree};
-pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use screenshot::ScreenshotMode;

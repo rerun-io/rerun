@@ -3,8 +3,8 @@ use re_components::{
 };
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
+use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
     scene::{EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},

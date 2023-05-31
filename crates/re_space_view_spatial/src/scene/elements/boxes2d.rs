@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
-use re_space_view::SpaceViewHighlights;
+use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};

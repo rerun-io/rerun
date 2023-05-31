@@ -3,7 +3,8 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneContextCollection, SceneElementImpl, SceneQuery, ViewerContext,
+    ArchetypeDefinition, SceneContextCollection, SceneElementImpl, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
 };
 
 use super::space_view_class::TextSpaceViewState;
@@ -44,6 +45,7 @@ impl SceneElementImpl for SceneText {
         query: &SceneQuery<'_>,
         state: &TextSpaceViewState,
         _contexts: &SceneContextCollection,
+        _highlights: &SpaceViewHighlights,
     ) {
         let store = &ctx.store_db.entity_db.data_store;
 
