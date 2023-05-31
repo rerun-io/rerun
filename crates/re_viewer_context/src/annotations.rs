@@ -126,7 +126,7 @@ impl AnnotationMap {
     ///
     /// An entity is considered its own (nearest) ancestor.
     pub fn load(&mut self, ctx: &mut ViewerContext<'_>, scene_query: &SceneQuery<'_>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut visited = IntSet::<EntityPath>::default();
 

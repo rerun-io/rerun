@@ -312,7 +312,7 @@ impl PickingLayerProcessor {
         view_name: &DebugLabel,
         encoder: &'a mut wgpu::CommandEncoder,
     ) -> wgpu::RenderPass<'a> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: DebugLabel::from(format!("{view_name} - picking_layer pass")).get(),

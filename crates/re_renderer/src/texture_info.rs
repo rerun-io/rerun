@@ -55,7 +55,7 @@ impl Texture2DBufferInfo {
     /// Note that if you're passing in gpu data, there no alignment guarantees on the returned slice,
     /// do NOT convert it using [`bytemuck`]. Use [`Texture2DBufferInfo::remove_padding_and_convert`] instead.
     pub fn remove_padding<'a>(&self, buffer: &'a [u8]) -> Cow<'a, [u8]> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         assert_eq!(buffer.len() as wgpu::BufferAddress, self.buffer_size_padded);
 
@@ -82,7 +82,7 @@ impl Texture2DBufferInfo {
     /// The unpadded row size is expected to be a multiple of the size of the target type.
     /// (Which means that, while uncommon, it technically doesn't need to be as big as a block in the pixel - this can be useful for e.g. packing wide bitfields)
     pub fn remove_padding_and_convert<T: bytemuck::Pod>(&self, buffer: &[u8]) -> Vec<T> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         assert_eq!(buffer.len() as wgpu::BufferAddress, self.buffer_size_padded);
         assert!(self.bytes_per_row_unpadded % std::mem::size_of::<T>() as u32 == 0);

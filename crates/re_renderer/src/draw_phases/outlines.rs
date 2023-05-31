@@ -202,7 +202,7 @@ impl OutlineMaskProcessor {
         view_name: &DebugLabel,
         resolution_in_pixel: [u32; 2],
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         let instance_label: DebugLabel = format!("{view_name} - OutlineMaskProcessor").into();
 
         // ------------- Textures -------------

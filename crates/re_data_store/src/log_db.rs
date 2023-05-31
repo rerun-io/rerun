@@ -61,7 +61,7 @@ impl EntityDb {
     }
 
     fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
         let mut table = DataTable::from_arrow_msg(msg)?;
@@ -147,7 +147,7 @@ impl EntityDb {
         cutoff_times: &std::collections::BTreeMap<Timeline, TimeInt>,
         drop_row_ids: &ahash::HashSet<RowId>,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             entity_path_from_hash: _,
@@ -157,12 +157,12 @@ impl EntityDb {
         } = self;
 
         {
-            crate::profile_scope!("times_per_timeline");
+            re_tracing::profile_scope!("times_per_timeline");
             times_per_timeline.purge(cutoff_times);
         }
 
         {
-            crate::profile_scope!("tree");
+            re_tracing::profile_scope!("tree");
             tree.purge(cutoff_times, drop_row_ids);
         }
     }
@@ -237,7 +237,7 @@ impl LogDb {
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         match &msg {
             LogMsg::SetRecordingInfo(msg) => self.add_begin_recording_msg(msg),
@@ -271,7 +271,7 @@ impl LogDb {
 
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(
@@ -295,7 +295,7 @@ impl LogDb {
         } = self;
 
         {
-            crate::profile_scope!("entity_op_msgs");
+            re_tracing::profile_scope!("entity_op_msgs");
             entity_op_msgs.retain(|row_id, _| !drop_row_ids.contains(row_id));
         }
 

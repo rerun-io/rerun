@@ -27,7 +27,7 @@ impl DataStore {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self) -> DataFrame {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         const TIMELESS_COL: &str = "_is_timeless";
 
@@ -167,7 +167,7 @@ impl PersistentIndexedTable {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self, store: &DataStore, config: &DataStoreConfig) -> DataFrame {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             ent_path: _,
@@ -206,7 +206,7 @@ impl IndexedBucket {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self, store: &DataStore, config: &DataStoreConfig) -> DataFrame {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let IndexedBucketInner {
             is_sorted: _,
@@ -260,7 +260,7 @@ impl IndexedBucket {
 // ---
 
 fn insert_ids_as_series(col_insert_id: &InsertIdVec) -> Series {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let insert_ids = arrow2::array::UInt64Array::from_slice(col_insert_id.as_slice());
     new_infallible_series(
@@ -277,7 +277,7 @@ fn column_as_series(
     component: ComponentName,
     cells: &[Option<DataCell>],
 ) -> Series {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // Computing the validity bitmap is just a matter of checking whether the data was
     // available in the component tables.
@@ -316,7 +316,7 @@ fn column_as_series(
 // ---
 
 fn new_infallible_series(name: &str, data: &dyn Array, len: usize) -> Series {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     Series::try_from((name, data.as_ref().clean_for_polars())).unwrap_or_else(|_| {
         let errs = Utf8Array::<i32>::from(vec![Some("<ERR>"); len]);
@@ -335,7 +335,7 @@ fn sort_df_columns(
     store_insert_ids: bool,
     timelines: &BTreeSet<&str>,
 ) -> DataFrame {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let columns: Vec<_> = {
         let mut all = df.get_column_names();

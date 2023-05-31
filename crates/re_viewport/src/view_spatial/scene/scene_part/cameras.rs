@@ -188,7 +188,7 @@ impl ScenePart for CamerasPart {
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {
-        crate::profile_scope!("CamerasPart");
+        re_tracing::profile_scope!("CamerasPart");
 
         let store = &ctx.log_db.entity_db.data_store;
         for (ent_path, props) in query.iter_entities() {

@@ -188,7 +188,7 @@ impl SpaceViewBlueprint {
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
         if is_zero_sized_viewport {
@@ -262,7 +262,7 @@ impl SpaceViewBlueprint {
     ///
     /// Ignores all entities that aren't part of the blueprint.
     pub fn remove_entity_subtree(&mut self, tree: &EntityTree) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         tree.visit_children_recursively(&mut |path: &EntityPath| {
             self.data_blueprint.remove_entity(path);
@@ -279,7 +279,7 @@ impl SpaceViewBlueprint {
         spaces_info: &SpaceInfoCollection,
         log_db: &re_data_store::LogDb,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {

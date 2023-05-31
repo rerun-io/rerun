@@ -92,7 +92,7 @@ pub fn highlights_for_space_view(
     space_view_id: SpaceViewId,
     space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> SpaceViewHighlights {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut highlighted_entity_paths =
         IntMap::<EntityPathHash, SpaceViewEntityHighlight>::default();

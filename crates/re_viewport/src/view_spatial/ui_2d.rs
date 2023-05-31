@@ -233,7 +233,7 @@ pub fn view_2d(
     highlights: &SpaceViewHighlights,
     entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();

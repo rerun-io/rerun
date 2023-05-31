@@ -332,25 +332,3 @@ where
         v
     }
 }
-
-// ---------------------------------------------------------------------------
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
-}

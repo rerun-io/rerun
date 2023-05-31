@@ -64,7 +64,7 @@ impl DataStore {
     //
     // TODO(#1823): Workload specific optimizations.
     pub fn gc(&mut self, target: GarbageCollectionTarget) -> (Vec<RowId>, DataStoreStats) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.gc_id += 1;
 
@@ -126,7 +126,7 @@ impl DataStore {
     ///
     /// Returns the list of `RowId`s that were purged from the store.
     fn gc_drop_at_least_num_bytes(&mut self, mut num_bytes_to_drop: f64) -> Vec<RowId> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut row_ids = Vec::new();
 
@@ -165,7 +165,7 @@ impl IndexedTable {
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
@@ -211,7 +211,7 @@ impl IndexedBucketInner {
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(&mut self, row_id: RowId, time: i64) -> u64 {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.sort();
 

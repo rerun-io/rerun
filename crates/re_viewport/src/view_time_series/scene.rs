@@ -62,7 +62,7 @@ pub struct SceneTimeSeries {
 impl SceneTimeSeries {
     /// Loads all plots into the scene according to the given query.
     pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
@@ -71,7 +71,7 @@ impl SceneTimeSeries {
 
     #[inline(never)] // Better callstacks on crashes
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let store = &ctx.log_db.entity_db.data_store;
 
@@ -162,7 +162,7 @@ impl SceneTimeSeries {
     // we notice a change in attributes, we need a new line segment.
     #[inline(never)] // Better callstacks on crashes
     fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let num_points = points.len();
         let mut attrs = points[0].attrs.clone();

@@ -286,7 +286,7 @@ impl DataStore {
     ///
     /// Useful to call after a gc.
     pub fn oldest_time_per_timeline(&self) -> BTreeMap<Timeline, TimeInt> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut oldest_time_per_timeline = BTreeMap::default();
 

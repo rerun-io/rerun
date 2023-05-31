@@ -276,7 +276,7 @@ impl ViewBuilder {
         });
 
     pub fn new(ctx: &mut RenderContext, config: TargetConfiguration) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
         assert_ne!(config.resolution_in_pixel[0], 0);
@@ -514,7 +514,7 @@ impl ViewBuilder {
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         for queued_draw in &self.queued_draws {
             if queued_draw.participated_phases.contains(&phase) {
@@ -532,7 +532,7 @@ impl ViewBuilder {
         &mut self,
         draw_data: &D,
     ) -> &mut Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         self.queued_draws.push(queued_draw(draw_data));
 
         self
@@ -544,7 +544,7 @@ impl ViewBuilder {
         ctx: &RenderContext,
         clear_color: Rgba,
     ) -> Result<wgpu::CommandBuffer, PoolError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let setup = &self.setup;
 
@@ -555,7 +555,7 @@ impl ViewBuilder {
             });
 
         {
-            crate::profile_scope!("main target pass");
+            re_tracing::profile_scope!("main target pass");
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
@@ -619,9 +619,9 @@ impl ViewBuilder {
         }
 
         if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
-            crate::profile_scope!("outlines");
+            re_tracing::profile_scope!("outlines");
             {
-                crate::profile_scope!("outline mask pass");
+                re_tracing::profile_scope!("outline mask pass");
                 let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
                 self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass);
@@ -768,7 +768,7 @@ impl ViewBuilder {
         pass: &mut wgpu::RenderPass<'a>,
         screen_position: glam::Vec2,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         pass.set_viewport(
             screen_position.x,

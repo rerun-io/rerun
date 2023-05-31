@@ -31,6 +31,7 @@ re_log.workspace = true
 re_log_encoding = { workspace = true, optional = true }
 re_log_types.workspace = true
 re_smart_channel.workspace = true
+re_tracing.workspace = true
 
 ahash.workspace = true
 document-features = "0.2"
@@ -38,11 +39,6 @@ itertools = { workspace = true }
 nohash-hasher = "0.2"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
-
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-puffin.workspace = true
-
 
 [dev-dependencies]
 re_components = { workspace = true, features = ["arrow_datagen"] }

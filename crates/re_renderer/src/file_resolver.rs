@@ -505,7 +505,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 
 impl<Fs: FileSystem> FileResolver<Fs> {
     pub fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<InterpolatedFile> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         fn populate_rec<Fs: FileSystem>(
             this: &mut FileResolver<Fs>,

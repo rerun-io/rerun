@@ -23,6 +23,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
 re_renderer.workspace = true
+re_tracing.workspace = true
 re_ui.workspace = true
 
 ahash.workspace = true
@@ -48,4 +49,3 @@ wgpu.workspace = true
 arboard = { version = "3.2", default-features = false, features = [
   "image-data",
 ] }
-puffin.workspace = true

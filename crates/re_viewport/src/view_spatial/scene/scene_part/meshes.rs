@@ -70,7 +70,7 @@ impl ScenePart for MeshPart {
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {
-        crate::profile_scope!("MeshPart");
+        re_tracing::profile_scope!("MeshPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {

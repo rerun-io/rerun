@@ -20,7 +20,7 @@ pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
@@ -123,7 +123,7 @@ fn default_created_space_views_from_candidates(
     store: &re_arrow_store::DataStore,
     candidates: Vec<SpaceViewBlueprint>,
 ) -> Vec<SpaceViewBlueprint> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // All queries are "right most" on the log timeline.
     let query = LatestAtQuery::latest(Timeline::log_time());
@@ -287,7 +287,7 @@ pub fn default_queried_entities(
     spaces_info: &SpaceInfoCollection,
     category: ViewCategory,
 ) -> Vec<EntityPath> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let timeline = Timeline::log_time();
     let log_db = &ctx.log_db;
@@ -318,7 +318,7 @@ fn default_queried_entities_by_category(
     space_path: &EntityPath,
     space_info_collection: &SpaceInfoCollection,
 ) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let timeline = Timeline::log_time();
     let log_db = &ctx.log_db;

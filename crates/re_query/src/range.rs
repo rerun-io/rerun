@@ -27,7 +27,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     ent_path: &'a EntityPath,
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (Option<TimeInt>, EntityView<Primary>)> + 'a {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let primary = Primary::name();
     let cluster_key = store.cluster_key();

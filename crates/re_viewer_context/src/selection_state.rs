@@ -112,7 +112,7 @@ pub struct SelectionState {
 impl SelectionState {
     /// Called at the start of each frame
     pub fn on_frame_start(&mut self, item_retain_condition: impl Fn(&Item) -> bool) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.history.retain(&item_retain_condition);
 
@@ -173,7 +173,7 @@ impl SelectionState {
 
     /// Select currently hovered objects unless already selected in which case they get unselected.
     pub fn toggle_selection(&mut self, toggle_items: Vec<Item>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Make sure we preserve the order - old items kept in same order, new items added to the end.
 

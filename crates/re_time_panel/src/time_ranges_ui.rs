@@ -98,7 +98,7 @@ impl TimeRangesUi {
         time_view: TimeView,
         time_ranges: &[TimeRange],
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         debug_assert!(x_range.start() < x_range.end());
 
