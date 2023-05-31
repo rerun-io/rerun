@@ -47,8 +47,12 @@ fn test_spaceview() {
     use crate::view_category::ViewCategory;
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
-    let space_view =
-        SpaceViewBlueprint::new(ViewCategory::Spatial, &"foo".into(), &["foo/bar".into()]);
+    let space_view = SpaceViewBlueprint::new(
+        "Spatial".into(),
+        ViewCategory::Spatial,
+        &"foo".into(),
+        &["foo/bar".into()],
+    );
 
     let data = [SpaceViewComponent { space_view }];
     let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();

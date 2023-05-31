@@ -5,7 +5,6 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
-use re_viewport::ViewportState;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -16,8 +15,10 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
-    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, ViewerContext,
+    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, ViewerContext,
 };
+use re_viewport::ViewportState;
 
 use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics};
 
@@ -92,6 +93,18 @@ pub struct App {
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
+
+    /// All known space view types.
+    space_view_class_registry: SpaceViewClassRegistry,
+}
+
+/// Add built-in space views to the registry.
+fn populate_space_view_class_registry_with_builtin(
+    space_view_class_registry: &mut SpaceViewClassRegistry,
+) -> Result<(), SpaceViewClassRegistryError> {
+    space_view_class_registry.add(re_space_view_text::TextSpaceView::default())?;
+    space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
+    Ok(())
 }
 
 impl App {
@@ -123,6 +136,16 @@ impl App {
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
 
+        let mut space_view_class_registry = SpaceViewClassRegistry::default();
+        if let Err(err) =
+            populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
+        {
+            re_log::error!(
+                "Failed to populate space view type registry with builtin space views: {}",
+                err
+            );
+        }
+
         Self {
             build_info,
             startup_options,
@@ -145,6 +168,8 @@ impl App {
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
 
+            space_view_class_registry,
+
             analytics,
         }
     }
@@ -152,6 +177,14 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: crate::Profiler) {
         self.state.profiler = profiler;
+    }
+
+    /// Adds a new space view class to the viewer.
+    pub fn add_space_view_class(
+        &mut self,
+        space_view_class: impl SpaceViewClass + 'static,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        self.space_view_class_registry.add(space_view_class)
     }
 
     /// Creates a promise with the specified name that will run `f` on a background
@@ -628,6 +661,7 @@ impl eframe::App for App {
                                 log_db,
                                 &self.re_ui,
                                 &self.component_ui_registry,
+                                &self.space_view_class_registry,
                                 &self.rx,
                             );
 
@@ -1080,6 +1114,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
+        space_view_class_registry: &SpaceViewClassRegistry,
         rx: &Receiver<LogMsg>,
     ) {
         re_tracing::profile_function!();
@@ -1108,6 +1143,7 @@ impl AppState {
         let mut ctx = ViewerContext {
             app_options: options,
             cache,
+            space_view_class_registry,
             component_ui_registry,
             log_db,
             rec_cfg,

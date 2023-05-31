@@ -7,7 +7,7 @@ use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_components::{DisconnectedSpace, Pinhole, Tensor};
 use re_data_store::{ComponentName, EntityPath};
 use re_log_types::Component as _;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SpaceViewClassName, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -37,10 +37,19 @@ pub fn all_possible_space_views(
             default_queried_entities_by_category(ctx, candidate_space_path, spaces_info)
                 .iter()
                 .map(|(category, entity_paths)| {
-                    SpaceViewBlueprint::new(*category, candidate_space_path, entity_paths)
+                    SpaceViewBlueprint::new(
+                        class_name_from_category(*category),
+                        *category,
+                        candidate_space_path,
+                        entity_paths,
+                    )
                 })
                 .collect::<Vec<_>>()
         })
+        // TODO(andreas): Hack to get in custom space views.
+        // .chain(ctx.space_view_class_registry.iter().map(|class| {
+        //     SpaceViewBlueprint::new(class.name(), ViewCategory::Text, &EntityPath::root(), &[])
+        // }))
         .collect()
 }
 
@@ -160,6 +169,7 @@ fn default_created_space_views_from_candidates(
         if candidate.category == ViewCategory::Tensor {
             for entity_path in candidate.data_blueprint.entity_paths() {
                 let mut space_view = SpaceViewBlueprint::new(
+                    class_name_from_category(ViewCategory::Tensor),
                     ViewCategory::Tensor,
                     entity_path,
                     &[entity_path.clone()],
@@ -225,6 +235,7 @@ fn default_created_space_views_from_candidates(
                         .collect_vec();
 
                     let mut space_view = SpaceViewBlueprint::new(
+                        candidate.class,
                         candidate.category,
                         &candidate.space_path,
                         &entities,
@@ -344,4 +355,17 @@ fn default_queried_entities_by_category(
     );
 
     groups
+}
+
+// TODO(andreas): This is for transitioning to types only.
+fn class_name_from_category(category: ViewCategory) -> SpaceViewClassName {
+    match category {
+        ViewCategory::Text => "Text",
+        ViewCategory::TextBox => "Text Box",
+        ViewCategory::TimeSeries => "Time Series",
+        ViewCategory::BarChart => "Bar Chart",
+        ViewCategory::Spatial => "Spatial",
+        ViewCategory::Tensor => "Tensor",
+    }
+    .into()
 }

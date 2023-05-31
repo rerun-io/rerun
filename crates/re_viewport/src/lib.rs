@@ -18,8 +18,6 @@ mod view_bar_chart;
 mod view_category;
 mod view_spatial;
 mod view_tensor;
-mod view_text;
-mod view_text_box;
 mod view_time_series;
 mod viewport;
 
