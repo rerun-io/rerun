@@ -7,4 +7,5 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Provides Rerun Space Views that display text only.
+A Space View that shows text entries in a table and scrolls with the active time.
+

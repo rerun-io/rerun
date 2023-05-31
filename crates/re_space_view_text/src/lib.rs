@@ -1,6 +1,6 @@
 //! Rerun Text Space Views
 //!
-//! Provides Rerun Space Views that deal with text only.
+//! A Space View that shows text entries in a table and scrolls with the active time.
 
 mod scene_element;
 mod space_view_class;
