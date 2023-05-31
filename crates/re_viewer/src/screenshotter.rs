@@ -1,5 +1,5 @@
-//! Screenshotting not implemented on web yet because
-//! we haven't implemented "copy image to clipbaord".
+//! Screenshotting not implemented on web yet because we
+//! haven't implemented "copy image to clipboard" there.
 
 /// Helper for screenshotting the entire app
 #[derive(Default)]
