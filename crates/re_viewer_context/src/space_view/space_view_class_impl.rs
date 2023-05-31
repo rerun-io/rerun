@@ -29,12 +29,6 @@ pub trait SpaceViewClassImpl {
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
-    /// Returns a new scene for this space view class.
-    ///
-    /// Called both to determine the supported archetypes and
-    /// to populate a scene every frame.
-    fn new_scene(&self) -> Self::SceneElementTuple;
-
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -42,8 +36,8 @@ pub trait SpaceViewClassImpl {
 
     /// Draws the ui for this space view class and handles ui events.
     ///
-    /// The scene passed in was previously created by [`Self::new_scene`] and got populated by the time it is passed.
-    /// The state passed is kept frame-to-frame.
+    /// The passed scene is already populated for this frame
+    /// The passed state is kept frame-to-frame.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -71,7 +65,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
 
     #[inline]
     fn new_scene(&self) -> Scene {
-        self.new_scene().into()
+        T::SceneElementTuple::default().into()
     }
 
     #[inline]

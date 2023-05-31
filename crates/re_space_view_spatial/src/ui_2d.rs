@@ -9,16 +9,16 @@ use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
 use super::{
     eye::Eye,
     ui::{create_labels, picking, screenshot_context_menu},
-    SpatialNavigationMode, ViewSpatialState,
+    SpatialNavigationMode,
 };
 use crate::{
-    space_view_controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER},
-    space_view_highlights::SpaceViewHighlights,
-    view_spatial::{
-        ui::outline_config,
-        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-        SceneSpatial,
-    },
+    scene::SceneSpatial,
+    ui::{outline_config, ViewSpatialState},
+    ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+};
+use re_space_view::{
+    controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER},
+    SpaceViewHighlights,
 };
 
 // ---

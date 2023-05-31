@@ -1,30 +1,19 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
+use re_space_view::{DataBlueprintTree, ScreenshotMode, SpaceViewHighlights};
+use re_space_view_spatial::{SceneSpatial, TransformCache, ViewSpatialState};
 use re_viewer_context::{SpaceViewClassName, SpaceViewId, ViewerContext};
 
 use crate::{
-    data_blueprint::DataBlueprintTree,
     space_info::SpaceInfoCollection,
     space_view_heuristics::default_queried_entities,
-    space_view_highlights::SpaceViewHighlights,
-    transform_cache::TransformCache,
     view_bar_chart,
     view_category::{categorize_entity_path, ViewCategory},
-    view_spatial, view_tensor, view_time_series,
+    view_tensor, view_time_series,
 };
 
 // ----------------------------------------------------------------------------
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-#[allow(dead_code)] // Not used on the web.
-pub enum ScreenshotMode {
-    /// The screenshot will be saved to disc and copied to the clipboard.
-    SaveAndCopyToClipboard,
-
-    /// The screenshot will be copied to the clipboard.
-    CopyToClipboard,
-}
 
 /// A view of a space.
 #[derive(Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -214,6 +203,10 @@ impl SpaceViewBlueprint {
         };
 
         if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
+            {
+                re_tracing::profile_scope!("prepare_populate", space_view_class.name());
+                space_view_class.prepare_populate(ctx, view_state.state.as_mut());
+            }
             let mut scene = space_view_class.new_scene();
             {
                 re_tracing::profile_scope!("scene.populate", space_view_class.name());
@@ -251,7 +244,7 @@ impl SpaceViewBlueprint {
                         &self.space_path,
                         self.data_blueprint.data_blueprints_projected(),
                     );
-                    let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
+                    let mut scene = SceneSpatial::new(ctx.render_ctx);
                     scene.load(ctx, &query, &transforms, highlights);
                     view_state
                         .state_spatial
@@ -334,7 +327,7 @@ pub struct SpaceViewState {
 
     pub state_time_series: view_time_series::ViewTimeSeriesState,
     pub state_bar_chart: view_bar_chart::BarChartState,
-    pub state_spatial: view_spatial::ViewSpatialState,
+    pub state_spatial: ViewSpatialState,
     pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
@@ -346,7 +339,7 @@ impl SpaceViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &EntityPath,
-        scene: view_spatial::SceneSpatial,
+        scene: SceneSpatial,
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
         entity_properties: &EntityPropertyMap,

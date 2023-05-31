@@ -8,14 +8,10 @@ use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
+use re_space_view::{DataBlueprintTree, ScreenshotMode, SpaceViewHighlights};
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
     TensorStatsCache, UiVerbosity, ViewerContext,
-};
-
-use crate::space_view_highlights::SpaceViewHighlights;
-use crate::{
-    data_blueprint::DataBlueprintTree, space_view::ScreenshotMode, view_spatial::UiLabelTarget,
 };
 
 use super::{
@@ -23,7 +19,12 @@ use super::{
     scene::{PickingHitType, PickingResult, SceneSpatialUiData},
     ui_2d::View2DState,
     ui_3d::View3DState,
-    SceneSpatial, SpaceSpecs,
+};
+use crate::scene::SceneSpatial;
+use crate::{
+    scene::UiLabelTarget,
+    ui_2d::view_2d,
+    ui_3d::{view_3d, SpaceSpecs},
 };
 
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
@@ -393,7 +394,7 @@ impl ViewSpatialState {
             SpatialNavigationMode::ThreeD => {
                 let coordinates = store.query_latest_component(space, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                super::view_3d(
+                view_3d(
                     ctx,
                     ui,
                     self,
@@ -409,7 +410,7 @@ impl ViewSpatialState {
                     self.scene_bbox_accum.min.truncate().to_array().into(),
                     self.scene_bbox_accum.max.truncate().to_array().into(),
                 );
-                super::view_2d(
+                view_2d(
                     ctx,
                     ui,
                     self,

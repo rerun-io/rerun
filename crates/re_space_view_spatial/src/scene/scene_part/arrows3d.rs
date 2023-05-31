@@ -1,65 +1,72 @@
-use re_components::{
-    Box3D, ClassId, ColorRGBA, Component as _, InstanceKey, Label, Quaternion, Radius, Vec3D,
-};
+use re_components::{Arrow3D, ColorRGBA, Component as _, InstanceKey, Label, Radius};
 use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::Size;
+use re_renderer::{renderer::LineStripFlags, Size};
+use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    space_view_highlights::{SpaceViewHighlights, SpaceViewOutlineMasks},
+    scene::{EntityDepthOffsets, SceneSpatial},
     transform_cache::TransformCache,
-    view_spatial::{scene::EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
 };
 
-use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
+use super::{instance_key_to_picking_id, ScenePart};
 
-pub struct Boxes3DPart;
+pub struct Arrows3DPart;
 
-impl Boxes3DPart {
+impl Arrows3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        entity_view: &EntityView<Box3D>,
+        entity_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
-        entity_highlight: &SpaceViewOutlineMasks,
+        highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
+
+        let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+
         let mut line_batch = scene
             .primitives
             .line_strips
-            .batch("box 3d")
+            .batch("arrows")
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
-                       half_size: Box3D,
-                       position: Option<Vec3D>,
-                       rotation: Option<Quaternion>,
+                       arrow: Arrow3D,
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>,
-                       label: Option<Label>,
-                       class_id: Option<ClassId>| {
-            let class_description = annotations.class_description(class_id);
-            let annotation_info = class_description.annotation_info();
-
-            let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+                       _label: Option<Label>| {
+            // TODO(andreas): support labels
+            // TODO(andreas): support class ids for arrows
+            let annotation_info = annotations.class_description(None).annotation_info();
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
+            //let label = annotation_info.label(label);
 
-            let scale = glam::Vec3::from(half_size) * 2.0;
-            let rot = rotation.map(glam::Quat::from).unwrap_or_default();
-            let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
-            let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
+            let re_components::Arrow3D { origin, vector } = arrow;
 
-            let box_lines = line_batch
-                .add_box_outline(transform)
+            let vector = glam::Vec3::from(vector);
+            let origin = glam::Vec3::from(origin);
+
+            let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
+            let end = origin + vector;
+
+            let segment = line_batch
+                .add_segment(origin, end)
                 .radius(radius)
                 .color(color)
+                .flags(
+                    LineStripFlags::FLAG_COLOR_GRADIENT
+                        | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                        | LineStripFlags::FLAG_CAP_START_ROUND
+                        | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
+                )
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view.num_instances(),
@@ -67,29 +74,17 @@ impl Boxes3DPart {
                 ));
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
-                box_lines.outline_mask_ids(*outline_mask_ids);
-            }
-
-            if let Some(label) = annotation_info.label(label.as_ref().map(|s| &s.0)) {
-                scene.ui.labels.push(UiLabel {
-                    text: label,
-                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(tran)),
-                    color,
-                    labeled_instance: instance_path_hash_for_picking(
-                        ent_path,
-                        instance_key,
-                        entity_view.num_instances(),
-                        entity_highlight.any_selection_highlight,
-                    ),
-                });
+                segment.outline_mask_ids(*outline_mask_ids);
             }
         };
 
-        entity_view.visit7(visitor)
+        entity_view.visit4(visitor)?;
+
+        Ok(())
     }
 }
 
-impl ScenePart for Boxes3DPart {
+impl ScenePart for Arrows3DPart {
     fn load(
         &self,
         scene: &mut SceneSpatial,
@@ -99,29 +94,25 @@ impl ScenePart for Boxes3DPart {
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {
-        re_tracing::profile_scope!("Boxes3DPart");
+        re_tracing::profile_scope!("Points2DPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-            match query_primary_with_history::<Box3D, 8>(
+            match query_primary_with_history::<Arrow3D, 5>(
                 &ctx.log_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
                 [
-                    Box3D::name(),
+                    Arrow3D::name(),
                     InstanceKey::name(),
-                    Vec3D::name(),      // obb.position
-                    Quaternion::name(), // obb.rotation
                     ColorRGBA::name(),
-                    Radius::name(), // stroke_width
+                    Radius::name(),
                     Label::name(),
-                    ClassId::name(),
                 ],
             )
             .and_then(|entities| {
@@ -131,7 +122,7 @@ impl ScenePart for Boxes3DPart {
                         &entity,
                         ent_path,
                         world_from_obj,
-                        entity_highlight,
+                        highlights,
                     )?;
                 }
                 Ok(())

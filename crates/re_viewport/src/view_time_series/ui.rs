@@ -5,16 +5,14 @@ use egui::{
 
 use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
+use re_space_view::controls::{
+    HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, RESET_VIEW_BUTTON_TEXT,
+    SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
+};
 use re_viewer_context::ViewerContext;
 
 use super::SceneTimeSeries;
-use crate::{
-    space_view_controls::{
-        HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, RESET_VIEW_BUTTON_TEXT,
-        SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
-    },
-    view_time_series::scene::PlotSeriesKind,
-};
+use crate::view_time_series::scene::PlotSeriesKind;
 
 // ---
 

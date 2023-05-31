@@ -48,10 +48,6 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         "Displays text from a text entry components.".into()
     }
 
-    fn new_scene(&self) -> Self::SceneElementTuple {
-        (SceneTextBox::default(),)
-    }
-
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,

@@ -10,14 +10,13 @@ use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
+use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{auto_color, AnnotationMap, Annotations, SceneQuery, ViewerContext};
 
+use super::SpatialNavigationMode;
 use crate::{
-    mesh_loader::LoadedMesh, space_view_highlights::SpaceViewHighlights,
-    transform_cache::TransformCache,
+    mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D, transform_cache::TransformCache,
 };
-
-use super::{SpaceCamera3D, SpatialNavigationMode};
 
 mod picking;
 mod primitives;
@@ -96,7 +95,7 @@ pub struct SceneSpatial {
     num_logged_3d_objects: usize,
 
     /// All space cameras in this scene.
-    /// TODO(andreas): Does this belong to [`SceneSpatialUiData`]?
+    /// TODO(andreas): Does this belong to `SceneSpatialUiData`?
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
@@ -226,7 +225,7 @@ impl SceneSpatial {
     }
 
     /// Loads all 3D objects into the scene according to the given query.
-    pub(crate) fn load(
+    pub fn load(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,

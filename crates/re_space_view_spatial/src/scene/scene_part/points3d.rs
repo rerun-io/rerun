@@ -3,20 +3,20 @@ use re_components::{
 };
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::{
-    space_view_highlights::{SpaceViewHighlights, SpaceViewOutlineMasks},
     transform_cache::TransformCache,
-    view_spatial::{
+    {
+        scene::UiLabelTarget,
         scene::{
             scene_part::{
                 instance_key_to_picking_id, instance_path_hash_for_picking,
                 process_annotations_and_keypoints, process_colors, process_radii,
             },
-            EntityDepthOffsets,
+            EntityDepthOffsets, SceneSpatial, UiLabel,
         },
-        SceneSpatial, UiLabel, UiLabelTarget,
     },
 };
 

@@ -1,10 +1,10 @@
 [package]
 authors.workspace = true
-description = "The central viewport panel of the Rerun viewer."
+description = "Space Views that show entities in a 2D or 3D spatial relationship."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
-name = "re_viewport"
+name = "re_space_view_spatial"
 publish = true
 readme = "README.md"
 repository.workspace = true
@@ -20,45 +20,26 @@ re_arrow_store.workspace = true
 re_components = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_data_store = { workspace = true, features = ["serde"] }
 re_data_ui.workspace = true
+re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
-re_renderer = { workspace = true, default-features = false, features = [
-  "arrow",
-  "import-gltf",
-  "import-obj",
-  "serde",
-] }
-re_tensor_ops.workspace = true
+re_renderer.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_space_view.workspace = true
 
-# TODO(andreas): Temporary until traitification of spatial view is done.
-re_space_view_spatial.workspace = true
-
 ahash.workspace = true
 anyhow.workspace = true
-arrow2.workspace = true
-arrow2_convert.workspace = true
 bytemuck.workspace = true
-eframe = { workspace = true, default-features = false, features = [
-  "persistence",
-] }
-egui_tiles.workspace = true
 egui.workspace = true
-enumset.workspace = true
+eframe.workspace = true
 glam.workspace = true
-half.workspace = true
-image = { workspace = true, default-features = false, features = [
-  "jpeg",
-  "png",
-] }
 itertools.workspace = true
-ndarray.workspace = true
-nohash-hasher = "0.2"
-serde = "1.0"
-thiserror.workspace = true
+macaw = { workspace = true, features = ["with_serde"] }
+nohash-hasher.workspace = true
+serde = "1"
+smallvec = { workspace = true, features = ["serde"] }
 wgpu.workspace = true

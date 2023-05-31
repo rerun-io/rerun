@@ -7,18 +7,18 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
+use re_space_view::{DataBlueprintGroup, SpaceViewHighlights};
 use re_viewer_context::{
     DataBlueprintGroupHandle, EmptySpaceViewState, Item, SpaceViewClassName,
     SpaceViewClassRegistry, SpaceViewId, ViewerContext,
 };
 
 use crate::{
-    data_blueprint::DataBlueprintGroup,
     space_info::SpaceInfoCollection,
     space_view::{SpaceViewBlueprint, SpaceViewState},
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::{all_possible_space_views, default_created_space_views},
-    space_view_highlights::{highlights_for_space_view, SpaceViewHighlights},
+    space_view_highlights::highlights_for_space_view,
     view_category::ViewCategory,
 };
 

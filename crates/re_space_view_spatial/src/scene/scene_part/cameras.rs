@@ -4,17 +4,17 @@ use re_components::{
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
+use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::TimeControl;
 use re_viewer_context::{SceneQuery, ViewerContext};
 
+use super::{instance_path_hash_for_picking, ScenePart};
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    space_view_highlights::{SpaceViewHighlights, SpaceViewOutlineMasks},
+    scene::{EntityDepthOffsets, SceneSpatial},
+    space_camera_3d::SpaceCamera3D,
     transform_cache::TransformCache,
-    view_spatial::{scene::EntityDepthOffsets, SceneSpatial, SpaceCamera3D},
 };
-
-use super::{instance_path_hash_for_picking, ScenePart};
 
 /// Determine the view coordinates (i.e.) the axis semantics.
 ///

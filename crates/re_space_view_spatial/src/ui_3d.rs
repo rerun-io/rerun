@@ -10,25 +10,26 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Size,
 };
-use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
-
-use crate::{
-    space_view_controls::{
+use re_space_view::{
+    controls::{
         DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
         ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
     },
-    space_view_highlights::SpaceViewHighlights,
-    view_spatial::{
-        ui::{create_labels, outline_config, picking, screenshot_context_menu},
-        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-        SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
-    },
+    SpaceViewHighlights,
+};
+use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
+
+use crate::{
+    scene::SceneSpatial,
+    space_camera_3d::SpaceCamera3D,
+    ui::{create_labels, outline_config, picking, screenshot_context_menu, ViewSpatialState},
+    ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+    SpatialNavigationMode,
 };
 
 use super::{
     eye::{Eye, OrbitEye},
     scene::SceneSpatialPrimitives,
-    ViewSpatialState,
 };
 
 // ---

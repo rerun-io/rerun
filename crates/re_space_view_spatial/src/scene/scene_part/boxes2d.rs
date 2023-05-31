@@ -3,15 +3,15 @@ use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
+use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    space_view_highlights::SpaceViewHighlights,
-    transform_cache::TransformCache,
-    view_spatial::{
-        scene::{scene_part::instance_path_hash_for_picking, EntityDepthOffsets},
-        SceneSpatial, UiLabel, UiLabelTarget,
+    scene::UiLabelTarget,
+    scene::{
+        scene_part::instance_path_hash_for_picking, EntityDepthOffsets, SceneSpatial, UiLabel,
     },
+    transform_cache::TransformCache,
 };
 
 use super::{instance_key_to_picking_id, ScenePart};

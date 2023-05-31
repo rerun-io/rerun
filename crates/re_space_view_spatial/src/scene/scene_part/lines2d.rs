@@ -2,12 +2,12 @@ use re_components::{ColorRGBA, Component as _, InstanceKey, LineStrip2D, Radius}
 use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
+use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    space_view_highlights::{SpaceViewHighlights, SpaceViewOutlineMasks},
+    scene::{EntityDepthOffsets, SceneSpatial},
     transform_cache::TransformCache,
-    view_spatial::{scene::EntityDepthOffsets, SceneSpatial},
 };
 
 use super::{instance_key_to_picking_id, ScenePart};

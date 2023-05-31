@@ -119,9 +119,11 @@ cargo publish $FLAGS -p re_web_viewer_server
 cargo publish $FLAGS -p re_viewer_context
 cargo publish $FLAGS -p re_data_ui
 cargo publish $FLAGS -p re_time_panel
+cargo publish $FLAGS -p re_space_view
 cargo publish $FLAGS -p re_viewport
 cargo publish $FLAGS -p re_space_view_text
 cargo publish $FLAGS -p re_space_view_text_box
+cargo publish $FLAGS -p re_space_view_spatial
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun

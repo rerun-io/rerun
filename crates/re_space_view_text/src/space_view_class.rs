@@ -51,10 +51,6 @@ impl SpaceViewClassImpl for TextSpaceView {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
-    fn new_scene(&self) -> Self::SceneElementTuple {
-        (SceneText::default(),)
-    }
-
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,

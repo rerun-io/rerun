@@ -25,17 +25,16 @@ pub(crate) use meshes::MeshPart;
 
 pub(crate) use points2d::Points2DPart;
 pub(crate) use points3d::Points3DPart;
-use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 
-use super::{EntityDepthOffsets, SceneSpatial};
-use crate::{
-    space_view_highlights::SpaceViewHighlights, transform_cache::TransformCache,
-    view_spatial::scene::Keypoints,
-};
+use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
+use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, SceneQuery, ViewerContext,
 };
+
+use super::{EntityDepthOffsets, SceneSpatial};
+use crate::{scene::Keypoints, transform_cache::TransformCache};
 
 pub trait ScenePart {
     fn load(
