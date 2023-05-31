@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   pr-link-docs:
-    name: Create HTML summary for PR
+    name: Link to docs preview in PR
 
     permissions:
       contents: "read"
