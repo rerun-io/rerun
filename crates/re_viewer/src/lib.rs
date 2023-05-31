@@ -9,6 +9,7 @@ pub mod env_vars;
 #[cfg(not(target_arch = "wasm32"))]
 mod profiler;
 mod remote_viewer_app;
+mod screenshotter;
 mod ui;
 mod viewer_analytics;
 

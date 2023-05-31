@@ -60,6 +60,7 @@ pub struct App {
     startup_options: StartupOptions,
     ram_limit_warner: re_memory::RamLimitWarner,
     re_ui: re_ui::ReUi,
+    screenshotter: crate::screenshotter::Screenshotter,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
@@ -151,6 +152,8 @@ impl App {
             startup_options,
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
+            screenshotter: Default::default(),
+
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
@@ -392,7 +395,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             Command::ScreenshotWholeApp => {
-                _frame.request_screenshot();
+                self.screenshotter.request_screenshot();
             }
         }
     }
@@ -511,6 +514,8 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
+
+        self.screenshotter.update(egui_ctx, frame);
 
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit
@@ -711,9 +716,7 @@ impl eframe::App for App {
     #[cfg(not(target_arch = "wasm32"))]
     fn post_rendering(&mut self, _window_size: [u32; 2], frame: &eframe::Frame) {
         if let Some(screenshot) = frame.screenshot() {
-            re_viewer_context::Clipboard::with(|cb| {
-                cb.set_image(screenshot.size, bytemuck::cast_slice(&screenshot.pixels));
-            });
+            self.screenshotter.save(&screenshot);
         }
     }
 }
@@ -1251,7 +1254,10 @@ fn top_panel(
             frame.info().window_info.fullscreen
         }
     };
-    let top_bar_style = app.re_ui.top_bar_style(native_pixels_per_point, fullscreen);
+    let style_like_web = app.screenshotter.is_screenshotting();
+    let top_bar_style =
+        app.re_ui
+            .top_bar_style(native_pixels_per_point, fullscreen, style_like_web);
 
     egui::TopBottomPanel::top("top_bar")
         .frame(app.re_ui.top_panel_frame())
