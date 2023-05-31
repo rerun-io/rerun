@@ -81,3 +81,11 @@ jobs:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
+    
+  link-docs:
+    name: 'Link Docs'
+    uses: ./.github/workflows/reusable_pr_link_docs.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
