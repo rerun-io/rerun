@@ -11,7 +11,7 @@ use crate::{
     {
         scene::UiLabelTarget,
         scene::{
-            scene_part::{
+            elements::{
                 instance_key_to_picking_id, instance_path_hash_for_picking,
                 process_annotations_and_keypoints, process_colors, process_radii,
             },

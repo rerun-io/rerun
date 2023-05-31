@@ -6,15 +6,12 @@ use re_renderer::Size;
 use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
+use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
 use crate::{
     scene::UiLabelTarget,
-    scene::{
-        scene_part::instance_path_hash_for_picking, EntityDepthOffsets, SceneSpatial, UiLabel,
-    },
+    scene::{EntityDepthOffsets, SceneSpatial, UiLabel},
     transform_cache::TransformCache,
 };
-
-use super::{instance_key_to_picking_id, ScenePart};
 
 pub struct Boxes2DPart;
 

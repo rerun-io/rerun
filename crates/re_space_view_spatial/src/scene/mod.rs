@@ -18,13 +18,13 @@ use crate::{
     mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D, transform_cache::TransformCache,
 };
 
+mod elements;
 mod picking;
 mod primitives;
-mod scene_part;
 
 pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
-use scene_part::ScenePart;
+use elements::ScenePart;
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
@@ -237,21 +237,21 @@ impl SceneSpatial {
         self.annotation_map.load(ctx, query);
 
         let parts: Vec<&dyn ScenePart> = vec![
-            &scene_part::Points3DPart { max_labels: 10 },
+            &elements::Points3DPart { max_labels: 10 },
             // --
-            &scene_part::Boxes3DPart,
-            &scene_part::Lines3DPart,
-            &scene_part::Arrows3DPart,
-            &scene_part::MeshPart,
-            &scene_part::ImagesPart,
+            &elements::Boxes3DPart,
+            &elements::Lines3DPart,
+            &elements::Arrows3DPart,
+            &elements::MeshPart,
+            &elements::ImagesPart,
             // --
-            &scene_part::Boxes2DPart,
+            &elements::Boxes2DPart,
             // --
             // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
-            &scene_part::Lines2DPart,
-            &scene_part::Points2DPart { max_labels: 10 },
+            &elements::Lines2DPart,
+            &elements::Points2DPart { max_labels: 10 },
             // ---
-            &scene_part::CamerasPart,
+            &elements::CamerasPart,
         ];
 
         let depth_offsets = Self::determine_depth_offsets(ctx, query);
