@@ -79,7 +79,7 @@ impl SceneSpatialPrimitives {
     }
 
     pub fn recalculate_bounding_box(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             bounding_box,
@@ -125,7 +125,7 @@ impl SceneSpatialPrimitives {
     }
 
     pub fn mesh_instances(&self) -> Vec<MeshInstance> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         self.meshes
             .iter()
             .flat_map(|mesh| {

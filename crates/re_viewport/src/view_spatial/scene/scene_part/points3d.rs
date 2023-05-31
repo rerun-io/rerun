@@ -71,7 +71,7 @@ impl Points3DPart {
         world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), QueryError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         scene.num_logged_3d_objects += 1;
 
@@ -89,7 +89,7 @@ impl Points3DPart {
                 process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
-                crate::profile_scope!("instance_hashes");
+                re_tracing::profile_scope!("instance_hashes");
                 entity_view
                     .iter_instance_keys()
                     .map(|instance_key| {
@@ -122,7 +122,7 @@ impl Points3DPart {
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let point_positions = {
-                crate::profile_scope!("collect_points");
+                re_tracing::profile_scope!("collect_points");
                 entity_view
                     .iter_primary()?
                     .filter_map(|pt| pt.map(glam::Vec3::from))
@@ -145,7 +145,7 @@ impl Points3DPart {
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
-                crate::profile_scope!("marking additional highlight points");
+                re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = entity_view
@@ -178,7 +178,7 @@ impl ScenePart for Points3DPart {
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {
-        crate::profile_scope!("Points3DPart");
+        re_tracing::profile_scope!("Points3DPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {

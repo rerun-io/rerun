@@ -66,7 +66,7 @@ impl ComponentUiRegistry {
         component: &ComponentWithInstances,
         instance_key: &InstanceKey,
     ) {
-        crate::profile_function!(component.name().full_name());
+        re_tracing::profile_function!(component.name().full_name());
 
         if component.name() == InstanceKey::name() {
             // The user wants to show a ui for the `InstanceKey` component - well, that's easy:

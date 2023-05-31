@@ -156,7 +156,7 @@ impl SpaceViewBlueprint {
         ui: &mut egui::Ui,
     ) {
         if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
-            crate::profile_scope!("selection_ui: ", space_view_class.name());
+            re_tracing::profile_scope!("selection_ui: ", space_view_class.name());
             space_view_class.selection_ui(ctx, ui, view_state.state.as_mut());
         } else {
             // Legacy handling
@@ -199,7 +199,7 @@ impl SpaceViewBlueprint {
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
         if is_zero_sized_viewport {
@@ -216,13 +216,13 @@ impl SpaceViewBlueprint {
         if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
             let mut scene = space_view_class.new_scene();
             {
-                crate::profile_scope!("scene populate: ", space_view_class.name());
+                re_tracing::profile_scope!("scene populate: ", space_view_class.name());
                 scene.populate(ctx, &query, view_state.state.as_ref());
             }
             // TODO(andreas): Pass scene to renderer.
             // TODO(andreas): Setup re_renderer view.
             {
-                crate::profile_scope!("ui: ", space_view_class.name());
+                re_tracing::profile_scope!("ui: ", space_view_class.name());
                 space_view_class.ui(ctx, ui, view_state.state.as_mut(), scene);
             }
         } else {
@@ -280,7 +280,7 @@ impl SpaceViewBlueprint {
     ///
     /// Ignores all entities that aren't part of the blueprint.
     pub fn remove_entity_subtree(&mut self, tree: &EntityTree) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         tree.visit_children_recursively(&mut |path: &EntityPath| {
             self.data_blueprint.remove_entity(path);
@@ -297,7 +297,7 @@ impl SpaceViewBlueprint {
         spaces_info: &SpaceInfoCollection,
         log_db: &re_data_store::LogDb,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {

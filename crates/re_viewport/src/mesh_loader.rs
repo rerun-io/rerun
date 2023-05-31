@@ -34,7 +34,7 @@ impl LoadedMesh {
         bytes: &[u8],
         render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mesh_instances = match format {
             MeshFormat::Glb | MeshFormat::Gltf => {
@@ -62,7 +62,7 @@ impl LoadedMesh {
         encoded_mesh: &EncodedMesh3D,
         render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         let EncodedMesh3D {
             mesh_id: _,
             format,
@@ -90,7 +90,7 @@ impl LoadedMesh {
         raw_mesh: &RawMesh3D,
         render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // TODO(cmc): Having to do all of these data conversions, copies and allocations doesn't
         // really make sense when you consider that both the component and the renderer are native

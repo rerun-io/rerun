@@ -365,7 +365,7 @@ impl DataTable {
 
     /// Builds a new `DataTable` from an iterable of [`DataRow`]s.
     pub fn from_rows(table_id: TableId, rows: impl IntoIterator<Item = DataRow>) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let rows = rows.into_iter();
 
@@ -578,7 +578,7 @@ impl DataTable {
     ///   They are optional, potentially sparse, and never deserialized on the server-side (not by
     ///   the storage systems, at least).
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut schema = Schema::default();
         let mut columns = Vec::new();
@@ -609,7 +609,7 @@ impl DataTable {
 
     /// Serializes all time columns into an arrow payload and schema.
     fn serialize_time_columns(&self) -> (Schema, Vec<Box<dyn Array>>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         fn serialize_time_column(
             timeline: Timeline,
@@ -650,7 +650,7 @@ impl DataTable {
     /// They are always present, always dense, and always deserialized upon reception by the
     /// server.
     fn serialize_control_columns(&self) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             table_id,
@@ -692,7 +692,7 @@ impl DataTable {
         name: &str,
         values: &[C],
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         /// Transforms an array of unit values into a list of unit arrays.
         ///
@@ -731,7 +731,7 @@ impl DataTable {
         values: &[T],
         datatype: Option<DataType>,
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let data = PrimitiveArray::from_slice(values);
 
@@ -755,7 +755,7 @@ impl DataTable {
     /// They are optional, potentially sparse, and never deserialized on the server-side (not by
     /// the storage systems, at least).
     fn serialize_data_columns(&self) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             table_id: _,
@@ -789,7 +789,7 @@ impl DataTable {
         name: &str,
         column: &[Option<DataCell>],
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         /// Create a list-array out of a flattened array of cell values.
         ///
@@ -875,7 +875,7 @@ impl DataTable {
         schema: &Schema,
         chunk: &Chunk<Box<dyn Array>>,
     ) -> DataTableResult<Self> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // --- Time ---
 
@@ -964,7 +964,7 @@ impl DataTable {
         name: &str,
         column: &dyn Array,
     ) -> DataTableResult<(Timeline, TimeOptVec)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // See also [`Timeline::datatype`]
         let timeline = match column.data_type().to_logical_type() {
@@ -993,7 +993,7 @@ impl DataTable {
         component: ComponentName,
         column: &dyn Array,
     ) -> DataTableResult<DataCellColumn> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         Ok(DataCellColumn(
             column
                 .as_any()

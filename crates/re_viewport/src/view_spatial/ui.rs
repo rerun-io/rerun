@@ -143,7 +143,7 @@ impl ViewSpatialState {
         ctx: &mut ViewerContext<'_>,
         data_blueprint: &mut DataBlueprintTree,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let query = ctx.current_query();
 
@@ -527,7 +527,7 @@ pub fn create_labels(
     highlights: &SpaceViewHighlights,
     nav_mode: SpatialNavigationMode,
 ) -> Vec<egui::Shape> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
 
@@ -677,7 +677,7 @@ pub fn picking(
     space: &EntityPath,
     entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let Some(pointer_pos_ui) = response.hover_pos() else {
         state.previous_picking_result = None;

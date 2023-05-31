@@ -57,7 +57,7 @@ pub struct Viewport {
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
     pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut viewport = Self::default();
         for space_view in default_created_space_views(ctx, spaces_info) {
@@ -105,7 +105,7 @@ impl Viewport {
 
     /// Show the blueprint panel tree view.
     pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         egui::ScrollArea::both()
             .auto_shrink([true, false])
@@ -367,7 +367,7 @@ impl Viewport {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(ctx, spaces_info);
@@ -686,7 +686,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         _tile_id: egui_tiles::TileId,
         space_view_id: &mut SpaceViewId,
     ) -> egui_tiles::UiResponse {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let highlights =
             highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);

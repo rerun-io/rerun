@@ -109,7 +109,7 @@ impl ScenePart for Boxes2DPart {
         highlights: &SpaceViewHighlights,
         depth_offsets: &EntityDepthOffsets,
     ) {
-        crate::profile_scope!("Boxes2DPart");
+        re_tracing::profile_scope!("Boxes2DPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {

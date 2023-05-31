@@ -71,7 +71,7 @@ pub struct Mesh {
 
 impl Mesh {
     pub fn sanity_check(&self) -> Result<(), MeshError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let num_pos = self.vertex_positions.len();
         let num_color = self.vertex_colors.len();

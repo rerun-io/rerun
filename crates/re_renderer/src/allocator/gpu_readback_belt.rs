@@ -247,7 +247,7 @@ impl GpuReadbackBelt {
         identifier: GpuReadbackIdentifier,
         user_data: GpuReadbackUserDataStorage,
     ) -> GpuReadbackBuffer {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         debug_assert!(size_in_bytes > 0, "Cannot allocate zero-sized buffer");
 
@@ -302,7 +302,7 @@ impl GpuReadbackBelt {
     ///
     /// This should be called after the command encoder(s) used in [`GpuReadbackBuffer`] copy operations are submitted.
     pub fn after_queue_submit(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         for chunk in self.active_chunks.drain(..) {
             let sender = self.sender.clone();
             chunk.buffer.clone().slice(..chunk.unused_offset).map_async(
@@ -366,7 +366,7 @@ impl GpuReadbackBelt {
         identifier: GpuReadbackIdentifier,
         callback: impl FnOnce(&[u8], Box<UserDataType>),
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.receive_chunks();
 

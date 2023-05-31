@@ -30,7 +30,7 @@ impl Blueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
 

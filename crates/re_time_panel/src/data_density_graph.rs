@@ -193,7 +193,7 @@ impl DensityGraph {
         full_color: Color32,
         hovered_x_range: RangeInclusive<f32>,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let (min_y, max_y) = (*y_range.start(), *y_range.end());
         let center_y = (min_y + max_y) / 2.0;
@@ -281,7 +281,7 @@ impl DensityGraph {
 
         {
             // I also tried writing this as `flat_map + collect`, but it got much slower in debug builds.
-            crate::profile_scope!("triangles");
+            re_tracing::profile_scope!("triangles");
             mesh.indices.reserve(6 * 3 * (self.buckets.len() - 1));
             for i in 1..self.buckets.len() {
                 let i = i as u32;
@@ -323,7 +323,7 @@ impl DensityGraph {
 
 /// Blur the input slightly.
 fn smooth(density: &[f32]) -> Vec<f32> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     fn kernel(x: f32) -> f32 {
         (0.25 * std::f32::consts::TAU * x).cos()
@@ -372,7 +372,7 @@ pub fn data_density_graph_ui(
     time_ranges_ui: &TimeRangesUi,
     item: Item,
 ) {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let interact_radius_sq = ui.style().interaction.resize_grab_radius_side.powi(2);
@@ -437,7 +437,7 @@ pub fn data_density_graph_ui(
         let time_chunk_size =
             (chunk_size_in_ui_points / time_ranges_ui.points_per_time).round() as _;
         let ranges: Vec<_> = {
-            crate::profile_scope!("time_histogram.range");
+            re_tracing::profile_scope!("time_histogram.range");
             time_histogram
                 .range(
                     visible_time_range.min.as_i64()..=visible_time_range.max.as_i64(),
@@ -446,7 +446,7 @@ pub fn data_density_graph_ui(
                 .collect()
         };
 
-        crate::profile_scope!("add_data_point");
+        re_tracing::profile_scope!("add_data_point");
         for (time_range, num_messages_at_time) in ranges {
             add_data_point(
                 TimeRange::new(time_range.min.into(), time_range.max.into()),

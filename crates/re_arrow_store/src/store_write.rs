@@ -76,7 +76,7 @@ impl DataStore {
             return Ok(());
         }
 
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Update type registry and do typechecking if enabled
         if self.config.enable_typecheck {
@@ -199,7 +199,7 @@ impl DataStore {
     /// transparently handles caching.
     // TODO(#1777): shared slices for auto generated keys
     fn generate_cluster_cell(&mut self, num_instances: u32) -> DataCell {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         if let Some(cell) = self.cluster_cell_cache.get(&num_instances) {
             // Cache hit!
@@ -277,7 +277,7 @@ impl IndexedTable {
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let components: IntSet<_> = row.component_names().collect();
 
@@ -415,7 +415,7 @@ impl IndexedBucket {
         row: &DataRow,
         components: &IntSet<ComponentName>,
     ) -> u64 {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut size_bytes_added = 0u64;
         let num_rows = self.num_rows() as usize;
@@ -561,7 +561,7 @@ impl IndexedBucket {
             return None;
         }
 
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let timeline = *timeline;
 
@@ -585,7 +585,7 @@ impl IndexedBucket {
             let split_idx = find_split_index(col_time1).expect("must be splittable at this point");
 
             let (time_range2, col_time2, col_insert_id2, col_row_id2, col_num_instances2) = {
-                crate::profile_scope!("control");
+                re_tracing::profile_scope!("control");
                 (
                     // this updates `time_range1` in-place!
                     split_time_range_off(split_idx, col_time1, time_range1),
@@ -602,7 +602,7 @@ impl IndexedBucket {
 
             // this updates `columns1` in-place!
             let columns2: IntMap<_, _> = {
-                crate::profile_scope!("data");
+                re_tracing::profile_scope!("data");
                 columns1
                     .iter_mut()
                     .map(|(name, column1)| {
@@ -685,7 +685,7 @@ fn find_split_index(times: &[i64]) -> Option<usize> {
         return None; // early exit: unsplittable
     }
 
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // This can never be lesser than 1 as we never split buckets smaller than 2 entries.
     let halfway_idx = times.len() / 2;
@@ -793,7 +793,7 @@ impl PersistentIndexedTable {
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let num_rows = self.num_rows() as usize;
 

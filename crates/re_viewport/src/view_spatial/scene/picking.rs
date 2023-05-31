@@ -112,7 +112,7 @@ impl PickingContext {
         primitives: &SceneSpatialPrimitives,
         ui_data: &SceneSpatialUiData,
     ) -> PickingResult {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Gather picking results from different sources.
         let gpu_pick = picking_gpu(
@@ -167,7 +167,7 @@ fn picking_gpu(
     context: &PickingContext,
     previous_picking_result: &Option<PickingResult>,
 ) -> Option<PickingRayHit> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // Only look at newest available result, discard everything else.
     let mut gpu_picking_result = None;
@@ -243,7 +243,7 @@ fn picking_gpu(
 }
 
 fn picking_textured_rects(context: &PickingContext, images: &[Image]) -> Vec<PickingRayHit> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut hits = Vec::new();
 
@@ -291,7 +291,7 @@ fn picking_ui_rects(
     context: &PickingContext,
     ui_data: &SceneSpatialUiData,
 ) -> Option<PickingRayHit> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let egui_pos = egui::pos2(context.pointer_in_space2d.x, context.pointer_in_space2d.y);
     for (bbox, instance_hash) in &ui_data.pickable_ui_rects {

@@ -349,7 +349,7 @@ impl RectangleDrawData {
         ctx: &mut RenderContext,
         rectangles: &[TexturedRect],
     ) -> Result<Self, RectangleError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut renderers = ctx.renderers.write();
         let rectangle_renderer = renderers.get_or_create::<_, RectangleRenderer>(
@@ -485,7 +485,7 @@ impl Renderer for RectangleRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
@@ -654,7 +654,7 @@ impl Renderer for RectangleRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         if draw_data.instances.is_empty() {
             return Ok(());
         }

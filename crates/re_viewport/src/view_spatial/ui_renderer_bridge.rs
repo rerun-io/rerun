@@ -17,7 +17,7 @@ pub fn fill_view_builder(
     primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
 ) -> anyhow::Result<wgpu::CommandBuffer> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     view_builder
         .queue_draw(&DepthCloudDrawData::new(

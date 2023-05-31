@@ -30,7 +30,7 @@ pub struct SelectionHistory {
 impl SelectionHistory {
     /// Retains all elements that fulfil a certain condition.
     pub fn retain(&mut self, f: &impl Fn(&Item) -> bool) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut i = 0;
         self.stack.retain_mut(|selection| {

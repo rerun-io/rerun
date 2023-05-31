@@ -31,7 +31,7 @@ pub fn colormapped_texture(
     tensor_stats: &TensorStats,
     state: &ViewTensorState,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let range =
         range(tensor_stats).map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
@@ -67,7 +67,7 @@ fn texture_desc_from_tensor(
     slice_selection: &SliceSelection,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
     use wgpu::TextureFormat;
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let tensor = tensor.inner();
 
@@ -143,7 +143,7 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     format: wgpu::TextureFormat,
     caster: impl Fn(From) -> To,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     use ndarray::Dimension as _;
 
@@ -158,7 +158,7 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
         .expect("Mismatched length.");
 
     {
-        crate::profile_scope!("copy_from_slice");
+        re_tracing::profile_scope!("copy_from_slice");
         ndarray::Zip::from(pixels_view)
             .and(slice)
             .for_each(|pixel: &mut To, value: &From| {
@@ -166,7 +166,7 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
             });
     }
 
-    crate::profile_scope!("pod_collect_to_vec");
+    re_tracing::profile_scope!("pod_collect_to_vec");
     Ok(Texture2DCreationDesc {
         label: "tensor_slice".into(),
         data: bytemuck::pod_collect_to_vec(&pixels).into(),

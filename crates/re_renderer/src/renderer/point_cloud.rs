@@ -187,7 +187,7 @@ impl PointCloudDrawData {
         ctx: &mut RenderContext,
         mut builder: PointCloudBuilder,
     ) -> Result<Self, PointCloudDrawDataError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut renderers = ctx.renderers.write();
         let point_renderer = renderers.get_or_create::<_, PointCloudRenderer>(
@@ -295,7 +295,7 @@ impl PointCloudDrawData {
         );
 
         {
-            crate::profile_scope!("write_pos_size_texture");
+            re_tracing::profile_scope!("write_pos_size_texture");
 
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
                 &ctx.device,
@@ -553,7 +553,7 @@ impl Renderer for PointCloudRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let bind_group_layout_all_points = pools.bind_group_layouts.get_or_create(
             device,

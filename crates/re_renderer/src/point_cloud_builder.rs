@@ -170,7 +170,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
         // or potentially make `FixedSizedIterator` work correctly. This should be possible size the
         // underlying arrow structures are of known-size, but carries some complexity with the amount of
         // chaining, joining, filtering, etc. that happens along the way.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(
@@ -192,7 +192,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
         self.batch_mut().point_count += num_points as u32;
 
         {
-            crate::profile_scope!("positions");
+            re_tracing::profile_scope!("positions");
             let num_before = self.0.vertices.len();
             self.0.vertices.extend(
                 positions
@@ -211,7 +211,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             );
         }
         {
-            crate::profile_scope!("colors");
+            re_tracing::profile_scope!("colors");
             let num_written = self.0.color_buffer.extend(colors.take(num_points));
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
@@ -219,7 +219,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
                 .extend(std::iter::repeat(Color32::TRANSPARENT).take(num_points - num_written));
         }
         {
-            crate::profile_scope!("picking_instance_ids");
+            re_tracing::profile_scope!("picking_instance_ids");
             let num_written = self
                 .0
                 .picking_instance_ids_buffer

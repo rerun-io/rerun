@@ -291,7 +291,7 @@ pub fn view_3d(
     highlights: &SpaceViewHighlights,
     entity_properties: &EntityPropertyMap,
 ) {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());

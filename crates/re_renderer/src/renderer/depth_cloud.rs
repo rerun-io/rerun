@@ -203,7 +203,7 @@ impl DepthCloudDrawData {
         ctx: &mut RenderContext,
         depth_clouds: &DepthClouds,
     ) -> Result<Self, DepthCloudDrawDataError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let DepthClouds {
             clouds: depth_clouds,
@@ -314,7 +314,7 @@ impl Renderer for DepthCloudRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
@@ -435,7 +435,7 @@ impl Renderer for DepthCloudRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         if draw_data.instances.is_empty() {
             return Ok(());
         }

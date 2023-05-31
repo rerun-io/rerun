@@ -56,25 +56,3 @@ pub use re_log_types::{TimeInt, TimeRange, TimeType, Timeline}; // for politenes
 pub mod external {
     pub use arrow2;
 }
-
-// ---
-
-/// Native-only profiling macro for puffin.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Native-only profiling macro for puffin.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
-}

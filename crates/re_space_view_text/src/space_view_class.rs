@@ -133,7 +133,7 @@ impl SpaceViewClassImpl for TextSpaceView {
             // - Otherwise, let the user scroll around freely!
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
-                crate::profile_scope!("TextEntryState - search scroll time");
+                re_tracing::profile_scope!("TextEntryState - search scroll time");
                 scene
                     .text_entries
                     .partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
@@ -143,7 +143,7 @@ impl SpaceViewClassImpl for TextSpaceView {
 
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
-                    crate::profile_scope!("render table");
+                    re_tracing::profile_scope!("render table");
                     table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
                 })
             });
@@ -195,7 +195,7 @@ impl ViewTextFilters {
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
     fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             col_timelines,
