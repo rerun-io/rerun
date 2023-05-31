@@ -1,7 +1,6 @@
-use std::any::Any;
-
-use crate::{SceneQuery, ViewerContext};
 use re_log_types::ComponentName;
+
+use crate::{Scene, ViewerContext};
 
 /// First element is the primary component, all others are optional.
 ///
@@ -85,49 +84,4 @@ pub trait SpaceViewState: std::any::Any {
 
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-}
-
-/// A scene is a collection of scene elements.
-pub struct Scene(pub Vec<Box<dyn SceneElement>>);
-
-impl Scene {
-    /// List of all archetypes this type of view supports.
-    pub fn supported_archetypes(&self) -> Vec<ArchetypeDefinition> {
-        self.0.iter().map(|e| e.archetype()).collect()
-    }
-
-    /// Populates the scene for a given query.
-    pub fn populate(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
-    ) {
-        // TODO(andreas): This is a great entry point for parallelization.
-        for element in &mut self.0 {
-            // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
-            element.populate(ctx, query, space_view_state);
-        }
-    }
-}
-
-/// Element of a scene derived from a single archetype query.
-pub trait SceneElement: Any {
-    /// The archetype queried by this scene element.
-    fn archetype(&self) -> ArchetypeDefinition;
-
-    /// Queries the data store and performs data conversions to make it ready for display.
-    ///
-    /// Musn't query any data outside of the archetype.
-    fn populate(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
-    );
-
-    /// Converts a box of itself a Box of [`std::any::Any`], which enables downcasting to concrete types.
-    fn into_any(self: Box<Self>) -> Box<dyn Any>;
-
-    // TODO(andreas): Add method for getting draw data for a re_renderer::ViewBuilder.
 }

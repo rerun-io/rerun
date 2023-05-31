@@ -1,5 +1,7 @@
 use egui::Label;
-use re_viewer_context::{SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext};
+use re_viewer_context::{
+    Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
+};
 
 use super::scene_element::SceneTextBox;
 
@@ -35,6 +37,7 @@ pub struct TextBoxSpaceView;
 impl SpaceViewClassImpl for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
     type SceneElementTuple = (SceneTextBox,);
+    type SceneContextTuple = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text Box".into()
@@ -70,9 +73,15 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene_elements: Self::SceneElementTuple,
+        scene: Scene,
     ) {
-        let scene = scene_elements.0;
+        let scene = match scene.elements.get::<SceneTextBox>() {
+            Ok(scene) => scene,
+            Err(err) => {
+                re_log::error_once!("Failed to get text box scene element {err}");
+                return;
+            }
+        };
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),

@@ -1,6 +1,6 @@
 use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext};
 
-use super::scene_element_list::SceneElementListConversionError;
+use super::scene::{SceneContextCollection, SceneElementCollection};
 
 /// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::SceneElement`] type.
 ///
@@ -11,11 +11,11 @@ pub trait SpaceViewClassImpl {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
 
+    /// A tuple of [`crate::SceneContext`] types that are supported by this space view class.
+    type SceneContextTuple: Into<SceneContextCollection> + Default + 'static;
+
     /// A tuple of [`crate::SceneElement`] types that are supported by this space view class.
-    type SceneElementTuple: Into<Scene>
-        + TryFrom<Scene, Error = SceneElementListConversionError>
-        + Default
-        + 'static;
+    type SceneElementTuple: Into<SceneElementCollection> + Default + 'static;
 
     /// Name of this space view class.
     ///
@@ -43,7 +43,7 @@ pub trait SpaceViewClassImpl {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene_elements: Self::SceneElementTuple,
+        scene: Scene,
     );
 }
 
@@ -65,7 +65,10 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
 
     #[inline]
     fn new_scene(&self) -> Scene {
-        T::SceneElementTuple::default().into()
+        Scene {
+            contexts: T::SceneContextTuple::default().into(),
+            elements: T::SceneElementTuple::default().into(),
+        }
     }
 
     #[inline]
@@ -91,15 +94,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         state: &mut dyn SpaceViewState,
         scene: Scene,
     ) {
-        let scene_elements = match T::SceneElementTuple::try_from(scene) {
-            Ok(scene_elements) => scene_elements,
-            Err(err) => {
-                re_log::error_once!("Incorrect scene type for space view class: {}", err);
-                return;
-            }
-        };
-
-        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene_elements));
+        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene));
     }
 }
 

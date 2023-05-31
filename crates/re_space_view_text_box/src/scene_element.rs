@@ -2,8 +2,10 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext,
+    ArchetypeDefinition, SceneContextCollection, SceneElementImpl, SceneQuery, ViewerContext,
 };
+
+use crate::space_view_class::TextBoxSpaceViewState;
 
 // ---
 
@@ -18,7 +20,9 @@ pub struct SceneTextBox {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl SceneElement for SceneTextBox {
+impl SceneElementImpl for SceneTextBox {
+    type State = TextBoxSpaceViewState;
+
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
     }
@@ -27,7 +31,8 @@ impl SceneElement for SceneTextBox {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _state: &dyn SpaceViewState,
+        _space_view_state: &Self::State,
+        _contexts: &SceneContextCollection,
     ) {
         let store = &ctx.store_db.entity_db.data_store;
 
@@ -51,9 +56,5 @@ impl SceneElement for SceneTextBox {
                 }
             }
         }
-    }
-
-    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
-        self
     }
 }

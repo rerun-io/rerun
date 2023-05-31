@@ -1,5 +1,7 @@
 use crate::{ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext};
 
+use super::scene::SceneContextCollection;
+
 /// Element of a scene derived from a single archetype query.
 pub trait SceneElementImpl {
     type State: SpaceViewState + Default + 'static;
@@ -15,10 +17,8 @@ pub trait SceneElementImpl {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         space_view_state: &Self::State,
+        contexts: &SceneContextCollection,
     );
-
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 impl<T: SceneElementImpl + 'static> SceneElement for T {
@@ -31,15 +31,20 @@ impl<T: SceneElementImpl + 'static> SceneElement for T {
         ctx: &mut ViewerContext<'_>,
         query: &crate::SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
+        contexts: &SceneContextCollection,
     ) {
         if let Some(state) = space_view_state.as_any().downcast_ref() {
-            self.populate(ctx, query, state);
+            self.populate(ctx, query, state, contexts);
         } else {
             re_log::error_once!("Incorrect type of space view state.");
         }
     }
 
-    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 }
