@@ -1,72 +1,56 @@
-use re_components::{Arrow3D, ColorRGBA, Component as _, InstanceKey, Label, Radius};
+use re_components::{ColorRGBA, Component as _, InstanceKey, LineStrip2D, Radius};
 use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_renderer::{renderer::LineStripFlags, Size};
+use re_renderer::Size;
+use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    space_view_highlights::SpaceViewHighlights,
     transform_cache::TransformCache,
-    view_spatial::{scene::EntityDepthOffsets, SceneSpatial},
+    {scene::EntityDepthOffsets, SceneSpatial},
 };
 
 use super::{instance_key_to_picking_id, ScenePart};
 
-pub struct Arrows3DPart;
+pub struct Lines2DPart;
 
-impl Arrows3DPart {
+impl Lines2DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        entity_view: &EntityView<Arrow3D>,
+        entity_view: &EntityView<LineStrip2D>,
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
-        highlights: &SpaceViewHighlights,
+        entity_highlight: &SpaceViewOutlineMasks,
+        depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
-        scene.num_logged_3d_objects += 1;
+        scene.num_logged_2d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
 
-        let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-
         let mut line_batch = scene
             .primitives
             .line_strips
-            .batch("arrows")
+            .batch("lines 2d")
+            .depth_offset(depth_offset)
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
-                       arrow: Arrow3D,
+                       strip: LineStrip2D,
                        color: Option<ColorRGBA>,
-                       radius: Option<Radius>,
-                       _label: Option<Label>| {
-            // TODO(andreas): support labels
-            // TODO(andreas): support class ids for arrows
+                       radius: Option<Radius>| {
+            // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();
+            let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
-            //let label = annotation_info.label(label);
 
-            let re_components::Arrow3D { origin, vector } = arrow;
-
-            let vector = glam::Vec3::from(vector);
-            let origin = glam::Vec3::from(origin);
-
-            let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
-            let end = origin + vector;
-
-            let segment = line_batch
-                .add_segment(origin, end)
-                .radius(radius)
+            let lines = line_batch
+                .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
-                .flags(
-                    LineStripFlags::FLAG_COLOR_GRADIENT
-                        | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                        | LineStripFlags::FLAG_CAP_START_ROUND
-                        | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
-                )
+                .radius(radius)
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view.num_instances(),
@@ -74,17 +58,17 @@ impl Arrows3DPart {
                 ));
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
-                segment.outline_mask_ids(*outline_mask_ids);
+                lines.outline_mask_ids(*outline_mask_ids);
             }
         };
 
-        entity_view.visit4(visitor)?;
+        entity_view.visit3(visitor)?;
 
         Ok(())
     }
 }
 
-impl ScenePart for Arrows3DPart {
+impl ScenePart for Lines2DPart {
     fn load(
         &self,
         scene: &mut SceneSpatial,
@@ -92,27 +76,27 @@ impl ScenePart for Arrows3DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
-        _depth_offsets: &EntityDepthOffsets,
+        depth_offsets: &EntityDepthOffsets,
     ) {
-        re_tracing::profile_scope!("Points2DPart");
+        re_tracing::profile_scope!("Lines2DPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
                 continue;
             };
+            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-            match query_primary_with_history::<Arrow3D, 5>(
+            match query_primary_with_history::<LineStrip2D, 4>(
                 &ctx.log_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
                 [
-                    Arrow3D::name(),
+                    LineStrip2D::name(),
                     InstanceKey::name(),
                     ColorRGBA::name(),
                     Radius::name(),
-                    Label::name(),
                 ],
             )
             .and_then(|entities| {
@@ -122,7 +106,8 @@ impl ScenePart for Arrows3DPart {
                         &entity,
                         ent_path,
                         world_from_obj,
-                        highlights,
+                        entity_highlight,
+                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.lines2d),
                     )?;
                 }
                 Ok(())

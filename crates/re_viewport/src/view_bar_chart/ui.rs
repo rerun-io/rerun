@@ -5,11 +5,10 @@ use egui::util::hash;
 use re_components::TensorData;
 use re_data_store::EntityPath;
 use re_log::warn_once;
-use re_viewer_context::{auto_color, ViewerContext};
-
-use crate::space_view_controls::{
+use re_space_view::controls::{
     HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
 };
+use re_viewer_context::{auto_color, ViewerContext};
 
 use super::SceneBarChart;
 

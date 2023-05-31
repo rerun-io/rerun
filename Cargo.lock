@@ -4240,17 +4240,68 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_space_view"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "ahash 0.8.3",
+ "egui",
+ "lazy_static",
+ "nohash-hasher",
+ "re_arrow_store",
+ "re_components",
+ "re_data_store",
+ "re_data_ui",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_context",
+ "serde",
+ "slotmap",
+ "smallvec",
+]
+
+[[package]]
 name = "re_space_view_spatial"
 version = "0.7.0-alpha.0"
 dependencies = [
+ "ahash 0.8.3",
+ "anyhow",
+ "bytemuck",
+ "eframe",
  "egui",
+ "egui-wgpu",
+ "glam",
+ "half 2.2.1",
+ "itertools",
+ "lazy_static",
+ "macaw",
+ "ndarray",
+ "nohash-hasher",
  "re_arrow_store",
  "re_components",
+ "re_data_store",
+ "re_data_ui",
+ "re_error",
+ "re_format",
  "re_log",
+ "re_log_types",
  "re_query",
+ "re_renderer",
+ "re_space_view",
+ "re_string_interner",
+ "re_tracing",
  "re_ui",
  "re_viewer_context",
+ "serde",
+ "slotmap",
+ "smallvec",
+ "thiserror",
+ "uuid",
  "vec1",
+ "wgpu",
 ]
 
 [[package]]
@@ -4483,6 +4534,8 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_renderer",
+ "re_space_view",
+ "re_space_view_spatial",
  "re_tensor_ops",
  "re_tracing",
  "re_ui",

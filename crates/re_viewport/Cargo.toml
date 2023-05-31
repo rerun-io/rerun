@@ -35,6 +35,10 @@ re_tensor_ops.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
+re_space_view.workspace = true
+
+# TODO(andreas): Temporary until traitification of spatial view is done.
+re_space_view_spatial.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true

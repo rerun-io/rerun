@@ -16,6 +16,7 @@ use egui::Vec2;
 use itertools::Itertools as _;
 
 use re_data_store::{EntityPath, EntityPathPart};
+use re_space_view_spatial::SpatialNavigationMode;
 use re_viewer_context::SpaceViewId;
 
 use super::{
@@ -71,12 +72,12 @@ pub(crate) fn tree_from_space_views(
                         let state_spatial = &space_view_state.state_spatial;
                         match *state_spatial.nav_mode.get() {
                             // This is the only thing where the aspect ratio makes complete sense.
-                            super::view_spatial::SpatialNavigationMode::TwoD => {
+                            SpatialNavigationMode::TwoD => {
                                 let size = state_spatial.scene_bbox_accum.size();
                                 Some(size.x / size.y)
                             }
                             // 3D scenes can be pretty flexible
-                            super::view_spatial::SpatialNavigationMode::ThreeD => None,
+                            SpatialNavigationMode::ThreeD => None,
                         }
                     } else {
                         None

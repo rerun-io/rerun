@@ -12,13 +12,13 @@ use super::{
     SpatialNavigationMode, ViewSpatialState,
 };
 use crate::{
-    space_view_controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER},
-    space_view_highlights::SpaceViewHighlights,
-    view_spatial::{
-        ui::outline_config,
-        ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-        SceneSpatial,
-    },
+    ui::outline_config,
+    ui_renderer_bridge::{fill_view_builder, ScreenBackground},
+    SceneSpatial,
+};
+use re_space_view::{
+    controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER},
+    SpaceViewHighlights,
 };
 
 // ---

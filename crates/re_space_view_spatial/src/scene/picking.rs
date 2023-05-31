@@ -6,9 +6,7 @@ use re_log_types::InstanceKey;
 use re_renderer::PickingLayerProcessor;
 
 use super::{Image, SceneSpatialPrimitives, SceneSpatialUiData};
-use crate::{
-    instance_hash_conversions::instance_path_hash_from_picking_layer_id, view_spatial::eye::Eye,
-};
+use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum PickingHitType {

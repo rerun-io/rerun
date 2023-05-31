@@ -1,56 +1,65 @@
-use re_components::{ColorRGBA, Component as _, InstanceKey, LineStrip2D, Radius};
+use re_components::{
+    Box3D, ClassId, ColorRGBA, Component as _, InstanceKey, Label, Quaternion, Radius, Vec3D,
+};
 use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
+use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    space_view_highlights::{SpaceViewHighlights, SpaceViewOutlineMasks},
     transform_cache::TransformCache,
-    view_spatial::{scene::EntityDepthOffsets, SceneSpatial},
+    {scene::EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
 };
 
-use super::{instance_key_to_picking_id, ScenePart};
+use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
 
-pub struct Lines2DPart;
+pub struct Boxes3DPart;
 
-impl Lines2DPart {
+impl Boxes3DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        entity_view: &EntityView<LineStrip2D>,
+        entity_view: &EntityView<Box3D>,
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
         entity_highlight: &SpaceViewOutlineMasks,
-        depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
-        scene.num_logged_2d_objects += 1;
+        scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
-
         let mut line_batch = scene
             .primitives
             .line_strips
-            .batch("lines 2d")
-            .depth_offset(depth_offset)
+            .batch("box 3d")
             .world_from_obj(world_from_obj)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
-                       strip: LineStrip2D,
+                       half_size: Box3D,
+                       position: Option<Vec3D>,
+                       rotation: Option<Quaternion>,
                        color: Option<ColorRGBA>,
-                       radius: Option<Radius>| {
-            // TODO(andreas): support class ids for lines
-            let annotation_info = annotations.class_description(None).annotation_info();
+                       radius: Option<Radius>,
+                       label: Option<Label>,
+                       class_id: Option<ClassId>| {
+            let class_description = annotations.class_description(class_id);
+            let annotation_info = class_description.annotation_info();
+
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            let lines = line_batch
-                .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
-                .color(color)
+            let scale = glam::Vec3::from(half_size) * 2.0;
+            let rot = rotation.map(glam::Quat::from).unwrap_or_default();
+            let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
+            let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
+
+            let box_lines = line_batch
+                .add_box_outline(transform)
                 .radius(radius)
+                .color(color)
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
                     entity_view.num_instances(),
@@ -58,17 +67,29 @@ impl Lines2DPart {
                 ));
 
             if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
-                lines.outline_mask_ids(*outline_mask_ids);
+                box_lines.outline_mask_ids(*outline_mask_ids);
+            }
+
+            if let Some(label) = annotation_info.label(label.as_ref().map(|s| &s.0)) {
+                scene.ui.labels.push(UiLabel {
+                    text: label,
+                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(tran)),
+                    color,
+                    labeled_instance: instance_path_hash_for_picking(
+                        ent_path,
+                        instance_key,
+                        entity_view.num_instances(),
+                        entity_highlight.any_selection_highlight,
+                    ),
+                });
             }
         };
 
-        entity_view.visit3(visitor)?;
-
-        Ok(())
+        entity_view.visit7(visitor)
     }
 }
 
-impl ScenePart for Lines2DPart {
+impl ScenePart for Boxes3DPart {
     fn load(
         &self,
         scene: &mut SceneSpatial,
@@ -76,9 +97,9 @@ impl ScenePart for Lines2DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
+        _depth_offsets: &EntityDepthOffsets,
     ) {
-        re_tracing::profile_scope!("Lines2DPart");
+        re_tracing::profile_scope!("Boxes3DPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
@@ -86,17 +107,21 @@ impl ScenePart for Lines2DPart {
             };
             let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-            match query_primary_with_history::<LineStrip2D, 4>(
+            match query_primary_with_history::<Box3D, 8>(
                 &ctx.log_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,
                 ent_path,
                 [
-                    LineStrip2D::name(),
+                    Box3D::name(),
                     InstanceKey::name(),
+                    Vec3D::name(),      // obb.position
+                    Quaternion::name(), // obb.rotation
                     ColorRGBA::name(),
-                    Radius::name(),
+                    Radius::name(), // stroke_width
+                    Label::name(),
+                    ClassId::name(),
                 ],
             )
             .and_then(|entities| {
@@ -107,7 +132,6 @@ impl ScenePart for Lines2DPart {
                         ent_path,
                         world_from_obj,
                         entity_highlight,
-                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.lines2d),
                     )?;
                 }
                 Ok(())

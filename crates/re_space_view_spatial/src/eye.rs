@@ -2,7 +2,7 @@ use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
-use crate::space_view_controls::{
+use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
     SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
 };

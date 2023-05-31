@@ -14,15 +14,15 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     Colormap, OutlineMaskPreference,
 };
+use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{
     gpu_bridge, Annotations, DefaultColor, SceneQuery, TensorDecodeCache, TensorStatsCache,
     ViewerContext,
 };
 
 use crate::{
-    space_view_highlights::{SpaceViewHighlights, SpaceViewOutlineMasks},
     transform_cache::TransformCache,
-    view_spatial::{scene::EntityDepthOffsets, Image, SceneSpatial},
+    {scene::EntityDepthOffsets, Image, SceneSpatial},
 };
 
 use super::ScenePart;
