@@ -1,6 +1,7 @@
 //! Helpers for tracing/spans/flamegraphs and such.
 
 pub mod reexports {
+    #[cfg(not(target_arch = "wasm32"))]
     pub use puffin;
 }
 
