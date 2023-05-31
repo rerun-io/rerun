@@ -4251,7 +4251,6 @@ name = "re_space_view_text_box"
 version = "0.7.0-alpha.0"
 dependencies = [
  "egui",
- "puffin",
  "re_arrow_store",
  "re_components",
  "re_log",
