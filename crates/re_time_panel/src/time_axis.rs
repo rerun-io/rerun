@@ -14,7 +14,7 @@ pub(crate) struct TimelineAxis {
 
 impl TimelineAxis {
     pub fn new(time_type: TimeType, times: &TimeHistogram) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         assert!(!times.is_empty());
         let gap_threshold = gap_size_heuristic(time_type, times);
         Self {
@@ -49,7 +49,7 @@ impl TimelineAxis {
 /// We also don't want to produce a timeline of only gaps.
 /// Finding a perfect heuristic is impossible, but we do our best!
 fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     assert!(!times.is_empty());
 
@@ -104,7 +104,7 @@ fn collect_candidate_gaps(
     min_gap_size: u64,
     max_collapses: usize,
 ) -> Vec<u64> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     // We want this to be fast, even when we have _a lot_ of times.
     // `TimeHistogram::range` has a granularity argument:
     // - if it make it too small, we get too many gaps and run very slow
@@ -128,7 +128,7 @@ fn collect_gaps_with_granularity(
     granularity: u64,
     min_gap_size: u64,
 ) -> Vec<u64> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     times
         .range(.., granularity)
         .tuple_windows()
@@ -139,7 +139,7 @@ fn collect_gaps_with_granularity(
 
 /// Collapse any gaps larger or equals to the given threshold.
 fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRange> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let mut it = times.range(.., gap_threshold);
     let first_range = it.next().unwrap().0;
     let mut ranges = vec1::vec1![TimeRange::new(

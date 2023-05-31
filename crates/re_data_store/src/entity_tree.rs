@@ -148,7 +148,7 @@ impl EntityTree {
         time_point: &TimePoint,
         component_path: &ComponentPath,
     ) -> Vec<(RowId, TimePoint)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let leaf =
             self.create_subtrees_recursively(component_path.entity_path.as_slice(), 0, time_point);
@@ -182,7 +182,7 @@ impl EntityTree {
         time_point: &TimePoint,
         path_op: &PathOp,
     ) -> Vec<ComponentPath> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let entity_path = path_op.entity_path();
 
@@ -299,22 +299,22 @@ impl EntityTree {
         } = self;
 
         for (timeline, histogram) in &mut prefix_times.0 {
-            crate::profile_scope!("prefix_times");
+            re_tracing::profile_scope!("prefix_times");
             if let Some(cutoff_time) = cutoff_times.get(timeline) {
                 histogram.remove(..cutoff_time.as_i64());
             }
         }
         {
-            crate::profile_scope!("nonrecursive_clears");
+            re_tracing::profile_scope!("nonrecursive_clears");
             nonrecursive_clears.retain(|row_id, _| !drop_row_ids.contains(row_id));
         }
         {
-            crate::profile_scope!("recursive_clears");
+            re_tracing::profile_scope!("recursive_clears");
             recursive_clears.retain(|row_id, _| !drop_row_ids.contains(row_id));
         }
 
         {
-            crate::profile_scope!("fields");
+            re_tracing::profile_scope!("fields");
             for columns in fields.values_mut() {
                 columns.purge(cutoff_times);
             }

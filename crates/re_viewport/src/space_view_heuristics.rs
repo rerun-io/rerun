@@ -7,7 +7,7 @@ use re_arrow_store::{DataStore, LatestAtQuery, Timeline};
 use re_components::{DisconnectedSpace, Pinhole, Tensor};
 use re_data_store::{ComponentName, EntityPath};
 use re_log_types::Component as _;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SpaceViewClassName, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -20,7 +20,7 @@ pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
@@ -37,10 +37,19 @@ pub fn all_possible_space_views(
             default_queried_entities_by_category(ctx, candidate_space_path, spaces_info)
                 .iter()
                 .map(|(category, entity_paths)| {
-                    SpaceViewBlueprint::new(*category, candidate_space_path, entity_paths)
+                    SpaceViewBlueprint::new(
+                        class_name_from_category(*category),
+                        *category,
+                        candidate_space_path,
+                        entity_paths,
+                    )
                 })
                 .collect::<Vec<_>>()
         })
+        // TODO(andreas): Hack to get in custom space views.
+        // .chain(ctx.space_view_class_registry.iter().map(|class| {
+        //     SpaceViewBlueprint::new(class.name(), ViewCategory::Text, &EntityPath::root(), &[])
+        // }))
         .collect()
 }
 
@@ -123,7 +132,7 @@ fn default_created_space_views_from_candidates(
     store: &re_arrow_store::DataStore,
     candidates: Vec<SpaceViewBlueprint>,
 ) -> Vec<SpaceViewBlueprint> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // All queries are "right most" on the log timeline.
     let query = LatestAtQuery::latest(Timeline::log_time());
@@ -160,6 +169,7 @@ fn default_created_space_views_from_candidates(
         if candidate.category == ViewCategory::Tensor {
             for entity_path in candidate.data_blueprint.entity_paths() {
                 let mut space_view = SpaceViewBlueprint::new(
+                    class_name_from_category(ViewCategory::Tensor),
                     ViewCategory::Tensor,
                     entity_path,
                     &[entity_path.clone()],
@@ -225,6 +235,7 @@ fn default_created_space_views_from_candidates(
                         .collect_vec();
 
                     let mut space_view = SpaceViewBlueprint::new(
+                        candidate.class,
                         candidate.category,
                         &candidate.space_path,
                         &entities,
@@ -287,7 +298,7 @@ pub fn default_queried_entities(
     spaces_info: &SpaceInfoCollection,
     category: ViewCategory,
 ) -> Vec<EntityPath> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let timeline = Timeline::log_time();
     let log_db = &ctx.log_db;
@@ -318,7 +329,7 @@ fn default_queried_entities_by_category(
     space_path: &EntityPath,
     space_info_collection: &SpaceInfoCollection,
 ) -> BTreeMap<ViewCategory, Vec<EntityPath>> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let timeline = Timeline::log_time();
     let log_db = &ctx.log_db;
@@ -344,4 +355,17 @@ fn default_queried_entities_by_category(
     );
 
     groups
+}
+
+// TODO(andreas): This is for transitioning to types only.
+fn class_name_from_category(category: ViewCategory) -> SpaceViewClassName {
+    match category {
+        ViewCategory::Text => "Text",
+        ViewCategory::TextBox => "Text Box",
+        ViewCategory::TimeSeries => "Time Series",
+        ViewCategory::BarChart => "Bar Chart",
+        ViewCategory::Spatial => "Spatial",
+        ViewCategory::Tensor => "Tensor",
+    }
+    .into()
 }

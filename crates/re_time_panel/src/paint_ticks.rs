@@ -100,7 +100,7 @@ fn paint_ticks(
     next_time_step: fn(i64) -> i64,
     format_tick: fn(i64) -> String,
 ) -> Vec<egui::Shape> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let color_from_alpha = |alpha: f32| -> Color32 {
         if dark_mode {

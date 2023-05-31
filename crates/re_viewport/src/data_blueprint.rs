@@ -181,7 +181,7 @@ impl DataBlueprintTree {
     ///
     /// Propagates any data blueprint changes along the tree.
     pub fn on_frame_start(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // NOTE: We could do this projection only when the entity properties changes
         // and/or when new entity paths are added, but such memoization would add complexity.
@@ -227,7 +227,7 @@ impl DataBlueprintTree {
         paths: impl Iterator<Item = &'a EntityPath>,
         base_path: &EntityPath,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut new_leaf_groups = Vec::new();
 
@@ -367,7 +367,7 @@ impl DataBlueprintTree {
 
     /// Removes a group and all its entities and subgroups from the blueprint tree
     pub fn remove_group(&mut self, group_handle: DataBlueprintGroupHandle) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Some(group) = self.groups.get(group_handle) else {
             return;

@@ -104,7 +104,7 @@ pub(crate) fn view_tensor(
     state: &mut ViewTensorState,
     tensor: &DecodedTensor,
 ) {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     state.tensor = Some(tensor.clone());
 
@@ -176,7 +176,7 @@ fn paint_tensor_slice(
     state: &mut ViewTensorState,
     tensor: &DecodedTensor,
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
@@ -278,7 +278,7 @@ fn colormap_preview_ui(
     ui: &mut egui::Ui,
     colormap: Colormap,
 ) -> egui::Response {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let desired_size = egui::vec2(128.0, 16.0);
     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());

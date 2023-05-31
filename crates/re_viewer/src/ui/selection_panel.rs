@@ -70,7 +70,7 @@ impl SelectionPanel {
                             ..Default::default()
                         }
                         .show(ui, |ui| {
-                            self.contents(viewport_state, ui, ctx, blueprint);
+                            self.contents(viewport_state, ctx, ui, blueprint);
                         });
                     });
             },
@@ -81,11 +81,11 @@ impl SelectionPanel {
     fn contents(
         &mut self,
         viewport_state: &mut ViewportState,
-        ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
         blueprint: &mut Blueprint,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let query = ctx.current_query();
 
@@ -255,12 +255,11 @@ fn blueprint_ui(
             ui.add_space(ui.spacing().item_spacing.y);
 
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
-                // TODO(jleibs): Is this the right place to create default state?
-                let space_view_state = viewport_state
-                    .space_view_states
-                    .entry(*space_view_id)
-                    .or_default();
-
+                let space_view_state = viewport_state.space_view_state(
+                    ctx.space_view_class_registry,
+                    space_view.id,
+                    space_view.class,
+                );
                 space_view.selection_ui(space_view_state, ctx, ui);
             }
         }
@@ -280,10 +279,11 @@ fn blueprint_ui(
                         });
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
-                        let space_view_state = viewport_state
-                            .space_view_states
-                            .entry(*space_view_id)
-                            .or_default();
+                        let space_view_state = viewport_state.space_view_state(
+                            ctx.space_view_class_registry,
+                            space_view.id,
+                            space_view.class,
+                        );
 
                         // splat - the whole entity
                         let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
@@ -309,10 +309,11 @@ fn blueprint_ui(
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
                 {
-                    let space_view_state = viewport_state
-                        .space_view_states
-                        .entry(*space_view_id)
-                        .or_default();
+                    let space_view_state = viewport_state.space_view_state(
+                        ctx.space_view_class_registry,
+                        space_view.id,
+                        space_view.class,
+                    );
 
                     entity_props_ui(
                         ctx,
@@ -478,7 +479,7 @@ fn depth_props_ui(
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) -> Option<()> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let query = ctx.current_query();
     let store = &ctx.log_db.entity_db.data_store;

@@ -5,7 +5,6 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
-use re_viewport::ViewportState;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -16,8 +15,10 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
-    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, ViewerContext,
+    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, ViewerContext,
 };
+use re_viewport::ViewportState;
 
 use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics};
 
@@ -92,6 +93,18 @@ pub struct App {
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
+
+    /// All known space view types.
+    space_view_class_registry: SpaceViewClassRegistry,
+}
+
+/// Add built-in space views to the registry.
+fn populate_space_view_class_registry_with_builtin(
+    space_view_class_registry: &mut SpaceViewClassRegistry,
+) -> Result<(), SpaceViewClassRegistryError> {
+    space_view_class_registry.add(re_space_view_text::TextSpaceView::default())?;
+    space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
+    Ok(())
 }
 
 impl App {
@@ -123,6 +136,16 @@ impl App {
         let mut analytics = ViewerAnalytics::new();
         analytics.on_viewer_started(&build_info, app_env);
 
+        let mut space_view_class_registry = SpaceViewClassRegistry::default();
+        if let Err(err) =
+            populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
+        {
+            re_log::error!(
+                "Failed to populate space view type registry with builtin space views: {}",
+                err
+            );
+        }
+
         Self {
             build_info,
             startup_options,
@@ -145,6 +168,8 @@ impl App {
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
 
+            space_view_class_registry,
+
             analytics,
         }
     }
@@ -152,6 +177,14 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: crate::Profiler) {
         self.state.profiler = profiler;
+    }
+
+    /// Adds a new space view class to the viewer.
+    pub fn add_space_view_class(
+        &mut self,
+        space_view_class: impl SpaceViewClass + 'static,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        self.space_view_class_registry.add(space_view_class)
     }
 
     /// Creates a promise with the specified name that will run `f` on a background
@@ -628,6 +661,7 @@ impl eframe::App for App {
                                 log_db,
                                 &self.re_ui,
                                 &self.component_ui_registry,
+                                &self.space_view_class_registry,
                                 &self.rx,
                             );
 
@@ -756,7 +790,7 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
 impl App {
     /// Show recent text log messages to the user as toast notifications.
     fn show_text_logs_as_notifications(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         while let Ok(re_log::LogMsg { level, target, msg }) = self.text_log_rx.try_recv() {
             let is_rerun_crate = target.starts_with("rerun") || target.starts_with("re_");
@@ -782,7 +816,7 @@ impl App {
     }
 
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let start = web_time::Instant::now();
 
@@ -849,7 +883,7 @@ impl App {
     }
 
     fn cleanup(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.log_dbs.retain(|_, log_db| !log_db.is_empty());
 
@@ -872,7 +906,7 @@ impl App {
     }
 
     fn purge_memory_if_needed(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         fn format_limit(limit: Option<i64>) -> String {
             if let Some(bytes) = limit {
@@ -900,7 +934,7 @@ impl App {
             }
 
             {
-                crate::profile_scope!("pruning");
+                re_tracing::profile_scope!("pruning");
                 if let Some(counted) = mem_use_before.counted {
                     re_log::debug!(
                         "Attempting to purge {:.1}% of used RAM ({})…",
@@ -1080,9 +1114,10 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
+        space_view_class_registry: &SpaceViewClassRegistry,
         rx: &Receiver<LogMsg>,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             app_options: options,
@@ -1108,6 +1143,7 @@ impl AppState {
         let mut ctx = ViewerContext {
             app_options: options,
             cache,
+            space_view_class_registry,
             component_ui_registry,
             log_db,
             rec_cfg,
@@ -1188,7 +1224,7 @@ fn top_panel(
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let native_pixels_per_point = frame.info().native_pixels_per_point;
     let fullscreen = {
@@ -1991,7 +2027,7 @@ fn save_database_to_file(
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
     use re_arrow_store::TimeRange;
 
-    crate::profile_scope!("dump_messages");
+    re_tracing::profile_scope!("dump_messages");
 
     let begin_rec_msg = log_db
         .recording_msg()
@@ -2028,7 +2064,7 @@ fn save_database_to_file(
         .chain(data_msgs);
 
     Ok(move || {
-        crate::profile_scope!("save_to_file");
+        re_tracing::profile_scope!("save_to_file");
 
         use anyhow::Context as _;
         let file = std::fs::File::create(path.as_path())
@@ -2043,7 +2079,7 @@ fn save_database_to_file(
 
 #[allow(unused_mut)]
 fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut decoder = re_log_encoding::decoder::Decoder::new(read)?;
 
@@ -2062,7 +2098,7 @@ fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 #[must_use]
 fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
     fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<LogDb> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
         load_rrd_to_log_db(file)

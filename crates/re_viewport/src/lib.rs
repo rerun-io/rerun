@@ -18,8 +18,6 @@ mod view_bar_chart;
 mod view_category;
 mod view_spatial;
 mod view_tensor;
-mod view_text;
-mod view_text_box;
 mod view_time_series;
 mod viewport;
 
@@ -70,26 +68,4 @@ pub mod item_ui {
             .on_hover_text("Space View");
         item_ui::cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
     }
-}
-
-// ---------------------------------------------------------------------------
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
 }

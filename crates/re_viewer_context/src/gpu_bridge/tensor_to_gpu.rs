@@ -35,7 +35,7 @@ pub fn tensor_to_gpu(
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
-    crate::profile_function!(format!(
+    re_tracing::profile_function!(format!(
         "meaning: {:?}, dtype: {}, shape: {:?}",
         tensor.meaning,
         tensor.dtype(),
@@ -398,7 +398,7 @@ fn cast_slice_to_cow<From: Pod>(slice: &[From]) -> Cow<'_, [u8]> {
 
 // wgpu doesn't support u64 textures, so we need to narrow to f32:
 fn narrow_u64_to_f32s(slice: &[u64]) -> Cow<'static, [u8]> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let bytes: Vec<u8> = slice
         .iter()
         .flat_map(|&f| (f as f32).to_le_bytes())
@@ -408,7 +408,7 @@ fn narrow_u64_to_f32s(slice: &[u64]) -> Cow<'static, [u8]> {
 
 // wgpu doesn't support i64 textures, so we need to narrow to f32:
 fn narrow_i64_to_f32s(slice: &[i64]) -> Cow<'static, [u8]> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let bytes: Vec<u8> = slice
         .iter()
         .flat_map(|&f| (f as f32).to_le_bytes())
@@ -418,7 +418,7 @@ fn narrow_i64_to_f32s(slice: &[i64]) -> Cow<'static, [u8]> {
 
 // wgpu doesn't support f64 textures, so we need to narrow to f32:
 fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let bytes: Vec<u8> = slice
         .iter()
         .flat_map(|&f| (f as f32).to_le_bytes())
@@ -427,7 +427,7 @@ fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
 }
 
 fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let padded: Vec<T> = pad_rgb_to_rgba(data, pad);
     let bytes: Vec<u8> = pod_collect_to_vec(&padded);
     bytes.into()
@@ -438,7 +438,7 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
     pad: f32,
     narrow: impl Fn(T) -> f32,
 ) -> Cow<'static, [u8]> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let floats: Vec<f32> = data
         .chunks_exact(3)

@@ -2,11 +2,9 @@ use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{SceneQuery, ViewerContext};
+use re_viewer_context::{ArchetypeDefinition, SceneElementImpl, SceneQuery, ViewerContext};
 
-use super::ui::ViewTextFilters;
-
-// ---
+use super::space_view_class::TextSpaceViewState;
 
 #[derive(Debug, Clone)]
 pub struct TextEntry {
@@ -31,16 +29,19 @@ pub struct SceneText {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl SceneText {
-    /// Loads all text components into the scene according to the given query.
-    pub(crate) fn load(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        filters: &ViewTextFilters,
-    ) {
-        crate::profile_function!();
+impl SceneElementImpl for SceneText {
+    type State = TextSpaceViewState;
 
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![re_components::TextEntry::name()]
+    }
+
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        state: &TextSpaceViewState,
+    ) {
         let store = &ctx.log_db.entity_db.data_store;
 
         for entity_path in query.entity_paths {
@@ -48,7 +49,7 @@ impl SceneText {
 
             // Early filtering: if we're not showing it the view, there isn't much point
             // in querying it to begin with... at least for now.
-            if !filters.is_entity_path_visible(ent_path) {
+            if !state.filters.is_entity_path_visible(ent_path) {
                 return;
             }
 
@@ -76,7 +77,7 @@ impl SceneText {
                         // Early filtering once more, see above.
                         let is_visible = level
                             .as_ref()
-                            .map_or(true, |lvl| filters.is_log_level_visible(lvl));
+                            .map_or(true, |lvl| state.filters.is_log_level_visible(lvl));
 
                         if is_visible {
                             self.text_entries.push(TextEntry {
@@ -97,5 +98,9 @@ impl SceneText {
                 }
             }
         }
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

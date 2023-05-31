@@ -1,19 +1,16 @@
 use std::collections::BTreeMap;
 
-use egui::Color32;
-
-use re_data_store::{EntityPath, Timeline};
 use re_data_ui::item_ui;
-use re_log_types::TimePoint;
-use re_viewer_context::{level_to_rich_text, ViewerContext};
+use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_viewer_context::{
+    level_to_rich_text, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
+};
 
-use super::{SceneText, TextEntry};
+use super::scene_element::{SceneText, TextEntry};
 
-// --- Main view ---
-
-#[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct ViewTextState {
+// TODO(andreas): This should be a blueprint component.
+#[derive(Clone, PartialEq, Eq, Default)]
+pub struct TextSpaceViewState {
     /// Keeps track of the latest time selection made by the user.
     ///
     /// We need this because we want the user to be able to manually scroll the
@@ -25,20 +22,55 @@ pub struct ViewTextState {
     monospace: bool,
 }
 
-impl ViewTextState {
-    pub fn selection_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
-        crate::profile_function!();
+impl SpaceViewState for TextSpaceViewState {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+#[derive(Default)]
+pub struct TextSpaceView;
+
+impl SpaceViewClassImpl for TextSpaceView {
+    type State = TextSpaceViewState;
+    type SceneElementTuple = (SceneText,);
+
+    fn name(&self) -> SpaceViewClassName {
+        "Text".into()
+    }
+
+    fn icon(&self) -> &'static re_ui::Icon {
+        &re_ui::icons::SPACE_VIEW_TEXTBOX
+    }
+
+    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+        "Shows text entries over time.\nSelect the Space View for filtering options.".into()
+    }
+
+    fn new_scene(&self) -> Self::SceneElementTuple {
+        (SceneText::default(),)
+    }
+
+    fn selection_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::State,
+    ) {
         let ViewTextFilters {
             col_timelines,
             col_entity_path,
             col_log_level,
             row_entity_paths,
             row_log_levels,
-        } = &mut self.filters;
+        } = &mut state.filters;
 
-        re_ui.selection_grid(ui, "log_config").show(ui, |ui| {
-            re_ui.grid_left_hand_label(ui, "Columns");
+        ctx.re_ui.selection_grid(ui, "log_config").show(ui, |ui| {
+            ctx.re_ui.grid_left_hand_label(ui, "Columns");
             ui.vertical(|ui| {
                 for (timeline, visible) in col_timelines {
                     ui.checkbox(visible, timeline.name().to_string());
@@ -48,7 +80,7 @@ impl ViewTextState {
             });
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "Entity Filter");
+            ctx.re_ui.grid_left_hand_label(ui, "Entity Filter");
             ui.vertical(|ui| {
                 for (entity_path, visible) in row_entity_paths {
                     ui.checkbox(visible, &entity_path.to_string());
@@ -56,7 +88,7 @@ impl ViewTextState {
             });
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "Level Filter");
+            ctx.re_ui.grid_left_hand_label(ui, "Level Filter");
             ui.vertical(|ui| {
                 for (log_level, visible) in row_log_levels {
                     ui.checkbox(visible, level_to_rich_text(ui, log_level));
@@ -64,60 +96,66 @@ impl ViewTextState {
             });
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "Text style");
+            ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {
-                ui.radio_value(&mut self.monospace, false, "Proportional");
-                ui.radio_value(&mut self.monospace, true, "Monospace");
+                ui.radio_value(&mut state.monospace, false, "Proportional");
+                ui.radio_value(&mut state.monospace, true, "Monospace");
             });
             ui.end_row();
         });
     }
-}
 
-pub(crate) fn view_text(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &mut ViewTextState,
-    scene: &SceneText,
-) -> egui::Response {
-    crate::profile_function!();
+    fn ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::State,
+        scene_elements: Self::SceneElementTuple,
+    ) {
+        let scene = scene_elements.0;
 
-    // Update filters if necessary.
-    state.filters.update(ctx, &scene.text_entries);
+        egui::Frame {
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..egui::Frame::default()
+        }
+        .show(ui, |ui| {
+            // Update filters if necessary.
+            state.filters.update(ctx, &scene.text_entries);
 
-    let time = ctx
-        .rec_cfg
-        .time_ctrl
-        .time_i64()
-        .unwrap_or(state.latest_time);
+            let time = ctx
+                .rec_cfg
+                .time_ctrl
+                .time_i64()
+                .unwrap_or(state.latest_time);
 
-    // Did the time cursor move since last time?
-    // - If it did, autoscroll to the text log to reveal the current time.
-    // - Otherwise, let the user scroll around freely!
-    let time_cursor_moved = state.latest_time != time;
-    let scroll_to_row = time_cursor_moved.then(|| {
-        crate::profile_scope!("TextEntryState - search scroll time");
-        scene
-            .text_entries
-            .partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
-    });
+            // Did the time cursor move since last time?
+            // - If it did, autoscroll to the text log to reveal the current time.
+            // - Otherwise, let the user scroll around freely!
+            let time_cursor_moved = state.latest_time != time;
+            let scroll_to_row = time_cursor_moved.then(|| {
+                re_tracing::profile_scope!("TextEntryState - search scroll time");
+                scene
+                    .text_entries
+                    .partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
+            });
 
-    state.latest_time = time;
+            state.latest_time = time;
 
-    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-        egui::ScrollArea::horizontal().show(ui, |ui| {
-            crate::profile_scope!("render table");
-            table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
-        })
-    })
-    .response
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                egui::ScrollArea::horizontal().show(ui, |ui| {
+                    re_tracing::profile_scope!("render table");
+                    table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
+                })
+            });
+        });
+    }
 }
 
 // --- Filters ---
 
 // TODO(cmc): implement "body contains <value>" filter.
 // TODO(cmc): beyond filters, it'd be nice to be able to swap columns at some point.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ViewTextFilters {
     // Column filters: which columns should be visible?
     // Timelines are special: each one has a dedicated column.
@@ -157,7 +195,7 @@ impl ViewTextFilters {
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
     fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             col_timelines,
@@ -203,7 +241,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
 fn table_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewTextState,
+    state: &mut TextSpaceViewState,
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
@@ -287,7 +325,7 @@ fn table_ui(
                 let Some(time_point) = get_time_point(ctx, text_entry) else {
                     row.col(|ui| {
                         ui.colored_label(
-                            Color32::RED,
+                            egui::Color32::RED,
                             "<failed to load TextEntry from data store>",
                         );
                     });
@@ -346,7 +384,7 @@ fn table_ui(
                         text = text.monospace();
                     }
                     if let Some([r, g, b, a]) = text_entry.color {
-                        text = text.color(Color32::from_rgba_unmultiplied(r, g, b, a));
+                        text = text.color(egui::Color32::from_rgba_unmultiplied(r, g, b, a));
                     }
 
                     ui.label(text);
@@ -360,7 +398,7 @@ fn table_ui(
         ui.painter().with_clip_rect(body_clip_rect).hline(
             ui.max_rect().x_range(),
             current_time_y,
-            (1.0, Color32::WHITE),
+            (1.0, egui::Color32::WHITE),
         );
     }
 }

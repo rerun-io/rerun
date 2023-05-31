@@ -41,6 +41,7 @@ serde = ["dep:serde", "half/serde", "re_log_types/serde"]
 # Rerun
 re_log_types.workspace = true
 re_log.workspace = true
+re_tracing.workspace = true
 
 # External
 ahash.workspace = true
@@ -70,7 +71,6 @@ serde = { version = "1", optional = true, features = ["derive", "rc"] }
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam.workspace = true
-puffin.workspace = true
 
 
 [dev-dependencies]

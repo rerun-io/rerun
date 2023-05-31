@@ -93,6 +93,7 @@ echo "Publishing crates…"
 cargo publish $FLAGS -p re_build_info
 cargo publish $FLAGS -p re_build_build_info
 cargo publish $FLAGS -p re_log
+cargo publish $FLAGS -p re_tracing
 cargo publish $FLAGS -p re_int_histogram
 cargo publish $FLAGS -p re_error
 cargo publish $FLAGS -p re_tuid
@@ -119,6 +120,8 @@ cargo publish $FLAGS -p re_viewer_context
 cargo publish $FLAGS -p re_data_ui
 cargo publish $FLAGS -p re_time_panel
 cargo publish $FLAGS -p re_viewport
+cargo publish $FLAGS -p re_space_view_text
+cargo publish $FLAGS -p re_space_view_text_box
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun

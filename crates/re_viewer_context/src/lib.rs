@@ -10,6 +10,7 @@ mod item;
 mod scene_query;
 mod selection_history;
 mod selection_state;
+mod space_view;
 mod tensor;
 mod time_control;
 mod utils;
@@ -29,6 +30,11 @@ pub use scene_query::SceneQuery;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
+};
+pub use space_view::{
+    ArchetypeDefinition, EmptySpaceViewState, Scene, SceneElement, SceneElementImpl,
+    SpaceViewClass, SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewState,
 };
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
@@ -104,26 +110,4 @@ slotmap::new_key_type! {
 pub enum NeedsRepaint {
     Yes,
     No,
-}
-
-// ---------------------------------------------------------------------------
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
 }

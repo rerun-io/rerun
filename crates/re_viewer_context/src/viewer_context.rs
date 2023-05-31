@@ -1,7 +1,8 @@
 use re_data_store::log_db::LogDb;
 
 use crate::{
-    AppOptions, Caches, ComponentUiRegistry, Item, ItemCollection, SelectionState, TimeControl,
+    AppOptions, Caches, ComponentUiRegistry, Item, ItemCollection, SelectionState,
+    SpaceViewClassRegistry, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -14,6 +15,9 @@ pub struct ViewerContext<'a> {
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,
+
+    /// Registry of all known classes of space views.
+    pub space_view_class_registry: &'a SpaceViewClassRegistry,
 
     /// The current recording.
     pub log_db: &'a LogDb,

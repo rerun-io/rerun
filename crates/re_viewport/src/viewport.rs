@@ -7,7 +7,10 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_viewer_context::{DataBlueprintGroupHandle, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    DataBlueprintGroupHandle, EmptySpaceViewState, Item, SpaceViewClassName,
+    SpaceViewClassRegistry, SpaceViewId, ViewerContext,
+};
 
 use crate::{
     data_blueprint::DataBlueprintGroup,
@@ -54,7 +57,7 @@ pub struct Viewport {
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
     pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut viewport = Self::default();
         for space_view in default_created_space_views(ctx, spaces_info) {
@@ -102,7 +105,7 @@ impl Viewport {
 
     /// Show the blueprint panel tree view.
     pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         egui::ScrollArea::both()
             .auto_shrink([true, false])
@@ -364,7 +367,7 @@ impl Viewport {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(ctx, spaces_info);
@@ -478,11 +481,19 @@ impl Viewport {
                 .into_iter()
                 .sorted_by_key(|space_view| space_view.space_path.to_string())
             {
+                let icon = if let Ok(class) = ctx.space_view_class_registry.query(space_view.class)
+                {
+                    class.icon()
+                } else {
+                    // TODO(andreas): Error handling if class is not found once categories are gone.
+                    space_view.category.icon()
+                };
+
                 if ctx
                     .re_ui
                     .selectable_label_with_icon(
                         ui,
-                        space_view.category.icon(),
+                        icon,
                         if space_view.space_path.is_root() {
                             space_view.display_name.clone()
                         } else {
@@ -518,15 +529,45 @@ impl Viewport {
 
 /// State for the blueprint that persists across frames but otherwise
 /// is not saved.
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct ViewportState {
     pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
-    pub space_view_states: HashMap<SpaceViewId, SpaceViewState>,
+    space_view_states: HashMap<SpaceViewId, SpaceViewState>,
 }
 
 impl ViewportState {
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
         self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
+    }
+
+    pub fn space_view_state(
+        &mut self,
+        space_view_class_registry: &SpaceViewClassRegistry,
+        space_view_id: SpaceViewId,
+        space_view_class: SpaceViewClassName,
+    ) -> &mut SpaceViewState {
+        self.space_view_states
+            .entry(space_view_id)
+            .or_insert_with(|| {
+                let state = if let Ok(state) = space_view_class_registry.query(space_view_class) {
+                    state.new_state()
+                } else {
+                    // TODO(andreas): Enable this once categories are gone.
+                    // re_log::error_once!(
+                    //     "Space View class \"{}\" is not registered.",
+                    //     space_view_class
+                    // );
+                    Box::<EmptySpaceViewState>::default()
+                };
+                SpaceViewState {
+                    state,
+                    selected_tensor: Default::default(),
+                    state_time_series: Default::default(),
+                    state_bar_chart: Default::default(),
+                    state_spatial: Default::default(),
+                    state_tensors: Default::default(),
+                }
+            })
     }
 }
 
@@ -645,7 +686,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         _tile_id: egui_tiles::TileId,
         space_view_id: &mut SpaceViewId,
     ) -> egui_tiles::UiResponse {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let highlights =
             highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);
@@ -653,11 +694,11 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             .space_views
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
-        let space_view_state = self
-            .viewport_state
-            .space_view_states
-            .entry(*space_view_id)
-            .or_default();
+        let space_view_state = self.viewport_state.space_view_state(
+            self.ctx.space_view_class_registry,
+            space_view_blueprint.id,
+            space_view_blueprint.class,
+        );
 
         space_view_ui(
             self.ctx,

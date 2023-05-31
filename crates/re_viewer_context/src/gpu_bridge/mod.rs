@@ -88,7 +88,7 @@ pub fn renderer_paint_callback(
     clip_rect: egui::Rect,
     pixels_from_point: f32,
 ) -> egui::PaintCallback {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     slotmap::new_key_type! { pub struct ViewBuilderHandle; }
 
@@ -119,7 +119,7 @@ pub fn renderer_paint_callback(
                     },
                 )
                 .paint(move |_info, render_pass, paint_callback_resources| {
-                    crate::profile_scope!("paint");
+                    re_tracing::profile_scope!("paint");
                     // TODO(andreas): This should work as well but doesn't work in the 3d view.
                     //                  Looks like a bug in egui, but unclear what's going on.
                     //let clip_rect = info.clip_rect_in_pixels();
@@ -144,7 +144,7 @@ pub fn render_image(
     texture_options: egui::TextureOptions,
     debug_name: &str,
 ) -> anyhow::Result<()> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     use re_renderer::renderer::{TextureFilterMag, TextureFilterMin};
 

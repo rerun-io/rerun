@@ -13,7 +13,7 @@ impl TensorStats {
         macro_rules! declare_tensor_range_int {
             ($name: ident, $typ: ty) => {
                 fn $name(tensor: ndarray::ArrayViewD<'_, $typ>) -> (f64, f64) {
-                    crate::profile_function!();
+                    re_tracing::profile_function!();
                     let (min, max) = tensor
                         .fold((<$typ>::MAX, <$typ>::MIN), |(min, max), &value| {
                             (min.min(value), max.max(value))
@@ -26,7 +26,7 @@ impl TensorStats {
         macro_rules! declare_tensor_range_float {
             ($name: ident, $typ: ty) => {
                 fn $name(tensor: ndarray::ArrayViewD<'_, $typ>) -> (f64, f64) {
-                    crate::profile_function!();
+                    re_tracing::profile_function!();
                     let (min, max) = tensor.fold(
                         (<$typ>::INFINITY, <$typ>::NEG_INFINITY),
                         |(min, max), &value| (min.min(value), max.max(value)),
@@ -53,7 +53,7 @@ impl TensorStats {
 
         #[allow(clippy::needless_pass_by_value)]
         fn tensor_range_f16(tensor: ndarray::ArrayViewD<'_, f16>) -> (f64, f64) {
-            crate::profile_function!();
+            re_tracing::profile_function!();
             let (min, max) = tensor
                 .fold((f16::INFINITY, f16::NEG_INFINITY), |(min, max), &value| {
                     (min.min(value), max.max(value))

@@ -24,7 +24,7 @@ impl EntityDataUi for Tensor {
         entity_path: &re_log_types::EntityPath,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
             Ok(decoded) => {
@@ -596,12 +596,12 @@ fn tensor_pixel_value_ui(
 }
 
 fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut histograms = [[0_u64; 256]; 3];
     {
         // TODO(emilk): this is slow, so cache the results!
-        crate::profile_scope!("build");
+        re_tracing::profile_scope!("build");
         for pixel in rgb.chunks_exact(3) {
             for c in 0..3 {
                 histograms[c][pixel[c] as usize] += 1;
@@ -638,7 +638,7 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
         })
         .collect_vec();
 
-    crate::profile_scope!("show");
+    re_tracing::profile_scope!("show");
     Plot::new("rgb_histogram")
         .legend(Legend::default())
         .height(200.0)

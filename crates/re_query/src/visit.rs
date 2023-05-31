@@ -69,7 +69,7 @@ macro_rules! create_visitor {
             for<'a> &'a $CC::ArrayType: IntoIterator,
         )*
         {
-            crate::profile_function!();
+            re_tracing::profile_function!();
 
             ::itertools::izip!(
                 self.primary.iter_instance_keys(),

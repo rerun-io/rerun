@@ -18,7 +18,7 @@ impl MeshCache {
         mesh: &Mesh3D,
         render_ctx: &mut RenderContext,
     ) -> Option<Arc<LoadedMesh>> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mesh_id = mesh.mesh_id();
 

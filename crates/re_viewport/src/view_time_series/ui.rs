@@ -52,7 +52,7 @@ pub(crate) fn view_time_series(
     _state: &mut ViewTimeSeriesState,
     scene: &SceneTimeSeries,
 ) -> egui::Response {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let time_ctrl = &ctx.rec_cfg.time_ctrl;
     let current_time = time_ctrl.time_i64();

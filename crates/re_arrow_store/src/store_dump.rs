@@ -32,7 +32,7 @@ impl DataStore {
 
     fn dump_timeless_tables(&self) -> impl Iterator<Item = DataTable> + '_ {
         self.timeless_tables.values().map(|table| {
-            crate::profile_scope!("timeless_table");
+            re_tracing::profile_scope!("timeless_table");
 
             let PersistentIndexedTable {
                 ent_path,
@@ -58,10 +58,10 @@ impl DataStore {
 
     fn dump_temporal_tables(&self) -> impl Iterator<Item = DataTable> + '_ {
         self.tables.values().flat_map(|table| {
-            crate::profile_scope!("temporal_table");
+            re_tracing::profile_scope!("temporal_table");
 
             table.buckets.values().map(move |bucket| {
-                crate::profile_scope!("temporal_bucket");
+                re_tracing::profile_scope!("temporal_bucket");
 
                 bucket.sort_indices_if_needed();
 
@@ -105,14 +105,14 @@ impl DataStore {
         self.tables
             .values()
             .filter_map(move |table| {
-                crate::profile_scope!("temporal_table_filtered");
+                re_tracing::profile_scope!("temporal_table_filtered");
 
                 if table.timeline != timeline_filter {
                     return None;
                 }
 
                 Some(table.buckets.values().filter_map(move |bucket| {
-                    crate::profile_scope!("temporal_bucket_filtered");
+                    re_tracing::profile_scope!("temporal_bucket_filtered");
 
                     bucket.sort_indices_if_needed();
 

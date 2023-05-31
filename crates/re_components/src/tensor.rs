@@ -839,10 +839,10 @@ impl Tensor {
     /// Requires the `image` feature.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_image_file(path: &std::path::Path) -> Result<Self, TensorImageLoadError> {
-        crate::profile_function!(path.to_string_lossy());
+        re_tracing::profile_function!(path.to_string_lossy());
 
         let img_bytes = {
-            crate::profile_scope!("fs::read");
+            re_tracing::profile_scope!("fs::read");
             std::fs::read(path)?
         };
 
@@ -864,9 +864,9 @@ impl Tensor {
     /// Requires the `image` feature.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_jpeg_file(path: &std::path::Path) -> Result<Self, TensorImageLoadError> {
-        crate::profile_function!(path.to_string_lossy());
+        re_tracing::profile_function!(path.to_string_lossy());
         let jpeg_bytes = {
-            crate::profile_scope!("fs::read");
+            re_tracing::profile_scope!("fs::read");
             std::fs::read(path)?
         };
         Self::from_jpeg_bytes(jpeg_bytes)
@@ -890,7 +890,7 @@ impl Tensor {
         bytes: Vec<u8>,
         format: image::ImageFormat,
     ) -> Result<Self, TensorImageLoadError> {
-        crate::profile_function!(format!("{format:?}"));
+        re_tracing::profile_function!(format!("{format:?}"));
         if format == image::ImageFormat::Jpeg {
             Self::from_jpeg_bytes(bytes)
         } else {
@@ -903,7 +903,7 @@ impl Tensor {
     ///
     /// Requires the `image` feature.
     pub fn from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         use image::ImageDecoder as _;
         let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
         if jpeg.color_type() != image::ColorType::Rgb8 {
@@ -1126,7 +1126,7 @@ impl DecodedTensor {
     pub fn from_dynamic_image(
         image: image::DynamicImage,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let (w, h) = (image.width(), image.height());
 
@@ -1181,7 +1181,7 @@ impl DecodedTensor {
     }
 
     pub fn try_decode(maybe_encoded_tensor: Tensor) -> Result<Self, TensorImageLoadError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         match &maybe_encoded_tensor.data {
             TensorData::U8(_)
@@ -1201,7 +1201,7 @@ impl DecodedTensor {
                 let mut reader = ImageReader::new(std::io::Cursor::new(buf.as_slice()));
                 reader.set_format(image::ImageFormat::Jpeg);
                 let img = {
-                    crate::profile_scope!("decode_jpeg");
+                    re_tracing::profile_scope!("decode_jpeg");
                     reader.decode()?
                 };
                 let decoded_tensor = DecodedTensor::from_image(img)?;

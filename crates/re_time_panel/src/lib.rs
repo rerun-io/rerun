@@ -188,7 +188,7 @@ impl TimePanel {
     }
 
     fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.data_dentity_graph_painter.begin_frame(ui.ctx());
 
@@ -345,7 +345,7 @@ impl TimePanel {
         time_area_painter: &egui::Painter,
         ui: &mut egui::Ui,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
@@ -724,7 +724,7 @@ fn initialize_time_ranges_ui(
     time_x_range: RangeInclusive<f32>,
     mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
     let mut time_range = if ctx.log_db.num_timeless_messages() > 0 {
@@ -791,7 +791,7 @@ fn paint_time_ranges_gaps(
     painter: &egui::Painter,
     y_range: RangeInclusive<f32>,
 ) {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // For each gap we are painting this:
     //
@@ -1075,26 +1075,4 @@ fn time_marker_ui(
             }
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
 }

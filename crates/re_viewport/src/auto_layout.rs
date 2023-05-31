@@ -286,7 +286,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
     if space_infos.len() < 2 {
         return vec![space_infos.to_vec()];
     }
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let paths = space_infos
         .iter()

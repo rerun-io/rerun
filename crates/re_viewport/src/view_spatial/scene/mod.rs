@@ -133,7 +133,7 @@ impl SceneSpatial {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
     ) -> EntityDepthOffsets {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         #[derive(PartialEq, PartialOrd, Eq, Ord)]
         enum DrawOrderTarget {
@@ -233,7 +233,7 @@ impl SceneSpatial {
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.annotation_map.load(ctx, query);
 

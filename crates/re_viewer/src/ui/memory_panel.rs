@@ -21,7 +21,7 @@ impl MemoryPanel {
         store_stats: &DataStoreStats,
         blueprint_stats: &DataStoreStats,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         self.history.capture(
             Some(
                 (gpu_resource_stats.total_buffer_size_in_bytes
@@ -48,7 +48,7 @@ impl MemoryPanel {
         store_stats: &DataStoreStats,
         blueprint_stats: &DataStoreStats,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
         ui.ctx().request_repaint();
@@ -366,7 +366,7 @@ impl MemoryPanel {
     }
 
     fn plot(&self, ui: &mut egui::Ui, limit: &MemoryLimit) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         use itertools::Itertools as _;
 

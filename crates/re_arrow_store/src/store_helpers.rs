@@ -24,7 +24,7 @@ impl DataStore {
     where
         for<'b> &'b C::ArrayType: IntoIterator,
     {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let (_, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
         let cell = cells.get(0)?.as_ref()?;
@@ -57,7 +57,7 @@ impl DataStore {
     where
         for<'b> &'b C::ArrayType: IntoIterator,
     {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut cur_path = Some(entity_path.clone());
         while let Some(path) = cur_path {
@@ -84,7 +84,7 @@ impl DataStore {
     where
         for<'b> &'b C::ArrayType: IntoIterator,
     {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
         self.query_latest_component(entity_path, &query)
@@ -103,7 +103,7 @@ impl DataStore {
         timepoint: &TimePoint,
         component: C,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut row = match DataRow::try_from_cells1(
             RowId::random(),
@@ -140,7 +140,7 @@ impl DataStore {
         timepoint: &TimePoint,
         component: ComponentName,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         if let Some(datatype) = self.lookup_datatype(&component) {
             let cell = DataCell::from_arrow_empty(component, datatype.clone());

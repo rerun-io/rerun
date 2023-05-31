@@ -46,28 +46,6 @@ mod web;
 
 // ---------------------------------------------------------------------------
 
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
-}
-
-// ---------------------------------------------------------------------------
-
 /// Information about this version of the crate.
 pub fn build_info() -> re_build_info::BuildInfo {
     re_build_info::build_info!()

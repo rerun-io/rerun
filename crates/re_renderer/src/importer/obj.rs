@@ -17,7 +17,7 @@ pub fn load_obj_from_buffer(
     lifetime: ResourceLifeTime,
     ctx: &mut RenderContext,
 ) -> anyhow::Result<Vec<MeshInstance>> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let (models, _materials) = tobj::load_obj_buf(
         &mut std::io::Cursor::new(buffer),

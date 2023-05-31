@@ -32,7 +32,7 @@ impl TensorDecodeCache {
         &mut self,
         maybe_encoded_tensor: Tensor,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         match DecodedTensor::try_from(maybe_encoded_tensor) {
             Ok(decoded_tensor) => Ok(decoded_tensor),
@@ -78,7 +78,7 @@ impl Cache for TensorDecodeCache {
     }
 
     fn purge_memory(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Very aggressively flush everything not used in this frame
 

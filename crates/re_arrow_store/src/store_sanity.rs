@@ -62,7 +62,7 @@ impl DataStore {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> SanityResult<()> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         for table in self.timeless_tables.values() {
             table.sanity_check()?;
@@ -83,7 +83,7 @@ impl IndexedTable {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> SanityResult<()> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // No two buckets should ever overlap time-range-wise.
         {
@@ -145,7 +145,7 @@ impl IndexedBucket {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> SanityResult<()> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             timeline: _,
@@ -253,7 +253,7 @@ impl PersistentIndexedTable {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> SanityResult<()> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             ent_path: _,
