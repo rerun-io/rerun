@@ -41,7 +41,8 @@ impl Screenshotter {
     }
 
     pub fn request_screenshot(&mut self) {
-        self.countdown = Some(1);
+        // give app time to set window size, and then wait for animations to finish etc:
+        self.countdown = Some(10);
     }
 
     pub fn save(&mut self, image: &egui::ColorImage) {

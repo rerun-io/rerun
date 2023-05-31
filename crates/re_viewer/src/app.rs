@@ -548,7 +548,11 @@ impl eframe::App for App {
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        {
+        if self.screenshotter.is_screenshotting() {
+            // Set a standard screenshot resolution (for our docs and examples).
+            frame.set_window_size(egui::Vec2::new(800.0, 600.0));
+            egui_ctx.set_pixels_per_point(2.0);
+        } else {
             // Ensure zoom factor is sane and in 10% steps at all times before applying it.
             {
                 let mut zoom_factor = self.state.app_options.zoom_factor;
