@@ -689,7 +689,10 @@ impl eframe::App for App {
         }
 
         self.handle_dropping_files(egui_ctx);
-        self.toasts.show(egui_ctx);
+
+        if !self.screenshotter.is_screenshotting() {
+            self.toasts.show(egui_ctx);
+        }
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
             self.pending_commands.push(cmd);
