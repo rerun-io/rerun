@@ -203,6 +203,10 @@ impl SpaceViewBlueprint {
         };
 
         if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
+            {
+                re_tracing::profile_scope!("prepare_populate", space_view_class.name());
+                space_view_class.prepare_populate(ctx, view_state.state.as_mut());
+            }
             let mut scene = space_view_class.new_scene();
             {
                 re_tracing::profile_scope!("scene.populate", space_view_class.name());

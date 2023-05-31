@@ -32,16 +32,28 @@ pub trait SpaceViewClass {
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
+    /// Called once for every new space view instance of this class.
+    ///
+    /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
+    fn new_state(&self) -> Box<dyn SpaceViewState>;
+
     /// Returns a new scene for this space view class.
     ///
     /// Called both to determine the supported archetypes and
     /// to populate a scene every frame.
     fn new_scene(&self) -> Scene;
 
-    /// Called once for every new space view instance of this class.
+    /// Optional archetype of the Space View's blueprint properties.
     ///
-    /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
-    fn new_state(&self) -> Box<dyn SpaceViewState>;
+    /// Blueprint components that only apply to the space view itself, not to the entities it displays.
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+        None
+    }
+
+    /// Executed before the scene is populated.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
+    fn prepare_populate(&self, ctx: &mut ViewerContext<'_>, state: &mut dyn SpaceViewState) {}
 
     /// Ui shown when the user selects a space view of this class.
     ///
