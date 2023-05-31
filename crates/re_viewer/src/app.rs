@@ -548,10 +548,12 @@ impl eframe::App for App {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
 
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
             frame.set_window_size(resolution_in_points.into());
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
         if self.screenshotter.update(egui_ctx, frame).quit {
             frame.close();
             return;

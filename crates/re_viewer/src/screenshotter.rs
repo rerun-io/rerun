@@ -10,6 +10,7 @@ pub struct Screenshotter {
     quit: bool,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[must_use]
 pub struct ScreenshotterOutput {
     /// If true, the screenshotter was told at startup to quit after its donw.
@@ -92,9 +93,6 @@ pub struct Screenshotter {}
 
 #[cfg(target_arch = "wasm32")]
 impl Screenshotter {
-    #[allow(clippy::unused_self)]
-    pub fn update(&mut self, _egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {}
-
     #[allow(clippy::unused_self)]
     pub fn is_screenshotting(&self) -> bool {
         false
