@@ -18,3 +18,5 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 
 <!-- This line will get updated when the PR build summary job finishes. -->
 PR Build Summary: {{ pr-build-summary }}
+
+<!-- This comment will be replaced by a link to the documentation preview -->
