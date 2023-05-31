@@ -1,14 +1,10 @@
-use ahash::HashMap;
-use egui::NumExt;
 use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
 
-use re_log_types::{EntityPath, EntityPathHash, InstanceKey};
+use re_log_types::{EntityPathHash, InstanceKey};
 use re_renderer::OutlineMaskPreference;
 
-use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SelectionState, SpaceViewId,
-};
+use re_viewer_context::InteractionHighlight;
 
 /// Highlights of a specific entity path in a specific space view.
 ///

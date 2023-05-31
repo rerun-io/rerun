@@ -1,7 +1,7 @@
 use re_components::{ColorRGBA, Component, InstanceKey, Mesh3D};
 use re_data_store::EntityPath;
 use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
+use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
