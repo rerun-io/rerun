@@ -16,7 +16,7 @@ The following is primarily intended for existing ROS 2 users. It will not spend 
 covering how to use ROS 2 itself.  If you are a Rerun user that is curious about ROS,
 please consult the [ROS 2 Documentation](https://docs.ros.org/en/humble/index.html) instead.
 
-All of the code for this guide can be found on Github in
+All of the code for this guide can be found on GitHub in
 [rerun/examples/python/ros](https://github.com/rerun-io/rerun/blob/main/examples/python/ros/).
 
 ![Rerun 3D view of ROS 2 turtlebot3 navigation demo](https://static.rerun.io/e51d3e26478661d11b339de5fdfed4f95d07c53c_ros1_preview.png)
@@ -436,4 +436,4 @@ While this guide has only covered a small fraction of the possible ROS messages 
 be sent to Rerun, hopefully, it has given you some tools to apply to your project.
 
 If you find that specific functionality is lacking for your use case, please provide more
-context in the existing issues or [open an new one](https://github.com/rerun-io/rerun/issues/new/choose) on Github.
+context in the existing issues or [open an new one](https://github.com/rerun-io/rerun/issues/new/choose) on GitHub.

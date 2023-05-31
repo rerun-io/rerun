@@ -30,4 +30,4 @@ It's made up of the Rerun SDK and the Rerun Viewer
 ## Can't find what you're looking for?
 
 - Drop in to the [Rerun Community Discord](https://discord.gg/xwcxHUjD35)
-- Or [submit an issue](https://github.com/rerun-io/rerun/issues) in the Rerun github project
+- Or [submit an issue](https://github.com/rerun-io/rerun/issues) in the Rerun GitHub project
