@@ -6,8 +6,8 @@ use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
+    scene::{EntityDepthOffsets, SceneSpatial},
     transform_cache::TransformCache,
-    {scene::EntityDepthOffsets, SceneSpatial},
 };
 
 use super::{instance_key_to_picking_id, ScenePart};

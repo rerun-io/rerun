@@ -7,11 +7,11 @@ use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
-    transform_cache::TransformCache,
-    {
-        scene::{scene_part::instance_path_hash_for_picking, EntityDepthOffsets},
-        SceneSpatial, UiLabel, UiLabelTarget,
+    scene::UiLabelTarget,
+    scene::{
+        scene_part::instance_path_hash_for_picking, EntityDepthOffsets, SceneSpatial, UiLabel,
     },
+    transform_cache::TransformCache,
 };
 
 use super::{instance_key_to_picking_id, ScenePart};

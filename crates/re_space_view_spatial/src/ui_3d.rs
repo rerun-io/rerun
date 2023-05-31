@@ -20,15 +20,16 @@ use re_space_view::{
 use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
 
 use crate::{
-    ui::{create_labels, outline_config, picking, screenshot_context_menu},
+    scene::SceneSpatial,
+    space_camera_3d::SpaceCamera3D,
+    ui::{create_labels, outline_config, picking, screenshot_context_menu, ViewSpatialState},
     ui_renderer_bridge::{fill_view_builder, ScreenBackground},
-    SceneSpatial, SpaceCamera3D, SpatialNavigationMode,
+    SpatialNavigationMode,
 };
 
 use super::{
     eye::{Eye, OrbitEye},
     scene::SceneSpatialPrimitives,
-    ViewSpatialState,
 };
 
 // ---

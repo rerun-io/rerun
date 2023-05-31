@@ -13,9 +13,10 @@ use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{auto_color, AnnotationMap, Annotations, SceneQuery, ViewerContext};
 
-use crate::{mesh_loader::LoadedMesh, transform_cache::TransformCache};
-
-use super::{SpaceCamera3D, SpatialNavigationMode};
+use super::SpatialNavigationMode;
+use crate::{
+    mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D, transform_cache::TransformCache,
+};
 
 mod picking;
 mod primitives;

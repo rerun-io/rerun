@@ -7,8 +7,8 @@ use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::{
+    scene::{EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
     transform_cache::TransformCache,
-    {scene::EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
 };
 
 use super::{

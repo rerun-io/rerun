@@ -6,8 +6,8 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
     mesh_cache::MeshCache,
+    scene::{EntityDepthOffsets, MeshSource, SceneSpatial},
     transform_cache::TransformCache,
-    {scene::EntityDepthOffsets, MeshSource, SceneSpatial},
 };
 
 use super::{instance_path_hash_for_picking, ScenePart};

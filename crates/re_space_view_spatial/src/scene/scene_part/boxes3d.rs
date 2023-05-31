@@ -8,8 +8,9 @@ use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
+    scene::EntityDepthOffsets,
+    scene::{SceneSpatial, UiLabel, UiLabelTarget},
     transform_cache::TransformCache,
-    {scene::EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
 };
 
 use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};

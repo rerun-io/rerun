@@ -9,14 +9,14 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 use crate::{
     transform_cache::TransformCache,
     {
+        scene::UiLabelTarget,
         scene::{
             scene_part::{
                 instance_key_to_picking_id, instance_path_hash_for_picking,
                 process_annotations_and_keypoints, process_colors, process_radii,
             },
-            EntityDepthOffsets,
+            EntityDepthOffsets, SceneSpatial, UiLabel,
         },
-        SceneSpatial, UiLabel, UiLabelTarget,
     },
 };
 

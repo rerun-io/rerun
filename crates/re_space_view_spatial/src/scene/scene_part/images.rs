@@ -21,8 +21,8 @@ use re_viewer_context::{
 };
 
 use crate::{
+    scene::{EntityDepthOffsets, Image, SceneSpatial},
     transform_cache::TransformCache,
-    {scene::EntityDepthOffsets, Image, SceneSpatial},
 };
 
 use super::ScenePart;

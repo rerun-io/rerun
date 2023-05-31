@@ -7,7 +7,7 @@ use re_space_view::controls::{
     SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER,
 };
 
-use super::SpaceCamera3D;
+use crate::space_camera_3d::SpaceCamera3D;
 
 /// An eye in a 3D view.
 ///

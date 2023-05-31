@@ -8,13 +8,13 @@ use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use re_viewer_context::TimeControl;
 use re_viewer_context::{SceneQuery, ViewerContext};
 
+use super::{instance_path_hash_for_picking, ScenePart};
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
+    scene::{EntityDepthOffsets, SceneSpatial},
+    space_camera_3d::SpaceCamera3D,
     transform_cache::TransformCache,
-    {scene::EntityDepthOffsets, SceneSpatial, SpaceCamera3D},
 };
-
-use super::{instance_path_hash_for_picking, ScenePart};
 
 /// Determine the view coordinates (i.e.) the axis semantics.
 ///
