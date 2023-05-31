@@ -49,6 +49,7 @@ pub struct StartupOptions {
 
     /// Take a screenshot of the app and quit.
     /// We use this to generate screenshots of our exmples.
+    #[cfg(not(target_arch = "wasm32"))]
     pub screenshot_to_path_then_quite: Option<std::path::PathBuf>,
 }
 
@@ -57,6 +58,7 @@ impl Default for StartupOptions {
         Self {
             memory_limit: re_memory::MemoryLimit::default(),
             persist_state: true,
+            #[cfg(not(target_arch = "wasm32"))]
             screenshot_to_path_then_quite: None,
         }
     }
@@ -162,6 +164,7 @@ impl App {
             );
         }
 
+        #[allow(unused_mut, clippy::needless_update)] // false positive on web
         let mut screenshotter = crate::screenshotter::Screenshotter::default();
 
         #[cfg(not(target_arch = "wasm32"))]
