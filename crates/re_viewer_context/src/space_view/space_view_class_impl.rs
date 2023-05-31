@@ -36,8 +36,8 @@ pub trait SpaceViewClassImpl {
 
     /// Draws the ui for this space view class and handles ui events.
     ///
-    /// The scene passed in was previously created by [`Self::new_scene`] and got populated by the time it is passed.
-    /// The state passed is kept frame-to-frame.
+    /// The passed scene is already populated for this frame
+    /// The passed state is kept frame-to-frame.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
