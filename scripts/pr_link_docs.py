@@ -27,7 +27,7 @@ def main() -> None:
     parser.add_argument("--pr-number", required=True, type=int, help="PR number")
     args = parser.parse_args()
 
-    gh = Github(args.github_token)
+    gh = Github(args.github_token)  # NOLINT
     repo = gh.get_repo(args.github_repository)
     pr = repo.get_pull(args.pr_number)
 
