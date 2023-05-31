@@ -41,10 +41,25 @@ enum TimeControlCommand {
 // ----------------------------------------------------------------------------
 
 /// Settings set once at startup (e.g. via command-line options) and not serialized.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone)]
 pub struct StartupOptions {
     pub memory_limit: re_memory::MemoryLimit,
+
     pub persist_state: bool,
+
+    /// Take a screenshot of the app and quit.
+    /// We use this to generate screenshots of our exmples.
+    pub screenshot_to_path_then_quite: Option<std::path::PathBuf>,
+}
+
+impl Default for StartupOptions {
+    fn default() -> Self {
+        Self {
+            memory_limit: re_memory::MemoryLimit::default(),
+            persist_state: true,
+            screenshot_to_path_then_quite: None,
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -147,12 +162,19 @@ impl App {
             );
         }
 
+        let mut screenshotter = crate::screenshotter::Screenshotter::default();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(screenshot_path) = startup_options.screenshot_to_path_then_quite.clone() {
+            screenshotter.screenshot_to_path_then_quit(screenshot_path);
+        }
+
         Self {
             build_info,
             startup_options,
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
-            screenshotter: Default::default(),
+            screenshotter,
 
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),

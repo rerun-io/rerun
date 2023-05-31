@@ -43,6 +43,10 @@ struct Args {
     #[command(subcommand)]
     commands: Option<Commands>,
 
+    /// What bind address IP to use.
+    #[clap(long, default_value = "0.0.0.0")]
+    bind: String,
+
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
     /// If we go over this, we start dropping packets.
@@ -86,6 +90,11 @@ struct Args {
     #[clap(long)]
     save: Option<String>,
 
+    /// Take a screenshot of the app and quit.
+    /// We use this to generate screenshots of our exmples.
+    #[clap(long)]
+    screenshot_to: Option<std::path::PathBuf>,
+
     /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
     #[clap(long)]
     strict: bool,
@@ -114,10 +123,6 @@ struct Args {
     /// Requires Rerun to have been compiled with the 'web_viewer' feature.
     #[clap(long)]
     web_viewer: bool,
-
-    /// What bind address IP to use.
-    #[clap(long, default_value = "0.0.0.0")]
-    bind: String,
 
     /// What port do we listen to for hosting the web viewer over HTTP.
     /// A port of 0 will pick a random port.
@@ -308,6 +313,7 @@ async fn run_impl(
                 .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
         }),
         persist_state: args.persist_state,
+        screenshot_to_path_then_quite: args.screenshot_to.clone(),
     };
 
     // Where do we get the data from?

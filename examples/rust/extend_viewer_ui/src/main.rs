@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Start pruning the data once we reach this much memory allocated
             limit: Some(12_000_000_000),
         },
-        persist_state: true,
+        ..Default::default()
     };
 
     // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
