@@ -552,7 +552,10 @@ impl eframe::App for App {
             frame.set_window_size(resolution_in_points.into());
         }
 
-        self.screenshotter.update(egui_ctx, frame);
+        if self.screenshotter.update(egui_ctx, frame).quit {
+            frame.close();
+            return;
+        }
 
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit

@@ -2,13 +2,18 @@
 //! haven't implemented "copy image to clipboard" there.
 
 /// Helper for screenshotting the entire app
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Default)]
 pub struct Screenshotter {
-    #[cfg(not(target_arch = "wasm32"))]
     countdown: Option<usize>,
-
-    #[cfg(not(target_arch = "wasm32"))]
     target_path: Option<std::path::PathBuf>,
+    quit: bool,
+}
+
+#[must_use]
+pub struct ScreenshotterOutput {
+    /// If true, the screenshotter was told at startup to quit after its donw.
+    pub quit: bool,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -20,7 +25,11 @@ impl Screenshotter {
     }
 
     /// Call once per frame
-    pub fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    pub fn update(
+        &mut self,
+        egui_ctx: &egui::Context,
+        frame: &mut eframe::Frame,
+    ) -> ScreenshotterOutput {
         if let Some(countdown) = &mut self.countdown {
             if *countdown == 0 {
                 frame.request_screenshot();
@@ -30,6 +39,8 @@ impl Screenshotter {
 
             egui_ctx.request_repaint(); // Make sure we keep counting down
         }
+
+        ScreenshotterOutput { quit: self.quit }
     }
 
     /// If true, temporarily re-style the UI to make it suitable for capture!
@@ -56,7 +67,7 @@ impl Screenshotter {
             match image.save(&path) {
                 Ok(()) => {
                     re_log::info!("Screenshot saved to {path:?}");
-                    std::process::exit(0); // Close nicely
+                    self.quit = true;
                 }
                 Err(err) => {
                     panic!("Failed saving screenshot to {path:?}: {err}");
@@ -69,6 +80,12 @@ impl Screenshotter {
         }
     }
 }
+
+// ----------------------------------------------------------------------------
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Default)]
+pub struct Screenshotter {}
 
 #[cfg(target_arch = "wasm32")]
 impl Screenshotter {
