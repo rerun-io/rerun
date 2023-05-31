@@ -4288,6 +4288,7 @@ dependencies = [
  "re_viewer_context",
  "serde",
  "smallvec",
+ "vec1",
  "wgpu",
 ]
 

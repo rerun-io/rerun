@@ -42,4 +42,5 @@ macaw = { workspace = true, features = ["with_serde"] }
 nohash-hasher.workspace = true
 serde = "1"
 smallvec = { workspace = true, features = ["serde"] }
+vec1.workspace = true
 wgpu.workspace = true
