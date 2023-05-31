@@ -14,7 +14,7 @@ be comfortable with the following topics:
 
 Here is a preview of the dataset that we will be working with:
 
-![Preview](/docs-media/viewer_walkthrough0_preview.png)
+![Preview](https://static.rerun.io/187c2379476cfb91f23b58dc9253688ef357c029_viewer_walkthrough0_preview.png)
 
 The demo uses the output of the [COLMAP](https://colmap.github.io/) structure-from-motion pipeline on a small dataset.
 Familiarity with structure-from-motion algorithms is not a prerequisite for following the guide. All you need to know is
@@ -51,7 +51,7 @@ In your terminal you should see an output along the lines of:
 
 And a window that looks like this will appear:
 
-![First Launch](/docs-media/viewer_walkthrough1_first_launch.png)
+![First Launch](https://static.rerun.io/11b19a8c38f49f1b4fd22cf8b67b427b28794ec7_viewer_walkthrough1_first_launch.png)
 
 Depending on your display size, the panels may have a different arrangements. This does not yet look like the initial
 preview, but the remainder of this guide will walk you through how to configure the Viewer to meet your needs.
@@ -71,7 +71,7 @@ There are 4 main parts to this window:
 Each of the 3 side panels has a corresponding button in the upper right corner. Try clicking each of these to hide and
 show the corresponding panel.
 
-![Toggle Panel](/docs-media/viewer_walkthrough2_toggle_panel.png)
+![Toggle Panel](https://static.rerun.io/817453aa3cb68881589a69a72f9250508902c958_viewer_walkthrough2_toggle_panel.png)
 
 For now, leave the panels visible since we will use them through the remainder of this guide.
 
@@ -79,7 +79,7 @@ It is also possible to re-arrange the individual space views. Try grabbing any o
 dragging it to different locations in the Viewport. You can also resize individual views by grabbing the edge of the
 view.
 
-![Rearrange Views](/docs-media/viewer_walkthrough3_rearrange.png)
+![Rearrange Views](https://static.rerun.io/b8de42db0aca90270e57a844f1c6aba653142280_viewer_walkthrough3_rearrange.png)
 
 Feel free to move the views around until you are happy with the layout.
 
@@ -98,7 +98,7 @@ You can find out more about these entities by hovering over them in the differen
 context popup with additional information. You can also click on entities to select them and see more details in the
 [Selection panel](../reference/viewer/selection.md).
 
-![Hover Data](/docs-media/viewer_walkthrough4_hover.png)
+![Hover Data](https://static.rerun.io/6e297585d86b89e2bb00534045288277c8e686ac_viewer_walkthrough4_hover.png)
 
 Try each of the following:
  * Hover over the image to see a zoomed-in preview
@@ -116,7 +116,7 @@ also zoom using ctrl+scrollwheel or pinch gestures on a trackpad. Most views can
 double-clicking somewhere in the view. Every view has a "?" icon in the upper right hand corner. You can always mouse
 over this icon to find out more information about the specific view.
 
-![Adjust Scene Views](/docs-media/viewer_walkthrough5_nav.png)
+![Adjust Scene Views](https://static.rerun.io/ffe2bb1db70357e68887eee2cf6fd80ce0145ca2_viewer_walkthrough5_nav.png)
 
 Try each of the following:
  * Drag the camera image and zoom in on one of the stickers
@@ -135,7 +135,7 @@ To change the position on the timeline, simply grab the time indicator and pull 
 interested in seeing.  The space views will adjust accordingly. You can also use the play/pause/step/loop controls to
 playback the Rerun data as you might with a video file.
 
-![Adjust Time Slider](/docs-media/viewer_walkthrough6_timeline.png)
+![Adjust Time Slider](https://static.rerun.io/0fca0f1df6377028505699dac40e4a03738b4e44_viewer_walkthrough6_timeline.png)
 
 Try out the following:
   * Use the arrow buttons (or arrow keys on your keyboard) to step forward and backwards by a single frame
@@ -151,7 +151,7 @@ it's possible to also view the data in the specific order that it was logged.  C
 and switch it to "log_time." If you zoom in on the timeline (using ctrl+scrollwheel), you can see that these events were
 all logged at slightly different times.
 
-![Log Time](/docs-media/viewer_walkthrough7_log_time.png)
+![Log Time](https://static.rerun.io/47ed33a74a8c9def1ca6c79801cb0fc305b0e0fe_viewer_walkthrough7_log_time.png)
 
 Feel free to spend a bit of time looking at the data across the different timelines. When you are done, switch back
 to the "frame" timeline and double-click the timeline panel to reset it to the default range.
@@ -176,7 +176,7 @@ show up in the view. This is making historical points, from farther back in time
 view. Because the points are logged in stationary 3d space, aggregating them here gives us a more complete view of the
 car. Leave the visible history with a value of 50.
 
-![Visible History](/docs-media/viewer_walkthrough8_history.png)
+![Visible History](https://static.rerun.io/f3d7fd563aad90b506172217b8926ae8fc72d75e_viewer_walkthrough8_history.png)
 
 ### Modifying the contents of a space view
 Now select the `/ (Spatial)` view itself. We will start by giving this space view a different name. At the very
@@ -190,21 +190,21 @@ You can click on the "+" or "-" buttons to add or remove entities from this view
 completely disappear from the blueprint panel on the left. Entities that are incompatible with the selected view will be
 grayed out. For example, you cannot add a scalar to a spatial scene.
 
-![Add/Remove Entities](/docs-media/viewer_walkthrough9_add_remove.png)
+![Add/Remove Entities](https://static.rerun.io/d703c542efad3c2bce2ae1f25019073ac64f5bef_viewer_walkthrough9_add_remove.png)
 
 ## Creating new views
 New views can be created using the "+" button at the top of the Blueprint panel. When you click this button you will
 need to choose a root for your new space. This is the space that will act as your origin within the
 [transform system](../concepts/spaces-and-transforms.md).
 
-![Create a view](/docs-media/viewer_walkthrough10_create.png)
+![Create a view](https://static.rerun.io/228a596464fd660dccba8d8259db8bdd02834c8d_viewer_walkthrough10_create.png)
 
 After creating this new view, your view layout might be feeling a little cluttered. You can quickly hide views you're
 not using from the blueprint panel by hovering over the view and then clicking the icon that looks like an eye. Go ahead
 and hide the `image` and `avg_reproj_err` views, and collapse the expanded timeline panel using the button in the upper
 right corner. Note that even with the timeline collapsed you still have access to timeline controls, including a slider.
 
-![Toggle Vis](/docs-media/viewer_walkthrough11_toggle_vis.png)
+![Toggle Vis](https://static.rerun.io/7eef1bd238ab85e8b4fc664da5bd0253eed46d2d_viewer_walkthrough11_toggle_vis.png)
 
 ### Reusing what you've learned
 Finally, use what we covered in the previous section to change the contents of this view. Select the new `camera` view,
@@ -213,7 +213,7 @@ have visible history turned on -- that's because the blueprint is part of the vi
 Select the points within this view by clicking on them in the blueprint or the view itself, and then give them visible
 history as well. When you are done, your view should look like this:
 
-![Camera View](/docs-media/viewer_walkthrough12_cameraview.png)
+![Camera View](https://static.rerun.io/5fe3481a9696ba9c821818e26b0634011f4fffba_viewer_walkthrough12_cameraview.png)
 
 Now move the slider back and forth and see what happens. Even though they are both views of the same camera and point
 entities, they behave quite differently. On the top the camera moves relative to the car, while on the bottom the car

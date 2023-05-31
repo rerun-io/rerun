@@ -31,7 +31,7 @@ The simplest example of how to use Rerun, showing how to log a point cloud.
 python examples/python/minimal/main.py
 ```
 
-![minimal example>](/docs-media/minimal.png)
+![minimal example>](https://static.rerun.io/dd31922030a6bf7223d5e3728d8da5407f4d6b1a_minimal.png)
 
 -------------------------------------------------------------------
 
@@ -47,13 +47,13 @@ The following examples illustrate using the Rerun logging SDK with potential rea
 Visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using the Rerun SDK.
 The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.
 
-![arkitscenes](/docs-media/arkitscenes.png)
+![arkitscenes](https://static.rerun.io/b2874c81d4d716fba07b0fb0893da2a909713ef4_arkitscenes.png)
 
 ### COLMAP
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/colmap/main.py)
 
-![colmap example>](/docs-media/colmap1.png)
+![colmap example>](https://static.rerun.io/ab7edab1aabe2c80faab3f901512c7841279c488_colmap1.png)
 
 An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.
 
@@ -72,7 +72,7 @@ python examples/python/colmap/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/deep_sdf/main.py)
 
-![deep_sdf example>](/docs-media/deep_sdf1.png)
+![deep_sdf example>](https://static.rerun.io/b56f2cb92fecf99da7c60d396dc1e981d7a50c85_deep_sdf1.png)
 
 Generate Signed Distance Fields for arbitrary meshes using both traditional methods as well as the one described in the [DeepSDF paper](https://arxiv.org/abs/1901.05103), and visualize the results using the Rerun SDK.
 
@@ -86,7 +86,7 @@ python examples/python/deep_sdf/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/dicom/main.py)
 
-![dicom example>](/docs-media/dicom1.png)
+![dicom example>](https://static.rerun.io/86b90a1e2eeb1c6a43fc64b32c7e8b81183063fb_dicom1.png)
 
 Example using a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
 
@@ -100,7 +100,7 @@ python examples/python/dicom/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/mp_pose/main.py)
 
-![mp_pose example>](/docs-media/mp_pose1.png)
+![mp_pose example>](https://static.rerun.io/2a4d22e4baeb07dd7b8149fb55bc9954b67825c9_mp_pose1.png)
 
 Use the [MediaPipe](https://google.github.io/mediapipe/) Pose solution to detect and track a human pose in video.
 
@@ -114,7 +114,7 @@ python examples/python/mp_pose/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/nyud/main.py)
 
-![nyud example>](/docs-media/nyud1.png)
+![nyud example>](https://static.rerun.io/dc312393543c6ade698a402c5fe4dc8c588cf029_nyud1.png)
 
 Example using an [example dataset](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html) from New York University with RGB and Depth channels.
 
@@ -128,7 +128,7 @@ python examples/python/nyud/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/objectron/main.py) | [Rust](https://github.com/rerun-io/rerun/tree/latest/examples/rust/objectron/src/main.rs)
 
-![objectron example>](/docs-media/objectron1.png)
+![objectron example>](https://static.rerun.io/110824b31a3fe4e23b481d5fe3ed9fef2306027e_objectron1.png)
 
 Example of using the Rerun SDK to log the [Objectron](https://github.com/google-research-datasets/Objectron) dataset.
 
@@ -144,7 +144,7 @@ python examples/python/objectron/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/raw_mesh/main.py) | [Rust](https://github.com/rerun-io/rerun/tree/latest/examples/rust/raw_mesh/src/main.rs)
 
-![raw_mesh example>](/docs-media/raw_mesh1.png)
+![raw_mesh example>](https://static.rerun.io/b09e56883fb6b62c6128e8de1da9f8bf55957b04_raw_mesh1.png)
 
 This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy. Simple material properties are supported.
 
@@ -158,7 +158,7 @@ python examples/python/raw_mesh/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/segment_anything/main.py)
 
-![stable_diffusion example>](/docs-media/segment_anything1.png)
+![stable_diffusion example>](https://static.rerun.io/d9c302c9a053940e3b485dc3efb2ae8130561099_segment_anything1.png)
 
 Example of using Rerun to log and visualize the output of Meta AI's Segment Anything model.
 
@@ -174,7 +174,7 @@ python examples/python/segment_anything/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/stable_diffusion/main.py)
 
-![stable_diffusion example>](/docs-media/stable_diffusion1.png)
+![stable_diffusion example>](https://static.rerun.io/baa0cc2f1f1c991a7c6823560524cc1c9d6f11f1_stable_diffusion1.png)
 
 A more elaborate example running Depth Guided Stable Diffusion 2.0.
 
@@ -190,7 +190,7 @@ python examples/python/stable_diffusion/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/tracking_hf_opencv/main.py)
 
-![tracking_hf_opencv example>](/docs-media/tracking_hf_opencv1.png)
+![tracking_hf_opencv example>](https://static.rerun.io/4995d2ec51249accbd287fdaef5debbfe9645a83_tracking_hf_opencv1.png)
 
 Another more elaborate example applying simple object detection and segmentation on a video using the Huggingface `transformers` library. Tracking across frames is performed using [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
 
@@ -211,7 +211,7 @@ The following examples serve to illustrate various uses of the Rerun logging SDK
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/api_demo/main.py) | [Rust](https://github.com/rerun-io/rerun/tree/latest/examples/rust/api_demo/src/main.rs)
 
-![api_demo example>](/docs-media/api_demo1.png)
+![api_demo example>](https://static.rerun.io/fe19c2409c783b87ff9dc6a946fc3289558f7aa7_api_demo1.png)
 
 This is a swiss-army-knife example showing the usage of most of the Rerun SDK APIs. The data logged is static and meaningless.
 
@@ -226,7 +226,7 @@ python examples/python/api_demo/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/car/main.py)
 
-![car example>](/docs-media/car1.png)
+![car example>](https://static.rerun.io/aac417f8d8ae17c3f4797209f5987da875ba4842_car1.png)
 
 A very simple 2D car is drawn using OpenCV, and a depth image is simulated and logged as a point cloud.
 
@@ -240,7 +240,7 @@ python examples/python/car/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/clock/main.py)
 
-![clock example>](/docs-media/clock1.png)
+![clock example>](https://static.rerun.io/f8003ba9954ae2236127b9623bc3d49ae1dc4af5_clock1.png)
 
 An example visualizing an analog clock with hour, minute and seconds hands using Rerun Arrow3D primitives.
 
@@ -275,7 +275,7 @@ python examples/python/multithreading/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/plots/main.py)
 
-![plots example>](/docs-media/plots1.png)
+![plots example>](https://static.rerun.io/e6b4c0086132a0ba39bbacc4ec7b3fdfdde54de3_plots1.png)
 
 This example demonstrates how to log simple plots with the Rerun SDK. Charts can be created from 1-dimensional tensors, or from time-varying scalars.
 
@@ -288,7 +288,7 @@ python examples/python/plots/main.py
 
 [Python](https://github.com/rerun-io/rerun/tree/latest/examples/python/text_logging/main.py)
 
-![text_logging example>](/docs-media/text_logging1.png)
+![text_logging example>](https://static.rerun.io/b8830573d9d78b61957140dfd83868509ad0118c_text_logging1.png)
 
 This example demonstrates how to integrate python's native `logging` with the Rerun SDK.
 

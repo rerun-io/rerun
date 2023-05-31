@@ -23,7 +23,7 @@ $ python3 -m rerun_demo
 
 If everything is installed and working correctly, you should end up with a window like below.
 Try looping the recording to see the fun animation.
-![Colored Cube](/docs-media/quickstart0_cube.png)
+![Colored Cube](https://static.rerun.io/bb8a27a4a41d226ceca6cf805f7f16fe24224cfe_quickstart0_cube.png)
 
 *Note: If this is your first time launching Rerun you will see a notification in the terminal about the Rerun anonymous
 data usage policy. Rerun collects anonymous usage data to help improve the project, though you may choose to opt out if you
@@ -70,7 +70,7 @@ rr.log_points("my_points", positions=positions, colors=colors, radii=0.5)
 When you run this script you will again be greeted with the [Rerun Viewer](../reference/viewer/overview.md), this time
 only showing a simple line of red points.
 
-![Simple Line](/docs-media/quickstart1_line.png)
+![Simple Line](https://static.rerun.io/945dcc1c89e0bd8598116f3bd4f12c22834604a8_quickstart1_line.png)
 
 The [rr.log_points](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_points) function can
 take any Nx2 or Nx3 numpy array as a collection of positions.
@@ -94,7 +94,7 @@ colors = np.vstack([c.reshape(-1) for c in col_grid]).astype(np.uint8).T
 rr.log_points("my_points", positions=positions, colors=colors, radii=0.5)
 ```
 
-![Simple Cube](/docs-media/quickstart2_simple_cube.png)
+![Simple Cube](https://static.rerun.io/48482e9dc110e0b95c1cf310eab3ccdba6d8880f_quickstart2_simple_cube.png)
 
 ## What's next
 

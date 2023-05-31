@@ -83,7 +83,7 @@ $ jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python
 
 This will create a new file `cube.html` that can be hosted on any static web server.
 
-[Example cube.html](/docs-media/cube.html)
+[Example cube.html](https://static.rerun.io/c5f4b7b80b01d8adbc7792369fcad1215456f906_cube.html)
 
 ## Limitations
 

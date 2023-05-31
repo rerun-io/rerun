@@ -8,7 +8,7 @@ Timeline controls
 
 The timeline controls sit at the top of the timeline panel and allow you to control the playback and what [timeline](../../concepts/timelines.md) is active.
 
-![timeline controls](/docs-media/timeline-controls.png)
+![timeline controls](https://static.rerun.io/3bef52fea54917b5eaf4f8789cb7c106f27e5c53_timeline-controls.png)
 
 It lets you select which timeline is currently active and control the replay of the timeline.
 These controls let you stop play/pause/step/loop time just like a video player.
@@ -20,7 +20,7 @@ Streams
 
 The Streams panel can be hidden with the layout config buttons at the top right corner of the viewer.
 
-![streams](/docs-media/streams.png)
+![streams](https://static.rerun.io/751d6c07964614b9e3a205dc0b70efbcced439ff_streams.png)
 
 On the right side you see circles for each logged [event](../../concepts/timelines.md) on the currently selected timeline over time.
 You can use the mouse to scrub the vertical time selector line to jump to arbitrary moments in time.

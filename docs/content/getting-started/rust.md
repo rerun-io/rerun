@@ -54,7 +54,7 @@ cargo run
 ```
 
 Once everything finishes compiling, you will see the points in the Rerun Viewer:
-![intro users - result](/docs-media/intro_users1_result.png)
+![intro users - result](https://static.rerun.io/d9124a2aea32a8f76536c78289bf488ea6261c4d_intro_users1_result.png)
 
 ## Using the viewer
 Try out the following to interact with the viewer:

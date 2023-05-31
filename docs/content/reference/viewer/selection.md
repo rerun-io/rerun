@@ -13,7 +13,7 @@ and even the Selection view itself.
 Parts of the Selection view
 ---------------------------
 
-![selection overview](/docs-media/selection-overview.png)
+![selection overview](https://static.rerun.io/c2a568fe59991c828a4e8608aaea14e34f4b4343_selection-overview.png)
 
 ### Selection history
 Rerun keeps a log of all your selections, allowing you to undo/redo previous selections

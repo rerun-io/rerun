@@ -19,7 +19,7 @@ please consult the [ROS 2 Documentation](https://docs.ros.org/en/humble/index.ht
 All of the code for this guide can be found on Github in
 [rerun/examples/python/ros](https://github.com/rerun-io/rerun/blob/main/examples/python/ros/).
 
-![Rerun 3D view of ROS 2 turtlebot3 navigation demo](/docs-media/ros1_preview.png)
+![Rerun 3D view of ROS 2 turtlebot3 navigation demo](https://static.rerun.io/e51d3e26478661d11b339de5fdfed4f95d07c53c_ros1_preview.png)
 
 ## Prerequisites
 
@@ -79,7 +79,7 @@ With the previous dependencies installed, and gazebo running, you should now be 
 ```
 
 You should see a window similar to:
-![Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo](/docs-media/ros2_launched.png)
+![Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo](https://static.rerun.io/c648219a13c044f5ca95aa2cb0e1f6729e6f37ac_ros2_launched.png)
 
 Use rviz to send a new navigation goal and confirm that rerun updates with new data as turtlebot drives around
 the environment.

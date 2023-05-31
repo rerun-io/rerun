@@ -7,7 +7,7 @@ In this section we'll log and visualize our first non-trivial dataset, putting m
 
 In a few lines of code, we'll go from a blank sheet to something you don't see everyday: an animated, interactive, DNA-shaped abacus:
 <video width="100%" autoplay loop muted controls>
-    <source src="/docs-media/logging_data1_result.webm" type="video/webm" />
+    <source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
 </video>
 
 This guide aims to go wide instead of deep.
@@ -53,7 +53,7 @@ Now you can run your application just as you would any other python script:
 ```
 
 And with that, we're ready to start sending out data:
-![logging data - waiting for data](/docs-media/logging_data2_waiting.png)
+![logging data - waiting for data](https://static.rerun.io/4f83e588d7ca4ba6d09390d6d445f63bb4a73b4e_logging_data2_waiting.png)
 
 By default, the SDK will start a viewer in another process and automatically pipe the data through.
 There are other means of sending data to a viewer as we'll see at the end of this section, but for now this default will work great as we experiment.
@@ -92,7 +92,7 @@ rr.log_points("dna/structure/right", points2, colors=colors2, radii=0.08)
 Run your script once again and you should now see this scene in the viewer.
 Note that if the viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../concepts/apps-and-recordings.md).
 
-![logging data - first points](/docs-media/logging_data3_first_points.png)
+![logging data - first points](https://static.rerun.io/46140c891a60026b3ef9fb0c34fcf63e23199ec7_logging_data3_first_points.png)
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
 _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
@@ -152,7 +152,7 @@ rr.log_points("dna/structure/scaffolding/beads", beads, radii=0.06, colors=np.re
 Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/latest/package/rerun_demo/util/#rerun_demo.util.bounce_lerp),
 there is nothing new here: it's all about building out `numpy` arrays and feeding them to the Rerun API.
 
-![logging data - beads](/docs-media/logging_data5_beads.png)
+![logging data - beads](https://static.rerun.io/60c3c762448f68da3f5fdd7927a6e65e11f5385f_logging_data5_beads.png)
 
 ## Animating the beads
 
@@ -162,7 +162,7 @@ Up until this point, we've completely set aside one of the core concepts of Reru
 
 Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyways by memorizing when each log call occurred.
 
-![logging data - timeline closeup](/docs-media/logging_data6_timeline.png)
+![logging data - timeline closeup](https://static.rerun.io/f6dbc83f555597e2bfe946e8228301da82ad4611_logging_data6_timeline.png)
 
 Unfortunately, the logging time isn't particularly helpful to us in this case: we can't have our beads animate depending on the logging time, else they would move at different speeds depending on the performance of the logging process!
 For that, we need to introduce our own custom timeline that uses a deterministic clock which we control.
@@ -189,7 +189,7 @@ A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/latest/common/ti
 
 ⚠️  If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
 
-![logging data - wat](/docs-media/logging_data7_wat.png)
+![logging data - wat](https://static.rerun.io/a396c8aae1cbd717a3f35472594f789e4829b1ae_logging_data7_wat.png)
 
 Enter...
 
@@ -202,7 +202,7 @@ rr.spawn()
 rr.set_time_seconds("stable_time", 0)
 ```
 
-![logging data - latest at](/docs-media/logging_data8_latest_at.png)
+![logging data - latest at](https://static.rerun.io/0182b4795ca2fed2f2097cfa5f5271115dee0aaf_logging_data8_latest_at.png)
 
 This fix actually introduces yet another very important concept in Rerun: "latest at" semantics.
 Notice how entities `"dna/structure/left"` & `"dna/structure/right"` have only ever been logged at time zero, and yet they are still visible when querying times far beyond that point.
@@ -237,7 +237,7 @@ for i in range(400):
 Voila!
 
 <video width="100%" autoplay loop muted controls>
-    <source src="/docs-media/logging_data1_result.webm" type="video/webm" />
+    <source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
 </video>
 
 

@@ -25,7 +25,7 @@ It's made up of the Rerun SDK and the Rerun Viewer
 - The Rerun SDK lets you log data from [Python](getting-started/python.md) or [Rust](getting-started/rust.md)
 - The [Rerun Viewer](reference/viewer/overview.md) lets you view data live or from a recording.
 
-![overview](/docs-media/docs_overview.png)
+![overview](https://static.rerun.io/9a555db43ccdc24a5a0d9afb3e9bf5c80b55f271_docs_overview.png)
 
 ## Can't find what you're looking for?
 

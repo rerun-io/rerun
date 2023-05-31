@@ -8,7 +8,7 @@ You can grab the title of any Space View to dock it to different parts of the vi
 
 View controls
 -------------
-![3d icon](/docs-media/view-controls.png)
+![3d icon](https://static.rerun.io/7ff3366843e2d7cac96102e8415035c78c0bbe14_view-controls.png)
 
 Clicking on the title of a Space View has the same effect as selecting it in the [Blueprint view](blueprint.md)
 and will show additional information & settings in the [Selection view](selection.md) or other means.
