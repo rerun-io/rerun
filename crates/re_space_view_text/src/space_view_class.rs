@@ -48,7 +48,7 @@ impl SpaceViewClassImpl for TextSpaceView {
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "Select space view for filtering options.\nClicking a text entry will scroll the timeline to the point in time it was logged.".into()
+        "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
     fn new_scene(&self) -> Self::SceneElementTuple {

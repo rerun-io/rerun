@@ -6,7 +6,7 @@ use re_log_types::ComponentName;
 /// First element is the primary component, all others are optional.
 ///
 /// TODO(andreas/clement): More formal definition of an archetype.
-pub type ArchetypeDefinition = Vec<ComponentName>;
+pub type ArchetypeDefinition = vec1::Vec1<ComponentName>;
 
 re_string_interner::declare_new_type!(
     /// The unique name of a space view type.

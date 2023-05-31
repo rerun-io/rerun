@@ -33,7 +33,7 @@ impl SceneElementImpl for SceneText {
     type State = TextSpaceViewState;
 
     fn archetype(&self) -> ArchetypeDefinition {
-        vec![re_components::TextEntry::name()]
+        vec1::vec1![re_components::TextEntry::name()]
     }
 
     fn populate(

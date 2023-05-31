@@ -4244,6 +4244,7 @@ dependencies = [
  "re_tracing",
  "re_ui",
  "re_viewer_context",
+ "vec1",
 ]
 
 [[package]]
@@ -4257,6 +4258,7 @@ dependencies = [
  "re_query",
  "re_ui",
  "re_viewer_context",
+ "vec1",
 ]
 
 [[package]]
@@ -4420,6 +4422,7 @@ dependencies = [
  "slotmap",
  "thiserror",
  "uuid",
+ "vec1",
  "wgpu",
 ]
 

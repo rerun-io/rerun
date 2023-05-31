@@ -38,7 +38,7 @@ pub fn all_possible_space_views(
                 .iter()
                 .map(|(category, entity_paths)| {
                     SpaceViewBlueprint::new(
-                        category_to_type(*category),
+                        class_name_from_category(*category),
                         *category,
                         candidate_space_path,
                         entity_paths,
@@ -169,7 +169,7 @@ fn default_created_space_views_from_candidates(
         if candidate.category == ViewCategory::Tensor {
             for entity_path in candidate.data_blueprint.entity_paths() {
                 let mut space_view = SpaceViewBlueprint::new(
-                    category_to_type(ViewCategory::Tensor),
+                    class_name_from_category(ViewCategory::Tensor),
                     ViewCategory::Tensor,
                     entity_path,
                     &[entity_path.clone()],
@@ -358,7 +358,7 @@ fn default_queried_entities_by_category(
 }
 
 // TODO(andreas): This is for transitioning to types only.
-fn category_to_type(category: ViewCategory) -> SpaceViewClassName {
+fn class_name_from_category(category: ViewCategory) -> SpaceViewClassName {
     match category {
         ViewCategory::Text => "Text",
         ViewCategory::TextBox => "Text Box",

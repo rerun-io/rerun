@@ -20,7 +20,7 @@ pub struct SceneTextBox {
 
 impl SceneElement for SceneTextBox {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec![re_components::TextBox::name()]
+        vec1::vec1![re_components::TextBox::name()]
     }
 
     fn populate(
