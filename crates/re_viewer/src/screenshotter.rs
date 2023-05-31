@@ -19,9 +19,17 @@ pub struct ScreenshotterOutput {
 #[cfg(not(target_arch = "wasm32"))]
 impl Screenshotter {
     /// Used for generating screenshots in dev builds.
+    ///
+    /// Should only be called at startup.
     pub fn screenshot_to_path_then_quit(&mut self, path: std::path::PathBuf) {
+        assert!(self.countdown.is_none(), "screenshotter misused");
         self.request_screenshot();
         self.target_path = Some(path);
+    }
+
+    pub fn request_screenshot(&mut self) {
+        // Give app time to change the style, and then wait for animations to finish:
+        self.countdown = Some(10);
     }
 
     /// Call once per frame
@@ -49,11 +57,6 @@ impl Screenshotter {
     /// In particular, we style the UI to look like the web viewer.
     pub fn is_screenshotting(&self) -> bool {
         self.countdown.is_some()
-    }
-
-    pub fn request_screenshot(&mut self) {
-        // Give app time to change the style, and then wait for animations to finish:
-        self.countdown = Some(3);
     }
 
     pub fn save(&mut self, image: &egui::ColorImage) {
