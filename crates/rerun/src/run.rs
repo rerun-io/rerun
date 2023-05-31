@@ -313,7 +313,7 @@ async fn run_impl(
                 .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
         }),
         persist_state: args.persist_state,
-        screenshot_to_path_then_quite: args.screenshot_to.clone(),
+        screenshot_to_path_then_quit: args.screenshot_to.clone(),
     };
 
     // Where do we get the data from?
