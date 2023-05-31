@@ -4240,6 +4240,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_space_view_spatial"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "egui",
+ "re_arrow_store",
+ "re_components",
+ "re_log",
+ "re_query",
+ "re_ui",
+ "re_viewer_context",
+ "vec1",
+]
+
+[[package]]
 name = "re_space_view_text"
 version = "0.7.0-alpha.0"
 dependencies = [
@@ -4384,6 +4398,7 @@ dependencies = [
  "re_memory",
  "re_renderer",
  "re_smart_channel",
+ "re_space_view_spatial",
  "re_space_view_text",
  "re_space_view_text_box",
  "re_time_panel",
