@@ -21,3 +21,4 @@ prost = "0.11"
 
 [build-dependencies]
 prost-build = "0.11"
+protoc-prebuilt = "0.2"
