@@ -67,7 +67,7 @@ pub fn categorize_entity_path(
     log_db: &LogDb,
     entity_path: &EntityPath,
 ) -> ViewCategorySet {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut set = ViewCategorySet::default();
 

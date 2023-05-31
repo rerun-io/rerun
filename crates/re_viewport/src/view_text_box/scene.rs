@@ -19,7 +19,7 @@ pub struct SceneTextBox {
 impl SceneTextBox {
     /// Loads all text components into the scene according to the given query.
     pub(crate) fn load(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let store = &ctx.log_db.entity_db.data_store;
 

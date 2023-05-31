@@ -63,7 +63,7 @@ impl Points2DPart {
         entity_highlight: &SpaceViewOutlineMasks,
         depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         scene.num_logged_2d_objects += 1;
 
@@ -81,7 +81,7 @@ impl Points2DPart {
                 process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
-                crate::profile_scope!("instance_hashes");
+                re_tracing::profile_scope!("instance_hashes");
                 entity_view
                     .iter_instance_keys()
                     .map(|instance_key| {
@@ -118,7 +118,7 @@ impl Points2DPart {
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let point_positions = {
-                crate::profile_scope!("collect_points");
+                re_tracing::profile_scope!("collect_points");
                 entity_view
                     .iter_primary()?
                     .filter_map(|pt| pt.map(glam::Vec2::from))
@@ -142,7 +142,7 @@ impl Points2DPart {
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
-                crate::profile_scope!("marking additional highlight points");
+                re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = entity_view
@@ -175,7 +175,7 @@ impl ScenePart for Points2DPart {
         highlights: &SpaceViewHighlights,
         depth_offsets: &EntityDepthOffsets,
     ) {
-        crate::profile_scope!("Points2DPart");
+        re_tracing::profile_scope!("Points2DPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {

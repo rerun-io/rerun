@@ -93,7 +93,7 @@ impl DataStore {
         timeline: &Timeline,
         ent_path: &EntityPath,
     ) -> Option<Vec<ComponentName>> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -201,7 +201,7 @@ impl DataStore {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -391,7 +391,7 @@ impl DataStore {
     ) -> impl Iterator<Item = (Option<TimeInt>, RowId, [Option<DataCell>; N])> + 'a {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -433,7 +433,7 @@ impl DataStore {
     }
 
     pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&TimePoint> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.metadata_registry.get(row_id)
     }
@@ -460,7 +460,7 @@ impl IndexedTable {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Early-exit if this entire table is unaware of this component.
         if !self.all_components.contains(&primary) {
@@ -516,7 +516,7 @@ impl IndexedTable {
     ) -> impl Iterator<Item = (TimeInt, RowId, [Option<DataCell>; N])> + '_ {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let timeline = self.timeline;
 
@@ -549,7 +549,7 @@ impl IndexedTable {
     ///
     /// See [`IndexedTable::buckets`] for more information.
     pub fn find_bucket(&self, time: TimeInt) -> (TimeInt, &IndexedBucket) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
@@ -563,7 +563,7 @@ impl IndexedTable {
     ///
     /// See [`IndexedTable::buckets`] for more information.
     pub fn find_bucket_mut(&mut self, time: TimeInt) -> (TimeInt, &mut IndexedBucket) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
@@ -585,7 +585,7 @@ impl IndexedTable {
     ) -> impl Iterator<Item = (TimeInt, &IndexedBucket)> {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.buckets
             .range(time_range)
@@ -607,7 +607,7 @@ impl IndexedTable {
     ) -> impl Iterator<Item = (TimeInt, &IndexedBucket)> {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.buckets
             .range(time_range)
@@ -630,7 +630,7 @@ impl IndexedTable {
     ) -> impl Iterator<Item = (TimeInt, &mut IndexedBucket)> {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.buckets
             .range_mut(time_range)
@@ -653,7 +653,7 @@ impl IndexedBucket {
             return; // early read-only exit
         }
 
-        crate::profile_scope!("sort");
+        re_tracing::profile_scope!("sort");
         self.inner.write().sort();
     }
 
@@ -668,7 +668,7 @@ impl IndexedBucket {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         self.sort_indices_if_needed();
 
@@ -809,7 +809,7 @@ impl IndexedBucket {
 
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         trace!(
             kind = "range",
@@ -912,10 +912,10 @@ impl IndexedBucketInner {
             return;
         }
 
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let swaps = {
-            crate::profile_scope!("swaps");
+            re_tracing::profile_scope!("swaps");
             let mut swaps = (0..col_time.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| &col_time[i]);
             swaps
@@ -930,18 +930,18 @@ impl IndexedBucketInner {
         // TODO(#442): re_datastore: implement efficient shuffling on the read path.
 
         {
-            crate::profile_scope!("control");
+            re_tracing::profile_scope!("control");
 
             fn reshuffle_control_column<T: Copy, const N: usize>(
                 column: &mut SmallVec<[T; N]>,
                 swaps: &[(usize, usize)],
             ) {
                 let source = {
-                    crate::profile_scope!("clone");
+                    re_tracing::profile_scope!("clone");
                     column.clone()
                 };
                 {
-                    crate::profile_scope!("rotate");
+                    re_tracing::profile_scope!("rotate");
                     for (from, to) in swaps.iter().copied() {
                         column[to] = source[from];
                     }
@@ -957,15 +957,15 @@ impl IndexedBucketInner {
         }
 
         {
-            crate::profile_scope!("data");
+            re_tracing::profile_scope!("data");
             // shuffle component columns back into a sorted state
             for column in columns.values_mut() {
                 let mut source = {
-                    crate::profile_scope!("clone");
+                    re_tracing::profile_scope!("clone");
                     column.clone()
                 };
                 {
-                    crate::profile_scope!("rotate");
+                    re_tracing::profile_scope!("rotate");
                     for (from, to) in swaps.iter().copied() {
                         column[to] = source[from].take();
                     }
@@ -997,7 +997,7 @@ impl PersistentIndexedTable {
         // Early-exit if this bucket is unaware of this component.
         let column = self.columns.get(&primary)?;
 
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         trace!(
             kind = "latest_at",
@@ -1090,7 +1090,7 @@ impl PersistentIndexedTable {
 
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let cells = (0..self.num_rows()).filter_map(move |row_nr| {
             let mut cells = [(); N].map(|_| None);

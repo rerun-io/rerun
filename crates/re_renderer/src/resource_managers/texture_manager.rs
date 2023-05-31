@@ -159,7 +159,7 @@ impl TextureManager2D {
         queue: Arc<wgpu::Queue>,
         texture_pool: &mut GpuTexturePool,
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let white_texture_unorm = Self::create_and_upload_texture(
             &device,
@@ -314,7 +314,7 @@ impl TextureManager2D {
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
     ) -> Result<GpuTexture2D, TextureCreationError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         if creation_desc.width == 0 || creation_desc.height == 0 {
             return Err(TextureCreationError::ZeroSize(creation_desc.label.clone()));
@@ -354,7 +354,7 @@ impl TextureManager2D {
 
         // TODO(andreas): temp allocator for staging data?
         // We don't do any further validation of the buffer here as wgpu does so extensively.
-        crate::profile_scope!("write_texture");
+        re_tracing::profile_scope!("write_texture");
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &texture.texture,

@@ -38,7 +38,7 @@ fn to_textured_rect(
     outline_mask: OutlineMaskPreference,
     depth_offset: re_renderer::DepthOffset,
 ) -> Option<re_renderer::renderer::TexturedRect> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
@@ -98,7 +98,7 @@ struct ImageGrouping {
 }
 
 fn handle_image_layering(scene: &mut SceneSpatial) {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
     let mut image_groups: BTreeMap<ImageGrouping, Vec<Image>> = BTreeMap::new();
@@ -162,7 +162,7 @@ impl ImagesPart {
         highlights: &SpaceViewHighlights,
         depth_offset: re_renderer::DepthOffset,
     ) -> Result<(), QueryError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
@@ -170,7 +170,7 @@ impl ImagesPart {
             entity_view.iter_component::<ColorRGBA>()?,
             entity_view.iter_component::<DrawOrder>()?
         ) {
-            crate::profile_scope!("loop_iter");
+            re_tracing::profile_scope!("loop_iter");
             let Some(tensor) = tensor else { continue; };
 
             if !tensor.is_shaped_like_an_image() {
@@ -259,7 +259,7 @@ impl ImagesPart {
         pinhole_ent_path: &EntityPath,
         entity_highlight: &SpaceViewOutlineMasks,
     ) -> Result<(), String> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let store = &ctx.log_db.entity_db.data_store;
         let Some(intrinsics) = store.query_latest_component::<Pinhole>(
@@ -384,7 +384,7 @@ impl ScenePart for ImagesPart {
         highlights: &SpaceViewHighlights,
         depth_offsets: &EntityDepthOffsets,
     ) {
-        crate::profile_scope!("ImagesPart");
+        re_tracing::profile_scope!("ImagesPart");
 
         for (ent_path, props) in query.iter_entities() {
             let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {

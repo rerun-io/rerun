@@ -92,7 +92,7 @@ pub struct Decoder<R: std::io::Read> {
 
 impl<R: std::io::Read> Decoder<R> {
     pub fn new(mut read: R) -> Result<Self, DecodeError> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         {
             let mut header = [0_u8; 4];
@@ -133,7 +133,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
     type Item = Result<LogMsg, DecodeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut len = [0_u8; 8];
         self.decompressor.read_exact(&mut len).ok()?;
@@ -142,13 +142,13 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         self.buffer.resize(len, 0);
 
         {
-            crate::profile_scope!("lz4");
+            re_tracing::profile_scope!("lz4");
             if let Err(err) = self.decompressor.read_exact(&mut self.buffer) {
                 return Some(Err(err));
             }
         }
 
-        crate::profile_scope!("MsgPack deser");
+        re_tracing::profile_scope!("MsgPack deser");
         match rmp_serde::from_read(&mut self.buffer.as_slice()) {
             Ok(msg) => Some(Ok(msg)),
             Err(err) => Some(Err(err.into())),

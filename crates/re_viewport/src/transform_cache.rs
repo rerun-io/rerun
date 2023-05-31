@@ -83,7 +83,7 @@ impl TransformCache {
         space_path: &EntityPath,
         entity_prop_map: &EntityPropertyMap,
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut transforms = TransformCache {
             reference_path: space_path.clone(),

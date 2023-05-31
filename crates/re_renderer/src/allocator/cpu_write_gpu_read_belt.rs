@@ -315,7 +315,7 @@ impl CpuWriteGpuReadBelt {
         buffer_pool: &GpuBufferPool,
         num_elements: usize,
     ) -> CpuWriteGpuReadBuffer<T> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         debug_assert!(num_elements > 0, "Cannot allocate zero-sized buffer");
 
@@ -378,7 +378,7 @@ impl CpuWriteGpuReadBelt {
     /// further writes) until after [`CpuWriteGpuReadBelt::after_queue_submit`] is called *and* the GPU is done
     /// copying the data from them.
     pub fn before_queue_submit(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // This would be a great usecase for persistent memory mapping, i.e. mapping without the need to unmap
         // https://github.com/gfx-rs/wgpu/issues/1468
@@ -396,7 +396,7 @@ impl CpuWriteGpuReadBelt {
     /// copy operations are submitted. Additional calls are harmless.
     /// Not calling this as soon as possible may result in increased buffer memory usage.
     pub fn after_queue_submit(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
         self.receive_chunks();
 
         let sender = &self.sender;

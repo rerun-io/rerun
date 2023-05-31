@@ -85,7 +85,7 @@ impl SelectionPanel {
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let query = ctx.current_query();
 
@@ -478,7 +478,7 @@ fn depth_props_ui(
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) -> Option<()> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let query = ctx.current_query();
     let store = &ctx.log_db.entity_db.data_store;

@@ -65,7 +65,7 @@ impl Renderers {
         resolver: &mut FileResolver<Fs>,
     ) -> &R {
         self.renderers.entry().or_insert_with(|| {
-            crate::profile_scope!("create_renderer", std::any::type_name::<R>());
+            re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
             R::create_renderer(shared_data, resource_pools, device, resolver)
         })
     }
@@ -111,7 +111,7 @@ impl RenderContext {
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
     ) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let mut gpu_resources = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
@@ -230,7 +230,7 @@ impl RenderContext {
     }
 
     fn poll_device(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Browsers don't let us wait for GPU work via `poll`:
         //
@@ -276,7 +276,7 @@ impl RenderContext {
     ///
     /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
     pub fn begin_frame(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // If the currently active frame still has an encoder, we need to finish it and queue it.
         // This should only ever happen for the first frame where we created an encoder for preparatory work. Every other frame we take the encoder at submit!
@@ -366,7 +366,7 @@ impl RenderContext {
 
     /// Call this at the end of a frame but before submitting command buffers (e.g. from [`crate::view_builder::ViewBuilder`])
     pub fn before_submit(&mut self) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Unmap all write staging buffers.
         self.cpu_write_gpu_read_belt.lock().before_queue_submit();
@@ -378,7 +378,7 @@ impl RenderContext {
             .0
             .take()
         {
-            crate::profile_scope!("finish & submit frame-global encoder");
+            re_tracing::profile_scope!("finish & submit frame-global encoder");
             let command_buffer = command_encoder.finish();
 
             // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.

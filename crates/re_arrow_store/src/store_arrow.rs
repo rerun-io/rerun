@@ -22,7 +22,7 @@ impl IndexedBucket {
     /// - `$cluster_key`
     /// - rest of component columns in ascending lexical order
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             timeline,
@@ -63,7 +63,7 @@ impl PersistentIndexedTable {
     /// - `$cluster_key`
     /// - rest of component columns in ascending lexical order
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let Self {
             ent_path: _,
@@ -95,7 +95,7 @@ fn serialize(
     col_num_instances: &[u32],
     table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut schema = Schema::default();
     let mut columns = Vec::new();
@@ -129,7 +129,7 @@ fn serialize_control_columns(
     col_row_id: &[RowId],
     col_num_instances: &[u32],
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut schema = Schema::default();
     let mut columns = Vec::new();
@@ -175,7 +175,7 @@ fn serialize_data_columns(
     cluster_key: &ComponentName,
     table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut schema = Schema::default();
     let mut columns = Vec::new();

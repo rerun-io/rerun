@@ -154,7 +154,7 @@ pub fn annotations(
     query: &re_arrow_store::LatestAtQuery,
     entity_path: &re_data_store::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
@@ -166,26 +166,4 @@ pub fn annotations(
     };
     annotation_map.load(ctx, &scene_query);
     annotation_map.find(entity_path)
-}
-
-// ---------------------------------------------------------------------------
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Wrapper around puffin profiler on native, no-op on weasm
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
 }

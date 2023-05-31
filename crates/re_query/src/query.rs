@@ -123,7 +123,7 @@ pub fn query_entity_with_primary<Primary: Component>(
     ent_path: &EntityPath,
     components: &[ComponentName],
 ) -> crate::Result<EntityView<Primary>> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let (row_id, primary) = get_component_with_instances(store, query, ent_path, Primary::name())
         .ok_or(QueryError::PrimaryNotFound)?;

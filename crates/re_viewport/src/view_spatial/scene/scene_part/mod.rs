@@ -109,7 +109,7 @@ where
     Primary: re_log_types::SerializableComponent + re_log_types::DeserializableComponent,
     for<'b> &'b Primary::ArrayType: IntoIterator,
 {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
 
     Ok(itertools::izip!(
@@ -130,7 +130,7 @@ where
     Primary: re_log_types::SerializableComponent + re_log_types::DeserializableComponent,
     for<'b> &'b Primary::ArrayType: IntoIterator,
 {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     let ent_path = ent_path.clone();
     Ok(entity_view.iter_component::<Radius>()?.map(move |radius| {
         radius.map_or(re_renderer::Size::AUTO, |r| {
@@ -161,7 +161,7 @@ where
     for<'b> &'b Primary::ArrayType: IntoIterator,
     glam::Vec3: std::convert::From<Primary>,
 {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut keypoints: Keypoints = HashMap::default();
 

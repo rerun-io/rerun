@@ -12,7 +12,7 @@ pub struct SceneTensor {
 impl SceneTensor {
     /// Loads all tensors into the scene according to the given query.
     pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let store = &ctx.log_db.entity_db.data_store;
         for (ent_path, props) in query.iter_entities() {

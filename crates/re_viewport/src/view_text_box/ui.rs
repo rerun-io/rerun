@@ -22,7 +22,7 @@ impl Default for ViewTextBoxState {
 
 impl ViewTextBoxState {
     pub fn selection_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             re_ui.grid_left_hand_label(ui, "Text style");
@@ -42,7 +42,7 @@ pub(crate) fn view_text_box(
     state: &mut ViewTextBoxState,
     scene: &SceneTextBox,
 ) -> egui::Response {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
         egui::ScrollArea::both()

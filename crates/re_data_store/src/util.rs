@@ -21,7 +21,7 @@ pub fn query_latest_single<C: DeserializableComponent>(
 where
     for<'b> &'b C::ArrayType: IntoIterator,
 {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for

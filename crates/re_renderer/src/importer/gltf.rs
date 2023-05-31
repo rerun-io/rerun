@@ -21,16 +21,16 @@ pub fn load_gltf_from_buffer(
     lifetime: ResourceLifeTime,
     ctx: &mut RenderContext,
 ) -> anyhow::Result<Vec<MeshInstance>> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let (doc, buffers, images) = {
-        crate::profile_scope!("gltf::import_slice");
+        re_tracing::profile_scope!("gltf::import_slice");
         gltf::import_slice(buffer)?
     };
 
     let mut images_as_textures = Vec::with_capacity(images.len());
     for (_index, image) in images.into_iter().enumerate() {
-        crate::profile_scope!("image");
+        re_tracing::profile_scope!("image");
 
         let (format, data) = if let Some(format) = map_format(image.format) {
             (format, image.pixels)
@@ -90,7 +90,7 @@ pub fn load_gltf_from_buffer(
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());
     for ref mesh in doc.meshes() {
-        crate::profile_scope!("mesh");
+        re_tracing::profile_scope!("mesh");
 
         let re_mesh = import_mesh(
             mesh,
@@ -145,7 +145,7 @@ fn import_mesh(
     gpu_image_handles: &[GpuTexture2D],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
 
     let mut indices = Vec::new();
     let mut vertex_positions = Vec::new();

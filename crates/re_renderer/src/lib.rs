@@ -93,31 +93,9 @@ pub type Buffer<T> = Vec<T>;
 
 // ---------------------------------------------------------------------------
 
-/// Profiling macro for puffin
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Profiling macro for puffin
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        #[cfg(not(target_arch = "wasm32"))]
-        puffin::profile_scope!($($arg)*);
-    };
-}
-
-// ---------------------------------------------------------------------------
-
 /// Pad `RGB` to `RGBA` with the given alpha.
 pub fn pad_rgb_to_rgba<T: Copy>(rgb: &[T], alpha: T) -> Vec<T> {
-    crate::profile_function!();
+    re_tracing::profile_function!();
     if cfg!(debug_assertions) {
         // fastest version in debug builds.
         // 5x faster in debug builds, but 2x slower in release

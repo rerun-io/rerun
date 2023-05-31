@@ -113,7 +113,7 @@ impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
     pub fn new(entity_db: &EntityDb) -> Self {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         fn add_children(
             entity_db: &EntityDb,
@@ -231,7 +231,7 @@ impl SpaceInfoCollection {
         from: &EntityPath,
         to_reference: &EntityPath,
     ) -> Result<(), UnreachableTransform> {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         // Get closest space infos for the given entity paths.
         let mut from_space = self.get_first_parent_with_info(from);

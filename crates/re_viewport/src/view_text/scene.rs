@@ -39,7 +39,7 @@ impl SceneText {
         query: &SceneQuery<'_>,
         filters: &ViewTextFilters,
     ) {
-        crate::profile_function!();
+        re_tracing::profile_function!();
 
         let store = &ctx.log_db.entity_db.data_store;
 
