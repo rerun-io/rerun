@@ -1,4 +1,6 @@
 //! Conversion from and to [`crate::Scene`] for tuples of [`crate::SceneElement`]s.
+//!
+//! This allows to use tuples of [`crate::SceneElement`]s in [`crate::SpaceViewClassImpl`]
 
 use std::any::Any;
 
