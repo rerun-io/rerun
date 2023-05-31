@@ -1,0 +1,31 @@
+name: Documentation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "main"
+
+permissions:
+  contents: read
+
+jobs:
+  spellcheck:
+    name: Spellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: streetsidesoftware/cspell-action@v2
+        with:
+          config: "docs/cspell.json"
+          files: "docs/**/*.md"
+  linkinator:
+    name: linkinator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: JustinBeckwith/linkinator-action@v1
+        with:
+          paths: "docs/**/*.md"
+          linksToSkip: "https://crates.io/crates/rerun"
+
