@@ -877,7 +877,7 @@ impl App {
 
             let store_id = msg.store_id();
 
-            let is_new_recording = if let LogMsg::SetRecordingInfo(msg) = &msg {
+            let is_new_store = if let LogMsg::SetRecordingInfo(msg) = &msg {
                 match msg.info.store_id.kind {
                     StoreKind::Recording => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
@@ -906,7 +906,7 @@ impl App {
                 re_log::error!("Failed to add incoming msg: {err}");
             };
 
-            if is_new_recording {
+            if is_new_store && log_db.store_kind() == StoreKind::Recording {
                 // Do analytics after ingesting the new message,
                 // because thats when the `log_db.recording_info` is set,
                 // which we use in the analytics call.
@@ -1030,14 +1030,10 @@ impl App {
     }
 
     fn on_rrd_loaded(&mut self, log_db_hub: LogDbHub) {
-        for log_db in log_db_hub.log_dbs() {
+        if let Some(log_db) = log_db_hub.recordings().next() {
+            self.state.selected_rec_id = Some(log_db.store_id().clone());
             self.analytics.on_open_recording(log_db);
         }
-
-        self.state.selected_rec_id = log_db_hub
-            .recordings()
-            .next()
-            .map(|log| log.store_id().clone());
 
         for blueprint_db in log_db_hub.blueprints() {
             if let Some(app_id) = blueprint_db.app_id() {
