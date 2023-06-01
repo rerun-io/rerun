@@ -52,7 +52,7 @@ impl RecordingStream {
             // NOTE: This is the one and only place where a warning about missing active recording
             // should be printed, don't stutter!
             re_log::warn_once!(
-                "There is no currently active {kind} recording available \
+                "There is no currently active {kind} stream available \
                 for the current thread ({:?}): have you called `set_global()` and/or \
                 `set_thread_local()` first?",
                 std::thread::current().id(),
@@ -79,7 +79,7 @@ impl RecordingStream {
             // NOTE: This is the one and only place where a warning about missing active recording
             // should be printed, don't stutter!
             re_log::debug_once!(
-                "There is no currently active {kind} recording available \
+                "There is no currently active {kind} stream available \
                 for the current thread ({:?}): have you called `set_global()` and/or \
                 `set_thread_local()` first?",
                 std::thread::current().id(),
