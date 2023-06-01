@@ -351,7 +351,7 @@ async fn run_impl(
                         },
                     );
                     let recording_id =
-                        re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
+                        re_log_types::RecordingId::random(re_log_types::StoreKind::Recording);
                     load_file_to_channel_at(recording_id, &path, tx)
                         .with_context(|| format!("{path:?}"))?;
                     rx
@@ -416,7 +416,8 @@ async fn run_impl(
                 },
             );
 
-            let recording_id = re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
+            let recording_id =
+                re_log_types::RecordingId::random(re_log_types::StoreKind::Recording);
 
             // Load the files in parallel, and log errors.
             // Failing to log one out of many files is not a big deal.

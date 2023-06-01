@@ -5,8 +5,8 @@ use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType,
-    Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, StoreKind, Time,
+    TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -45,7 +45,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// ```
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
-    recording_type: RecordingType,
+    recording_type: StoreKind,
     recording_id: Option<RecordingId>,
     recording_source: Option<RecordingSource>,
 
@@ -76,7 +76,7 @@ impl RecordingStreamBuilder {
 
         Self {
             application_id,
-            recording_type: RecordingType::Data,
+            recording_type: StoreKind::Recording,
             recording_id: None,
             recording_source: None,
 
@@ -144,7 +144,7 @@ impl RecordingStreamBuilder {
 
     #[doc(hidden)]
     pub fn blueprint(mut self) -> Self {
-        self.recording_type = RecordingType::Blueprint;
+        self.recording_type = StoreKind::Blueprint;
         self
     }
 
@@ -277,7 +277,7 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             recording_source,
-            recording_type,
+            store_kind: recording_type,
         };
 
         let batcher_config = batcher_config

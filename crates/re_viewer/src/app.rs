@@ -9,7 +9,7 @@ use web_time::Instant;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{ApplicationId, LogMsg, RecordingId, RecordingType};
+use re_log_types::{ApplicationId, LogMsg, RecordingId, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -585,7 +585,7 @@ impl eframe::App for App {
             .get(&self.selected_app_id())
             .cloned()
             .unwrap_or_else(|| {
-                RecordingId::from_string(RecordingType::Blueprint, self.selected_app_id().0)
+                RecordingId::from_string(StoreKind::Blueprint, self.selected_app_id().0)
             });
 
         let store_config = self
@@ -878,13 +878,13 @@ impl App {
             let recording_id = msg.recording_id();
 
             let is_new_recording = if let LogMsg::SetRecordingInfo(msg) = &msg {
-                match msg.info.recording_id.variant {
-                    RecordingType::Data => {
+                match msg.info.recording_id.kind {
+                    StoreKind::Recording => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
                         self.state.selected_rec_id = Some(recording_id.clone());
                     }
 
-                    RecordingType::Blueprint => {
+                    StoreKind::Blueprint => {
                         re_log::debug!("Opening a new blueprint: {:?}", msg.info);
                         self.state.selected_blueprint_by_app.insert(
                             msg.info.application_id.clone(),
@@ -1880,7 +1880,7 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
     ui.style_mut().wrap = Some(false);
     for log_db in blueprint_dbs
         .iter()
-        .filter(|log| log.recording_type() == RecordingType::Blueprint)
+        .filter(|log| log.store_kind() == StoreKind::Blueprint)
     {
         let info = if let Some(rec_info) = log_db.recording_info() {
             if rec_info.is_app_default_blueprint() {

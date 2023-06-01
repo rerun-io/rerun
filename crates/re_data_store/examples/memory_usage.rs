@@ -48,7 +48,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, DataRow, RecordingId, RecordingType, RowId};
+use re_log_types::{entity_path, DataRow, RecordingId, RowId, StoreKind};
 
 fn main() {
     log_messages();
@@ -91,7 +91,7 @@ fn log_messages() {
 
     const NUM_POINTS: usize = 1_000;
 
-    let recording_id = RecordingId::random(RecordingType::Data);
+    let recording_id = RecordingId::random(StoreKind::Recording);
     let timeline = Timeline::new_sequence("frame_nr");
     let mut time_point = TimePoint::default();
     time_point.insert(timeline, TimeInt::from(0));

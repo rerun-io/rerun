@@ -85,30 +85,30 @@ macro_rules! impl_into_enum {
 
 // ----------------------------------------------------------------------------
 
-/// What type of `Recording` this is.
+/// What kind of Store this is.
 ///
-/// `Data` recordings contain user-data logged via `log_` API calls.
+/// `Recording` stores contain user-data logged via `log_` API calls.
 ///
-/// In the future, `Blueprint` recordings describe how that data is laid out
+/// In the future, `Blueprint` stores describe how that data is laid out
 /// in the viewer, though this is not currently supported.
 ///
-/// Both of these types can go over the same stream and be stored in the
+/// Both of these kinds can go over the same stream and be stored in the
 /// same datastore, but the viewer wants to treat them very differently.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum RecordingType {
+pub enum StoreKind {
     /// A recording of user-data.
-    Data,
+    Recording,
 
-    /// Not currently used: recording data associated with the blueprint state.
+    /// Data associated with the blueprint state.
     Blueprint,
 }
 
-impl std::fmt::Display for RecordingType {
+impl std::fmt::Display for StoreKind {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Data => "Data".fmt(f),
+            Self::Recording => "Recording".fmt(f),
             Self::Blueprint => "Blueprint".fmt(f),
         }
     }
@@ -118,31 +118,31 @@ impl std::fmt::Display for RecordingType {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingId {
-    pub variant: RecordingType,
+    pub kind: StoreKind,
     pub id: Arc<String>,
 }
 
 impl RecordingId {
     #[inline]
-    pub fn random(variant: RecordingType) -> Self {
+    pub fn random(kind: StoreKind) -> Self {
         Self {
-            variant,
+            kind,
             id: Arc::new(uuid::Uuid::new_v4().to_string()),
         }
     }
 
     #[inline]
-    pub fn from_uuid(variant: RecordingType, uuid: uuid::Uuid) -> Self {
+    pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
-            variant,
+            kind,
             id: Arc::new(uuid.to_string()),
         }
     }
 
     #[inline]
-    pub fn from_string(variant: RecordingType, str: String) -> Self {
+    pub fn from_string(kind: StoreKind, str: String) -> Self {
         Self {
-            variant,
+            kind,
             id: Arc::new(str),
         }
     }
@@ -156,7 +156,7 @@ impl RecordingId {
 impl std::fmt::Display for RecordingId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { variant, id } = self;
+        let Self { kind: variant, id } = self;
         f.write_fmt(format_args!("{variant}:{id}"))?;
         Ok(())
     }
@@ -265,7 +265,7 @@ pub struct RecordingInfo {
 
     pub recording_source: RecordingSource,
 
-    pub recording_type: RecordingType,
+    pub store_kind: StoreKind,
 }
 
 impl RecordingInfo {

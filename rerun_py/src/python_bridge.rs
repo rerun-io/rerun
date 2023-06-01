@@ -18,7 +18,7 @@ use re_viewport::{
     SpaceViewBlueprint, ViewCategory,
 };
 
-use re_log_types::{DataRow, RecordingType};
+use re_log_types::{DataRow, StoreKind};
 use rerun::{
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
@@ -211,9 +211,9 @@ fn new_recording(
     });
 
     let recording_id = if let Some(recording_id) = recording_id {
-        RecordingId::from_string(RecordingType::Data, recording_id)
+        RecordingId::from_string(StoreKind::Recording, recording_id)
     } else {
-        default_recording_id(py, RecordingType::Data, &application_id)
+        default_recording_id(py, StoreKind::Recording, &application_id)
     };
 
     let recording = RecordingStreamBuilder::new(application_id)
@@ -261,9 +261,9 @@ fn new_blueprint(
     default_enabled: bool,
 ) -> PyResult<PyRecordingStream> {
     let blueprint_id = if let Some(blueprint_id) = blueprint_id {
-        RecordingId::from_string(RecordingType::Blueprint, blueprint_id)
+        RecordingId::from_string(StoreKind::Blueprint, blueprint_id)
     } else {
-        default_recording_id(py, RecordingType::Blueprint, &application_id)
+        default_recording_id(py, StoreKind::Blueprint, &application_id)
     };
 
     let blueprint = RecordingStreamBuilder::new(application_id)
@@ -336,7 +336,7 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 #[pyfunction]
 fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
-        rerun::RecordingType::Data,
+        rerun::StoreKind::Recording,
         recording.map(|rec| rec.0.clone()),
     )
     .map(PyRecordingStream)
@@ -345,7 +345,7 @@ fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordi
 /// Returns the currently active data recording in the global scope, if any.
 #[pyfunction]
 fn get_global_data_recording() -> Option<PyRecordingStream> {
-    RecordingStream::global(rerun::RecordingType::Data).map(PyRecordingStream)
+    RecordingStream::global(rerun::StoreKind::Recording).map(PyRecordingStream)
 }
 
 /// Replaces the currently active recording in the global scope with the specified one.
@@ -365,7 +365,7 @@ fn set_global_data_recording(
     // sorry.
     py.allow_threads(|| {
         RecordingStream::set_global(
-            rerun::RecordingType::Data,
+            rerun::StoreKind::Recording,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream)
@@ -375,7 +375,7 @@ fn set_global_data_recording(
 /// Returns the currently active data recording in the thread-local scope, if any.
 #[pyfunction]
 fn get_thread_local_data_recording() -> Option<PyRecordingStream> {
-    RecordingStream::thread_local(rerun::RecordingType::Data).map(PyRecordingStream)
+    RecordingStream::thread_local(rerun::StoreKind::Recording).map(PyRecordingStream)
 }
 
 /// Replaces the currently active recording in the thread-local scope with the specified one.
@@ -395,7 +395,7 @@ fn set_thread_local_data_recording(
     // sorry.
     py.allow_threads(|| {
         RecordingStream::set_thread_local(
-            rerun::RecordingType::Data,
+            rerun::StoreKind::Recording,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream)
@@ -407,7 +407,7 @@ fn set_thread_local_data_recording(
 #[pyfunction]
 fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
-        rerun::RecordingType::Blueprint,
+        rerun::StoreKind::Blueprint,
         overrides.map(|rec| rec.0.clone()),
     )
     .map(PyRecordingStream)
@@ -416,7 +416,7 @@ fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRe
 /// Returns the currently active blueprint recording in the global scope, if any.
 #[pyfunction]
 fn get_global_blueprint_recording() -> Option<PyRecordingStream> {
-    RecordingStream::global(rerun::RecordingType::Blueprint).map(PyRecordingStream)
+    RecordingStream::global(rerun::StoreKind::Blueprint).map(PyRecordingStream)
 }
 
 /// Replaces the currently active recording in the global scope with the specified one.
@@ -436,7 +436,7 @@ fn set_global_blueprint_recording(
     // sorry.
     py.allow_threads(|| {
         RecordingStream::set_global(
-            rerun::RecordingType::Blueprint,
+            rerun::StoreKind::Blueprint,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream)
@@ -446,7 +446,7 @@ fn set_global_blueprint_recording(
 /// Returns the currently active blueprint recording in the thread-local scope, if any.
 #[pyfunction]
 fn get_thread_local_blueprint_recording() -> Option<PyRecordingStream> {
-    RecordingStream::thread_local(rerun::RecordingType::Blueprint).map(PyRecordingStream)
+    RecordingStream::thread_local(rerun::StoreKind::Blueprint).map(PyRecordingStream)
 }
 
 /// Replaces the currently active recording in the thread-local scope with the specified one.
@@ -466,7 +466,7 @@ fn set_thread_local_blueprint_recording(
     // sorry.
     py.allow_threads(|| {
         RecordingStream::set_thread_local(
-            rerun::RecordingType::Blueprint,
+            rerun::StoreKind::Blueprint,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream)
@@ -1326,11 +1326,7 @@ fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     }
 }
 
-fn default_recording_id(
-    py: Python<'_>,
-    variant: RecordingType,
-    application_id: &str,
-) -> RecordingId {
+fn default_recording_id(py: Python<'_>, variant: StoreKind, application_id: &str) -> RecordingId {
     use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
 

@@ -7,7 +7,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use re_components::datagen::{build_frame_nr, build_some_colors, build_some_point2d};
 
 use re_log_types::{
-    entity_path, DataRow, DataTable, Index, LogMsg, RecordingId, RecordingType, RowId, TableId,
+    entity_path, DataRow, DataTable, Index, LogMsg, RecordingId, RowId, StoreKind, TableId,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -83,7 +83,7 @@ fn mono_points_arrow(c: &mut Criterion) {
     }
 
     {
-        let recording_id = RecordingId::random(RecordingType::Data);
+        let recording_id = RecordingId::random(StoreKind::Recording);
         let mut group = c.benchmark_group("mono_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
@@ -139,7 +139,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
     }
 
     {
-        let recording_id = RecordingId::random(RecordingType::Data);
+        let recording_id = RecordingId::random(StoreKind::Recording);
         let mut group = c.benchmark_group("mono_points_arrow_batched");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
@@ -196,7 +196,7 @@ fn batch_points_arrow(c: &mut Criterion) {
     }
 
     {
-        let recording_id = RecordingId::random(RecordingType::Data);
+        let recording_id = RecordingId::random(StoreKind::Recording);
         let mut group = c.benchmark_group("batch_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
