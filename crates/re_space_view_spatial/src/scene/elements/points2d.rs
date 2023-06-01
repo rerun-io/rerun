@@ -8,6 +8,7 @@ use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::scene::{
+    elements::{try_add_line_draw_data, try_add_point_draw_data},
     load_keypoint_connections,
     spatial_scene_element::{SpatialSceneContext, SpatialSceneElement, SpatialSceneEntityContext},
     UiLabel, UiLabelTarget,
@@ -21,16 +22,16 @@ use super::{
 pub struct Points2DSceneElement {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub num_entities: usize,
     pub ui_labels: Vec<UiLabel>,
+    pub bounding_box: macaw::BoundingBox,
 }
 
 impl Default for Points2DSceneElement {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            num_entities: 0,
             ui_labels: Vec::new(),
+            bounding_box: macaw::BoundingBox::nothing(),
         }
     }
 }
@@ -77,8 +78,6 @@ impl Points2DSceneElement {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        self.num_entities += 1;
-
         let (annotation_infos, keypoints) =
             process_annotations_and_keypoints(query, entity_view, &ent_context.annotations)?;
 
@@ -113,6 +112,7 @@ impl Points2DSceneElement {
             )?);
         }
 
+        //let batch_bb = {
         {
             let point_batch = point_builder
                 .batch("2d points")
@@ -131,6 +131,7 @@ impl Points2DSceneElement {
                     .iter_primary()?
                     .filter_map(|pt| pt.map(glam::Vec2::from))
             };
+            //let batch_bb = macaw::BoundingBox::from_points(point_positions.map(|p| p.extend(0.0)));
 
             let picking_instance_ids = entity_view.iter_instance_keys().map(|instance_key| {
                 instance_key_to_picking_id(
@@ -165,9 +166,15 @@ impl Points2DSceneElement {
                     }
                 }
             }
-        }
+
+            // batch_bb
+        };
 
         load_keypoint_connections(line_builder, ent_path, keypoints, &ent_context.annotations);
+
+        // self.bounding_box = self
+        //     .bounding_box
+        //     .union(batch_bb.transform_affine3(&ent_context.world_from_obj));
 
         Ok(())
     }
@@ -217,30 +224,8 @@ impl SpatialSceneElement<7> for Points2DSceneElement {
         );
 
         let mut draw_data_list = Vec::new();
-
-        if !point_builder.vertices.is_empty() {
-            match point_builder.to_draw_data(ctx.render_ctx) {
-                Ok(draw_data) => draw_data_list.push(draw_data.into()),
-                Err(err) => {
-                    re_log::error_once!(
-                        "Failed to create point cloud draw data for 2D points: {}",
-                        err
-                    );
-                }
-            }
-        }
-        if !line_builder.batches.is_empty() {
-            match line_builder.to_draw_data(ctx.render_ctx) {
-                Ok(draw_data) => draw_data_list.push(draw_data.into()),
-                Err(err) => {
-                    re_log::error_once!(
-                        "Failed to create line data for 2D point connections: {}",
-                        err
-                    );
-                }
-            }
-        }
-
+        try_add_point_draw_data(ctx.render_ctx, point_builder, &mut draw_data_list);
+        try_add_line_draw_data(ctx.render_ctx, line_builder, &mut draw_data_list);
         draw_data_list
     }
 

@@ -14,9 +14,7 @@ use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
     ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
-use re_viewer_context::{
-    gpu_bridge, HoveredSpace, Item, SpaceViewHighlights, SpaceViewId, ViewerContext,
-};
+use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
 
 use crate::{
     scene::SceneSpatial,
@@ -280,7 +278,6 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 }
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
-#[allow(clippy::too_many_arguments)]
 pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -288,10 +285,11 @@ pub fn view_3d(
     space: &EntityPath,
     space_view_id: SpaceViewId,
     mut scene: SceneSpatial,
-    highlights: &SpaceViewHighlights,
     entity_properties: &EntityPropertyMap,
 ) {
     re_tracing::profile_function!();
+
+    let highlights = &scene.scene.highlights;
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -514,6 +512,11 @@ pub fn view_3d(
 
             ui.ctx().request_repaint(); // show it for a bit longer.
         }
+    }
+
+    // TODO(wumpf): Temporary manual inseration of drawdata. The SpaceViewClass framework will take this over.
+    for draw_data in scene.draw_data {
+        view_builder.queue_draw(draw_data);
     }
 
     // Composite viewbuilder into egui.

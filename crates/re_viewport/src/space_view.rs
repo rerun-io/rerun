@@ -238,7 +238,7 @@ impl SpaceViewBlueprint {
 
                 ViewCategory::Spatial => {
                     let mut scene = SceneSpatial::new(ctx.render_ctx);
-                    scene.load(ctx, &query, &highlights);
+                    scene.load(ctx, &query, highlights);
                     view_state
                         .state_spatial
                         .update_object_property_heuristics(ctx, &mut self.data_blueprint);
@@ -248,7 +248,6 @@ impl SpaceViewBlueprint {
                         &self.space_path,
                         scene,
                         self.id,
-                        &highlights,
                         self.data_blueprint.data_blueprints_projected(),
                     );
                 }
@@ -334,7 +333,6 @@ impl SpaceViewState {
         space: &EntityPath,
         scene: SceneSpatial,
         space_view_id: SpaceViewId,
-        highlights: &SpaceViewHighlights,
         entity_properties: &EntityPropertyMap,
     ) {
         ui.vertical(|ui| {
@@ -344,7 +342,6 @@ impl SpaceViewState {
                 space,
                 scene,
                 space_view_id,
-                highlights,
                 entity_properties,
             );
         });

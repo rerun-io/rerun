@@ -5,9 +5,7 @@ use re_components::Pinhole;
 use re_data_store::{EntityPath, EntityPropertyMap};
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
-use re_viewer_context::{
-    gpu_bridge, HoveredSpace, SpaceViewHighlights, SpaceViewId, ViewerContext,
-};
+use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
 
 use super::{
     eye::Eye,
@@ -229,7 +227,6 @@ pub fn view_2d(
     mut scene: SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
-    highlights: &SpaceViewHighlights,
     entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     re_tracing::profile_function!();
@@ -313,7 +310,7 @@ pub fn view_2d(
             ui_from_canvas,
             &eye,
             ui,
-            highlights,
+            &scene.scene.highlights,
             SpatialNavigationMode::TwoD,
         );
 
@@ -332,6 +329,11 @@ pub fn view_2d(
                 space,
                 entity_properties,
             );
+        }
+
+        // TODO(wumpf): Temporary manual inseration of drawdata. The SpaceViewClass framework will take this over.
+        for draw_data in scene.draw_data {
+            view_builder.queue_draw(draw_data);
         }
 
         // ------------------------------------------------------------------------

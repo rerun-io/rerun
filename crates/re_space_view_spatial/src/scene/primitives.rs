@@ -103,7 +103,6 @@ impl SceneSpatialPrimitives {
 
         // We don't need a very accurate bounding box, so in order to save some time,
         // we calculate a per batch bounding box for lines and points.
-        // TODO(andreas): We should keep these around to speed up picking!
         for (batch, vertex_iter) in points.iter_vertices_by_batch() {
             let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
             *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));

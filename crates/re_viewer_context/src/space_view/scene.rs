@@ -19,6 +19,7 @@ pub enum SceneItemCollectionLookupError {
 /// Collection of scene contexts.
 ///
 /// New type pattern to support adding From impls.
+#[derive(Default)]
 pub struct SceneContextCollection(HashMap<std::any::TypeId, Box<dyn SceneContext>>);
 
 impl SceneContextCollection {
@@ -66,6 +67,7 @@ scene_context_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4
 /// Collections of scene elements.
 ///
 /// New type pattern to support adding From impls.
+#[derive(Default)]
 pub struct SceneElementCollection(HashMap<std::any::TypeId, Box<dyn SceneElement>>);
 
 impl SceneElementCollection {
@@ -118,10 +120,11 @@ scene_element_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4
 ///
 /// When populating a scene, first all contexts are populated,
 /// and then all elements with read access to the previously established context objects.
+#[derive(Default)]
 pub struct Scene {
     pub contexts: SceneContextCollection,
     pub elements: SceneElementCollection,
-    pub highlights: SpaceViewHighlights,
+    pub highlights: SpaceViewHighlights, // TODO(wumpf): Consider making this a scene context - problem: populate can't create it.
 }
 
 impl Scene {
@@ -137,7 +140,7 @@ impl Scene {
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 
         self.highlights = highlights;
@@ -147,16 +150,20 @@ impl Scene {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
             context.populate(ctx, query, space_view_state);
         }
-        for element in self.elements.0.values_mut() {
-            // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
-            element.populate(
-                ctx,
-                query,
-                space_view_state,
-                &self.contexts,
-                &self.highlights,
-            );
-        }
+        self.elements
+            .0
+            .values_mut()
+            .flat_map(|element| {
+                // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
+                element.populate(
+                    ctx,
+                    query,
+                    space_view_state,
+                    &self.contexts,
+                    &self.highlights,
+                )
+            })
+            .collect()
     }
 }
 
@@ -184,11 +191,12 @@ pub trait SceneElement: Any {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
+/// TODO: Doc
 pub trait SceneContext: Any {
     /// Scene contexts query loose components instead of archetypes in their populate method.
     ///
     /// This lists all components out that the context queries.
-    fn component_names(&self) -> Vec<ComponentName>;
+    fn component_names(&self) -> Vec<ComponentName>; // TODO: Back to archetype definitions?
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
     fn populate(

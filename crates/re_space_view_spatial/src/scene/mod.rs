@@ -6,14 +6,14 @@ use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
+use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
-    auto_color, AnnotationMap, Annotations, EmptySpaceViewState, SceneElement, SceneQuery,
-    ViewerContext,
+    auto_color, AnnotationMap, Annotations, EmptySpaceViewState, Scene, SceneQuery, ViewerContext,
 };
-use re_viewer_context::{SceneContext, SpaceViewHighlights};
 
 use super::SpatialNavigationMode;
-use crate::scene::spatial_scene_element::SpatialSceneElement;
+use crate::scene::contexts::AnnotationSceneContext;
+use crate::scene::spatial_scene_element::{SpatialSceneContext, SpatialSceneElement};
 use crate::{mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D};
 
 mod contexts;
@@ -100,6 +100,10 @@ pub struct SceneSpatial {
     /// All space cameras in this scene.
     /// TODO(andreas): Does this belong to `SceneSpatialUiData`?
     pub space_cameras: Vec<SpaceCamera3D>,
+
+    // TODO(andreas): Temporary field. The hosting struct will be removed once SpatialScene is fully ported to the SpaceViewClass framework.
+    pub scene: Scene,
+    pub draw_data: Vec<re_renderer::QueueableDrawData>,
 }
 
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
@@ -119,6 +123,8 @@ impl SceneSpatial {
             num_logged_2d_objects: Default::default(),
             num_logged_3d_objects: Default::default(),
             space_cameras: Default::default(),
+            scene: Default::default(),
+            draw_data: Default::default(),
         }
     }
 
@@ -127,14 +133,13 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        highlights: &SpaceViewHighlights,
+        highlights: SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
         let parts: Vec<&dyn ScenePart> = vec![
-            &elements::Points3DPart { max_labels: 10 },
             // --
             &elements::Boxes3DPart,
             &elements::Lines3DPart,
@@ -149,20 +154,41 @@ impl SceneSpatial {
             // ---
             &elements::CamerasPart,
         ];
-        let elements: Vec<&dyn SceneElement> =
-            vec![&elements::Points2DSceneElement::default().wrap()];
 
-        let mut depth_offsets = EntityDepthOffsets::default();
-        depth_offsets.populate(ctx, query, &EmptySpaceViewState);
-        let mut transforms = TransformContext::default();
-        transforms.populate(ctx, query, &EmptySpaceViewState);
+        // TODO(andreas): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
+        let mut scene = Scene {
+            contexts: (
+                EntityDepthOffsets::default(),
+                TransformContext::default(),
+                AnnotationSceneContext::default(),
+            )
+                .into(),
+            elements: (
+                elements::Points2DSceneElement::default().wrap(),
+                elements::Points3DSceneElement::default().wrap(),
+            )
+                .into(),
+            highlights: Default::default(),
+        };
+        self.draw_data = scene.populate(ctx, query, &EmptySpaceViewState, highlights);
+        let scene_context = SpatialSceneContext::new(&scene.contexts, &scene.highlights)
+            .expect("Failed to query for scene context.");
 
         for part in parts {
-            part.load(self, ctx, query, &transforms, highlights, &depth_offsets);
+            part.load(
+                self,
+                ctx,
+                query,
+                scene_context.transforms,
+                scene_context.highlights,
+                scene_context.depth_offsets,
+            );
         }
 
-        self.primitives.any_outlines = highlights.any_outlines();
+        self.primitives.any_outlines = scene_context.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
+
+        self.scene = scene;
     }
 
     const CAMERA_COLOR: Color32 = Color32::from_rgb(150, 150, 150);

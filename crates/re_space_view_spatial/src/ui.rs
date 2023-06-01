@@ -374,7 +374,6 @@ impl ViewSpatialState {
         space: &EntityPath,
         scene: SceneSpatial,
         space_view_id: SpaceViewId,
-        highlights: &SpaceViewHighlights,
         entity_properties: &EntityPropertyMap,
     ) {
         self.scene_bbox = scene.primitives.bounding_box();
@@ -401,7 +400,6 @@ impl ViewSpatialState {
                     space,
                     space_view_id,
                     scene,
-                    highlights,
                     entity_properties,
                 );
             }
@@ -418,7 +416,6 @@ impl ViewSpatialState {
                     scene,
                     scene_rect_accum,
                     space_view_id,
-                    highlights,
                     entity_properties,
                 );
             }

@@ -22,12 +22,12 @@ pub(crate) use images::ImagesPart;
 pub(crate) use lines2d::Lines2DPart;
 pub(crate) use lines3d::Lines3DPart;
 pub(crate) use meshes::MeshPart;
-
 pub(crate) use points2d::Points2DSceneElement;
-pub(crate) use points3d::Points3DPart;
+pub(crate) use points3d::Points3DSceneElement;
 
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
+use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder};
 use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, SceneQuery, ViewerContext,
@@ -196,4 +196,40 @@ where
     .collect();
 
     Ok((annotation_info, keypoints))
+}
+
+fn try_add_point_draw_data(
+    render_ctx: &mut re_renderer::RenderContext,
+    point_builder: PointCloudBuilder,
+    draw_data_list: &mut Vec<re_renderer::QueueableDrawData>,
+) {
+    if !point_builder.vertices.is_empty() {
+        match point_builder.to_draw_data(render_ctx) {
+            Ok(draw_data) => draw_data_list.push(draw_data.into()),
+            Err(err) => {
+                re_log::error_once!(
+                    "Failed to create point cloud draw data for 2D points: {}",
+                    err
+                );
+            }
+        }
+    }
+}
+
+fn try_add_line_draw_data(
+    render_ctx: &mut re_renderer::RenderContext,
+    line_builder: LineStripSeriesBuilder,
+    draw_data_list: &mut Vec<re_renderer::QueueableDrawData>,
+) {
+    if !line_builder.batches.is_empty() {
+        match line_builder.to_draw_data(render_ctx) {
+            Ok(draw_data) => draw_data_list.push(draw_data.into()),
+            Err(err) => {
+                re_log::error_once!(
+                    "Failed to create line data for 2D point connections: {}",
+                    err
+                );
+            }
+        }
+    }
 }

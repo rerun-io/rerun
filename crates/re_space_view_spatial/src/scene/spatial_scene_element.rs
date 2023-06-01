@@ -33,7 +33,7 @@ pub struct SpatialSceneContext<'a> {
 }
 
 impl<'a> SpatialSceneContext<'a> {
-    fn new(
+    pub fn new(
         contexts: &'a SceneContextCollection,
         highlights: &'a SpaceViewHighlights,
     ) -> Result<Self, SceneItemCollectionLookupError> {
@@ -94,7 +94,7 @@ pub trait SpatialSceneElement<const N: usize>: std::any::Any {
             };
 
             match query_primary_with_history::<Self::Primary, N>(
-                &ctx.log_db.entity_db.data_store,
+                &ctx.store_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

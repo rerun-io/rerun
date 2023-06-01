@@ -2,32 +2,40 @@ use re_components::{
     ClassId, ColorRGBA, Component as _, InstanceKey, KeypointId, Label, Point3D, Radius,
 };
 use re_data_store::{EntityPath, InstancePathHash};
-use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_log_types::ComponentName;
+use re_query::{EntityView, QueryError};
+use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
-use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
-use crate::{
-    TransformContext,
-    {
-        scene::UiLabelTarget,
-        scene::{
-            elements::{
-                instance_key_to_picking_id, instance_path_hash_for_picking,
-                process_annotations_and_keypoints, process_colors, process_radii,
-            },
-            EntityDepthOffsets, SceneSpatial, UiLabel,
-        },
+use crate::scene::{
+    elements::{
+        instance_key_to_picking_id, instance_path_hash_for_picking,
+        process_annotations_and_keypoints, process_colors, process_radii, try_add_line_draw_data,
+        try_add_point_draw_data,
     },
+    load_keypoint_connections,
+    spatial_scene_element::{SpatialSceneContext, SpatialSceneElement, SpatialSceneEntityContext},
+    UiLabel, UiLabelTarget,
 };
 
-use super::ScenePart;
-
-pub struct Points3DPart {
+pub struct Points3DSceneElement {
     /// If the number of points in the batch is > max_labels, don't render point labels.
-    pub(crate) max_labels: usize,
+    pub max_labels: usize,
+    pub ui_labels: Vec<UiLabel>,
+    pub bounding_box: macaw::BoundingBox,
 }
 
-impl Points3DPart {
+impl Default for Points3DSceneElement {
+    fn default() -> Self {
+        Self {
+            max_labels: 10,
+            ui_labels: Vec::new(),
+            bounding_box: macaw::BoundingBox::nothing(),
+        }
+    }
+}
+
+impl Points3DSceneElement {
     fn process_labels<'a>(
         entity_view: &'a EntityView<Point3D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -61,24 +69,19 @@ impl Points3DPart {
         Ok(labels)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
-        &self,
-        scene: &mut SceneSpatial,
+        &mut self,
         query: &SceneQuery<'_>,
         entity_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Affine3A,
-        entity_highlight: &SpaceViewOutlineMasks,
+        ent_context: &SpatialSceneEntityContext<'_>,
+        point_builder: &mut PointCloudBuilder,
+        line_builder: &mut re_renderer::LineStripSeriesBuilder,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        scene.num_logged_3d_objects += 1;
-
-        let annotations = scene.annotation_map.find(ent_path);
-
         let (annotation_infos, keypoints) =
-            process_annotations_and_keypoints(query, entity_view, &annotations)?;
+            process_annotations_and_keypoints(query, entity_view, &ent_context.annotations)?;
 
         let colors = process_colors(entity_view, ent_path, &annotation_infos)?;
         let radii = process_radii(ent_path, entity_view)?;
@@ -97,28 +100,26 @@ impl Points3DPart {
                             ent_path,
                             instance_key,
                             entity_view.num_instances(),
-                            entity_highlight.any_selection_highlight,
+                            ent_context.highlight.any_selection_highlight,
                         )
                     })
                     .collect::<Vec<_>>()
             };
 
-            scene.ui.labels.extend(Self::process_labels(
+            self.ui_labels.extend(Self::process_labels(
                 entity_view,
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                world_from_obj,
+                ent_context.world_from_obj,
             )?);
         }
 
         {
-            let point_batch = scene
-                .primitives
-                .points
+            let point_batch = point_builder
                 .batch("3d points")
-                .world_from_obj(world_from_obj)
-                .outline_mask_ids(entity_highlight.overall)
+                .world_from_obj(ent_context.world_from_obj)
+                .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let point_positions = {
@@ -132,7 +133,7 @@ impl Points3DPart {
                 instance_key_to_picking_id(
                     instance_key,
                     entity_view.num_instances(),
-                    entity_highlight.any_selection_highlight,
+                    ent_context.highlight.any_selection_highlight,
                 )
             });
             let mut point_range_builder = point_batch.add_points(
@@ -146,7 +147,7 @@ impl Points3DPart {
             // Determine if there's any sub-ranges that need extra highlighting.
             {
                 re_tracing::profile_scope!("marking additional highlight points");
-                for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
+                for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = entity_view
                         .iter_instance_keys()
@@ -162,65 +163,62 @@ impl Points3DPart {
             }
         }
 
-        // TODO:
-        //scene.load_keypoint_connections(ent_path, keypoints, &annotations);
+        load_keypoint_connections(line_builder, ent_path, keypoints, &ent_context.annotations);
 
         Ok(())
     }
 }
 
-impl ScenePart for Points3DPart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl SpatialSceneElement<7> for Points3DSceneElement {
+    type Primary = Point3D;
+
+    fn archetype() -> [ComponentName; 7] {
+        [
+            Point3D::name(),
+            InstanceKey::name(),
+            ColorRGBA::name(),
+            Radius::name(),
+            Label::name(),
+            ClassId::name(),
+            KeypointId::name(),
+        ]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformContext,
-        highlights: &SpaceViewHighlights,
-        _depth_offsets: &EntityDepthOffsets,
-    ) {
+        context: SpatialSceneContext<'_>,
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points3DPart");
 
-        for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
-                continue;
-            };
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
+        let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx);
 
-            match query_primary_with_history::<Point3D, 7>(
-                &ctx.store_db.entity_db.data_store,
-                &query.timeline,
-                &query.latest_at,
-                &props.visible_history,
-                ent_path,
-                [
-                    Point3D::name(),
-                    InstanceKey::name(),
-                    ColorRGBA::name(),
-                    Radius::name(),
-                    Label::name(),
-                    ClassId::name(),
-                    KeypointId::name(),
-                ],
-            )
-            .and_then(|entities| {
-                for entity in entities {
-                    self.process_entity_view(
-                        scene,
-                        query,
-                        &entity,
-                        ent_path,
-                        world_from_obj,
-                        entity_highlight,
-                    )?;
-                }
-                Ok(())
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
-            }
-        }
+        Self::for_each_entity_view(
+            ctx,
+            query,
+            &context,
+            context.depth_offsets.points,
+            |ent_path, entity_view, ent_context| {
+                self.process_entity_view(
+                    query,
+                    &entity_view,
+                    ent_path,
+                    ent_context,
+                    &mut point_builder,
+                    &mut line_builder,
+                )
+            },
+        );
+
+        let mut draw_data_list = Vec::new();
+        try_add_point_draw_data(ctx.render_ctx, point_builder, &mut draw_data_list);
+        try_add_line_draw_data(ctx.render_ctx, line_builder, &mut draw_data_list);
+        draw_data_list
+    }
+
+    fn ui_labels(&self) -> &[UiLabel] {
+        &self.ui_labels
     }
 }
