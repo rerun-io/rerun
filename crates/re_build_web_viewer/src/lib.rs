@@ -108,13 +108,27 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
         .join(format!("{crate_name}.wasm"));
 
     // wasm-bindgen --target web target_wasm_path --no-typescript --out-name target_name --out-dir build_dir
-    wasm_bindgen_cli_support::Bindgen::new()
+    if let Err(err) = wasm_bindgen_cli_support::Bindgen::new()
         .no_modules(true)?
         .input_path(target_wasm_path.as_str())
         .typescript(false)
         .out_name(target_name.as_str())
         .generate(build_dir.as_str())
-        .context("Failed to run wasm-bindgen")?;
+    {
+        if err
+            .to_string()
+            .starts_with("cannot import from modules (`env`")
+        {
+            // Very common error: "cannot import from modules (`env`) with `--no-modules`"
+            anyhow::bail!(
+                "Failed to run wasm-bindgen: {err}. This is often because some dependency is calling `std::time::Instant::now()` or similar. You can try diagnosing this with:\n\
+                wasm2wat {target_wasm_path} | rg '\"env\"'\n\
+                wasm2wat {target_wasm_path} | rg 'call .now\\b' -B 20"
+            );
+        } else {
+            return Err(err.context("Failed to run wasm-bindgen"));
+        }
+    }
 
     // --------------------------------------------------------------------------------
 
