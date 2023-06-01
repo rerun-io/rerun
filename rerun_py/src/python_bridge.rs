@@ -1171,7 +1171,7 @@ fn add_space_view(
     entity_paths: Vec<&str>,
     blueprint: Option<&PyRecordingStream>,
 ) {
-    let Some(blueprint) = get_blueprint_recording(blueprint) else { return };
+    let Some(blueprint) = get_blueprint_recording(blueprint) else { return; };
 
     let mut space_view = SpaceViewBlueprint::new(
         "Spatial".into(),
@@ -1213,7 +1213,7 @@ fn add_space_view(
 
 #[pyfunction]
 fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
-    let Some(blueprint) = get_blueprint_recording(blueprint) else { return };
+    let Some(blueprint) = get_blueprint_recording(blueprint) else { return; };
 
     // TODO(jleibs) timeless? Something else?
     let timepoint = time(true, &blueprint);
