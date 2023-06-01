@@ -2,7 +2,7 @@
 
 /// Format an error, including its chain of sources.
 ///
-/// Always use this when displaying an error.
+/// Always use this when displaying an error, especially `anyhow::Error`.
 pub fn format(error: impl AsRef<dyn std::error::Error>) -> String {
     fn format_impl(error: &dyn std::error::Error) -> String {
         let mut string = error.to_string();

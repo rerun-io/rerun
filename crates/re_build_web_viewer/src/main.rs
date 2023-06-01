@@ -34,7 +34,7 @@ fn main() -> ExitCode {
     };
 
     if let Err(err) = re_build_web_viewer::build(release, webgpu) {
-        eprintln!("Failed to build web viewer: {err}");
+        eprintln!("Failed to build web viewer: {}", re_error::format(err));
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
