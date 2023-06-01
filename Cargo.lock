@@ -3905,6 +3905,7 @@ version = "0.7.0-alpha.0"
 dependencies = [
  "anyhow",
  "cargo_metadata",
+ "re_error",
  "wasm-bindgen-cli-support",
 ]
 
@@ -4540,6 +4541,7 @@ dependencies = [
  "re_analytics",
  "re_build_build_info",
  "re_build_web_viewer",
+ "re_error",
  "re_log",
  "thiserror",
  "tokio",
