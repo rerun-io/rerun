@@ -67,6 +67,7 @@ static_assertions = "1.1"
 thiserror.workspace = true
 type-map = "0.5"
 wgpu.workspace = true
+wgpu-hal = "0.16.1"                                    # wgpu-hal 0.16.1 contains a critical fix for mobile devices: https://github.com/gfx-rs/wgpu/pull/3780
 
 # optional
 arrow2 = { workspace = true, optional = true }

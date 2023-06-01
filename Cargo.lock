@@ -3685,7 +3685,7 @@ dependencies = [
  "indoc",
  "libc",
  "memoffset 0.8.0",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "pyo3-build-config",
  "pyo3-ffi",
  "pyo3-macros",
@@ -4187,6 +4187,7 @@ dependencies = [
  "web-time",
  "wgpu",
  "wgpu-core",
+ "wgpu-hal",
  "winit",
  "zip",
 ]
@@ -6138,7 +6139,7 @@ dependencies = [
  "js-sys",
  "log",
  "naga",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -6163,7 +6164,7 @@ dependencies = [
  "codespan-reporting",
  "log",
  "naga",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "raw-window-handle",
  "rustc-hash",
@@ -6176,9 +6177,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41af2ea7d87bd41ad0a37146252d5f7c26490209f47f544b2ee3b3ff34c7732e"
+checksum = "74851c2c8e5d97652e74c241d41b0656b31c924a45dcdecde83975717362cfa4"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -6202,7 +6203,7 @@ dependencies = [
  "metal",
  "naga",
  "objc",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "range-alloc",
  "raw-window-handle",
