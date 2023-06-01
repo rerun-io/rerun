@@ -10,7 +10,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use crate::{
     scene::EntityDepthOffsets,
     scene::{SceneSpatial, UiLabel, UiLabelTarget},
-    TransformCache,
+    TransformContext,
 };
 
 use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
@@ -96,7 +96,7 @@ impl ScenePart for Boxes3DPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {

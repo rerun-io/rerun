@@ -22,7 +22,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
     scene::{EntityDepthOffsets, Image, SceneSpatial},
-    TransformCache,
+    TransformContext,
 };
 
 use super::ScenePart;
@@ -155,7 +155,7 @@ impl ImagesPart {
         entity_view: &EntityView<Tensor>,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         properties: &EntityProperties,
         ent_path: &EntityPath,
         world_from_obj: glam::Affine3A,
@@ -252,7 +252,7 @@ impl ImagesPart {
     fn process_entity_view_as_depth_cloud(
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         properties: &EntityProperties,
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
@@ -380,7 +380,7 @@ impl ScenePart for ImagesPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         highlights: &SpaceViewHighlights,
         depth_offsets: &EntityDepthOffsets,
     ) {

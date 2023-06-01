@@ -15,5 +15,5 @@ mod ui_renderer_bridge;
 
 // TODO(andreas) should only make the main type public
 
-pub use scene::{SceneSpatial, TransformCache, UnreachableTransform};
+pub use scene::{SceneSpatial, TransformContext, UnreachableTransform};
 pub use ui::{SpatialNavigationMode, ViewSpatialState};

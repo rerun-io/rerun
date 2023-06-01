@@ -24,7 +24,7 @@ pub use self::primitives::SceneSpatialPrimitives;
 use elements::ScenePart;
 
 use contexts::EntityDepthOffsets;
-pub use contexts::{TransformCache, UnreachableTransform};
+pub use contexts::{TransformContext, UnreachableTransform};
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
@@ -151,7 +151,7 @@ impl SceneSpatial {
 
         let mut depth_offsets = EntityDepthOffsets::default();
         depth_offsets.populate(ctx, query, &EmptySpaceViewState, space_view_root);
-        let mut transforms = TransformCache::default();
+        let mut transforms = TransformContext::default();
         transforms.populate(ctx, query, &EmptySpaceViewState, space_view_root);
 
         for part in parts {

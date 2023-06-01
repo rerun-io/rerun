@@ -7,7 +7,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
     scene::{EntityDepthOffsets, SceneSpatial},
-    TransformCache,
+    TransformContext,
 };
 
 use super::{instance_key_to_picking_id, ScenePart};
@@ -73,7 +73,7 @@ impl ScenePart for Lines3DPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {

@@ -1,5 +1,5 @@
 mod depth_offsets;
-mod transform_cache;
+mod transform_context;
 
 pub use depth_offsets::EntityDepthOffsets;
-pub use transform_cache::{TransformCache, UnreachableTransform};
+pub use transform_context::{TransformContext, UnreachableTransform};

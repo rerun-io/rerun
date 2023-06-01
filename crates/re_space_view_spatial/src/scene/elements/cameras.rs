@@ -13,7 +13,7 @@ use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     scene::{EntityDepthOffsets, SceneSpatial},
     space_camera_3d::SpaceCamera3D,
-    TransformCache,
+    TransformContext,
 };
 
 /// Determine the view coordinates (i.e.) the axis semantics.
@@ -57,7 +57,7 @@ impl CamerasPart {
         ent_path: &EntityPath,
         instance_key: InstanceKey,
         props: &EntityProperties,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
@@ -184,7 +184,7 @@ impl ScenePart for CamerasPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {

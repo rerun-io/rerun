@@ -26,7 +26,7 @@ struct TransformInfo {
 ///
 /// Should be recomputed every frame.
 #[derive(Clone)]
-pub struct TransformCache {
+pub struct TransformContext {
     /// All transforms provided are relative to this reference path.
     reference_path: EntityPath,
 
@@ -40,7 +40,7 @@ pub struct TransformCache {
     first_unreachable_parent: Option<(EntityPath, UnreachableTransform)>,
 }
 
-impl Default for TransformCache {
+impl Default for TransformContext {
     fn default() -> Self {
         Self {
             reference_path: EntityPath::root(),
@@ -83,7 +83,7 @@ impl std::fmt::Display for UnreachableTransform {
     }
 }
 
-impl SceneContext for TransformCache {
+impl SceneContext for TransformContext {
     fn component_names(&self) -> Vec<ComponentName> {
         vec![
             Transform3D::name(),
@@ -190,7 +190,7 @@ impl SceneContext for TransformCache {
     }
 }
 
-impl TransformCache {
+impl TransformContext {
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,

@@ -7,7 +7,7 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 use crate::{
     mesh_cache::MeshCache,
     scene::{EntityDepthOffsets, MeshSource, SceneSpatial},
-    TransformCache,
+    TransformContext,
 };
 
 use super::{instance_path_hash_for_picking, ScenePart};
@@ -66,7 +66,7 @@ impl ScenePart for MeshPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {

@@ -8,7 +8,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
     scene::{EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
-    TransformCache,
+    TransformContext,
 };
 
 use super::{
@@ -171,7 +171,7 @@ impl ScenePart for Points2DPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         highlights: &SpaceViewHighlights,
         depth_offsets: &EntityDepthOffsets,
     ) {

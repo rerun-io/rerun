@@ -7,7 +7,7 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
-    TransformCache,
+    TransformContext,
     {
         scene::UiLabelTarget,
         scene::{
@@ -174,7 +174,7 @@ impl ScenePart for Points3DPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &TransformContext,
         highlights: &SpaceViewHighlights,
         _depth_offsets: &EntityDepthOffsets,
     ) {
