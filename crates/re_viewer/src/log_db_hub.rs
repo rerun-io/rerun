@@ -10,7 +10,7 @@ pub struct LogDbHub {
 
 impl LogDbHub {
     /// Decode an rrd stream.
-    /// It can theoreticaly contain multiple recordings, and blueprints.
+    /// It can theoretically contain multiple recordings, and blueprints.
     pub fn decode_rrd(read: impl std::io::Read) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
