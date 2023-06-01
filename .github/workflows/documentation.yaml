@@ -24,8 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: JustinBeckwith/linkinator-action@v1
+      - uses: Wandalen/wretry.action@v1.0.36
         with:
-          paths: "docs/**/*.md"
-          linksToSkip: "https://crates.io/crates/rerun"
+          action: JustinBeckwith/linkinator-action@v1
+          with: |
+            paths: "docs/**/*.md"
+            linksToSkip: "https://crates.io/crates/rerun"
+          attempt_limit: 5
+          attempt_delay: 2000
 
