@@ -24,8 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: JustinBeckwith/linkinator-action@v1
+      - uses: jprochazk/linkinator-action@main
         with:
           paths: "docs/**/*.md"
           linksToSkip: "https://crates.io/crates/rerun"
+          retry: true
+          retryErrors: true
+          retryErrorsCount: 5
+          retryErrorsJitter: 2000
 
