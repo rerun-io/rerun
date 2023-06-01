@@ -20,17 +20,14 @@ pub fn fill_view_builder(
     re_tracing::profile_function!();
 
     view_builder
-        .queue_draw(&DepthCloudDrawData::new(
+        .queue_draw(DepthCloudDrawData::new(
             render_ctx,
             &primitives.depth_clouds,
         )?)
-        .queue_draw(&MeshDrawData::new(
-            render_ctx,
-            &primitives.mesh_instances(),
-        )?)
-        .queue_draw(&primitives.line_strips.to_draw_data(render_ctx)?)
-        .queue_draw(&primitives.points.to_draw_data(render_ctx)?)
-        .queue_draw(&RectangleDrawData::new(
+        .queue_draw(MeshDrawData::new(render_ctx, &primitives.mesh_instances())?)
+        .queue_draw(primitives.line_strips.to_draw_data(render_ctx)?)
+        .queue_draw(primitives.points.to_draw_data(render_ctx)?)
+        .queue_draw(RectangleDrawData::new(
             render_ctx,
             &primitives
                 .images
@@ -40,7 +37,7 @@ pub fn fill_view_builder(
         )?);
 
     if matches!(background, ScreenBackground::GenericSkybox) {
-        view_builder.queue_draw(&GenericSkyboxDrawData::new(render_ctx));
+        view_builder.queue_draw(GenericSkyboxDrawData::new(render_ctx));
     }
 
     let command_buffer = view_builder.draw(

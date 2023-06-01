@@ -10,27 +10,12 @@ use crate::{
         ScreenshotProcessor,
     },
     global_bindings::FrameUniformBuffer,
-    renderer::{CompositorDrawData, DebugOverlayDrawData, DrawData, Renderer},
+    queuable_draw_data::QueueableDrawData,
+    renderer::{CompositorDrawData, DebugOverlayDrawData},
     transform::RectTransform,
     wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
     DebugLabel, RectInt, Rgba, Size,
 };
-
-type DrawFn = dyn for<'a, 'b> Fn(
-        &'b RenderContext,
-        DrawPhase,
-        &'a mut wgpu::RenderPass<'b>,
-        &'b dyn std::any::Any,
-    ) -> anyhow::Result<()>
-    + Sync
-    + Send;
-
-struct QueuedDraw {
-    draw_func: Box<DrawFn>,
-    draw_data: Box<dyn std::any::Any + std::marker::Send + std::marker::Sync>,
-    renderer_name: &'static str,
-    participated_phases: &'static [DrawPhase],
-}
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
@@ -48,7 +33,7 @@ pub enum ViewBuilderError {
 /// Used to build up/collect various resources and then send them off for rendering of a single view.
 pub struct ViewBuilder {
     setup: ViewTargetSetup,
-    queued_draws: Vec<QueuedDraw>,
+    queued_draws: Vec<QueueableDrawData>,
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
     outline_mask_processor: Option<OutlineMaskProcessor>,
@@ -480,14 +465,14 @@ impl ViewBuilder {
             )
         });
 
-        let composition_draw = queued_draw(&CompositorDrawData::new(
+        let composition_draw = CompositorDrawData::new(
             ctx,
             &main_target_resolved,
             outline_mask_processor
                 .as_ref()
                 .map(|p| p.final_voronoi_texture()),
             &config.outline_config,
-        ));
+        );
 
         let setup = ViewTargetSetup {
             name: config.name,
@@ -501,7 +486,7 @@ impl ViewBuilder {
 
         Self {
             setup,
-            queued_draws: vec![composition_draw],
+            queued_draws: vec![composition_draw.into()],
             outline_mask_processor,
             screenshot_processor: Default::default(),
             picking_processor: Default::default(),
@@ -528,13 +513,8 @@ impl ViewBuilder {
         }
     }
 
-    pub fn queue_draw<D: DrawData + Sync + Send + Clone + 'static>(
-        &mut self,
-        draw_data: &D,
-    ) -> &mut Self {
-        re_tracing::profile_function!();
-        self.queued_draws.push(queued_draw(draw_data));
-
+    pub fn queue_draw(&mut self, draw_data: impl Into<QueueableDrawData>) -> &mut Self {
+        self.queued_draws.push(draw_data.into());
         self
     }
 
@@ -745,7 +725,7 @@ impl ViewBuilder {
         );
 
         if show_debug_view {
-            self.queue_draw(&DebugOverlayDrawData::new(
+            self.queue_draw(DebugOverlayDrawData::new(
                 ctx,
                 &picking_processor.picking_target,
                 self.setup.resolution_in_pixel.into(),
@@ -781,23 +761,5 @@ impl ViewBuilder {
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
         self.draw_phase(ctx, DrawPhase::Compositing, pass);
-    }
-}
-
-fn queued_draw<D: DrawData + Sync + Send + Clone + 'static>(draw_data: &D) -> QueuedDraw {
-    QueuedDraw {
-        draw_func: Box::new(move |ctx, phase, pass, draw_data| {
-            let renderers = ctx.renderers.read();
-            let renderer = renderers
-                .get::<D::Renderer>()
-                .context("failed to retrieve renderer")?;
-            let draw_data = draw_data
-                .downcast_ref::<D>()
-                .expect("passed wrong type of draw data");
-            renderer.draw(&ctx.gpu_resources, phase, pass, draw_data)
-        }),
-        draw_data: Box::new(draw_data.clone()),
-        renderer_name: std::any::type_name::<D::Renderer>(),
-        participated_phases: D::Renderer::participated_phases(),
     }
 }
