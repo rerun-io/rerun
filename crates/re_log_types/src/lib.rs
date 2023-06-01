@@ -159,9 +159,10 @@ impl StoreId {
 impl std::fmt::Display for StoreId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { kind: variant, id } = self;
-        f.write_fmt(format_args!("{variant}:{id}"))?;
-        Ok(())
+        // `StoreKind` is not part of how we display the id,
+        // because that can easily lead to confusion and bugs
+        // when roundtripping to a string (e.g. via Python SDK).
+        self.id.fmt(f)
     }
 }
 
