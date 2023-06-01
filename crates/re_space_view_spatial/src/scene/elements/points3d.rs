@@ -162,7 +162,8 @@ impl Points3DPart {
             }
         }
 
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations);
+        // TODO:
+        //scene.load_keypoint_connections(ent_path, keypoints, &annotations);
 
         Ok(())
     }

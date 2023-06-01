@@ -7,17 +7,20 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_viewer_context::{
-    auto_color, AnnotationMap, Annotations, EmptySpaceViewState, SceneQuery, ViewerContext,
+    auto_color, AnnotationMap, Annotations, EmptySpaceViewState, SceneElement, SceneQuery,
+    ViewerContext,
 };
 use re_viewer_context::{SceneContext, SpaceViewHighlights};
-mod contexts;
 
 use super::SpatialNavigationMode;
+use crate::scene::spatial_scene_element::SpatialSceneElement;
 use crate::{mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D};
 
+mod contexts;
 mod elements;
 mod picking;
 mod primitives;
+mod spatial_scene_element;
 
 pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
@@ -143,10 +146,11 @@ impl SceneSpatial {
             // --
             // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
             &elements::Lines2DPart,
-            &elements::Points2DSceneElement { max_labels: 10 },
             // ---
             &elements::CamerasPart,
         ];
+        let elements: Vec<&dyn SceneElement> =
+            vec![&elements::Points2DSceneElement::default().wrap()];
 
         let mut depth_offsets = EntityDepthOffsets::default();
         depth_offsets.populate(ctx, query, &EmptySpaceViewState);
@@ -162,48 +166,6 @@ impl SceneSpatial {
     }
 
     const CAMERA_COLOR: Color32 = Color32::from_rgb(150, 150, 150);
-
-    fn load_keypoint_connections(
-        &mut self,
-        entity_path: &re_data_store::EntityPath,
-        keypoints: Keypoints,
-        annotations: &Arc<Annotations>,
-    ) {
-        // Generate keypoint connections if any.
-        let mut line_batch = self
-            .primitives
-            .line_strips
-            .batch("keypoint connections")
-            .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
-
-        for ((class_id, _time), keypoints_in_class) in keypoints {
-            let Some(class_description) = annotations.context.class_map.get(&class_id) else {
-                continue;
-            };
-
-            let color = class_description.info.color.map_or_else(
-                || auto_color(class_description.info.id),
-                |color| color.into(),
-            );
-
-            for (a, b) in &class_description.keypoint_connections {
-                let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
-                    re_log::warn_once!(
-                        "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                        a, b, entity_path
-                    );
-                    continue;
-                };
-                line_batch
-                    .add_segment(*a, *b)
-                    .radius(Size::AUTO)
-                    .color(color)
-                    .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
-                    // Select the entire object when clicking any of the lines.
-                    .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
-            }
-        }
-    }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
     pub fn preferred_navigation_mode(&self, space_info_path: &EntityPath) -> SpatialNavigationMode {
@@ -224,5 +186,45 @@ impl SceneSpatial {
         }
 
         SpatialNavigationMode::ThreeD
+    }
+}
+
+pub fn load_keypoint_connections(
+    line_builder: &mut re_renderer::LineStripSeriesBuilder,
+    entity_path: &re_data_store::EntityPath,
+    keypoints: Keypoints,
+    annotations: &Arc<Annotations>,
+) {
+    // Generate keypoint connections if any.
+    let mut line_batch = line_builder
+        .batch("keypoint connections")
+        .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
+
+    for ((class_id, _time), keypoints_in_class) in keypoints {
+        let Some(class_description) = annotations.context.class_map.get(&class_id) else {
+            continue;
+        };
+
+        let color = class_description.info.color.map_or_else(
+            || auto_color(class_description.info.id),
+            |color| color.into(),
+        );
+
+        for (a, b) in &class_description.keypoint_connections {
+            let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                re_log::warn_once!(
+                    "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
+                    a, b, entity_path
+                );
+                continue;
+            };
+            line_batch
+                .add_segment(*a, *b)
+                .radius(Size::AUTO)
+                .color(color)
+                .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
+                // Select the entire object when clicking any of the lines.
+                .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
+        }
     }
 }

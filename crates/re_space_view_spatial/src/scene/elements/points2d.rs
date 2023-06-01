@@ -2,23 +2,37 @@ use re_components::{
     ClassId, ColorRGBA, Component, InstanceKey, KeypointId, Label, Point2D, Radius,
 };
 use re_data_store::{EntityPath, InstancePathHash};
-use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_log_types::ComponentName;
+use re_query::{EntityView, QueryError};
+use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
-use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
-use crate::{
-    scene::{EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
-    TransformContext,
+use crate::scene::{
+    load_keypoint_connections,
+    spatial_scene_element::{SpatialSceneContext, SpatialSceneElement, SpatialSceneEntityContext},
+    UiLabel, UiLabelTarget,
 };
 
 use super::{
     instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
-    process_colors, process_radii, ScenePart,
+    process_colors, process_radii,
 };
 
 pub struct Points2DSceneElement {
     /// If the number of points in the batch is > max_labels, don't render point labels.
-    pub(crate) max_labels: usize,
+    pub max_labels: usize,
+    pub num_entities: usize,
+    pub ui_labels: Vec<UiLabel>,
+}
+
+impl Default for Points2DSceneElement {
+    fn default() -> Self {
+        Self {
+            max_labels: 10,
+            num_entities: 0,
+            ui_labels: Vec::new(),
+        }
+    }
 }
 
 impl Points2DSceneElement {
@@ -52,25 +66,21 @@ impl Points2DSceneElement {
         Ok(labels)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
-        &self,
-        scene: &mut SceneSpatial,
+        &mut self,
         query: &SceneQuery<'_>,
         entity_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Affine3A,
-        entity_highlight: &SpaceViewOutlineMasks,
-        depth_offset: re_renderer::DepthOffset,
+        ent_context: &SpatialSceneEntityContext<'_>,
+        point_builder: &mut PointCloudBuilder,
+        line_builder: &mut re_renderer::LineStripSeriesBuilder,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        scene.num_logged_2d_objects += 1;
-
-        let annotations = scene.annotation_map.find(ent_path);
+        self.num_entities += 1;
 
         let (annotation_infos, keypoints) =
-            process_annotations_and_keypoints(query, entity_view, &annotations)?;
+            process_annotations_and_keypoints(query, entity_view, &ent_context.annotations)?;
 
         let colors = process_colors(entity_view, ent_path, &annotation_infos)?;
         let radii = process_radii(ent_path, entity_view)?;
@@ -89,13 +99,13 @@ impl Points2DSceneElement {
                             ent_path,
                             instance_key,
                             entity_view.num_instances(),
-                            entity_highlight.any_selection_highlight,
+                            ent_context.highlight.any_selection_highlight,
                         )
                     })
                     .collect::<Vec<_>>()
             };
 
-            scene.ui.labels.extend(Self::process_labels(
+            self.ui_labels.extend(Self::process_labels(
                 entity_view,
                 &instance_path_hashes_for_picking,
                 &colors,
@@ -104,17 +114,15 @@ impl Points2DSceneElement {
         }
 
         {
-            let point_batch = scene
-                .primitives
-                .points
+            let point_batch = point_builder
                 .batch("2d points")
-                .depth_offset(depth_offset)
+                .depth_offset(ent_context.depth_offset)
                 .flags(
                     re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
                         | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
                 )
-                .world_from_obj(world_from_obj)
-                .outline_mask_ids(entity_highlight.overall)
+                .world_from_obj(ent_context.world_from_obj)
+                .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let point_positions = {
@@ -128,7 +136,7 @@ impl Points2DSceneElement {
                 instance_key_to_picking_id(
                     instance_key,
                     entity_view.num_instances(),
-                    entity_highlight.any_selection_highlight,
+                    ent_context.highlight.any_selection_highlight,
                 )
             });
 
@@ -143,7 +151,7 @@ impl Points2DSceneElement {
             // Determine if there's any sub-ranges that need extra highlighting.
             {
                 re_tracing::profile_scope!("marking additional highlight points");
-                for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
+                for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                     // TODO(andreas/jeremy): We can do this much more efficiently
                     let highlighted_point_index = entity_view
                         .iter_instance_keys()
@@ -159,65 +167,84 @@ impl Points2DSceneElement {
             }
         }
 
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations);
+        load_keypoint_connections(line_builder, ent_path, keypoints, &ent_context.annotations);
 
         Ok(())
     }
 }
 
-impl ScenePart for Points2DSceneElement {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl SpatialSceneElement<7> for Points2DSceneElement {
+    type Primary = Point2D;
+
+    fn archetype() -> [ComponentName; 7] {
+        [
+            Point2D::name(),
+            InstanceKey::name(),
+            ColorRGBA::name(),
+            Radius::name(),
+            Label::name(),
+            ClassId::name(),
+            KeypointId::name(),
+        ]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformContext,
-        highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
-    ) {
+        context: SpatialSceneContext<'_>,
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points2DPart");
 
-        for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
-                continue;
-            };
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
+        let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx);
 
-            match query_primary_with_history::<Point2D, 7>(
-                &ctx.store_db.entity_db.data_store,
-                &query.timeline,
-                &query.latest_at,
-                &props.visible_history,
-                ent_path,
-                [
-                    Point2D::name(),
-                    InstanceKey::name(),
-                    ColorRGBA::name(),
-                    Radius::name(),
-                    Label::name(),
-                    ClassId::name(),
-                    KeypointId::name(),
-                ],
-            )
-            .and_then(|entities| {
-                for entity in entities {
-                    self.process_entity_view(
-                        scene,
-                        query,
-                        &entity,
-                        ent_path,
-                        world_from_obj,
-                        entity_highlight,
-                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.points),
-                    )?;
-                }
-                Ok(())
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+        Self::for_each_entity_view(
+            ctx,
+            query,
+            &context,
+            context.depth_offsets.points,
+            |ent_path, entity_view, ent_context| {
+                self.process_entity_view(
+                    query,
+                    &entity_view,
+                    ent_path,
+                    ent_context,
+                    &mut point_builder,
+                    &mut line_builder,
+                )
+            },
+        );
+
+        let mut draw_data_list = Vec::new();
+
+        if !point_builder.vertices.is_empty() {
+            match point_builder.to_draw_data(ctx.render_ctx) {
+                Ok(draw_data) => draw_data_list.push(draw_data.into()),
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
+                    re_log::error_once!(
+                        "Failed to create point cloud draw data for 2D points: {}",
+                        err
+                    );
                 }
             }
         }
+        if !line_builder.batches.is_empty() {
+            match line_builder.to_draw_data(ctx.render_ctx) {
+                Ok(draw_data) => draw_data_list.push(draw_data.into()),
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to create line data for 2D point connections: {}",
+                        err
+                    );
+                }
+            }
+        }
+
+        draw_data_list
+    }
+
+    fn ui_labels(&self) -> &[UiLabel] {
+        &self.ui_labels
     }
 }

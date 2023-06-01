@@ -15,6 +15,7 @@ mod space_view_class_registry;
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use scene::{
     Scene, SceneContext, SceneContextCollection, SceneElement, SceneElementCollection,
+    SceneItemCollectionLookupError,
 };
 pub use scene_element_impl::SceneElementImpl;
 pub use scene_query::SceneQuery;
