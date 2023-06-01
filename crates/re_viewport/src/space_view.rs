@@ -2,7 +2,7 @@ use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
-use re_space_view_spatial::{SceneSpatial, TransformCache, ViewSpatialState};
+use re_space_view_spatial::{SceneSpatial, ViewSpatialState};
 use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
 
 use crate::{
@@ -208,7 +208,13 @@ impl SpaceViewBlueprint {
                 space_view_class.prepare_populate(ctx, view_state.state.as_mut());
             }
             let mut scene = space_view_class.new_scene();
-            scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
+            scene.populate(
+                ctx,
+                &query,
+                view_state.state.as_ref(),
+                &self.space_path,
+                highlights,
+            );
 
             // TODO(andreas): Pass scene to renderer.
             // TODO(andreas): Setup re_renderer view.
@@ -236,14 +242,8 @@ impl SpaceViewBlueprint {
                 }
 
                 ViewCategory::Spatial => {
-                    let transforms = TransformCache::determine_transforms(
-                        &ctx.store_db.entity_db,
-                        &ctx.rec_cfg.time_ctrl,
-                        &self.space_path,
-                        self.data_blueprint.data_blueprints_projected(),
-                    );
                     let mut scene = SceneSpatial::new(ctx.render_ctx);
-                    scene.load(ctx, &query, &transforms, &highlights);
+                    scene.load(ctx, &query, &highlights, &self.space_path);
                     view_state
                         .state_spatial
                         .update_object_property_heuristics(ctx, &mut self.data_blueprint);

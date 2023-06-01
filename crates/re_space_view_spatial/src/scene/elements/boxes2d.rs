@@ -10,7 +10,7 @@ use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePar
 use crate::{
     scene::UiLabelTarget,
     scene::{EntityDepthOffsets, SceneSpatial, UiLabel},
-    transform_cache::TransformCache,
+    TransformCache,
 };
 
 pub struct Boxes2DPart;

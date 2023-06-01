@@ -13,9 +13,7 @@ use re_viewer_context::{SceneContext, SpaceViewHighlights};
 mod contexts;
 
 use super::SpatialNavigationMode;
-use crate::{
-    mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D, transform_cache::TransformCache,
-};
+use crate::{mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D};
 
 mod elements;
 mod picking;
@@ -26,6 +24,7 @@ pub use self::primitives::SceneSpatialPrimitives;
 use elements::ScenePart;
 
 use contexts::EntityDepthOffsets;
+pub use contexts::{TransformCache, UnreachableTransform};
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
@@ -125,8 +124,8 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        space_view_root: &EntityPath,
     ) {
         re_tracing::profile_function!();
 
@@ -151,10 +150,12 @@ impl SceneSpatial {
         ];
 
         let mut depth_offsets = EntityDepthOffsets::default();
-        depth_offsets.populate(ctx, query, &EmptySpaceViewState);
+        depth_offsets.populate(ctx, query, &EmptySpaceViewState, space_view_root);
+        let mut transforms = TransformCache::default();
+        transforms.populate(ctx, query, &EmptySpaceViewState, space_view_root);
 
         for part in parts {
-            part.load(self, ctx, query, transforms, highlights, &depth_offsets);
+            part.load(self, ctx, query, &transforms, highlights, &depth_offsets);
         }
 
         self.primitives.any_outlines = highlights.any_outlines();

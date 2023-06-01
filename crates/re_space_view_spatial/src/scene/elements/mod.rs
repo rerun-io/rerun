@@ -34,7 +34,7 @@ use re_viewer_context::{
 };
 
 use super::{EntityDepthOffsets, SceneSpatial};
-use crate::{scene::Keypoints, transform_cache::TransformCache};
+use crate::{scene::Keypoints, TransformCache};
 
 pub trait ScenePart {
     fn load(

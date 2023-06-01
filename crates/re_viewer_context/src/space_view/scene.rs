@@ -1,6 +1,7 @@
 use std::any::Any;
 
 use ahash::HashMap;
+use re_log_types::{ComponentName, EntityPath};
 
 use crate::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, SpaceViewState, ViewerContext};
 
@@ -129,17 +130,13 @@ impl Scene {
         self.elements.0.values().map(|e| e.archetype()).collect()
     }
 
-    /// List of all archetypes this scene queries for its context.
-    pub fn supported_context_archetypes(&self) -> Vec<ArchetypeDefinition> {
-        self.contexts.0.values().map(|e| e.archetype()).collect()
-    }
-
     /// Populates the scene for a given query.
     pub fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
+        space_view_root: &EntityPath,
         highlights: SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
@@ -149,7 +146,7 @@ impl Scene {
         // TODO(andreas): Both loops are great candidates for parallelization.
         for context in self.contexts.0.values_mut() {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
-            context.populate(ctx, query, space_view_state);
+            context.populate(ctx, query, space_view_state, space_view_root);
         }
         for element in self.elements.0.values_mut() {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
@@ -189,8 +186,10 @@ pub trait SceneElement: Any {
 }
 
 pub trait SceneContext: Any {
-    /// The archetype queried by this scene context.
-    fn archetype(&self) -> ArchetypeDefinition;
+    /// Scene contexts query loose components instead of archetypes in their populate method.
+    ///
+    /// This lists all components out that the context queries.
+    fn component_names(&self) -> Vec<ComponentName>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
     fn populate(
@@ -198,6 +197,7 @@ pub trait SceneContext: Any {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
+        space_view_root: &EntityPath,
     );
 
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.

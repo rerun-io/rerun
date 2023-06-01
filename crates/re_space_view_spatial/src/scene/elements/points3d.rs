@@ -7,7 +7,7 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
-    transform_cache::TransformCache,
+    TransformCache,
     {
         scene::UiLabelTarget,
         scene::{

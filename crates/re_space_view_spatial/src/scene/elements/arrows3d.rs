@@ -7,7 +7,7 @@ use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
 
 use crate::{
     scene::{EntityDepthOffsets, SceneSpatial},
-    transform_cache::TransformCache,
+    TransformCache,
 };
 
 use super::{instance_key_to_picking_id, ScenePart};

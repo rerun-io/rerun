@@ -13,7 +13,7 @@ use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     scene::{EntityDepthOffsets, SceneSpatial},
     space_camera_3d::SpaceCamera3D,
-    transform_cache::TransformCache,
+    TransformCache,
 };
 
 /// Determine the view coordinates (i.e.) the axis semantics.

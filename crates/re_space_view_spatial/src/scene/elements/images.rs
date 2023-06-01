@@ -22,7 +22,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
     scene::{EntityDepthOffsets, Image, SceneSpatial},
-    transform_cache::TransformCache,
+    TransformCache,
 };
 
 use super::ScenePart;

@@ -8,7 +8,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{
     scene::{EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
-    transform_cache::TransformCache,
+    TransformCache,
 };
 
 use super::{
