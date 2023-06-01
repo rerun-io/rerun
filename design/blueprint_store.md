@@ -136,7 +136,7 @@ As a further simplification, the Blueprint will allow for the direct inclusion o
 the data-logging APIs entirely for simple use-cases that don't require temporal information.  This will be accomplished
 by allowing `rrb.Data` objects to be constructured from any Rerun-loggable object.
 
-Data that is a *query* from the data store references an entity path used seprately by the logging APIs:
+Data that is a *query* from the recording store references an entity path used seprately by the logging APIs:
 ```python
 # Log Data
 for t in range(100):
@@ -185,12 +185,12 @@ For example:
     .viewport: BlueprintId("/containers/ab33980a")
 /containers
     /ab33980a
-        .type: ContainerType::Horizontal
+        .layout_class: LayoutClass::Horizontal
         .contents: [BlueprintId("/space_views/e514aac1"), BlueprintId("/space_views/e9f36821")]
         .shares: [2, 1]
 /space_views
     /e514aac1
-        .view_category: ViewCategory::View3D
+        .space_view_class: SpaceViewClass::View3D
         .eye: View3d::Eye(...)
         .contents: [BlueprintId("/data_groups/b117f5b9"), BlueprintId("/data_groups/8ee750a4")]
     /e9f36821
