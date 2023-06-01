@@ -45,6 +45,10 @@ fn main() {
         eprintln!("__ci feature detected: Skipping building of web viewer wasm.");
     } else {
         let release = std::env::var("PROFILE").unwrap() == "release";
-        re_build_web_viewer::build(release, is_tracked_env_var_set("RERUN_BUILD_WEBGPU")).unwrap();
+        if let Err(err) =
+            re_build_web_viewer::build(release, is_tracked_env_var_set("RERUN_BUILD_WEBGPU"))
+        {
+            panic!("Failed to build web viewer: {}", re_error::format(err));
+        }
     }
 }
