@@ -6,6 +6,7 @@
 mod app;
 pub mod blueprint_components;
 pub mod env_vars;
+mod log_db_hub;
 #[cfg(not(target_arch = "wasm32"))]
 mod profiler;
 mod remote_viewer_app;
@@ -17,6 +18,7 @@ use re_log_types::PythonVersion;
 pub(crate) use ui::{memory_panel, selection_panel};
 
 pub use app::{App, StartupOptions};
+pub use log_db_hub::LogDbHub;
 pub use remote_viewer_app::RemoteViewerApp;
 
 pub mod external {
