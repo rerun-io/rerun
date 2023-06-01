@@ -4,9 +4,9 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
-    ArrowMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
-    EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RecordingId, RecordingInfo,
-    RecordingType, RowId, SetRecordingInfo, TimePoint, Timeline,
+    ApplicationId, ArrowMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable,
+    EntityPath, EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RecordingId,
+    RecordingInfo, RecordingType, RowId, SetRecordingInfo, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -207,6 +207,10 @@ impl LogDb {
         self.recording_msg().map(|msg| &msg.info)
     }
 
+    pub fn app_id(&self) -> Option<&ApplicationId> {
+        self.recording_info().map(|ri| &ri.application_id)
+    }
+
     pub fn recording_type(&self) -> RecordingType {
         self.recording_id.variant
     }
@@ -238,6 +242,8 @@ impl LogDb {
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
         re_tracing::profile_function!();
+
+        debug_assert_eq!(msg.recording_id(), self.recording_id());
 
         match &msg {
             LogMsg::SetRecordingInfo(msg) => self.add_begin_recording_msg(msg),

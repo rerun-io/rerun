@@ -1,7 +1,6 @@
 use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
-use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
@@ -20,7 +19,7 @@ use re_viewer_context::{
 };
 use re_viewport::ViewportState;
 
-use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics};
+use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics, LogDbHub};
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
@@ -1031,11 +1030,25 @@ impl App {
             .and_then(|rec_id| self.log_db_hub.recording(rec_id))
     }
 
-    fn show_log_db(&mut self, log_db: LogDb) {
-        debug_assert_eq!(log_db.recording_type(), RecordingType::Data);
-        self.analytics.on_open_recording(&log_db);
-        self.state.selected_rec_id = Some(log_db.recording_id().clone());
-        self.log_db_hub.insert_recording(log_db);
+    fn on_rrd_loaded(&mut self, log_db_hub: LogDbHub) {
+        for log_db in log_db_hub.log_dbs() {
+            self.analytics.on_open_recording(log_db);
+        }
+
+        self.state.selected_rec_id = log_db_hub
+            .recordings()
+            .next()
+            .map(|log| log.recording_id().clone());
+
+        for blueprint_db in log_db_hub.blueprints() {
+            if let Some(app_id) = blueprint_db.app_id() {
+                self.state
+                    .selected_blueprint_by_app
+                    .insert(app_id.clone(), blueprint_db.recording_id().clone());
+            }
+        }
+
+        self.log_db_hub.append(log_db_hub);
     }
 
     fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
@@ -1051,8 +1064,8 @@ impl App {
         if let Some(file) = egui_ctx.input(|i| i.raw.dropped_files.first().cloned()) {
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
-                if let Some(log_db) = load_file_contents(&file.name, &mut bytes) {
-                    self.show_log_db(log_db);
+                if let Some(rrd) = load_file_contents(&file.name, &mut bytes) {
+                    self.on_rrd_loaded(rrd);
 
                     #[allow(clippy::needless_return)] // false positive on wasm32
                     return;
@@ -1061,8 +1074,8 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
-                if let Some(log_db) = load_file_path(path) {
-                    self.show_log_db(log_db);
+                if let Some(rrd) = load_file_path(path) {
+                    self.on_rrd_loaded(rrd);
                 }
             }
         }
@@ -1756,7 +1769,7 @@ fn open(app: &mut App) {
         .pick_file()
     {
         if let Some(log_db) = load_file_path(&path) {
-            app.show_log_db(log_db);
+            app.on_rrd_loaded(log_db);
         }
     }
 }
@@ -2117,42 +2130,27 @@ fn save_database_to_file(
     })
 }
 
-#[allow(unused_mut)]
-fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
-    re_tracing::profile_function!();
-
-    let mut decoder = re_log_encoding::decoder::Decoder::new(read)?;
-
-    let first = decoder.next().context("no messages in recording")??;
-
-    let mut log_db = LogDb::new(first.recording_id().clone());
-    log_db.add(&first)?;
-
-    for msg in decoder {
-        log_db.add(&msg?)?;
-    }
-    Ok(log_db)
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use]
-fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
-    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<LogDb> {
+fn load_file_path(path: &std::path::Path) -> Option<LogDbHub> {
+    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<LogDbHub> {
         re_tracing::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
-        load_rrd_to_log_db(file)
+        LogDbHub::decode_rrd(file)
     }
 
     re_log::info!("Loading {path:?}…");
 
     match load_file_path_impl(path) {
-        Ok(mut new_log_db) => {
+        Ok(mut rrd) => {
             re_log::info!("Loaded {path:?}");
-            new_log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
-                paths: vec![path.into()],
-            });
-            Some(new_log_db)
+            for log_db in rrd.log_dbs_mut() {
+                log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
+                    paths: vec![path.into()],
+                });
+            }
+            Some(rrd)
         }
         Err(err) => {
             let msg = format!("Failed loading {path:?}: {}", re_error::format(&err));
@@ -2167,14 +2165,16 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
 }
 
 #[must_use]
-fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
-    match load_rrd_to_log_db(read) {
-        Ok(mut log_db) => {
+fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDbHub> {
+    match LogDbHub::decode_rrd(read) {
+        Ok(mut rrd) => {
             re_log::info!("Loaded {name:?}");
-            log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
-                paths: vec![name.into()],
-            });
-            Some(log_db)
+            for log_db in rrd.log_dbs_mut() {
+                log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
+                    paths: vec![name.into()],
+                });
+            }
+            Some(rrd)
         }
         Err(err) => {
             let msg = format!("Failed loading {name:?}: {}", re_error::format(&err));

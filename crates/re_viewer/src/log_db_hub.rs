@@ -1,7 +1,7 @@
 use re_data_store::LogDb;
 use re_log_types::{RecordingId, RecordingType};
 
-/// Stores all [`LogDb`]s of recordings and blueprints.
+/// Stores many [`LogDb`]s of recordings and blueprints.
 #[derive(Default)]
 pub struct LogDbHub {
     // TODO(emilk): two separate maps per [`RecordingType`].
@@ -9,12 +9,44 @@ pub struct LogDbHub {
 }
 
 impl LogDbHub {
+    /// Decode an rrd stream.
+    /// It can theoreticaly contain multiple recordings, and blueprints.
+    pub fn decode_rrd(read: impl std::io::Read) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
+
+        let decoder = re_log_encoding::decoder::Decoder::new(read)?;
+
+        let mut slf = Self::default();
+
+        for msg in decoder {
+            let msg = msg?;
+            slf.log_db_entry(msg.recording_id()).add(&msg)?;
+        }
+        Ok(slf)
+    }
+
     /// Returns either a recording or blueprint [`LogDb`].
     /// One is created if it doesn't already exist.
     pub fn log_db_entry(&mut self, id: &RecordingId) -> &mut LogDb {
         self.log_dbs
             .entry(id.clone())
             .or_insert_with(|| LogDb::new(id.clone()))
+    }
+
+    /// All loaded [`LogDb`], both recordings and blueprints, in arbitrary order.
+    pub fn log_dbs(&self) -> impl Iterator<Item = &LogDb> {
+        self.log_dbs.values()
+    }
+
+    /// All loaded [`LogDb`], both recordings and blueprints, in arbitrary order.
+    pub fn log_dbs_mut(&mut self) -> impl Iterator<Item = &mut LogDb> {
+        self.log_dbs.values_mut()
+    }
+
+    pub fn append(&mut self, mut other: Self) {
+        for (id, log_db) in other.log_dbs.drain() {
+            self.log_dbs.insert(id, log_db);
+        }
     }
 
     // --
