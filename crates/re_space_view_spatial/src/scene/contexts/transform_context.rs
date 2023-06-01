@@ -100,20 +100,19 @@ impl SceneContext for TransformContext {
     fn populate(
         &mut self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
-        query: &re_viewer_context::SceneQuery<'_>,
+        scene_query: &re_viewer_context::SceneQuery<'_>,
         _space_view_state: &dyn re_viewer_context::SpaceViewState,
-        space_view_root: &EntityPath,
     ) {
         re_tracing::profile_function!();
 
         let entity_db = &ctx.store_db.entity_db;
         let time_ctrl = &ctx.rec_cfg.time_ctrl;
-        let entity_prop_map = query.entity_props_map;
+        let entity_prop_map = scene_query.entity_props_map;
 
-        self.reference_path = space_view_root.clone();
+        self.reference_path = scene_query.space_path.clone();
 
         // Find the entity path tree for the root.
-        let Some(mut current_tree) = &entity_db.tree.subtree(space_view_root) else {
+        let Some(mut current_tree) = &entity_db.tree.subtree(scene_query.space_path) else {
             // It seems the space path is not part of the object tree!
             // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
             // Naturally, in this case we don't have any transforms yet.
@@ -140,7 +139,7 @@ impl SceneContext for TransformContext {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",
-                    parent_path, space_view_root
+                    parent_path, scene_query.space_path
                 );
                 return;
             };

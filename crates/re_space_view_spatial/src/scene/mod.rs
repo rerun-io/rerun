@@ -125,7 +125,6 @@ impl SceneSpatial {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         highlights: &SpaceViewHighlights,
-        space_view_root: &EntityPath,
     ) {
         re_tracing::profile_function!();
 
@@ -150,9 +149,9 @@ impl SceneSpatial {
         ];
 
         let mut depth_offsets = EntityDepthOffsets::default();
-        depth_offsets.populate(ctx, query, &EmptySpaceViewState, space_view_root);
+        depth_offsets.populate(ctx, query, &EmptySpaceViewState);
         let mut transforms = TransformContext::default();
-        transforms.populate(ctx, query, &EmptySpaceViewState, space_view_root);
+        transforms.populate(ctx, query, &EmptySpaceViewState);
 
         for part in parts {
             part.load(self, ctx, query, &transforms, highlights, &depth_offsets);

@@ -24,7 +24,6 @@ impl SceneContext for EntityDepthOffsets {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::SceneQuery<'_>,
         _space_view_state: &dyn re_viewer_context::SpaceViewState,
-        _space_view_root: &re_log_types::EntityPath,
     ) {
         re_tracing::profile_function!();
 

@@ -196,6 +196,7 @@ impl SpaceViewBlueprint {
         }
 
         let query = re_viewer_context::SceneQuery {
+            space_path: &self.space_path,
             entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
@@ -208,13 +209,7 @@ impl SpaceViewBlueprint {
                 space_view_class.prepare_populate(ctx, view_state.state.as_mut());
             }
             let mut scene = space_view_class.new_scene();
-            scene.populate(
-                ctx,
-                &query,
-                view_state.state.as_ref(),
-                &self.space_path,
-                highlights,
-            );
+            scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
 
             // TODO(andreas): Pass scene to renderer.
             // TODO(andreas): Setup re_renderer view.
@@ -243,7 +238,7 @@ impl SpaceViewBlueprint {
 
                 ViewCategory::Spatial => {
                     let mut scene = SceneSpatial::new(ctx.render_ctx);
-                    scene.load(ctx, &query, &highlights, &self.space_path);
+                    scene.load(ctx, &query, &highlights);
                     view_state
                         .state_spatial
                         .update_object_property_heuristics(ctx, &mut self.data_blueprint);

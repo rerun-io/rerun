@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use ahash::HashMap;
-use re_log_types::{ComponentName, EntityPath};
+use re_log_types::ComponentName;
 
 use crate::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, SpaceViewState, ViewerContext};
 
@@ -136,7 +136,6 @@ impl Scene {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
-        space_view_root: &EntityPath,
         highlights: SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
@@ -146,7 +145,7 @@ impl Scene {
         // TODO(andreas): Both loops are great candidates for parallelization.
         for context in self.contexts.0.values_mut() {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
-            context.populate(ctx, query, space_view_state, space_view_root);
+            context.populate(ctx, query, space_view_state);
         }
         for element in self.elements.0.values_mut() {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
@@ -197,7 +196,6 @@ pub trait SceneContext: Any {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
-        space_view_root: &EntityPath,
     );
 
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
