@@ -175,7 +175,7 @@ pub trait SceneElement: Any {
         space_view_state: &dyn SpaceViewState,
         contexts: &SceneContextCollection,
         highlights: &SpaceViewHighlights,
-    );
+    ) -> Vec<re_renderer::QueueableDrawData>;
 
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;

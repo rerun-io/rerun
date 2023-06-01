@@ -23,7 +23,7 @@ pub(crate) use lines2d::Lines2DPart;
 pub(crate) use lines3d::Lines3DPart;
 pub(crate) use meshes::MeshPart;
 
-pub(crate) use points2d::Points2DPart;
+pub(crate) use points2d::Points2DSceneElement;
 pub(crate) use points3d::Points3DPart;
 
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};

@@ -143,7 +143,7 @@ impl SceneSpatial {
             // --
             // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
             &elements::Lines2DPart,
-            &elements::Points2DPart { max_labels: 10 },
+            &elements::Points2DSceneElement { max_labels: 10 },
             // ---
             &elements::CamerasPart,
         ];

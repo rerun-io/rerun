@@ -46,7 +46,7 @@ impl SceneElementImpl for SceneText {
         state: &TextSpaceViewState,
         _contexts: &SceneContextCollection,
         _highlights: &SpaceViewHighlights,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;
 
         for entity_path in query.entity_paths {
@@ -55,7 +55,7 @@ impl SceneElementImpl for SceneText {
             // Early filtering: if we're not showing it the view, there isn't much point
             // in querying it to begin with... at least for now.
             if !state.filters.is_entity_path_visible(ent_path) {
-                return;
+                continue;
             }
 
             let query = re_arrow_store::RangeQuery::new(
@@ -103,5 +103,7 @@ impl SceneElementImpl for SceneText {
                 }
             }
         }
+
+        Vec::new()
     }
 }

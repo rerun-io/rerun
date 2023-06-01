@@ -35,7 +35,7 @@ impl SceneElementImpl for SceneTextBox {
         _space_view_state: &Self::State,
         _contexts: &SceneContextCollection,
         _highlights: &SpaceViewHighlights,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
@@ -58,5 +58,6 @@ impl SceneElementImpl for SceneTextBox {
                 }
             }
         }
+        Vec::new()
     }
 }

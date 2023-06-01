@@ -16,12 +16,12 @@ use super::{
     process_colors, process_radii, ScenePart,
 };
 
-pub struct Points2DPart {
+pub struct Points2DSceneElement {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub(crate) max_labels: usize,
 }
 
-impl Points2DPart {
+impl Points2DSceneElement {
     fn process_labels<'a>(
         entity_view: &'a EntityView<Point2D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -165,7 +165,7 @@ impl Points2DPart {
     }
 }
 
-impl ScenePart for Points2DPart {
+impl ScenePart for Points2DSceneElement {
     fn load(
         &self,
         scene: &mut SceneSpatial,

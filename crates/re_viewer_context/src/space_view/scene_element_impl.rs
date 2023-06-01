@@ -22,7 +22,7 @@ pub trait SceneElementImpl {
         space_view_state: &Self::State,
         contexts: &SceneContextCollection,
         highlights: &SpaceViewHighlights,
-    );
+    ) -> Vec<re_renderer::QueueableDrawData>;
 }
 
 impl<T: SceneElementImpl + 'static> SceneElement for T {
@@ -37,11 +37,12 @@ impl<T: SceneElementImpl + 'static> SceneElement for T {
         space_view_state: &dyn SpaceViewState,
         contexts: &SceneContextCollection,
         highlights: &SpaceViewHighlights,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         if let Some(state) = space_view_state.as_any().downcast_ref() {
-            self.populate(ctx, query, state, contexts, highlights);
+            self.populate(ctx, query, state, contexts, highlights)
         } else {
             re_log::error_once!("Incorrect type of space view state.");
+            Vec::new()
         }
     }
 
