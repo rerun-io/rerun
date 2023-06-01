@@ -188,6 +188,15 @@ impl SceneSpatial {
         self.primitives.any_outlines = scene_context.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
 
+        // TODO(andreas): Is there a more practical way to get the labels out?
+        //                  Rust doesn't generally allow casting from one trait to another, so we can't make this part of a base trait.
+        if let Ok(points2d) = scene.elements.get_mut::<elements::Points2DSceneElement>() {
+            self.ui.labels.append(&mut points2d.ui_labels);
+        }
+        if let Ok(points3d) = scene.elements.get_mut::<elements::Points3DSceneElement>() {
+            self.ui.labels.append(&mut points3d.ui_labels);
+        }
+
         self.scene = scene;
     }
 

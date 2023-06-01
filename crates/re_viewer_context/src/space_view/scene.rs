@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::any::{Any, TypeId};
 
 use ahash::HashMap;
 use re_log_types::ComponentName;
@@ -20,21 +20,21 @@ pub enum SceneItemCollectionLookupError {
 ///
 /// New type pattern to support adding From impls.
 #[derive(Default)]
-pub struct SceneContextCollection(HashMap<std::any::TypeId, Box<dyn SceneContext>>);
+pub struct SceneContextCollection(HashMap<TypeId, Box<dyn SceneContext>>);
 
 impl SceneContextCollection {
-    pub fn get<T: SceneContext>(&self) -> Result<&T, SceneItemCollectionLookupError> {
+    pub fn get<T: Any>(&self) -> Result<&T, SceneItemCollectionLookupError> {
         self.0
-            .get(&std::any::TypeId::of::<T>())
+            .get(&TypeId::of::<T>())
             .ok_or(SceneItemCollectionLookupError::TypeNotFound)?
             .as_any()
             .downcast_ref::<T>()
             .ok_or(SceneItemCollectionLookupError::DowncastFailure)
     }
 
-    pub fn get_mut<T: SceneContext>(&mut self) -> Result<&mut T, SceneItemCollectionLookupError> {
+    pub fn get_mut<T: Any>(&mut self) -> Result<&mut T, SceneItemCollectionLookupError> {
         self.0
-            .get_mut(&std::any::TypeId::of::<T>())
+            .get_mut(&TypeId::of::<T>())
             .ok_or(SceneItemCollectionLookupError::TypeNotFound)?
             .as_any_mut()
             .downcast_mut::<T>()
@@ -49,7 +49,7 @@ macro_rules! scene_context_collection_from_tuple {
             fn from(_value: ($($name,)*)) -> Self {
                 let mut map = HashMap::<std::any::TypeId, Box<dyn SceneContext>>::default();
                 $(
-                    map.insert(std::any::TypeId::of::<$name>(), Box::new(_value.$idx));
+                    map.insert(_value.$idx.as_any().type_id(), Box::new(_value.$idx));
                 )*
                 Self(map)
             }
@@ -68,25 +68,29 @@ scene_context_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4
 ///
 /// New type pattern to support adding From impls.
 #[derive(Default)]
-pub struct SceneElementCollection(HashMap<std::any::TypeId, Box<dyn SceneElement>>);
+pub struct SceneElementCollection(HashMap<TypeId, Box<dyn SceneElement>>);
 
 impl SceneElementCollection {
-    pub fn get<T: SceneElement>(&self) -> Result<&T, SceneItemCollectionLookupError> {
+    pub fn get<T: Any>(&self) -> Result<&T, SceneItemCollectionLookupError> {
         self.0
-            .get(&std::any::TypeId::of::<T>())
+            .get(&TypeId::of::<T>())
             .ok_or(SceneItemCollectionLookupError::TypeNotFound)?
             .as_any()
             .downcast_ref::<T>()
             .ok_or(SceneItemCollectionLookupError::DowncastFailure)
     }
 
-    pub fn get_mut<T: SceneElement>(&mut self) -> Result<&mut T, SceneItemCollectionLookupError> {
+    pub fn get_mut<T: Any>(&mut self) -> Result<&mut T, SceneItemCollectionLookupError> {
         self.0
-            .get_mut(&std::any::TypeId::of::<T>())
+            .get_mut(&TypeId::of::<T>())
             .ok_or(SceneItemCollectionLookupError::TypeNotFound)?
             .as_any_mut()
             .downcast_mut::<T>()
             .ok_or(SceneItemCollectionLookupError::DowncastFailure)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Box<dyn SceneElement>> {
+        self.0.values()
     }
 }
 
@@ -97,7 +101,7 @@ macro_rules! scene_element_collection_from_tuple {
             fn from(_value: ($($name,)*)) -> Self {
                 let mut map = HashMap::<std::any::TypeId, Box<dyn SceneElement>>::default();
                 $(
-                    map.insert(std::any::TypeId::of::<$name>(), Box::new(_value.$idx));
+                    map.insert(_value.$idx.as_any().type_id(), Box::new(_value.$idx));
                 )*
                 Self(map)
             }

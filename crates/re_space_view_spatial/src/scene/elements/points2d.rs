@@ -228,8 +228,4 @@ impl SpatialSceneElement<7> for Points2DSceneElement {
         try_add_line_draw_data(ctx.render_ctx, line_builder, &mut draw_data_list);
         draw_data_list
     }
-
-    fn ui_labels(&self) -> &[UiLabel] {
-        &self.ui_labels
-    }
 }

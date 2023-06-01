@@ -22,7 +22,6 @@ pub struct Points3DSceneElement {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub ui_labels: Vec<UiLabel>,
-    pub bounding_box: macaw::BoundingBox,
 }
 
 impl Default for Points3DSceneElement {
@@ -30,7 +29,6 @@ impl Default for Points3DSceneElement {
         Self {
             max_labels: 10,
             ui_labels: Vec::new(),
-            bounding_box: macaw::BoundingBox::nothing(),
         }
     }
 }
@@ -216,9 +214,5 @@ impl SpatialSceneElement<7> for Points3DSceneElement {
         try_add_point_draw_data(ctx.render_ctx, point_builder, &mut draw_data_list);
         try_add_line_draw_data(ctx.render_ctx, line_builder, &mut draw_data_list);
         draw_data_list
-    }
-
-    fn ui_labels(&self) -> &[UiLabel] {
-        &self.ui_labels
     }
 }

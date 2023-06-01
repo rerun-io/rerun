@@ -14,7 +14,6 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use crate::{scene::EntityDepthOffsets, TransformContext};
 
 use super::contexts::AnnotationSceneContext;
-use super::UiLabel;
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
@@ -121,22 +120,12 @@ pub trait SpatialSceneElement<const N: usize>: std::any::Any {
     {
         SpatialSceneElementWrapper(self)
     }
-
-    /// Retrieves all ui labels that this scene element should render.
-    fn ui_labels(&self) -> &[UiLabel];
 }
 
 /// A wrapper for `SpatialSceneElement` that implements `SceneElement`.
 ///
 /// Can't implement directly due to Rust limitations around higher kinded traits.
 pub struct SpatialSceneElementWrapper<const N: usize, T: SpatialSceneElement<N>>(pub T);
-
-impl<const N: usize, T: SpatialSceneElement<N>> SpatialSceneElementWrapper<N, T> {
-    /// Retrieves all ui labels that this scene element should render.
-    fn ui_labels(&self) -> &[UiLabel] {
-        self.0.ui_labels()
-    }
-}
 
 impl<const N: usize, T: SpatialSceneElement<N>> SceneElement for SpatialSceneElementWrapper<N, T> {
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
@@ -163,10 +152,12 @@ impl<const N: usize, T: SpatialSceneElement<N>> SceneElement for SpatialSceneEle
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        self
+        // Forwarding to the inner type allows to cast to the original implementor of SpatialSceneElement.
+        &self.0
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+        // Forwarding to the inner type allows to cast to the original implementor of SpatialSceneElement.
+        &mut self.0
     }
 }
