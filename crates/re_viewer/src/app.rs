@@ -434,11 +434,11 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let Some(rec_id) = &self.state.selected_rec_id else {return;};
-        let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else {return;};
+        let Some(rec_id) = &self.state.selected_rec_id else { return; };
+        let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else { return; };
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
-        let Some(log_db) = self.log_dbs.get(rec_id) else { return };
+        let Some(log_db) = self.log_dbs.get(rec_id) else { return; };
         let times_per_timeline = log_db.times_per_timeline();
 
         match command {

@@ -20,6 +20,7 @@ error_match_name = re.compile(r"Err\((\w+)\)")
 error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
 wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
+else_return = re.compile(r"else\s*{\s*return;?\s*};")
 
 
 def lint_line(line: str) -> Optional[str]:
@@ -63,6 +64,13 @@ def lint_line(line: str) -> Optional[str]:
         if name in ("e", "error"):
             return "Errors should be called 'err', '_err' or '_'"
 
+    m = re.search(else_return, line)
+    if m:
+        match = m.group(0)
+        if match != "else { return; };":
+            # Because cargo fmt doesn't handle let-else
+            return f"Use 'else {{ return; }};' instead of '{match}'"
+
     if wasm_caps.search(line):
         return "WASM should be written 'Wasm'"
 
@@ -94,6 +102,7 @@ def test_lint_line() -> None:
         "Wasm",
         "num_instances",
         "instances_count",
+        "let Some(foo) = bar else { return; };",
     ]
 
     should_error = [
@@ -112,6 +121,9 @@ def test_lint_line() -> None:
         "We use WASM in Rerun",
         "nb_instances",
         "inner_nb_instances",
+        "let Some(foo) = bar else {return;};",
+        "let Some(foo) = bar else {return};",
+        "let Some(foo) = bar else { return };",
     ]
 
     for line in should_pass:

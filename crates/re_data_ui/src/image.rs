@@ -359,7 +359,7 @@ pub fn show_zoomed_image_region_area_outline(
 ) {
     use egui::{pos2, remap, Rect};
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else {return;};
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return; };
 
     let width = width as f32;
     let height = height as f32;
