@@ -75,7 +75,7 @@ impl RemoteViewerApp {
                 let app = crate::App::from_receiver(
                     self.build_info,
                     &self.app_env,
-                    self.startup_options,
+                    self.startup_options.clone(),
                     self.re_ui.clone(),
                     storage,
                     rx,

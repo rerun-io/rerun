@@ -236,6 +236,7 @@ impl ReUi {
         &self,
         native_pixels_per_point: Option<f32>,
         fullscreen: bool,
+        style_like_web: bool,
     ) -> TopBarStyle {
         let gui_zoom = if let Some(native_pixels_per_point) = native_pixels_per_point {
             native_pixels_per_point / self.egui_ctx.pixels_per_point()
@@ -245,7 +246,7 @@ impl ReUi {
 
         // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
         // This means we need to make room for them.
-        let make_room_for_window_buttons = {
+        let make_room_for_window_buttons = !style_like_web && {
             #[cfg(target_os = "macos")]
             {
                 crate::FULLSIZE_CONTENT && !fullscreen

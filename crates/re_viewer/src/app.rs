@@ -41,10 +41,35 @@ enum TimeControlCommand {
 // ----------------------------------------------------------------------------
 
 /// Settings set once at startup (e.g. via command-line options) and not serialized.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone)]
 pub struct StartupOptions {
     pub memory_limit: re_memory::MemoryLimit,
+
     pub persist_state: bool,
+
+    /// Take a screenshot of the app and quit.
+    /// We use this to generate screenshots of our exmples.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub screenshot_to_path_then_quit: Option<std::path::PathBuf>,
+
+    /// Set the screen resolution in logical points.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub resolution_in_points: Option<[f32; 2]>,
+}
+
+impl Default for StartupOptions {
+    fn default() -> Self {
+        Self {
+            memory_limit: re_memory::MemoryLimit::default(),
+            persist_state: true,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            screenshot_to_path_then_quit: None,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            resolution_in_points: None,
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -60,6 +85,7 @@ pub struct App {
     startup_options: StartupOptions,
     ram_limit_warner: re_memory::RamLimitWarner,
     re_ui: re_ui::ReUi,
+    screenshotter: crate::screenshotter::Screenshotter,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
@@ -146,11 +172,21 @@ impl App {
             );
         }
 
+        #[allow(unused_mut, clippy::needless_update)] // false positive on web
+        let mut screenshotter = crate::screenshotter::Screenshotter::default();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(screenshot_path) = startup_options.screenshot_to_path_then_quit.clone() {
+            screenshotter.screenshot_to_path_then_quit(screenshot_path);
+        }
+
         Self {
             build_info,
             startup_options,
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
+            screenshotter,
+
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
@@ -389,6 +425,11 @@ impl App {
             Command::PlaybackRestart => {
                 self.run_time_control_command(TimeControlCommand::Restart);
             }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ScreenshotWholeApp => {
+                self.screenshotter.request_screenshot();
+            }
         }
     }
 
@@ -507,13 +548,27 @@ impl eframe::App for App {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
 
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
+            frame.set_window_size(resolution_in_points.into());
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.screenshotter.update(egui_ctx, frame).quit {
+            frame.close();
+            return;
+        }
+
         if self.startup_options.memory_limit.limit.is_none() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        {
+        if self.screenshotter.is_screenshotting() {
+            // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
+            egui_ctx.set_pixels_per_point(2.0);
+        } else {
             // Ensure zoom factor is sane and in 10% steps at all times before applying it.
             {
                 let mut zoom_factor = self.state.app_options.zoom_factor;
@@ -679,7 +734,10 @@ impl eframe::App for App {
         }
 
         self.handle_dropping_files(egui_ctx);
-        self.toasts.show(egui_ctx);
+
+        if !self.screenshotter.is_screenshotting() {
+            self.toasts.show(egui_ctx);
+        }
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
             self.pending_commands.push(cmd);
@@ -700,6 +758,13 @@ impl eframe::App for App {
             // create this same blueprint in `load_or_create_blueprint`, but we couldn't
             // keep it around for borrow-checker reasons.
             re_log::warn_once!("Blueprint unexpectedly missing from store.");
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn post_rendering(&mut self, _window_size: [u32; 2], frame: &eframe::Frame) {
+        if let Some(screenshot) = frame.screenshot() {
+            self.screenshotter.save(&screenshot);
         }
     }
 }
@@ -1237,7 +1302,10 @@ fn top_panel(
             frame.info().window_info.fullscreen
         }
     };
-    let top_bar_style = app.re_ui.top_bar_style(native_pixels_per_point, fullscreen);
+    let style_like_web = app.screenshotter.is_screenshotting();
+    let top_bar_style =
+        app.re_ui
+            .top_bar_style(native_pixels_per_point, fullscreen, style_like_web);
 
     egui::TopBottomPanel::top("top_bar")
         .frame(app.re_ui.top_panel_frame())

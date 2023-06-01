@@ -43,6 +43,10 @@ struct Args {
     #[command(subcommand)]
     commands: Option<Commands>,
 
+    /// What bind address IP to use.
+    #[clap(long, default_value = "0.0.0.0")]
+    bind: String,
+
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
     /// If we go over this, we start dropping packets.
@@ -86,6 +90,12 @@ struct Args {
     #[clap(long)]
     save: Option<String>,
 
+    /// Take a screenshot of the app and quit.
+    /// We use this to generate screenshots of our exmples.
+    /// Useful together with `--window-size`.
+    #[clap(long)]
+    screenshot_to: Option<std::path::PathBuf>,
+
     /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
     #[clap(long)]
     strict: bool,
@@ -115,15 +125,16 @@ struct Args {
     #[clap(long)]
     web_viewer: bool,
 
-    /// What bind address IP to use.
-    #[clap(long, default_value = "0.0.0.0")]
-    bind: String,
-
     /// What port do we listen to for hosting the web viewer over HTTP.
     /// A port of 0 will pick a random port.
     #[cfg(feature = "web_viewer")]
     #[clap(long, default_value_t = Default::default())]
     web_viewer_port: WebViewerServerPort,
+
+    /// Set the screen resolution (in logical points), e.g. "1920x1080".
+    /// Useful together with `--screenshot-to`.
+    #[clap(long)]
+    window_size: Option<String>,
 
     /// What port do we listen to for incoming websocket connections from the viewer
     /// A port of 0 will pick a random port.
@@ -308,6 +319,14 @@ async fn run_impl(
                 .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
         }),
         persist_state: args.persist_state,
+        screenshot_to_path_then_quit: args.screenshot_to.clone(),
+
+        // TODO(emilk): make it easy to set this on eframe instead
+        resolution_in_points: if let Some(size) = &args.window_size {
+            Some(parse_size(size)?)
+        } else {
+            None
+        },
     };
 
     // Where do we get the data from?
@@ -499,6 +518,19 @@ async fn run_impl(
             );
         }
     }
+}
+
+#[cfg(feature = "native_viewer")]
+fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
+    fn parse_size_inner(size: &str) -> Option<[f32; 2]> {
+        let (w, h) = size.split_once('x')?;
+        let w = w.parse().ok()?;
+        let h = h.parse().ok()?;
+        Some([w, h])
+    }
+
+    parse_size_inner(size)
+        .ok_or_else(|| anyhow::anyhow!("Invalid size {:?}, expected e.g. 800x600", size))
 }
 
 // NOTE: This is only used as part of end-to-end tests.

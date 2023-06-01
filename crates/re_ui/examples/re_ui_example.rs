@@ -238,7 +238,7 @@ impl ExampleApp {
         };
         let top_bar_style = self
             .re_ui
-            .top_bar_style(native_pixels_per_point, fullscreen);
+            .top_bar_style(native_pixels_per_point, fullscreen, false);
 
         egui::TopBottomPanel::top("top_bar")
             .frame(self.re_ui.top_panel_frame())

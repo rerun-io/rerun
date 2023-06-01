@@ -713,7 +713,6 @@ fn save_image(tensor: &re_components::Tensor, dynamic_image: &image::DynamicImag
                 .save_file()
             {
                 match dynamic_image.save(&path) {
-                    // TODO(emilk): show a popup instead of logging result
                     Ok(()) => {
                         re_log::info!("Image saved to {path:?}");
                     }
