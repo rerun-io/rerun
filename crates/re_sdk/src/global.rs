@@ -192,10 +192,10 @@ mod tests {
 
     #[test]
     fn fallbacks() {
-        fn check_recording_id(expected: &RecordingStream, got: Option<RecordingStream>) {
+        fn check_store_id(expected: &RecordingStream, got: Option<RecordingStream>) {
             assert_eq!(
-                expected.recording_info().unwrap().recording_id,
-                got.unwrap().recording_info().unwrap().recording_id
+                expected.recording_info().unwrap().store_id,
+                got.unwrap().recording_info().unwrap().store_id
             );
         }
 
@@ -205,11 +205,11 @@ mod tests {
 
         // nothing is set -- explicit wins
         let explicit = RecordingStreamBuilder::new("explicit").buffered().unwrap();
-        check_recording_id(
+        check_store_id(
             &explicit,
             RecordingStream::get(StoreKind::Recording, explicit.clone().into()),
         );
-        check_recording_id(
+        check_store_id(
             &explicit,
             RecordingStream::get(StoreKind::Blueprint, explicit.clone().into()),
         );
@@ -230,21 +230,21 @@ mod tests {
         );
 
         // globals are set, no explicit -- globals win
-        check_recording_id(
+        check_store_id(
             &global_data,
             RecordingStream::get(StoreKind::Recording, None),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
             RecordingStream::get(StoreKind::Blueprint, None),
         );
 
         // overwrite globals with themselves -- we expect to get the same value back
-        check_recording_id(
+        check_store_id(
             &global_data,
             RecordingStream::set_global(StoreKind::Recording, Some(global_data.clone())),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
             RecordingStream::set_global(StoreKind::Blueprint, Some(global_blueprint.clone())),
         );
@@ -255,11 +255,11 @@ mod tests {
                 let global_blueprint = global_blueprint.clone();
                 move || {
                     // globals are still set, no explicit -- globals still win
-                    check_recording_id(
+                    check_store_id(
                         &global_data,
                         RecordingStream::get(StoreKind::Recording, None),
                     );
-                    check_recording_id(
+                    check_store_id(
                         &global_blueprint,
                         RecordingStream::get(StoreKind::Blueprint, None),
                     );
@@ -283,21 +283,21 @@ mod tests {
                     .is_none());
 
                     // locals are set for this thread -- locals win
-                    check_recording_id(
+                    check_store_id(
                         &local_data,
                         RecordingStream::get(StoreKind::Recording, None),
                     );
-                    check_recording_id(
+                    check_store_id(
                         &local_blueprint,
                         RecordingStream::get(StoreKind::Blueprint, None),
                     );
 
                     // explicit still outsmarts everyone no matter what
-                    check_recording_id(
+                    check_store_id(
                         &explicit,
                         RecordingStream::get(StoreKind::Recording, explicit.clone().into()),
                     );
-                    check_recording_id(
+                    check_store_id(
                         &explicit,
                         RecordingStream::get(StoreKind::Blueprint, explicit.clone().into()),
                     );
@@ -308,11 +308,11 @@ mod tests {
             .unwrap();
 
         // locals should not exist in this thread -- global wins
-        check_recording_id(
+        check_store_id(
             &global_data,
             RecordingStream::get(StoreKind::Recording, None),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
             RecordingStream::get(StoreKind::Blueprint, None),
         );
@@ -334,21 +334,21 @@ mod tests {
         )
         .is_none());
 
-        check_recording_id(
+        check_store_id(
             &global_data,
             RecordingStream::set_global(StoreKind::Recording, None),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
             RecordingStream::set_global(StoreKind::Blueprint, None),
         );
 
         // locals still win
-        check_recording_id(
+        check_store_id(
             &local_data,
             RecordingStream::get(StoreKind::Recording, None),
         );
-        check_recording_id(
+        check_store_id(
             &local_blueprint,
             RecordingStream::get(StoreKind::Blueprint, None),
         );

@@ -48,7 +48,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, DataRow, RecordingId, RowId, StoreKind};
+use re_log_types::{entity_path, DataRow, RowId, StoreId, StoreKind};
 
 fn main() {
     log_messages();
@@ -91,7 +91,7 @@ fn log_messages() {
 
     const NUM_POINTS: usize = 1_000;
 
-    let recording_id = RecordingId::random(StoreKind::Recording);
+    let store_id = StoreId::random(StoreKind::Recording);
     let timeline = Timeline::new_sequence("frame_nr");
     let mut time_point = TimePoint::default();
     time_point.insert(timeline, TimeInt::from(0));
@@ -118,7 +118,7 @@ fn log_messages() {
         );
         let table_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(
-            recording_id.clone(),
+            store_id.clone(),
             table.to_arrow_msg().unwrap(),
         ));
         let log_msg_bytes = live_bytes() - used_bytes_start;
@@ -143,10 +143,7 @@ fn log_messages() {
             .into_table(),
         );
         let table_bytes = live_bytes() - used_bytes_start;
-        let log_msg = Box::new(LogMsg::ArrowMsg(
-            recording_id,
-            table.to_arrow_msg().unwrap(),
-        ));
+        let log_msg = Box::new(LogMsg::ArrowMsg(store_id, table.to_arrow_msg().unwrap()));
         let log_msg_bytes = live_bytes() - used_bytes_start;
         println!("Arrow payload containing a Pos2 uses {table_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);

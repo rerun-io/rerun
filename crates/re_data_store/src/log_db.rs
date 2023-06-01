@@ -5,8 +5,8 @@ use nohash_hasher::IntMap;
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
     ApplicationId, ArrowMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable,
-    EntityPath, EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RecordingId,
-    RecordingInfo, RowId, SetRecordingInfo, StoreKind, TimePoint, Timeline,
+    EntityPath, EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RecordingInfo, RowId,
+    SetRecordingInfo, StoreId, StoreKind, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -172,8 +172,8 @@ impl EntityDb {
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
 pub struct LogDb {
-    /// The [`RecordingId`] for this log.
-    recording_id: RecordingId,
+    /// The [`StoreId`] for this log.
+    store_id: StoreId,
 
     /// All [`EntityPathOpMsg`]s ever received.
     entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
@@ -189,9 +189,9 @@ pub struct LogDb {
 }
 
 impl LogDb {
-    pub fn new(recording_id: RecordingId) -> Self {
+    pub fn new(store_id: StoreId) -> Self {
         Self {
-            recording_id,
+            store_id,
             entity_op_msgs: Default::default(),
             data_source: None,
             recording_msg: None,
@@ -212,11 +212,11 @@ impl LogDb {
     }
 
     pub fn store_kind(&self) -> StoreKind {
-        self.recording_id.kind
+        self.store_id.kind
     }
 
-    pub fn recording_id(&self) -> &RecordingId {
-        &self.recording_id
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -243,7 +243,7 @@ impl LogDb {
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
         re_tracing::profile_function!();
 
-        debug_assert_eq!(msg.recording_id(), self.recording_id());
+        debug_assert_eq!(msg.store_id(), self.store_id());
 
         match &msg {
             LogMsg::SetRecordingInfo(msg) => self.add_begin_recording_msg(msg),
@@ -293,7 +293,7 @@ impl LogDb {
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
-            recording_id: _,
+            store_id: _,
             entity_op_msgs,
             data_source: _,
             recording_msg: _,

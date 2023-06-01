@@ -129,6 +129,10 @@ impl ViewerAnalytics {
 
     /// When we have loaded the start of a new recording.
     pub fn on_open_recording(&mut self, log_db: &re_data_store::LogDb) {
+        if log_db.store_kind() != re_log_types::StoreKind::Recording {
+            return;
+        }
+
         if let Some(rec_info) = log_db.recording_info() {
             // We hash the application_id and recording_id unless this is an official example.
             // That's because we want to be able to track which are the popular examples,
@@ -142,7 +146,7 @@ impl ViewerAnalytics {
                 }
             });
             self.register("recording_id", {
-                let prop = Property::from(rec_info.recording_id.to_string());
+                let prop = Property::from(rec_info.store_id.to_string());
                 if rec_info.is_official_example {
                     prop
                 } else {

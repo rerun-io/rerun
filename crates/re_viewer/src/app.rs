@@ -9,7 +9,7 @@ use web_time::Instant;
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{ApplicationId, LogMsg, RecordingId, StoreKind};
+use re_log_types::{ApplicationId, LogMsg, StoreId, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
@@ -503,7 +503,7 @@ impl App {
     // Materialize the blueprint from the DB if the selected blueprint id isn't the default one.
     fn load_or_create_blueprint(
         &mut self,
-        this_frame_blueprint_id: &RecordingId,
+        this_frame_blueprint_id: &StoreId,
         egui_ctx: &egui::Context,
     ) -> Blueprint {
         let blueprint_db = self.log_db_hub.blueprint_entry(this_frame_blueprint_id);
@@ -585,7 +585,7 @@ impl eframe::App for App {
             .get(&self.selected_app_id())
             .cloned()
             .unwrap_or_else(|| {
-                RecordingId::from_string(StoreKind::Blueprint, self.selected_app_id().0)
+                StoreId::from_string(StoreKind::Blueprint, self.selected_app_id().0)
             });
 
         let store_config = self
@@ -665,7 +665,7 @@ impl eframe::App for App {
                 {
                     recording_config_entry(
                         &mut self.state.recording_configs,
-                        log_db.recording_id().clone(),
+                        log_db.store_id().clone(),
                         self.rx.source(),
                         log_db,
                     )
@@ -875,21 +875,20 @@ impl App {
                 }
             };
 
-            let recording_id = msg.recording_id();
+            let store_id = msg.store_id();
 
             let is_new_recording = if let LogMsg::SetRecordingInfo(msg) = &msg {
-                match msg.info.recording_id.kind {
+                match msg.info.store_id.kind {
                     StoreKind::Recording => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
-                        self.state.selected_rec_id = Some(recording_id.clone());
+                        self.state.selected_rec_id = Some(store_id.clone());
                     }
 
                     StoreKind::Blueprint => {
                         re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        self.state.selected_blueprint_by_app.insert(
-                            msg.info.application_id.clone(),
-                            msg.info.recording_id.clone(),
-                        );
+                        self.state
+                            .selected_blueprint_by_app
+                            .insert(msg.info.application_id.clone(), msg.info.store_id.clone());
                     }
                 }
                 true
@@ -897,7 +896,7 @@ impl App {
                 false
             };
 
-            let log_db = self.log_db_hub.log_db_entry(recording_id);
+            let log_db = self.log_db_hub.log_db_entry(store_id);
 
             if log_db.data_source.is_none() {
                 log_db.data_source = Some(self.rx.source().clone());
@@ -937,12 +936,12 @@ impl App {
                 .log_db_hub
                 .recordings()
                 .next()
-                .map(|log| log.recording_id().clone());
+                .map(|log| log.store_id().clone());
         }
 
         self.state
             .recording_configs
-            .retain(|recording_id, _| self.log_db_hub.contains_recording(recording_id));
+            .retain(|store_id, _| self.log_db_hub.contains_recording(store_id));
     }
 
     fn purge_memory_if_needed(&mut self) {
@@ -1038,13 +1037,13 @@ impl App {
         self.state.selected_rec_id = log_db_hub
             .recordings()
             .next()
-            .map(|log| log.recording_id().clone());
+            .map(|log| log.store_id().clone());
 
         for blueprint_db in log_db_hub.blueprints() {
             if let Some(app_id) = blueprint_db.app_id() {
                 self.state
                     .selected_blueprint_by_app
-                    .insert(app_id.clone(), blueprint_db.recording_id().clone());
+                    .insert(app_id.clone(), blueprint_db.store_id().clone());
             }
         }
 
@@ -1134,12 +1133,12 @@ struct AppState {
     cache: Caches,
 
     #[serde(skip)]
-    selected_rec_id: Option<RecordingId>,
+    selected_rec_id: Option<StoreId>,
     #[serde(skip)]
-    selected_blueprint_by_app: HashMap<ApplicationId, RecordingId>,
+    selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
 
     /// Configuration for the current recording (found in [`LogDb`]).
-    recording_configs: HashMap<RecordingId, RecordingConfig>,
+    recording_configs: HashMap<StoreId, RecordingConfig>,
 
     /// Which view panel is currently being shown
     panel_selection: PanelSelection,
@@ -1188,7 +1187,7 @@ impl AppState {
 
         let rec_cfg = recording_config_entry(
             recording_configs,
-            log_db.recording_id().clone(),
+            log_db.store_id().clone(),
             rx.source(),
             log_db,
         );
@@ -1850,12 +1849,12 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.selected_rec_id.as_ref() == Some(log_db.recording_id()),
+                app.state.selected_rec_id.as_ref() == Some(log_db.store_id()),
                 info,
             )
             .clicked()
         {
-            app.state.selected_rec_id = Some(log_db.recording_id().clone());
+            app.state.selected_rec_id = Some(log_db.store_id().clone());
         }
     }
 }
@@ -1897,14 +1896,14 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.selected_blueprint_by_app.get(&app_id) == Some(log_db.recording_id()),
+                app.state.selected_blueprint_by_app.get(&app_id) == Some(log_db.store_id()),
                 info,
             )
             .clicked()
         {
             app.state
                 .selected_blueprint_by_app
-                .insert(app_id.clone(), log_db.recording_id().clone());
+                .insert(app_id.clone(), log_db.store_id().clone());
         }
     }
 }
@@ -2088,7 +2087,7 @@ fn save_database_to_file(
 
     let ent_op_msgs = log_db
         .iter_entity_op_msgs()
-        .map(|msg| LogMsg::EntityPathOpMsg(log_db.recording_id().clone(), msg.clone()))
+        .map(|msg| LogMsg::EntityPathOpMsg(log_db.store_id().clone(), msg.clone()))
         .collect_vec();
 
     let time_filter = time_selection.map(|(timeline, range)| {
@@ -2104,7 +2103,7 @@ fn save_database_to_file(
         .map(|table| {
             table
                 .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(log_db.recording_id().clone(), msg))
+                .map(|msg| LogMsg::ArrowMsg(log_db.store_id().clone(), msg))
         })
         .collect();
 
@@ -2189,8 +2188,8 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDbHub> 
 }
 
 fn recording_config_entry<'cfgs>(
-    configs: &'cfgs mut HashMap<RecordingId, RecordingConfig>,
-    id: RecordingId,
+    configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
+    id: StoreId,
     data_source: &'_ re_smart_channel::SmartChannelSource,
     log_db: &'_ LogDb,
 ) -> &'cfgs mut RecordingConfig {

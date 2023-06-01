@@ -114,15 +114,18 @@ impl std::fmt::Display for StoreKind {
     }
 }
 
-/// A unique id per recording (a stream of [`LogMsg`]es).
+/// A unique id per store.
+///
+/// The kind of store is part of the id, and can be either a
+/// [`StoreKind::Recording`] or a [`StoreKind::Blueprint`].
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RecordingId {
+pub struct StoreId {
     pub kind: StoreKind,
     pub id: Arc<String>,
 }
 
-impl RecordingId {
+impl StoreId {
     #[inline]
     pub fn random(kind: StoreKind) -> Self {
         Self {
@@ -153,7 +156,7 @@ impl RecordingId {
     }
 }
 
-impl std::fmt::Display for RecordingId {
+impl std::fmt::Display for StoreId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { kind: variant, id } = self;
@@ -217,19 +220,17 @@ pub enum LogMsg {
     SetRecordingInfo(SetRecordingInfo),
 
     /// Server-backed operation on an [`EntityPath`].
-    EntityPathOpMsg(RecordingId, EntityPathOpMsg),
+    EntityPathOpMsg(StoreId, EntityPathOpMsg),
 
     /// Log an entity using an [`ArrowMsg`].
-    ArrowMsg(RecordingId, ArrowMsg),
+    ArrowMsg(StoreId, ArrowMsg),
 }
 
 impl LogMsg {
-    pub fn recording_id(&self) -> &RecordingId {
+    pub fn store_id(&self) -> &StoreId {
         match self {
-            Self::SetRecordingInfo(msg) => &msg.info.recording_id,
-            Self::EntityPathOpMsg(recording_id, _) | Self::ArrowMsg(recording_id, _) => {
-                recording_id
-            }
+            Self::SetRecordingInfo(msg) => &msg.info.store_id,
+            Self::EntityPathOpMsg(store_id, _) | Self::ArrowMsg(store_id, _) => store_id,
         }
     }
 }
@@ -253,7 +254,7 @@ pub struct RecordingInfo {
     pub application_id: ApplicationId,
 
     /// Should be unique for each recording.
-    pub recording_id: RecordingId,
+    pub store_id: StoreId,
 
     /// True if the recording is one of the official Rerun examples.
     pub is_official_example: bool,
@@ -272,7 +273,7 @@ impl RecordingInfo {
     /// Whether this `RecordingInfo` is the default used when a user is not explicitly
     /// creating their own blueprint.
     pub fn is_app_default_blueprint(&self) -> bool {
-        self.application_id.as_str() == self.recording_id.as_str()
+        self.application_id.as_str() == self.store_id.as_str()
     }
 }
 

@@ -1,11 +1,11 @@
 use re_data_store::LogDb;
-use re_log_types::{RecordingId, StoreKind};
+use re_log_types::{StoreId, StoreKind};
 
 /// Stores many [`LogDb`]s of recordings and blueprints.
 #[derive(Default)]
 pub struct LogDbHub {
     // TODO(emilk): two separate maps per [`RecordingType`].
-    log_dbs: ahash::HashMap<RecordingId, LogDb>,
+    log_dbs: ahash::HashMap<StoreId, LogDb>,
 }
 
 impl LogDbHub {
@@ -20,14 +20,14 @@ impl LogDbHub {
 
         for msg in decoder {
             let msg = msg?;
-            slf.log_db_entry(msg.recording_id()).add(&msg)?;
+            slf.log_db_entry(msg.store_id()).add(&msg)?;
         }
         Ok(slf)
     }
 
     /// Returns either a recording or blueprint [`LogDb`].
     /// One is created if it doesn't already exist.
-    pub fn log_db_entry(&mut self, id: &RecordingId) -> &mut LogDb {
+    pub fn log_db_entry(&mut self, id: &StoreId) -> &mut LogDb {
         self.log_dbs
             .entry(id.clone())
             .or_insert_with(|| LogDb::new(id.clone()))
@@ -51,23 +51,23 @@ impl LogDbHub {
 
     // --
 
-    pub fn contains_recording(&self, id: &RecordingId) -> bool {
+    pub fn contains_recording(&self, id: &StoreId) -> bool {
         debug_assert_eq!(id.kind, StoreKind::Recording);
         self.log_dbs.contains_key(id)
     }
 
-    pub fn recording(&self, id: &RecordingId) -> Option<&LogDb> {
+    pub fn recording(&self, id: &StoreId) -> Option<&LogDb> {
         debug_assert_eq!(id.kind, StoreKind::Recording);
         self.log_dbs.get(id)
     }
 
-    pub fn recording_mut(&mut self, id: &RecordingId) -> Option<&mut LogDb> {
+    pub fn recording_mut(&mut self, id: &StoreId) -> Option<&mut LogDb> {
         debug_assert_eq!(id.kind, StoreKind::Recording);
         self.log_dbs.get_mut(id)
     }
 
     /// Creates one if it doesn't exist.
-    pub fn recording_entry(&mut self, id: &RecordingId) -> &mut LogDb {
+    pub fn recording_entry(&mut self, id: &StoreId) -> &mut LogDb {
         debug_assert_eq!(id.kind, StoreKind::Recording);
         self.log_dbs
             .entry(id.clone())
@@ -76,7 +76,7 @@ impl LogDbHub {
 
     pub fn insert_recording(&mut self, log_db: LogDb) {
         debug_assert_eq!(log_db.store_kind(), StoreKind::Recording);
-        self.log_dbs.insert(log_db.recording_id().clone(), log_db);
+        self.log_dbs.insert(log_db.store_id().clone(), log_db);
     }
 
     pub fn recordings(&self) -> impl Iterator<Item = &LogDb> {
@@ -93,23 +93,23 @@ impl LogDbHub {
 
     // --
 
-    pub fn contains_blueprint(&self, id: &RecordingId) -> bool {
+    pub fn contains_blueprint(&self, id: &StoreId) -> bool {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
         self.log_dbs.contains_key(id)
     }
 
-    pub fn blueprint(&self, id: &RecordingId) -> Option<&LogDb> {
+    pub fn blueprint(&self, id: &StoreId) -> Option<&LogDb> {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
         self.log_dbs.get(id)
     }
 
-    pub fn blueprint_mut(&mut self, id: &RecordingId) -> Option<&mut LogDb> {
+    pub fn blueprint_mut(&mut self, id: &StoreId) -> Option<&mut LogDb> {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
         self.log_dbs.get_mut(id)
     }
 
     /// Creates one if it doesn't exist.
-    pub fn blueprint_entry(&mut self, id: &RecordingId) -> &mut LogDb {
+    pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut LogDb {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
 
         self.log_dbs.entry(id.clone()).or_insert_with(|| {
@@ -123,7 +123,7 @@ impl LogDbHub {
                 row_id: re_log_types::RowId::random(),
                 info: re_log_types::RecordingInfo {
                     application_id: id.as_str().into(),
-                    recording_id: id.clone(),
+                    store_id: id.clone(),
                     is_official_example: false,
                     started: re_log_types::Time::now(),
                     recording_source: re_log_types::RecordingSource::Other("viewer".to_owned()),

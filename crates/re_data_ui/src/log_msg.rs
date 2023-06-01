@@ -32,7 +32,7 @@ impl DataUi for SetRecordingInfo {
         let SetRecordingInfo { row_id: _, info } = self;
         let RecordingInfo {
             application_id,
-            recording_id,
+            store_id,
             started,
             recording_source,
             is_official_example,
@@ -44,8 +44,8 @@ impl DataUi for SetRecordingInfo {
             ui.label(application_id.to_string());
             ui.end_row();
 
-            ui.monospace("recording_id:");
-            ui.label(format!("{recording_id:?}"));
+            ui.monospace("store_id:");
+            ui.label(format!("{store_id:?}"));
             ui.end_row();
 
             ui.monospace("started:");

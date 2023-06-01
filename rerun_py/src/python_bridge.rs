@@ -23,7 +23,7 @@ use rerun::{
     log::{PathOp, RowId},
     sink::MemorySinkStorage,
     time::TimePoint,
-    EntityPath, RecordingId, RecordingStream, RecordingStreamBuilder,
+    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
 };
 
 pub use rerun::{
@@ -55,8 +55,8 @@ use parking_lot::Mutex;
 // Python GC is doing, which obviously leads to very bad things :tm:.
 //
 // TODO(#2116): drop unused recordings
-fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<RecordingId, RecordingStream>> {
-    static ALL_RECORDINGS: OnceCell<Mutex<HashMap<RecordingId, RecordingStream>>> = OnceCell::new();
+fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, RecordingStream>> {
+    static ALL_RECORDINGS: OnceCell<Mutex<HashMap<StoreId, RecordingStream>>> = OnceCell::new();
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
@@ -211,14 +211,14 @@ fn new_recording(
     });
 
     let recording_id = if let Some(recording_id) = recording_id {
-        RecordingId::from_string(StoreKind::Recording, recording_id)
+        StoreId::from_string(StoreKind::Recording, recording_id)
     } else {
-        default_recording_id(py, StoreKind::Recording, &application_id)
+        default_store_id(py, StoreKind::Recording, &application_id)
     };
 
     let recording = RecordingStreamBuilder::new(application_id)
         .is_official_example(is_official_example)
-        .recording_id(recording_id.clone())
+        .store_id(recording_id.clone())
         .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .buffered()
@@ -261,13 +261,13 @@ fn new_blueprint(
     default_enabled: bool,
 ) -> PyResult<PyRecordingStream> {
     let blueprint_id = if let Some(blueprint_id) = blueprint_id {
-        RecordingId::from_string(StoreKind::Blueprint, blueprint_id)
+        StoreId::from_string(StoreKind::Blueprint, blueprint_id)
     } else {
-        default_recording_id(py, StoreKind::Blueprint, &application_id)
+        default_store_id(py, StoreKind::Blueprint, &application_id)
     };
 
     let blueprint = RecordingStreamBuilder::new(application_id)
-        .recording_id(blueprint_id.clone())
+        .store_id(blueprint_id.clone())
         .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .buffered()
@@ -328,7 +328,7 @@ fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .recording_info()
-        .map(|info| info.recording_id.to_string())
+        .map(|info| info.store_id.to_string())
 }
 
 /// Returns the currently active data recording in the global scope, if any; fallbacks to the
@@ -1326,7 +1326,7 @@ fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     }
 }
 
-fn default_recording_id(py: Python<'_>, variant: StoreKind, application_id: &str) -> RecordingId {
+fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) -> StoreId {
     use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
 
@@ -1354,7 +1354,7 @@ fn default_recording_id(py: Python<'_>, variant: StoreKind, application_id: &str
     application_id.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
     let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
-    RecordingId::from_uuid(variant, uuid)
+    StoreId::from_uuid(variant, uuid)
 }
 
 fn authkey(py: Python<'_>) -> Vec<u8> {

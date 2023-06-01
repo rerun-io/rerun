@@ -5,7 +5,7 @@ use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingId, RecordingInfo, RecordingSource, StoreKind, Time,
+    DataTableBatcherError, LogMsg, RecordingInfo, RecordingSource, StoreId, StoreKind, Time,
     TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 
@@ -46,7 +46,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
     recording_type: StoreKind,
-    recording_id: Option<RecordingId>,
+    store_id: Option<StoreId>,
     recording_source: Option<RecordingSource>,
 
     default_enabled: bool,
@@ -77,7 +77,7 @@ impl RecordingStreamBuilder {
         Self {
             application_id,
             recording_type: StoreKind::Recording,
-            recording_id: None,
+            store_id: None,
             recording_source: None,
 
             default_enabled: true,
@@ -108,17 +108,17 @@ impl RecordingStreamBuilder {
         self
     }
 
-    /// Set the [`RecordingId`] for this context.
+    /// Set the [`StoreId`] for this context.
     ///
     /// If you're logging from multiple processes and want all the messages to end up as the same
-    /// recording, you must make sure they all set the same [`RecordingId`] using this function.
+    /// recording, you must make sure they all set the same [`StoreId`] using this function.
     ///
     /// Note that many recordings can share the same [`ApplicationId`], but they all have
-    /// unique [`RecordingId`]s.
+    /// unique [`StoreId`]s.
     ///
-    /// The default is to use a random [`RecordingId`].
-    pub fn recording_id(mut self, recording_id: RecordingId) -> Self {
-        self.recording_id = Some(recording_id);
+    /// The default is to use a random [`StoreId`].
+    pub fn store_id(mut self, store_id: StoreId) -> Self {
+        self.store_id = Some(store_id);
         self
     }
 
@@ -256,7 +256,7 @@ impl RecordingStreamBuilder {
         let Self {
             application_id,
             recording_type,
-            recording_id,
+            store_id,
             recording_source,
             default_enabled,
             enabled,
@@ -265,7 +265,7 @@ impl RecordingStreamBuilder {
         } = self;
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
-        let recording_id = recording_id.unwrap_or(RecordingId::random(recording_type));
+        let store_id = store_id.unwrap_or(StoreId::random(recording_type));
         let recording_source = recording_source.unwrap_or_else(|| RecordingSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
@@ -273,7 +273,7 @@ impl RecordingStreamBuilder {
 
         let recording_info = RecordingInfo {
             application_id,
-            recording_id,
+            store_id,
             is_official_example,
             started: Time::now(),
             recording_source,
@@ -365,7 +365,7 @@ impl RecordingStreamInner {
         {
             re_log::debug!(
                 app_id = %info.application_id,
-                rec_id = %info.recording_id,
+                rec_id = %info.store_id,
                 "setting recording info",
             );
             sink.send(
@@ -482,7 +482,7 @@ fn forwarding_thread(
                 {
                     re_log::debug!(
                         app_id = %info.application_id,
-                        rec_id = %info.recording_id,
+                        rec_id = %info.store_id,
                         "setting recording info",
                     );
                     new_sink.send(
@@ -526,7 +526,7 @@ fn forwarding_thread(
                     continue;
                 }
             };
-            sink.send(LogMsg::ArrowMsg(info.recording_id.clone(), table));
+            sink.send(LogMsg::ArrowMsg(info.store_id.clone(), table));
         }
 
         select! {
@@ -544,7 +544,7 @@ fn forwarding_thread(
                         continue;
                     }
                 };
-                sink.send(LogMsg::ArrowMsg(info.recording_id.clone(), table));
+                sink.send(LogMsg::ArrowMsg(info.store_id.clone(), table));
             }
             recv(cmds_rx) -> res => {
                 let Ok(cmd) = res else {
@@ -610,7 +610,7 @@ impl RecordingStream {
         };
 
         self.record_msg(LogMsg::EntityPathOpMsg(
-            this.info.recording_id.clone(),
+            this.info.store_id.clone(),
             re_log_types::EntityPathOpMsg {
                 row_id: re_log_types::RowId::random(),
                 time_point: timepoint,
@@ -788,19 +788,19 @@ impl RecordingStream {
 #[derive(Default)]
 struct ThreadInfo {
     /// The current time per-thread per-recording, which can be set by users.
-    timepoints: HashMap<RecordingId, TimePoint>,
+    timepoints: HashMap<StoreId, TimePoint>,
 }
 
 impl ThreadInfo {
-    fn thread_now(rid: &RecordingId) -> TimePoint {
+    fn thread_now(rid: &StoreId) -> TimePoint {
         Self::with(|ti| ti.now(rid))
     }
 
-    fn set_thread_time(rid: &RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
+    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
         Self::with(|ti| ti.set_time(rid, timeline, time_int));
     }
 
-    fn reset_thread_time(rid: &RecordingId) {
+    fn reset_thread_time(rid: &StoreId) {
         Self::with(|ti| ti.reset_time(rid));
     }
 
@@ -818,13 +818,13 @@ impl ThreadInfo {
         })
     }
 
-    fn now(&self, rid: &RecordingId) -> TimePoint {
+    fn now(&self, rid: &StoreId) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
         timepoint.insert(Timeline::log_time(), Time::now().into());
         timepoint
     }
 
-    fn set_time(&mut self, rid: &RecordingId, timeline: Timeline, time_int: Option<TimeInt>) {
+    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
         if let Some(time_int) = time_int {
             self.timepoints
                 .entry(rid.clone())
@@ -835,7 +835,7 @@ impl ThreadInfo {
         }
     }
 
-    fn reset_time(&mut self, rid: &RecordingId) {
+    fn reset_time(&mut self, rid: &StoreId) {
         if let Some(timepoint) = self.timepoints.get_mut(rid) {
             *timepoint = TimePoint::default();
         }
@@ -850,7 +850,7 @@ impl RecordingStream {
             return TimePoint::default();
         };
 
-        ThreadInfo::thread_now(&this.info.recording_id)
+        ThreadInfo::thread_now(&this.info.store_id)
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -867,7 +867,7 @@ impl RecordingStream {
         };
 
         ThreadInfo::set_thread_time(
-            &this.info.recording_id,
+            &this.info.store_id,
             Timeline::new(timeline, TimeType::Sequence),
             sequence.map(TimeInt::from),
         );
@@ -887,7 +887,7 @@ impl RecordingStream {
         };
 
         ThreadInfo::set_thread_time(
-            &this.info.recording_id,
+            &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
             seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
         );
@@ -907,7 +907,7 @@ impl RecordingStream {
         };
 
         ThreadInfo::set_thread_time(
-            &this.info.recording_id,
+            &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
             ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
         );
@@ -924,7 +924,7 @@ impl RecordingStream {
             return;
         };
 
-        ThreadInfo::reset_thread_time(&this.info.recording_id);
+        ThreadInfo::reset_thread_time(&this.info.store_id);
     }
 }
 
@@ -991,7 +991,7 @@ mod tests {
         // flush when swapping the underlying sink from buffered to in-memory.
         match msgs.pop().unwrap() {
             LogMsg::ArrowMsg(rid, msg) => {
-                assert_eq!(rec_info.recording_id, rid);
+                assert_eq!(rec_info.store_id, rid);
 
                 let mut got = DataTable::from_arrow_msg(&msg).unwrap();
                 // TODO(1760): we shouldn't have to (re)do this!
@@ -1061,7 +1061,7 @@ mod tests {
         let mut assert_next_row = || {
             match msgs.pop().unwrap() {
                 LogMsg::ArrowMsg(rid, msg) => {
-                    assert_eq!(rec_info.recording_id, rid);
+                    assert_eq!(rec_info.store_id, rid);
 
                     let mut got = DataTable::from_arrow_msg(&msg).unwrap();
                     // TODO(1760): we shouldn't have to (re)do this!
@@ -1140,7 +1140,7 @@ mod tests {
             // The batched table itself, which was sent as a result of the explicit flush above.
             match msgs.pop().unwrap() {
                 LogMsg::ArrowMsg(rid, msg) => {
-                    assert_eq!(rec_info.recording_id, rid);
+                    assert_eq!(rec_info.store_id, rid);
 
                     let mut got = DataTable::from_arrow_msg(&msg).unwrap();
                     // TODO(1760): we shouldn't have to (re)do this!

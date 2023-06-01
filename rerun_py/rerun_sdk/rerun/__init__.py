@@ -224,7 +224,7 @@ def init(
     if init_logging:
         new_recording(
             application_id,
-            recording_id,
+            recording_id=recording_id,
             make_default=True,
             make_thread_default=False,
             spawn=False,
