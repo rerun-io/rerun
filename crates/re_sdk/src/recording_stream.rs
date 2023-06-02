@@ -45,7 +45,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 /// ```
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
-    recording_type: StoreKind,
+    store_kind: StoreKind,
     store_id: Option<StoreId>,
     store_source: Option<StoreSource>,
 
@@ -76,7 +76,7 @@ impl RecordingStreamBuilder {
 
         Self {
             application_id,
-            recording_type: StoreKind::Recording,
+            store_kind: StoreKind::Recording,
             store_id: None,
             store_source: None,
 
@@ -144,7 +144,7 @@ impl RecordingStreamBuilder {
 
     #[doc(hidden)]
     pub fn blueprint(mut self) -> Self {
-        self.recording_type = StoreKind::Blueprint;
+        self.store_kind = StoreKind::Blueprint;
         self
     }
 
@@ -255,7 +255,7 @@ impl RecordingStreamBuilder {
     pub fn into_args(self) -> (bool, RecordingInfo, DataTableBatcherConfig) {
         let Self {
             application_id,
-            recording_type,
+            store_kind,
             store_id,
             store_source,
             default_enabled,
@@ -265,7 +265,7 @@ impl RecordingStreamBuilder {
         } = self;
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
-        let store_id = store_id.unwrap_or(StoreId::random(recording_type));
+        let store_id = store_id.unwrap_or(StoreId::random(store_kind));
         let store_source = store_source.unwrap_or_else(|| StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
@@ -277,7 +277,7 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             store_source,
-            store_kind: recording_type,
+            store_kind,
         };
 
         let batcher_config = batcher_config

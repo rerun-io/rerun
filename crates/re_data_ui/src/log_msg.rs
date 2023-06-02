@@ -36,7 +36,7 @@ impl DataUi for SetRecordingInfo {
             started,
             store_source,
             is_official_example,
-            store_kind: recording_type,
+            store_kind,
         } = info;
 
         egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
@@ -60,8 +60,8 @@ impl DataUi for SetRecordingInfo {
             ui.label(format!("{is_official_example}"));
             ui.end_row();
 
-            ui.monospace("recording_type:");
-            ui.label(format!("{recording_type}"));
+            ui.monospace("store_kind:");
+            ui.label(format!("{store_kind}"));
             ui.end_row();
         });
     }
