@@ -171,6 +171,8 @@ impl Scene {
 }
 
 /// Element of a scene derived from a single archetype query.
+///
+/// Is populated after scene contexts and has access to them.
 pub trait SceneElement: Any {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
@@ -202,7 +204,9 @@ pub trait SceneElement: Any {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
-/// TODO: Doc
+/// Scene context that can be used by scene elements and ui methods to retrieve information about the scene as a whole.
+///
+/// Is always populated before scene elements.
 pub trait SceneContext: Any {
     /// Each scene context may query several archetypes.
     ///
