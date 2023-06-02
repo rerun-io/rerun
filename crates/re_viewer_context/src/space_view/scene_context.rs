@@ -30,10 +30,4 @@ pub trait SceneContextPart {
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
     );
-
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
-
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
