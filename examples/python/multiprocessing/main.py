@@ -44,7 +44,7 @@ def main() -> None:
     multiprocessing.set_start_method("spawn")
 
     for i in [1, 2, 3]:
-        p = multiprocessing.Process(target=task, args=(i, ))
+        p = multiprocessing.Process(target=task, args=(i,))
         p.start()
         p.join()
 
