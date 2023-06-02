@@ -88,7 +88,7 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    pub(crate) rx: Receiver<LogMsg>,
+    rx: Receiver<LogMsg>,
 
     /// Where the recordings and blueprints are stored.
     pub(crate) store_hub: crate::StoreHub,
@@ -219,8 +219,20 @@ impl App {
         &self.re_ui
     }
 
+    pub fn app_options(&self) -> &AppOptions {
+        self.state.app_options()
+    }
+
+    pub fn app_options_mut(&mut self) -> &mut AppOptions {
+        self.state.app_options_mut()
+    }
+
     pub fn is_screenshotting(&self) -> bool {
         self.screenshotter.is_screenshotting()
+    }
+
+    pub fn msg_receiver(&self) -> &Receiver<LogMsg> {
+        &self.rx
     }
 
     /// Adds a new space view class to the viewer.
