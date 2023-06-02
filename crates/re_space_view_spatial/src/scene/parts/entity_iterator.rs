@@ -1,28 +1,9 @@
-use re_components::Component;
-use re_data_store::EntityPath;
+use re_log_types::{Component, EntityPath};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
 use re_viewer_context::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, ViewerContext};
 
-use crate::scene::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    UiLabel,
-};
-
-/// Common data struct for all spatial scene elements.
-pub struct SpatialScenePartData {
-    pub ui_labels: Vec<UiLabel>,
-    pub bounding_box: macaw::BoundingBox,
-}
-
-impl Default for SpatialScenePartData {
-    fn default() -> Self {
-        Self {
-            ui_labels: Vec::new(),
-            bounding_box: macaw::BoundingBox::nothing(),
-        }
-    }
-}
+use crate::scene::contexts::{SpatialSceneContext, SpatialSceneEntityContext};
 
 pub fn for_each_entity_view<'a, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,

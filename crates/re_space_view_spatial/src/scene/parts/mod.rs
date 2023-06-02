@@ -4,13 +4,14 @@ mod arrows3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
+mod entity_iterator;
 mod images;
 mod lines2d;
 mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
-mod spatial_scene_part;
+mod spatial_scene_part_data;
 
 pub(crate) use arrows3d::Arrows3DPart;
 pub(crate) use boxes2d::Boxes2DPart;
@@ -24,7 +25,7 @@ use points2d::Points2DPart;
 use points3d::Points3DPart;
 
 use re_space_view::EmptySpaceViewState;
-pub use spatial_scene_part::SpatialScenePartData;
+use spatial_scene_part_data::SpatialScenePartData;
 
 use ahash::HashMap;
 use std::sync::Arc;
@@ -57,6 +58,7 @@ impl ScenePartCollection for SpatialScenePartCollection {
     }
 }
 
+// TODO(wumpf): remove
 pub trait ScenePart {
     fn load(
         &self,

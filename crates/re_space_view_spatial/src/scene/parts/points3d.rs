@@ -11,7 +11,7 @@ use re_viewer_context::{
 use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
     load_keypoint_connections,
-    parts::spatial_scene_part::for_each_entity_view,
+    parts::entity_iterator::for_each_entity_view,
     UiLabel, UiLabelTarget,
 };
 
@@ -205,7 +205,6 @@ impl ScenePartImpl for Points3DPart {
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points3DPart");
 
-        assert_eq!(self.archetype().len(), 7);
         for_each_entity_view::<re_components::Point3D, 7, _>(
             ctx,
             query,
