@@ -15,7 +15,7 @@ pub trait ScenePartCollection {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait ScenePart: std::any::Any {
+pub trait ScenePart {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
 
@@ -38,7 +38,4 @@ pub trait ScenePart: std::any::Any {
     fn data(&self) -> Option<&dyn std::any::Any> {
         None
     }
-
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
 }

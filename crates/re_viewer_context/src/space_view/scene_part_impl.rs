@@ -59,11 +59,6 @@ impl<T: ScenePartImpl + 'static> ScenePart for T {
     }
 
     #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
     fn data(&self) -> Option<&dyn std::any::Any> {
         self.data()
     }
