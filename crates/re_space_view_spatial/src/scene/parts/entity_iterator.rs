@@ -5,7 +5,7 @@ use re_viewer_context::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, Vi
 
 use crate::scene::contexts::{SpatialSceneContext, SpatialSceneEntityContext};
 
-pub fn for_each_entity_view<'a, Primary, const N: usize, F>(
+pub fn process_entity_views<'a, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &SceneQuery<'_>,
     context: &SpatialSceneContext,
@@ -19,7 +19,7 @@ pub fn for_each_entity_view<'a, Primary, const N: usize, F>(
         &EntityPath,
         EntityView<Primary>,
         &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError>,
+    ) -> Result<macaw::BoundingBox, QueryError>,
 {
     let archetype = match archetype.try_into() {
         Ok(archetype) => archetype,

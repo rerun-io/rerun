@@ -13,7 +13,6 @@ mod points2d;
 mod points3d;
 mod spatial_scene_part_data;
 
-pub(crate) use arrows3d::Arrows3DPart;
 pub(crate) use boxes2d::Boxes2DPart;
 pub(crate) use boxes3d::Boxes3DPart;
 pub(crate) use cameras::CamerasPart;
@@ -45,11 +44,17 @@ type SpatialSpaceViewState = EmptySpaceViewState;
 pub struct SpatialScenePartCollection {
     pub points2d: points2d::Points2DPart,
     pub points3d: points3d::Points3DPart,
+    pub arrows3d: arrows3d::Arrows3DPart,
 }
 
 impl ScenePartCollection for SpatialScenePartCollection {
     fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart> {
-        vec![&mut self.points2d, &mut self.points3d]
+        let Self {
+            points2d,
+            points3d,
+            arrows3d,
+        } = self;
+        vec![points2d, points3d, arrows3d]
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

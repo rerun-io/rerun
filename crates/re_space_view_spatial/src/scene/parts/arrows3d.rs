@@ -1,137 +1,138 @@
 use re_components::{Arrow3D, ColorRGBA, Component as _, InstanceKey, Label, Radius};
 use re_data_store::EntityPath;
-use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_query::{EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
-use re_viewer_context::SpaceViewHighlights;
-use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
-
-use crate::{
-    scene::{EntityDepthOffsets, SceneSpatial},
-    TransformContext,
+use re_viewer_context::{
+    ArchetypeDefinition, DefaultColor, ScenePartImpl, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
 };
 
-use super::{instance_key_to_picking_id, ScenePart};
+use super::{instance_key_to_picking_id, SpatialScenePartData, SpatialSpaceViewState};
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
+};
 
-pub struct Arrows3DPart;
+#[derive(Default)]
+pub struct Arrows3DPart {
+    data: SpatialScenePartData,
+}
 
 impl Arrows3DPart {
     fn process_entity_view(
-        scene: &mut SceneSpatial,
-        entity_view: &EntityView<Arrow3D>,
+        &mut self,
+        _query: &SceneQuery<'_>,
+        ent_view: &EntityView<Arrow3D>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Affine3A,
-        highlights: &SpaceViewHighlights,
+        ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        scene.num_logged_3d_objects += 1;
-
-        let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
 
-        let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-
-        let mut line_batch = scene
-            .primitives
-            .line_strips
+        let mut line_builder = ent_context.shared_render_builders.lines();
+        let mut line_batch = line_builder
             .batch("arrows")
-            .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall)
+            .world_from_obj(ent_context.world_from_obj)
+            .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        let visitor = |instance_key: InstanceKey,
-                       arrow: Arrow3D,
-                       color: Option<ColorRGBA>,
-                       radius: Option<Radius>,
-                       _label: Option<Label>| {
-            // TODO(andreas): support labels
-            // TODO(andreas): support class ids for arrows
-            let annotation_info = annotations.class_description(None).annotation_info();
-            let color =
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
-            //let label = annotation_info.label(label);
+        let mut bounding_box = macaw::BoundingBox::nothing();
 
-            let re_components::Arrow3D { origin, vector } = arrow;
+        ent_view.visit4(
+            |instance_key: InstanceKey,
+             arrow: Arrow3D,
+             color: Option<ColorRGBA>,
+             radius: Option<Radius>,
+             _label: Option<Label>| {
+                // TODO(andreas): support labels
+                // TODO(andreas): support class ids for arrows
+                let annotation_info = ent_context
+                    .annotations
+                    .class_description(None)
+                    .annotation_info();
+                let color =
+                    annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
+                //let label = annotation_info.label(label);
 
-            let vector = glam::Vec3::from(vector);
-            let origin = glam::Vec3::from(origin);
+                let re_components::Arrow3D { origin, vector } = arrow;
 
-            let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
-            let end = origin + vector;
+                let vector = glam::Vec3::from(vector);
+                let origin = glam::Vec3::from(origin);
 
-            let segment = line_batch
-                .add_segment(origin, end)
-                .radius(radius)
-                .color(color)
-                .flags(
-                    LineStripFlags::FLAG_COLOR_GRADIENT
-                        | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                        | LineStripFlags::FLAG_CAP_START_ROUND
-                        | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
-                )
-                .picking_instance_id(instance_key_to_picking_id(
-                    instance_key,
-                    entity_view.num_instances(),
-                    entity_highlight.any_selection_highlight,
-                ));
+                bounding_box.extend(vector);
+                bounding_box.extend(origin);
 
-            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
-                segment.outline_mask_ids(*outline_mask_ids);
-            }
-        };
+                let radius = radius.map_or(Size::AUTO, |r| Size(r.0));
+                let end = origin + vector;
 
-        entity_view.visit4(visitor)?;
+                let segment = line_batch
+                    .add_segment(origin, end)
+                    .radius(radius)
+                    .color(color)
+                    .flags(
+                        LineStripFlags::FLAG_COLOR_GRADIENT
+                            | LineStripFlags::FLAG_CAP_END_TRIANGLE
+                            | LineStripFlags::FLAG_CAP_START_ROUND
+                            | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
+                    )
+                    .picking_instance_id(instance_key_to_picking_id(
+                        instance_key,
+                        ent_view.num_instances(),
+                        ent_context.highlight.any_selection_highlight,
+                    ));
+
+                if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
+                    segment.outline_mask_ids(*outline_mask_ids);
+                }
+            },
+        )?;
+
+        self.data
+            .extend_bounding_box(bounding_box, ent_context.world_from_obj);
 
         Ok(())
     }
 }
 
-impl ScenePart for Arrows3DPart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl ScenePartImpl for Arrows3DPart {
+    type SpaceViewState = SpatialSpaceViewState;
+    type SceneContext = SpatialSceneContext;
+
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![
+            Arrow3D::name(),
+            InstanceKey::name(),
+            ColorRGBA::name(),
+            Radius::name(),
+            Label::name(),
+        ]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformContext,
+        _space_view_state: &Self::SpaceViewState,
+        scene_context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
-        _depth_offsets: &EntityDepthOffsets,
-    ) {
-        re_tracing::profile_scope!("Points2DPart");
+    ) -> Vec<re_renderer::QueueableDrawData> {
+        re_tracing::profile_scope!("Arrows3DPart");
 
-        for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
-                continue;
-            };
+        process_entity_views::<re_components::Arrow3D, 5, _>(
+            ctx,
+            query,
+            scene_context,
+            highlights,
+            scene_context.depth_offsets.points,
+            self.archetype(),
+            |ent_path, entity_view, ent_context| {
+                self.process_entity_view(query, &entity_view, ent_path, ent_context)
+            },
+        );
 
-            match query_primary_with_history::<Arrow3D, 5>(
-                &ctx.store_db.entity_db.data_store,
-                &query.timeline,
-                &query.latest_at,
-                &props.visible_history,
-                ent_path,
-                [
-                    Arrow3D::name(),
-                    InstanceKey::name(),
-                    ColorRGBA::name(),
-                    Radius::name(),
-                    Label::name(),
-                ],
-            )
-            .and_then(|entities| {
-                for entity in entities {
-                    Self::process_entity_view(
-                        scene,
-                        &entity,
-                        ent_path,
-                        world_from_obj,
-                        highlights,
-                    )?;
-                }
-                Ok(())
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
-            }
-        }
+        Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+    }
+
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(&self.data)
     }
 }

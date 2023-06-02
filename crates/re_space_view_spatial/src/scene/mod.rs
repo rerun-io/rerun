@@ -157,7 +157,6 @@ impl SceneSpatial {
             // --
             &parts::Boxes3DPart,
             &parts::Lines3DPart,
-            &parts::Arrows3DPart,
             &parts::MeshPart,
             &parts::ImagesPart,
             // --

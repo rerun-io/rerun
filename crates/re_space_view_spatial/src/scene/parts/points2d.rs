@@ -11,7 +11,7 @@ use re_viewer_context::{
 use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
     load_keypoint_connections,
-    parts::entity_iterator::for_each_entity_view,
+    parts::entity_iterator::process_entity_views,
     UiLabel, UiLabelTarget,
 };
 
@@ -165,17 +165,12 @@ impl Points2DPart {
 
         load_keypoint_connections(ent_context, ent_path, keypoints);
 
-        {
-            re_tracing::profile_scope!("points2d.bounding_box");
-            self.data.bounding_box = self.data.bounding_box.union(
-                macaw::BoundingBox::from_points(
-                    ent_view
-                        .iter_primary()?
-                        .filter_map(|pt| pt.map(|pt| glam::vec3(pt.x, pt.y, 0.0))),
-                )
-                .transform_affine3(&ent_context.world_from_obj),
-            );
-        }
+        self.data.extend_bounding_box_with_points(
+            ent_view
+                .iter_primary()?
+                .filter_map(|pt| pt.map(|pt| glam::vec3(pt.x, pt.y, 0.0))),
+            ent_context.world_from_obj,
+        );
 
         Ok(())
     }
@@ -207,7 +202,7 @@ impl ScenePartImpl for Points2DPart {
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points2DPart");
 
-        for_each_entity_view::<re_components::Point2D, 7, _>(
+        process_entity_views::<re_components::Point2D, 7, _>(
             ctx,
             query,
             scene_context,
