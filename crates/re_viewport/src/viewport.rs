@@ -7,10 +7,10 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_space_view::DataBlueprintGroup;
+use re_space_view::{DataBlueprintGroup, EmptySpaceViewState};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, EmptySpaceViewState, Item, SpaceViewClassName,
-    SpaceViewClassRegistry, SpaceViewHighlights, SpaceViewId, ViewerContext,
+    DataBlueprintGroupHandle, Item, SpaceViewClassName, SpaceViewClassRegistry,
+    SpaceViewHighlights, SpaceViewId, ViewerContext,
 };
 
 use crate::{

@@ -3,11 +3,12 @@ use re_data_store::EntityPath;
 use re_log_types::ComponentName;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
-use re_viewer_context::SpaceViewHighlights;
-use re_viewer_context::{EmptySpaceViewState, SceneElementImpl, SceneQuery, ViewerContext};
+use re_viewer_context::{SceneElementImpl, SceneQuery, SpaceViewHighlights, ViewerContext};
 
-use super::contexts::{SpatialSceneContext, SpatialSceneEntityContext};
-use super::UiLabel;
+use super::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    UiLabel,
+};
 
 /// Common data struct for all spatial scene elements.
 pub struct SpatialSceneElementData {
@@ -101,7 +102,7 @@ pub struct SpatialSceneElementWrapper<const N: usize, T: SpatialSceneElement<N>>
 impl<const N: usize, T: SpatialSceneElement<N>> SceneElementImpl
     for SpatialSceneElementWrapper<N, T>
 {
-    type SpaceViewState = EmptySpaceViewState;
+    type SpaceViewState = re_space_view::EmptySpaceViewState;
     type SceneContext = SpatialSceneContext;
 
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
@@ -113,8 +114,8 @@ impl<const N: usize, T: SpatialSceneElement<N>> SceneElementImpl
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &EmptySpaceViewState,
-        context: &SpatialSceneContext,
+        _space_view_state: &Self::SpaceViewState,
+        context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         self.0.populate(ctx, query, context, highlights)

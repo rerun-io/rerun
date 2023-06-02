@@ -7,14 +7,18 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_viewer_context::{
-    auto_color, AnnotationMap, EmptySpaceViewState, Scene, SceneQuery, ViewerContext,
+    auto_color, AnnotationMap, Scene, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
-use re_viewer_context::{EmptySceneContext, SpaceViewHighlights};
 
 use super::SpatialNavigationMode;
-use crate::scene::contexts::SpatialSceneContext;
-use crate::scene::spatial_scene_element::{SpatialSceneElement, SpatialSceneElementData};
-use crate::{mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D};
+use crate::{
+    mesh_loader::LoadedMesh,
+    scene::{
+        contexts::SpatialSceneContext,
+        spatial_scene_element::{SpatialSceneElement, SpatialSceneElementData},
+    },
+    space_camera_3d::SpaceCamera3D,
+};
 
 mod contexts;
 mod elements;
@@ -131,7 +135,7 @@ impl SceneSpatial {
             space_cameras: Default::default(),
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Scene {
-                context: Box::<EmptySceneContext>::default(),
+                context: Box::<re_space_view::EmptySceneContext>::default(),
                 elements: ().into(),
                 highlights: Default::default(),
             },
@@ -176,7 +180,8 @@ impl SceneSpatial {
                 .into(),
             highlights: Default::default(),
         };
-        self.draw_data = scene.populate(ctx, query, &EmptySpaceViewState, highlights);
+        self.draw_data =
+            scene.populate(ctx, query, &re_space_view::EmptySpaceViewState, highlights);
         let scene_context = scene
             .context
             .as_any_mut()

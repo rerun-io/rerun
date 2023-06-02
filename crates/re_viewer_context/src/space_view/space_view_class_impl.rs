@@ -116,17 +116,3 @@ fn typed_state_wrapper<T: SpaceViewState, F: FnOnce(&mut T)>(
         re_log::error_once!("Incorrect type of space view state.");
     }
 }
-
-/// Space view state without any contents.
-#[derive(Default)]
-pub struct EmptySpaceViewState;
-
-impl SpaceViewState for EmptySpaceViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}

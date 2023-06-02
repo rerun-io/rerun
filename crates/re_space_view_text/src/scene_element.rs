@@ -3,8 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, EmptySceneContext, SceneContextPart, SceneElementImpl, SceneQuery,
-    SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, SceneElementImpl, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
 use super::space_view_class::TextSpaceViewState;
@@ -34,7 +33,7 @@ pub struct SceneText {
 
 impl SceneElementImpl for SceneText {
     type SpaceViewState = TextSpaceViewState;
-    type SceneContext = EmptySceneContext;
+    type SceneContext = re_space_view::EmptySceneContext;
 
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextEntry::name()]
@@ -45,7 +44,7 @@ impl SceneElementImpl for SceneText {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         state: &TextSpaceViewState,
-        _context: &EmptySceneContext,
+        _context: &Self::SceneContext,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;

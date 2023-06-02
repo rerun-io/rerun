@@ -15,12 +15,12 @@ mod space_view_class_registry;
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use scene::{
     Scene, SceneContext, SceneContextPart, SceneElement, SceneElementCollection,
-    SceneItemCollectionLookupError, EmptySceneContext
+    SceneItemCollectionLookupError,
 };
 pub use scene_element_impl::SceneElementImpl;
 pub use scene_query::SceneQuery;
 pub use space_view_class::{
     ArchetypeDefinition, SpaceViewClass, SpaceViewClassName, SpaceViewState,
 };
-pub use space_view_class_impl::{EmptySpaceViewState, SpaceViewClassImpl};
+pub use space_view_class_impl::SpaceViewClassImpl;
 pub use space_view_class_registry::{SpaceViewClassRegistry, SpaceViewClassRegistryError};
