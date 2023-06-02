@@ -142,8 +142,7 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        let parts: Vec<&dyn ScenePart> =
-            vec![&parts::Lines3DPart, &parts::MeshPart, &parts::ImagesPart];
+        let parts: Vec<&dyn ScenePart> = vec![&parts::MeshPart, &parts::ImagesPart];
 
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {
