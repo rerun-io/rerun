@@ -5,10 +5,10 @@ pub trait SceneContext {
     /// Retrieves a list of all underlying scene context part for parallel population.
     fn vec_mut(&mut self) -> Vec<&mut dyn SceneContextPart>;
 
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     /// TODO(wumpf): Only needed for workarounds in `re_space_view_spatial`.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
@@ -31,9 +31,9 @@ pub trait SceneContextPart {
         space_view_state: &dyn SpaceViewState,
     );
 
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }

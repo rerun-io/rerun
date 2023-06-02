@@ -39,6 +39,6 @@ pub trait ScenePart: std::any::Any {
         None
     }
 
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 }

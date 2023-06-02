@@ -21,11 +21,10 @@ pub(crate) use images::ImagesPart;
 pub(crate) use lines2d::Lines2DPart;
 pub(crate) use lines3d::Lines3DPart;
 pub(crate) use meshes::MeshPart;
-use points2d::Points2DPart;
-use points3d::Points3DPart;
+
+pub use spatial_scene_part_data::SpatialScenePartData;
 
 use re_space_view::EmptySpaceViewState;
-use spatial_scene_part_data::SpatialScenePartData;
 
 use ahash::HashMap;
 use std::sync::Arc;
@@ -44,8 +43,8 @@ type SpatialSpaceViewState = EmptySpaceViewState;
 
 #[derive(Default)]
 pub struct SpatialScenePartCollection {
-    pub points2d: Points2DPart,
-    pub points3d: Points3DPart,
+    pub points2d: points2d::Points2DPart,
+    pub points3d: points3d::Points3DPart,
 }
 
 impl ScenePartCollection for SpatialScenePartCollection {

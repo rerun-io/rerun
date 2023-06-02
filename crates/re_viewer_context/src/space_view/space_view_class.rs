@@ -79,9 +79,9 @@ pub trait SpaceViewClass {
 
 /// State of a space view.
 pub trait SpaceViewState: std::any::Any {
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
