@@ -126,7 +126,7 @@ impl StoreHub {
                     store_id: id.clone(),
                     is_official_example: false,
                     started: re_log_types::Time::now(),
-                    recording_source: re_log_types::RecordingSource::Other("viewer".to_owned()),
+                    store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
                     store_kind: StoreKind::Blueprint,
                 },
             });

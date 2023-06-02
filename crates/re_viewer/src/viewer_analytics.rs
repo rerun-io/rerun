@@ -13,7 +13,7 @@
 use re_analytics::{Analytics, Event, Property};
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
-use re_log_types::RecordingSource;
+use re_log_types::StoreSource;
 
 pub struct ViewerAnalytics {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
@@ -154,11 +154,11 @@ impl ViewerAnalytics {
                 }
             });
 
-            let recording_source = match &rec_info.recording_source {
-                RecordingSource::Unknown => "unknown".to_owned(),
-                RecordingSource::PythonSdk(_version) => "python_sdk".to_owned(),
-                RecordingSource::RustSdk { .. } => "rust_sdk".to_owned(),
-                RecordingSource::Other(other) => other.clone(),
+            let store_source = match &rec_info.store_source {
+                StoreSource::Unknown => "unknown".to_owned(),
+                StoreSource::PythonSdk(_version) => "python_sdk".to_owned(),
+                StoreSource::RustSdk { .. } => "rust_sdk".to_owned(),
+                StoreSource::Other(other) => other.clone(),
             };
 
             // If we happen to know the Python or Rust version used on the _recording machine_,
@@ -166,22 +166,22 @@ impl ViewerAnalytics {
             //
             // The Python/Rust versions appearing in events always apply to the recording
             // environment, _not_ the environment in which the viewer is running!
-            if let RecordingSource::RustSdk {
+            if let StoreSource::RustSdk {
                 rustc_version: rust_version,
                 llvm_version,
-            } = &rec_info.recording_source
+            } = &rec_info.store_source
             {
                 self.register("rust_version", rust_version.to_string());
                 self.register("llvm_version", llvm_version.to_string());
                 self.deregister("python_version"); // can't be both!
             }
-            if let RecordingSource::PythonSdk(version) = &rec_info.recording_source {
+            if let StoreSource::PythonSdk(version) = &rec_info.store_source {
                 self.register("python_version", version.to_string());
                 self.deregister("rust_version"); // can't be both!
                 self.deregister("llvm_version"); // can't be both!
             }
 
-            self.register("recording_source", recording_source);
+            self.register("store_source", store_source);
             self.register("is_official_example", rec_info.is_official_example);
         }
 

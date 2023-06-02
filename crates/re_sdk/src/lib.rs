@@ -171,7 +171,7 @@ pub fn new_recording_info(
         store_id: StoreId::random(StoreKind::Recording),
         is_official_example: called_from_official_rust_example(),
         started: re_log_types::Time::now(),
-        recording_source: re_log_types::RecordingSource::RustSdk {
+        store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },

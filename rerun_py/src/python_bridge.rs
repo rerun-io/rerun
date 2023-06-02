@@ -219,7 +219,7 @@ fn new_recording(
     let recording = RecordingStreamBuilder::new(application_id)
         .is_official_example(is_official_example)
         .store_id(recording_id.clone())
-        .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+        .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .buffered()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -268,7 +268,7 @@ fn new_blueprint(
 
     let blueprint = RecordingStreamBuilder::new(application_id)
         .store_id(blueprint_id.clone())
-        .recording_source(re_log_types::RecordingSource::PythonSdk(python_version(py)))
+        .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
         .buffered()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;

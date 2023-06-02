@@ -265,7 +265,7 @@ pub struct RecordingInfo {
     /// Should be an absolute time, i.e. relative to Unix Epoch.
     pub started: Time,
 
-    pub recording_source: RecordingSource,
+    pub store_source: StoreSource,
 
     pub store_kind: StoreKind,
 }
@@ -306,9 +306,10 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
+/// The source of a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum RecordingSource {
+pub enum StoreSource {
     Unknown,
 
     /// The official Rerun Python Logging SDK
@@ -324,7 +325,7 @@ pub enum RecordingSource {
     Other(String),
 }
 
-impl std::fmt::Display for RecordingSource {
+impl std::fmt::Display for StoreSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unknown => "Unknown".fmt(f),

@@ -34,7 +34,7 @@ impl DataUi for SetRecordingInfo {
             application_id,
             store_id,
             started,
-            recording_source,
+            store_source,
             is_official_example,
             store_kind: recording_type,
         } = info;
@@ -52,8 +52,8 @@ impl DataUi for SetRecordingInfo {
             ui.label(started.format());
             ui.end_row();
 
-            ui.monospace("recording_source:");
-            ui.label(format!("{recording_source}"));
+            ui.monospace("store_source:");
+            ui.label(format!("{store_source}"));
             ui.end_row();
 
             ui.monospace("is_official_example:");

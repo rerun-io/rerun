@@ -5,8 +5,8 @@ use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::{
     ApplicationId, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig,
-    DataTableBatcherError, LogMsg, RecordingInfo, RecordingSource, StoreId, StoreKind, Time,
-    TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    DataTableBatcherError, LogMsg, RecordingInfo, StoreId, StoreKind, StoreSource, Time, TimeInt,
+    TimePoint, TimeType, Timeline, TimelineName,
 };
 
 use crate::sink::{LogSink, MemorySinkStorage};
@@ -47,7 +47,7 @@ pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
     recording_type: StoreKind,
     store_id: Option<StoreId>,
-    recording_source: Option<RecordingSource>,
+    store_source: Option<StoreSource>,
 
     default_enabled: bool,
     enabled: Option<bool>,
@@ -78,7 +78,7 @@ impl RecordingStreamBuilder {
             application_id,
             recording_type: StoreKind::Recording,
             store_id: None,
-            recording_source: None,
+            store_source: None,
 
             default_enabled: true,
             enabled: None,
@@ -131,8 +131,8 @@ impl RecordingStreamBuilder {
     }
 
     #[doc(hidden)]
-    pub fn recording_source(mut self, recording_source: RecordingSource) -> Self {
-        self.recording_source = Some(recording_source);
+    pub fn store_source(mut self, store_source: StoreSource) -> Self {
+        self.store_source = Some(store_source);
         self
     }
 
@@ -257,7 +257,7 @@ impl RecordingStreamBuilder {
             application_id,
             recording_type,
             store_id,
-            recording_source,
+            store_source,
             default_enabled,
             enabled,
             batcher_config,
@@ -266,7 +266,7 @@ impl RecordingStreamBuilder {
 
         let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
         let store_id = store_id.unwrap_or(StoreId::random(recording_type));
-        let recording_source = recording_source.unwrap_or_else(|| RecordingSource::RustSdk {
+        let store_source = store_source.unwrap_or_else(|| StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         });
@@ -276,7 +276,7 @@ impl RecordingStreamBuilder {
             store_id,
             is_official_example,
             started: Time::now(),
-            recording_source,
+            store_source,
             store_kind: recording_type,
         };
 

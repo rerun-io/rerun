@@ -27,8 +27,7 @@ where
         re_smart_channel::SmartChannelSource::Sdk,
     );
     let sink = Box::new(NativeViewerSink(tx));
-    let app_env =
-        re_viewer::AppEnvironment::from_recording_source(&recording_info.recording_source);
+    let app_env = re_viewer::AppEnvironment::from_store_source(&recording_info.store_source);
 
     let rec_stream =
         RecordingStream::new(recording_info, batcher_config, sink).expect("Failed to spawn thread");
@@ -67,7 +66,7 @@ pub fn show(msgs: Vec<LogMsg>) -> re_viewer::external::eframe::Result<()> {
         return Ok(());
     }
 
-    let recording_source = re_log_types::RecordingSource::RustSdk {
+    let store_source = re_log_types::StoreSource::RustSdk {
         rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
         llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
     };
@@ -75,7 +74,7 @@ pub fn show(msgs: Vec<LogMsg>) -> re_viewer::external::eframe::Result<()> {
     let startup_options = re_viewer::StartupOptions::default();
     re_viewer::run_native_viewer_with_messages(
         re_build_info::build_info!(),
-        re_viewer::AppEnvironment::from_recording_source(&recording_source),
+        re_viewer::AppEnvironment::from_store_source(&store_source),
         startup_options,
         msgs,
     )
