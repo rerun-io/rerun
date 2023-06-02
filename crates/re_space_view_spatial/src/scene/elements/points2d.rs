@@ -9,7 +9,7 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, SpaceViewHighlights,
 use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
     load_keypoint_connections,
-    spatial_scene_element::{SpatialSceneElement, SpatialSceneElementData},
+    spatial_scene_part::{SpatialScenePart, SpatialScenePartData},
     UiLabel, UiLabelTarget,
 };
 
@@ -18,13 +18,13 @@ use super::{
     process_colors, process_radii,
 };
 
-pub struct Points2DSceneElement {
+pub struct Points2DScenePart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub data: SpatialSceneElementData,
+    pub data: SpatialScenePartData,
 }
 
-impl Default for Points2DSceneElement {
+impl Default for Points2DScenePart {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -33,7 +33,7 @@ impl Default for Points2DSceneElement {
     }
 }
 
-impl Points2DSceneElement {
+impl Points2DScenePart {
     fn process_labels<'a>(
         entity_view: &'a EntityView<Point2D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -179,7 +179,7 @@ impl Points2DSceneElement {
     }
 }
 
-impl SpatialSceneElement<7> for Points2DSceneElement {
+impl SpatialScenePart<7> for Points2DScenePart {
     type Primary = Point2D;
 
     fn archetype() -> [ComponentName; 7] {
@@ -217,7 +217,7 @@ impl SpatialSceneElement<7> for Points2DSceneElement {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> &SpatialSceneElementData {
+    fn data(&self) -> &SpatialScenePartData {
         &self.data
     }
 }

@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::ComponentName;
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
-use re_viewer_context::{SceneElementImpl, SceneQuery, SpaceViewHighlights, ViewerContext};
+use re_viewer_context::{ScenePartImpl, SceneQuery, SpaceViewHighlights, ViewerContext};
 
 use super::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
@@ -11,12 +11,12 @@ use super::{
 };
 
 /// Common data struct for all spatial scene elements.
-pub struct SpatialSceneElementData {
+pub struct SpatialScenePartData {
     pub ui_labels: Vec<UiLabel>,
     pub bounding_box: macaw::BoundingBox,
 }
 
-impl Default for SpatialSceneElementData {
+impl Default for SpatialScenePartData {
     fn default() -> Self {
         Self {
             ui_labels: Vec::new(),
@@ -25,7 +25,7 @@ impl Default for SpatialSceneElementData {
     }
 }
 
-pub trait SpatialSceneElement<const N: usize>: std::any::Any {
+pub trait SpatialScenePart<const N: usize>: std::any::Any {
     type Primary: Component + 'static;
 
     fn archetype() -> [ComponentName; N];
@@ -38,7 +38,7 @@ pub trait SpatialSceneElement<const N: usize>: std::any::Any {
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
 
-    fn data(&self) -> &SpatialSceneElementData;
+    fn data(&self) -> &SpatialScenePartData;
 
     fn for_each_entity_view<F>(
         ctx: &mut ViewerContext<'_>,
@@ -86,22 +86,20 @@ pub trait SpatialSceneElement<const N: usize>: std::any::Any {
         }
     }
 
-    fn wrap(self) -> SpatialSceneElementWrapper<N, Self>
+    fn wrap(self) -> SpatialScenePartWrapper<N, Self>
     where
         Self: Sized,
     {
-        SpatialSceneElementWrapper(self)
+        SpatialScenePartWrapper(self)
     }
 }
 
-/// A wrapper for `SpatialSceneElement` that implements `SceneElement`.
+/// A wrapper for `SpatialScenePart` that implements `ScenePart`.
 ///
 /// Can't implement directly due to Rust limitations around higher kinded traits.
-pub struct SpatialSceneElementWrapper<const N: usize, T: SpatialSceneElement<N>>(pub T);
+pub struct SpatialScenePartWrapper<const N: usize, T: SpatialScenePart<N>>(pub T);
 
-impl<const N: usize, T: SpatialSceneElement<N>> SceneElementImpl
-    for SpatialSceneElementWrapper<N, T>
-{
+impl<const N: usize, T: SpatialScenePart<N>> ScenePartImpl for SpatialScenePartWrapper<N, T> {
     type SpaceViewState = re_space_view::EmptySpaceViewState;
     type SceneContext = SpatialSceneContext;
 

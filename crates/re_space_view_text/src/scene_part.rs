@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneElementImpl, SceneQuery, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, ScenePartImpl, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
 use super::space_view_class::TextSpaceViewState;
@@ -31,7 +31,7 @@ pub struct SceneText {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl SceneElementImpl for SceneText {
+impl ScenePartImpl for SceneText {
     type SpaceViewState = TextSpaceViewState;
     type SceneContext = re_space_view::EmptySceneContext;
 

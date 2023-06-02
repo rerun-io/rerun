@@ -1,10 +1,10 @@
 use crate::{
-    ArchetypeDefinition, SceneContext, SceneElement, SceneQuery, SpaceViewHighlights,
-    SpaceViewState, ViewerContext,
+    ArchetypeDefinition, SceneContext, ScenePart, SceneQuery, SpaceViewHighlights, SpaceViewState,
+    ViewerContext,
 };
 
-/// Implementation utility for [`crate::SceneElement`]
-pub trait SceneElementImpl {
+/// Implementation utility for [`crate::ScenePart`]
+pub trait ScenePartImpl {
     type SpaceViewState: SpaceViewState + Default + 'static;
     type SceneContext: SceneContext + 'static;
 
@@ -32,7 +32,7 @@ pub trait SceneElementImpl {
     }
 }
 
-impl<T: SceneElementImpl + 'static> SceneElement for T {
+impl<T: ScenePartImpl + 'static> ScenePart for T {
     #[inline]
     fn archetype(&self) -> ArchetypeDefinition {
         self.archetype()

@@ -3,7 +3,7 @@ use re_viewer_context::{
     Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
 };
 
-use super::scene_element::SceneTextBox;
+use super::scene_part::SceneTextBox;
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq)]
@@ -36,7 +36,7 @@ pub struct TextBoxSpaceView;
 
 impl SpaceViewClassImpl for TextBoxSpaceView {
     type SpaceViewState = TextBoxSpaceViewState;
-    type SceneElementTuple = (SceneTextBox,);
+    type ScenePartTuple = (SceneTextBox,);
     type SceneContext = re_space_view::EmptySceneContext;
 
     fn name(&self) -> SpaceViewClassName {

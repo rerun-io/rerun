@@ -6,18 +6,21 @@
 // TODO(andreas): Can we move some of these to the `re_space_view` crate?
 mod highlights;
 mod scene;
-mod scene_element_impl;
+mod scene_context;
+mod scene_part;
+mod scene_part_collection;
+mod scene_part_impl;
 mod scene_query;
 mod space_view_class;
 mod space_view_class_impl;
 mod space_view_class_registry;
 
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
-pub use scene::{
-    Scene, SceneContext, SceneContextPart, SceneElement, SceneElementCollection,
-    SceneItemCollectionLookupError,
-};
-pub use scene_element_impl::SceneElementImpl;
+pub use scene::Scene;
+pub use scene_context::{SceneContext, SceneContextPart};
+pub use scene_part::ScenePart;
+pub use scene_part_collection::{ScenePartCollection, ScenePartCollectionLookupError};
+pub use scene_part_impl::ScenePartImpl;
 pub use scene_query::SceneQuery;
 pub use space_view_class::{
     ArchetypeDefinition, SpaceViewClass, SpaceViewClassName, SpaceViewState,

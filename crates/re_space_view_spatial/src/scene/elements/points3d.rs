@@ -13,17 +13,17 @@ use crate::scene::{
         process_annotations_and_keypoints, process_colors, process_radii,
     },
     load_keypoint_connections,
-    spatial_scene_element::{SpatialSceneElement, SpatialSceneElementData},
+    spatial_scene_part::{SpatialScenePart, SpatialScenePartData},
     UiLabel, UiLabelTarget,
 };
 
-pub struct Points3DSceneElement {
+pub struct Points3DScenePart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub data: SpatialSceneElementData,
+    pub data: SpatialScenePartData,
 }
 
-impl Default for Points3DSceneElement {
+impl Default for Points3DScenePart {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -32,7 +32,7 @@ impl Default for Points3DSceneElement {
     }
 }
 
-impl Points3DSceneElement {
+impl Points3DScenePart {
     fn process_labels<'a>(
         entity_view: &'a EntityView<Point3D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -176,7 +176,7 @@ impl Points3DSceneElement {
     }
 }
 
-impl SpatialSceneElement<7> for Points3DSceneElement {
+impl SpatialScenePart<7> for Points3DScenePart {
     type Primary = Point3D;
 
     fn archetype() -> [ComponentName; 7] {
@@ -214,7 +214,7 @@ impl SpatialSceneElement<7> for Points3DSceneElement {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> &crate::scene::spatial_scene_element::SpatialSceneElementData {
+    fn data(&self) -> &crate::scene::spatial_scene_part::SpatialScenePartData {
         &self.data
     }
 }

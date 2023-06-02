@@ -15,7 +15,7 @@ use crate::{
     mesh_loader::LoadedMesh,
     scene::{
         contexts::SpatialSceneContext,
-        spatial_scene_element::{SpatialSceneElement, SpatialSceneElementData},
+        spatial_scene_part::{SpatialScenePart, SpatialScenePartData},
     },
     space_camera_3d::SpaceCamera3D,
 };
@@ -24,7 +24,7 @@ mod contexts;
 mod elements;
 mod picking;
 mod primitives;
-mod spatial_scene_element;
+mod spatial_scene_part;
 
 use self::contexts::SpatialSceneEntityContext;
 pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
@@ -174,8 +174,8 @@ impl SceneSpatial {
         let mut scene = Scene {
             context: Box::<SpatialSceneContext>::default(),
             elements: (
-                elements::Points2DSceneElement::default().wrap(),
-                elements::Points3DSceneElement::default().wrap(),
+                elements::Points2DScenePart::default().wrap(),
+                elements::Points3DScenePart::default().wrap(),
             )
                 .into(),
             highlights: Default::default(),
@@ -202,10 +202,10 @@ impl SceneSpatial {
         self.primitives.any_outlines = scene.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
 
-        for scene_element in scene.elements.iter() {
-            if let Some(data) = scene_element
+        for scene_part in scene.elements.iter() {
+            if let Some(data) = scene_part
                 .data()
-                .and_then(|d| d.downcast_ref::<SpatialSceneElementData>())
+                .and_then(|d| d.downcast_ref::<SpatialScenePartData>())
             {
                 self.ui.labels.extend(data.ui_labels.iter().cloned());
                 self.primitives.bounding_box =

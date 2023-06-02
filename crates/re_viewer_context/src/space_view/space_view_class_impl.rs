@@ -1,10 +1,9 @@
 use crate::{
-    Scene, SceneContext, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext,
+    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewState,
+    ViewerContext,
 };
 
-use super::scene::SceneElementCollection;
-
-/// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::SceneElement`] type.
+/// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::ScenePart`] type.
 ///
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
@@ -13,11 +12,11 @@ pub trait SpaceViewClassImpl {
     /// State of a space view.
     type SpaceViewState: SpaceViewState + Default + 'static;
 
-    /// Context of the scene, which is passed to all [`crate::SceneElement`]s and ui drawing on population.
+    /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
     type SceneContext: SceneContext + Default + 'static;
 
-    /// A tuple of [`crate::SceneElement`] types that are supported by this space view class.
-    type SceneElementTuple: Into<SceneElementCollection> + Default + 'static;
+    /// A tuple of [`crate::ScenePart`] types that are supported by this space view class.
+    type ScenePartTuple: Into<ScenePartCollection> + Default + 'static;
 
     /// Name of this space view class.
     ///
@@ -74,7 +73,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     fn new_scene(&self) -> Scene {
         Scene {
             context: Box::<T::SceneContext>::default(),
-            elements: T::SceneElementTuple::default().into(),
+            elements: T::ScenePartTuple::default().into(),
             highlights: Default::default(),
         }
     }

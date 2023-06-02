@@ -2,7 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneElementImpl, SceneQuery, SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, ScenePartImpl, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
 use crate::space_view_class::TextBoxSpaceViewState;
@@ -20,7 +20,7 @@ pub struct SceneTextBox {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl SceneElementImpl for SceneTextBox {
+impl ScenePartImpl for SceneTextBox {
     type SpaceViewState = TextBoxSpaceViewState;
     type SceneContext = re_space_view::EmptySceneContext;
 
