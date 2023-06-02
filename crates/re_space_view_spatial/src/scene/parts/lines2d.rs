@@ -1,40 +1,38 @@
 use re_components::{ColorRGBA, Component as _, InstanceKey, LineStrip2D, Radius};
 use re_data_store::EntityPath;
-use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_query::{EntityView, QueryError};
 use re_renderer::Size;
-use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
-use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
-
-use crate::{
-    scene::{EntityDepthOffsets, SceneSpatial},
-    TransformContext,
+use re_viewer_context::{
+    ArchetypeDefinition, DefaultColor, ScenePartImpl, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
 };
 
-use super::{instance_key_to_picking_id, ScenePart};
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
+};
 
-pub struct Lines2DPart;
+use super::{instance_key_to_picking_id, SpatialScenePartData, SpatialSpaceViewState};
+
+#[derive(Default)]
+pub struct Lines2DPart(SpatialScenePartData);
 
 impl Lines2DPart {
     fn process_entity_view(
-        scene: &mut SceneSpatial,
-        entity_view: &EntityView<LineStrip2D>,
+        &mut self,
+        _query: &SceneQuery<'_>,
+        ent_view: &EntityView<LineStrip2D>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Affine3A,
-        entity_highlight: &SpaceViewOutlineMasks,
-        depth_offset: re_renderer::DepthOffset,
+        ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        scene.num_logged_2d_objects += 1;
-
-        let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
 
-        let mut line_batch = scene
-            .primitives
-            .line_strips
+        let mut line_builder = ent_context.shared_render_builders.lines();
+        let mut line_batch = line_builder
             .batch("lines 2d")
-            .depth_offset(depth_offset)
-            .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall)
+            .depth_offset(ent_context.depth_offset)
+            .world_from_obj(ent_context.world_from_obj)
+            .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
@@ -42,7 +40,10 @@ impl Lines2DPart {
                        color: Option<ColorRGBA>,
                        radius: Option<Radius>| {
             // TODO(andreas): support class ids for lines
-            let annotation_info = annotations.class_description(None).annotation_info();
+            let annotation_info = ent_context
+                .annotations
+                .class_description(None)
+                .annotation_info();
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
@@ -53,70 +54,70 @@ impl Lines2DPart {
                 .radius(radius)
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
-                    entity_view.num_instances(),
-                    entity_highlight.any_selection_highlight,
+                    ent_view.num_instances(),
+                    ent_context.highlight.any_selection_highlight,
                 ));
 
-            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                 lines.outline_mask_ids(*outline_mask_ids);
             }
         };
 
-        entity_view.visit3(visitor)?;
+        ent_view.visit3(visitor)?;
+
+        self.0.extend_bounding_box_with_points(
+            ent_view.iter_primary()?.flat_map(|strip| {
+                strip
+                    .map_or(Vec::new(), |strip| strip.0)
+                    .into_iter()
+                    .map(|pt| glam::vec3(pt.x(), pt.y(), 0.0))
+            }),
+            ent_context.world_from_obj,
+        );
 
         Ok(())
     }
 }
 
-impl ScenePart for Lines2DPart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl ScenePartImpl for Lines2DPart {
+    type SpaceViewState = SpatialSpaceViewState;
+    type SceneContext = SpatialSceneContext;
+
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![
+            LineStrip2D::name(),
+            InstanceKey::name(),
+            ColorRGBA::name(),
+            Radius::name(),
+        ]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformContext,
+        _space_view_state: &Self::SpaceViewState,
+        scene_context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Lines2DPart");
 
-        for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
-                continue;
-            };
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+        process_entity_views::<LineStrip2D, 4, _>(
+            ctx,
+            query,
+            scene_context,
+            highlights,
+            scene_context.depth_offsets.points,
+            self.archetype(),
+            |ent_path, entity_view, ent_context| {
+                self.process_entity_view(query, &entity_view, ent_path, ent_context)
+            },
+        );
 
-            match query_primary_with_history::<LineStrip2D, 4>(
-                &ctx.store_db.entity_db.data_store,
-                &query.timeline,
-                &query.latest_at,
-                &props.visible_history,
-                ent_path,
-                [
-                    LineStrip2D::name(),
-                    InstanceKey::name(),
-                    ColorRGBA::name(),
-                    Radius::name(),
-                ],
-            )
-            .and_then(|entities| {
-                for entity in entities {
-                    Self::process_entity_view(
-                        scene,
-                        &entity,
-                        ent_path,
-                        world_from_obj,
-                        entity_highlight,
-                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.lines2d),
-                    )?;
-                }
-                Ok(())
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
-            }
-        }
+        Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+    }
+
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(&self.0)
     }
 }

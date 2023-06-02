@@ -98,9 +98,6 @@ pub struct SceneSpatial {
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
 
-    /// Number of 2d primitives logged, used for heuristics.
-    num_logged_2d_objects: usize,
-
     /// Number of 3d primitives logged, used for heuristics.
     num_logged_3d_objects: usize,
 
@@ -123,7 +120,6 @@ impl SceneSpatial {
             annotation_map: Default::default(),
             primitives: SceneSpatialPrimitives::new(re_ctx),
             ui: Default::default(),
-            num_logged_2d_objects: Default::default(),
             num_logged_3d_objects: Default::default(),
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Scene {
@@ -146,15 +142,8 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        let parts: Vec<&dyn ScenePart> = vec![
-            // --
-            &parts::Lines3DPart,
-            &parts::MeshPart,
-            &parts::ImagesPart,
-            // --
-            // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
-            &parts::Lines2DPart,
-        ];
+        let parts: Vec<&dyn ScenePart> =
+            vec![&parts::Lines3DPart, &parts::MeshPart, &parts::ImagesPart];
 
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {

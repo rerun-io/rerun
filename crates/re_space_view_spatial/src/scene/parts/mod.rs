@@ -14,7 +14,6 @@ mod points3d;
 mod spatial_scene_part_data;
 
 pub(crate) use images::ImagesPart;
-pub(crate) use lines2d::Lines2DPart;
 pub(crate) use lines3d::Lines3DPart;
 pub(crate) use meshes::MeshPart;
 
@@ -45,6 +44,7 @@ pub struct SpatialScenePartCollection {
     pub boxes2d: boxes2d::Boxes2DPart,
     pub boxes3d: boxes3d::Boxes3DPart,
     pub cameras: cameras::CamerasPart,
+    pub lines2d: lines2d::Lines2DPart,
 }
 
 impl ScenePartCollection for SpatialScenePartCollection {
@@ -56,8 +56,11 @@ impl ScenePartCollection for SpatialScenePartCollection {
             boxes2d,
             boxes3d,
             cameras,
+            lines2d,
         } = self;
-        vec![points2d, points3d, arrows3d, boxes2d, boxes3d, cameras]
+        vec![
+            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d,
+        ]
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
