@@ -111,9 +111,9 @@ impl RecordingStreamBuilder {
     /// Set the [`StoreId`] for this context.
     ///
     /// If you're logging from multiple processes and want all the messages to end up as the same
-    /// recording, you must make sure they all set the same [`StoreId`] using this function.
+    /// store, you must make sure they all set the same [`StoreId`] using this function.
     ///
-    /// Note that many recordings can share the same [`ApplicationId`], but they all have
+    /// Note that many stores can share the same [`ApplicationId`], but they all have
     /// unique [`StoreId`]s.
     ///
     /// The default is to use a random [`StoreId`].
