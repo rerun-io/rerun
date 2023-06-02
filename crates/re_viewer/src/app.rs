@@ -2132,7 +2132,7 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDbHub> {
         re_tracing::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
-        LogDbHub::decode_rrd(file)
+        LogDbHub::from_rrd(file)
     }
 
     re_log::info!("Loading {path:?}…");
@@ -2161,7 +2161,7 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDbHub> {
 
 #[must_use]
 fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDbHub> {
-    match LogDbHub::decode_rrd(read) {
+    match LogDbHub::from_rrd(read) {
         Ok(mut rrd) => {
             re_log::info!("Loaded {name:?}");
             for log_db in rrd.log_dbs_mut() {
