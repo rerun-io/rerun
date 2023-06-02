@@ -14,7 +14,6 @@ mod points3d;
 mod spatial_scene_part_data;
 
 pub(crate) use images::ImagesPart;
-pub(crate) use meshes::MeshPart;
 
 pub use spatial_scene_part_data::SpatialScenePartData;
 
@@ -45,6 +44,7 @@ pub struct SpatialScenePartCollection {
     pub cameras: cameras::CamerasPart,
     pub lines2d: lines2d::Lines2DPart,
     pub lines3d: lines3d::Lines3DPart,
+    pub meshes: meshes::MeshPart,
 }
 
 impl ScenePartCollection for SpatialScenePartCollection {
@@ -58,9 +58,10 @@ impl ScenePartCollection for SpatialScenePartCollection {
             cameras,
             lines2d,
             lines3d,
+            meshes,
         } = self;
         vec![
-            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d,
+            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
         ]
     }
 

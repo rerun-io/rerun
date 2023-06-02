@@ -8,18 +8,16 @@ pub use picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use primitives::SceneSpatialPrimitives;
 
 use ahash::HashMap;
-use std::sync::Arc;
 
 use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
-use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
+use re_renderer::{renderer::TexturedRect, Color32, Size};
 use re_viewer_context::{
     auto_color, AnnotationMap, Scene, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
 use crate::{
-    mesh_loader::LoadedMesh,
     scene::{contexts::SpatialSceneContext, parts::SpatialScenePartData},
     space_camera_3d::SpaceCamera3D,
 };
@@ -33,15 +31,6 @@ use contexts::EntityDepthOffsets;
 
 const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
-
-/// TODO(andreas): Scene should only care about converted rendering primitive.
-pub struct MeshSource {
-    pub picking_instance_hash: InstancePathHash,
-    // TODO(andreas): Make this Conformal3 once glow is gone?
-    pub world_from_mesh: macaw::Affine3A,
-    pub mesh: Arc<LoadedMesh>,
-    pub outline_mask_ids: OutlineMaskPreference,
-}
 
 pub struct Image {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -142,7 +131,7 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        let parts: Vec<&dyn ScenePart> = vec![&parts::MeshPart, &parts::ImagesPart];
+        let parts: Vec<&dyn ScenePart> = vec![&parts::ImagesPart];
 
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {

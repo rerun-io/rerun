@@ -16,6 +16,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
 ) where
     Primary: Component + 'a,
     F: FnMut(
+        &mut ViewerContext<'_>,
         &EntityPath,
         EntityView<Primary>,
         &SpatialSceneEntityContext<'_>,
@@ -52,7 +53,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
                     std::sync::atomic::Ordering::Relaxed,
                 );
 
-                fun(ent_path, ent_view, &entity_context)?;
+                fun(ctx, ent_path, ent_view, &entity_context)?;
             }
             Ok(())
         }) {

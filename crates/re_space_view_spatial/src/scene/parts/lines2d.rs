@@ -109,7 +109,7 @@ impl ScenePartImpl for Lines2DPart {
             highlights,
             scene_context.depth_offsets.points,
             self.archetype(),
-            |ent_path, entity_view, ent_context| {
+            |_ctx, ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
         );

@@ -1,16 +1,9 @@
 use egui::Color32;
 use re_data_store::EntityPath;
 use re_log_types::InstanceKey;
-use re_renderer::{
-    renderer::{DepthClouds, MeshInstance},
-    LineStripSeriesBuilder,
-};
+use re_renderer::{renderer::DepthClouds, LineStripSeriesBuilder};
 
-use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
-
-use super::{
-    MeshSource, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-};
+use super::{SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES};
 
 /// Primitives sent off to `re_renderer`.
 /// (Some meta information still relevant to ui setup as well)
@@ -26,7 +19,6 @@ pub struct SceneSpatialPrimitives {
 
     pub images: Vec<super::Image>,
     pub line_strips: LineStripSeriesBuilder,
-    pub meshes: Vec<MeshSource>,
     pub depth_clouds: DepthClouds,
 
     pub any_outlines: bool,
@@ -44,7 +36,6 @@ impl SceneSpatialPrimitives {
             images: Default::default(),
             line_strips: LineStripSeriesBuilder::new(re_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
-            meshes: Default::default(),
             depth_clouds: DepthClouds {
                 clouds: Default::default(),
                 radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -65,16 +56,11 @@ impl SceneSpatialPrimitives {
             num_primitives,
             images,
             line_strips,
-            meshes,
             depth_clouds,
             any_outlines: _,
         } = &self;
 
-        images.len()
-            + line_strips.vertices.len()
-            + num_primitives
-            + meshes.len()
-            + depth_clouds.clouds.len()
+        images.len() + line_strips.vertices.len() + num_primitives + depth_clouds.clouds.len()
     }
 
     pub fn recalculate_bounding_box(&mut self) {
@@ -85,7 +71,6 @@ impl SceneSpatialPrimitives {
             num_primitives: _,
             images,
             line_strips,
-            meshes,
             depth_clouds,
             any_outlines: _,
         } = self;
@@ -105,41 +90,9 @@ impl SceneSpatialPrimitives {
             *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));
         }
 
-        for mesh in meshes {
-            // TODO(jleibs): is this safe for meshes or should we be doing the equivalent of the above?
-            *bounding_box =
-                bounding_box.union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
-        }
-
         for cloud in &depth_clouds.clouds {
             *bounding_box = bounding_box.union(cloud.bbox());
         }
-    }
-
-    pub fn mesh_instances(&self) -> Vec<MeshInstance> {
-        re_tracing::profile_function!();
-        self.meshes
-            .iter()
-            .flat_map(|mesh| {
-                let (scale, rotation, translation) =
-                    mesh.world_from_mesh.to_scale_rotation_translation();
-                // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
-                let base_transform =
-                    glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
-                mesh.mesh
-                    .mesh_instances
-                    .iter()
-                    .map(move |mesh_instance| MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh: base_transform * mesh_instance.world_from_mesh,
-                        outline_mask_ids: mesh.outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            mesh.picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    })
-            })
-            .collect()
     }
 
     pub fn add_axis_lines(
