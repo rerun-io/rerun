@@ -93,7 +93,7 @@ pub struct App {
 
     rx: Receiver<LogMsg>,
 
-    /// Where the logs are stored.
+    /// Where the recordings and blueprints are stored.
     store_hub: crate::StoreHub,
 
     /// What is serialized
