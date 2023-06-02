@@ -61,8 +61,8 @@ impl RenderDepthClouds {
         pixels_from_point: f32,
         resolution_in_pixel: [u32; 2],
         target_location: glam::Vec2,
-        frame_draw_data: &FD,
-        image_draw_data: &ID,
+        frame_draw_data: FD,
+        image_draw_data: ID,
     ) -> framework::ViewDrawResult
     where
         FD: DrawData + Sync + Send + Clone + 'static,
@@ -131,8 +131,8 @@ impl RenderDepthClouds {
         );
 
         let command_buffer = view_builder
-            .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
-            .queue_draw(&point_cloud_draw_data)
+            .queue_draw(GenericSkyboxDrawData::new(re_ctx))
+            .queue_draw(point_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
             .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
@@ -152,8 +152,8 @@ impl RenderDepthClouds {
         pixels_from_point: f32,
         resolution_in_pixel: [u32; 2],
         target_location: glam::Vec2,
-        frame_draw_data: &FD,
-        image_draw_data: &ID,
+        frame_draw_data: FD,
+        image_draw_data: ID,
     ) -> framework::ViewDrawResult
     where
         FD: DrawData + Sync + Send + Clone + 'static,
@@ -211,8 +211,8 @@ impl RenderDepthClouds {
         );
 
         let command_buffer = view_builder
-            .queue_draw(&GenericSkyboxDrawData::new(re_ctx))
-            .queue_draw(&depth_cloud_draw_data)
+            .queue_draw(GenericSkyboxDrawData::new(re_ctx))
+            .queue_draw(depth_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
             .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
@@ -333,16 +333,16 @@ impl framework::Example for RenderDepthClouds {
                 pixels_from_point,
                 splits[0].resolution_in_pixel,
                 splits[0].target_location,
-                &frame_draw_data,
-                &image_draw_data,
+                frame_draw_data.clone(),
+                image_draw_data.clone(),
             ),
             self.draw_depth_cloud(
                 re_ctx,
                 pixels_from_point,
                 splits[1].resolution_in_pixel,
                 splits[1].target_location,
-                &frame_draw_data,
-                &image_draw_data,
+                frame_draw_data,
+                image_draw_data,
             ),
         ]
     }

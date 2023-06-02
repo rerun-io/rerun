@@ -207,7 +207,7 @@ pub fn render_image(
 
     let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
-    view_builder.queue_draw(&re_renderer::renderer::RectangleDrawData::new(
+    view_builder.queue_draw(re_renderer::renderer::RectangleDrawData::new(
         render_ctx,
         &[textured_rectangle],
     )?);

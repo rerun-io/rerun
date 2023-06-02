@@ -46,7 +46,6 @@ use crate::{
 /// GPU sided data used by a [`Renderer`] to draw things to the screen.
 ///
 /// Valid only for the frame in which it was created (typically uses temp allocations!).
-/// TODO(andreas): Add a mechanism to validate this.
 pub trait DrawData {
     type Renderer: Renderer<RendererDrawData = Self> + Send + Sync;
 }

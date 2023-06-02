@@ -213,8 +213,8 @@ impl Multiview {
         &mut self,
         re_ctx: &mut RenderContext,
         target_cfg: TargetConfiguration,
-        skybox: &GenericSkyboxDrawData,
-        draw_data: &D,
+        skybox: GenericSkyboxDrawData,
+        draw_data: D,
         index: u32,
     ) -> (ViewBuilder, wgpu::CommandBuffer) {
         let mut view_builder = ViewBuilder::new(re_ctx, target_cfg);
@@ -372,8 +372,8 @@ impl Example for Multiview {
                         pixels_from_point,
                         ..Default::default()
                     },
-                    &skybox,
-                    &$name,
+                    skybox.clone(),
+                    $name,
                     $n,
                 );
                 framework::ViewDrawResult {

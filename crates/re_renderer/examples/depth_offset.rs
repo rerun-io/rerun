@@ -114,7 +114,7 @@ impl framework::Example for Render2D {
             },
         );
         let command_buffer = view_builder
-            .queue_draw(&RectangleDrawData::new(re_ctx, &rectangles).unwrap())
+            .queue_draw(RectangleDrawData::new(re_ctx, &rectangles).unwrap())
             .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
             .unwrap();
 

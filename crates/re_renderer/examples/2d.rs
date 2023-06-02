@@ -272,9 +272,9 @@ impl framework::Example for Render2D {
                         ..Default::default()
                     },
                 );
-                view_builder.queue_draw(&line_strip_draw_data);
-                view_builder.queue_draw(&point_draw_data);
-                view_builder.queue_draw(&rectangle_draw_data);
+                view_builder.queue_draw(line_strip_draw_data.clone());
+                view_builder.queue_draw(point_draw_data.clone());
+                view_builder.queue_draw(rectangle_draw_data.clone());
                 let command_buffer = view_builder
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
                     .unwrap();
@@ -315,9 +315,9 @@ impl framework::Example for Render2D {
                     },
                 );
                 let command_buffer = view_builder
-                    .queue_draw(&line_strip_draw_data)
-                    .queue_draw(&point_draw_data)
-                    .queue_draw(&rectangle_draw_data)
+                    .queue_draw(line_strip_draw_data)
+                    .queue_draw(point_draw_data)
+                    .queue_draw(rectangle_draw_data)
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {
