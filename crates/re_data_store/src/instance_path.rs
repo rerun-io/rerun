@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use re_log_types::{EntityPath, EntityPathHash, InstanceKey};
 
-use crate::log_db::EntityDb;
+use crate::store_db::EntityDb;
 
 // ----------------------------------------------------------------------------
 

@@ -78,7 +78,7 @@ fn annotation_info(
     keypoint_id: &re_components::KeypointId,
 ) -> Option<re_components::AnnotationInfo> {
     let class_id = ctx
-        .log_db
+        .store_db
         .entity_db
         .data_store
         .query_latest_component::<ClassId>(entity_path, query)?;

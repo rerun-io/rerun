@@ -201,7 +201,7 @@ impl ViewTextFilters {
             row_log_levels,
         } = self;
 
-        for timeline in ctx.log_db.timelines() {
+        for timeline in ctx.store_db.timelines() {
             col_timelines.entry(*timeline).or_insert(true);
         }
 
@@ -219,7 +219,7 @@ impl ViewTextFilters {
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
     if let Some(time_point) = ctx
-        .log_db
+        .store_db
         .entity_db
         .data_store
         .get_msg_metadata(&entry.row_id)

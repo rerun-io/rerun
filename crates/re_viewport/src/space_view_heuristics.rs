@@ -24,7 +24,7 @@ pub fn all_possible_space_views(
 
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
-    let root_children = &ctx.log_db.entity_db.tree.children;
+    let root_children = &ctx.store_db.entity_db.tree.children;
     let candidate_space_paths = spaces_info
         .iter()
         .map(|info| &info.path)
@@ -125,7 +125,7 @@ pub fn default_created_space_views(
     spaces_info: &SpaceInfoCollection,
 ) -> Vec<SpaceViewBlueprint> {
     let candidates = all_possible_space_views(ctx, spaces_info);
-    default_created_space_views_from_candidates(&ctx.log_db.entity_db.data_store, candidates)
+    default_created_space_views_from_candidates(&ctx.store_db.entity_db.data_store, candidates)
 }
 
 fn default_created_space_views_from_candidates(
@@ -301,8 +301,8 @@ pub fn default_queried_entities(
     re_tracing::profile_function!();
 
     let timeline = Timeline::log_time();
-    let log_db = &ctx.log_db;
-    let data_store = &log_db.entity_db.data_store;
+    let store_db = &ctx.store_db;
+    let data_store = &store_db.entity_db.data_store;
 
     let mut entities = Vec::new();
     let space_info = spaces_info.get_first_parent_with_info(space_path);
@@ -314,7 +314,8 @@ pub fn default_queried_entities(
                 .iter()
                 .filter(|entity_path| {
                     is_default_added_to_space_view(entity_path, space_path, data_store, timeline)
-                        && categorize_entity_path(timeline, log_db, entity_path).contains(category)
+                        && categorize_entity_path(timeline, store_db, entity_path)
+                            .contains(category)
                 })
                 .cloned(),
         );
@@ -332,8 +333,8 @@ fn default_queried_entities_by_category(
     re_tracing::profile_function!();
 
     let timeline = Timeline::log_time();
-    let log_db = &ctx.log_db;
-    let data_store = &log_db.entity_db.data_store;
+    let store_db = &ctx.store_db;
+    let data_store = &store_db.entity_db.data_store;
 
     let mut groups: BTreeMap<ViewCategory, Vec<EntityPath>> = BTreeMap::default();
     let space_info = space_info_collection.get_first_parent_with_info(space_path);
@@ -343,7 +344,7 @@ fn default_queried_entities_by_category(
         &mut |space_info| {
             for entity_path in &space_info.descendants_without_transform {
                 if is_default_added_to_space_view(entity_path, space_path, data_store, timeline) {
-                    for category in categorize_entity_path(timeline, log_db, entity_path) {
+                    for category in categorize_entity_path(timeline, store_db, entity_path) {
                         groups
                             .entry(category)
                             .or_default()

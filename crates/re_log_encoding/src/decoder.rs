@@ -162,22 +162,22 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[test]
 fn test_encode_decode() {
     use re_log_types::{
-        ApplicationId, LogMsg, RecordingId, RecordingInfo, RecordingSource, RecordingType, RowId,
-        SetRecordingInfo, Time,
+        ApplicationId, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
+        Time,
     };
 
-    let messages = vec![LogMsg::SetRecordingInfo(SetRecordingInfo {
+    let messages = vec![LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: RowId::random(),
-        info: RecordingInfo {
+        info: StoreInfo {
             application_id: ApplicationId("test".to_owned()),
-            recording_id: RecordingId::random(RecordingType::Data),
+            store_id: StoreId::random(StoreKind::Recording),
             is_official_example: true,
             started: Time::now(),
-            recording_source: RecordingSource::RustSdk {
+            store_source: StoreSource::RustSdk {
                 rustc_version: String::new(),
                 llvm_version: String::new(),
             },
-            recording_type: re_log_types::RecordingType::Data,
+            store_kind: re_log_types::StoreKind::Recording,
         },
     })];
 

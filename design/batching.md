@@ -91,7 +91,7 @@ The data goes through several distinct stages during its lifetime:
 
 At present, the client is limited to creating a single event at a time, corresponding to a single row of data. Each row contains N components, each of which can hold M instances for a given entity across P timelines.
 
-To begin the process, the SDK creates a `ComponentBundle`, which can be thought of as a data cell within a dataframe. This `ComponentBundle` is essentially a list of values for a specific component type. Keep in mind we only ever work with lists, rather than individual values.  
+To begin the process, the SDK creates a `ComponentBundle`, which can be thought of as a data cell within a dataframe. This `ComponentBundle` is essentially a list of values for a specific component type. Keep in mind we only ever work with lists, rather than individual values.
 From this point forward, the individual values in these lists are referred to as "component instances" (:warning: "component instances" != "instance keys").
 
 ```rust
@@ -114,13 +114,13 @@ pub struct MsgBundle {
     pub components: Vec<ComponentBundle>,
 }
 ```
-which corresponds to _1 event_, i.e. 1 row's worth of data for 1 entity in N timelines.  
+which corresponds to _1 event_, i.e. 1 row's worth of data for 1 entity in N timelines.
 This event is uniquely identified with a `MsgId`, which is a `TUID` under the hood (wall-clock UID).
 
-The number of component instances for all columns, or components, in a given row is determined by examining the number of instances for the first entry in the `components` list. However, this approach has a significant flaw: all components must have the same number of instances.  
+The number of component instances for all columns, or components, in a given row is determined by examining the number of instances for the first entry in the `components` list. However, this approach has a significant flaw: all components must have the same number of instances.
 This requirement creates a situation where splats, with a single instance, and clears, with no instances, must be sent in separate `MsgBundle`s.
 
-As part of packing the `MsgBundle`, we convert the `MsgId` itself into a `ComponentBundle` by cloning it as many times as necessary to match the number of instances. We do this because we need the `MsgId` information later for garbage collection purposes.  
+As part of packing the `MsgBundle`, we convert the `MsgId` itself into a `ComponentBundle` by cloning it as many times as necessary to match the number of instances. We do this because we need the `MsgId` information later for garbage collection purposes.
 However, this approach presents a challenge for clears, which have zero instances. As a result, messages that contain zero instances cannot be garbage collected as of today.
 
 ### Transport
@@ -220,8 +220,8 @@ There are several important points to note:
 ### Storage
 
 The data is actually stored in two places:
-- in `LogDb`, where every raw `LogMsg` is kept around so that it can later be saved to disk,
-    - Due to the lack of batching, the size of the data sitting in `LogDb` is actually completely dwarfed by the size of the schema metadata.
+- in `StoreDb`, where every raw `LogMsg` is kept around so that it can later be saved to disk,
+    - Due to the lack of batching, the size of the data sitting in `StoreDb` is actually completely dwarfed by the size of the schema metadata.
 - in the `DataStore`, where the data is stripped down into parts and indexed as needed for our latest-at semantics.
     - That's the origin of the `MsgId` mismatch problem.
 
@@ -273,7 +273,7 @@ IndexTable {
 ```
 Note that, although the tables are bucketed, garbage collection of indices is actually entirely disabled today because the whole GC story is broken (see below).
 
-Components are stored on a per-component basis: i.e. all timelines and all entities share the same component storage.  
+Components are stored on a per-component basis: i.e. all timelines and all entities share the same component storage.
 Like indices, they are split further into buckets (using both space and time thresholds), once again to facilitate garbage collection:
 ```
 ComponentTable {
@@ -312,11 +312,11 @@ ComponentTable {
 ```
 (The space thresholds don't actually work today due to the hacks we do in the GC implementation to work around `MsgId` mismatches)
 
-Storing data in both `LogDb` and the component tables can lead to a significant increase in memory usage if not managed carefully, effectively doubling the storage requirements. Therefore, bucket compaction is currently disabled, leaving some performance on the table.
+Storing data in both `StoreDb` and the component tables can lead to a significant increase in memory usage if not managed carefully, effectively doubling the storage requirements. Therefore, bucket compaction is currently disabled, leaving some performance on the table.
 
 Overall, this storage architecture maps well to our latest-at query semantics, but quite poorly to our range/timeseries semantics (see read path section below).
 
-The index buckets in the `DataStore` hold references to specific rows in the component tables, where the actual data is stored.  
+The index buckets in the `DataStore` hold references to specific rows in the component tables, where the actual data is stored.
 At first, this may seem reasonable, but it's not the most efficient approach: Arrow data is already reference counted, so we're essentially referencing a set of references. This leads to a significant and expensive issue on the read path, particularly for range queries, as discussed below.
 
 ### Write path
@@ -325,7 +325,7 @@ The write path is fairly straightforward, with some complications arising from h
 
 First, each component (i.e., column) is inserted into the currently active component table, which generates a set of globally unique and stable row numbers.
 
-Next, we retrieve or create the appropriate index based on the `EntityPath` and `Timeline` parameters. Using binary search, we locate the correct bucket and insert the row numbers.  
+Next, we retrieve or create the appropriate index based on the `EntityPath` and `Timeline` parameters. Using binary search, we locate the correct bucket and insert the row numbers.
 That's also when bucket splitting happen, which is its own can of worms, but is completely orthogonal to batching concerns.
 
 We also maintain an additional index that maps `MsgId`s to timepoints, which is crucial for multi-timeline views like the text view.
@@ -346,14 +346,14 @@ This second subtlety has important implications. To actually retrieve the data, 
 
 While range queries have some surprisingly tricky semantics (especially around the intersection of timeless and temporal data), operationally they behave pretty much like latest-at queries: grabbing the right index, binsearching for the right bucket, and starting iteration from there.
 
-However, the fact that we return row numbers instead of the actual data itself can have significant performance implications when it comes to range queries.  
+However, the fact that we return row numbers instead of the actual data itself can have significant performance implications when it comes to range queries.
 For example, if you need to iterate through 100k values, you would need to run 100k `get` requests, which would require 100k binsearches in the component tables. This can be extremely costly and is a major reason why our ranged query scenes quickly become unusable as the dataset grows.
 
 ### Garbage Collection
 
 The current garbage collection mechanism was put together as a quick fix for the `MsgId`-mismatch issue, and it is largely unreliable.
 
-The algorithm works as follows: it finds the oldest component bucket based on the insertion order from the datastore, which doesn't make much semantic sense, and drops it. Then, it drops all component buckets that roughly cover the same time range. Finally, it returns all the `MsgId`s to the viewer so that it can in turn clear its own data structures.  
+The algorithm works as follows: it finds the oldest component bucket based on the insertion order from the datastore, which doesn't make much semantic sense, and drops it. Then, it drops all component buckets that roughly cover the same time range. Finally, it returns all the `MsgId`s to the viewer so that it can in turn clear its own data structures.
 This process is repeated in a loop until a sufficient amount of data has been dropped.
 
 Beyond these hacks, the logic in and of itself is fundamentally broken right now. Consider the following log calls:
@@ -381,7 +381,7 @@ This happens because the GC blindly drops data rather than doing the correct thi
 
 ### Save-to-disk
 
-The current store cannot be dumped to disk, we rely on `LogDb` to store all incoming `LogMsg`s and dump them to disk as-is if the user decides to save the recording.
+The current store cannot be dumped to disk, we rely on `StoreDb` to store all incoming `LogMsg`s and dump them to disk as-is if the user decides to save the recording.
 
 ---
 
@@ -391,16 +391,16 @@ The proposed design involves significant changes at every stage of the data life
 
 ### Creation
 
-The main difference is of course that the client can now accumulate events (i.e., rows) in a local table before sending them to the server.  
+The main difference is of course that the client can now accumulate events (i.e., rows) in a local table before sending them to the server.
 In practice this process of accumulation is handled behind the scenes by the SDK, and driven by both time and space thresholds ("accumulate at most 10MiB of raw data for no more than 50ms").
 
-To reflect the fact that we're passing tables of data around, I suggest we update the terminology.  
-The current terms `ComponentBundle` and `MsgBundle` are vague, so let's use more descriptive terms instead: 
+To reflect the fact that we're passing tables of data around, I suggest we update the terminology.
+The current terms `ComponentBundle` and `MsgBundle` are vague, so let's use more descriptive terms instead:
 * `DataCell`: a uniform list of values for a given component type from a single log call.
 * `DataRow`: an event, a list of cells associated with an event ID, entity path, timepoint, and number of instances. Corresponds to a single SDK log call.
 * `DataTable`: a batch; a list of rows associated with a batch ID.
 
-Juggling between native and arrow data interchangeably can be a cumbersome task in our current implementation. While we have some helper functions to facilitate this, the process is not as smooth as it could be.  
+Juggling between native and arrow data interchangeably can be a cumbersome task in our current implementation. While we have some helper functions to facilitate this, the process is not as smooth as it could be.
 This is partly due to limitations in `arrow2-convert`, but also because some of our APIs are simply not optimized for this use case (yet).
 
 So, considering all the reasons above, here are all the new types involved.
@@ -554,7 +554,7 @@ The SDK accumulates cells into rows into tables until either the space or time t
 
 Note that `DataCell`, `DataRow`, `DataTable` are all temporary constructs to help with the creation of data batches, they are not what gets sent over the wire (although `DataCell` pre-serializes its data as it is much more convenient to erase component data before passing it around).
 
-Only when a `DataTable` gets transformed into a `ArrowMsg` does serialization actually happen.  
+Only when a `DataTable` gets transformed into a `ArrowMsg` does serialization actually happen.
 `ArrowMsg` is what gets sent over the wire.
 
 ### Transport
@@ -667,7 +667,7 @@ Schema {
         },
     ],
     metadata: {
-        "rerun.batch_id": "<BatchId>", 
+        "rerun.batch_id": "<BatchId>",
     },
 }
 ```
@@ -682,12 +682,12 @@ At this point we might want to sort the batch by `(event_id, entity_path)`, whic
 
 That's also an opportunity to pre-compact the data: if two rows share the same timepoints with different components, we could potentially merge them together... that's a bit more controversial though as it means either dropping some `EventId`s, or supporting multiple `EventId`s for a single event.
 
-One last thing that needs to be taken care of before actually sending the data is compression / dictionary-encoding of some kind.  
+One last thing that needs to be taken care of before actually sending the data is compression / dictionary-encoding of some kind.
 We already have `zstd` in place for that.
 
 ### Storage
 
-One of the major change storage-wise is the complete removal of component tables: index tables now reference the arrow data directly.  
+One of the major change storage-wise is the complete removal of component tables: index tables now reference the arrow data directly.
 With the new design, the arrow buffers now store multiple rows of data. To reference a specific row, each index row must point to _a unit-length slice_ in a shared batch of arrow data.
 
 That is the reason why sorting the batch on the client's end improves performance: it improves data locality in the store by making the shared batches follow the layout of the final buckets more closely.
@@ -746,7 +746,7 @@ Worth noticing:
 In addition to storing the indices themselves, we also require a bunch of auxiliary datastructures.
 
 First, we need to keep track of all `EventId`s currently present in the store, in `event_id` order (remember, these are time-based (clients' wall-clocks)!).
-This will replace the existing `chronological_msg_ids` in `LogDb` (which is currently in insertion-order-as-seen-from-the-viewer, which isn't too great).  
+This will replace the existing `chronological_msg_ids` in `StoreDb` (which is currently in insertion-order-as-seen-from-the-viewer, which isn't too great).
 We need this because some operations like GC and save-to-disk require to pick an arbitrary ordering to get going, and `event_id` is our best bet for now.
 
 Second, we need to map `EventId`s to index rows for GC purposes: `HashMap<EventId, HashSet<IndexRowId>>`.
@@ -821,57 +821,57 @@ This will make the resulting .rrd file both faster to load (there's some fixed o
 
 A _lot_ of things are gonna change, so we really want A) to avoid crazy large PRs that are a pain to review and B) to be able detect regressions (both correctness and performance) early on so they don't turn into long & painful investigations.
 
-Nothing set in stone obviously, but the following steps seem like a good start (roughly 1 step == 1 PR).  
+Nothing set in stone obviously, but the following steps seem like a good start (roughly 1 step == 1 PR).
 This entire section can pretty much be used verbatim as a tracking issue.
 
-1. Implement all the needed tests & benchmarks  
-We need to be able to check for regressions at every step, so make sure we have all the tests and benchmarks we need for that.  
+1. Implement all the needed tests & benchmarks
+We need to be able to check for regressions at every step, so make sure we have all the tests and benchmarks we need for that.
 We should already be 95% of the way there at this point.
 
-1. Move `DataStore` sanity checks and formatting tools to separate files  
+1. Move `DataStore` sanity checks and formatting tools to separate files
 `store.rs` is supposed to be the place where one can get an overview of all the datastructures involved in the store, except it has slowly become a mess over time and is now pretty much unreadable.
 
-1. Replace `MsgBundle` & `ComponentBundle` with the new types (`DataCell`, `DataRow`, `DataTable`, `EventId`, `BatchId`...)  
+1. Replace `MsgBundle` & `ComponentBundle` with the new types (`DataCell`, `DataRow`, `DataTable`, `EventId`, `BatchId`...)
 No actual batching features nor any kind of behavior changes of any sort: just define the new types and use them everywhere.
 
-1. Pass entity path as a column rather than as metadata  
+1. Pass entity path as a column rather than as metadata
 Replace the current entity_path that is passed in the metadata map with an actual column instead. This will also requires us to make `EntityPath` a proper arrow datatype (..datatype, not component!!).
 
-1. Implement explicit number of instances  
+1. Implement explicit number of instances
 Introduce a new column for `num_instances`, integrate it in the store index and expose it in the store APIs.
 
-1. Fix splats all around (rs sdk, py sdk, re_query...)  
+1. Fix splats all around (rs sdk, py sdk, re_query...)
 Update the SDKs and `re_query` to properly make use of the new explicit `num_instances`.
 
-1. Get rid of component buckets altogether  
+1. Get rid of component buckets altogether
 Update the store implementation to remove component tables, remove the `get` APIs, introduce slicing on the write path, etc. Still no batching in sight!
 
-1. Implement the coalescing/accumulation logic in the SDK  
+1. Implement the coalescing/accumulation logic in the SDK
 Add the required logic/thread/timers/whatever-else in the SDKs to accumulate data and just send it all as many `LogMsg`s (i.e. no batching yet).
 
-1. Implement full-on batching  
+1. Implement full-on batching
 End-to-end: transport, storage, the whele shebang.
 
-1. Sort the batch before sending (`(event_id, entity_path)`)  
+1. Sort the batch before sending (`(event_id, entity_path)`)
 Keep that in its own PR to keep track of the benchmarks.
 
-1. Implement new GC  
+1. Implement new GC
 The complete implementation; should close all existing GC issues.
 
-1. Dump directly from the store into an rrd file  
+1. Dump directly from the store into an rrd file
 No rebatching yet, just dump every event in its own `LogMsg`.
 
-1. Remove `LogMsg`s from `LogDb`  
-We shouldn't need to keep track of events outside the store past this point: clean it all up.  
+1. Remove `LogMsg`s from `StoreDb`
+We shouldn't need to keep track of events outside the store past this point: clean it all up.
 Reminder: the timeline widget keeps track of timepoints directly, not events.
 
-1. Rebatch aggressively while dumping to disk  
+1. Rebatch aggressively while dumping to disk
 
-1. Use arrow extension types to carry around component names  
+1. Use arrow extension types to carry around component names
 
-1. Drop `log_time`  
-We currently store the logging time twice: once in the `MsgId` (soon `EventId`) and once injected by the SDK (and they don't even match!).  
-We could just not inject the `log_time`, and instead derive a `log_time` column on the server using the timestamp in the `EventId`; especially since we probably want an auto-derived `ingestion_time` anyway.  
+1. Drop `log_time`
+We currently store the logging time twice: once in the `MsgId` (soon `EventId`) and once injected by the SDK (and they don't even match!).
+We could just not inject the `log_time`, and instead derive a `log_time` column on the server using the timestamp in the `EventId`; especially since we probably want an auto-derived `ingestion_time` anyway.
 The timestamp in `EventId` is not going away: it is what defines our global ordering!
 
 - Turn all of the above into a tracking issue
@@ -892,14 +892,14 @@ Basically aggressive rebatching on the loaded data.
 
 ### Dedicated storage for timeseries
 
-While our store design nicely matches latest-at semantics, it's pretty horrible when it comes to range/timeseries-like semantics.  
+While our store design nicely matches latest-at semantics, it's pretty horrible when it comes to range/timeseries-like semantics.
 It gets even worse for timeseries of simple scalars.
 
 At some point we're gonna want to have a fully dedicated storage & query path for scalar timeseries.
 
 ### Recursive clears native to the store
 
-Recursive clears are currently handled in `LogDb`, which is an issue for (at least) two reasons:
+Recursive clears are currently handled in `StoreDb`, which is an issue for (at least) two reasons:
 - Once we start saving the store in a native format, rather than a collection of `LogMsg`, we'll lose the recursive clears when dumping then reloading the recording.
 - The recursive clears aren't even arrow-ified yet.
 
@@ -946,7 +946,7 @@ When garbage collecting, we _have to_ keep track of the compacted latest-at stat
 
 ### Optimize linear backwards walk
 
-Although this has been fixed in the trivial case (the component is not present at all), this can still be an issue in others.  
+Although this has been fixed in the trivial case (the component is not present at all), this can still be an issue in others.
 The classic solution is some kind of bitmap index.
 
 ### Drop-after semantics (undo/redo)
@@ -981,7 +981,7 @@ Don't waste compute & memory on creating large `arrow::Chunk`s from cells, inste
 
 > It seems like we do treat instance keys like any other component, which means each individual instance key is actually a component instance, no?
 
-The terminology is very subtle. 
+The terminology is very subtle.
 
 - `InstanceKey` is indeed a component, and so it is always passed as a list, which we colloquially refer to as "the instance keys".
 - a "component instance", or just "instance", is the name we give to any single value in a component cell:
@@ -1016,7 +1016,7 @@ None of these are components however, they are merely arrow datatypes.
 
 Everything else is just a component, and as such is passed as a `DataCell`.
 
-Components are completely opaque blobs from the store's PoV; they cannot dictate its behavior since they aren't even deserialized.  
+Components are completely opaque blobs from the store's PoV; they cannot dictate its behavior since they aren't even deserialized.
 This includes `InstanceKey`s, which are just returned to `re_query` as-is.
 
 The one special thing about instance keys is that they are auto-generated server-side if they are missing; but even then, once they are generated they are still treated as opaque blobs from the store's PoV.

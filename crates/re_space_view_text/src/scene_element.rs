@@ -42,7 +42,7 @@ impl SceneElementImpl for SceneText {
         query: &SceneQuery<'_>,
         state: &TextSpaceViewState,
     ) {
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
 
         for entity_path in query.entity_paths {
             let ent_path = entity_path;

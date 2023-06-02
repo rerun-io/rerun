@@ -85,64 +85,67 @@ macro_rules! impl_into_enum {
 
 // ----------------------------------------------------------------------------
 
-/// What type of `Recording` this is.
+/// What kind of Store this is.
 ///
-/// `Data` recordings contain user-data logged via `log_` API calls.
+/// `Recording` stores contain user-data logged via `log_` API calls.
 ///
-/// In the future, `Blueprint` recordings describe how that data is laid out
+/// In the future, `Blueprint` stores describe how that data is laid out
 /// in the viewer, though this is not currently supported.
 ///
-/// Both of these types can go over the same stream and be stored in the
+/// Both of these kinds can go over the same stream and be stored in the
 /// same datastore, but the viewer wants to treat them very differently.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum RecordingType {
+pub enum StoreKind {
     /// A recording of user-data.
-    Data,
+    Recording,
 
-    /// Not currently used: recording data associated with the blueprint state.
+    /// Data associated with the blueprint state.
     Blueprint,
 }
 
-impl std::fmt::Display for RecordingType {
+impl std::fmt::Display for StoreKind {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Data => "Data".fmt(f),
+            Self::Recording => "Recording".fmt(f),
             Self::Blueprint => "Blueprint".fmt(f),
         }
     }
 }
 
-/// A unique id per recording (a stream of [`LogMsg`]es).
+/// A unique id per store.
+///
+/// The kind of store is part of the id, and can be either a
+/// [`StoreKind::Recording`] or a [`StoreKind::Blueprint`].
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RecordingId {
-    pub variant: RecordingType,
+pub struct StoreId {
+    pub kind: StoreKind,
     pub id: Arc<String>,
 }
 
-impl RecordingId {
+impl StoreId {
     #[inline]
-    pub fn random(variant: RecordingType) -> Self {
+    pub fn random(kind: StoreKind) -> Self {
         Self {
-            variant,
+            kind,
             id: Arc::new(uuid::Uuid::new_v4().to_string()),
         }
     }
 
     #[inline]
-    pub fn from_uuid(variant: RecordingType, uuid: uuid::Uuid) -> Self {
+    pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
-            variant,
+            kind,
             id: Arc::new(uuid.to_string()),
         }
     }
 
     #[inline]
-    pub fn from_string(variant: RecordingType, str: String) -> Self {
+    pub fn from_string(kind: StoreKind, str: String) -> Self {
         Self {
-            variant,
+            kind,
             id: Arc::new(str),
         }
     }
@@ -153,12 +156,13 @@ impl RecordingId {
     }
 }
 
-impl std::fmt::Display for RecordingId {
+impl std::fmt::Display for StoreId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { variant, id } = self;
-        f.write_fmt(format_args!("{variant}:{id}"))?;
-        Ok(())
+        // `StoreKind` is not part of how we display the id,
+        // because that can easily lead to confusion and bugs
+        // when roundtripping to a string (e.g. via Python SDK).
+        self.id.fmt(f)
     }
 }
 
@@ -214,46 +218,45 @@ pub enum LogMsg {
     /// A new recording has begun.
     ///
     /// Should usually be the first message sent.
-    SetRecordingInfo(SetRecordingInfo),
+    SetStoreInfo(SetStoreInfo),
 
     /// Server-backed operation on an [`EntityPath`].
-    EntityPathOpMsg(RecordingId, EntityPathOpMsg),
+    EntityPathOpMsg(StoreId, EntityPathOpMsg),
 
     /// Log an entity using an [`ArrowMsg`].
-    ArrowMsg(RecordingId, ArrowMsg),
+    ArrowMsg(StoreId, ArrowMsg),
 }
 
 impl LogMsg {
-    pub fn recording_id(&self) -> &RecordingId {
+    pub fn store_id(&self) -> &StoreId {
         match self {
-            Self::SetRecordingInfo(msg) => &msg.info.recording_id,
-            Self::EntityPathOpMsg(recording_id, _) | Self::ArrowMsg(recording_id, _) => {
-                recording_id
-            }
+            Self::SetStoreInfo(msg) => &msg.info.store_id,
+            Self::EntityPathOpMsg(store_id, _) | Self::ArrowMsg(store_id, _) => store_id,
         }
     }
 }
 
-impl_into_enum!(SetRecordingInfo, LogMsg, SetRecordingInfo);
+impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);
 
 // ----------------------------------------------------------------------------
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct SetRecordingInfo {
+pub struct SetStoreInfo {
     pub row_id: RowId,
-    pub info: RecordingInfo,
+    pub info: StoreInfo,
 }
 
+/// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RecordingInfo {
+pub struct StoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: ApplicationId,
 
     /// Should be unique for each recording.
-    pub recording_id: RecordingId,
+    pub store_id: StoreId,
 
     /// True if the recording is one of the official Rerun examples.
     pub is_official_example: bool,
@@ -263,16 +266,16 @@ pub struct RecordingInfo {
     /// Should be an absolute time, i.e. relative to Unix Epoch.
     pub started: Time,
 
-    pub recording_source: RecordingSource,
+    pub store_source: StoreSource,
 
-    pub recording_type: RecordingType,
+    pub store_kind: StoreKind,
 }
 
-impl RecordingInfo {
-    /// Whether this `RecordingInfo` is the default used when a user is not explicitly
+impl StoreInfo {
+    /// Whether this `StoreInfo` is the default used when a user is not explicitly
     /// creating their own blueprint.
     pub fn is_app_default_blueprint(&self) -> bool {
-        self.application_id.as_str() == self.recording_id.as_str()
+        self.application_id.as_str() == self.store_id.as_str()
     }
 }
 
@@ -304,9 +307,10 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
+/// The source of a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum RecordingSource {
+pub enum StoreSource {
     Unknown,
 
     /// The official Rerun Python Logging SDK
@@ -322,7 +326,7 @@ pub enum RecordingSource {
     Other(String),
 }
 
-impl std::fmt::Display for RecordingSource {
+impl std::fmt::Display for StoreSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unknown => "Unknown".fmt(f),

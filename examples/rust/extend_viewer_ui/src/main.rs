@@ -102,8 +102,8 @@ impl MyApp {
         });
         ui.separator();
 
-        if let Some(log_db) = self.rerun_app.log_db() {
-            log_db_ui(ui, log_db);
+        if let Some(store_db) = self.rerun_app.store_db() {
+            store_db_ui(ui, store_db);
         } else {
             ui.label("No log database loaded yet.");
         }
@@ -111,9 +111,9 @@ impl MyApp {
 }
 
 /// Show the content of the log database.
-fn log_db_ui(ui: &mut egui::Ui, log_db: &re_data_store::LogDb) {
-    if let Some(recording_info) = log_db.recording_info() {
-        ui.label(format!("Application ID: {}", recording_info.application_id));
+fn store_db_ui(ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
+    if let Some(store_info) = store_db.store_info() {
+        ui.label(format!("Application ID: {}", store_info.application_id));
     }
 
     // There can be many timelines, but the `log_time` timeline is always there:
@@ -126,9 +126,9 @@ fn log_db_ui(ui: &mut egui::Ui, log_db: &re_data_store::LogDb) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for entity_path in log_db.entity_db.entity_paths() {
+            for entity_path in store_db.entity_db.entity_paths() {
                 ui.collapsing(entity_path.to_string(), |ui| {
-                    entity_ui(ui, log_db, timeline, entity_path);
+                    entity_ui(ui, store_db, timeline, entity_path);
                 });
             }
         });
@@ -136,12 +136,12 @@ fn log_db_ui(ui: &mut egui::Ui, log_db: &re_data_store::LogDb) {
 
 fn entity_ui(
     ui: &mut egui::Ui,
-    log_db: &re_data_store::LogDb,
+    store_db: &re_data_store::StoreDb,
     timeline: re_log_types::Timeline,
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
-    if let Some(mut components) = log_db
+    if let Some(mut components) = store_db
         .entity_db
         .data_store
         .all_components(&timeline, entity_path)
@@ -149,7 +149,7 @@ fn entity_ui(
         components.sort(); // Make the order predicatable
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
-                component_ui(ui, log_db, timeline, entity_path, component);
+                component_ui(ui, store_db, timeline, entity_path, component);
             });
         }
     }
@@ -157,7 +157,7 @@ fn entity_ui(
 
 fn component_ui(
     ui: &mut egui::Ui,
-    log_db: &re_data_store::LogDb,
+    store_db: &re_data_store::StoreDb,
     timeline: re_log_types::Timeline,
     entity_path: &re_log_types::EntityPath,
     component_name: re_log_types::ComponentName,
@@ -167,7 +167,7 @@ fn component_ui(
     let query = re_arrow_store::LatestAtQuery::latest(timeline);
 
     if let Some((_, component)) = re_query::get_component_with_instances(
-        &log_db.entity_db.data_store,
+        &store_db.entity_db.data_store,
         &query,
         entity_path,
         component_name,

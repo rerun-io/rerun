@@ -162,7 +162,7 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) {
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
         if store
             .query_latest_component::<Pinhole>(entity_path, query)
             .is_some()
@@ -191,7 +191,7 @@ impl ViewSpatialState {
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) -> Option<()> {
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
         let tensor = store.query_latest_component::<Tensor>(entity_path, query)?;
 
         let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
@@ -389,7 +389,7 @@ impl ViewSpatialState {
         }
         self.scene_num_primitives = scene.primitives.num_primitives();
 
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
                 let coordinates = store.query_latest_component(space, &ctx.current_query());
@@ -728,7 +728,7 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.log_db.entity_db)
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
             else { continue; };
 
         let ent_properties = entity_properties.get(&instance_path.entity_path);
@@ -740,7 +740,7 @@ pub fn picking(
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
             || *ent_properties.backproject_depth.get()
         {
-            let store = &ctx.log_db.entity_db.data_store;
+            let store = &ctx.store_db.entity_db.data_store;
             store
                 .query_latest_component::<Tensor>(&instance_path.entity_path, &ctx.current_query())
                 .and_then(|tensor| {

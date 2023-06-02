@@ -193,7 +193,7 @@ impl ImagesPart {
             if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth {
                 let query = ctx.current_query();
                 let closet_pinhole = ctx
-                    .log_db
+                    .store_db
                     .entity_db
                     .data_store
                     .query_latest_component_at_closest_ancestor::<Pinhole>(ent_path, &query);
@@ -261,7 +261,7 @@ impl ImagesPart {
     ) -> Result<(), String> {
         re_tracing::profile_function!();
 
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
         let Some(intrinsics) = store.query_latest_component::<Pinhole>(
             pinhole_ent_path,
             &ctx.current_query(),
@@ -392,7 +392,7 @@ impl ScenePart for ImagesPart {
             };
 
             match query_primary_with_history::<Tensor, 4>(
-                &ctx.log_db.entity_db.data_store,
+                &ctx.store_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

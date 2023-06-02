@@ -187,7 +187,7 @@ impl ScenePart for Points3DPart {
             let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<Point3D, 7>(
-                &ctx.log_db.entity_db.data_store,
+                &ctx.store_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

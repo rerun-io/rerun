@@ -350,9 +350,9 @@ async fn run_impl(
                             paths: vec![path.clone()],
                         },
                     );
-                    let recording_id =
-                        re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
-                    load_file_to_channel_at(recording_id, &path, tx)
+                    let store_id =
+                        re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                    load_file_to_channel_at(store_id, &path, tx)
                         .with_context(|| format!("{path:?}"))?;
                     rx
                 }
@@ -416,15 +416,15 @@ async fn run_impl(
                 },
             );
 
-            let recording_id = re_log_types::RecordingId::random(re_log_types::RecordingType::Data);
+            let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
 
             // Load the files in parallel, and log errors.
             // Failing to log one out of many files is not a big deal.
             for path in paths {
                 let tx = tx.clone_as(re_smart_channel::SmartMessageSource::File(path.clone()));
-                let recording_id = recording_id.clone();
+                let store_id = store_id.clone();
                 rayon::spawn(move || {
-                    if let Err(err) = load_file_to_channel_at(recording_id, &path, tx) {
+                    if let Err(err) = load_file_to_channel_at(store_id, &path, tx) {
                         re_log::error!("Failed to load {path:?}: {err}");
                     }
                 });
@@ -450,7 +450,7 @@ async fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
-        assert_receive_into_log_db(&rx).map(|_db| ())
+        assert_receive_into_store_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
         Ok(stream_to_rrd(&rx, &rrd_path.into())?)
     } else if args.web_viewer {
@@ -534,12 +534,12 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::LogDb> {
+fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::StoreDb> {
     use re_smart_channel::RecvTimeoutError;
 
-    re_log::info!("Receiving messages into a LogDb…");
+    re_log::info!("Receiving messages into a StoreDb…");
 
-    let mut db: Option<re_data_store::LogDb> = None;
+    let mut db: Option<re_data_store::StoreDb> = None;
 
     let mut num_messages = 0;
 
@@ -553,7 +553,7 @@ fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_s
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         let mut_db = db.get_or_insert_with(|| {
-                            re_data_store::LogDb::new(msg.recording_id().clone())
+                            re_data_store::StoreDb::new(msg.store_id().clone())
                         });
 
                         mut_db.add(&msg)?;
@@ -568,7 +568,7 @@ fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_s
                             re_log::info!("Successfully ingested {num_messages} messages.");
                             return Ok(db);
                         } else {
-                            anyhow::bail!("logdb never initialized");
+                            anyhow::bail!("StoreDb never initialized");
                         }
                     }
                 }
@@ -772,7 +772,7 @@ fn native_viewer_connect_to_ws_url(
 
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 fn load_file_to_channel_at(
-    recording_id: re_log_types::RecordingId,
+    store_id: re_log_types::StoreId,
     path: &std::path::Path,
     tx: re_smart_channel::Sender<LogMsg>,
 ) -> Result<(), anyhow::Error> {
@@ -791,7 +791,7 @@ fn load_file_to_channel_at(
     } else {
         #[cfg(feature = "sdk")]
         {
-            let log_msg = re_sdk::MsgSender::from_file_path(path)?.into_log_msg(recording_id)?;
+            let log_msg = re_sdk::MsgSender::from_file_path(path)?.into_log_msg(store_id)?;
             tx.send(log_msg).ok(); // .ok(): we may be running in a background thread, so who knows if the receiver is still open
             tx.quit(None).ok();
             Ok(())
@@ -799,7 +799,7 @@ fn load_file_to_channel_at(
 
         #[cfg(not(feature = "sdk"))]
         {
-            _ = recording_id;
+            _ = store_id;
             anyhow::bail!("Unsupported file extension: '{extension}' for path {path:?}. Try enabling the 'sdk' feature of 'rerun'.");
         }
     }
