@@ -14,9 +14,7 @@ use crate::scene::{
 };
 
 #[derive(Default)]
-pub struct Arrows3DPart {
-    data: SpatialScenePartData,
-}
+pub struct Arrows3DPart(SpatialScenePartData);
 
 impl Arrows3DPart {
     fn process_entity_view(
@@ -86,7 +84,7 @@ impl Arrows3DPart {
             },
         )?;
 
-        self.data
+        self.0
             .extend_bounding_box(bounding_box, ent_context.world_from_obj);
 
         Ok(())
@@ -117,7 +115,7 @@ impl ScenePartImpl for Arrows3DPart {
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Arrows3DPart");
 
-        process_entity_views::<re_components::Arrow3D, 5, _>(
+        process_entity_views::<Arrow3D, 5, _>(
             ctx,
             query,
             scene_context,
@@ -133,6 +131,6 @@ impl ScenePartImpl for Arrows3DPart {
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(&self.data)
+        Some(&self.0)
     }
 }

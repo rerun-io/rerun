@@ -19,7 +19,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
         &EntityPath,
         EntityView<Primary>,
         &SpatialSceneEntityContext<'_>,
-    ) -> Result<macaw::BoundingBox, QueryError>,
+    ) -> Result<(), QueryError>,
 {
     let archetype = match archetype.try_into() {
         Ok(archetype) => archetype,

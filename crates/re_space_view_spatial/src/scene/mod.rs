@@ -160,8 +160,6 @@ impl SceneSpatial {
             &parts::MeshPart,
             &parts::ImagesPart,
             // --
-            &parts::Boxes2DPart,
-            // --
             // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
             &parts::Lines2DPart,
             // ---
