@@ -2,39 +2,42 @@ use re_components::{
     Box3D, ClassId, ColorRGBA, Component as _, InstanceKey, Label, Quaternion, Radius, Vec3D,
 };
 use re_data_store::EntityPath;
-use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_query::{EntityView, QueryError};
 use re_renderer::Size;
-use re_viewer_context::{DefaultColor, SceneQuery, ViewerContext};
-use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
-
-use crate::{
-    scene::EntityDepthOffsets,
-    scene::{SceneSpatial, UiLabel, UiLabelTarget},
-    TransformContext,
+use re_viewer_context::{
+    ArchetypeDefinition, DefaultColor, ScenePartImpl, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
 };
 
-use super::{instance_key_to_picking_id, instance_path_hash_for_picking, ScenePart};
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
+    UiLabel, UiLabelTarget,
+};
 
-pub struct Boxes3DPart;
+use super::{
+    instance_key_to_picking_id, instance_path_hash_for_picking, SpatialScenePartData,
+    SpatialSpaceViewState,
+};
+
+#[derive(Default)]
+pub struct Boxes3DPart(SpatialScenePartData);
 
 impl Boxes3DPart {
     fn process_entity_view(
-        scene: &mut SceneSpatial,
-        entity_view: &EntityView<Box3D>,
+        &mut self,
+        _query: &SceneQuery<'_>,
+        ent_view: &EntityView<Box3D>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Affine3A,
-        entity_highlight: &SpaceViewOutlineMasks,
+        ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        scene.num_logged_3d_objects += 1;
-
-        let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::EntityPath(ent_path);
-        let mut line_batch = scene
-            .primitives
-            .line_strips
+
+        let mut line_builder = ent_context.shared_render_builders.lines();
+        let mut line_batch = line_builder
             .batch("box 3d")
-            .world_from_obj(world_from_obj)
-            .outline_mask_ids(entity_highlight.overall)
+            .world_from_obj(ent_context.world_from_obj)
+            .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
         let visitor = |instance_key: InstanceKey,
@@ -45,17 +48,18 @@ impl Boxes3DPart {
                        radius: Option<Radius>,
                        label: Option<Label>,
                        class_id: Option<ClassId>| {
-            let class_description = annotations.class_description(class_id);
+            let class_description = ent_context.annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();
 
             let radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            let scale = glam::Vec3::from(half_size) * 2.0;
+            let half_size = glam::Vec3::from(half_size);
             let rot = rotation.map(glam::Quat::from).unwrap_or_default();
             let tran = position.map_or(glam::Vec3::ZERO, glam::Vec3::from);
-            let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
+            let transform =
+                glam::Affine3A::from_scale_rotation_translation(half_size * 2.0, rot, tran);
 
             let box_lines = line_batch
                 .add_box_outline(transform)
@@ -63,85 +67,87 @@ impl Boxes3DPart {
                 .color(color)
                 .picking_instance_id(instance_key_to_picking_id(
                     instance_key,
-                    entity_view.num_instances(),
-                    entity_highlight.any_selection_highlight,
+                    ent_view.num_instances(),
+                    ent_context.highlight.any_selection_highlight,
                 ));
 
-            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                 box_lines.outline_mask_ids(*outline_mask_ids);
             }
 
             if let Some(label) = annotation_info.label(label.as_ref().map(|s| &s.0)) {
-                scene.ui.labels.push(UiLabel {
+                self.0.ui_labels.push(UiLabel {
                     text: label,
-                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(tran)),
+                    target: UiLabelTarget::Position3D(
+                        ent_context.world_from_obj.transform_point3(tran),
+                    ),
                     color,
                     labeled_instance: instance_path_hash_for_picking(
                         ent_path,
                         instance_key,
-                        entity_view.num_instances(),
-                        entity_highlight.any_selection_highlight,
+                        ent_view.num_instances(),
+                        ent_context.highlight.any_selection_highlight,
                     ),
                 });
             }
+
+            self.0.extend_bounding_box(
+                // Good enough for now.
+                macaw::BoundingBox::from_center_size(
+                    tran,
+                    glam::Vec3::splat(half_size.max_element()),
+                ),
+                ent_context.world_from_obj,
+            );
         };
 
-        entity_view.visit7(visitor)
+        ent_view.visit7(visitor)
     }
 }
 
-impl ScenePart for Boxes3DPart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl ScenePartImpl for Boxes3DPart {
+    type SpaceViewState = SpatialSpaceViewState;
+    type SceneContext = SpatialSceneContext;
+
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![
+            Box3D::name(),
+            InstanceKey::name(),
+            Vec3D::name(),      // obb.position
+            Quaternion::name(), // obb.rotation
+            ColorRGBA::name(),
+            Radius::name(), // stroke_width
+            Label::name(),
+            ClassId::name(),
+        ]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformContext,
+        _space_view_state: &Self::SpaceViewState,
+        scene_context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
-        _depth_offsets: &EntityDepthOffsets,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Boxes3DPart");
 
-        for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
-                continue;
-            };
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+        process_entity_views::<Box3D, 8, _>(
+            ctx,
+            query,
+            scene_context,
+            highlights,
+            scene_context.depth_offsets.points,
+            self.archetype(),
+            |ent_path, entity_view, ent_context| {
+                self.process_entity_view(query, &entity_view, ent_path, ent_context)
+            },
+        );
 
-            match query_primary_with_history::<Box3D, 8>(
-                &ctx.store_db.entity_db.data_store,
-                &query.timeline,
-                &query.latest_at,
-                &props.visible_history,
-                ent_path,
-                [
-                    Box3D::name(),
-                    InstanceKey::name(),
-                    Vec3D::name(),      // obb.position
-                    Quaternion::name(), // obb.rotation
-                    ColorRGBA::name(),
-                    Radius::name(), // stroke_width
-                    Label::name(),
-                    ClassId::name(),
-                ],
-            )
-            .and_then(|entities| {
-                for entity in entities {
-                    Self::process_entity_view(
-                        scene,
-                        &entity,
-                        ent_path,
-                        world_from_obj,
-                        entity_highlight,
-                    )?;
-                }
-                Ok(())
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
-            }
-        }
+        Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+    }
+
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(&self.0)
     }
 }

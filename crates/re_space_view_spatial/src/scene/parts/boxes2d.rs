@@ -132,7 +132,7 @@ impl ScenePartImpl for Boxes2DPart {
         scene_context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
-        re_tracing::profile_scope!("Arrows3DPart");
+        re_tracing::profile_scope!("Boxes2DPart");
 
         process_entity_views::<Rect2D, 6, _>(
             ctx,

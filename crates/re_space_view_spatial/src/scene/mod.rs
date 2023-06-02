@@ -155,7 +155,6 @@ impl SceneSpatial {
 
         let parts: Vec<&dyn ScenePart> = vec![
             // --
-            &parts::Boxes3DPart,
             &parts::Lines3DPart,
             &parts::MeshPart,
             &parts::ImagesPart,
