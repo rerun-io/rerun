@@ -4,7 +4,7 @@ use re_log_types::{StoreId, StoreKind};
 /// Stores many [`LogDb`]s of recordings and blueprints.
 #[derive(Default)]
 pub struct StoreHub {
-    // TODO(emilk): two separate maps per [`RecordingType`].
+    // TODO(emilk): two separate maps per [`StoreKind`].
     log_dbs: ahash::HashMap<StoreId, LogDb>,
 }
 

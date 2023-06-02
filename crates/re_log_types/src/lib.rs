@@ -248,6 +248,7 @@ pub struct SetRecordingInfo {
     pub info: RecordingInfo,
 }
 
+/// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingInfo {
