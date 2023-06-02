@@ -10,10 +10,8 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
+mod spatial_scene_part;
 
-use std::sync::Arc;
-
-use ahash::HashMap;
 pub(crate) use arrows3d::Arrows3DPart;
 pub(crate) use boxes2d::Boxes2DPart;
 pub(crate) use boxes3d::Boxes3DPart;
@@ -22,8 +20,13 @@ pub(crate) use images::ImagesPart;
 pub(crate) use lines2d::Lines2DPart;
 pub(crate) use lines3d::Lines3DPart;
 pub(crate) use meshes::MeshPart;
-pub(crate) use points2d::Points2DScenePart;
-pub(crate) use points3d::Points3DScenePart;
+pub(crate) use points2d::Points2DPart;
+pub(crate) use points3d::Points3DPart;
+
+pub use spatial_scene_part::{SpatialScenePart, SpatialScenePartData};
+
+use ahash::HashMap;
+use std::sync::Arc;
 
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};

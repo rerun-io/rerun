@@ -1,5 +1,5 @@
 use re_components::{
-    ClassId, ColorRGBA, Component as _, InstanceKey, KeypointId, Label, Point3D, Radius,
+    ClassId, ColorRGBA, Component, InstanceKey, KeypointId, Label, Point2D, Radius,
 };
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::ComponentName;
@@ -8,22 +8,21 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, SpaceViewHighlights,
 
 use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    elements::{
-        instance_key_to_picking_id, instance_path_hash_for_picking,
-        process_annotations_and_keypoints, process_colors, process_radii,
-    },
-    load_keypoint_connections,
-    spatial_scene_part::{SpatialScenePart, SpatialScenePartData},
-    UiLabel, UiLabelTarget,
+    load_keypoint_connections, UiLabel, UiLabelTarget,
 };
 
-pub struct Points3DScenePart {
+use super::{
+    instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
+    process_colors, process_radii, SpatialScenePart, SpatialScenePartData,
+};
+
+pub struct Points2DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialScenePartData,
 }
 
-impl Default for Points3DScenePart {
+impl Default for Points2DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -32,13 +31,12 @@ impl Default for Points3DScenePart {
     }
 }
 
-impl Points3DScenePart {
+impl Points2DPart {
     fn process_labels<'a>(
-        entity_view: &'a EntityView<Point3D>,
+        entity_view: &'a EntityView<Point2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a [ResolvedAnnotationInfo],
-        world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
@@ -54,9 +52,7 @@ impl Points3DScenePart {
                     (Some(point), Some(label)) => Some(UiLabel {
                         text: label,
                         color: *color,
-                        target: UiLabelTarget::Position3D(
-                            world_from_obj.transform_point3(point.into()),
-                        ),
+                        target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
                         labeled_instance: *labeled_instance,
                     }),
                     _ => None,
@@ -69,7 +65,7 @@ impl Points3DScenePart {
     fn process_entity_view(
         &mut self,
         query: &SceneQuery<'_>,
-        ent_view: &EntityView<Point3D>,
+        ent_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
@@ -105,14 +101,18 @@ impl Points3DScenePart {
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_obj,
             )?);
         }
 
         {
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
-                .batch("3d points")
+                .batch("2d points")
+                .depth_offset(ent_context.depth_offset)
+                .flags(
+                    re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
+                        | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
+                )
                 .world_from_obj(ent_context.world_from_obj)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -121,7 +121,7 @@ impl Points3DScenePart {
                 re_tracing::profile_scope!("collect_points");
                 ent_view
                     .iter_primary()?
-                    .filter_map(|pt| pt.map(glam::Vec3::from))
+                    .filter_map(|pt| pt.map(glam::Vec2::from))
             };
 
             let picking_instance_ids = ent_view.iter_instance_keys().map(|instance_key| {
@@ -131,7 +131,8 @@ impl Points3DScenePart {
                     ent_context.highlight.any_selection_highlight,
                 )
             });
-            let mut point_range_builder = point_batch.add_points(
+
+            let mut point_range_builder = point_batch.add_points_2d(
                 ent_view.num_instances(),
                 point_positions,
                 radii,
@@ -156,17 +157,17 @@ impl Points3DScenePart {
                     }
                 }
             }
-        }
+        };
 
         load_keypoint_connections(ent_context, ent_path, keypoints);
 
         {
-            re_tracing::profile_scope!("points3d.bounding_box");
+            re_tracing::profile_scope!("points2d.bounding_box");
             self.data.bounding_box = self.data.bounding_box.union(
                 macaw::BoundingBox::from_points(
                     ent_view
                         .iter_primary()?
-                        .filter_map(|pt| pt.map(|pt| pt.into())),
+                        .filter_map(|pt| pt.map(|pt| glam::vec3(pt.x, pt.y, 0.0))),
                 )
                 .transform_affine3(&ent_context.world_from_obj),
             );
@@ -176,12 +177,12 @@ impl Points3DScenePart {
     }
 }
 
-impl SpatialScenePart<7> for Points3DScenePart {
-    type Primary = Point3D;
+impl SpatialScenePart<7> for Points2DPart {
+    type Primary = Point2D;
 
     fn archetype() -> [ComponentName; 7] {
         [
-            Point3D::name(),
+            Point2D::name(),
             InstanceKey::name(),
             ColorRGBA::name(),
             Radius::name(),
@@ -198,7 +199,7 @@ impl SpatialScenePart<7> for Points3DScenePart {
         context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
-        re_tracing::profile_scope!("Points3DPart");
+        re_tracing::profile_scope!("Points2DPart");
 
         Self::for_each_entity_view(
             ctx,
@@ -214,7 +215,7 @@ impl SpatialScenePart<7> for Points3DScenePart {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> &crate::scene::spatial_scene_part::SpatialScenePartData {
+    fn data(&self) -> &SpatialScenePartData {
         &self.data
     }
 }

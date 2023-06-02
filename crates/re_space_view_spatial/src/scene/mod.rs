@@ -1,6 +1,16 @@
-use std::sync::Arc;
+mod contexts;
+mod parts;
+mod picking;
+mod primitives;
+
+pub use self::{
+    picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult},
+    primitives::SceneSpatialPrimitives,
+};
+pub use contexts::{TransformContext, UnreachableTransform};
 
 use ahash::HashMap;
+use std::sync::Arc;
 
 use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
@@ -10,29 +20,21 @@ use re_viewer_context::{
     auto_color, AnnotationMap, Scene, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use super::SpatialNavigationMode;
 use crate::{
     mesh_loader::LoadedMesh,
     scene::{
         contexts::SpatialSceneContext,
-        spatial_scene_part::{SpatialScenePart, SpatialScenePartData},
+        parts::{SpatialScenePart, SpatialScenePartData},
     },
     space_camera_3d::SpaceCamera3D,
 };
 
-mod contexts;
-mod elements;
-mod picking;
-mod primitives;
-mod spatial_scene_part;
+use super::SpatialNavigationMode;
 
 use self::contexts::SpatialSceneEntityContext;
-pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
-pub use self::primitives::SceneSpatialPrimitives;
-use elements::ScenePart;
+use parts::ScenePart;
 
 use contexts::EntityDepthOffsets;
-pub use contexts::{TransformContext, UnreachableTransform};
 
 const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
@@ -156,26 +158,29 @@ impl SceneSpatial {
 
         let parts: Vec<&dyn ScenePart> = vec![
             // --
-            &elements::Boxes3DPart,
-            &elements::Lines3DPart,
-            &elements::Arrows3DPart,
-            &elements::MeshPart,
-            &elements::ImagesPart,
+            &parts::Boxes3DPart,
+            &parts::Lines3DPart,
+            &parts::Arrows3DPart,
+            &parts::MeshPart,
+            &parts::ImagesPart,
             // --
-            &elements::Boxes2DPart,
+            &parts::Boxes2DPart,
             // --
             // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
-            &elements::Lines2DPart,
+            &parts::Lines2DPart,
             // ---
-            &elements::CamerasPart,
+            &parts::CamerasPart,
         ];
 
-        // TODO(andreas): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
+        // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {
             context: Box::<SpatialSceneContext>::default(),
+            // TODO(wumpf): How can we make this syntax possible instead?
+            // The problem is that `Points2DScenePart` can't be put directly into the list since only the wrapper implements ScenePart
+            //elements: parts::ScenePartTuple::default().into(),
             elements: (
-                elements::Points2DScenePart::default().wrap(),
-                elements::Points3DScenePart::default().wrap(),
+                parts::Points2DPart::default().wrap(),
+                parts::Points3DPart::default().wrap(),
             )
                 .into(),
             highlights: Default::default(),
