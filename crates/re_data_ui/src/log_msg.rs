@@ -1,4 +1,4 @@
-use re_log_types::{ArrowMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo, SetRecordingInfo};
+use re_log_types::{ArrowMsg, DataTable, EntityPathOpMsg, LogMsg, SetStoreInfo, StoreInfo};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -13,14 +13,14 @@ impl DataUi for LogMsg {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            LogMsg::SetRecordingInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::EntityPathOpMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
 
-impl DataUi for SetRecordingInfo {
+impl DataUi for SetStoreInfo {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -28,15 +28,15 @@ impl DataUi for SetRecordingInfo {
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        ui.code("SetRecordingInfo");
-        let SetRecordingInfo { row_id: _, info } = self;
-        let RecordingInfo {
+        ui.code("SetStoreInfo");
+        let SetStoreInfo { row_id: _, info } = self;
+        let StoreInfo {
             application_id,
-            recording_id,
+            store_id,
             started,
-            recording_source,
+            store_source,
             is_official_example,
-            recording_type,
+            store_kind,
         } = info;
 
         egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
@@ -44,24 +44,24 @@ impl DataUi for SetRecordingInfo {
             ui.label(application_id.to_string());
             ui.end_row();
 
-            ui.monospace("recording_id:");
-            ui.label(format!("{recording_id:?}"));
+            ui.monospace("store_id:");
+            ui.label(format!("{store_id:?}"));
             ui.end_row();
 
             ui.monospace("started:");
             ui.label(started.format());
             ui.end_row();
 
-            ui.monospace("recording_source:");
-            ui.label(format!("{recording_source}"));
+            ui.monospace("store_source:");
+            ui.label(format!("{store_source}"));
             ui.end_row();
 
             ui.monospace("is_official_example:");
             ui.label(format!("{is_official_example}"));
             ui.end_row();
 
-            ui.monospace("recording_type:");
-            ui.label(format!("{recording_type}"));
+            ui.monospace("store_kind:");
+            ui.label(format!("{store_kind}"));
             ui.end_row();
         });
     }

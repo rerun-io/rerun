@@ -450,7 +450,7 @@ fn pinhole_props_ui(
     entity_props: &mut EntityProperties,
 ) {
     let query = ctx.current_query();
-    let store = &ctx.log_db.entity_db.data_store;
+    let store = &ctx.store_db.entity_db.data_store;
     if store
         .query_latest_component::<Pinhole>(entity_path, &query)
         .is_some()
@@ -482,13 +482,13 @@ fn depth_props_ui(
     re_tracing::profile_function!();
 
     let query = ctx.current_query();
-    let store = &ctx.log_db.entity_db.data_store;
+    let store = &ctx.store_db.entity_db.data_store;
     let tensor = store.query_latest_component::<Tensor>(entity_path, &query)?;
     if tensor.meaning != TensorDataMeaning::Depth {
         return Some(());
     }
     let pinhole_ent_path = ctx
-        .log_db
+        .store_db
         .entity_db
         .data_store
         .query_latest_component_at_closest_ancestor::<Pinhole>(entity_path, &query)?

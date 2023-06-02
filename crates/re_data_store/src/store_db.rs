@@ -4,9 +4,9 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
-    ArrowMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
-    EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RecordingId, RecordingInfo,
-    RecordingType, RowId, SetRecordingInfo, TimePoint, Timeline,
+    ApplicationId, ArrowMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable,
+    EntityPath, EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RowId, SetStoreInfo,
+    StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -171,27 +171,27 @@ impl EntityDb {
 // ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
-pub struct LogDb {
-    /// The [`RecordingId`] for this log.
-    recording_id: RecordingId,
+pub struct StoreDb {
+    /// The [`StoreId`] for this log.
+    store_id: StoreId,
 
     /// All [`EntityPathOpMsg`]s ever received.
     entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
 
-    /// Set by whomever created this [`LogDb`].
+    /// Set by whomever created this [`StoreDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
-    /// Comes in a special message, [`LogMsg::SetRecordingInfo`].
-    recording_msg: Option<SetRecordingInfo>,
+    /// Comes in a special message, [`LogMsg::SetStoreInfo`].
+    recording_msg: Option<SetStoreInfo>,
 
     /// Where we store the entities.
     pub entity_db: EntityDb,
 }
 
-impl LogDb {
-    pub fn new(recording_id: RecordingId) -> Self {
+impl StoreDb {
+    pub fn new(store_id: StoreId) -> Self {
         Self {
-            recording_id,
+            store_id,
             entity_op_msgs: Default::default(),
             data_source: None,
             recording_msg: None,
@@ -199,20 +199,24 @@ impl LogDb {
         }
     }
 
-    pub fn recording_msg(&self) -> Option<&SetRecordingInfo> {
+    pub fn recording_msg(&self) -> Option<&SetStoreInfo> {
         self.recording_msg.as_ref()
     }
 
-    pub fn recording_info(&self) -> Option<&RecordingInfo> {
+    pub fn store_info(&self) -> Option<&StoreInfo> {
         self.recording_msg().map(|msg| &msg.info)
     }
 
-    pub fn recording_type(&self) -> RecordingType {
-        self.recording_id.variant
+    pub fn app_id(&self) -> Option<&ApplicationId> {
+        self.store_info().map(|ri| &ri.application_id)
     }
 
-    pub fn recording_id(&self) -> &RecordingId {
-        &self.recording_id
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_id.kind
+    }
+
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -239,8 +243,10 @@ impl LogDb {
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
         re_tracing::profile_function!();
 
+        debug_assert_eq!(msg.store_id(), self.store_id());
+
         match &msg {
-            LogMsg::SetRecordingInfo(msg) => self.add_begin_recording_msg(msg),
+            LogMsg::SetStoreInfo(msg) => self.add_begin_recording_msg(msg),
             LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
                     row_id,
@@ -256,11 +262,11 @@ impl LogDb {
         Ok(())
     }
 
-    pub fn add_begin_recording_msg(&mut self, msg: &SetRecordingInfo) {
+    pub fn add_begin_recording_msg(&mut self, msg: &SetStoreInfo) {
         self.recording_msg = Some(msg.clone());
     }
 
-    /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `LogDb`.
+    /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `StoreDb`.
     pub fn iter_entity_op_msgs(&self) -> impl Iterator<Item = &EntityPathOpMsg> {
         self.entity_op_msgs.values()
     }
@@ -287,7 +293,7 @@ impl LogDb {
         let cutoff_times = self.entity_db.data_store.oldest_time_per_timeline();
 
         let Self {
-            recording_id: _,
+            store_id: _,
             entity_op_msgs,
             data_source: _,
             recording_msg: _,

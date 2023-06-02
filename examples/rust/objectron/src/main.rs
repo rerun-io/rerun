@@ -363,7 +363,7 @@ fn parse_duration(arg: &str) -> Result<std::time::Duration, std::num::ParseFloat
 
 fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Parse protobuf dataset
-    let rec_info = args.recording.info().with_context(|| {
+    let store_info = args.recording.info().with_context(|| {
         use clap::ValueEnum as _;
         format!(
             "Could not read the recording, have you downloaded the dataset? \
@@ -372,7 +372,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
             args.recording.to_possible_value().unwrap().get_name(),
         )
     })?;
-    let annotations = read_annotations(&rec_info.path_annotations)?;
+    let annotations = read_annotations(&store_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39
     log_coordinate_space(rec_stream, "world", "RUB")?;
@@ -388,7 +388,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         let mut time_offset = 0.0;
 
         // Iterate through the parsed dataset and log Rerun primitives
-        let ar_frames = read_ar_frames(&rec_info.path_ar_frames);
+        let ar_frames = read_ar_frames(&store_info.path_ar_frames);
         for (idx, ar_frame) in ar_frames.enumerate() {
             if idx + global_frame_offset >= args.frames.unwrap_or(usize::MAX) {
                 break 'outer;
@@ -396,7 +396,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
 
             let ar_frame = ar_frame?;
             let ar_frame = ArFrame::from_raw(
-                rec_info.path_ar_frames.parent().unwrap().into(),
+                store_info.path_ar_frames.parent().unwrap().into(),
                 idx,
                 timepoint(
                     idx + global_frame_offset,
@@ -443,13 +443,13 @@ fn main() -> anyhow::Result<()> {
 // --- Protobuf parsing ---
 
 #[derive(Debug, Clone)]
-struct RecordingInfo {
+struct StoreInfo {
     path_ar_frames: PathBuf,
     path_annotations: PathBuf,
 }
 
 impl Recording {
-    fn info(&self) -> anyhow::Result<RecordingInfo> {
+    fn info(&self) -> anyhow::Result<StoreInfo> {
         const DATASET_DIR: &str = concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../python/objectron/dataset"
@@ -473,7 +473,7 @@ impl Recording {
             .context("empty directory")??
             .path();
 
-        Ok(RecordingInfo {
+        Ok(StoreInfo {
             // objectron/dataset/book/batch-20/35/geometry.pbdata
             path_ar_frames: path.join("geometry.pbdata"),
             // objectron/dataset/book/batch-20/35/annotation.pbdata

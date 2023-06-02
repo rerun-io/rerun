@@ -35,12 +35,12 @@ def new_blueprint(
 
         The default blueprint_id is based on `multiprocessing.current_process().authkey`
         which means that all processes spawned with `multiprocessing`
-        will have the same default recording_id.
+        will have the same default blueprint_id.
 
         If you are not using `multiprocessing` and still want several different Python
         processes to log to the same Rerun instance (and be part of the same blueprint),
         you will need to manually assign them all the same blueprint_id.
-        Any random UUIDv4 will work, or copy the recording id for the parent process.
+        Any random UUIDv4 will work, or copy the blueprint_id for the parent process.
     make_default : bool
         If true (_not_ the default), the newly initialized blueprint will replace the current
         active one (if any) in the global scope.

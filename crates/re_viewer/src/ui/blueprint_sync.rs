@@ -15,7 +15,11 @@ use crate::blueprint_components::panel::PanelState;
 
 // Resolving and applying updates
 impl Blueprint {
-    pub fn sync_changes_to_store(&self, snapshot: &Self, blueprint_db: &mut re_data_store::LogDb) {
+    pub fn sync_changes_to_store(
+        &self,
+        snapshot: &Self,
+        blueprint_db: &mut re_data_store::StoreDb,
+    ) {
         // Update the panel states
         sync_panel_expanded(
             blueprint_db,
@@ -55,7 +59,7 @@ impl Blueprint {
 }
 
 pub fn sync_panel_expanded(
-    blueprint_db: &mut re_data_store::LogDb,
+    blueprint_db: &mut re_data_store::StoreDb,
     panel_name: &str,
     expanded: bool,
     snapshot: bool,
@@ -72,7 +76,7 @@ pub fn sync_panel_expanded(
 }
 
 pub fn sync_space_view(
-    blueprint_db: &mut re_data_store::LogDb,
+    blueprint_db: &mut re_data_store::StoreDb,
     space_view: &SpaceViewBlueprint,
     snapshot: Option<&SpaceViewBlueprint>,
 ) {
@@ -94,7 +98,7 @@ pub fn sync_space_view(
     }
 }
 
-pub fn clear_space_view(blueprint_db: &mut re_data_store::LogDb, space_view_id: &SpaceViewId) {
+pub fn clear_space_view(blueprint_db: &mut re_data_store::StoreDb, space_view_id: &SpaceViewId) {
     let entity_path = EntityPath::from(format!(
         "{}/{}",
         SpaceViewComponent::SPACEVIEW_PREFIX,
@@ -119,7 +123,7 @@ pub fn clear_space_view(blueprint_db: &mut re_data_store::LogDb, space_view_id: 
 }
 
 pub fn sync_viewport(
-    blueprint_db: &mut re_data_store::LogDb,
+    blueprint_db: &mut re_data_store::StoreDb,
     viewport: &Viewport,
     snapshot: &Viewport,
 ) {

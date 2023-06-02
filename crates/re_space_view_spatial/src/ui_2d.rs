@@ -238,7 +238,7 @@ pub fn view_2d(
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
-    let store = &ctx.log_db.entity_db.data_store;
+    let store = &ctx.store_db.entity_db.data_store;
 
     // Determine the canvas which determines the extent of the explorable scene coordinates,
     // and thus the size of the scroll area.

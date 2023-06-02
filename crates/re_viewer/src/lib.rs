@@ -10,6 +10,7 @@ pub mod env_vars;
 mod profiler;
 mod remote_viewer_app;
 mod screenshotter;
+mod store_hub;
 mod ui;
 mod viewer_analytics;
 
@@ -18,6 +19,7 @@ pub(crate) use ui::{memory_panel, selection_panel};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
+pub use store_hub::StoreHub;
 
 pub mod external {
     pub use {eframe, egui};
@@ -81,18 +83,18 @@ pub enum AppEnvironment {
 }
 
 impl AppEnvironment {
-    pub fn from_recording_source(source: &re_log_types::RecordingSource) -> Self {
-        use re_log_types::RecordingSource;
+    pub fn from_store_source(source: &re_log_types::StoreSource) -> Self {
+        use re_log_types::StoreSource;
         match source {
-            RecordingSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
-            RecordingSource::RustSdk {
+            StoreSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
+            StoreSource::RustSdk {
                 rustc_version: rust_version,
                 llvm_version,
             } => Self::RustSdk {
                 rustc_version: rust_version.clone(),
                 llvm_version: llvm_version.clone(),
             },
-            RecordingSource::Unknown | RecordingSource::Other(_) => Self::RustSdk {
+            StoreSource::Unknown | StoreSource::Other(_) => Self::RustSdk {
                 rustc_version: "unknown".into(),
                 llvm_version: "unknown".into(),
             },

@@ -84,8 +84,8 @@ fn add_entities_ui(
     ui: &mut egui::Ui,
     space_view: &mut SpaceViewBlueprint,
 ) {
-    let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
-    let tree = &ctx.log_db.entity_db.tree;
+    let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
+    let tree = &ctx.store_db.entity_db.tree;
     let entities_add_info = create_entity_add_info(ctx, tree, space_view, &spaces_info);
 
     add_entities_tree_ui(
@@ -215,7 +215,7 @@ fn add_entities_line_ui(
                     |ui| {
                         let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
                         if response.clicked() {
-                            space_view.add_entity_subtree(entity_tree, spaces_info, ctx.log_db);
+                            space_view.add_entity_subtree(entity_tree, spaces_info, ctx.store_db);
                         }
 
                         if add_info
@@ -307,7 +307,7 @@ fn create_entity_add_info(
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
     tree.visit_children_recursively(&mut |entity_path| {
-        let categories = categorize_entity_path(Timeline::log_time(), ctx.log_db, entity_path);
+        let categories = categorize_entity_path(Timeline::log_time(), ctx.store_db, entity_path);
         let can_add: CanAddToSpaceView = if categories.contains(space_view.category) {
             match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_path) {
                 Ok(()) => CanAddToSpaceView::Compatible {

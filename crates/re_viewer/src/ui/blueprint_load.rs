@@ -14,7 +14,7 @@ use super::Blueprint;
 use crate::blueprint_components::panel::PanelState;
 
 impl Blueprint {
-    pub fn from_db(egui_ctx: &egui::Context, blueprint_db: &re_data_store::LogDb) -> Self {
+    pub fn from_db(egui_ctx: &egui::Context, blueprint_db: &re_data_store::StoreDb) -> Self {
         let mut ret = Self::new(egui_ctx);
 
         let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
@@ -57,21 +57,21 @@ impl Blueprint {
     }
 }
 
-fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::LogDb) -> Option<bool> {
+fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) -> Option<bool> {
     query_timeless_single::<PanelState>(&blueprint_db.entity_db.data_store, path)
         .map(|p| p.expanded)
 }
 
 fn load_space_view(
     path: &EntityPath,
-    blueprint_db: &re_data_store::LogDb,
+    blueprint_db: &re_data_store::StoreDb,
 ) -> Option<SpaceViewBlueprint> {
     query_timeless_single::<SpaceViewComponent>(&blueprint_db.entity_db.data_store, path)
         .map(|c| c.space_view)
 }
 
 fn load_viewport(
-    blueprint_db: &re_data_store::LogDb,
+    blueprint_db: &re_data_store::StoreDb,
     space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> Viewport {
     let auto_space_views = query_timeless_single::<AutoSpaceViews>(
@@ -82,7 +82,7 @@ fn load_viewport(
         // Only enable auto-space-views if this is the app-default blueprint
         AutoSpaceViews(
             blueprint_db
-                .recording_info()
+                .store_info()
                 .map_or(false, |ri| ri.is_app_default_blueprint()),
         )
     });

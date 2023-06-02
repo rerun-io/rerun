@@ -3,7 +3,7 @@ use re_components::{
     Arrow3D, Box3D, Component as _, LineStrip2D, LineStrip3D, Mesh3D, Pinhole, Point2D, Point3D,
     Rect2D, Scalar, Tensor, TextBox, TextEntry, Transform3D,
 };
-use re_data_store::{EntityPath, LogDb, Timeline};
+use re_data_store::{EntityPath, StoreDb, Timeline};
 
 #[derive(
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
@@ -64,14 +64,14 @@ pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 
 pub fn categorize_entity_path(
     timeline: Timeline,
-    log_db: &LogDb,
+    store_db: &StoreDb,
     entity_path: &EntityPath,
 ) -> ViewCategorySet {
     re_tracing::profile_function!();
 
     let mut set = ViewCategorySet::default();
 
-    for component in log_db
+    for component in store_db
         .entity_db
         .data_store
         .all_components(&timeline, entity_path)
@@ -98,7 +98,7 @@ pub fn categorize_entity_path(
         } else if component == Tensor::name() {
             let timeline_query = LatestAtQuery::new(timeline, TimeInt::MAX);
 
-            let store = &log_db.entity_db.data_store;
+            let store = &store_db.entity_db.data_store;
             if let Some(tensor) =
                 store.query_latest_component::<Tensor>(entity_path, &timeline_query)
             {

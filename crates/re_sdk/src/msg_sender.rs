@@ -1,4 +1,4 @@
-use re_log_types::{DataRow, DataTableError, InstanceKey, RecordingId, RowId};
+use re_log_types::{DataRow, DataTableError, InstanceKey, RowId, StoreId};
 
 use crate::{
     log::DataCell,
@@ -310,16 +310,13 @@ impl MsgSender {
     }
 
     /// Turns the current message into a single [`re_log_types::LogMsg`]
-    pub fn into_log_msg(
-        self,
-        recording_id: RecordingId,
-    ) -> Result<re_log_types::LogMsg, DataTableError> {
+    pub fn into_log_msg(self, store_id: StoreId) -> Result<re_log_types::LogMsg, DataTableError> {
         let data_table = re_log_types::DataTable::from_rows(
             re_log_types::TableId::random(),
             self.into_rows().into_iter().flatten(),
         );
         let arrow_msg = data_table.to_arrow_msg()?;
-        Ok(re_log_types::LogMsg::ArrowMsg(recording_id, arrow_msg))
+        Ok(re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg))
     }
 
     fn into_rows(self) -> [Option<DataRow>; 2] {

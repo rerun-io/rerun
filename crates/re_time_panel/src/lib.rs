@@ -155,7 +155,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-                    let times_per_timeline = ctx.log_db.times_per_timeline();
+                    let times_per_timeline = ctx.store_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
                     self.time_control_ui.playback_speed_ui(time_ctrl, ui);
@@ -165,7 +165,7 @@ impl TimePanel {
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        ctx.log_db.times_per_timeline(),
+                        ctx.store_db.times_per_timeline(),
                         ui,
                     );
                     collapsed_time_marker_and_time(ui, ctx);
@@ -175,7 +175,7 @@ impl TimePanel {
             // One row:
             let re_ui = &ctx.re_ui;
             let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-            let times_per_timeline = ctx.log_db.times_per_timeline();
+            let times_per_timeline = ctx.store_db.times_per_timeline();
             self.time_control_ui
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
             self.time_control_ui
@@ -275,7 +275,7 @@ impl TimePanel {
             full_y_range.clone(),
         );
         time_selection_ui::loop_selection_ui(
-            ctx.log_db,
+            ctx.store_db,
             &mut ctx.rec_cfg.time_ctrl,
             &self.time_ranges_ui,
             ui,
@@ -361,7 +361,7 @@ impl TimePanel {
                     ctx,
                     time_area_response,
                     time_area_painter,
-                    &ctx.log_db.entity_db.tree,
+                    &ctx.store_db.entity_db.tree,
                     ui,
                 );
             });
@@ -560,7 +560,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-                    let times_per_timeline = ctx.log_db.times_per_timeline();
+                    let times_per_timeline = ctx.store_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
                     self.time_control_ui.playback_speed_ui(time_ctrl, ui);
@@ -570,7 +570,7 @@ impl TimePanel {
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        ctx.log_db.times_per_timeline(),
+                        ctx.store_db.times_per_timeline(),
                         ui,
                     );
 
@@ -585,7 +585,7 @@ impl TimePanel {
             // One row:
             let re_ui = &ctx.re_ui;
             let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-            let times_per_timeline = ctx.log_db.times_per_timeline();
+            let times_per_timeline = ctx.store_db.times_per_timeline();
 
             self.time_control_ui
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
@@ -685,15 +685,15 @@ fn help_button(ui: &mut egui::Ui) {
 ///
 /// This functions returns `true` iff the given time is safe to show.
 fn is_time_safe_to_show(
-    log_db: &re_data_store::LogDb,
+    store_db: &re_data_store::StoreDb,
     timeline: &re_arrow_store::Timeline,
     time: TimeReal,
 ) -> bool {
-    if log_db.num_timeless_messages() == 0 {
+    if store_db.num_timeless_messages() == 0 {
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = log_db.entity_db.tree.prefix_times.get(timeline) {
+    if let Some(times) = store_db.entity_db.tree.prefix_times.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
@@ -710,7 +710,7 @@ fn is_time_safe_to_show(
 fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     if let Some(time_int) = ctx.rec_cfg.time_ctrl.time_int() {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
-        if is_time_safe_to_show(ctx.log_db, timeline, time_int.into()) {
+        if is_time_safe_to_show(ctx.store_db, timeline, time_int.into()) {
             let time_type = ctx.rec_cfg.time_ctrl.time_type();
             ui.monospace(time_type.format(time_int));
         }
@@ -727,7 +727,7 @@ fn initialize_time_ranges_ui(
     re_tracing::profile_function!();
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
-    let mut time_range = if ctx.log_db.num_timeless_messages() > 0 {
+    let mut time_range = if ctx.store_db.num_timeless_messages() > 0 {
         vec![TimeRange {
             min: TimeInt::BEGINNING,
             max: TimeInt::BEGINNING,
@@ -737,7 +737,7 @@ fn initialize_time_ranges_ui(
     };
 
     if let Some(times) = ctx
-        .log_db
+        .store_db
         .entity_db
         .tree
         .prefix_times

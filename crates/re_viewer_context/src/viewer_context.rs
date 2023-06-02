@@ -1,4 +1,4 @@
-use re_data_store::log_db::LogDb;
+use re_data_store::store_db::StoreDb;
 
 use crate::{
     AppOptions, Caches, ComponentUiRegistry, Item, ItemCollection, SelectionState,
@@ -22,9 +22,9 @@ pub struct ViewerContext<'a> {
     pub space_view_class_registry: &'a SpaceViewClassRegistry,
 
     /// The current recording.
-    pub log_db: &'a LogDb,
+    pub store_db: &'a StoreDb,
 
-    /// UI config for the current recording (found in [`LogDb`]).
+    /// UI config for the current recording (found in [`StoreDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
 
     /// The look and feel of the UI.
@@ -73,7 +73,7 @@ impl<'a> ViewerContext<'a> {
 
 // ----------------------------------------------------------------------------
 
-/// UI config for the current recording (found in [`LogDb`]).
+/// UI config for the current recording (found in [`StoreDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct RecordingConfig {

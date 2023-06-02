@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 
-use crate::{RecordingStream, RecordingType};
+use crate::{RecordingStream, StoreKind};
 
 // ---
 
@@ -42,20 +42,17 @@ impl RecordingStream {
     /// Returns `overrides` if it exists, otherwise returns the most appropriate active recording
     /// of the specified type (i.e. thread-local first, then global scope), if any.
     #[inline]
-    pub fn get(
-        which: RecordingType,
-        overrides: Option<RecordingStream>,
-    ) -> Option<RecordingStream> {
+    pub fn get(kind: StoreKind, overrides: Option<RecordingStream>) -> Option<RecordingStream> {
         let rec = overrides.or_else(|| {
-            Self::get_any(RecordingScope::ThreadLocal, which)
-                .or_else(|| Self::get_any(RecordingScope::Global, which))
+            Self::get_any(RecordingScope::ThreadLocal, kind)
+                .or_else(|| Self::get_any(RecordingScope::Global, kind))
         });
 
         if rec.is_none() {
             // NOTE: This is the one and only place where a warning about missing active recording
             // should be printed, don't stutter!
             re_log::warn_once!(
-                "There is no currently active {which} recording available \
+                "There is no currently active {kind} stream available \
                 for the current thread ({:?}): have you called `set_global()` and/or \
                 `set_thread_local()` first?",
                 std::thread::current().id(),
@@ -70,19 +67,19 @@ impl RecordingStream {
     #[inline]
     #[doc(hidden)]
     pub fn get_quiet(
-        which: RecordingType,
+        kind: StoreKind,
         overrides: Option<RecordingStream>,
     ) -> Option<RecordingStream> {
         let rec = overrides.or_else(|| {
-            Self::get_any(RecordingScope::ThreadLocal, which)
-                .or_else(|| Self::get_any(RecordingScope::Global, which))
+            Self::get_any(RecordingScope::ThreadLocal, kind)
+                .or_else(|| Self::get_any(RecordingScope::Global, kind))
         });
 
         if rec.is_none() {
             // NOTE: This is the one and only place where a warning about missing active recording
             // should be printed, don't stutter!
             re_log::debug_once!(
-                "There is no currently active {which} recording available \
+                "There is no currently active {kind} stream available \
                 for the current thread ({:?}): have you called `set_global()` and/or \
                 `set_thread_local()` first?",
                 std::thread::current().id(),
@@ -96,8 +93,8 @@ impl RecordingStream {
 
     /// Returns the currently active recording of the specified type in the global scope, if any.
     #[inline]
-    pub fn global(which: RecordingType) -> Option<RecordingStream> {
-        Self::get_any(RecordingScope::Global, which)
+    pub fn global(kind: StoreKind) -> Option<RecordingStream> {
+        Self::get_any(RecordingScope::Global, kind)
     }
 
     /// Replaces the currently active recording of the specified type in the global scope with
@@ -105,11 +102,8 @@ impl RecordingStream {
     ///
     /// Returns the previous one, if any.
     #[inline]
-    pub fn set_global(
-        which: RecordingType,
-        rec: Option<RecordingStream>,
-    ) -> Option<RecordingStream> {
-        Self::set_any(RecordingScope::Global, which, rec)
+    pub fn set_global(kind: StoreKind, rec: Option<RecordingStream>) -> Option<RecordingStream> {
+        Self::set_any(RecordingScope::Global, kind, rec)
     }
 
     // --- Thread local ---
@@ -117,25 +111,25 @@ impl RecordingStream {
     /// Returns the currently active recording of the specified type in the thread-local scope,
     /// if any.
     #[inline]
-    pub fn thread_local(which: RecordingType) -> Option<RecordingStream> {
-        Self::get_any(RecordingScope::ThreadLocal, which)
+    pub fn thread_local(kind: StoreKind) -> Option<RecordingStream> {
+        Self::get_any(RecordingScope::ThreadLocal, kind)
     }
 
     /// Replaces the currently active recording of the specified type in the thread-local scope
     /// with the specified one.
     #[inline]
     pub fn set_thread_local(
-        which: RecordingType,
+        kind: StoreKind,
         rec: Option<RecordingStream>,
     ) -> Option<RecordingStream> {
-        Self::set_any(RecordingScope::ThreadLocal, which, rec)
+        Self::set_any(RecordingScope::ThreadLocal, kind, rec)
     }
 
     // --- Internal helpers ---
 
-    fn get_any(scope: RecordingScope, which: RecordingType) -> Option<RecordingStream> {
-        match which {
-            RecordingType::Data => match scope {
+    fn get_any(scope: RecordingScope, kind: StoreKind) -> Option<RecordingStream> {
+        match kind {
+            StoreKind::Recording => match scope {
                 RecordingScope::Global => GLOBAL_DATA_RECORDING
                     .get_or_init(Default::default)
                     .read()
@@ -144,7 +138,7 @@ impl RecordingStream {
                     LOCAL_DATA_RECORDING.with(|rec| rec.borrow().clone())
                 }
             },
-            RecordingType::Blueprint => match scope {
+            StoreKind::Blueprint => match scope {
                 RecordingScope::Global => GLOBAL_BLUEPRINT_RECORDING
                     .get_or_init(Default::default)
                     .read()
@@ -158,11 +152,11 @@ impl RecordingStream {
 
     fn set_any(
         scope: RecordingScope,
-        which: RecordingType,
+        kind: StoreKind,
         rec: Option<RecordingStream>,
     ) -> Option<RecordingStream> {
-        match which {
-            RecordingType::Data => match scope {
+        match kind {
+            StoreKind::Recording => match scope {
                 RecordingScope::Global => std::mem::replace(
                     &mut *GLOBAL_DATA_RECORDING.get_or_init(Default::default).write(),
                     rec,
@@ -172,7 +166,7 @@ impl RecordingStream {
                     std::mem::replace(&mut *cell, rec)
                 }),
             },
-            RecordingType::Blueprint => match scope {
+            StoreKind::Blueprint => match scope {
                 RecordingScope::Global => std::mem::replace(
                     &mut *GLOBAL_BLUEPRINT_RECORDING
                         .get_or_init(Default::default)
@@ -198,62 +192,61 @@ mod tests {
 
     #[test]
     fn fallbacks() {
-        fn check_recording_id(expected: &RecordingStream, got: Option<RecordingStream>) {
+        fn check_store_id(expected: &RecordingStream, got: Option<RecordingStream>) {
             assert_eq!(
-                expected.recording_info().unwrap().recording_id,
-                got.unwrap().recording_info().unwrap().recording_id
+                expected.store_info().unwrap().store_id,
+                got.unwrap().store_info().unwrap().store_id
             );
         }
 
         // nothing is set
-        assert!(RecordingStream::get(RecordingType::Data, None).is_none());
-        assert!(RecordingStream::get(RecordingType::Blueprint, None).is_none());
+        assert!(RecordingStream::get(StoreKind::Recording, None).is_none());
+        assert!(RecordingStream::get(StoreKind::Blueprint, None).is_none());
 
         // nothing is set -- explicit wins
         let explicit = RecordingStreamBuilder::new("explicit").buffered().unwrap();
-        check_recording_id(
+        check_store_id(
             &explicit,
-            RecordingStream::get(RecordingType::Data, explicit.clone().into()),
+            RecordingStream::get(StoreKind::Recording, explicit.clone().into()),
         );
-        check_recording_id(
+        check_store_id(
             &explicit,
-            RecordingStream::get(RecordingType::Blueprint, explicit.clone().into()),
+            RecordingStream::get(StoreKind::Blueprint, explicit.clone().into()),
         );
 
         let global_data = RecordingStreamBuilder::new("global_data")
             .buffered()
             .unwrap();
         assert!(
-            RecordingStream::set_global(RecordingType::Data, Some(global_data.clone())).is_none()
+            RecordingStream::set_global(StoreKind::Recording, Some(global_data.clone())).is_none()
         );
 
         let global_blueprint = RecordingStreamBuilder::new("global_blueprint")
             .buffered()
             .unwrap();
-        assert!(RecordingStream::set_global(
-            RecordingType::Blueprint,
-            Some(global_blueprint.clone())
-        )
-        .is_none());
+        assert!(
+            RecordingStream::set_global(StoreKind::Blueprint, Some(global_blueprint.clone()))
+                .is_none()
+        );
 
         // globals are set, no explicit -- globals win
-        check_recording_id(
+        check_store_id(
             &global_data,
-            RecordingStream::get(RecordingType::Data, None),
+            RecordingStream::get(StoreKind::Recording, None),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
-            RecordingStream::get(RecordingType::Blueprint, None),
+            RecordingStream::get(StoreKind::Blueprint, None),
         );
 
         // overwrite globals with themselves -- we expect to get the same value back
-        check_recording_id(
+        check_store_id(
             &global_data,
-            RecordingStream::set_global(RecordingType::Data, Some(global_data.clone())),
+            RecordingStream::set_global(StoreKind::Recording, Some(global_data.clone())),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
-            RecordingStream::set_global(RecordingType::Blueprint, Some(global_blueprint.clone())),
+            RecordingStream::set_global(StoreKind::Blueprint, Some(global_blueprint.clone())),
         );
 
         std::thread::Builder::new()
@@ -262,20 +255,20 @@ mod tests {
                 let global_blueprint = global_blueprint.clone();
                 move || {
                     // globals are still set, no explicit -- globals still win
-                    check_recording_id(
+                    check_store_id(
                         &global_data,
-                        RecordingStream::get(RecordingType::Data, None),
+                        RecordingStream::get(StoreKind::Recording, None),
                     );
-                    check_recording_id(
+                    check_store_id(
                         &global_blueprint,
-                        RecordingStream::get(RecordingType::Blueprint, None),
+                        RecordingStream::get(StoreKind::Blueprint, None),
                     );
 
                     let local_data = RecordingStreamBuilder::new("local_data")
                         .buffered()
                         .unwrap();
                     assert!(RecordingStream::set_thread_local(
-                        RecordingType::Data,
+                        StoreKind::Recording,
                         Some(local_data.clone())
                     )
                     .is_none());
@@ -284,29 +277,29 @@ mod tests {
                         .buffered()
                         .unwrap();
                     assert!(RecordingStream::set_thread_local(
-                        RecordingType::Blueprint,
+                        StoreKind::Blueprint,
                         Some(local_blueprint.clone())
                     )
                     .is_none());
 
                     // locals are set for this thread -- locals win
-                    check_recording_id(
+                    check_store_id(
                         &local_data,
-                        RecordingStream::get(RecordingType::Data, None),
+                        RecordingStream::get(StoreKind::Recording, None),
                     );
-                    check_recording_id(
+                    check_store_id(
                         &local_blueprint,
-                        RecordingStream::get(RecordingType::Blueprint, None),
+                        RecordingStream::get(StoreKind::Blueprint, None),
                     );
 
                     // explicit still outsmarts everyone no matter what
-                    check_recording_id(
+                    check_store_id(
                         &explicit,
-                        RecordingStream::get(RecordingType::Data, explicit.clone().into()),
+                        RecordingStream::get(StoreKind::Recording, explicit.clone().into()),
                     );
-                    check_recording_id(
+                    check_store_id(
                         &explicit,
-                        RecordingStream::get(RecordingType::Blueprint, explicit.clone().into()),
+                        RecordingStream::get(StoreKind::Blueprint, explicit.clone().into()),
                     );
                 }
             })
@@ -315,20 +308,20 @@ mod tests {
             .unwrap();
 
         // locals should not exist in this thread -- global wins
-        check_recording_id(
+        check_store_id(
             &global_data,
-            RecordingStream::get(RecordingType::Data, None),
+            RecordingStream::get(StoreKind::Recording, None),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
-            RecordingStream::get(RecordingType::Blueprint, None),
+            RecordingStream::get(StoreKind::Blueprint, None),
         );
 
         let local_data = RecordingStreamBuilder::new("local_data")
             .buffered()
             .unwrap();
         assert!(
-            RecordingStream::set_thread_local(RecordingType::Data, Some(local_data.clone()))
+            RecordingStream::set_thread_local(StoreKind::Recording, Some(local_data.clone()))
                 .is_none()
         );
 
@@ -336,25 +329,28 @@ mod tests {
             .buffered()
             .unwrap();
         assert!(RecordingStream::set_thread_local(
-            RecordingType::Blueprint,
+            StoreKind::Blueprint,
             Some(local_blueprint.clone())
         )
         .is_none());
 
-        check_recording_id(
+        check_store_id(
             &global_data,
-            RecordingStream::set_global(RecordingType::Data, None),
+            RecordingStream::set_global(StoreKind::Recording, None),
         );
-        check_recording_id(
+        check_store_id(
             &global_blueprint,
-            RecordingStream::set_global(RecordingType::Blueprint, None),
+            RecordingStream::set_global(StoreKind::Blueprint, None),
         );
 
         // locals still win
-        check_recording_id(&local_data, RecordingStream::get(RecordingType::Data, None));
-        check_recording_id(
+        check_store_id(
+            &local_data,
+            RecordingStream::get(StoreKind::Recording, None),
+        );
+        check_store_id(
             &local_blueprint,
-            RecordingStream::get(RecordingType::Blueprint, None),
+            RecordingStream::get(StoreKind::Blueprint, None),
         );
     }
 }

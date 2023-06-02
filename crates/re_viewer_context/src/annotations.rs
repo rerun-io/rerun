@@ -130,7 +130,7 @@ impl AnnotationMap {
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let data_store = &ctx.log_db.entity_db.data_store;
+        let data_store = &ctx.store_db.entity_db.data_store;
         let latest_at_query = LatestAtQuery::new(scene_query.timeline, scene_query.latest_at);
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
