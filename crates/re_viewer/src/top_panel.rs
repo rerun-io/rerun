@@ -26,11 +26,11 @@ pub fn top_panel(
     };
     let style_like_web = app.screenshotter.is_screenshotting();
     let top_bar_style =
-        app.re_ui
+        app.re_ui()
             .top_bar_style(native_pixels_per_point, fullscreen, style_like_web);
 
     egui::TopBottomPanel::top("top_bar")
-        .frame(app.re_ui.top_panel_frame())
+        .frame(app.re_ui().top_panel_frame())
         .exact_height(top_bar_style.height)
         .show_inside(ui, |ui| {
             let _response = egui::menu::bar(ui, |ui| {
@@ -84,7 +84,7 @@ fn top_bar_ui(
 
         let mut selection_panel_expanded = blueprint.selection_panel_expanded;
         if app
-            .re_ui
+            .re_ui()
             .medium_icon_toggle_button(
                 ui,
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
@@ -101,7 +101,7 @@ fn top_bar_ui(
 
         let mut time_panel_expanded = blueprint.time_panel_expanded;
         if app
-            .re_ui
+            .re_ui()
             .medium_icon_toggle_button(
                 ui,
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
@@ -118,7 +118,7 @@ fn top_bar_ui(
 
         let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
         if app
-            .re_ui
+            .re_ui()
             .medium_icon_toggle_button(
                 ui,
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
@@ -271,7 +271,7 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
             if latency_sec < app.state.app_options.warn_latency {
                 ui.weak(text).on_hover_text(hover_text);
             } else {
-                ui.label(app.re_ui.warning_text(text))
+                ui.label(app.re_ui().warning_text(text))
                     .on_hover_text(hover_text);
             }
         } else {

@@ -80,7 +80,7 @@ pub struct App {
     build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,
     ram_limit_warner: re_memory::RamLimitWarner,
-    pub(crate) re_ui: re_ui::ReUi,
+    re_ui: re_ui::ReUi,
     pub(crate) screenshotter: crate::screenshotter::Screenshotter,
 
     /// Listens to the local text log stream
@@ -213,6 +213,10 @@ impl App {
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
         &self.build_info
+    }
+
+    pub fn re_ui(&self) -> &re_ui::ReUi {
+        &self.re_ui
     }
 
     /// Adds a new space view class to the viewer.

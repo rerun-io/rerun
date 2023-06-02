@@ -14,7 +14,7 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
     let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
 
-    let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
+    let icon_image = app.re_ui().icon_image(&re_ui::icons::RERUN_MENU);
     let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
     let texture_id = icon_image.texture_id(ui.ctx());
 
