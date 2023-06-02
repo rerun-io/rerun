@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState,
+    level_to_rich_text, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, TypedScene,
     ViewerContext,
 };
 
@@ -39,7 +39,7 @@ pub struct TextSpaceView;
 impl SpaceViewClassImpl for TextSpaceView {
     type SpaceViewState = TextSpaceViewState;
     type SceneContext = re_space_view::EmptySceneContext;
-    type ScenePartTuple = (SceneText,);
+    type ScenePartCollection = SceneText;
 
     fn name(&self) -> SpaceViewClassName {
         "Text".into()
@@ -108,15 +108,9 @@ impl SpaceViewClassImpl for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
-        scene: Scene,
+        scene: TypedScene<'_, Self::SceneContext, Self::ScenePartCollection>,
     ) {
-        let scene = match scene.elements.get::<SceneText>() {
-            Ok(scene) => scene,
-            Err(err) => {
-                re_log::error_once!("Failed to get text scene element {err}");
-                return;
-            }
-        };
+        let scene = scene.parts;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),

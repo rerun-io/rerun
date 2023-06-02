@@ -1,7 +1,13 @@
 use crate::{
-    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewState,
-    ViewerContext,
+    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName,
+    SpaceViewHighlights, SpaceViewState, ViewerContext,
 };
+
+pub struct TypedScene<'a, C: SceneContext, P: ScenePartCollection> {
+    pub context: &'a C,
+    pub parts: &'a P,
+    pub highlights: SpaceViewHighlights,
+}
 
 /// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::ScenePart`] type.
 ///
@@ -15,8 +21,8 @@ pub trait SpaceViewClassImpl {
     /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
     type SceneContext: SceneContext + Default + 'static;
 
-    /// A tuple of [`crate::ScenePart`] types that are supported by this space view class.
-    type ScenePartTuple: Into<ScenePartCollection> + Default + 'static;
+    /// Collection of [`crate::ScenePart`]s that this scene populates.
+    type ScenePartCollection: ScenePartCollection + Default + 'static;
 
     /// Name of this space view class.
     ///
@@ -49,7 +55,7 @@ pub trait SpaceViewClassImpl {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
-        scene: Scene,
+        scene: TypedScene<'_, Self::SceneContext, Self::ScenePartCollection>,
     );
 }
 
@@ -73,7 +79,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     fn new_scene(&self) -> Scene {
         Scene {
             context: Box::<T::SceneContext>::default(),
-            elements: T::ScenePartTuple::default().into(),
+            elements: Box::<T::ScenePartCollection>::default(),
             highlights: Default::default(),
         }
     }
@@ -101,6 +107,29 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         state: &mut dyn SpaceViewState,
         scene: Scene,
     ) {
+        let Scene {
+            context,
+            elements,
+            highlights,
+        } = scene;
+
+        let Some(context) = context.as_any().downcast_ref::<T::SceneContext>() else {
+            re_log::error_once!("Failed to downcast scene context to the correct type {}.",
+                                std::any::type_name::<T::SceneContext>());
+            return;
+        };
+        let Some(parts) = elements.as_any().downcast_ref::<T::ScenePartCollection>() else {
+            re_log::error_once!("Failed to downcast scene elements to the correct type {}.",
+                                std::any::type_name::<T::ScenePartCollection>());
+            return;
+        };
+
+        let scene = TypedScene {
+            context,
+            parts,
+            highlights,
+        };
+
         typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene));
     }
 }

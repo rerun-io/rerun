@@ -22,16 +22,13 @@ use re_viewer_context::{
 
 use crate::{
     mesh_loader::LoadedMesh,
-    scene::{
-        contexts::SpatialSceneContext,
-        parts::{SpatialScenePart, SpatialScenePartData},
-    },
+    scene::{contexts::SpatialSceneContext, parts::SpatialScenePartData},
     space_camera_3d::SpaceCamera3D,
 };
 
 use super::SpatialNavigationMode;
 
-use self::contexts::SpatialSceneEntityContext;
+use self::{contexts::SpatialSceneEntityContext, parts::SpatialScenePartCollection};
 use parts::ScenePart;
 
 use contexts::EntityDepthOffsets;
@@ -138,7 +135,7 @@ impl SceneSpatial {
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Scene {
                 context: Box::<re_space_view::EmptySceneContext>::default(),
-                elements: ().into(),
+                elements: Box::<SpatialScenePartCollection>::default(),
                 highlights: Default::default(),
             },
             draw_data: Default::default(),
@@ -175,14 +172,7 @@ impl SceneSpatial {
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {
             context: Box::<SpatialSceneContext>::default(),
-            // TODO(wumpf): How can we make this syntax possible instead?
-            // The problem is that `Points2DScenePart` can't be put directly into the list since only the wrapper implements ScenePart
-            //elements: parts::ScenePartTuple::default().into(),
-            elements: (
-                parts::Points2DPart::default().wrap(),
-                parts::Points3DPart::default().wrap(),
-            )
-                .into(),
+            elements: Box::<SpatialScenePartCollection>::default(),
             highlights: Default::default(),
         };
         self.draw_data =
@@ -207,7 +197,7 @@ impl SceneSpatial {
         self.primitives.any_outlines = scene.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
 
-        for scene_part in scene.elements.iter() {
+        for scene_part in scene.elements.vec_mut() {
             if let Some(data) = scene_part
                 .data()
                 .and_then(|d| d.downcast_ref::<SpatialScenePartData>())

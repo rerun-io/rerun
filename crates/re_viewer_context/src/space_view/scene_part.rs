@@ -3,6 +3,15 @@ use crate::{
     ViewerContext,
 };
 
+/// Scene part collection, consisting of several [`ScenePart`] which may be populated in parallel.
+pub trait ScenePartCollection {
+    /// Retrieves a list of all underlying scene context part for parallel population.
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart>;
+
+    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
+    fn as_any(&self) -> &dyn std::any::Any;
+}
+
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
@@ -32,7 +41,4 @@ pub trait ScenePart: std::any::Any {
 
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
-
-    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }

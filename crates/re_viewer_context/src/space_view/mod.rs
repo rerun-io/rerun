@@ -8,7 +8,6 @@ mod highlights;
 mod scene;
 mod scene_context;
 mod scene_part;
-mod scene_part_collection;
 mod scene_part_impl;
 mod scene_query;
 mod space_view_class;
@@ -18,12 +17,11 @@ mod space_view_class_registry;
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use scene::Scene;
 pub use scene_context::{SceneContext, SceneContextPart};
-pub use scene_part::ScenePart;
-pub use scene_part_collection::{ScenePartCollection, ScenePartCollectionLookupError};
+pub use scene_part::{ScenePart, ScenePartCollection};
 pub use scene_part_impl::ScenePartImpl;
 pub use scene_query::SceneQuery;
 pub use space_view_class::{
     ArchetypeDefinition, SpaceViewClass, SpaceViewClassName, SpaceViewState,
 };
-pub use space_view_class_impl::SpaceViewClassImpl;
+pub use space_view_class_impl::{SpaceViewClassImpl, TypedScene};
 pub use space_view_class_registry::{SpaceViewClassRegistry, SpaceViewClassRegistryError};

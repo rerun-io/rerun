@@ -2,18 +2,22 @@ use re_components::{
     ClassId, ColorRGBA, Component, InstanceKey, KeypointId, Label, Point2D, Radius,
 };
 use re_data_store::{EntityPath, InstancePathHash};
-use re_log_types::ComponentName;
 use re_query::{EntityView, QueryError};
-use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, SpaceViewHighlights, ViewerContext};
+use re_viewer_context::{
+    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePartImpl, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
+};
 
 use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    load_keypoint_connections, UiLabel, UiLabelTarget,
+    load_keypoint_connections,
+    parts::spatial_scene_part::for_each_entity_view,
+    UiLabel, UiLabelTarget,
 };
 
 use super::{
     instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
-    process_colors, process_radii, SpatialScenePart, SpatialScenePartData,
+    process_colors, process_radii, SpatialScenePartData, SpatialSpaceViewState,
 };
 
 pub struct Points2DPart {
@@ -177,11 +181,12 @@ impl Points2DPart {
     }
 }
 
-impl SpatialScenePart<7> for Points2DPart {
-    type Primary = Point2D;
+impl ScenePartImpl for Points2DPart {
+    type SpaceViewState = SpatialSpaceViewState;
+    type SceneContext = SpatialSceneContext;
 
-    fn archetype() -> [ComponentName; 7] {
-        [
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![
             Point2D::name(),
             InstanceKey::name(),
             ColorRGBA::name(),
@@ -196,17 +201,20 @@ impl SpatialScenePart<7> for Points2DPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        context: &SpatialSceneContext,
+        _space_view_state: &Self::SpaceViewState,
+        scene_context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points2DPart");
 
-        Self::for_each_entity_view(
+        assert_eq!(self.archetype().len(), 7);
+        for_each_entity_view::<re_components::Point2D, 7, _>(
             ctx,
             query,
-            context,
+            scene_context,
             highlights,
-            context.depth_offsets.points,
+            scene_context.depth_offsets.points,
+            self.archetype(),
             |ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
@@ -215,7 +223,7 @@ impl SpatialScenePart<7> for Points2DPart {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> &SpatialScenePartData {
-        &self.data
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(&self.data)
     }
 }

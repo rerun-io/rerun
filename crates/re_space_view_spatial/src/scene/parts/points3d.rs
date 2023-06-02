@@ -2,18 +2,22 @@ use re_components::{
     ClassId, ColorRGBA, Component as _, InstanceKey, KeypointId, Label, Point3D, Radius,
 };
 use re_data_store::{EntityPath, InstancePathHash};
-use re_log_types::ComponentName;
 use re_query::{EntityView, QueryError};
-use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, SpaceViewHighlights, ViewerContext};
+use re_viewer_context::{
+    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePartImpl, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
+};
 
 use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    load_keypoint_connections, UiLabel, UiLabelTarget,
+    load_keypoint_connections,
+    parts::spatial_scene_part::for_each_entity_view,
+    UiLabel, UiLabelTarget,
 };
 
 use super::{
     instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
-    process_colors, process_radii, SpatialScenePart, SpatialScenePartData,
+    process_colors, process_radii, SpatialScenePartData, SpatialSpaceViewState,
 };
 
 pub struct Points3DPart {
@@ -175,11 +179,12 @@ impl Points3DPart {
     }
 }
 
-impl SpatialScenePart<7> for Points3DPart {
-    type Primary = Point3D;
+impl ScenePartImpl for Points3DPart {
+    type SpaceViewState = SpatialSpaceViewState;
+    type SceneContext = SpatialSceneContext;
 
-    fn archetype() -> [ComponentName; 7] {
-        [
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![
             Point3D::name(),
             InstanceKey::name(),
             ColorRGBA::name(),
@@ -194,17 +199,20 @@ impl SpatialScenePart<7> for Points3DPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        context: &SpatialSceneContext,
+        _space_view_state: &Self::SpaceViewState,
+        scene_context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points3DPart");
 
-        Self::for_each_entity_view(
+        assert_eq!(self.archetype().len(), 7);
+        for_each_entity_view::<re_components::Point3D, 7, _>(
             ctx,
             query,
-            context,
+            scene_context,
             highlights,
-            context.depth_offsets.points,
+            scene_context.depth_offsets.points,
+            self.archetype(),
             |ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
@@ -213,7 +221,7 @@ impl SpatialScenePart<7> for Points3DPart {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> &SpatialScenePartData {
-        &self.data
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(&self.data)
     }
 }
