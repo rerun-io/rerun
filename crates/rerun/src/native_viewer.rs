@@ -1,5 +1,5 @@
 use re_log_types::LogMsg;
-use re_log_types::RecordingInfo;
+use re_log_types::StoreInfo;
 use re_sdk::RecordingStream;
 
 /// Starts a Rerun viewer on the current thread and migrates the given callback, along with
@@ -15,7 +15,7 @@ use re_sdk::RecordingStream;
 /// their UI runs on the main thread! ⚠️
 #[cfg(not(target_arch = "wasm32"))]
 pub fn spawn<F>(
-    recording_info: RecordingInfo,
+    store_info: StoreInfo,
     batcher_config: re_log_types::DataTableBatcherConfig,
     run: F,
 ) -> re_viewer::external::eframe::Result<()>
@@ -27,10 +27,10 @@ where
         re_smart_channel::SmartChannelSource::Sdk,
     );
     let sink = Box::new(NativeViewerSink(tx));
-    let app_env = re_viewer::AppEnvironment::from_store_source(&recording_info.store_source);
+    let app_env = re_viewer::AppEnvironment::from_store_source(&store_info.store_source);
 
     let rec_stream =
-        RecordingStream::new(recording_info, batcher_config, sink).expect("Failed to spawn thread");
+        RecordingStream::new(store_info, batcher_config, sink).expect("Failed to spawn thread");
 
     // NOTE: Forget the handle on purpose, leave that thread be.
     std::thread::Builder::new()

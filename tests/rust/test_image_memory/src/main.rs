@@ -13,8 +13,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    let recording_info = rerun::new_recording_info("test_image_memory_rs");
-    rerun::native_viewer::spawn(recording_info, Default::default(), |rec_stream| {
+    let store_info = rerun::new_store_info("test_image_memory_rs");
+    rerun::native_viewer::spawn(store_info, Default::default(), |rec_stream| {
         log_images(&rec_stream).unwrap();
     })?;
     Ok(())

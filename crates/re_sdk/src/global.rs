@@ -194,8 +194,8 @@ mod tests {
     fn fallbacks() {
         fn check_store_id(expected: &RecordingStream, got: Option<RecordingStream>) {
             assert_eq!(
-                expected.recording_info().unwrap().store_id,
-                got.unwrap().recording_info().unwrap().store_id
+                expected.store_info().unwrap().store_id,
+                got.unwrap().store_info().unwrap().store_id
             );
         }
 

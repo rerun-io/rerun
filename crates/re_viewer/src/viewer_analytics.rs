@@ -133,28 +133,28 @@ impl ViewerAnalytics {
             return;
         }
 
-        if let Some(rec_info) = log_db.recording_info() {
+        if let Some(store_info) = log_db.store_info() {
             // We hash the application_id and recording_id unless this is an official example.
             // That's because we want to be able to track which are the popular examples,
             // but we don't want to collect actual application ids.
             self.register("application_id", {
-                let prop = Property::from(rec_info.application_id.0.clone());
-                if rec_info.is_official_example {
+                let prop = Property::from(store_info.application_id.0.clone());
+                if store_info.is_official_example {
                     prop
                 } else {
                     prop.hashed()
                 }
             });
             self.register("recording_id", {
-                let prop = Property::from(rec_info.store_id.to_string());
-                if rec_info.is_official_example {
+                let prop = Property::from(store_info.store_id.to_string());
+                if store_info.is_official_example {
                     prop
                 } else {
                     prop.hashed()
                 }
             });
 
-            let store_source = match &rec_info.store_source {
+            let store_source = match &store_info.store_source {
                 StoreSource::Unknown => "unknown".to_owned(),
                 StoreSource::PythonSdk(_version) => "python_sdk".to_owned(),
                 StoreSource::RustSdk { .. } => "rust_sdk".to_owned(),
@@ -169,20 +169,20 @@ impl ViewerAnalytics {
             if let StoreSource::RustSdk {
                 rustc_version: rust_version,
                 llvm_version,
-            } = &rec_info.store_source
+            } = &store_info.store_source
             {
                 self.register("rust_version", rust_version.to_string());
                 self.register("llvm_version", llvm_version.to_string());
                 self.deregister("python_version"); // can't be both!
             }
-            if let StoreSource::PythonSdk(version) = &rec_info.store_source {
+            if let StoreSource::PythonSdk(version) = &store_info.store_source {
                 self.register("python_version", version.to_string());
                 self.deregister("rust_version"); // can't be both!
                 self.deregister("llvm_version"); // can't be both!
             }
 
             self.register("store_source", store_source);
-            self.register("is_official_example", rec_info.is_official_example);
+            self.register("is_official_example", store_info.is_official_example);
         }
 
         if let Some(data_source) = &log_db.data_source {

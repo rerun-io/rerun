@@ -463,8 +463,8 @@ impl App {
         self.log_db()
             .and_then(|log_db| {
                 log_db
-                    .recording_info()
-                    .map(|rec_info| rec_info.application_id.clone())
+                    .store_info()
+                    .map(|store_info| store_info.application_id.clone())
             })
             .unwrap_or(ApplicationId::unknown())
     }
@@ -877,7 +877,7 @@ impl App {
 
             let store_id = msg.store_id();
 
-            let is_new_store = if let LogMsg::SetRecordingInfo(msg) = &msg {
+            let is_new_store = if let LogMsg::SetStoreInfo(msg) = &msg {
                 match msg.info.store_id.kind {
                     StoreKind::Recording => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
@@ -908,7 +908,7 @@ impl App {
 
             if is_new_store && log_db.store_kind() == StoreKind::Recording {
                 // Do analytics after ingesting the new message,
-                // because thats when the `log_db.recording_info` is set,
+                // because thats when the `log_db.store_info` is set,
                 // which we use in the analytics call.
                 self.analytics.on_open_recording(log_db);
             }
@@ -1824,7 +1824,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app
         .store_hub
         .recordings()
-        .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
+        .sorted_by_key(|log_db| log_db.store_info().map(|ri| ri.started))
         .collect_vec();
 
     if log_dbs.is_empty() {
@@ -1834,11 +1834,11 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 
     ui.style_mut().wrap = Some(false);
     for log_db in &log_dbs {
-        let info = if let Some(rec_info) = log_db.recording_info() {
+        let info = if let Some(store_info) = log_db.store_info() {
             format!(
                 "{} - {}",
-                rec_info.application_id,
-                rec_info.started.format()
+                store_info.application_id,
+                store_info.started.format()
             )
         } else {
             "<UNKNOWN>".to_owned()
@@ -1860,9 +1860,9 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
     let blueprint_dbs = app
         .store_hub
         .blueprints()
-        .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
+        .sorted_by_key(|log_db| log_db.store_info().map(|ri| ri.started))
         .filter(|log| {
-            log.recording_info()
+            log.store_info()
                 .map_or(false, |ri| ri.application_id == app_id)
         })
         .collect_vec();
@@ -1877,14 +1877,14 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
         .iter()
         .filter(|log| log.store_kind() == StoreKind::Blueprint)
     {
-        let info = if let Some(rec_info) = log_db.recording_info() {
-            if rec_info.is_app_default_blueprint() {
-                format!("{} - Default Blueprint", rec_info.application_id,)
+        let info = if let Some(store_info) = log_db.store_info() {
+            if store_info.is_app_default_blueprint() {
+                format!("{} - Default Blueprint", store_info.application_id,)
             } else {
                 format!(
                     "{} - {}",
-                    rec_info.application_id,
-                    rec_info.started.format()
+                    store_info.application_id,
+                    store_info.started.format()
                 )
             }
         } else {
@@ -2079,7 +2079,7 @@ fn save_database_to_file(
 
     let begin_rec_msg = log_db
         .recording_msg()
-        .map(|msg| LogMsg::SetRecordingInfo(msg.clone()));
+        .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
 
     let ent_op_msgs = log_db
         .iter_entity_op_msgs()

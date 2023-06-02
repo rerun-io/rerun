@@ -1,4 +1,4 @@
-use re_log_types::{ArrowMsg, DataTable, EntityPathOpMsg, LogMsg, RecordingInfo, SetRecordingInfo};
+use re_log_types::{ArrowMsg, DataTable, EntityPathOpMsg, LogMsg, SetStoreInfo, StoreInfo};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -13,14 +13,14 @@ impl DataUi for LogMsg {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            LogMsg::SetRecordingInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::EntityPathOpMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
         }
     }
 }
 
-impl DataUi for SetRecordingInfo {
+impl DataUi for SetStoreInfo {
     fn data_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -28,9 +28,9 @@ impl DataUi for SetRecordingInfo {
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
     ) {
-        ui.code("SetRecordingInfo");
-        let SetRecordingInfo { row_id: _, info } = self;
-        let RecordingInfo {
+        ui.code("SetStoreInfo");
+        let SetStoreInfo { row_id: _, info } = self;
+        let StoreInfo {
             application_id,
             store_id,
             started,

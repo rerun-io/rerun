@@ -5,8 +5,8 @@ use nohash_hasher::IntMap;
 use re_arrow_store::{DataStoreConfig, TimeInt};
 use re_log_types::{
     ApplicationId, ArrowMsg, Component as _, ComponentPath, DataCell, DataRow, DataTable,
-    EntityPath, EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RecordingInfo, RowId,
-    SetRecordingInfo, StoreId, StoreKind, TimePoint, Timeline,
+    EntityPath, EntityPathHash, EntityPathOpMsg, InstanceKey, LogMsg, PathOp, RowId, SetStoreInfo,
+    StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -181,8 +181,8 @@ pub struct LogDb {
     /// Set by whomever created this [`LogDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
-    /// Comes in a special message, [`LogMsg::SetRecordingInfo`].
-    recording_msg: Option<SetRecordingInfo>,
+    /// Comes in a special message, [`LogMsg::SetStoreInfo`].
+    recording_msg: Option<SetStoreInfo>,
 
     /// Where we store the entities.
     pub entity_db: EntityDb,
@@ -199,16 +199,16 @@ impl LogDb {
         }
     }
 
-    pub fn recording_msg(&self) -> Option<&SetRecordingInfo> {
+    pub fn recording_msg(&self) -> Option<&SetStoreInfo> {
         self.recording_msg.as_ref()
     }
 
-    pub fn recording_info(&self) -> Option<&RecordingInfo> {
+    pub fn store_info(&self) -> Option<&StoreInfo> {
         self.recording_msg().map(|msg| &msg.info)
     }
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
-        self.recording_info().map(|ri| &ri.application_id)
+        self.store_info().map(|ri| &ri.application_id)
     }
 
     pub fn store_kind(&self) -> StoreKind {
@@ -246,7 +246,7 @@ impl LogDb {
         debug_assert_eq!(msg.store_id(), self.store_id());
 
         match &msg {
-            LogMsg::SetRecordingInfo(msg) => self.add_begin_recording_msg(msg),
+            LogMsg::SetStoreInfo(msg) => self.add_begin_recording_msg(msg),
             LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
                     row_id,
@@ -262,7 +262,7 @@ impl LogDb {
         Ok(())
     }
 
-    pub fn add_begin_recording_msg(&mut self, msg: &SetRecordingInfo) {
+    pub fn add_begin_recording_msg(&mut self, msg: &SetStoreInfo) {
         self.recording_msg = Some(msg.clone());
     }
 

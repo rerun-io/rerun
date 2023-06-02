@@ -112,8 +112,8 @@ impl MyApp {
 
 /// Show the content of the log database.
 fn log_db_ui(ui: &mut egui::Ui, log_db: &re_data_store::LogDb) {
-    if let Some(recording_info) = log_db.recording_info() {
-        ui.label(format!("Application ID: {}", recording_info.application_id));
+    if let Some(store_info) = log_db.store_info() {
+        ui.label(format!("Application ID: {}", store_info.application_id));
     }
 
     // There can be many timelines, but the `log_time` timeline is always there:

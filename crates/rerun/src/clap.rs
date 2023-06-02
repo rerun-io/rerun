@@ -95,7 +95,7 @@ impl RerunArgs {
         };
         let _tokio_runtime_guard = tokio_runtime_handle.enter();
 
-        let (rerun_enabled, recording_info, batcher_config) =
+        let (rerun_enabled, store_info, batcher_config) =
             crate::RecordingStreamBuilder::new(application_id)
                 .default_enabled(default_enabled)
                 .into_args();
@@ -123,12 +123,12 @@ impl RerunArgs {
 
             #[cfg(feature = "native_viewer")]
             RerunBehavior::Spawn => {
-                crate::native_viewer::spawn(recording_info, batcher_config, run)?;
+                crate::native_viewer::spawn(store_info, batcher_config, run)?;
                 return Ok(());
             }
         };
 
-        let rec_stream = RecordingStream::new(recording_info, batcher_config, sink)?;
+        let rec_stream = RecordingStream::new(store_info, batcher_config, sink)?;
         run(rec_stream.clone());
 
         // The user callback is done executing, it's a good opportunity to flush the pipeline

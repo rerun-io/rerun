@@ -82,7 +82,7 @@ fn load_viewport(
         // Only enable auto-space-views if this is the app-default blueprint
         AutoSpaceViews(
             blueprint_db
-                .recording_info()
+                .store_info()
                 .map_or(false, |ri| ri.is_app_default_blueprint()),
         )
     });

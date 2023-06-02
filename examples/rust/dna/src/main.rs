@@ -15,8 +15,8 @@ use rerun::{
 const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let recording_info = rerun::new_recording_info("DNA Abacus");
-    rerun::native_viewer::spawn(recording_info, Default::default(), |rec_stream| {
+    let store_info = rerun::new_store_info("DNA Abacus");
+    rerun::native_viewer::spawn(store_info, Default::default(), |rec_stream| {
         run(&rec_stream).unwrap();
     })?;
     Ok(())

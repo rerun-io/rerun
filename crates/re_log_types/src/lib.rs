@@ -218,7 +218,7 @@ pub enum LogMsg {
     /// A new recording has begun.
     ///
     /// Should usually be the first message sent.
-    SetRecordingInfo(SetRecordingInfo),
+    SetStoreInfo(SetStoreInfo),
 
     /// Server-backed operation on an [`EntityPath`].
     EntityPathOpMsg(StoreId, EntityPathOpMsg),
@@ -230,28 +230,28 @@ pub enum LogMsg {
 impl LogMsg {
     pub fn store_id(&self) -> &StoreId {
         match self {
-            Self::SetRecordingInfo(msg) => &msg.info.store_id,
+            Self::SetStoreInfo(msg) => &msg.info.store_id,
             Self::EntityPathOpMsg(store_id, _) | Self::ArrowMsg(store_id, _) => store_id,
         }
     }
 }
 
-impl_into_enum!(SetRecordingInfo, LogMsg, SetRecordingInfo);
+impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);
 
 // ----------------------------------------------------------------------------
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct SetRecordingInfo {
+pub struct SetStoreInfo {
     pub row_id: RowId,
-    pub info: RecordingInfo,
+    pub info: StoreInfo,
 }
 
 /// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RecordingInfo {
+pub struct StoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: ApplicationId,
 
@@ -271,8 +271,8 @@ pub struct RecordingInfo {
     pub store_kind: StoreKind,
 }
 
-impl RecordingInfo {
-    /// Whether this `RecordingInfo` is the default used when a user is not explicitly
+impl StoreInfo {
+    /// Whether this `StoreInfo` is the default used when a user is not explicitly
     /// creating their own blueprint.
     pub fn is_app_default_blueprint(&self) -> bool {
         self.application_id.as_str() == self.store_id.as_str()

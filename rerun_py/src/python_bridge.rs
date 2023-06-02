@@ -320,14 +320,14 @@ impl std::ops::Deref for PyRecordingStream {
 #[pyfunction]
 fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
-        .recording_info()
+        .store_info()
         .map(|info| info.application_id.to_string())
 }
 
 #[pyfunction]
 fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
-        .recording_info()
+        .store_info()
         .map(|info| info.store_id.to_string())
 }
 
