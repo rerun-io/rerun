@@ -1,7 +1,6 @@
 use std::any::{Any, TypeId};
 
 use ahash::HashMap;
-use re_log_types::ComponentName;
 
 use crate::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, SpaceViewState, ViewerContext};
 
@@ -197,10 +196,11 @@ pub trait SceneElement: Any {
 
 /// TODO: Doc
 pub trait SceneContext: Any {
-    /// Scene contexts query loose components instead of archetypes in their populate method.
+    /// Each scene context may query several archetypes.
     ///
     /// This lists all components out that the context queries.
-    fn component_names(&self) -> Vec<ComponentName>; // TODO: Back to archetype definitions?
+    /// A context may also query no archetypes at all and prepare caches or viewer related data instead.
+    fn archetypes(&self) -> Vec<ArchetypeDefinition>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
     fn populate(

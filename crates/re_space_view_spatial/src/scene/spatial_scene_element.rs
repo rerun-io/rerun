@@ -13,7 +13,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
 use crate::{scene::EntityDepthOffsets, TransformContext};
 
-use super::contexts::AnnotationSceneContext;
+use super::contexts::{AnnotationSceneContext, SharedRenderBuilders};
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
@@ -21,6 +21,7 @@ pub struct SpatialSceneEntityContext<'a> {
     pub depth_offset: DepthOffset,
     pub annotations: Arc<Annotations>,
     pub highlight: &'a SpaceViewOutlineMasks,
+    pub shared_render_builders: &'a SharedRenderBuilders,
 }
 
 /// Reference to all context objects of a spatial scene.
@@ -28,6 +29,7 @@ pub struct SpatialSceneContext<'a> {
     pub transforms: &'a TransformContext,
     pub depth_offsets: &'a EntityDepthOffsets,
     pub annotations: &'a AnnotationSceneContext,
+    pub shared_render_builders: &'a SharedRenderBuilders,
     pub highlights: &'a SpaceViewHighlights, // Not part of the context collection, but convenient to have here.
 }
 
@@ -40,6 +42,7 @@ impl<'a> SpatialSceneContext<'a> {
             transforms: contexts.get::<TransformContext>()?,
             depth_offsets: contexts.get::<EntityDepthOffsets>()?,
             annotations: contexts.get::<AnnotationSceneContext>()?,
+            shared_render_builders: contexts.get::<SharedRenderBuilders>()?,
             highlights,
         })
     }
@@ -57,6 +60,7 @@ impl<'a> SpatialSceneContext<'a> {
                 .get(&ent_path.hash())
                 .unwrap_or(&default_depth_offset),
             annotations: self.annotations.0.find(ent_path),
+            shared_render_builders: self.shared_render_builders,
             highlight: self.highlights.entity_outline_mask(ent_path.hash()),
         })
     }

@@ -1,13 +1,13 @@
-use re_components::DrawOrder;
-use re_log_types::{Component, ComponentName};
-use re_viewer_context::{AnnotationMap, SceneContext};
+use re_components::AnnotationContext;
+use re_log_types::Component;
+use re_viewer_context::{AnnotationMap, ArchetypeDefinition, SceneContext};
 
 #[derive(Default)]
 pub struct AnnotationSceneContext(pub AnnotationMap);
 
 impl SceneContext for AnnotationSceneContext {
-    fn component_names(&self) -> Vec<ComponentName> {
-        vec![DrawOrder::name()]
+    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
+        vec![vec1::vec1![AnnotationContext::name()]]
     }
 
     fn populate(

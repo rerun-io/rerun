@@ -3,8 +3,8 @@ use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
 use re_components::{DisconnectedSpace, Pinhole, Transform3D};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
-use re_log_types::{Component, ComponentName, EntityPathHash};
-use re_viewer_context::SceneContext;
+use re_log_types::{Component, EntityPathHash};
+use re_viewer_context::{ArchetypeDefinition, SceneContext};
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -84,11 +84,11 @@ impl std::fmt::Display for UnreachableTransform {
 }
 
 impl SceneContext for TransformContext {
-    fn component_names(&self) -> Vec<ComponentName> {
+    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         vec![
-            Transform3D::name(),
-            Pinhole::name(),
-            DisconnectedSpace::name(),
+            vec1::vec1![Transform3D::name()],
+            vec1::vec1![Pinhole::name()],
+            vec1::vec1![DisconnectedSpace::name()],
         ]
     }
 

@@ -8,11 +8,10 @@ use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
 use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
-    auto_color, AnnotationMap, Annotations, EmptySpaceViewState, Scene, SceneQuery, ViewerContext,
+    auto_color, AnnotationMap, EmptySpaceViewState, Scene, SceneQuery, ViewerContext,
 };
 
 use super::SpatialNavigationMode;
-use crate::scene::contexts::AnnotationSceneContext;
 use crate::scene::spatial_scene_element::{SpatialSceneContext, SpatialSceneElement};
 use crate::{mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D};
 
@@ -24,6 +23,7 @@ mod spatial_scene_element;
 
 pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
+use self::spatial_scene_element::SpatialSceneEntityContext;
 use elements::ScenePart;
 
 use contexts::EntityDepthOffsets;
@@ -158,9 +158,10 @@ impl SceneSpatial {
         // TODO(andreas): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {
             contexts: (
-                EntityDepthOffsets::default(),
-                TransformContext::default(),
-                AnnotationSceneContext::default(),
+                contexts::EntityDepthOffsets::default(),
+                contexts::TransformContext::default(),
+                contexts::AnnotationSceneContext::default(),
+                contexts::SharedRenderBuilders::default(),
             )
                 .into(),
             elements: (
@@ -196,6 +197,30 @@ impl SceneSpatial {
         if let Ok(points3d) = scene.elements.get_mut::<elements::Points3DSceneElement>() {
             self.ui.labels.append(&mut points3d.ui_labels);
         }
+        if let Ok(shared_render_builders) =
+            scene.contexts.get_mut::<contexts::SharedRenderBuilders>()
+        {
+            self.draw_data
+                .extend(shared_render_builders.lines.take().and_then(|l| {
+                    match l.into_inner().to_draw_data(ctx.render_ctx) {
+                        Ok(d) => Some(d.into()),
+                        Err(err) => {
+                            re_log::error_once!("Failed to build line strip draw data: {err}");
+                            None
+                        }
+                    }
+                }));
+            self.draw_data
+                .extend(shared_render_builders.points.take().and_then(|l| {
+                    match l.into_inner().to_draw_data(ctx.render_ctx) {
+                        Ok(d) => Some(d.into()),
+                        Err(err) => {
+                            re_log::error_once!("Failed to build point draw data: {err}");
+                            None
+                        }
+                    }
+                }));
+        }
 
         self.scene = scene;
     }
@@ -225,18 +250,22 @@ impl SceneSpatial {
 }
 
 pub fn load_keypoint_connections(
-    line_builder: &mut re_renderer::LineStripSeriesBuilder,
+    ent_context: &SpatialSceneEntityContext<'_>,
     entity_path: &re_data_store::EntityPath,
     keypoints: Keypoints,
-    annotations: &Arc<Annotations>,
 ) {
+    if keypoints.is_empty() {
+        return;
+    }
+
     // Generate keypoint connections if any.
+    let mut line_builder = ent_context.shared_render_builders.lines();
     let mut line_batch = line_builder
         .batch("keypoint connections")
         .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
     for ((class_id, _time), keypoints_in_class) in keypoints {
-        let Some(class_description) = annotations.context.class_map.get(&class_id) else {
+        let Some(class_description) = ent_context.annotations.context.class_map.get(&class_id) else {
             continue;
         };
 

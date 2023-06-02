@@ -4,14 +4,12 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::ComponentName;
 use re_query::{EntityView, QueryError};
-use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder};
 use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::scene::{
     elements::{
         instance_key_to_picking_id, instance_path_hash_for_picking,
-        process_annotations_and_keypoints, process_colors, process_radii, try_add_line_draw_data,
-        try_add_point_draw_data,
+        process_annotations_and_keypoints, process_colors, process_radii,
     },
     load_keypoint_connections,
     spatial_scene_element::{SpatialSceneContext, SpatialSceneElement, SpatialSceneEntityContext},
@@ -73,8 +71,6 @@ impl Points3DSceneElement {
         entity_view: &EntityView<Point3D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-        point_builder: &mut PointCloudBuilder,
-        line_builder: &mut re_renderer::LineStripSeriesBuilder,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
@@ -114,6 +110,7 @@ impl Points3DSceneElement {
         }
 
         {
+            let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
                 .batch("3d points")
                 .world_from_obj(ent_context.world_from_obj)
@@ -161,7 +158,7 @@ impl Points3DSceneElement {
             }
         }
 
-        load_keypoint_connections(line_builder, ent_path, keypoints, &ent_context.annotations);
+        load_keypoint_connections(ent_context, ent_path, keypoints);
 
         Ok(())
     }
@@ -190,29 +187,16 @@ impl SpatialSceneElement<7> for Points3DSceneElement {
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points3DPart");
 
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
-        let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx);
-
         Self::for_each_entity_view(
             ctx,
             query,
             &context,
             context.depth_offsets.points,
             |ent_path, entity_view, ent_context| {
-                self.process_entity_view(
-                    query,
-                    &entity_view,
-                    ent_path,
-                    ent_context,
-                    &mut point_builder,
-                    &mut line_builder,
-                )
+                self.process_entity_view(query, &entity_view, ent_path, ent_context)
             },
         );
 
-        let mut draw_data_list = Vec::new();
-        try_add_point_draw_data(ctx.render_ctx, point_builder, &mut draw_data_list);
-        try_add_line_draw_data(ctx.render_ctx, line_builder, &mut draw_data_list);
-        draw_data_list
+        Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 }
