@@ -1,14 +1,12 @@
 use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
-use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::store_db::StoreDb;
-use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, StoreId, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
@@ -21,7 +19,6 @@ use re_viewport::ViewportState;
 
 use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics, StoreHub};
 
-#[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -83,21 +80,21 @@ pub struct App {
     build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,
     ram_limit_warner: re_memory::RamLimitWarner,
-    re_ui: re_ui::ReUi,
-    screenshotter: crate::screenshotter::Screenshotter,
+    pub(crate) re_ui: re_ui::ReUi,
+    pub(crate) screenshotter: crate::screenshotter::Screenshotter,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx: Receiver<LogMsg>,
+    pub(crate) rx: Receiver<LogMsg>,
 
     /// Where the recordings and blueprints are stored.
-    store_hub: crate::StoreHub,
+    pub(crate) store_hub: crate::StoreHub,
 
     /// What is serialized
-    state: AppState,
+    pub(crate) state: AppState,
 
     /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
@@ -108,13 +105,13 @@ pub struct App {
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 
-    latest_queue_interest: web_time::Instant,
+    pub(crate) latest_queue_interest: web_time::Instant,
 
     /// Measures how long a frame takes to paint
-    frame_time_history: egui::util::History<f32>,
+    pub(crate) frame_time_history: egui::util::History<f32>,
 
     /// Commands to run at the end of the frame.
-    pending_commands: Vec<Command>,
+    pub(crate) pending_commands: Vec<Command>,
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
@@ -214,6 +211,10 @@ impl App {
         self.state.profiler = profiler;
     }
 
+    pub fn build_info(&self) -> &re_build_info::BuildInfo {
+        &self.build_info
+    }
+
     /// Adds a new space view class to the viewer.
     pub fn add_space_view_class(
         &mut self,
@@ -270,9 +271,8 @@ impl App {
             })
     }
 
-    /// Returns whether a promise with the given name is currently running.
-    pub fn promise_exists(&mut self, name: impl AsRef<str>) -> bool {
-        self.pending_promises.contains_key(name.as_ref())
+    pub fn is_file_save_in_progress(&self) -> bool {
+        self.pending_promises.contains_key(FILE_SAVER_PROMISE)
     }
 
     fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
@@ -281,8 +281,8 @@ impl App {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
+    /// Currently selected section of time, if any.
+    pub fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
         self.state.selected_rec_id.as_ref().and_then(|rec_id| {
             self.state
                 .recording_configs
@@ -459,7 +459,8 @@ impl App {
         }
     }
 
-    fn selected_app_id(&self) -> ApplicationId {
+    /// The app ID of active blueprint.
+    pub fn selected_app_id(&self) -> ApplicationId {
         self.store_db()
             .and_then(|store_db| {
                 store_db
@@ -645,7 +646,7 @@ impl eframe::App for App {
 
                 warning_panel(&self.re_ui, ui, frame);
 
-                top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
+                crate::top_panel::top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
 
                 self.memory_panel_ui(
                     ui,
@@ -1016,8 +1017,8 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
-    /// Do we have an open `StoreDb` that is non-empty?
-    fn store_db_is_nonempty(&self) -> bool {
+    /// Do we have an open [`StoreDb`] that is non-empty?
+    pub(crate) fn store_db_is_nonempty(&self) -> bool {
         self.store_db()
             .map_or(false, |store_db| !store_db.is_empty())
     }
@@ -1060,7 +1061,7 @@ impl App {
         if let Some(file) = egui_ctx.input(|i| i.raw.dropped_files.first().cloned()) {
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
-                if let Some(rrd) = load_file_contents(&file.name, &mut bytes) {
+                if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
                     self.on_rrd_loaded(rrd);
 
                     #[allow(clippy::needless_return)] // false positive on wasm32
@@ -1070,7 +1071,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
-                if let Some(rrd) = load_file_path(path) {
+                if let Some(rrd) = crate::loading::load_file_path(path) {
                     self.on_rrd_loaded(rrd);
                 }
             }
@@ -1113,32 +1114,23 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
 
 // ------------------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-enum PanelSelection {
-    #[default]
-    Viewport,
-}
-
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-struct AppState {
+pub(crate) struct AppState {
     /// Global options for the whole viewer.
-    app_options: AppOptions,
+    pub(crate) app_options: AppOptions,
 
     /// Things that need caching.
     #[serde(skip)]
     cache: Caches,
 
     #[serde(skip)]
-    selected_rec_id: Option<StoreId>,
+    pub(crate) selected_rec_id: Option<StoreId>,
     #[serde(skip)]
-    selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
+    pub(crate) selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
 
     /// Configuration for the current recording (found in [`StoreDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
-
-    /// Which view panel is currently being shown
-    panel_selection: PanelSelection,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
@@ -1174,7 +1166,6 @@ impl AppState {
             selected_rec_id: _,
             selected_blueprint_by_app: _,
             recording_configs,
-            panel_selection,
             selection_panel,
             time_panel,
             #[cfg(not(target_arch = "wasm32"))]
@@ -1211,10 +1202,8 @@ impl AppState {
 
         egui::CentralPanel::default()
             .frame(central_panel_frame)
-            .show_inside(ui, |ui| match *panel_selection {
-                PanelSelection::Viewport => {
-                    blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
-                }
+            .show_inside(ui, |ui| {
+                blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
             });
 
         {
@@ -1267,407 +1256,6 @@ fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Fra
     }
 }
 
-fn top_panel(
-    blueprint: &Blueprint,
-    ui: &mut egui::Ui,
-    frame: &mut eframe::Frame,
-    app: &mut App,
-    gpu_resource_stats: &WgpuResourcePoolStatistics,
-) {
-    re_tracing::profile_function!();
-
-    let native_pixels_per_point = frame.info().native_pixels_per_point;
-    let fullscreen = {
-        #[cfg(target_arch = "wasm32")]
-        {
-            false
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            frame.info().window_info.fullscreen
-        }
-    };
-    let style_like_web = app.screenshotter.is_screenshotting();
-    let top_bar_style =
-        app.re_ui
-            .top_bar_style(native_pixels_per_point, fullscreen, style_like_web);
-
-    egui::TopBottomPanel::top("top_bar")
-        .frame(app.re_ui.top_panel_frame())
-        .exact_height(top_bar_style.height)
-        .show_inside(ui, |ui| {
-            let _response = egui::menu::bar(ui, |ui| {
-                ui.set_height(top_bar_style.height);
-                ui.add_space(top_bar_style.indent);
-
-                top_bar_ui(blueprint, ui, frame, app, gpu_resource_stats);
-            })
-            .response;
-
-            #[cfg(not(target_arch = "wasm32"))]
-            if !re_ui::NATIVE_WINDOW_BAR {
-                let title_bar_response = _response.interact(egui::Sense::click());
-                if title_bar_response.double_clicked() {
-                    frame.set_maximized(!frame.info().window_info.maximized);
-                } else if title_bar_response.is_pointer_button_down_on() {
-                    frame.drag_window();
-                }
-            }
-        });
-}
-
-fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
-    // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
-    let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
-    let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
-
-    let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
-    let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
-    let texture_id = icon_image.texture_id(ui.ctx());
-
-    ui.menu_image_button(texture_id, image_size, |ui| {
-        ui.set_min_width(220.0);
-        let spacing = 12.0;
-
-        ui.menu_button("About", |ui| about_rerun_ui(ui, &app.build_info));
-
-        main_view_selector_ui(ui, app);
-
-        ui.add_space(spacing);
-
-        Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
-
-        ui.add_space(spacing);
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            Command::Open.menu_button_ui(ui, &mut app.pending_commands);
-
-            save_buttons_ui(ui, app);
-
-            ui.add_space(spacing);
-
-            // On the web the browser controls the zoom
-            let zoom_factor = app.state.app_options.zoom_factor;
-            ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
-                .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
-            Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
-            Command::ZoomOut.menu_button_ui(ui, &mut app.pending_commands);
-            ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
-                Command::ZoomReset.menu_button_ui(ui, &mut app.pending_commands)
-            });
-
-            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
-
-            ui.add_space(spacing);
-        }
-
-        {
-            Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
-
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
-
-            Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
-        }
-
-        ui.add_space(spacing);
-
-        ui.menu_button("Recordings", |ui| {
-            recordings_menu(ui, app);
-        });
-
-        ui.menu_button("Blueprints", |ui| {
-            blueprints_menu(ui, app);
-        });
-
-        ui.menu_button("Options", |ui| {
-            options_menu_ui(ui, frame, &mut app.state.app_options);
-        });
-
-        ui.add_space(spacing);
-        ui.hyperlink_to(
-            "Help",
-            "https://www.rerun.io/docs/getting-started/viewer-walkthrough",
-        );
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            ui.add_space(spacing);
-            Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
-        }
-    });
-}
-
-fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
-    let re_build_info::BuildInfo {
-        crate_name,
-        version,
-        rustc_version,
-        llvm_version,
-        git_hash,
-        git_branch: _,
-        is_in_rerun_workspace: _,
-        target_triple,
-        datetime,
-    } = *build_info;
-
-    ui.style_mut().wrap = Some(false);
-
-    let rustc_version = if rustc_version.is_empty() {
-        "unknown"
-    } else {
-        rustc_version
-    };
-
-    let llvm_version = if llvm_version.is_empty() {
-        "unknown"
-    } else {
-        llvm_version
-    };
-
-    let short_git_hash = &git_hash[..std::cmp::min(git_hash.len(), 7)];
-
-    ui.label(format!(
-        "{crate_name} {version} ({short_git_hash})\n\
-        {target_triple}\n\
-        rustc {rustc_version}\n\
-        LLVM {llvm_version}\n\
-        Built {datetime}",
-    ));
-
-    ui.add_space(12.0);
-    ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
-}
-
-fn top_bar_ui(
-    blueprint: &Blueprint,
-    ui: &mut egui::Ui,
-    frame: &mut eframe::Frame,
-    app: &mut App,
-    gpu_resource_stats: &WgpuResourcePoolStatistics,
-) {
-    rerun_menu_button_ui(ui, frame, app);
-
-    if app.state.app_options.show_metrics {
-        ui.separator();
-        frame_time_label_ui(ui, app);
-        memory_use_label_ui(ui, gpu_resource_stats);
-        input_latency_label_ui(ui, app);
-    }
-
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
-            ui.add_space(8.0);
-            #[cfg(not(target_arch = "wasm32"))]
-            re_ui::native_window_buttons_ui(frame, ui);
-            ui.separator();
-        } else {
-            // Make the first button the same distance form the side as from the top,
-            // no matter how high the top bar is.
-            let extra_margin = (ui.available_height() - 24.0) / 2.0;
-            ui.add_space(extra_margin);
-        }
-
-        let mut selection_panel_expanded = blueprint.selection_panel_expanded;
-        if app
-            .re_ui
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                &mut selection_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Selection View{}",
-                Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app.pending_commands.push(Command::ToggleSelectionPanel);
-        }
-
-        let mut time_panel_expanded = blueprint.time_panel_expanded;
-        if app
-            .re_ui
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                &mut time_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Timeline View{}",
-                Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app.pending_commands.push(Command::ToggleTimePanel);
-        }
-
-        let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
-        if app
-            .re_ui
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::LEFT_PANEL_TOGGLE,
-                &mut blueprint_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Blueprint View{}",
-                Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app.pending_commands.push(Command::ToggleBlueprintPanel);
-        }
-
-        if cfg!(debug_assertions) && app.state.app_options.show_metrics {
-            ui.vertical_centered(|ui| {
-                ui.style_mut().wrap = Some(false);
-                ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
-                egui::warn_if_debug_build(ui);
-            });
-        }
-    });
-}
-
-fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
-    if let Some(frame_time) = app.frame_time_history.average() {
-        let ms = frame_time * 1e3;
-
-        let visuals = ui.visuals();
-        let color = if ms < 15.0 {
-            visuals.weak_text_color()
-        } else {
-            visuals.warn_fg_color
-        };
-
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-        let text = format!("{ms:.1} ms");
-        ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
-    }
-}
-
-fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
-    const CODE: &str = "use re_memory::AccountingAllocator;\n\
-                        #[global_allocator]\n\
-                        static GLOBAL: AccountingAllocator<std::alloc::System> =\n    \
-                            AccountingAllocator::new(std::alloc::System);";
-
-    fn click_to_copy(
-        ui: &mut egui::Ui,
-        text: impl Into<String>,
-        add_contents_on_hover: impl FnOnce(&mut egui::Ui),
-    ) {
-        #[allow(clippy::blocks_in_if_conditions)]
-        let text = text.into();
-        if ui
-            .add(
-                egui::Label::new(
-                    egui::RichText::new(text)
-                        .monospace()
-                        .color(ui.visuals().weak_text_color()),
-                )
-                .sense(egui::Sense::click()),
-            )
-            .on_hover_ui(|ui| add_contents_on_hover(ui))
-            .clicked()
-        {
-            ui.ctx().output_mut(|o| o.copied_text = CODE.to_owned());
-        }
-    }
-
-    let mem = re_memory::MemoryUse::capture();
-
-    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-
-        let bytes_used_text = re_format::format_bytes(count.size as _);
-        ui.label(
-            egui::RichText::new(&bytes_used_text)
-                .monospace()
-                .color(ui.visuals().weak_text_color()),
-        )
-        .on_hover_text(format!(
-            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
-            plus {} of GPU memory in {} textures and {} buffers.",
-            bytes_used_text,
-            format_number(count.count),
-            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-            format_number(gpu_resource_stats.num_textures),
-            format_number(gpu_resource_stats.num_buffers),
-        ));
-    } else if let Some(rss) = mem.resident {
-        let bytes_used_text = re_format::format_bytes(rss as _);
-        click_to_copy(ui, &bytes_used_text, |ui| {
-            ui.label(format!(
-                "Rerun Viewer is using {} of Resident memory (RSS),\n\
-                plus {} of GPU memory in {} textures and {} buffers.",
-                bytes_used_text,
-                re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-                format_number(gpu_resource_stats.num_textures),
-                format_number(gpu_resource_stats.num_buffers),
-            ));
-            ui.label(
-                "To get more accurate memory reportings, consider configuring your Rerun \n\
-                 viewer to use an AccountingAllocator by adding the following to your \n\
-                 code's main entrypoint:",
-            );
-            ui.code(CODE);
-            ui.label("(click to copy to clipboard)");
-        });
-    } else {
-        click_to_copy(ui, "N/A MiB", |ui| {
-            ui.label(
-                "The Rerun viewer was not configured to run with an AccountingAllocator,\n\
-                consider adding the following to your code's main entrypoint:",
-            );
-            ui.code(CODE);
-            ui.label("(click to copy to clipboard)");
-        });
-    }
-}
-
-fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
-    // TODO(emilk): it would be nice to know if the network stream is still open
-    let is_latency_interesting = app.rx.source().is_network();
-
-    let queue_len = app.rx.len();
-
-    // empty queue == unreliable latency
-    let latency_sec = app.rx.latency_ns() as f32 / 1e9;
-    if queue_len > 0
-        && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
-    {
-        // we use this to avoid flicker
-        app.latest_queue_interest = web_time::Instant::now();
-    }
-
-    if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
-        ui.separator();
-        if is_latency_interesting {
-            let text = format!(
-                "Latency: {:.2}s, queue: {}",
-                latency_sec,
-                format_number(queue_len),
-            );
-            let hover_text =
-                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
-                    This latency does NOT include network latency.";
-
-            if latency_sec < app.state.app_options.warn_latency {
-                ui.weak(text).on_hover_text(hover_text);
-            } else {
-                ui.label(app.re_ui.warning_text(text))
-                    .on_hover_text(hover_text);
-            }
-        } else {
-            ui.weak(format!("Queue: {}", format_number(queue_len)))
-                .on_hover_text("Number of messages in the inbound queue");
-        }
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
@@ -1675,8 +1263,7 @@ const FILE_SAVER_PROMISE: &str = "file_saver";
 fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     use std::path::PathBuf;
 
-    let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
-    if file_save_in_progress {
+    if app.is_file_save_in_progress() {
         // There's already a file save running in the background.
 
         if let Some(res) = app.poll_promise::<anyhow::Result<PathBuf>>(FILE_SAVER_PROMISE) {
@@ -1709,54 +1296,41 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     }
 }
 
-// TODO(emilk): support saving data on web
-#[cfg(not(target_arch = "wasm32"))]
-fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
-    let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+fn recording_config_entry<'cfgs>(
+    configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
+    id: StoreId,
+    data_source: &'_ re_smart_channel::SmartChannelSource,
+    store_db: &'_ StoreDb,
+) -> &'cfgs mut RecordingConfig {
+    configs
+        .entry(id)
+        .or_insert_with(|| new_recording_confg(data_source, store_db))
+}
 
-    let save_button = Command::Save.menu_button(ui.ctx());
-    let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
+fn new_recording_confg(
+    data_source: &'_ re_smart_channel::SmartChannelSource,
+    store_db: &'_ StoreDb,
+) -> RecordingConfig {
+    let play_state = match data_source {
+        // Play files from the start by default - it feels nice and alive./
+        // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
+        re_smart_channel::SmartChannelSource::Files { .. }
+        | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
+        | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 
-    if file_save_in_progress {
-        ui.add_enabled_ui(false, |ui| {
-            ui.horizontal(|ui| {
-                ui.add(save_button);
-                ui.spinner();
-            });
-            ui.horizontal(|ui| {
-                ui.add(save_selection_button);
-                ui.spinner();
-            });
-        });
-    } else {
-        ui.add_enabled_ui(app.store_db_is_nonempty(), |ui| {
-            if ui
-                .add(save_button)
-                .on_hover_text("Save all data to a Rerun data file (.rrd)")
-                .clicked()
-            {
-                ui.close_menu();
-                app.pending_commands.push(Command::Save);
-            }
+        // Live data - follow it!
+        re_smart_channel::SmartChannelSource::Sdk
+        | re_smart_channel::SmartChannelSource::WsClient { .. }
+        | re_smart_channel::SmartChannelSource::TcpServer { .. } => PlayState::Following,
+    };
 
-            // We need to know the loop selection _before_ we can even display the
-            // button, as this will determine whether its grayed out or not!
-            // TODO(cmc): In practice the loop (green) selection is always there
-            // at the moment so...
-            let loop_selection = app.loop_selection();
+    let mut rec_cfg = RecordingConfig::default();
 
-            if ui
-                .add_enabled(loop_selection.is_some(), save_selection_button)
-                .on_hover_text(
-                    "Save data for the current loop selection to a Rerun data file (.rrd)",
-                )
-                .clicked()
-            {
-                ui.close_menu();
-                app.pending_commands.push(Command::SaveSelection);
-            }
-        });
-    }
+    rec_cfg
+        .time_ctrl
+        .set_play_state(store_db.times_per_timeline(), play_state);
+
+    rec_cfg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1765,7 +1339,7 @@ fn open(app: &mut App) {
         .add_filter("rerun data file", &["rrd"])
         .pick_file()
     {
-        if let Some(store_db) = load_file_path(&path) {
+        if let Some(store_db) = crate::loading::load_file_path(&path) {
             app.on_rrd_loaded(store_db);
         }
     }
@@ -1803,266 +1377,6 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         }
     }
 }
-
-fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
-    if app.store_db_is_nonempty() {
-        ui.horizontal(|ui| {
-            ui.label("Main view:");
-            if ui
-                .selectable_value(
-                    &mut app.state.panel_selection,
-                    PanelSelection::Viewport,
-                    "Viewport",
-                )
-                .clicked()
-            {
-                ui.close_menu();
-            }
-        });
-    }
-}
-
-fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
-    let store_dbs = app
-        .store_hub
-        .recordings()
-        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
-        .collect_vec();
-
-    if store_dbs.is_empty() {
-        ui.weak("(empty)");
-        return;
-    }
-
-    ui.style_mut().wrap = Some(false);
-    for store_db in &store_dbs {
-        let info = if let Some(store_info) = store_db.store_info() {
-            format!(
-                "{} - {}",
-                store_info.application_id,
-                store_info.started.format()
-            )
-        } else {
-            "<UNKNOWN>".to_owned()
-        };
-        if ui
-            .radio(
-                app.state.selected_rec_id.as_ref() == Some(store_db.store_id()),
-                info,
-            )
-            .clicked()
-        {
-            app.state.selected_rec_id = Some(store_db.store_id().clone());
-        }
-    }
-}
-
-fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
-    let app_id = app.selected_app_id();
-    let blueprint_dbs = app
-        .store_hub
-        .blueprints()
-        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
-        .filter(|log| {
-            log.store_info()
-                .map_or(false, |ri| ri.application_id == app_id)
-        })
-        .collect_vec();
-
-    if blueprint_dbs.is_empty() {
-        ui.weak("(empty)");
-        return;
-    }
-
-    ui.style_mut().wrap = Some(false);
-    for store_db in blueprint_dbs
-        .iter()
-        .filter(|log| log.store_kind() == StoreKind::Blueprint)
-    {
-        let info = if let Some(store_info) = store_db.store_info() {
-            if store_info.is_app_default_blueprint() {
-                format!("{} - Default Blueprint", store_info.application_id,)
-            } else {
-                format!(
-                    "{} - {}",
-                    store_info.application_id,
-                    store_info.started.format()
-                )
-            }
-        } else {
-            "<UNKNOWN>".to_owned()
-        };
-        if ui
-            .radio(
-                app.state.selected_blueprint_by_app.get(&app_id) == Some(store_db.store_id()),
-                info,
-            )
-            .clicked()
-        {
-            app.state
-                .selected_blueprint_by_app
-                .insert(app_id.clone(), store_db.store_id().clone());
-        }
-    }
-}
-
-fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut AppOptions) {
-    ui.style_mut().wrap = Some(false);
-
-    if ui
-        .checkbox(&mut options.show_metrics, "Show performance metrics")
-        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar.")
-        .clicked()
-    {
-        ui.close_menu();
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        if ui
-            .checkbox(&mut options.experimental_space_view_screenshots, "(experimental) Space View screenshots")
-            .on_hover_text("Allow taking screenshots of 2D & 3D space views via their context menu. Does not contain labels.")
-            .clicked()
-        {
-            ui.close_menu();
-        }
-    }
-
-    #[cfg(debug_assertions)]
-    {
-        ui.separator();
-        ui.label("Debug:");
-
-        egui_debug_options_ui(ui);
-        ui.separator();
-        debug_menu_options_ui(ui, options, _frame);
-    }
-}
-
-#[cfg(debug_assertions)]
-fn egui_debug_options_ui(ui: &mut egui::Ui) {
-    let mut debug = ui.style().debug;
-    let mut any_clicked = false;
-
-    any_clicked |= ui
-        .checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
-        .on_hover_text("However over widgets to see their rectangles")
-        .changed();
-    any_clicked |= ui
-        .checkbox(&mut debug.show_expand_width, "Show expand width")
-        .on_hover_text("Show which widgets make their parent wider")
-        .changed();
-    any_clicked |= ui
-        .checkbox(&mut debug.show_expand_height, "Show expand height")
-        .on_hover_text("Show which widgets make their parent higher")
-        .changed();
-    any_clicked |= ui.checkbox(&mut debug.show_resize, "Show resize").changed();
-    any_clicked |= ui
-        .checkbox(
-            &mut debug.show_interactive_widgets,
-            "Show interactive widgets",
-        )
-        .on_hover_text("Show an overlay on all interactive widgets.")
-        .changed();
-
-    // This option currently causes the viewer to hang.
-    // any_clicked |= ui
-    //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
-    //     .on_hover_text("Show what widget blocks the interaction of another widget.")
-    //     .changed();
-
-    if any_clicked {
-        let mut style = (*ui.ctx().style()).clone();
-        style.debug = debug;
-        ui.ctx().set_style(style);
-    }
-}
-
-#[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui, options: &mut AppOptions, _frame: &mut eframe::Frame) {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        if ui.button("Mobile size").clicked() {
-            // frame.set_window_size(egui::vec2(375.0, 812.0)); // iPhone 12 mini
-            _frame.set_window_size(egui::vec2(375.0, 667.0)); //  iPhone SE 2nd gen
-            _frame.set_fullscreen(false);
-            ui.close_menu();
-        }
-        ui.separator();
-    }
-
-    if ui.button("Log info").clicked() {
-        re_log::info!("Logging some info");
-    }
-
-    ui.checkbox(
-        &mut options.show_picking_debug_overlay,
-        "Picking Debug Overlay",
-    )
-    .on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
-
-    ui.menu_button("Crash", |ui| {
-        #[allow(clippy::manual_assert)]
-        if ui.button("panic!").clicked() {
-            panic!("Intentional panic");
-        }
-
-        if ui.button("panic! during unwind").clicked() {
-            struct PanicOnDrop {}
-
-            impl Drop for PanicOnDrop {
-                fn drop(&mut self) {
-                    panic!("Second intentional panic in Drop::drop");
-                }
-            }
-
-            let _this_will_panic_when_dropped = PanicOnDrop {};
-            panic!("First intentional panic");
-        }
-
-        if ui.button("SEGFAULT").clicked() {
-            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
-
-            /// This is the fixed address used to generate a segfault. It's possible that
-            /// this address can be mapped and writable by the your process in which case a
-            /// crash may not occur
-            #[cfg(target_pointer_width = "64")]
-            pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
-            #[cfg(target_pointer_width = "32")]
-            pub const SEGFAULT_ADDRESS: u32 = 0x42;
-
-            let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
-            #[allow(unsafe_code)]
-            // SAFETY: this is not safe. We are _trying_ to crash.
-            unsafe {
-                std::ptr::write_volatile(bad_ptr, 1);
-            }
-        }
-
-        if ui.button("Stack overflow").clicked() {
-            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
-            fn recurse(data: u64) -> u64 {
-                let mut buff = [0u8; 256];
-                buff[..9].copy_from_slice(b"junk data");
-
-                let mut result = data;
-                for c in buff {
-                    result += c as u64;
-                }
-
-                if result == 0 {
-                    result
-                } else {
-                    recurse(result) + 1
-                }
-            }
-
-            recurse(42);
-        }
-    });
-}
-
-// ---
 
 /// Returns a closure that, when run, will save the contents of the current database
 /// to disk, at the specified `path`.
@@ -2125,99 +1439,4 @@ fn save_database_to_file(
             .map(|_| path)
             .context("Message encode")
     })
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[must_use]
-fn load_file_path(path: &std::path::Path) -> Option<StoreHub> {
-    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<StoreHub> {
-        re_tracing::profile_function!();
-        use anyhow::Context as _;
-        let file = std::fs::File::open(path).context("Failed to open file")?;
-        StoreHub::from_rrd(file)
-    }
-
-    re_log::info!("Loading {path:?}…");
-
-    match load_file_path_impl(path) {
-        Ok(mut rrd) => {
-            re_log::info!("Loaded {path:?}");
-            for store_db in rrd.store_dbs_mut() {
-                store_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
-                    paths: vec![path.into()],
-                });
-            }
-            Some(rrd)
-        }
-        Err(err) => {
-            let msg = format!("Failed loading {path:?}: {}", re_error::format(&err));
-            re_log::error!("{msg}");
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_description(&msg)
-                .show();
-            None
-        }
-    }
-}
-
-#[must_use]
-fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<StoreHub> {
-    match StoreHub::from_rrd(read) {
-        Ok(mut rrd) => {
-            re_log::info!("Loaded {name:?}");
-            for store_db in rrd.store_dbs_mut() {
-                store_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
-                    paths: vec![name.into()],
-                });
-            }
-            Some(rrd)
-        }
-        Err(err) => {
-            let msg = format!("Failed loading {name:?}: {}", re_error::format(&err));
-            re_log::error!("{msg}");
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_description(&msg)
-                .show();
-            None
-        }
-    }
-}
-
-fn recording_config_entry<'cfgs>(
-    configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
-    id: StoreId,
-    data_source: &'_ re_smart_channel::SmartChannelSource,
-    store_db: &'_ StoreDb,
-) -> &'cfgs mut RecordingConfig {
-    configs
-        .entry(id)
-        .or_insert_with(|| new_recording_confg(data_source, store_db))
-}
-
-fn new_recording_confg(
-    data_source: &'_ re_smart_channel::SmartChannelSource,
-    store_db: &'_ StoreDb,
-) -> RecordingConfig {
-    let play_state = match data_source {
-        // Play files from the start by default - it feels nice and alive./
-        // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-        re_smart_channel::SmartChannelSource::Files { .. }
-        | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
-        | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
-
-        // Live data - follow it!
-        re_smart_channel::SmartChannelSource::Sdk
-        | re_smart_channel::SmartChannelSource::WsClient { .. }
-        | re_smart_channel::SmartChannelSource::TcpServer { .. } => PlayState::Following,
-    };
-
-    let mut rec_cfg = RecordingConfig::default();
-
-    rec_cfg
-        .time_ctrl
-        .set_play_state(store_db.times_per_timeline(), play_state);
-
-    rec_cfg
 }

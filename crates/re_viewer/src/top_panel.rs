@@ -1,0 +1,282 @@
+use re_format::format_number;
+use re_renderer::WgpuResourcePoolStatistics;
+use re_ui::Command;
+
+use crate::{ui::Blueprint, App};
+
+pub fn top_panel(
+    blueprint: &Blueprint,
+    ui: &mut egui::Ui,
+    frame: &mut eframe::Frame,
+    app: &mut App,
+    gpu_resource_stats: &WgpuResourcePoolStatistics,
+) {
+    re_tracing::profile_function!();
+
+    let native_pixels_per_point = frame.info().native_pixels_per_point;
+    let fullscreen = {
+        #[cfg(target_arch = "wasm32")]
+        {
+            false
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            frame.info().window_info.fullscreen
+        }
+    };
+    let style_like_web = app.screenshotter.is_screenshotting();
+    let top_bar_style =
+        app.re_ui
+            .top_bar_style(native_pixels_per_point, fullscreen, style_like_web);
+
+    egui::TopBottomPanel::top("top_bar")
+        .frame(app.re_ui.top_panel_frame())
+        .exact_height(top_bar_style.height)
+        .show_inside(ui, |ui| {
+            let _response = egui::menu::bar(ui, |ui| {
+                ui.set_height(top_bar_style.height);
+                ui.add_space(top_bar_style.indent);
+
+                top_bar_ui(blueprint, ui, frame, app, gpu_resource_stats);
+            })
+            .response;
+
+            #[cfg(not(target_arch = "wasm32"))]
+            if !re_ui::NATIVE_WINDOW_BAR {
+                let title_bar_response = _response.interact(egui::Sense::click());
+                if title_bar_response.double_clicked() {
+                    frame.set_maximized(!frame.info().window_info.maximized);
+                } else if title_bar_response.is_pointer_button_down_on() {
+                    frame.drag_window();
+                }
+            }
+        });
+}
+
+fn top_bar_ui(
+    blueprint: &Blueprint,
+    ui: &mut egui::Ui,
+    frame: &mut eframe::Frame,
+    app: &mut App,
+    gpu_resource_stats: &WgpuResourcePoolStatistics,
+) {
+    crate::rerun_menu::rerun_menu_button_ui(ui, frame, app);
+
+    if app.state.app_options.show_metrics {
+        ui.separator();
+        frame_time_label_ui(ui, app);
+        memory_use_label_ui(ui, gpu_resource_stats);
+        input_latency_label_ui(ui, app);
+    }
+
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
+            ui.add_space(8.0);
+            #[cfg(not(target_arch = "wasm32"))]
+            re_ui::native_window_buttons_ui(frame, ui);
+            ui.separator();
+        } else {
+            // Make the first button the same distance form the side as from the top,
+            // no matter how high the top bar is.
+            let extra_margin = (ui.available_height() - 24.0) / 2.0;
+            ui.add_space(extra_margin);
+        }
+
+        let mut selection_panel_expanded = blueprint.selection_panel_expanded;
+        if app
+            .re_ui
+            .medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                &mut selection_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Selection View{}",
+                Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
+        {
+            app.pending_commands.push(Command::ToggleSelectionPanel);
+        }
+
+        let mut time_panel_expanded = blueprint.time_panel_expanded;
+        if app
+            .re_ui
+            .medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                &mut time_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Timeline View{}",
+                Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
+        {
+            app.pending_commands.push(Command::ToggleTimePanel);
+        }
+
+        let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
+        if app
+            .re_ui
+            .medium_icon_toggle_button(
+                ui,
+                &re_ui::icons::LEFT_PANEL_TOGGLE,
+                &mut blueprint_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Blueprint View{}",
+                Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
+        {
+            app.pending_commands.push(Command::ToggleBlueprintPanel);
+        }
+
+        if cfg!(debug_assertions) && app.state.app_options.show_metrics {
+            ui.vertical_centered(|ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
+                egui::warn_if_debug_build(ui);
+            });
+        }
+    });
+}
+
+fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
+    if let Some(frame_time) = app.frame_time_history.average() {
+        let ms = frame_time * 1e3;
+
+        let visuals = ui.visuals();
+        let color = if ms < 15.0 {
+            visuals.weak_text_color()
+        } else {
+            visuals.warn_fg_color
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{ms:.1} ms");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+}
+
+fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+    const CODE: &str = "use re_memory::AccountingAllocator;\n\
+                        #[global_allocator]\n\
+                        static GLOBAL: AccountingAllocator<std::alloc::System> =\n    \
+                            AccountingAllocator::new(std::alloc::System);";
+
+    fn click_to_copy(
+        ui: &mut egui::Ui,
+        text: impl Into<String>,
+        add_contents_on_hover: impl FnOnce(&mut egui::Ui),
+    ) {
+        #[allow(clippy::blocks_in_if_conditions)]
+        let text = text.into();
+        if ui
+            .add(
+                egui::Label::new(
+                    egui::RichText::new(text)
+                        .monospace()
+                        .color(ui.visuals().weak_text_color()),
+                )
+                .sense(egui::Sense::click()),
+            )
+            .on_hover_ui(|ui| add_contents_on_hover(ui))
+            .clicked()
+        {
+            ui.ctx().output_mut(|o| o.copied_text = CODE.to_owned());
+        }
+    }
+
+    let mem = re_memory::MemoryUse::capture();
+
+    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+
+        let bytes_used_text = re_format::format_bytes(count.size as _);
+        ui.label(
+            egui::RichText::new(&bytes_used_text)
+                .monospace()
+                .color(ui.visuals().weak_text_color()),
+        )
+        .on_hover_text(format!(
+            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
+            plus {} of GPU memory in {} textures and {} buffers.",
+            bytes_used_text,
+            format_number(count.count),
+            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
+            format_number(gpu_resource_stats.num_textures),
+            format_number(gpu_resource_stats.num_buffers),
+        ));
+    } else if let Some(rss) = mem.resident {
+        let bytes_used_text = re_format::format_bytes(rss as _);
+        click_to_copy(ui, &bytes_used_text, |ui| {
+            ui.label(format!(
+                "Rerun Viewer is using {} of Resident memory (RSS),\n\
+                plus {} of GPU memory in {} textures and {} buffers.",
+                bytes_used_text,
+                re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
+                format_number(gpu_resource_stats.num_textures),
+                format_number(gpu_resource_stats.num_buffers),
+            ));
+            ui.label(
+                "To get more accurate memory reportings, consider configuring your Rerun \n\
+                 viewer to use an AccountingAllocator by adding the following to your \n\
+                 code's main entrypoint:",
+            );
+            ui.code(CODE);
+            ui.label("(click to copy to clipboard)");
+        });
+    } else {
+        click_to_copy(ui, "N/A MiB", |ui| {
+            ui.label(
+                "The Rerun viewer was not configured to run with an AccountingAllocator,\n\
+                consider adding the following to your code's main entrypoint:",
+            );
+            ui.code(CODE);
+            ui.label("(click to copy to clipboard)");
+        });
+    }
+}
+
+fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
+    // TODO(emilk): it would be nice to know if the network stream is still open
+    let is_latency_interesting = app.rx.source().is_network();
+
+    let queue_len = app.rx.len();
+
+    // empty queue == unreliable latency
+    let latency_sec = app.rx.latency_ns() as f32 / 1e9;
+    if queue_len > 0
+        && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
+    {
+        // we use this to avoid flicker
+        app.latest_queue_interest = web_time::Instant::now();
+    }
+
+    if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+        ui.separator();
+        if is_latency_interesting {
+            let text = format!(
+                "Latency: {:.2}s, queue: {}",
+                latency_sec,
+                format_number(queue_len),
+            );
+            let hover_text =
+                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    This latency does NOT include network latency.";
+
+            if latency_sec < app.state.app_options.warn_latency {
+                ui.weak(text).on_hover_text(hover_text);
+            } else {
+                ui.label(app.re_ui.warning_text(text))
+                    .on_hover_text(hover_text);
+            }
+        } else {
+            ui.weak(format!("Queue: {}", format_number(queue_len)))
+                .on_hover_text("Number of messages in the inbound queue");
+        }
+    }
+}

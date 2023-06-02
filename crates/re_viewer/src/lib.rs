@@ -6,11 +6,14 @@
 mod app;
 pub mod blueprint_components;
 pub mod env_vars;
+mod loading;
 #[cfg(not(target_arch = "wasm32"))]
 mod profiler;
 mod remote_viewer_app;
+mod rerun_menu;
 mod screenshotter;
 mod store_hub;
+mod top_panel;
 mod ui;
 mod viewer_analytics;
 
