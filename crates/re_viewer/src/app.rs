@@ -19,7 +19,7 @@ use re_viewer_context::{
 };
 use re_viewport::ViewportState;
 
-use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics, LogDbHub};
+use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics, StoreHub};
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
@@ -94,7 +94,7 @@ pub struct App {
     rx: Receiver<LogMsg>,
 
     /// Where the logs are stored.
-    log_db_hub: crate::LogDbHub,
+    store_hub: crate::StoreHub,
 
     /// What is serialized
     state: AppState,
@@ -189,7 +189,7 @@ impl App {
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
-            log_db_hub: Default::default(),
+            store_hub: Default::default(),
             state,
             pending_promises: Default::default(),
             toasts: toasts::Toasts::new(),
@@ -437,7 +437,7 @@ impl App {
         let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else { return; };
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
-        let Some(log_db) = self.log_db_hub.recording(rec_id) else { return; };
+        let Some(log_db) = self.store_hub.recording(rec_id) else { return; };
         let times_per_timeline = log_db.times_per_timeline();
 
         match command {
@@ -506,7 +506,7 @@ impl App {
         this_frame_blueprint_id: &StoreId,
         egui_ctx: &egui::Context,
     ) -> Blueprint {
-        let blueprint_db = self.log_db_hub.blueprint_entry(this_frame_blueprint_id);
+        let blueprint_db = self.store_hub.blueprint_entry(this_frame_blueprint_id);
         Blueprint::from_db(egui_ctx, blueprint_db)
     }
 }
@@ -599,13 +599,13 @@ impl eframe::App for App {
             .unwrap_or_default();
 
         let blueprint_config = self
-            .log_db_hub
+            .store_hub
             .blueprint_mut(&active_blueprint_id)
             .map(|bp_db| bp_db.entity_db.data_store.config().clone())
             .unwrap_or_default();
 
         let blueprint_stats = self
-            .log_db_hub
+            .store_hub
             .blueprint_mut(&active_blueprint_id)
             .map(|bp_db| DataStoreStats::from_store(&bp_db.entity_db.data_store))
             .unwrap_or_default();
@@ -661,7 +661,7 @@ impl eframe::App for App {
                     .state
                     .selected_rec_id
                     .as_ref()
-                    .and_then(|rec_id| self.log_db_hub.recording(rec_id))
+                    .and_then(|rec_id| self.store_hub.recording(rec_id))
                 {
                     recording_config_entry(
                         &mut self.state.recording_configs,
@@ -728,7 +728,7 @@ impl eframe::App for App {
         );
 
         // If there was a real active blueprint that came from the store, save the changes back.
-        if let Some(blueprint_db) = self.log_db_hub.blueprint_mut(&active_blueprint_id) {
+        if let Some(blueprint_db) = self.store_hub.blueprint_mut(&active_blueprint_id) {
             blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
         } else {
             // This shouldn't happen because we should have used `active_blueprint_id` to
@@ -896,7 +896,7 @@ impl App {
                 false
             };
 
-            let log_db = self.log_db_hub.log_db_entry(store_id);
+            let log_db = self.store_hub.log_db_entry(store_id);
 
             if log_db.data_source.is_none() {
                 log_db.data_source = Some(self.rx.source().clone());
@@ -923,17 +923,17 @@ impl App {
     fn cleanup(&mut self) {
         re_tracing::profile_function!();
 
-        self.log_db_hub.purge_empty();
+        self.store_hub.purge_empty();
 
         if !self
             .state
             .selected_rec_id
             .as_ref()
-            .map_or(false, |rec_id| self.log_db_hub.contains_recording(rec_id))
+            .map_or(false, |rec_id| self.store_hub.contains_recording(rec_id))
         {
             // Pick any:
             self.state.selected_rec_id = self
-                .log_db_hub
+                .store_hub
                 .recordings()
                 .next()
                 .map(|log| log.store_id().clone());
@@ -941,7 +941,7 @@ impl App {
 
         self.state
             .recording_configs
-            .retain(|store_id, _| self.log_db_hub.contains_recording(store_id));
+            .retain(|store_id, _| self.store_hub.contains_recording(store_id));
     }
 
     fn purge_memory_if_needed(&mut self) {
@@ -981,7 +981,7 @@ impl App {
                         format_bytes(counted as f64 * fraction_to_purge as f64)
                     );
                 }
-                self.log_db_hub.purge_fraction_of_ram(fraction_to_purge);
+                self.store_hub.purge_fraction_of_ram(fraction_to_purge);
                 self.state.cache.purge_memory();
             }
 
@@ -1026,16 +1026,16 @@ impl App {
         self.state
             .selected_rec_id
             .as_ref()
-            .and_then(|rec_id| self.log_db_hub.recording(rec_id))
+            .and_then(|rec_id| self.store_hub.recording(rec_id))
     }
 
-    fn on_rrd_loaded(&mut self, log_db_hub: LogDbHub) {
-        if let Some(log_db) = log_db_hub.recordings().next() {
+    fn on_rrd_loaded(&mut self, store_hub: StoreHub) {
+        if let Some(log_db) = store_hub.recordings().next() {
             self.state.selected_rec_id = Some(log_db.store_id().clone());
             self.analytics.on_open_recording(log_db);
         }
 
-        for blueprint_db in log_db_hub.blueprints() {
+        for blueprint_db in store_hub.blueprints() {
             if let Some(app_id) = blueprint_db.app_id() {
                 self.state
                     .selected_blueprint_by_app
@@ -1043,7 +1043,7 @@ impl App {
             }
         }
 
-        self.log_db_hub.append(log_db_hub);
+        self.store_hub.append(store_hub);
     }
 
     fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
@@ -1822,7 +1822,7 @@ fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
 
 fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app
-        .log_db_hub
+        .store_hub
         .recordings()
         .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
         .collect_vec();
@@ -1858,7 +1858,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
 fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
     let app_id = app.selected_app_id();
     let blueprint_dbs = app
-        .log_db_hub
+        .store_hub
         .blueprints()
         .sorted_by_key(|log_db| log_db.recording_info().map(|ri| ri.started))
         .filter(|log| {
@@ -2127,12 +2127,12 @@ fn save_database_to_file(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use]
-fn load_file_path(path: &std::path::Path) -> Option<LogDbHub> {
-    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<LogDbHub> {
+fn load_file_path(path: &std::path::Path) -> Option<StoreHub> {
+    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<StoreHub> {
         re_tracing::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
-        LogDbHub::from_rrd(file)
+        StoreHub::from_rrd(file)
     }
 
     re_log::info!("Loading {path:?}…");
@@ -2160,8 +2160,8 @@ fn load_file_path(path: &std::path::Path) -> Option<LogDbHub> {
 }
 
 #[must_use]
-fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDbHub> {
-    match LogDbHub::from_rrd(read) {
+fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<StoreHub> {
+    match StoreHub::from_rrd(read) {
         Ok(mut rrd) => {
             re_log::info!("Loaded {name:?}");
             for log_db in rrd.log_dbs_mut() {

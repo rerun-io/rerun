@@ -3,12 +3,12 @@ use re_log_types::{StoreId, StoreKind};
 
 /// Stores many [`LogDb`]s of recordings and blueprints.
 #[derive(Default)]
-pub struct LogDbHub {
+pub struct StoreHub {
     // TODO(emilk): two separate maps per [`RecordingType`].
     log_dbs: ahash::HashMap<StoreId, LogDb>,
 }
 
-impl LogDbHub {
+impl StoreHub {
     /// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
     pub fn from_rrd(read: impl std::io::Read) -> anyhow::Result<Self> {
