@@ -14,6 +14,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use crate::{scene::EntityDepthOffsets, TransformContext};
 
 use super::contexts::{AnnotationSceneContext, SharedRenderBuilders};
+use super::UiLabel;
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
@@ -66,6 +67,23 @@ impl<'a> SpatialSceneContext<'a> {
     }
 }
 
+/// Common data struct for all spatial scene elements.
+pub struct SpatialSceneElementData {
+    pub ui_labels: Vec<UiLabel>,
+    pub bounding_box: macaw::BoundingBox,
+    pub num_primitives: usize,
+}
+
+impl Default for SpatialSceneElementData {
+    fn default() -> Self {
+        Self {
+            ui_labels: Vec::new(),
+            bounding_box: macaw::BoundingBox::nothing(),
+            num_primitives: 0,
+        }
+    }
+}
+
 pub trait SpatialSceneElement<const N: usize>: std::any::Any {
     type Primary: Component + 'static;
 
@@ -77,6 +95,8 @@ pub trait SpatialSceneElement<const N: usize>: std::any::Any {
         query: &SceneQuery<'_>,
         context: SpatialSceneContext<'_>,
     ) -> Vec<re_renderer::QueueableDrawData>;
+
+    fn data(&self) -> &SpatialSceneElementData;
 
     fn for_each_entity_view<F>(
         ctx: &mut ViewerContext<'_>,
@@ -153,6 +173,10 @@ impl<const N: usize, T: SpatialSceneElement<N>> SceneElement for SpatialSceneEle
             }
         };
         self.0.populate(ctx, query, contexts)
+    }
+
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        Some(self.0.data())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

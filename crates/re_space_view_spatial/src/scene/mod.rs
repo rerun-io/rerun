@@ -12,7 +12,9 @@ use re_viewer_context::{
 };
 
 use super::SpatialNavigationMode;
-use crate::scene::spatial_scene_element::{SpatialSceneContext, SpatialSceneElement};
+use crate::scene::spatial_scene_element::{
+    SpatialSceneContext, SpatialSceneElement, SpatialSceneElementData,
+};
 use crate::{mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D};
 
 mod contexts;
@@ -28,6 +30,9 @@ use elements::ScenePart;
 
 use contexts::EntityDepthOffsets;
 pub use contexts::{TransformContext, UnreachableTransform};
+
+const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
+const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
@@ -54,6 +59,7 @@ pub struct Image {
     pub draw_order: DrawOrder,
 }
 
+#[derive(Clone)]
 pub enum UiLabelTarget {
     /// Labels a given rect (in scene coordinates)
     Rect(egui::Rect),
@@ -65,6 +71,7 @@ pub enum UiLabelTarget {
     Position3D(glam::Vec3),
 }
 
+#[derive(Clone)]
 pub struct UiLabel {
     pub text: String,
     pub color: Color32,
@@ -189,13 +196,16 @@ impl SceneSpatial {
         self.primitives.any_outlines = scene_context.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
 
-        // TODO(andreas): Is there a more practical way to get the labels out?
-        //                  Rust doesn't generally allow casting from one trait to another, so we can't make this part of a base trait.
-        if let Ok(points2d) = scene.elements.get_mut::<elements::Points2DSceneElement>() {
-            self.ui.labels.append(&mut points2d.ui_labels);
-        }
-        if let Ok(points3d) = scene.elements.get_mut::<elements::Points3DSceneElement>() {
-            self.ui.labels.append(&mut points3d.ui_labels);
+        for scene_element in scene.elements.iter() {
+            if let Some(data) = scene_element
+                .data()
+                .and_then(|d| d.downcast_ref::<SpatialSceneElementData>())
+            {
+                self.ui.labels.extend(data.ui_labels.iter().cloned());
+                self.primitives.bounding_box =
+                    self.primitives.bounding_box.union(data.bounding_box);
+                self.primitives.num_primitives += data.num_primitives;
+            }
         }
         if let Ok(shared_render_builders) =
             scene.contexts.get_mut::<contexts::SharedRenderBuilders>()

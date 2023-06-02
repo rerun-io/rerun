@@ -12,21 +12,24 @@ use crate::scene::{
         process_annotations_and_keypoints, process_colors, process_radii,
     },
     load_keypoint_connections,
-    spatial_scene_element::{SpatialSceneContext, SpatialSceneElement, SpatialSceneEntityContext},
+    spatial_scene_element::{
+        SpatialSceneContext, SpatialSceneElement, SpatialSceneElementData,
+        SpatialSceneEntityContext,
+    },
     UiLabel, UiLabelTarget,
 };
 
 pub struct Points3DSceneElement {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub ui_labels: Vec<UiLabel>,
+    pub data: SpatialSceneElementData,
 }
 
 impl Default for Points3DSceneElement {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            ui_labels: Vec::new(),
+            data: Default::default(),
         }
     }
 }
@@ -100,7 +103,7 @@ impl Points3DSceneElement {
                     .collect::<Vec<_>>()
             };
 
-            self.ui_labels.extend(Self::process_labels(
+            self.data.ui_labels.extend(Self::process_labels(
                 entity_view,
                 &instance_path_hashes_for_picking,
                 &colors,
@@ -160,6 +163,19 @@ impl Points3DSceneElement {
 
         load_keypoint_connections(ent_context, ent_path, keypoints);
 
+        {
+            re_tracing::profile_scope!("points3d.bounding_box");
+            self.data.bounding_box = self.data.bounding_box.union(
+                macaw::BoundingBox::from_points(
+                    entity_view
+                        .iter_primary()?
+                        .filter_map(|pt| pt.map(|pt| pt.into())),
+                )
+                .transform_affine3(&ent_context.world_from_obj),
+            );
+        }
+        self.data.num_primitives += entity_view.num_instances();
+
         Ok(())
     }
 }
@@ -198,5 +214,9 @@ impl SpatialSceneElement<7> for Points3DSceneElement {
         );
 
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+    }
+
+    fn data(&self) -> &crate::scene::spatial_scene_element::SpatialSceneElementData {
+        &self.data
     }
 }

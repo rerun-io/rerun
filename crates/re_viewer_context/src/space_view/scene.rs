@@ -187,6 +187,14 @@ pub trait SceneElement: Any {
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
 
+    /// Optionally retrieves a data store reference from the scene element.
+    ///
+    /// This is a useful for retrieving a data struct that may be common for all scene elements
+    /// of a particular [`crate::SpaceViewClass`].
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        None
+    }
+
     /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 

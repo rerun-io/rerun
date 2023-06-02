@@ -8,7 +8,10 @@ use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
 
 use crate::scene::{
     load_keypoint_connections,
-    spatial_scene_element::{SpatialSceneContext, SpatialSceneElement, SpatialSceneEntityContext},
+    spatial_scene_element::{
+        SpatialSceneContext, SpatialSceneElement, SpatialSceneElementData,
+        SpatialSceneEntityContext,
+    },
     UiLabel, UiLabelTarget,
 };
 
@@ -20,16 +23,14 @@ use super::{
 pub struct Points2DSceneElement {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub ui_labels: Vec<UiLabel>,
-    pub bounding_box: macaw::BoundingBox,
+    pub data: SpatialSceneElementData,
 }
 
 impl Default for Points2DSceneElement {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            ui_labels: Vec::new(),
-            bounding_box: macaw::BoundingBox::nothing(),
+            data: Default::default(),
         }
     }
 }
@@ -100,7 +101,7 @@ impl Points2DSceneElement {
                     .collect::<Vec<_>>()
             };
 
-            self.ui_labels.extend(Self::process_labels(
+            self.data.ui_labels.extend(Self::process_labels(
                 entity_view,
                 &instance_path_hashes_for_picking,
                 &colors,
@@ -108,7 +109,6 @@ impl Points2DSceneElement {
             )?);
         }
 
-        //let batch_bb = {
         {
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
@@ -128,7 +128,6 @@ impl Points2DSceneElement {
                     .iter_primary()?
                     .filter_map(|pt| pt.map(glam::Vec2::from))
             };
-            //let batch_bb = macaw::BoundingBox::from_points(point_positions.map(|p| p.extend(0.0)));
 
             let picking_instance_ids = entity_view.iter_instance_keys().map(|instance_key| {
                 instance_key_to_picking_id(
@@ -163,15 +162,22 @@ impl Points2DSceneElement {
                     }
                 }
             }
-
-            // batch_bb
         };
 
         load_keypoint_connections(ent_context, ent_path, keypoints);
 
-        // self.bounding_box = self
-        //     .bounding_box
-        //     .union(batch_bb.transform_affine3(&ent_context.world_from_obj));
+        {
+            re_tracing::profile_scope!("points2d.bounding_box");
+            self.data.bounding_box = self.data.bounding_box.union(
+                macaw::BoundingBox::from_points(
+                    entity_view
+                        .iter_primary()?
+                        .filter_map(|pt| pt.map(|pt| glam::vec3(pt.x, pt.y, 0.0))),
+                )
+                .transform_affine3(&ent_context.world_from_obj),
+            );
+        }
+        self.data.num_primitives += entity_view.num_instances();
 
         Ok(())
     }
@@ -211,5 +217,9 @@ impl SpatialSceneElement<7> for Points2DSceneElement {
         );
 
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+    }
+
+    fn data(&self) -> &SpatialSceneElementData {
+        &self.data
     }
 }
