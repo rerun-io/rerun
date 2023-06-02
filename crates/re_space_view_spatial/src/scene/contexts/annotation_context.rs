@@ -1,11 +1,11 @@
 use re_components::AnnotationContext;
 use re_log_types::Component;
-use re_viewer_context::{AnnotationMap, ArchetypeDefinition, SceneContext};
+use re_viewer_context::{AnnotationMap, ArchetypeDefinition, SceneContextPart};
 
 #[derive(Default)]
 pub struct AnnotationSceneContext(pub AnnotationMap);
 
-impl SceneContext for AnnotationSceneContext {
+impl SceneContextPart for AnnotationSceneContext {
     fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         vec![vec1::vec1![AnnotationContext::name()]]
     }

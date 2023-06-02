@@ -4,14 +4,12 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::ComponentName;
 use re_query::{EntityView, QueryError};
-use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
+use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, SpaceViewHighlights, ViewerContext};
 
 use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
     load_keypoint_connections,
-    spatial_scene_element::{
-        SpatialSceneContext, SpatialSceneElement, SpatialSceneElementData,
-        SpatialSceneEntityContext,
-    },
+    spatial_scene_element::{SpatialSceneElement, SpatialSceneElementData},
     UiLabel, UiLabelTarget,
 };
 
@@ -69,32 +67,31 @@ impl Points2DSceneElement {
     fn process_entity_view(
         &mut self,
         query: &SceneQuery<'_>,
-        entity_view: &EntityView<Point2D>,
+        ent_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
         let (annotation_infos, keypoints) =
-            process_annotations_and_keypoints(query, entity_view, &ent_context.annotations)?;
+            process_annotations_and_keypoints(query, ent_view, &ent_context.annotations)?;
 
-        let colors = process_colors(entity_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(ent_path, entity_view)?;
+        let colors = process_colors(ent_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(ent_path, ent_view)?;
 
-        if entity_view.num_instances() <= self.max_labels {
+        if ent_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_colors(ent_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
-                entity_view
+                ent_view
                     .iter_instance_keys()
                     .map(|instance_key| {
                         instance_path_hash_for_picking(
                             ent_path,
                             instance_key,
-                            entity_view.num_instances(),
+                            ent_view.num_instances(),
                             ent_context.highlight.any_selection_highlight,
                         )
                     })
@@ -102,7 +99,7 @@ impl Points2DSceneElement {
             };
 
             self.data.ui_labels.extend(Self::process_labels(
-                entity_view,
+                ent_view,
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
@@ -124,21 +121,21 @@ impl Points2DSceneElement {
 
             let point_positions = {
                 re_tracing::profile_scope!("collect_points");
-                entity_view
+                ent_view
                     .iter_primary()?
                     .filter_map(|pt| pt.map(glam::Vec2::from))
             };
 
-            let picking_instance_ids = entity_view.iter_instance_keys().map(|instance_key| {
+            let picking_instance_ids = ent_view.iter_instance_keys().map(|instance_key| {
                 instance_key_to_picking_id(
                     instance_key,
-                    entity_view.num_instances(),
+                    ent_view.num_instances(),
                     ent_context.highlight.any_selection_highlight,
                 )
             });
 
             let mut point_range_builder = point_batch.add_points_2d(
-                entity_view.num_instances(),
+                ent_view.num_instances(),
                 point_positions,
                 radii,
                 colors,
@@ -150,7 +147,7 @@ impl Points2DSceneElement {
                 re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                     // TODO(andreas/jeremy): We can do this much more efficiently
-                    let highlighted_point_index = entity_view
+                    let highlighted_point_index = ent_view
                         .iter_instance_keys()
                         .position(|key| key == *highlighted_key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
@@ -170,14 +167,13 @@ impl Points2DSceneElement {
             re_tracing::profile_scope!("points2d.bounding_box");
             self.data.bounding_box = self.data.bounding_box.union(
                 macaw::BoundingBox::from_points(
-                    entity_view
+                    ent_view
                         .iter_primary()?
                         .filter_map(|pt| pt.map(|pt| glam::vec3(pt.x, pt.y, 0.0))),
                 )
                 .transform_affine3(&ent_context.world_from_obj),
             );
         }
-        self.data.num_primitives += entity_view.num_instances();
 
         Ok(())
     }
@@ -202,14 +198,16 @@ impl SpatialSceneElement<7> for Points2DSceneElement {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        context: SpatialSceneContext<'_>,
+        context: &SpatialSceneContext,
+        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points2DPart");
 
         Self::for_each_entity_view(
             ctx,
             query,
-            &context,
+            context,
+            highlights,
             context.depth_offsets.points,
             |ent_path, entity_view, ent_context| {
                 self.process_entity_view(query, &entity_view, ent_path, ent_context)

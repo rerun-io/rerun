@@ -2,7 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneContextCollection, SceneElementImpl, SceneQuery, SpaceViewHighlights,
+    ArchetypeDefinition, EmptySceneContext, SceneElementImpl, SceneQuery, SpaceViewHighlights,
     ViewerContext,
 };
 
@@ -22,7 +22,8 @@ pub struct SceneTextBox {
 }
 
 impl SceneElementImpl for SceneTextBox {
-    type State = TextBoxSpaceViewState;
+    type SpaceViewState = TextBoxSpaceViewState;
+    type SceneContext = EmptySceneContext;
 
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
@@ -32,8 +33,8 @@ impl SceneElementImpl for SceneTextBox {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &Self::State,
-        _contexts: &SceneContextCollection,
+        _space_view_state: &Self::SpaceViewState,
+        _context: &EmptySceneContext,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;

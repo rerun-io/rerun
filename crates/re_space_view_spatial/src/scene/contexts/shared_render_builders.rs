@@ -1,6 +1,6 @@
 use parking_lot::{Mutex, MutexGuard};
 use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder};
-use re_viewer_context::{ArchetypeDefinition, SceneContext};
+use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
 use crate::scene::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -24,7 +24,7 @@ impl SharedRenderBuilders {
     }
 }
 
-impl SceneContext for SharedRenderBuilders {
+impl SceneContextPart for SharedRenderBuilders {
     fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         Vec::new()
     }

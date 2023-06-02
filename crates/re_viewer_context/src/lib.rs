@@ -30,11 +30,11 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, EmptySpaceViewState, Scene, SceneContext, SceneContextCollection,
-    SceneElement, SceneElementCollection, SceneElementImpl, SceneItemCollectionLookupError,
-    SceneQuery, SpaceViewClass, SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry,
+    ArchetypeDefinition, EmptySpaceViewState, Scene, SceneContext, SceneContextPart, SceneElement,
+    SceneElementCollection, SceneElementImpl, SceneItemCollectionLookupError, SceneQuery,
+    SpaceViewClass, SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewState,
+    SpaceViewOutlineMasks, SpaceViewState, EmptySceneContext
 };
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};

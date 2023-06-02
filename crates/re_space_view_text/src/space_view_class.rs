@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState,
-    ViewerContext,
+    level_to_rich_text, EmptySceneContext, Scene, SpaceViewClassImpl, SpaceViewClassName,
+    SpaceViewState, ViewerContext,
 };
 
 use super::scene_element::{SceneText, TextEntry};
@@ -37,8 +37,8 @@ impl SpaceViewState for TextSpaceViewState {
 pub struct TextSpaceView;
 
 impl SpaceViewClassImpl for TextSpaceView {
-    type State = TextSpaceViewState;
-    type SceneContextTuple = ();
+    type SpaceViewState = TextSpaceViewState;
+    type SceneContext = EmptySceneContext;
     type SceneElementTuple = (SceneText,);
 
     fn name(&self) -> SpaceViewClassName {
@@ -57,7 +57,7 @@ impl SpaceViewClassImpl for TextSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut Self::SpaceViewState,
     ) {
         let ViewTextFilters {
             col_timelines,
@@ -107,7 +107,7 @@ impl SpaceViewClassImpl for TextSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut Self::SpaceViewState,
         scene: Scene,
     ) {
         let scene = match scene.elements.get::<SceneText>() {

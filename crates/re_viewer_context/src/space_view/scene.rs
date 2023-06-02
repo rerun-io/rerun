@@ -15,53 +15,35 @@ pub enum SceneItemCollectionLookupError {
 
 // TODO(andreas): Use tinyvec for these.
 
-/// Collection of scene contexts.
-///
-/// New type pattern to support adding From impls.
+/// Scene context, consisting of several [`SceneContextPart`] which may be populated in parallel.
+pub trait SceneContext {
+    /// Retrieves a list of all underlying scene context part for parallel population.
+    fn vec_mut(&mut self) -> Vec<&mut dyn SceneContextPart>;
+
+    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    fn as_any(&self) -> &dyn std::any::Any;
+
+    /// Converts itself to a reference of [`Any`], which enables downcasting to concrete types.
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+}
+
+/// Implementation of an empty scene context.
 #[derive(Default)]
-pub struct SceneContextCollection(HashMap<TypeId, Box<dyn SceneContext>>);
+pub struct EmptySceneContext;
 
-impl SceneContextCollection {
-    pub fn get<T: Any>(&self) -> Result<&T, SceneItemCollectionLookupError> {
-        self.0
-            .get(&TypeId::of::<T>())
-            .ok_or(SceneItemCollectionLookupError::TypeNotFound)?
-            .as_any()
-            .downcast_ref::<T>()
-            .ok_or(SceneItemCollectionLookupError::DowncastFailure)
+impl SceneContext for EmptySceneContext {
+    fn vec_mut(&mut self) -> Vec<&mut dyn SceneContextPart> {
+        Vec::new()
     }
 
-    pub fn get_mut<T: Any>(&mut self) -> Result<&mut T, SceneItemCollectionLookupError> {
-        self.0
-            .get_mut(&TypeId::of::<T>())
-            .ok_or(SceneItemCollectionLookupError::TypeNotFound)?
-            .as_any_mut()
-            .downcast_mut::<T>()
-            .ok_or(SceneItemCollectionLookupError::DowncastFailure)
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
-
-macro_rules! scene_context_collection_from_tuple {
-    ($($idx:tt => $name:ident),*) => {
-        impl<$($name: SceneContext),*> From<($($name,)*)> for SceneContextCollection {
-            #[allow(unused_mut)]
-            fn from(_value: ($($name,)*)) -> Self {
-                let mut map = HashMap::<std::any::TypeId, Box<dyn SceneContext>>::default();
-                $(
-                    map.insert(_value.$idx.as_any().type_id(), Box::new(_value.$idx));
-                )*
-                Self(map)
-            }
-        }
-    };
-}
-
-scene_context_collection_from_tuple!();
-scene_context_collection_from_tuple!(0 => T0);
-scene_context_collection_from_tuple!(0 => T0, 1 => T1);
-scene_context_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2);
-scene_context_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3);
-scene_context_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4);
 
 /// Collections of scene elements.
 ///
@@ -123,9 +105,8 @@ scene_element_collection_from_tuple!(0 => T0, 1 => T1, 2 => T2, 3 => T3, 4 => T4
 ///
 /// When populating a scene, first all contexts are populated,
 /// and then all elements with read access to the previously established context objects.
-#[derive(Default)]
 pub struct Scene {
-    pub contexts: SceneContextCollection,
+    pub context: Box<dyn SceneContext>,
     pub elements: SceneElementCollection,
     pub highlights: SpaceViewHighlights, // TODO(wumpf): Consider making this a scene context - problem: populate can't create it.
 }
@@ -149,7 +130,7 @@ impl Scene {
         self.highlights = highlights;
 
         // TODO(andreas): Both loops are great candidates for parallelization.
-        for context in self.contexts.0.values_mut() {
+        for context in self.context.vec_mut() {
             // TODO(andreas): Restrict the query with the archetype somehow, ideally making it trivial to do the correct thing.
             context.populate(ctx, query, space_view_state);
         }
@@ -162,7 +143,7 @@ impl Scene {
                     ctx,
                     query,
                     space_view_state,
-                    &self.contexts,
+                    self.context.as_ref(),
                     &self.highlights,
                 )
             })
@@ -185,7 +166,7 @@ pub trait SceneElement: Any {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
-        contexts: &SceneContextCollection,
+        context: &dyn SceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
 
@@ -207,7 +188,7 @@ pub trait SceneElement: Any {
 /// Scene context that can be used by scene elements and ui methods to retrieve information about the scene as a whole.
 ///
 /// Is always populated before scene elements.
-pub trait SceneContext: Any {
+pub trait SceneContextPart: Any {
     /// Each scene context may query several archetypes.
     ///
     /// This lists all components out that the context queries.

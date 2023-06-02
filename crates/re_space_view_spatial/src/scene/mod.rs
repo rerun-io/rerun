@@ -6,15 +6,14 @@ use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, OutlineMaskPreference, Size};
-use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
     auto_color, AnnotationMap, EmptySpaceViewState, Scene, SceneQuery, ViewerContext,
 };
+use re_viewer_context::{EmptySceneContext, SpaceViewHighlights};
 
 use super::SpatialNavigationMode;
-use crate::scene::spatial_scene_element::{
-    SpatialSceneContext, SpatialSceneElement, SpatialSceneElementData,
-};
+use crate::scene::contexts::SpatialSceneContext;
+use crate::scene::spatial_scene_element::{SpatialSceneElement, SpatialSceneElementData};
 use crate::{mesh_loader::LoadedMesh, space_camera_3d::SpaceCamera3D};
 
 mod contexts;
@@ -23,9 +22,9 @@ mod picking;
 mod primitives;
 mod spatial_scene_element;
 
+use self::contexts::SpatialSceneEntityContext;
 pub use self::picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
-use self::spatial_scene_element::SpatialSceneEntityContext;
 use elements::ScenePart;
 
 use contexts::EntityDepthOffsets;
@@ -130,7 +129,12 @@ impl SceneSpatial {
             num_logged_2d_objects: Default::default(),
             num_logged_3d_objects: Default::default(),
             space_cameras: Default::default(),
-            scene: Default::default(),
+            // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
+            scene: Scene {
+                context: Box::<EmptySceneContext>::default(),
+                elements: ().into(),
+                highlights: Default::default(),
+            },
             draw_data: Default::default(),
         }
     }
@@ -164,13 +168,7 @@ impl SceneSpatial {
 
         // TODO(andreas): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {
-            contexts: (
-                contexts::EntityDepthOffsets::default(),
-                contexts::TransformContext::default(),
-                contexts::AnnotationSceneContext::default(),
-                contexts::SharedRenderBuilders::default(),
-            )
-                .into(),
+            context: Box::<SpatialSceneContext>::default(),
             elements: (
                 elements::Points2DSceneElement::default().wrap(),
                 elements::Points3DSceneElement::default().wrap(),
@@ -179,21 +177,24 @@ impl SceneSpatial {
             highlights: Default::default(),
         };
         self.draw_data = scene.populate(ctx, query, &EmptySpaceViewState, highlights);
-        let scene_context = SpatialSceneContext::new(&scene.contexts, &scene.highlights)
-            .expect("Failed to query for scene context.");
+        let scene_context = scene
+            .context
+            .as_any_mut()
+            .downcast_mut::<SpatialSceneContext>()
+            .unwrap();
 
         for part in parts {
             part.load(
                 self,
                 ctx,
                 query,
-                scene_context.transforms,
-                scene_context.highlights,
-                scene_context.depth_offsets,
+                &scene_context.transforms,
+                &scene.highlights,
+                &scene_context.depth_offsets,
             );
         }
 
-        self.primitives.any_outlines = scene_context.highlights.any_outlines();
+        self.primitives.any_outlines = scene.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
 
         for scene_element in scene.elements.iter() {
@@ -204,33 +205,35 @@ impl SceneSpatial {
                 self.ui.labels.extend(data.ui_labels.iter().cloned());
                 self.primitives.bounding_box =
                     self.primitives.bounding_box.union(data.bounding_box);
-                self.primitives.num_primitives += data.num_primitives;
             }
         }
-        if let Ok(shared_render_builders) =
-            scene.contexts.get_mut::<contexts::SharedRenderBuilders>()
-        {
-            self.draw_data
-                .extend(shared_render_builders.lines.take().and_then(|l| {
-                    match l.into_inner().to_draw_data(ctx.render_ctx) {
-                        Ok(d) => Some(d.into()),
-                        Err(err) => {
-                            re_log::error_once!("Failed to build line strip draw data: {err}");
-                            None
-                        }
+
+        self.draw_data.extend(
+            scene_context
+                .shared_render_builders
+                .lines
+                .take()
+                .and_then(|l| match l.into_inner().to_draw_data(ctx.render_ctx) {
+                    Ok(d) => Some(d.into()),
+                    Err(err) => {
+                        re_log::error_once!("Failed to build line strip draw data: {err}");
+                        None
                     }
-                }));
-            self.draw_data
-                .extend(shared_render_builders.points.take().and_then(|l| {
-                    match l.into_inner().to_draw_data(ctx.render_ctx) {
-                        Ok(d) => Some(d.into()),
-                        Err(err) => {
-                            re_log::error_once!("Failed to build point draw data: {err}");
-                            None
-                        }
+                }),
+        );
+        self.draw_data.extend(
+            scene_context
+                .shared_render_builders
+                .points
+                .take()
+                .and_then(|l| match l.into_inner().to_draw_data(ctx.render_ctx) {
+                    Ok(d) => Some(d.into()),
+                    Err(err) => {
+                        re_log::error_once!("Failed to build point draw data: {err}");
+                        None
                     }
-                }));
-        }
+                }),
+        );
 
         self.scene = scene;
     }

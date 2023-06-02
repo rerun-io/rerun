@@ -1,6 +1,6 @@
 use egui::Label;
 use re_viewer_context::{
-    Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
+    EmptySceneContext, Scene, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext,
 };
 
 use super::scene_element::SceneTextBox;
@@ -35,9 +35,9 @@ impl SpaceViewState for TextBoxSpaceViewState {
 pub struct TextBoxSpaceView;
 
 impl SpaceViewClassImpl for TextBoxSpaceView {
-    type State = TextBoxSpaceViewState;
+    type SpaceViewState = TextBoxSpaceViewState;
     type SceneElementTuple = (SceneTextBox,);
-    type SceneContextTuple = ();
+    type SceneContext = EmptySceneContext;
 
     fn name(&self) -> SpaceViewClassName {
         "Text Box".into()
@@ -55,7 +55,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut Self::SpaceViewState,
     ) {
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
@@ -72,7 +72,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &self,
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut Self::SpaceViewState,
         scene: Scene,
     ) {
         let scene = match scene.elements.get::<SceneTextBox>() {

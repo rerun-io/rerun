@@ -1,13 +1,12 @@
 use crate::{
-    ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewHighlights, SpaceViewState,
-    ViewerContext,
+    ArchetypeDefinition, SceneContext, SceneElement, SceneQuery, SpaceViewHighlights,
+    SpaceViewState, ViewerContext,
 };
 
-use super::scene::SceneContextCollection;
-
-/// Element of a scene derived from a single archetype query.
+/// Implementation utility for [`crate::SceneElement`]
 pub trait SceneElementImpl {
-    type State: SpaceViewState + Default + 'static;
+    type SpaceViewState: SpaceViewState + Default + 'static;
+    type SceneContext: SceneContext + 'static;
 
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
@@ -19,38 +18,58 @@ pub trait SceneElementImpl {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        space_view_state: &Self::State,
-        contexts: &SceneContextCollection,
+        space_view_state: &Self::SpaceViewState,
+        scene_context: &Self::SceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
+
+    /// Optionally retrieves a data store reference from the scene element.
+    ///
+    /// This is a useful for retrieving a data struct that may be common for all scene elements
+    /// of a particular [`crate::SpaceViewClass`].
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        None
+    }
 }
 
 impl<T: SceneElementImpl + 'static> SceneElement for T {
+    #[inline]
     fn archetype(&self) -> ArchetypeDefinition {
         self.archetype()
     }
 
+    #[inline]
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &crate::SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
-        contexts: &SceneContextCollection,
+        scene_context: &dyn SceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
-        if let Some(state) = space_view_state.as_any().downcast_ref() {
-            self.populate(ctx, query, state, contexts, highlights)
-        } else {
+        let Some(state) = space_view_state.as_any().downcast_ref() else {
             re_log::error_once!("Incorrect type of space view state.");
-            Vec::new()
-        }
+            return Vec::new();
+        };
+        let Some(context) = scene_context.as_any().downcast_ref() else {
+            re_log::error_once!("Incorrect type of space view context.");
+            return Vec::new();
+        };
+        self.populate(ctx, query, state, context, highlights)
     }
 
+    #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 
+    #[inline]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    #[inline]
+    fn data(&self) -> Option<&dyn std::any::Any> {
+        self.data()
     }
 }

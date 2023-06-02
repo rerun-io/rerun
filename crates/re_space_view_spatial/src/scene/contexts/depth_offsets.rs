@@ -3,8 +3,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_components::DrawOrder;
 use re_log_types::{Component, EntityPathHash};
-use re_viewer_context::{ArchetypeDefinition, SceneContext};
+use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
+// TODO(wumpf): In the new traitified system it would be likely more ergonomic to map from darw order to depth offset
+//              This would also yield more consistent/meaningful archetypes and avoid queries where not needed.
 #[derive(Default)]
 pub struct EntityDepthOffsets {
     pub per_entity: IntMap<EntityPathHash, re_renderer::DepthOffset>,
@@ -14,7 +16,7 @@ pub struct EntityDepthOffsets {
     pub points: re_renderer::DepthOffset,
 }
 
-impl SceneContext for EntityDepthOffsets {
+impl SceneContextPart for EntityDepthOffsets {
     fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         vec![vec1::vec1![DrawOrder::name()]]
     }

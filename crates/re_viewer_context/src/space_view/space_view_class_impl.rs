@@ -1,6 +1,8 @@
-use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext};
+use crate::{
+    Scene, SceneContext, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext,
+};
 
-use super::scene::{SceneContextCollection, SceneElementCollection};
+use super::scene::SceneElementCollection;
 
 /// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::SceneElement`] type.
 ///
@@ -9,10 +11,10 @@ use super::scene::{SceneContextCollection, SceneElementCollection};
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
 pub trait SpaceViewClassImpl {
     /// State of a space view.
-    type State: SpaceViewState + Default + 'static;
+    type SpaceViewState: SpaceViewState + Default + 'static;
 
-    /// A tuple of [`crate::SceneContext`] types that are supported by this space view class.
-    type SceneContextTuple: Into<SceneContextCollection> + Default + 'static;
+    /// Context of the scene, which is passed to all [`crate::SceneElement`]s and ui drawing on population.
+    type SceneContext: SceneContext + Default + 'static;
 
     /// A tuple of [`crate::SceneElement`] types that are supported by this space view class.
     type SceneElementTuple: Into<SceneElementCollection> + Default + 'static;
@@ -32,7 +34,12 @@ pub trait SpaceViewClassImpl {
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
-    fn selection_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, state: &mut Self::State);
+    fn selection_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::SpaceViewState,
+    );
 
     /// Draws the ui for this space view class and handles ui events.
     ///
@@ -42,7 +49,7 @@ pub trait SpaceViewClassImpl {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut Self::SpaceViewState,
         scene: Scene,
     );
 }
@@ -66,7 +73,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     #[inline]
     fn new_scene(&self) -> Scene {
         Scene {
-            contexts: T::SceneContextTuple::default().into(),
+            context: Box::<T::SceneContext>::default(),
             elements: T::SceneElementTuple::default().into(),
             highlights: Default::default(),
         }
@@ -74,7 +81,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
 
     #[inline]
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<T::State>::default()
+        Box::<T::SpaceViewState>::default()
     }
 
     #[inline]

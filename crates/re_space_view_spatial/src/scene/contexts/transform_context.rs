@@ -4,7 +4,7 @@ use re_arrow_store::LatestAtQuery;
 use re_components::{DisconnectedSpace, Pinhole, Transform3D};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_log_types::{Component, EntityPathHash};
-use re_viewer_context::{ArchetypeDefinition, SceneContext};
+use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -83,7 +83,7 @@ impl std::fmt::Display for UnreachableTransform {
     }
 }
 
-impl SceneContext for TransformContext {
+impl SceneContextPart for TransformContext {
     fn archetypes(&self) -> Vec<ArchetypeDefinition> {
         vec![
             vec1::vec1![Transform3D::name()],
