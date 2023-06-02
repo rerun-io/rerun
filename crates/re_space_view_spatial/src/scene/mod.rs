@@ -3,11 +3,9 @@ mod parts;
 mod picking;
 mod primitives;
 
-pub use self::{
-    picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult},
-    primitives::SceneSpatialPrimitives,
-};
 pub use contexts::{TransformContext, UnreachableTransform};
+pub use picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
+pub use primitives::SceneSpatialPrimitives;
 
 use ahash::HashMap;
 use std::sync::Arc;
@@ -106,10 +104,6 @@ pub struct SceneSpatial {
     /// Number of 3d primitives logged, used for heuristics.
     num_logged_3d_objects: usize,
 
-    /// All space cameras in this scene.
-    /// TODO(andreas): Does this belong to `SceneSpatialUiData`?
-    pub space_cameras: Vec<SpaceCamera3D>,
-
     // TODO(andreas): Temporary field. The hosting struct will be removed once SpatialScene is fully ported to the SpaceViewClass framework.
     pub scene: Scene,
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
@@ -131,7 +125,6 @@ impl SceneSpatial {
             ui: Default::default(),
             num_logged_2d_objects: Default::default(),
             num_logged_3d_objects: Default::default(),
-            space_cameras: Default::default(),
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Scene {
                 context: Box::<re_space_view::EmptySceneContext>::default(),
@@ -161,8 +154,6 @@ impl SceneSpatial {
             // --
             // Note: Lines2DPart handles both Segments and LinesPaths since they are unified on the logging-side.
             &parts::Lines2DPart,
-            // ---
-            &parts::CamerasPart,
         ];
 
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
@@ -236,11 +227,22 @@ impl SceneSpatial {
 
     const CAMERA_COLOR: Color32 = Color32::from_rgb(150, 150, 150);
 
+    pub fn space_cameras(&self) -> &[SpaceCamera3D] {
+        &self
+            .scene
+            .elements
+            .as_any()
+            .downcast_ref::<SpatialScenePartCollection>()
+            .unwrap()
+            .cameras
+            .space_cameras
+    }
+
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
     pub fn preferred_navigation_mode(&self, space_info_path: &EntityPath) -> SpatialNavigationMode {
         // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
         if self
-            .space_cameras
+            .space_cameras()
             .iter()
             .any(|camera| &camera.ent_path != space_info_path)
         {

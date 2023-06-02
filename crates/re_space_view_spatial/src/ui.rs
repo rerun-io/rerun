@@ -864,7 +864,7 @@ pub fn picking(
                 pos: hovered_point,
                 tracked_space_camera: state.state_3d.tracked_camera.clone(),
                 point_in_space_cameras: scene
-                    .space_cameras
+                    .space_cameras()
                     .iter()
                     .map(|cam| {
                         (

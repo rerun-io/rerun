@@ -1,6 +1,7 @@
 use eframe::emath::RectTransform;
 use egui::NumExt as _;
 use glam::Affine3A;
+use itertools::Itertools;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
 use re_components::ViewCoordinates;
@@ -308,7 +309,7 @@ pub fn view_3d(
     let orbit_eye =
         state
             .state_3d
-            .update_eye(&response, &state.scene_bbox_accum, &scene.space_cameras);
+            .update_eye(&response, &state.scene_bbox_accum, scene.space_cameras());
     let did_interact_with_eye = orbit_eye.update(&response, orbit_eye_drag_threshold);
 
     let orbit_eye = *orbit_eye;
@@ -322,15 +323,14 @@ pub fn view_3d(
     }
 
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
-    for camera in &scene.space_cameras {
-        if ctx.app_options.show_camera_axes_in_3d {
-            let transform = camera.world_from_cam();
-            let axis_length =
-                eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
-            scene
-                .primitives
-                .add_axis_lines(transform, Some(&camera.ent_path), axis_length);
-        }
+    let space_cameras = scene.space_cameras().iter().cloned().collect_vec(); // Borrow workaround.
+    for camera in space_cameras {
+        let transform = camera.world_from_cam();
+        let axis_length =
+            eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
+        scene
+            .primitives
+            .add_axis_lines(transform, Some(&camera.ent_path), axis_length);
     }
 
     // Determine view port resolution and position.
@@ -399,7 +399,7 @@ pub fn view_3d(
 
         // While hovering an entity, focuses the camera on it.
         if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
-            if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.entity_path) {
+            if let Some(camera) = find_camera(scene.space_cameras(), &instance_path.entity_path) {
                 state.state_3d.camera_before_tracked_camera =
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
@@ -554,7 +554,7 @@ fn show_projections_from_2d_space(
     match ctx.selection_state().hovered_space() {
         HoveredSpace::TwoD { space_2d, pos } => {
             if let Some(cam) = scene
-                .space_cameras
+                .space_cameras()
                 .iter()
                 .find(|cam| &cam.ent_path == space_2d)
             {
@@ -586,7 +586,7 @@ fn show_projections_from_2d_space(
                 .map_or(true, |tracked| tracked != camera_path)
             {
                 if let Some(cam) = scene
-                    .space_cameras
+                    .space_cameras()
                     .iter()
                     .find(|cam| &cam.ent_path == camera_path)
                 {
