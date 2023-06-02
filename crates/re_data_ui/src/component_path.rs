@@ -11,7 +11,7 @@ impl DataUi for ComponentPath {
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
 
         if let Some((_, component_data)) = re_query::get_component_with_instances(
             store,

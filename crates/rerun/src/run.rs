@@ -450,7 +450,7 @@ async fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
-        assert_receive_into_log_db(&rx).map(|_db| ())
+        assert_receive_into_store_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
         Ok(stream_to_rrd(&rx, &rrd_path.into())?)
     } else if args.web_viewer {
@@ -534,12 +534,12 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::LogDb> {
+fn assert_receive_into_store_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_store::StoreDb> {
     use re_smart_channel::RecvTimeoutError;
 
-    re_log::info!("Receiving messages into a LogDb…");
+    re_log::info!("Receiving messages into a StoreDb…");
 
-    let mut db: Option<re_data_store::LogDb> = None;
+    let mut db: Option<re_data_store::StoreDb> = None;
 
     let mut num_messages = 0;
 
@@ -553,7 +553,7 @@ fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_s
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         let mut_db = db.get_or_insert_with(|| {
-                            re_data_store::LogDb::new(msg.store_id().clone())
+                            re_data_store::StoreDb::new(msg.store_id().clone())
                         });
 
                         mut_db.add(&msg)?;
@@ -568,7 +568,7 @@ fn assert_receive_into_log_db(rx: &Receiver<LogMsg>) -> anyhow::Result<re_data_s
                             re_log::info!("Successfully ingested {num_messages} messages.");
                             return Ok(db);
                         } else {
-                            anyhow::bail!("logdb never initialized");
+                            anyhow::bail!("StoreDb never initialized");
                         }
                     }
                 }

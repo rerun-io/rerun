@@ -239,7 +239,7 @@ impl SpaceViewBlueprint {
 
                 ViewCategory::Spatial => {
                     let transforms = TransformCache::determine_transforms(
-                        &ctx.log_db.entity_db,
+                        &ctx.store_db.entity_db,
                         &ctx.rec_cfg.time_ctrl,
                         &self.space_path,
                         self.data_blueprint.data_blueprints_projected(),
@@ -288,14 +288,14 @@ impl SpaceViewBlueprint {
         &mut self,
         tree: &EntityTree,
         spaces_info: &SpaceInfoCollection,
-        log_db: &re_data_store::LogDb,
+        store_db: &re_data_store::StoreDb,
     ) {
         re_tracing::profile_function!();
 
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
             let entity_categories =
-                categorize_entity_path(Timeline::log_time(), log_db, entity_path);
+                categorize_entity_path(Timeline::log_time(), store_db, entity_path);
 
             if entity_categories.contains(self.category)
                 && !self.data_blueprint.contains_entity(entity_path)

@@ -14,7 +14,7 @@ impl SceneTensor {
     pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         re_tracing::profile_function!();
 
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
         for (ent_path, props) in query.iter_entities() {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 

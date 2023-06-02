@@ -171,14 +171,14 @@ impl EntityDb {
 // ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
-pub struct LogDb {
+pub struct StoreDb {
     /// The [`StoreId`] for this log.
     store_id: StoreId,
 
     /// All [`EntityPathOpMsg`]s ever received.
     entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
 
-    /// Set by whomever created this [`LogDb`].
+    /// Set by whomever created this [`StoreDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
@@ -188,7 +188,7 @@ pub struct LogDb {
     pub entity_db: EntityDb,
 }
 
-impl LogDb {
+impl StoreDb {
     pub fn new(store_id: StoreId) -> Self {
         Self {
             store_id,
@@ -266,7 +266,7 @@ impl LogDb {
         self.recording_msg = Some(msg.clone());
     }
 
-    /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `LogDb`.
+    /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `StoreDb`.
     pub fn iter_entity_op_msgs(&self) -> impl Iterator<Item = &EntityPathOpMsg> {
         self.entity_op_msgs.values()
     }

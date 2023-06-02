@@ -7,7 +7,7 @@ use poll_promise::Promise;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
-use re_data_store::log_db::LogDb;
+use re_data_store::store_db::StoreDb;
 use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, StoreId, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
@@ -437,8 +437,8 @@ impl App {
         let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else { return; };
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
-        let Some(log_db) = self.store_hub.recording(rec_id) else { return; };
-        let times_per_timeline = log_db.times_per_timeline();
+        let Some(store_db) = self.store_hub.recording(rec_id) else { return; };
+        let times_per_timeline = store_db.times_per_timeline();
 
         match command {
             TimeControlCommand::TogglePlayPause => {
@@ -460,9 +460,9 @@ impl App {
     }
 
     fn selected_app_id(&self) -> ApplicationId {
-        self.log_db()
-            .and_then(|log_db| {
-                log_db
+        self.store_db()
+            .and_then(|store_db| {
+                store_db
                     .store_info()
                     .map(|store_info| store_info.application_id.clone())
             })
@@ -589,13 +589,13 @@ impl eframe::App for App {
             });
 
         let store_config = self
-            .log_db()
-            .map(|log_db| log_db.entity_db.data_store.config().clone())
+            .store_db()
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
             .unwrap_or_default();
 
         let store_stats = self
-            .log_db()
-            .map(|log_db| DataStoreStats::from_store(&log_db.entity_db.data_store))
+            .store_db()
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
             .unwrap_or_default();
 
         let blueprint_config = self
@@ -656,8 +656,8 @@ impl eframe::App for App {
                     &blueprint_stats,
                 );
 
-                // NOTE: cannot call `.log_db()` due to borrowck shenanigans
-                if let Some(log_db) = self
+                // NOTE: cannot call `.store_db()` due to borrowck shenanigans
+                if let Some(store_db) = self
                     .state
                     .selected_rec_id
                     .as_ref()
@@ -665,9 +665,9 @@ impl eframe::App for App {
                 {
                     recording_config_entry(
                         &mut self.state.recording_configs,
-                        log_db.store_id().clone(),
+                        store_db.store_id().clone(),
                         self.rx.source(),
-                        log_db,
+                        store_db,
                     )
                     .selection_state
                     .on_frame_start(|item| blueprint.is_item_valid(item));
@@ -683,14 +683,14 @@ impl eframe::App for App {
                     {
                         render_ctx.begin_frame();
 
-                        if log_db.is_empty() {
+                        if store_db.is_empty() {
                             wait_screen_ui(ui, &self.rx);
                         } else {
                             self.state.show(
                                 &mut blueprint,
                                 ui,
                                 render_ctx,
-                                log_db,
+                                store_db,
                                 &self.re_ui,
                                 &self.component_ui_registry,
                                 &self.space_view_class_registry,
@@ -896,21 +896,21 @@ impl App {
                 false
             };
 
-            let log_db = self.store_hub.log_db_entry(store_id);
+            let store_db = self.store_hub.store_db_entry(store_id);
 
-            if log_db.data_source.is_none() {
-                log_db.data_source = Some(self.rx.source().clone());
+            if store_db.data_source.is_none() {
+                store_db.data_source = Some(self.rx.source().clone());
             }
 
-            if let Err(err) = log_db.add(&msg) {
+            if let Err(err) = store_db.add(&msg) {
                 re_log::error!("Failed to add incoming msg: {err}");
             };
 
-            if is_new_store && log_db.store_kind() == StoreKind::Recording {
+            if is_new_store && store_db.store_kind() == StoreKind::Recording {
                 // Do analytics after ingesting the new message,
-                // because thats when the `log_db.store_info` is set,
+                // because thats when the `store_db.store_info` is set,
                 // which we use in the analytics call.
-                self.analytics.on_open_recording(log_db);
+                self.analytics.on_open_recording(store_db);
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
@@ -1016,13 +1016,14 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
-    /// Do we have an open `LogDb` that is non-empty?
-    fn log_db_is_nonempty(&self) -> bool {
-        self.log_db().map_or(false, |log_db| !log_db.is_empty())
+    /// Do we have an open `StoreDb` that is non-empty?
+    fn store_db_is_nonempty(&self) -> bool {
+        self.store_db()
+            .map_or(false, |store_db| !store_db.is_empty())
     }
 
-    /// Get access to the currently shown [`LogDb`], if any.
-    pub fn log_db(&self) -> Option<&LogDb> {
+    /// Get access to the currently shown [`StoreDb`], if any.
+    pub fn store_db(&self) -> Option<&StoreDb> {
         self.state
             .selected_rec_id
             .as_ref()
@@ -1030,9 +1031,9 @@ impl App {
     }
 
     fn on_rrd_loaded(&mut self, store_hub: StoreHub) {
-        if let Some(log_db) = store_hub.recordings().next() {
-            self.state.selected_rec_id = Some(log_db.store_id().clone());
-            self.analytics.on_open_recording(log_db);
+        if let Some(store_db) = store_hub.recordings().next() {
+            self.state.selected_rec_id = Some(store_db.store_id().clone());
+            self.analytics.on_open_recording(store_db);
         }
 
         for blueprint_db in store_hub.blueprints() {
@@ -1133,7 +1134,7 @@ struct AppState {
     #[serde(skip)]
     selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
 
-    /// Configuration for the current recording (found in [`LogDb`]).
+    /// Configuration for the current recording (found in [`StoreDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
 
     /// Which view panel is currently being shown
@@ -1159,7 +1160,7 @@ impl AppState {
         blueprint: &mut Blueprint,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
-        log_db: &LogDb,
+        store_db: &StoreDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
@@ -1183,9 +1184,9 @@ impl AppState {
 
         let rec_cfg = recording_config_entry(
             recording_configs,
-            log_db.store_id().clone(),
+            store_db.store_id().clone(),
             rx.source(),
-            log_db,
+            store_db,
         );
 
         let mut ctx = ViewerContext {
@@ -1193,7 +1194,7 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            log_db,
+            store_db,
             rec_cfg,
             re_ui,
             render_ctx,
@@ -1221,10 +1222,11 @@ impl AppState {
             // so we have one frame to see the first data before we move the time.
             let dt = ui.ctx().input(|i| i.stable_dt);
             let more_data_is_coming = rx.is_connected();
-            let needs_repaint =
-                ctx.rec_cfg
-                    .time_ctrl
-                    .update(log_db.times_per_timeline(), dt, more_data_is_coming);
+            let needs_repaint = ctx.rec_cfg.time_ctrl.update(
+                store_db.times_per_timeline(),
+                dt,
+                more_data_is_coming,
+            );
             if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
                 ui.ctx().request_repaint();
             }
@@ -1727,7 +1729,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             });
         });
     } else {
-        ui.add_enabled_ui(app.log_db_is_nonempty(), |ui| {
+        ui.add_enabled_ui(app.store_db_is_nonempty(), |ui| {
             if ui
                 .add(save_button)
                 .on_hover_text("Save all data to a Rerun data file (.rrd)")
@@ -1763,15 +1765,15 @@ fn open(app: &mut App) {
         .add_filter("rerun data file", &["rrd"])
         .pick_file()
     {
-        if let Some(log_db) = load_file_path(&path) {
-            app.on_rrd_loaded(log_db);
+        if let Some(store_db) = load_file_path(&path) {
+            app.on_rrd_loaded(store_db);
         }
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRangeF)>) {
-    let Some(log_db) = app.log_db() else {
+    let Some(store_db) = app.store_db() else {
         // NOTE: Can only happen if saving through the command palette.
         re_log::error!("No data to save!");
         return;
@@ -1788,7 +1790,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
         .set_title(title)
         .save_file()
     {
-        let f = match save_database_to_file(log_db, path, loop_selection) {
+        let f = match save_database_to_file(store_db, path, loop_selection) {
             Ok(f) => f,
             Err(err) => {
                 re_log::error!("File saving failed: {err}");
@@ -1803,7 +1805,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
 }
 
 fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
-    if app.log_db_is_nonempty() {
+    if app.store_db_is_nonempty() {
         ui.horizontal(|ui| {
             ui.label("Main view:");
             if ui
@@ -1821,20 +1823,20 @@ fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
-    let log_dbs = app
+    let store_dbs = app
         .store_hub
         .recordings()
-        .sorted_by_key(|log_db| log_db.store_info().map(|ri| ri.started))
+        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
         .collect_vec();
 
-    if log_dbs.is_empty() {
+    if store_dbs.is_empty() {
         ui.weak("(empty)");
         return;
     }
 
     ui.style_mut().wrap = Some(false);
-    for log_db in &log_dbs {
-        let info = if let Some(store_info) = log_db.store_info() {
+    for store_db in &store_dbs {
+        let info = if let Some(store_info) = store_db.store_info() {
             format!(
                 "{} - {}",
                 store_info.application_id,
@@ -1845,12 +1847,12 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.selected_rec_id.as_ref() == Some(log_db.store_id()),
+                app.state.selected_rec_id.as_ref() == Some(store_db.store_id()),
                 info,
             )
             .clicked()
         {
-            app.state.selected_rec_id = Some(log_db.store_id().clone());
+            app.state.selected_rec_id = Some(store_db.store_id().clone());
         }
     }
 }
@@ -1860,7 +1862,7 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
     let blueprint_dbs = app
         .store_hub
         .blueprints()
-        .sorted_by_key(|log_db| log_db.store_info().map(|ri| ri.started))
+        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
         .filter(|log| {
             log.store_info()
                 .map_or(false, |ri| ri.application_id == app_id)
@@ -1873,11 +1875,11 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
     }
 
     ui.style_mut().wrap = Some(false);
-    for log_db in blueprint_dbs
+    for store_db in blueprint_dbs
         .iter()
         .filter(|log| log.store_kind() == StoreKind::Blueprint)
     {
-        let info = if let Some(store_info) = log_db.store_info() {
+        let info = if let Some(store_info) = store_db.store_info() {
             if store_info.is_app_default_blueprint() {
                 format!("{} - Default Blueprint", store_info.application_id,)
             } else {
@@ -1892,14 +1894,14 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.selected_blueprint_by_app.get(&app_id) == Some(log_db.store_id()),
+                app.state.selected_blueprint_by_app.get(&app_id) == Some(store_db.store_id()),
                 info,
             )
             .clicked()
         {
             app.state
                 .selected_blueprint_by_app
-                .insert(app_id.clone(), log_db.store_id().clone());
+                .insert(app_id.clone(), store_db.store_id().clone());
         }
     }
 }
@@ -2069,7 +2071,7 @@ fn debug_menu_options_ui(ui: &mut egui::Ui, options: &mut AppOptions, _frame: &m
 /// specific time range will be accounted for.
 #[cfg(not(target_arch = "wasm32"))]
 fn save_database_to_file(
-    log_db: &LogDb,
+    store_db: &StoreDb,
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
@@ -2077,13 +2079,13 @@ fn save_database_to_file(
 
     re_tracing::profile_scope!("dump_messages");
 
-    let begin_rec_msg = log_db
+    let begin_rec_msg = store_db
         .recording_msg()
         .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
 
-    let ent_op_msgs = log_db
+    let ent_op_msgs = store_db
         .iter_entity_op_msgs()
-        .map(|msg| LogMsg::EntityPathOpMsg(log_db.store_id().clone(), msg.clone()))
+        .map(|msg| LogMsg::EntityPathOpMsg(store_db.store_id().clone(), msg.clone()))
         .collect_vec();
 
     let time_filter = time_selection.map(|(timeline, range)| {
@@ -2092,14 +2094,14 @@ fn save_database_to_file(
             TimeRange::new(range.min.floor(), range.max.ceil()),
         )
     });
-    let data_msgs: Result<Vec<_>, _> = log_db
+    let data_msgs: Result<Vec<_>, _> = store_db
         .entity_db
         .data_store
         .to_data_tables(time_filter)
         .map(|table| {
             table
                 .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(log_db.store_id().clone(), msg))
+                .map(|msg| LogMsg::ArrowMsg(store_db.store_id().clone(), msg))
         })
         .collect();
 
@@ -2140,8 +2142,8 @@ fn load_file_path(path: &std::path::Path) -> Option<StoreHub> {
     match load_file_path_impl(path) {
         Ok(mut rrd) => {
             re_log::info!("Loaded {path:?}");
-            for log_db in rrd.log_dbs_mut() {
-                log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
+            for store_db in rrd.store_dbs_mut() {
+                store_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
                     paths: vec![path.into()],
                 });
             }
@@ -2164,8 +2166,8 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<StoreHub> 
     match StoreHub::from_rrd(read) {
         Ok(mut rrd) => {
             re_log::info!("Loaded {name:?}");
-            for log_db in rrd.log_dbs_mut() {
-                log_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
+            for store_db in rrd.store_dbs_mut() {
+                store_db.data_source = Some(re_smart_channel::SmartChannelSource::Files {
                     paths: vec![name.into()],
                 });
             }
@@ -2187,16 +2189,16 @@ fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
     id: StoreId,
     data_source: &'_ re_smart_channel::SmartChannelSource,
-    log_db: &'_ LogDb,
+    store_db: &'_ StoreDb,
 ) -> &'cfgs mut RecordingConfig {
     configs
         .entry(id)
-        .or_insert_with(|| new_recording_confg(data_source, log_db))
+        .or_insert_with(|| new_recording_confg(data_source, store_db))
 }
 
 fn new_recording_confg(
     data_source: &'_ re_smart_channel::SmartChannelSource,
-    log_db: &'_ LogDb,
+    store_db: &'_ StoreDb,
 ) -> RecordingConfig {
     let play_state = match data_source {
         // Play files from the start by default - it feels nice and alive./
@@ -2215,7 +2217,7 @@ fn new_recording_confg(
 
     rec_cfg
         .time_ctrl
-        .set_play_state(log_db.times_per_timeline(), play_state);
+        .set_play_state(store_db.times_per_timeline(), play_state);
 
     rec_cfg
 }

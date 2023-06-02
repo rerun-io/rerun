@@ -29,7 +29,7 @@ impl SceneElement for SceneTextBox {
         query: &SceneQuery<'_>,
         _state: &dyn SpaceViewState,
     ) {
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
             if !props.visible {

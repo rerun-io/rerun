@@ -190,13 +190,13 @@ impl ScenePart for CamerasPart {
     ) {
         re_tracing::profile_scope!("CamerasPart");
 
-        let store = &ctx.log_db.entity_db.data_store;
+        let store = &ctx.store_db.entity_db.data_store;
         for (ent_path, props) in query.iter_entities() {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
                 let view_coordinates = determine_view_coordinates(
-                    &ctx.log_db.entity_db.data_store,
+                    &ctx.store_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl,
                     ent_path.clone(),
                 );

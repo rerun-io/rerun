@@ -32,7 +32,7 @@ impl Blueprint {
     ) {
         re_tracing::profile_function!();
 
-        let spaces_info = SpaceInfoCollection::new(&ctx.log_db.entity_db);
+        let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
 
         self.viewport.on_frame_start(ctx, &spaces_info);
 

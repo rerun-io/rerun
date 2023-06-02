@@ -87,7 +87,7 @@ impl ScenePart for Lines2DPart {
             let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
             match query_primary_with_history::<LineStrip2D, 4>(
-                &ctx.log_db.entity_db.data_store,
+                &ctx.store_db.entity_db.data_store,
                 &query.timeline,
                 &query.latest_at,
                 &props.visible_history,

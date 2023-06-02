@@ -3,7 +3,7 @@ use re_log_types::{
     DataRow, DeserializableComponent, EntityPath, RowId, SerializableComponent, TimePoint, Timeline,
 };
 
-use crate::LogDb;
+use crate::StoreDb;
 
 // ----------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ where
 
 /// Store a single value for a given [`re_log_types::Component`].
 pub fn store_one_component<C: SerializableComponent>(
-    log_db: &mut LogDb,
+    store_db: &mut StoreDb,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
     component: C,
@@ -74,7 +74,7 @@ pub fn store_one_component<C: SerializableComponent>(
     );
     row.compute_all_size_bytes();
 
-    match log_db.entity_db.try_add_data_row(&row) {
+    match store_db.entity_db.try_add_data_row(&row) {
         Ok(()) => {}
         Err(err) => {
             re_log::warn_once!(

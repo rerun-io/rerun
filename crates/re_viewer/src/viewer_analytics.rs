@@ -128,12 +128,12 @@ impl ViewerAnalytics {
     }
 
     /// When we have loaded the start of a new recording.
-    pub fn on_open_recording(&mut self, log_db: &re_data_store::LogDb) {
-        if log_db.store_kind() != re_log_types::StoreKind::Recording {
+    pub fn on_open_recording(&mut self, store_db: &re_data_store::StoreDb) {
+        if store_db.store_kind() != re_log_types::StoreKind::Recording {
             return;
         }
 
-        if let Some(store_info) = log_db.store_info() {
+        if let Some(store_info) = store_db.store_info() {
             // We hash the application_id and recording_id unless this is an official example.
             // That's because we want to be able to track which are the popular examples,
             // but we don't want to collect actual application ids.
@@ -185,7 +185,7 @@ impl ViewerAnalytics {
             self.register("is_official_example", store_info.is_official_example);
         }
 
-        if let Some(data_source) = &log_db.data_source {
+        if let Some(data_source) = &store_db.data_source {
             let data_source = match data_source {
                 re_smart_channel::SmartChannelSource::Files { .. } => "file", // .rrd, .png, .glb, …
                 re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
@@ -214,5 +214,5 @@ impl ViewerAnalytics {
     ) {
     }
     #[allow(clippy::unused_self)]
-    pub fn on_open_recording(&mut self, _log_db: &re_data_store::LogDb) {}
+    pub fn on_open_recording(&mut self, _store_db: &re_data_store::StoreDb) {}
 }
