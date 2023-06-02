@@ -39,7 +39,7 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
             ui.add_space(spacing);
 
             // On the web the browser controls the zoom
-            let zoom_factor = app.state.app_options.zoom_factor;
+            let zoom_factor = app.state.app_options().zoom_factor;
             ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
                 .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
             Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
@@ -73,7 +73,7 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
         });
 
         ui.menu_button("Options", |ui| {
-            options_menu_ui(ui, frame, &mut app.state.app_options);
+            options_menu_ui(ui, frame, app.state.app_options_mut());
         });
 
         ui.add_space(spacing);

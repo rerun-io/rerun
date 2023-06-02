@@ -1116,7 +1116,7 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
 #[serde(default)]
 pub(crate) struct AppState {
     /// Global options for the whole viewer.
-    pub(crate) app_options: AppOptions,
+    app_options: AppOptions,
 
     /// Things that need caching.
     #[serde(skip)]
@@ -1144,6 +1144,14 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
+    pub fn app_options(&self) -> &AppOptions {
+        &self.app_options
+    }
+
+    pub fn app_options_mut(&mut self) -> &mut AppOptions {
+        &mut self.app_options
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn show(
         &mut self,

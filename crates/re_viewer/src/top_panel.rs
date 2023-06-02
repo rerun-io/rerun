@@ -62,7 +62,7 @@ fn top_bar_ui(
 ) {
     crate::rerun_menu::rerun_menu_button_ui(ui, frame, app);
 
-    if app.state.app_options.show_metrics {
+    if app.state.app_options().show_metrics {
         ui.separator();
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
@@ -133,7 +133,7 @@ fn top_bar_ui(
             app.pending_commands.push(Command::ToggleBlueprintPanel);
         }
 
-        if cfg!(debug_assertions) && app.state.app_options.show_metrics {
+        if cfg!(debug_assertions) && app.state.app_options().show_metrics {
             ui.vertical_centered(|ui| {
                 ui.style_mut().wrap = Some(false);
                 ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
@@ -250,7 +250,7 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
     // empty queue == unreliable latency
     let latency_sec = app.rx.latency_ns() as f32 / 1e9;
     if queue_len > 0
-        && (!is_latency_interesting || app.state.app_options.warn_latency < latency_sec)
+        && (!is_latency_interesting || app.state.app_options().warn_latency < latency_sec)
     {
         // we use this to avoid flicker
         app.latest_queue_interest = web_time::Instant::now();
@@ -268,7 +268,7 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
                     "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
                     This latency does NOT include network latency.";
 
-            if latency_sec < app.state.app_options.warn_latency {
+            if latency_sec < app.state.app_options().warn_latency {
                 ui.weak(text).on_hover_text(hover_text);
             } else {
                 ui.label(app.re_ui().warning_text(text))
