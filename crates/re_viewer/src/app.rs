@@ -81,7 +81,7 @@ pub struct App {
     startup_options: StartupOptions,
     ram_limit_warner: re_memory::RamLimitWarner,
     re_ui: re_ui::ReUi,
-    pub(crate) screenshotter: crate::screenshotter::Screenshotter,
+    screenshotter: crate::screenshotter::Screenshotter,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
@@ -217,6 +217,10 @@ impl App {
 
     pub fn re_ui(&self) -> &re_ui::ReUi {
         &self.re_ui
+    }
+
+    pub fn is_screenshotting(&self) -> bool {
+        self.screenshotter.is_screenshotting()
     }
 
     /// Adds a new space view class to the viewer.

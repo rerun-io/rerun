@@ -24,7 +24,7 @@ pub fn top_panel(
             frame.info().window_info.fullscreen
         }
     };
-    let style_like_web = app.screenshotter.is_screenshotting();
+    let style_like_web = app.is_screenshotting();
     let top_bar_style =
         app.re_ui()
             .top_bar_style(native_pixels_per_point, fullscreen, style_like_web);
