@@ -268,7 +268,10 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             });
         });
     } else {
-        ui.add_enabled_ui(app.store_db_is_nonempty(), |ui| {
+        let store_db_is_nonempty = app
+            .store_db()
+            .map_or(false, |store_db| !store_db.is_empty());
+        ui.add_enabled_ui(store_db_is_nonempty, |ui| {
             if ui
                 .add(save_button)
                 .on_hover_text("Save all data to a Rerun data file (.rrd)")

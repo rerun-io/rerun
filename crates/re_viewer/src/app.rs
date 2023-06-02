@@ -1021,12 +1021,6 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
-    /// Do we have an open [`StoreDb`] that is non-empty?
-    pub(crate) fn store_db_is_nonempty(&self) -> bool {
-        self.store_db()
-            .map_or(false, |store_db| !store_db.is_empty())
-    }
-
     /// Get access to the currently shown [`StoreDb`], if any.
     pub fn store_db(&self) -> Option<&StoreDb> {
         self.state
