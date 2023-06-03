@@ -15,8 +15,8 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, Size};
 use re_viewer_context::{
-    auto_color, AnnotationMap, Scene, ScenePartCollection, SceneQuery,
-    SpaceViewHighlights, TypedScene, ViewerContext,
+    auto_color, AnnotationMap, Scene, ScenePartCollection, SceneQuery, SpaceViewHighlights,
+    TypedScene, ViewerContext,
 };
 
 use crate::{space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass};
