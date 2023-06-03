@@ -110,7 +110,7 @@ impl ScenePart<SpatialSpaceViewClass> for MeshPart {
         }
     }
 
-    fn data(&self) -> Option<&dyn std::any::Any> {
+    fn data(&self) -> Option<&SpatialScenePartData> {
         Some(&self.0)
     }
 }

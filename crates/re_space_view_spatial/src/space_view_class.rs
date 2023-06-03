@@ -1,7 +1,7 @@
 use re_space_view::EmptySpaceViewState;
 use re_viewer_context::SpaceViewClassImpl;
 
-use crate::scene::{SpatialSceneContext, SpatialScenePartCollection};
+use crate::scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData};
 
 pub struct SpatialSpaceViewClass;
 
@@ -9,6 +9,7 @@ impl SpaceViewClassImpl for SpatialSpaceViewClass {
     type SpaceViewState = EmptySpaceViewState;
     type SceneContext = SpatialSceneContext;
     type ScenePartCollection = SpatialScenePartCollection;
+    type ScenePartData = SpatialScenePartData;
 
     fn name(&self) -> re_viewer_context::SpaceViewClassName {
         "Spatial".into()

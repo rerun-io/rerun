@@ -4,7 +4,7 @@ mod picking;
 mod primitives;
 
 pub use contexts::{SpatialSceneContext, TransformContext, UnreachableTransform};
-pub use parts::SpatialScenePartCollection;
+pub use parts::{SpatialScenePartCollection, SpatialScenePartData};
 pub use picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use primitives::SceneSpatialPrimitives;
 
@@ -19,9 +19,7 @@ use re_viewer_context::{
     TypedScene, ViewerContext,
 };
 
-use crate::{
-    scene::parts::SpatialScenePartData, space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass,
-};
+use crate::{space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass};
 
 use super::SpatialNavigationMode;
 
@@ -154,10 +152,7 @@ impl SceneSpatial {
         self.primitives.recalculate_bounding_box();
 
         for scene_part in scene.parts.vec_mut() {
-            if let Some(data) = scene_part
-                .data()
-                .and_then(|d| d.downcast_ref::<SpatialScenePartData>())
-            {
+            if let Some(data) = scene_part.data() {
                 self.ui.labels.extend(data.ui_labels.iter().cloned());
                 self.primitives.bounding_box =
                     self.primitives.bounding_box.union(data.bounding_box);

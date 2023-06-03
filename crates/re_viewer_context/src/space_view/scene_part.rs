@@ -38,7 +38,7 @@ pub trait ScenePart<C: SpaceViewClassImpl> {
     ///
     /// This is a useful for retrieving a data struct that may be common for all scene elements
     /// of a particular [`crate::SpaceViewClass`].
-    fn data(&self) -> Option<&dyn std::any::Any> {
+    fn data(&self) -> Option<&C::ScenePartData> {
         None
     }
 }

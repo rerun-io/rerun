@@ -116,7 +116,7 @@ impl ScenePart<SpatialSpaceViewClass> for Lines3DPart {
         Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
     }
 
-    fn data(&self) -> Option<&dyn std::any::Any> {
+    fn data(&self) -> Option<&SpatialScenePartData> {
         Some(&self.0)
     }
 }

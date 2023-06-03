@@ -40,6 +40,7 @@ impl SpaceViewClassImpl for TextSpaceView {
     type SpaceViewState = TextSpaceViewState;
     type SceneContext = re_space_view::EmptySceneContext;
     type ScenePartCollection = SceneText;
+    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text".into()

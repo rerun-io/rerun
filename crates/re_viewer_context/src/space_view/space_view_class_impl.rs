@@ -20,6 +20,9 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
     /// Collection of [`crate::ScenePart`]s that this scene populates.
     type ScenePartCollection: ScenePartCollection<Self> + Default + 'static;
 
+    /// A piece of data that all scene parts have in common, useful for iterating over them.
+    type ScenePartData;
+
     /// Name of this space view class.
     ///
     /// Used for both ui display and identification.

@@ -222,7 +222,7 @@ impl ScenePart<SpatialSpaceViewClass> for CamerasPart {
         Vec::new()
     }
 
-    fn data(&self) -> Option<&dyn std::any::Any> {
+    fn data(&self) -> Option<&SpatialScenePartData> {
         Some(&self.data)
     }
 }

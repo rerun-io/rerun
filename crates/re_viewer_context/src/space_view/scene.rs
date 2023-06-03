@@ -7,7 +7,7 @@ use crate::{
 ///
 /// When populating a scene, first all contexts are populated,
 /// and then all elements with read access to the previously established context objects.
-pub trait Scene: std::any::Any {
+pub trait Scene {
     /// Populates the scene for a given query.
     fn populate(
         &mut self,
@@ -39,7 +39,6 @@ impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
 }
 
 impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
-    /// Populates the scene for a given query.
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
