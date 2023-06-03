@@ -4,15 +4,18 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePartImpl, SceneQuery, SpaceViewHighlights,
+    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePart, SceneQuery, SpaceViewHighlights,
     ViewerContext,
 };
 
-use crate::scene::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    load_keypoint_connections,
-    parts::entity_iterator::process_entity_views,
-    UiLabel, UiLabelTarget,
+use crate::{
+    scene::{
+        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+        load_keypoint_connections,
+        parts::entity_iterator::process_entity_views,
+        UiLabel, UiLabelTarget,
+    },
+    SpatialSpaceViewClass,
 };
 
 use super::{
@@ -174,10 +177,7 @@ impl Points3DPart {
     }
 }
 
-impl ScenePartImpl for Points3DPart {
-    type SpaceViewState = SpatialSpaceViewState;
-    type SceneContext = SpatialSceneContext;
-
+impl ScenePart<SpatialSpaceViewClass> for Points3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Point3D::name(),
@@ -194,8 +194,8 @@ impl ScenePartImpl for Points3DPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &Self::SpaceViewState,
-        scene_context: &Self::SceneContext,
+        _space_view_state: &SpatialSpaceViewState,
+        scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points3DPart");

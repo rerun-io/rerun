@@ -40,7 +40,7 @@ pub trait SpaceViewClass {
     ///
     /// Called both to determine the supported archetypes and
     /// to populate a scene every frame.
-    fn new_scene(&self) -> Scene;
+    fn new_scene(&self) -> Box<dyn Scene>;
 
     /// Optional archetype of the Space View's blueprint properties.
     ///
@@ -73,7 +73,7 @@ pub trait SpaceViewClass {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Scene,
+        scene: Box<dyn Scene>,
     );
 }
 

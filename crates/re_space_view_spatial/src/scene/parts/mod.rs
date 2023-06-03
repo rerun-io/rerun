@@ -30,6 +30,7 @@ use re_viewer_context::{
 use re_viewer_context::{ScenePartCollection, SpaceViewHighlights};
 
 use super::{EntityDepthOffsets, SceneSpatial};
+use crate::SpatialSpaceViewClass;
 use crate::{scene::Keypoints, TransformContext};
 
 type SpatialSpaceViewState = EmptySpaceViewState;
@@ -47,8 +48,8 @@ pub struct SpatialScenePartCollection {
     pub meshes: meshes::MeshPart,
 }
 
-impl ScenePartCollection for SpatialScenePartCollection {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart> {
+impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
+    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart<SpatialSpaceViewClass>> {
         let Self {
             points2d,
             points3d,

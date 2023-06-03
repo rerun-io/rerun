@@ -108,9 +108,9 @@ impl SpaceViewClassImpl for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
-        scene: TypedScene<'_, Self::SceneContext, Self::ScenePartCollection>,
+        scene: &TypedScene<Self>,
     ) {
-        let scene = scene.parts;
+        let scene = &scene.parts;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),

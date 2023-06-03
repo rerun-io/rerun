@@ -2,11 +2,11 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePartCollection, ScenePartImpl, SceneQuery, SpaceViewHighlights,
-    ViewerContext,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClassImpl,
+    SpaceViewHighlights, ViewerContext,
 };
 
-use crate::space_view_class::TextBoxSpaceViewState;
+use crate::TextBoxSpaceView;
 
 // ---
 
@@ -21,8 +21,8 @@ pub struct SceneTextBox {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl ScenePartCollection for SceneTextBox {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart> {
+impl ScenePartCollection<TextBoxSpaceView> for SceneTextBox {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<TextBoxSpaceView>> {
         vec![self]
     }
 
@@ -31,20 +31,16 @@ impl ScenePartCollection for SceneTextBox {
     }
 }
 
-impl ScenePartImpl for SceneTextBox {
-    type SpaceViewState = TextBoxSpaceViewState;
-    type SceneContext = re_space_view::EmptySceneContext;
-
+impl ScenePart<TextBoxSpaceView> for SceneTextBox {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
     }
-
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &Self::SpaceViewState,
-        _context: &Self::SceneContext,
+        _space_view_state: &<TextBoxSpaceView as SpaceViewClassImpl>::SpaceViewState,
+        _scene_context: &<TextBoxSpaceView as SpaceViewClassImpl>::SceneContext,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;

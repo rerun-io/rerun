@@ -3,14 +3,16 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePartImpl, SceneQuery, SpaceViewHighlights,
-    ViewerContext,
+    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
 use super::{instance_key_to_picking_id, SpatialScenePartData, SpatialSpaceViewState};
-use crate::scene::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    parts::entity_iterator::process_entity_views,
+use crate::{
+    scene::{
+        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+        parts::entity_iterator::process_entity_views,
+    },
+    SpatialSpaceViewClass,
 };
 
 #[derive(Default)]
@@ -91,10 +93,7 @@ impl Arrows3DPart {
     }
 }
 
-impl ScenePartImpl for Arrows3DPart {
-    type SpaceViewState = SpatialSpaceViewState;
-    type SceneContext = SpatialSceneContext;
-
+impl ScenePart<SpatialSpaceViewClass> for Arrows3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Arrow3D::name(),
@@ -109,8 +108,8 @@ impl ScenePartImpl for Arrows3DPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &Self::SpaceViewState,
-        scene_context: &Self::SceneContext,
+        _space_view_state: &SpatialSpaceViewState,
+        scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Arrows3DPart");

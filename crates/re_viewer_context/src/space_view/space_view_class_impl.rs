@@ -1,20 +1,16 @@
 use crate::{
-    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName,
-    SpaceViewHighlights, SpaceViewState, ViewerContext,
+    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewState,
+    ViewerContext,
 };
 
-pub struct TypedScene<'a, C: SceneContext, P: ScenePartCollection> {
-    pub context: &'a C,
-    pub parts: &'a P,
-    pub highlights: SpaceViewHighlights,
-}
+use super::scene::TypedScene;
 
 /// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::ScenePart`] type.
 ///
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
-pub trait SpaceViewClassImpl {
+pub trait SpaceViewClassImpl: std::marker::Sized {
     /// State of a space view.
     type SpaceViewState: SpaceViewState + Default + 'static;
 
@@ -22,7 +18,7 @@ pub trait SpaceViewClassImpl {
     type SceneContext: SceneContext + Default + 'static;
 
     /// Collection of [`crate::ScenePart`]s that this scene populates.
-    type ScenePartCollection: ScenePartCollection + Default + 'static;
+    type ScenePartCollection: ScenePartCollection<Self> + Default + 'static;
 
     /// Name of this space view class.
     ///
@@ -55,11 +51,11 @@ pub trait SpaceViewClassImpl {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
-        scene: TypedScene<'_, Self::SceneContext, Self::ScenePartCollection>,
+        scene: &TypedScene<Self>,
     );
 }
 
-impl<T: SpaceViewClassImpl> SpaceViewClass for T {
+impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
     #[inline]
     fn name(&self) -> SpaceViewClassName {
         self.name()
@@ -76,12 +72,8 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     }
 
     #[inline]
-    fn new_scene(&self) -> Scene {
-        Scene {
-            context: Box::<T::SceneContext>::default(),
-            parts: Box::<T::ScenePartCollection>::default(),
-            highlights: Default::default(),
-        }
+    fn new_scene(&self) -> Box<dyn Scene> {
+        Box::<TypedScene<Self>>::default()
     }
 
     #[inline]
@@ -105,32 +97,16 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Scene,
+        scene: Box<dyn Scene>,
     ) {
-        let Scene {
-            context,
-            parts: elements,
-            highlights,
-        } = scene;
+        let Some(typed_scene) = scene.as_any().downcast_ref()
+            else {
+                re_log::error_once!("Unexpected space view state type. Expected {}",
+                                    std::any::type_name::<TypedScene<T>>());
+                return;
+            };
 
-        let Some(context) = context.as_any().downcast_ref::<T::SceneContext>() else {
-            re_log::error_once!("Failed to downcast scene context to the correct type {}.",
-                                std::any::type_name::<T::SceneContext>());
-            return;
-        };
-        let Some(parts) = elements.as_any().downcast_ref::<T::ScenePartCollection>() else {
-            re_log::error_once!("Failed to downcast scene elements to the correct type {}.",
-                                std::any::type_name::<T::ScenePartCollection>());
-            return;
-        };
-
-        let scene = TypedScene {
-            context,
-            parts,
-            highlights,
-        };
-
-        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene));
+        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, typed_scene));
     }
 }
 
@@ -141,6 +117,9 @@ fn typed_state_wrapper<T: SpaceViewState, F: FnOnce(&mut T)>(
     if let Some(state) = state.as_any_mut().downcast_mut() {
         fun(state);
     } else {
-        re_log::error_once!("Incorrect type of space view state.");
+        re_log::error_once!(
+            "Unexpected space view state type. Expected {}",
+            std::any::type_name::<T>()
+        );
     }
 }

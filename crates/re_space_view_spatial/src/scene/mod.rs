@@ -3,7 +3,8 @@ mod parts;
 mod picking;
 mod primitives;
 
-pub use contexts::{TransformContext, UnreachableTransform};
+pub use contexts::{SpatialSceneContext, TransformContext, UnreachableTransform};
+pub use parts::SpatialScenePartCollection;
 pub use picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use primitives::SceneSpatialPrimitives;
 
@@ -14,17 +15,17 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, Size};
 use re_viewer_context::{
-    auto_color, AnnotationMap, Scene, SceneQuery, SpaceViewHighlights, ViewerContext,
+    auto_color, AnnotationMap, Scene, ScenePartCollection, SceneQuery, SpaceViewHighlights,
+    TypedScene, ViewerContext,
 };
 
 use crate::{
-    scene::{contexts::SpatialSceneContext, parts::SpatialScenePartData},
-    space_camera_3d::SpaceCamera3D,
+    scene::parts::SpatialScenePartData, space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass,
 };
 
 use super::SpatialNavigationMode;
 
-use self::{contexts::SpatialSceneEntityContext, parts::SpatialScenePartCollection};
+use self::contexts::SpatialSceneEntityContext;
 use parts::ScenePart;
 
 use contexts::EntityDepthOffsets;
@@ -91,7 +92,7 @@ pub struct SceneSpatial {
     num_logged_3d_objects: usize,
 
     // TODO(andreas): Temporary field. The hosting struct will be removed once SpatialScene is fully ported to the SpaceViewClass framework.
-    pub scene: Scene,
+    pub scene: TypedScene<SpatialSpaceViewClass>,
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 }
 
@@ -111,11 +112,7 @@ impl SceneSpatial {
             ui: Default::default(),
             num_logged_3d_objects: Default::default(),
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
-            scene: Scene {
-                context: Box::<re_space_view::EmptySceneContext>::default(),
-                parts: Box::<SpatialScenePartCollection>::default(),
-                highlights: Default::default(),
-            },
+            scene: Default::default(),
             draw_data: Default::default(),
         }
     }
@@ -134,27 +131,22 @@ impl SceneSpatial {
         let parts: Vec<&dyn ScenePart> = vec![&parts::ImagesPart];
 
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
-        let mut scene = Scene {
-            context: Box::<SpatialSceneContext>::default(),
-            parts: Box::<SpatialScenePartCollection>::default(),
+        let mut scene = TypedScene::<SpatialSpaceViewClass> {
+            context: SpatialSceneContext::default(),
+            parts: SpatialScenePartCollection::default(),
             highlights: Default::default(),
         };
         self.draw_data =
             scene.populate(ctx, query, &re_space_view::EmptySpaceViewState, highlights);
-        let scene_context = scene
-            .context
-            .as_any_mut()
-            .downcast_mut::<SpatialSceneContext>()
-            .unwrap();
 
         for part in parts {
             part.load(
                 self,
                 ctx,
                 query,
-                &scene_context.transforms,
+                &scene.context.transforms,
                 &scene.highlights,
-                &scene_context.depth_offsets,
+                &scene.context.depth_offsets,
             );
         }
 
@@ -173,7 +165,8 @@ impl SceneSpatial {
         }
 
         self.draw_data.extend(
-            scene_context
+            scene
+                .context
                 .shared_render_builders
                 .lines
                 .take()
@@ -186,7 +179,8 @@ impl SceneSpatial {
                 }),
         );
         self.draw_data.extend(
-            scene_context
+            scene
+                .context
                 .shared_render_builders
                 .points
                 .take()
@@ -205,14 +199,7 @@ impl SceneSpatial {
     const CAMERA_COLOR: Color32 = Color32::from_rgb(150, 150, 150);
 
     pub fn space_cameras(&self) -> &[SpaceCamera3D] {
-        &self
-            .scene
-            .parts
-            .as_any()
-            .downcast_ref::<SpatialScenePartCollection>()
-            .unwrap()
-            .cameras
-            .space_cameras
+        &self.scene.parts.cameras.space_cameras
     }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.

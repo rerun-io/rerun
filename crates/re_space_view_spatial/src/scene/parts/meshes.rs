@@ -3,8 +3,7 @@ use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePartImpl, SceneQuery, SpaceViewHighlights,
-    ViewerContext,
+    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
 use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
@@ -13,6 +12,7 @@ use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
     parts::entity_iterator::process_entity_views,
 };
+use crate::SpatialSpaceViewClass;
 
 use super::{instance_path_hash_for_picking, SpatialScenePartData, SpatialSpaceViewState};
 
@@ -70,10 +70,7 @@ impl MeshPart {
     }
 }
 
-impl ScenePartImpl for MeshPart {
-    type SpaceViewState = SpatialSpaceViewState;
-    type SceneContext = SpatialSceneContext;
-
+impl ScenePart<SpatialSpaceViewClass> for MeshPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()]
     }
@@ -82,8 +79,8 @@ impl ScenePartImpl for MeshPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &Self::SpaceViewState,
-        scene_context: &Self::SceneContext,
+        _space_view_state: &SpatialSpaceViewState,
+        scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("MeshPart");

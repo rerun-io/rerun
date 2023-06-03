@@ -4,7 +4,7 @@ use re_components::{
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
-use re_viewer_context::{ArchetypeDefinition, ScenePartImpl, TimeControl};
+use re_viewer_context::{ArchetypeDefinition, ScenePart, TimeControl};
 use re_viewer_context::{SceneQuery, ViewerContext};
 use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
@@ -13,6 +13,7 @@ use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     scene::{contexts::SpatialSceneContext, SceneSpatial},
     space_camera_3d::SpaceCamera3D,
+    SpatialSpaceViewClass,
 };
 
 /// Determine the view coordinates (i.e.) the axis semantics.
@@ -180,10 +181,7 @@ impl CamerasPart {
     }
 }
 
-impl ScenePartImpl for CamerasPart {
-    type SpaceViewState = SpatialSpaceViewState;
-    type SceneContext = SpatialSceneContext;
-
+impl ScenePart<SpatialSpaceViewClass> for CamerasPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Pinhole::name(),]
     }
@@ -192,8 +190,8 @@ impl ScenePartImpl for CamerasPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &Self::SpaceViewState,
-        scene_context: &Self::SceneContext,
+        _space_view_state: &SpatialSpaceViewState,
+        scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("CamerasPart");

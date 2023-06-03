@@ -3,11 +3,11 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePartCollection, ScenePartImpl, SceneQuery, SpaceViewHighlights,
-    ViewerContext,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClassImpl,
+    SpaceViewHighlights, ViewerContext,
 };
 
-use super::space_view_class::TextSpaceViewState;
+use crate::TextSpaceView;
 
 #[derive(Debug, Clone)]
 pub struct TextEntry {
@@ -32,8 +32,8 @@ pub struct SceneText {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl ScenePartCollection for SceneText {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart> {
+impl ScenePartCollection<TextSpaceView> for SceneText {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<TextSpaceView>> {
         vec![self]
     }
 
@@ -42,10 +42,7 @@ impl ScenePartCollection for SceneText {
     }
 }
 
-impl ScenePartImpl for SceneText {
-    type SpaceViewState = TextSpaceViewState;
-    type SceneContext = re_space_view::EmptySceneContext;
-
+impl ScenePart<TextSpaceView> for SceneText {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextEntry::name()]
     }
@@ -54,8 +51,8 @@ impl ScenePartImpl for SceneText {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        state: &TextSpaceViewState,
-        _context: &Self::SceneContext,
+        state: &<TextSpaceView as SpaceViewClassImpl>::SpaceViewState,
+        _scene_context: &<TextSpaceView as SpaceViewClassImpl>::SceneContext,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;

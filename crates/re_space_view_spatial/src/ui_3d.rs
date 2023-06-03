@@ -1,7 +1,6 @@
 use eframe::emath::RectTransform;
 use egui::NumExt as _;
 use glam::Affine3A;
-use itertools::Itertools;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
 use re_components::ViewCoordinates;
@@ -323,8 +322,7 @@ pub fn view_3d(
     }
 
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
-    let space_cameras = scene.space_cameras().iter().cloned().collect_vec(); // Borrow workaround.
-    for camera in space_cameras {
+    for camera in &scene.scene.parts.cameras.space_cameras {
         let transform = camera.world_from_cam();
         let axis_length =
             eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
