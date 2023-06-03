@@ -196,7 +196,7 @@ impl SpaceViewBlueprint {
         }
 
         let query = re_viewer_context::SceneQuery {
-            space_path: &self.space_path,
+            space_origin: &self.space_path,
             entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,

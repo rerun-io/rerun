@@ -159,7 +159,7 @@ pub fn annotations(
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
     let scene_query = re_viewer_context::SceneQuery {
-        space_path: entity_path,
+        space_origin: entity_path,
         entity_paths: &entity_paths,
         timeline: query.timeline,
         latest_at: query.at,

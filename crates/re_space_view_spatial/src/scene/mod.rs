@@ -113,7 +113,7 @@ impl SceneSpatial {
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Scene {
                 context: Box::<re_space_view::EmptySceneContext>::default(),
-                elements: Box::<SpatialScenePartCollection>::default(),
+                parts: Box::<SpatialScenePartCollection>::default(),
                 highlights: Default::default(),
             },
             draw_data: Default::default(),
@@ -136,7 +136,7 @@ impl SceneSpatial {
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = Scene {
             context: Box::<SpatialSceneContext>::default(),
-            elements: Box::<SpatialScenePartCollection>::default(),
+            parts: Box::<SpatialScenePartCollection>::default(),
             highlights: Default::default(),
         };
         self.draw_data =
@@ -161,7 +161,7 @@ impl SceneSpatial {
         self.primitives.any_outlines = scene.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
 
-        for scene_part in scene.elements.vec_mut() {
+        for scene_part in scene.parts.vec_mut() {
             if let Some(data) = scene_part
                 .data()
                 .and_then(|d| d.downcast_ref::<SpatialScenePartData>())
@@ -207,7 +207,7 @@ impl SceneSpatial {
     pub fn space_cameras(&self) -> &[SpaceCamera3D] {
         &self
             .scene
-            .elements
+            .parts
             .as_any()
             .downcast_ref::<SpatialScenePartCollection>()
             .unwrap()

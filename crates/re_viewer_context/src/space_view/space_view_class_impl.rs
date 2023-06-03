@@ -79,7 +79,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     fn new_scene(&self) -> Scene {
         Scene {
             context: Box::<T::SceneContext>::default(),
-            elements: Box::<T::ScenePartCollection>::default(),
+            parts: Box::<T::ScenePartCollection>::default(),
             highlights: Default::default(),
         }
     }
@@ -109,7 +109,7 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     ) {
         let Scene {
             context,
-            elements,
+            parts: elements,
             highlights,
         } = scene;
 

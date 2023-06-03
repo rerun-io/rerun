@@ -4,7 +4,7 @@ use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Ti
 
 pub struct SceneQuery<'s> {
     /// The root of the space in which context the query happens.
-    pub space_path: &'s EntityPath,
+    pub space_origin: &'s EntityPath,
 
     /// All queried entities.
     pub entity_paths: &'s IntSet<EntityPath>,

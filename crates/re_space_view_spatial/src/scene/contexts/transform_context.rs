@@ -28,7 +28,7 @@ struct TransformInfo {
 #[derive(Clone)]
 pub struct TransformContext {
     /// All transforms provided are relative to this reference path.
-    reference_path: EntityPath,
+    space_origin: EntityPath,
 
     /// All reachable entities.
     transform_per_entity: IntMap<EntityPath, TransformInfo>,
@@ -43,7 +43,7 @@ pub struct TransformContext {
 impl Default for TransformContext {
     fn default() -> Self {
         Self {
-            reference_path: EntityPath::root(),
+            space_origin: EntityPath::root(),
             transform_per_entity: Default::default(),
             unreachable_descendants: Default::default(),
             first_unreachable_parent: None,
@@ -109,10 +109,10 @@ impl SceneContextPart for TransformContext {
         let time_ctrl = &ctx.rec_cfg.time_ctrl;
         let entity_prop_map = scene_query.entity_props_map;
 
-        self.reference_path = scene_query.space_path.clone();
+        self.space_origin = scene_query.space_origin.clone();
 
         // Find the entity path tree for the root.
-        let Some(mut current_tree) = &entity_db.tree.subtree(scene_query.space_path) else {
+        let Some(mut current_tree) = &entity_db.tree.subtree(scene_query.space_origin) else {
             // It seems the space path is not part of the object tree!
             // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
             // Naturally, in this case we don't have any transforms yet.
@@ -139,7 +139,7 @@ impl SceneContextPart for TransformContext {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",
-                    parent_path, scene_query.space_path
+                    parent_path, scene_query.space_origin
                 );
                 return;
             };
@@ -232,7 +232,7 @@ impl TransformContext {
     }
 
     pub fn reference_path(&self) -> &EntityPath {
-        &self.reference_path
+        &self.space_origin
     }
 
     /// Retrieves the transform of on entity from its local system to the space of the reference.

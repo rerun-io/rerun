@@ -34,7 +34,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
     };
 
     for (ent_path, props) in query.iter_entities() {
-        let Some(entity_context) = context.query(ent_path, highlights, default_depth_offset) else {
+        let Some(entity_context) = context.lookup_entity_context(ent_path, highlights, default_depth_offset) else {
             continue;
         };
 

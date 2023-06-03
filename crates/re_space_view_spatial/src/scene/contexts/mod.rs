@@ -54,7 +54,7 @@ impl SceneContext for SpatialSceneContext {
 }
 
 impl SpatialSceneContext {
-    pub fn query<'a>(
+    pub fn lookup_entity_context<'a>(
         &'a self,
         ent_path: &EntityPath,
         highlights: &'a re_viewer_context::SpaceViewHighlights,
