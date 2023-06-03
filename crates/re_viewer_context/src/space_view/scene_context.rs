@@ -8,7 +8,7 @@ pub trait SceneContext {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
+    /// Converts itself to a mutable reference of [`std::any::Any`], which enables downcasting to concrete types.
     /// TODO(wumpf): Only needed for workarounds in `re_space_view_spatial`.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
@@ -19,7 +19,7 @@ pub trait SceneContext {
 pub trait SceneContextPart {
     /// Each scene context may query several archetypes.
     ///
-    /// This lists all components out that the context queries.
+    /// This lists all archetypes that the context queries.
     /// A context may also query no archetypes at all and prepare caches or viewer related data instead.
     fn archetypes(&self) -> Vec<ArchetypeDefinition>;
 
