@@ -95,6 +95,7 @@ impl ScenePart<SpatialSpaceViewClass> for MeshPart {
             scene_context.depth_offsets.points,
             self.archetype(),
             |ctx, ent_path, entity_view, ent_context| {
+                scene_context.num_3d_primitives.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 self.process_entity_view(ctx, &mut instances, &entity_view, ent_path, ent_context)
             },
         );

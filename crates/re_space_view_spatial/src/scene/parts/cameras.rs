@@ -178,6 +178,10 @@ impl CamerasPart {
         if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
             lines.outline_mask_ids(*outline_mask_ids);
         }
+
+        scene_context
+            .num_3d_primitives
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
 

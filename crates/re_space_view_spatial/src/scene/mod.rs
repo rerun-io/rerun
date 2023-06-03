@@ -15,8 +15,8 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_log_types::EntityPathHash;
 use re_renderer::{renderer::TexturedRect, Color32, Size};
 use re_viewer_context::{
-    auto_color, AnnotationMap, Scene, ScenePartCollection, SceneQuery, SpaceViewHighlights,
-    TypedScene, ViewerContext,
+    auto_color, AnnotationMap, Scene, ScenePartCollection, SceneQuery,
+    SpaceViewHighlights, TypedScene, ViewerContext,
 };
 
 use crate::{space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass};
@@ -24,7 +24,6 @@ use crate::{space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass};
 use super::SpatialNavigationMode;
 
 use self::contexts::SpatialSceneEntityContext;
-use parts::ScenePart;
 
 use contexts::EntityDepthOffsets;
 
@@ -86,9 +85,6 @@ pub struct SceneSpatial {
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
 
-    /// Number of 3d primitives logged, used for heuristics.
-    num_logged_3d_objects: usize,
-
     // TODO(andreas): Temporary field. The hosting struct will be removed once SpatialScene is fully ported to the SpaceViewClass framework.
     pub scene: TypedScene<SpatialSpaceViewClass>,
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
@@ -108,7 +104,6 @@ impl SceneSpatial {
             annotation_map: Default::default(),
             primitives: SceneSpatialPrimitives::new(re_ctx),
             ui: Default::default(),
-            num_logged_3d_objects: Default::default(),
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Default::default(),
             draw_data: Default::default(),
@@ -126,7 +121,7 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        let parts: Vec<&dyn ScenePart> = vec![&parts::ImagesPart];
+        let parts: Vec<&dyn parts::ScenePart> = vec![&parts::ImagesPart];
 
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = TypedScene::<SpatialSpaceViewClass> {
@@ -211,7 +206,14 @@ impl SceneSpatial {
         if !self.primitives.images.is_empty() {
             return SpatialNavigationMode::TwoD;
         }
-        if self.num_logged_3d_objects == 0 {
+
+        if self
+            .scene
+            .context
+            .num_3d_primitives
+            .load(std::sync::atomic::Ordering::Relaxed)
+            == 0
+        {
             return SpatialNavigationMode::TwoD;
         }
 

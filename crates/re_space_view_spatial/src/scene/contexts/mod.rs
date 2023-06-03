@@ -24,6 +24,7 @@ pub struct SpatialSceneContext {
     pub shared_render_builders: SharedRenderBuilders,
 
     pub num_primitives: AtomicUsize,
+    pub num_3d_primitives: AtomicUsize,
 }
 
 impl SceneContext for SpatialSceneContext {
@@ -33,7 +34,7 @@ impl SceneContext for SpatialSceneContext {
             depth_offsets,
             annotations,
             shared_render_builders,
-
+            num_3d_primitives: _,
             num_primitives: _,
         } = self;
         vec![
