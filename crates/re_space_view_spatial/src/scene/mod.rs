@@ -96,8 +96,6 @@ impl SceneSpatial {
         self.draw_data =
             scene.populate(ctx, query, &re_space_view::EmptySpaceViewState, highlights);
 
-        self.primitives.any_outlines = scene.highlights.any_outlines();
-
         self.draw_data.extend(
             scene
                 .context

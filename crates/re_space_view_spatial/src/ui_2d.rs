@@ -294,10 +294,8 @@ pub fn view_2d(
                 canvas_from_ui,
                 &space.to_string(),
                 state.auto_size_config(),
-                scene
-                    .primitives
-                    .any_outlines,
-                    pinhole,
+                scene.scene.highlights.any_outlines(),
+                pinhole
             ) else {
                 return response;
             };

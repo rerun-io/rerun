@@ -355,8 +355,9 @@ pub fn view_3d(
         auto_size_config: state.auto_size_config(),
 
         outline_config: scene
-            .primitives
-            .any_outlines
+            .scene
+            .highlights
+            .any_outlines()
             .then(|| outline_config(ui.ctx())),
     };
 

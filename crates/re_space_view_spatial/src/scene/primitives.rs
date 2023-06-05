@@ -13,7 +13,6 @@ use super::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES;
 ///                 which is very slow to read. See [#594](https://github.com/rerun-io/rerun/pull/594)
 pub struct SceneSpatialPrimitives {
     pub line_strips: LineStripSeriesBuilder,
-    pub any_outlines: bool,
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
@@ -25,7 +24,6 @@ impl SceneSpatialPrimitives {
         Self {
             line_strips: LineStripSeriesBuilder::new(re_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
-            any_outlines: false,
         }
     }
 
