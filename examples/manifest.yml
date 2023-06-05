@@ -21,7 +21,7 @@ root:
     For example, if your SDK version is `0.3.1`, check out the matching tag
     in the Rerun repository by running `git checkout v0.3.1`.
   children:
-    - name: minimal-example
+    - name: minimal
       python: python/minimal
       rust: rust/minimal
 
