@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
+use parking_lot::Mutex;
 
 use crate::{
     wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
@@ -128,6 +129,8 @@ impl From<TextureManager2DError<never::Never>> for TextureCreationError {
 /// More complex textures types are typically handled within renderer which utilize the texture pool directly.
 /// This manager in contrast, deals with user provided texture data!
 /// We might revisit this later and make this texture manager more general purpose.
+///
+/// Has intertior mutability.
 pub struct TextureManager2D {
     // Long lived/short lived doesn't make sense for textures since we don't yet know a way to
     // optimize for short lived textures as we do with buffer data.
@@ -142,6 +145,12 @@ pub struct TextureManager2D {
     device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
 
+    /// The mutable part of the manager.
+    inner: Mutex<Inner>,
+}
+
+#[derive(Default)]
+struct Inner {
     // Cache the texture using a user-provided u64 id. This is expected
     // to be derived from the `TensorId` which isn't available here for
     // dependency reasons.
@@ -151,6 +160,15 @@ pub struct TextureManager2D {
     // is ejected from the cache during [`begin_frame`].
     texture_cache: HashMap<u64, GpuTexture2D>,
     accessed_textures: HashSet<u64>,
+}
+
+impl Inner {
+    fn begin_frame(&mut self, _frame_index: u64) {
+        // Drop any textures that weren't accessed in the last frame
+        self.texture_cache
+            .retain(|k, _| self.accessed_textures.contains(k));
+        self.accessed_textures.clear();
+    }
 }
 
 impl TextureManager2D {
@@ -192,8 +210,7 @@ impl TextureManager2D {
             zeroed_texture_uint,
             device,
             queue,
-            texture_cache: Default::default(),
-            accessed_textures: Default::default(),
+            inner: Default::default(),
         }
     }
 
@@ -226,7 +243,7 @@ impl TextureManager2D {
     /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
     /// wasn't already created using the same key.
     pub fn get_or_create(
-        &mut self,
+        &self,
         key: u64,
         texture_pool: &GpuTexturePool,
         texture_desc: Texture2DCreationDesc<'_>,
@@ -237,7 +254,7 @@ impl TextureManager2D {
     /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
     /// wasn't already created using the same key.
     pub fn get_or_create_with<'a>(
-        &mut self,
+        &self,
         key: u64,
         texture_pool: &GpuTexturePool,
         create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
@@ -251,12 +268,13 @@ impl TextureManager2D {
     /// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
     /// wasn't already created using the same key.
     pub fn get_or_try_create_with<'a, Err: std::fmt::Display>(
-        &mut self,
+        &self,
         key: u64,
         texture_pool: &GpuTexturePool,
         try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
     ) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
-        let texture_handle = match self.texture_cache.entry(key) {
+        let mut inner = self.inner.lock();
+        let texture_handle = match inner.texture_cache.entry(key) {
             std::collections::hash_map::Entry::Occupied(texture_handle) => {
                 texture_handle.get().clone() // already inserted
             }
@@ -274,7 +292,7 @@ impl TextureManager2D {
             }
         };
 
-        self.accessed_textures.insert(key);
+        inner.accessed_textures.insert(key);
         Ok(texture_handle)
     }
 
@@ -376,11 +394,8 @@ impl TextureManager2D {
         Ok(GpuTexture2D(texture))
     }
 
-    pub(crate) fn begin_frame(&mut self, _frame_index: u64) {
-        // Drop any textures that weren't accessed in the last frame
-        self.texture_cache
-            .retain(|k, _| self.accessed_textures.contains(k));
-        self.accessed_textures.clear();
+    pub(crate) fn begin_frame(&self, _frame_index: u64) {
+        self.inner.lock().begin_frame(_frame_index);
     }
 }
 
