@@ -117,15 +117,6 @@ pub struct App {
     space_view_class_registry: SpaceViewClassRegistry,
 }
 
-/// Add built-in space views to the registry.
-fn populate_space_view_class_registry_with_builtin(
-    space_view_class_registry: &mut SpaceViewClassRegistry,
-) -> Result<(), SpaceViewClassRegistryError> {
-    space_view_class_registry.add(re_space_view_text::TextSpaceView::default())?;
-    space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
-    Ok(())
-}
-
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
@@ -558,207 +549,7 @@ impl App {
                 }
             });
     }
-}
 
-impl eframe::App for App {
-    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
-    }
-
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        if self.startup_options.persist_state {
-            eframe::set_value(storage, eframe::APP_KEY, &self.state);
-        }
-    }
-
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let frame_start = Instant::now();
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
-            frame.set_window_size(resolution_in_points.into());
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.update(egui_ctx, frame).quit {
-            frame.close();
-            return;
-        }
-
-        if self.startup_options.memory_limit.limit.is_none() {
-            // we only warn about high memory usage if the user hasn't specified a limit
-            self.ram_limit_warner.update();
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.is_screenshotting() {
-            // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
-            egui_ctx.set_pixels_per_point(2.0);
-        } else {
-            // Ensure zoom factor is sane and in 10% steps at all times before applying it.
-            {
-                let mut zoom_factor = self.app_options().zoom_factor;
-                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
-                zoom_factor = (zoom_factor * 10.).round() / 10.;
-                self.app_options_mut().zoom_factor = zoom_factor;
-            }
-
-            // Apply zoom factor on top of natively reported pixel per point.
-            let pixels_per_point = frame.info().native_pixels_per_point.unwrap_or(1.0)
-                * self.app_options().zoom_factor;
-            egui_ctx.set_pixels_per_point(pixels_per_point);
-        }
-
-        // TODO(andreas): store the re_renderer somewhere else.
-        let gpu_resource_stats = {
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.read()
-            };
-            let render_ctx = egui_renderer
-                .paint_callback_resources
-                .get::<re_renderer::RenderContext>()
-                .unwrap();
-
-            // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
-            render_ctx.gpu_resources.statistics()
-        };
-
-        // Look up the blueprint in use for this frame.
-        // Note that it's important that we save this because it's possible that it will be changed
-        // by the end up the frame (e.g. if the user selects a different recording), but we need it
-        // to save changes back to the correct blueprint at the end.
-        let active_blueprint_id = self
-            .state
-            .selected_blueprint_by_app
-            .get(&self.selected_app_id())
-            .cloned()
-            .unwrap_or_else(|| {
-                StoreId::from_string(StoreKind::Blueprint, self.selected_app_id().0)
-            });
-
-        let store_stats = self
-            .recording_db()
-            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
-            .unwrap_or_default();
-
-        let blueprint_stats = self
-            .store_hub
-            .blueprint_mut(&active_blueprint_id)
-            .map(|bp_db| DataStoreStats::from_store(&bp_db.entity_db.data_store))
-            .unwrap_or_default();
-
-        // do early, before doing too many allocations
-        self.memory_panel
-            .update(&gpu_resource_stats, &store_stats, &blueprint_stats);
-
-        self.check_keyboard_shortcuts(egui_ctx);
-
-        self.purge_memory_if_needed();
-
-        self.state.cache.begin_frame();
-
-        self.show_text_logs_as_notifications();
-        self.receive_messages(egui_ctx);
-
-        self.store_hub.purge_empty();
-        self.state.cleanup(&self.store_hub);
-
-        file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
-
-        let blueprint_snapshot = self.load_or_create_blueprint(&active_blueprint_id, egui_ctx);
-
-        // Make a mutable copy we can edit.
-        let mut blueprint = blueprint_snapshot.clone();
-
-        let blueprint_config = self
-            .store_hub
-            .blueprint_mut(&active_blueprint_id)
-            .map(|bp_db| bp_db.entity_db.data_store.config().clone())
-            .unwrap_or_default();
-
-        self.ui(
-            egui_ctx,
-            frame,
-            &mut blueprint,
-            &gpu_resource_stats,
-            &blueprint_config,
-            &store_stats,
-            &blueprint_stats,
-        );
-
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
-            // Paint the main window frame on top of everything else
-            paint_native_window_frame(egui_ctx);
-        }
-
-        self.handle_dropping_files(egui_ctx);
-
-        if !self.screenshotter.is_screenshotting() {
-            self.toasts.show(egui_ctx);
-        }
-
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.pending_commands.push(cmd);
-        }
-
-        self.run_pending_commands(&mut blueprint, egui_ctx, frame);
-
-        // If there was a real active blueprint that came from the store, save the changes back.
-        if let Some(blueprint_db) = self.store_hub.blueprint_mut(&active_blueprint_id) {
-            blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
-        } else {
-            // This shouldn't happen because we should have used `active_blueprint_id` to
-            // create this same blueprint in `load_or_create_blueprint`, but we couldn't
-            // keep it around for borrow-checker reasons.
-            re_log::warn_once!("Blueprint unexpectedly missing from store.");
-        }
-
-        // Frame time measurer - must be last
-        self.frame_time_history.add(
-            egui_ctx.input(|i| i.time),
-            frame_start.elapsed().as_secs_f32(),
-        );
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn post_rendering(&mut self, _window_size: [u32; 2], frame: &eframe::Frame) {
-        if let Some(screenshot) = frame.screenshot() {
-            self.screenshotter.save(&screenshot);
-        }
-    }
-}
-
-fn paint_background_fill(ui: &mut egui::Ui) {
-    // This is required because the streams view (time panel)
-    // has rounded top corners, which leaves a gap.
-    // So we fill in that gap (and other) here.
-    // Of course this does some over-draw, but we have to live with that.
-
-    ui.painter().rect_filled(
-        ui.max_rect().shrink(0.5),
-        re_ui::ReUi::native_window_rounding(),
-        ui.visuals().panel_fill,
-    );
-}
-
-fn paint_native_window_frame(egui_ctx: &egui::Context) {
-    let painter = egui::Painter::new(
-        egui_ctx.clone(),
-        egui::LayerId::new(egui::Order::TOP, egui::Id::new("native_window_frame")),
-        egui::Rect::EVERYTHING,
-    );
-
-    let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(42)); // from figma 2022-02-06
-
-    painter.rect_stroke(
-        egui_ctx.screen_rect().shrink(0.5),
-        re_ui::ReUi::native_window_rounding(),
-        stroke,
-    );
-}
-
-impl App {
     /// Show recent text log messages to the user as toast notifications.
     fn show_text_logs_as_notifications(&mut self) {
         re_tracing::profile_function!();
@@ -975,6 +766,213 @@ impl App {
             }
         }
     }
+}
+
+impl eframe::App for App {
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        if self.startup_options.persist_state {
+            eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        }
+    }
+
+    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let frame_start = Instant::now();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
+            frame.set_window_size(resolution_in_points.into());
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.screenshotter.update(egui_ctx, frame).quit {
+            frame.close();
+            return;
+        }
+
+        if self.startup_options.memory_limit.limit.is_none() {
+            // we only warn about high memory usage if the user hasn't specified a limit
+            self.ram_limit_warner.update();
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.screenshotter.is_screenshotting() {
+            // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
+            egui_ctx.set_pixels_per_point(2.0);
+        } else {
+            // Ensure zoom factor is sane and in 10% steps at all times before applying it.
+            {
+                let mut zoom_factor = self.app_options().zoom_factor;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                self.app_options_mut().zoom_factor = zoom_factor;
+            }
+
+            // Apply zoom factor on top of natively reported pixel per point.
+            let pixels_per_point = frame.info().native_pixels_per_point.unwrap_or(1.0)
+                * self.app_options().zoom_factor;
+            egui_ctx.set_pixels_per_point(pixels_per_point);
+        }
+
+        // TODO(andreas): store the re_renderer somewhere else.
+        let gpu_resource_stats = {
+            let egui_renderer = {
+                let render_state = frame.wgpu_render_state().unwrap();
+                &mut render_state.renderer.read()
+            };
+            let render_ctx = egui_renderer
+                .paint_callback_resources
+                .get::<re_renderer::RenderContext>()
+                .unwrap();
+
+            // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
+            render_ctx.gpu_resources.statistics()
+        };
+
+        // Look up the blueprint in use for this frame.
+        // Note that it's important that we save this because it's possible that it will be changed
+        // by the end up the frame (e.g. if the user selects a different recording), but we need it
+        // to save changes back to the correct blueprint at the end.
+        let active_blueprint_id = self
+            .state
+            .selected_blueprint_by_app
+            .get(&self.selected_app_id())
+            .cloned()
+            .unwrap_or_else(|| {
+                StoreId::from_string(StoreKind::Blueprint, self.selected_app_id().0)
+            });
+
+        let store_stats = self
+            .recording_db()
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        let blueprint_stats = self
+            .store_hub
+            .blueprint_mut(&active_blueprint_id)
+            .map(|bp_db| DataStoreStats::from_store(&bp_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        // do early, before doing too many allocations
+        self.memory_panel
+            .update(&gpu_resource_stats, &store_stats, &blueprint_stats);
+
+        self.check_keyboard_shortcuts(egui_ctx);
+
+        self.purge_memory_if_needed();
+
+        self.state.cache.begin_frame();
+
+        self.show_text_logs_as_notifications();
+        self.receive_messages(egui_ctx);
+
+        self.store_hub.purge_empty();
+        self.state.cleanup(&self.store_hub);
+
+        file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
+
+        let blueprint_snapshot = self.load_or_create_blueprint(&active_blueprint_id, egui_ctx);
+
+        // Make a mutable copy we can edit.
+        let mut blueprint = blueprint_snapshot.clone();
+
+        let blueprint_config = self
+            .store_hub
+            .blueprint_mut(&active_blueprint_id)
+            .map(|bp_db| bp_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        self.ui(
+            egui_ctx,
+            frame,
+            &mut blueprint,
+            &gpu_resource_stats,
+            &blueprint_config,
+            &store_stats,
+            &blueprint_stats,
+        );
+
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            // Paint the main window frame on top of everything else
+            paint_native_window_frame(egui_ctx);
+        }
+
+        self.handle_dropping_files(egui_ctx);
+
+        if !self.screenshotter.is_screenshotting() {
+            self.toasts.show(egui_ctx);
+        }
+
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+            self.pending_commands.push(cmd);
+        }
+
+        self.run_pending_commands(&mut blueprint, egui_ctx, frame);
+
+        // If there was a real active blueprint that came from the store, save the changes back.
+        if let Some(blueprint_db) = self.store_hub.blueprint_mut(&active_blueprint_id) {
+            blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
+        } else {
+            // This shouldn't happen because we should have used `active_blueprint_id` to
+            // create this same blueprint in `load_or_create_blueprint`, but we couldn't
+            // keep it around for borrow-checker reasons.
+            re_log::warn_once!("Blueprint unexpectedly missing from store.");
+        }
+
+        // Frame time measurer - must be last
+        self.frame_time_history.add(
+            egui_ctx.input(|i| i.time),
+            frame_start.elapsed().as_secs_f32(),
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn post_rendering(&mut self, _window_size: [u32; 2], frame: &eframe::Frame) {
+        if let Some(screenshot) = frame.screenshot() {
+            self.screenshotter.save(&screenshot);
+        }
+    }
+}
+
+/// Add built-in space views to the registry.
+fn populate_space_view_class_registry_with_builtin(
+    space_view_class_registry: &mut SpaceViewClassRegistry,
+) -> Result<(), SpaceViewClassRegistryError> {
+    space_view_class_registry.add(re_space_view_text::TextSpaceView::default())?;
+    space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
+    Ok(())
+}
+
+fn paint_background_fill(ui: &mut egui::Ui) {
+    // This is required because the streams view (time panel)
+    // has rounded top corners, which leaves a gap.
+    // So we fill in that gap (and other) here.
+    // Of course this does some over-draw, but we have to live with that.
+
+    ui.painter().rect_filled(
+        ui.max_rect().shrink(0.5),
+        re_ui::ReUi::native_window_rounding(),
+        ui.visuals().panel_fill,
+    );
+}
+
+fn paint_native_window_frame(egui_ctx: &egui::Context) {
+    let painter = egui::Painter::new(
+        egui_ctx.clone(),
+        egui::LayerId::new(egui::Order::TOP, egui::Id::new("native_window_frame")),
+        egui::Rect::EVERYTHING,
+    );
+
+    let stroke = egui::Stroke::new(1.0, egui::Color32::from_gray(42)); // from figma 2022-02-06
+
+    painter.rect_stroke(
+        egui_ctx.screen_rect().shrink(0.5),
+        re_ui::ReUi::native_window_rounding(),
+        stroke,
+    );
 }
 
 fn preview_files_being_dropped(egui_ctx: &egui::Context) {
