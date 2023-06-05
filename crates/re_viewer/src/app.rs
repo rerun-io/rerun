@@ -12,16 +12,13 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
-    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClass,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, ViewerContext,
+    AppOptions, ComponentUiRegistry, PlayState, SpaceViewClass, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError,
 };
-use re_viewport::ViewportState;
 
-use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics, StoreHub};
+use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics, AppState, StoreHub};
 
 use re_log_types::TimeRangeF;
-
-const WATERMARK: bool = false; // Nice for recording media material
 
 // ----------------------------------------------------------------------------
 
@@ -394,15 +391,15 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomIn => {
-                self.state.app_options.zoom_factor += 0.1;
+                self.app_options_mut().zoom_factor += 0.1;
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomOut => {
-                self.state.app_options.zoom_factor -= 0.1;
+                self.app_options_mut().zoom_factor -= 0.1;
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomReset => {
-                self.state.app_options.zoom_factor = 1.0;
+                self.app_options_mut().zoom_factor = 1.0;
             }
 
             Command::SelectionPrevious => {
@@ -569,15 +566,15 @@ impl eframe::App for App {
         } else {
             // Ensure zoom factor is sane and in 10% steps at all times before applying it.
             {
-                let mut zoom_factor = self.state.app_options.zoom_factor;
+                let mut zoom_factor = self.app_options().zoom_factor;
                 zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
                 zoom_factor = (zoom_factor * 10.).round() / 10.;
-                self.state.app_options.zoom_factor = zoom_factor;
+                self.app_options_mut().zoom_factor = zoom_factor;
             }
 
             // Apply zoom factor on top of natively reported pixel per point.
             let pixels_per_point = frame.info().native_pixels_per_point.unwrap_or(1.0)
-                * self.state.app_options.zoom_factor;
+                * self.app_options().zoom_factor;
             egui_ctx.set_pixels_per_point(pixels_per_point);
         }
 
@@ -684,14 +681,14 @@ impl eframe::App for App {
                     .as_ref()
                     .and_then(|rec_id| self.store_hub.recording(rec_id))
                 {
-                    recording_config_entry(
-                        &mut self.state.recording_configs,
-                        store_db.store_id().clone(),
-                        self.rx.source(),
-                        store_db,
-                    )
-                    .selection_state
-                    .on_frame_start(|item| blueprint.is_item_valid(item));
+                    self.state
+                        .recording_config_entry(
+                            store_db.store_id().clone(),
+                            self.rx.source(),
+                            store_db,
+                        )
+                        .selection_state
+                        .on_frame_start(|item| blueprint.is_item_valid(item));
 
                     // TODO(andreas): store the re_renderer somewhere else.
                     let egui_renderer = {
@@ -1072,129 +1069,6 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
     }
 }
 
-// ------------------------------------------------------------------------------------
-
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub(crate) struct AppState {
-    /// Global options for the whole viewer.
-    app_options: AppOptions,
-
-    /// Things that need caching.
-    #[serde(skip)]
-    cache: Caches,
-
-    #[serde(skip)]
-    pub(crate) selected_rec_id: Option<StoreId>,
-    #[serde(skip)]
-    pub(crate) selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
-
-    /// Configuration for the current recording (found in [`StoreDb`]).
-    recording_configs: HashMap<StoreId, RecordingConfig>,
-
-    selection_panel: crate::selection_panel::SelectionPanel,
-    time_panel: re_time_panel::TimePanel,
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[serde(skip)]
-    profiler: crate::Profiler,
-
-    // TODO(jleibs): This is sort of a weird place to put this but makes more
-    // sense than the blueprint
-    #[serde(skip)]
-    viewport_state: ViewportState,
-}
-
-impl AppState {
-    pub fn app_options(&self) -> &AppOptions {
-        &self.app_options
-    }
-
-    pub fn app_options_mut(&mut self) -> &mut AppOptions {
-        &mut self.app_options
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn show(
-        &mut self,
-        blueprint: &mut Blueprint,
-        ui: &mut egui::Ui,
-        render_ctx: &mut re_renderer::RenderContext,
-        store_db: &StoreDb,
-        re_ui: &re_ui::ReUi,
-        component_ui_registry: &ComponentUiRegistry,
-        space_view_class_registry: &SpaceViewClassRegistry,
-        rx: &Receiver<LogMsg>,
-    ) {
-        re_tracing::profile_function!();
-
-        let Self {
-            app_options,
-            cache,
-            selected_rec_id: _,
-            selected_blueprint_by_app: _,
-            recording_configs,
-            selection_panel,
-            time_panel,
-            #[cfg(not(target_arch = "wasm32"))]
-                profiler: _,
-            viewport_state,
-        } = self;
-
-        let rec_cfg = recording_config_entry(
-            recording_configs,
-            store_db.store_id().clone(),
-            rx.source(),
-            store_db,
-        );
-
-        let mut ctx = ViewerContext {
-            app_options,
-            cache,
-            space_view_class_registry,
-            component_ui_registry,
-            store_db,
-            rec_cfg,
-            re_ui,
-            render_ctx,
-        };
-
-        time_panel.show_panel(&mut ctx, ui, blueprint.time_panel_expanded);
-        selection_panel.show_panel(viewport_state, &mut ctx, ui, blueprint);
-
-        let central_panel_frame = egui::Frame {
-            fill: ui.style().visuals.panel_fill,
-            inner_margin: egui::Margin::same(0.0),
-            ..Default::default()
-        };
-
-        egui::CentralPanel::default()
-            .frame(central_panel_frame)
-            .show_inside(ui, |ui| {
-                blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
-            });
-
-        {
-            // We move the time at the very end of the frame,
-            // so we have one frame to see the first data before we move the time.
-            let dt = ui.ctx().input(|i| i.stable_dt);
-            let more_data_is_coming = rx.is_connected();
-            let needs_repaint = ctx.rec_cfg.time_ctrl.update(
-                store_db.times_per_timeline(),
-                dt,
-                more_data_is_coming,
-            );
-            if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
-                ui.ctx().request_repaint();
-            }
-        }
-
-        if WATERMARK {
-            re_ui.paint_watermark();
-        }
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
@@ -1233,43 +1107,6 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
                 });
         }
     }
-}
-
-fn recording_config_entry<'cfgs>(
-    configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
-    id: StoreId,
-    data_source: &'_ re_smart_channel::SmartChannelSource,
-    store_db: &'_ StoreDb,
-) -> &'cfgs mut RecordingConfig {
-    configs
-        .entry(id)
-        .or_insert_with(|| new_recording_confg(data_source, store_db))
-}
-
-fn new_recording_confg(
-    data_source: &'_ re_smart_channel::SmartChannelSource,
-    store_db: &'_ StoreDb,
-) -> RecordingConfig {
-    let play_state = match data_source {
-        // Play files from the start by default - it feels nice and alive./
-        // RrdHttpStream downloads the whole file before decoding it, so we treat it the same as a file.
-        re_smart_channel::SmartChannelSource::Files { .. }
-        | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
-        | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
-
-        // Live data - follow it!
-        re_smart_channel::SmartChannelSource::Sdk
-        | re_smart_channel::SmartChannelSource::WsClient { .. }
-        | re_smart_channel::SmartChannelSource::TcpServer { .. } => PlayState::Following,
-    };
-
-    let mut rec_cfg = RecordingConfig::default();
-
-    rec_cfg
-        .time_ctrl
-        .set_play_state(store_db.times_per_timeline(), play_state);
-
-    rec_cfg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
