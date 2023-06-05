@@ -16,13 +16,13 @@ use re_viewer_context::{
 
 use super::{
     eye::Eye,
-    scene::{PickingHitType, PickingResult, SceneSpatialUiData},
+    scene::{PickingHitType, PickingResult},
     ui_2d::View2DState,
     ui_3d::View3DState,
 };
-use crate::scene::SceneSpatial;
+
 use crate::{
-    scene::UiLabelTarget,
+    scene::{PickableUiRect, SceneSpatial, UiLabel, UiLabelTarget},
     ui_2d::view_2d,
     ui_3d::{view_3d, SpaceSpecs},
 };
@@ -376,7 +376,7 @@ impl ViewSpatialState {
         space_view_id: SpaceViewId,
         entity_properties: &EntityPropertyMap,
     ) {
-        self.scene_bbox = scene.primitives.bounding_box();
+        self.scene_bbox = scene.scene.parts.calculate_bounding_box();
         if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
         } else {
@@ -386,7 +386,11 @@ impl ViewSpatialState {
         if self.nav_mode.is_auto() {
             self.nav_mode = EditableAutoValue::Auto(scene.preferred_navigation_mode(space));
         }
-        self.scene_num_primitives = scene.primitives.num_primitives();
+        self.scene_num_primitives = scene
+            .scene
+            .context
+            .num_3d_primitives
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
@@ -518,20 +522,21 @@ fn axis_name(axis: Option<glam::Vec3>) -> String {
 }
 
 pub fn create_labels(
-    scene_ui: &mut SceneSpatialUiData,
+    labels: &[UiLabel],
     ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
     nav_mode: SpatialNavigationMode,
-) -> Vec<egui::Shape> {
+) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
-    let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
+    let mut label_shapes = Vec::with_capacity(labels.len() * 2);
+    let mut ui_rects = Vec::with_capacity(labels.len());
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
 
-    for label in &scene_ui.labels {
+    for label in labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
                 // TODO(#1640): 2D labels are not visible in 3D for now.
@@ -609,13 +614,13 @@ pub fn create_labels(
         label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
         label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
 
-        scene_ui.pickable_ui_rects.push((
-            ui_from_canvas.inverse().transform_rect(bg_rect),
-            label.labeled_instance,
-        ));
+        ui_rects.push(PickableUiRect {
+            rect: ui_from_canvas.inverse().transform_rect(bg_rect),
+            instance_hash: label.labeled_instance,
+        });
     }
 
-    label_shapes
+    (label_shapes, ui_rects)
 }
 
 pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
@@ -672,6 +677,7 @@ pub fn picking(
     space_view_id: SpaceViewId,
     state: &mut ViewSpatialState,
     scene: &SceneSpatial,
+    ui_rects: &[PickableUiRect],
     space: &EntityPath,
     entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
@@ -715,7 +721,7 @@ pub fn picking(
         space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
         &scene.scene.parts.images.images,
-        &scene.ui,
+        ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
 

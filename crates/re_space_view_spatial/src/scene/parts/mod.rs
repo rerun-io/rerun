@@ -29,6 +29,8 @@ use re_viewer_context::{
 
 use crate::{scene::Keypoints, SpatialSpaceViewClass};
 
+use super::UiLabel;
+
 type SpatialSpaceViewState = EmptySpaceViewState;
 
 #[derive(Default)]
@@ -67,6 +69,47 @@ impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+impl SpatialScenePartCollection {
+    fn vec(&self) -> Vec<&dyn re_viewer_context::ScenePart<SpatialSpaceViewClass>> {
+        let Self {
+            points2d,
+            points3d,
+            arrows3d,
+            boxes2d,
+            boxes3d,
+            cameras,
+            lines2d,
+            lines3d,
+            meshes,
+            images,
+        } = self;
+        vec![
+            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
+            images,
+        ]
+    }
+
+    pub fn calculate_bounding_box(&self) -> macaw::BoundingBox {
+        let mut bounding_box = macaw::BoundingBox::nothing();
+        for scene_part in self.vec() {
+            if let Some(data) = scene_part.data() {
+                bounding_box = bounding_box.union(data.bounding_box);
+            }
+        }
+        bounding_box
+    }
+
+    pub fn collect_ui_labels(&self) -> Vec<UiLabel> {
+        let mut ui_labels = Vec::new();
+        for scene_part in self.vec() {
+            if let Some(data) = scene_part.data() {
+                ui_labels.extend(data.ui_labels.iter().cloned());
+            }
+        }
+        ui_labels
     }
 }
 

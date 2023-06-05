@@ -363,8 +363,8 @@ pub fn view_3d(
     let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
-    let label_shapes = create_labels(
-        &mut scene.ui,
+    let (label_shapes, ui_rects) = create_labels(
+        &scene.scene.parts.collect_ui_labels(),
         RectTransform::from_to(rect, rect),
         &eye,
         ui,
@@ -384,6 +384,7 @@ pub fn view_3d(
             space_view_id,
             state,
             &scene,
+            &ui_rects,
             space,
             entity_properties,
         );
@@ -459,7 +460,7 @@ pub fn view_3d(
     }
 
     if state.state_3d.show_bbox {
-        let bbox = scene.primitives.bounding_box();
+        let bbox = state.scene_bbox_accum;
         if bbox.is_something() && bbox.is_finite() {
             let scale = bbox.size();
             let translation = bbox.center();

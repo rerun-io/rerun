@@ -5,7 +5,7 @@ mod primitives;
 
 pub use contexts::{SpatialSceneContext, TransformContext, UnreachableTransform};
 pub use parts::{SpatialScenePartCollection, SpatialScenePartData};
-pub use picking::{PickingContext, PickingHitType, PickingRayHit, PickingResult};
+pub use picking::{PickableUiRect, PickingContext, PickingHitType, PickingRayHit, PickingResult};
 pub use primitives::SceneSpatialPrimitives;
 
 use ahash::HashMap;
@@ -14,8 +14,7 @@ use re_components::{ClassId, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_renderer::{Color32, Size};
 use re_viewer_context::{
-    auto_color, AnnotationMap, Scene, ScenePartCollection, SceneQuery, SpaceViewHighlights,
-    TypedScene, ViewerContext,
+    auto_color, AnnotationMap, Scene, SceneQuery, SpaceViewHighlights, TypedScene, ViewerContext,
 };
 
 use crate::{space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass};
@@ -53,20 +52,9 @@ pub struct UiLabel {
     pub labeled_instance: InstancePathHash,
 }
 
-/// Data necessary to setup the ui [`SceneSpatial`] but of no interest to `re_renderer`.
-#[derive(Default)]
-pub struct SceneSpatialUiData {
-    pub labels: Vec<UiLabel>,
-
-    /// Picking any any of these rects cause the referred instance to be hovered.
-    /// Only use this for 2d overlays!
-    pub pickable_ui_rects: Vec<(egui::Rect, InstancePathHash)>,
-}
-
 pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
-    pub ui: SceneSpatialUiData,
 
     // TODO(andreas): Temporary field. The hosting struct will be removed once SpatialScene is fully ported to the SpaceViewClass framework.
     pub scene: TypedScene<SpatialSpaceViewClass>,
@@ -86,7 +74,6 @@ impl SceneSpatial {
         Self {
             annotation_map: Default::default(),
             primitives: SceneSpatialPrimitives::new(re_ctx),
-            ui: Default::default(),
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Default::default(),
             draw_data: Default::default(),
@@ -114,15 +101,6 @@ impl SceneSpatial {
             scene.populate(ctx, query, &re_space_view::EmptySpaceViewState, highlights);
 
         self.primitives.any_outlines = scene.highlights.any_outlines();
-        self.primitives.recalculate_bounding_box();
-
-        for scene_part in scene.parts.vec_mut() {
-            if let Some(data) = scene_part.data() {
-                self.ui.labels.extend(data.ui_labels.iter().cloned());
-                self.primitives.bounding_box =
-                    self.primitives.bounding_box.union(data.bounding_box);
-            }
-        }
 
         self.draw_data.extend(
             scene

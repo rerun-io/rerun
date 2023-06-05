@@ -224,7 +224,7 @@ pub fn view_2d(
     ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
     space: &EntityPath,
-    mut scene: SceneSpatial,
+    scene: SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
     entity_properties: &EntityPropertyMap,
@@ -305,8 +305,8 @@ pub fn view_2d(
         let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
-        let label_shapes = create_labels(
-            &mut scene.ui,
+        let (label_shapes, ui_rects) = create_labels(
+            &scene.scene.parts.collect_ui_labels(),
             ui_from_canvas,
             &eye,
             ui,
@@ -326,6 +326,7 @@ pub fn view_2d(
                 space_view_id,
                 state,
                 &scene,
+                &ui_rects,
                 space,
                 entity_properties,
             );

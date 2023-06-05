@@ -12,13 +12,7 @@ use super::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES;
 ///                 In the future, this will be more limited as we're going to gpu staging data as soon as possible
 ///                 which is very slow to read. See [#594](https://github.com/rerun-io/rerun/pull/594)
 pub struct SceneSpatialPrimitives {
-    /// Estimated bounding box of all data in scene coordinates. Accumulated.
-    pub(super) bounding_box: macaw::BoundingBox,
-
-    pub num_primitives: usize,
-
     pub line_strips: LineStripSeriesBuilder,
-
     pub any_outlines: bool,
 }
 
@@ -29,46 +23,9 @@ const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 impl SceneSpatialPrimitives {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         Self {
-            bounding_box: macaw::BoundingBox::nothing(),
-            num_primitives: 0,
             line_strips: LineStripSeriesBuilder::new(re_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
             any_outlines: false,
-        }
-    }
-
-    /// bounding box covering the rendered scene
-    pub fn bounding_box(&self) -> macaw::BoundingBox {
-        self.bounding_box
-    }
-
-    /// Number of primitives. Rather arbitrary what counts as a primitive so use this only for heuristic purposes!
-    pub fn num_primitives(&self) -> usize {
-        let Self {
-            bounding_box: _,
-            num_primitives,
-            line_strips,
-            any_outlines: _,
-        } = &self;
-
-        line_strips.vertices.len() + num_primitives
-    }
-
-    pub fn recalculate_bounding_box(&mut self) {
-        re_tracing::profile_function!();
-
-        let Self {
-            bounding_box,
-            num_primitives: _,
-            line_strips,
-            any_outlines: _,
-        } = self;
-
-        // We don't need a very accurate bounding box, so in order to save some time,
-        // we calculate a per batch bounding box for lines and points.
-        for (batch, vertex_iter) in line_strips.iter_vertices_by_batch() {
-            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-            *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));
         }
     }
 
