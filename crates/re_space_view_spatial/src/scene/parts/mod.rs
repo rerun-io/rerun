@@ -24,13 +24,10 @@ use std::sync::Arc;
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_viewer_context::{
-    Annotations, DefaultColor, ResolvedAnnotationInfo, SceneQuery, ViewerContext,
+    Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
-use re_viewer_context::{ScenePartCollection, SpaceViewHighlights};
 
-use super::{EntityDepthOffsets, SceneSpatial};
-use crate::SpatialSpaceViewClass;
-use crate::{scene::Keypoints, TransformContext};
+use crate::{scene::Keypoints, SpatialSpaceViewClass};
 
 type SpatialSpaceViewState = EmptySpaceViewState;
 
@@ -71,19 +68,6 @@ impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-}
-
-// TODO(wumpf): remove
-pub trait ScenePart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        transforms: &TransformContext,
-        highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
-    );
 }
 
 /// Computes the instance hash that should be used for picking (in turn for selecting/hover)

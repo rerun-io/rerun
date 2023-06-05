@@ -64,15 +64,6 @@ impl SceneSpatialPrimitives {
             any_outlines: _,
         } = self;
 
-        // TODO:
-        // for image in images {
-        //     let rect = &image.textured_rect;
-        //     bounding_box.extend(rect.top_left_corner_position);
-        //     bounding_box.extend(rect.top_left_corner_position + rect.extent_u);
-        //     bounding_box.extend(rect.top_left_corner_position + rect.extent_v);
-        //     bounding_box.extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
-        // }
-
         // We don't need a very accurate bounding box, so in order to save some time,
         // we calculate a per batch bounding box for lines and points.
         for (batch, vertex_iter) in line_strips.iter_vertices_by_batch() {

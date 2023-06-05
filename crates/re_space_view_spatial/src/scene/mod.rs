@@ -104,8 +104,6 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        let parts: Vec<&dyn parts::ScenePart> = Vec::new(); // TODO:
-
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = TypedScene::<SpatialSpaceViewClass> {
             context: SpatialSceneContext::default(),
@@ -114,17 +112,6 @@ impl SceneSpatial {
         };
         self.draw_data =
             scene.populate(ctx, query, &re_space_view::EmptySpaceViewState, highlights);
-
-        for part in parts {
-            part.load(
-                self,
-                ctx,
-                query,
-                &scene.context.transforms,
-                &scene.highlights,
-                &scene.context.depth_offsets,
-            );
-        }
 
         self.primitives.any_outlines = scene.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
