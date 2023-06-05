@@ -150,6 +150,25 @@ impl AppState {
     ) -> &mut RecordingConfig {
         recording_config_entry(&mut self.recording_configs, id, data_source, store_db)
     }
+
+    pub fn cleanup(&mut self, store_hub: &crate::StoreHub) {
+        re_tracing::profile_function!();
+
+        if !self
+            .selected_rec_id
+            .as_ref()
+            .map_or(false, |rec_id| store_hub.contains_recording(rec_id))
+        {
+            // Pick any:
+            self.selected_rec_id = store_hub
+                .recordings()
+                .next()
+                .map(|log| log.store_id().clone());
+        }
+
+        self.recording_configs
+            .retain(|store_id, _| store_hub.contains_recording(store_id));
+    }
 }
 
 fn recording_config_entry<'cfgs>(

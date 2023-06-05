@@ -662,7 +662,8 @@ impl eframe::App for App {
         self.show_text_logs_as_notifications();
         self.receive_messages(egui_ctx);
 
-        self.cleanup();
+        self.store_hub.purge_empty();
+        self.state.cleanup(&self.store_hub);
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
@@ -847,30 +848,6 @@ impl App {
                 break; // don't block the main thread for too long
             }
         }
-    }
-
-    fn cleanup(&mut self) {
-        re_tracing::profile_function!();
-
-        self.store_hub.purge_empty();
-
-        if !self
-            .state
-            .selected_rec_id
-            .as_ref()
-            .map_or(false, |rec_id| self.store_hub.contains_recording(rec_id))
-        {
-            // Pick any:
-            self.state.selected_rec_id = self
-                .store_hub
-                .recordings()
-                .next()
-                .map(|log| log.store_id().clone());
-        }
-
-        self.state
-            .recording_configs
-            .retain(|store_id, _| self.store_hub.contains_recording(store_id));
     }
 
     fn purge_memory_if_needed(&mut self) {
