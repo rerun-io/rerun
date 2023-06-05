@@ -1,3 +1,4 @@
+use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 use re_viewer_context::{SpaceViewClassImpl, SpaceViewId};
 
@@ -41,9 +42,10 @@ impl SpaceViewClassImpl for SpatialSpaceView {
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         state: &Self::SpaceViewState,
+        entity_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
-        state.update_object_property_heuristics(ctx, entity_properties);
+        state.update_object_property_heuristics(ctx, entity_paths, entity_properties);
     }
 
     fn selection_ui(

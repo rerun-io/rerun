@@ -34,12 +34,6 @@ impl EntityPropertyMap {
     pub fn iter(&self) -> impl Iterator<Item = (&EntityPath, &EntityProperties)> {
         self.props.iter()
     }
-
-    /// Iterates over all paths that have a non-default value.
-    #[inline]
-    pub fn iter_non_default_entities(&self) -> impl Iterator<Item = &EntityPath> {
-        self.props.keys()
-    }
 }
 
 // ----------------------------------------------------------------------------

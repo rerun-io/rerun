@@ -196,6 +196,7 @@ impl SpaceViewBlueprint {
             space_view_class.prepare_populate(
                 ctx,
                 view_state.state.as_mut(),
+                &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
                 self.data_blueprint.data_blueprints_individual(),
             );
 

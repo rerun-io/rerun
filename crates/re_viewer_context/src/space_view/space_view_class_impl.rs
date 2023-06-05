@@ -1,3 +1,4 @@
+use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
@@ -62,6 +63,7 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
         &self,
         _ctx: &mut ViewerContext<'_>,
         _state: &Self::SpaceViewState,
+        _entity_paths: &IntSet<EntityPath>,
         _entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
     }
@@ -131,10 +133,11 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
+        entity_paths: &IntSet<EntityPath>,
         entity_properties: &mut EntityPropertyMap,
     ) {
         typed_state_wrapper_mut(state, |state| {
-            self.prepare_populate(ctx, state, entity_properties);
+            self.prepare_populate(ctx, state, entity_paths, entity_properties);
         });
     }
 

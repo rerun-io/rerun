@@ -1,3 +1,4 @@
+use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::{ComponentName, EntityPath};
 
@@ -59,6 +60,7 @@ pub trait SpaceViewClass {
         &self,
         ctx: &mut ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
+        entity_paths: &IntSet<EntityPath>,
         entity_properties: &mut EntityPropertyMap,
     );
 
