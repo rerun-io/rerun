@@ -269,7 +269,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
         });
     } else {
         let store_db_is_nonempty = app
-            .store_db()
+            .recording_db()
             .map_or(false, |store_db| !store_db.is_empty());
         ui.add_enabled_ui(store_db_is_nonempty, |ui| {
             if ui

@@ -413,7 +413,7 @@ impl App {
 
     /// The app ID of active blueprint.
     pub fn selected_app_id(&self) -> ApplicationId {
-        self.store_db()
+        self.recording_db()
             .and_then(|store_db| {
                 store_db
                     .store_info()
@@ -478,7 +478,7 @@ impl App {
         blueprint_stats: &DataStoreStats,
     ) {
         let store_config = self
-            .store_db()
+            .recording_db()
             .map(|store_db| store_db.entity_db.data_store.config().clone())
             .unwrap_or_default();
 
@@ -634,7 +634,7 @@ impl eframe::App for App {
             });
 
         let store_stats = self
-            .store_db()
+            .recording_db()
             .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
             .unwrap_or_default();
 
@@ -918,8 +918,8 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
-    /// Get access to the currently shown [`StoreDb`], if any.
-    pub fn store_db(&self) -> Option<&StoreDb> {
+    /// Get access to the [`StoreDb`] of the currently shown recording, if any.
+    pub fn recording_db(&self) -> Option<&StoreDb> {
         self.state
             .recording_id()
             .and_then(|rec_id| self.store_hub.recording(&rec_id))
@@ -1058,7 +1058,7 @@ fn save(
     app: &mut App,
     loop_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) {
-    let Some(store_db) = app.store_db() else {
+    let Some(store_db) = app.recording_db() else {
         // NOTE: Can only happen if saving through the command palette.
         re_log::error!("No data to save!");
         return;
