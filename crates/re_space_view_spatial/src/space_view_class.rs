@@ -31,7 +31,6 @@ impl SpaceViewClassImpl for SpatialSpaceViewClass {
         _state: &mut Self::SpaceViewState,
     ) {
         // TODO(andreas)
-        //todo!()
     }
 
     fn ui(
@@ -42,6 +41,5 @@ impl SpaceViewClassImpl for SpatialSpaceViewClass {
         _scene: &re_viewer_context::TypedScene<Self>,
     ) {
         // TODO(andreas)
-        //todo!()
     }
 }

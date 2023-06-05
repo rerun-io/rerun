@@ -35,6 +35,7 @@ impl ScenePart<TextBoxSpaceView> for SceneTextBox {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
     }
+
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
