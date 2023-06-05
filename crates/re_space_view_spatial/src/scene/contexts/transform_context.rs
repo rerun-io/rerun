@@ -1,9 +1,10 @@
 use nohash_hasher::IntMap;
+
 use re_arrow_store::LatestAtQuery;
 use re_components::{DisconnectedSpace, Pinhole, Transform3D};
-use re_data_store::{store_db::EntityDb, EntityPath, EntityPropertyMap, EntityTree};
-use re_log_types::EntityPathHash;
-use re_viewer_context::TimeControl;
+use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
+use re_log_types::{Component, EntityPathHash};
+use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -25,9 +26,9 @@ struct TransformInfo {
 ///
 /// Should be recomputed every frame.
 #[derive(Clone)]
-pub struct TransformCache {
+pub struct TransformContext {
     /// All transforms provided are relative to this reference path.
-    reference_path: EntityPath,
+    space_origin: EntityPath,
 
     /// All reachable entities.
     transform_per_entity: IntMap<EntityPath, TransformInfo>,
@@ -37,6 +38,17 @@ pub struct TransformCache {
 
     /// The first parent of reference_path that is no longer reachable.
     first_unreachable_parent: Option<(EntityPath, UnreachableTransform)>,
+}
+
+impl Default for TransformContext {
+    fn default() -> Self {
+        Self {
+            space_origin: EntityPath::root(),
+            transform_per_entity: Default::default(),
+            unreachable_descendants: Default::default(),
+            first_unreachable_parent: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -71,39 +83,46 @@ impl std::fmt::Display for UnreachableTransform {
     }
 }
 
-impl TransformCache {
+impl SceneContextPart for TransformContext {
+    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
+        vec![
+            vec1::vec1![Transform3D::name()],
+            vec1::vec1![Pinhole::name()],
+            vec1::vec1![DisconnectedSpace::name()],
+        ]
+    }
+
     /// Determines transforms for all entities relative to a space path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
     ///
     /// This means that the entities in `reference_space` get the identity transform and all other
     /// entities are transformed relative to it.
-    pub fn determine_transforms(
-        entity_db: &EntityDb,
-        time_ctrl: &TimeControl,
-        space_path: &EntityPath,
-        entity_prop_map: &EntityPropertyMap,
-    ) -> Self {
+    fn populate(
+        &mut self,
+        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        scene_query: &re_viewer_context::SceneQuery<'_>,
+        _space_view_state: &dyn re_viewer_context::SpaceViewState,
+    ) {
         re_tracing::profile_function!();
 
-        let mut transforms = TransformCache {
-            reference_path: space_path.clone(),
-            transform_per_entity: Default::default(),
-            unreachable_descendants: Default::default(),
-            first_unreachable_parent: None,
-        };
+        let entity_db = &ctx.store_db.entity_db;
+        let time_ctrl = &ctx.rec_cfg.time_ctrl;
+        let entity_prop_map = scene_query.entity_props_map;
+
+        self.space_origin = scene_query.space_origin.clone();
 
         // Find the entity path tree for the root.
-        let Some(mut current_tree) = &entity_db.tree.subtree(space_path) else {
+        let Some(mut current_tree) = &entity_db.tree.subtree(scene_query.space_origin) else {
             // It seems the space path is not part of the object tree!
             // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
             // Naturally, in this case we don't have any transforms yet.
-            return transforms;
+            return;
         };
 
         let query = time_ctrl.current_query();
 
         // Child transforms of this space
-        transforms.gather_descendants_transforms(
+        self.gather_descendants_transforms(
             current_tree,
             &entity_db.data_store,
             &query,
@@ -120,9 +139,9 @@ impl TransformCache {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",
-                    parent_path, space_path
+                    parent_path, scene_query.space_origin
                 );
-                return transforms;
+                return;
             };
 
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
@@ -137,7 +156,7 @@ impl TransformCache {
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
-                    transforms.first_unreachable_parent =
+                    self.first_unreachable_parent =
                         Some((parent_tree.path.clone(), unreachable_reason));
                     break;
                 }
@@ -148,7 +167,7 @@ impl TransformCache {
             }
 
             // (skip over everything at and under `current_tree` automatically)
-            transforms.gather_descendants_transforms(
+            self.gather_descendants_transforms(
                 parent_tree,
                 &entity_db.data_store,
                 &query,
@@ -159,10 +178,10 @@ impl TransformCache {
 
             current_tree = parent_tree;
         }
-
-        transforms
     }
+}
 
+impl TransformContext {
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,
@@ -213,7 +232,7 @@ impl TransformCache {
     }
 
     pub fn reference_path(&self) -> &EntityPath {
-        &self.reference_path
+        &self.space_origin
     }
 
     /// Retrieves the transform of on entity from its local system to the space of the reference.

@@ -1,7 +1,9 @@
 use egui::Label;
-use re_viewer_context::{SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, ViewerContext};
+use re_viewer_context::{
+    SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, TypedScene, ViewerContext,
+};
 
-use super::scene_element::SceneTextBox;
+use super::scene_part::SceneTextBox;
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq)]
@@ -33,8 +35,10 @@ impl SpaceViewState for TextBoxSpaceViewState {
 pub struct TextBoxSpaceView;
 
 impl SpaceViewClassImpl for TextBoxSpaceView {
-    type State = TextBoxSpaceViewState;
-    type SceneElementTuple = (SceneTextBox,);
+    type SpaceViewState = TextBoxSpaceViewState;
+    type ScenePartCollection = SceneTextBox;
+    type SceneContext = re_space_view::EmptySceneContext;
+    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Text Box".into()
@@ -52,7 +56,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut Self::SpaceViewState,
     ) {
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
@@ -69,10 +73,10 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &self,
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
-        scene_elements: Self::SceneElementTuple,
+        state: &mut Self::SpaceViewState,
+        scene: &TypedScene<Self>,
     ) {
-        let scene = scene_elements.0;
+        let scene = &scene.parts;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),

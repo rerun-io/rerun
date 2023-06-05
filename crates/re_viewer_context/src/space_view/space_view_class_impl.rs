@@ -1,21 +1,31 @@
-use crate::{Scene, SpaceViewClass, SpaceViewClassName, SpaceViewState, ViewerContext};
+use crate::{
+    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewState,
+    ViewerContext,
+};
 
-use super::scene_element_list::SceneElementListConversionError;
+use super::scene::TypedScene;
 
-/// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::SceneElement`] type.
+/// Utility for implementing [`SpaceViewClass`] with concrete [`SpaceViewState`] and [`crate::ScenePart`] type.
 ///
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
-pub trait SpaceViewClassImpl {
+pub trait SpaceViewClassImpl: std::marker::Sized {
     /// State of a space view.
-    type State: SpaceViewState + Default + 'static;
+    type SpaceViewState: SpaceViewState + Default + 'static;
 
-    /// A tuple of [`crate::SceneElement`] types that are supported by this space view class.
-    type SceneElementTuple: Into<Scene>
-        + TryFrom<Scene, Error = SceneElementListConversionError>
-        + Default
-        + 'static;
+    /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
+    type SceneContext: SceneContext + Default + 'static;
+
+    /// Collection of [`crate::ScenePart`]s that this scene populates.
+    type ScenePartCollection: ScenePartCollection<Self> + Default + 'static;
+
+    /// A piece of data that all scene parts have in common, useful for iterating over them.
+    ///
+    /// This is useful for retrieving data that is common to all scene parts of a [`SpaceViewClass`].
+    /// For example, if most scene parts produce ui elements, a concrete [`SpaceViewClassImpl`]
+    /// can pick those up in its [`SpaceViewClassImpl::ui`] method by iterating over all scene parts.
+    type ScenePartData;
 
     /// Name of this space view class.
     ///
@@ -32,7 +42,12 @@ pub trait SpaceViewClassImpl {
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
-    fn selection_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, state: &mut Self::State);
+    fn selection_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::SpaceViewState,
+    );
 
     /// Draws the ui for this space view class and handles ui events.
     ///
@@ -42,12 +57,12 @@ pub trait SpaceViewClassImpl {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
-        scene_elements: Self::SceneElementTuple,
+        state: &mut Self::SpaceViewState,
+        scene: &TypedScene<Self>,
     );
 }
 
-impl<T: SpaceViewClassImpl> SpaceViewClass for T {
+impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
     #[inline]
     fn name(&self) -> SpaceViewClassName {
         self.name()
@@ -64,13 +79,13 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
     }
 
     #[inline]
-    fn new_scene(&self) -> Scene {
-        T::SceneElementTuple::default().into()
+    fn new_scene(&self) -> Box<dyn Scene> {
+        Box::<TypedScene<Self>>::default()
     }
 
     #[inline]
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<T::State>::default()
+        Box::<T::SpaceViewState>::default()
     }
 
     #[inline]
@@ -89,17 +104,16 @@ impl<T: SpaceViewClassImpl> SpaceViewClass for T {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Scene,
+        scene: Box<dyn Scene>,
     ) {
-        let scene_elements = match T::SceneElementTuple::try_from(scene) {
-            Ok(scene_elements) => scene_elements,
-            Err(err) => {
-                re_log::error_once!("Incorrect scene type for space view class: {}", err);
+        let Some(typed_scene) = scene.as_any().downcast_ref()
+            else {
+                re_log::error_once!("Unexpected space view state type. Expected {}",
+                                    std::any::type_name::<TypedScene<T>>());
                 return;
-            }
-        };
+            };
 
-        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, scene_elements));
+        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, typed_scene));
     }
 }
 
@@ -110,20 +124,9 @@ fn typed_state_wrapper<T: SpaceViewState, F: FnOnce(&mut T)>(
     if let Some(state) = state.as_any_mut().downcast_mut() {
         fun(state);
     } else {
-        re_log::error_once!("Incorrect type of space view state.");
-    }
-}
-
-/// Space view state without any contents.
-#[derive(Default)]
-pub struct EmptySpaceViewState;
-
-impl SpaceViewState for EmptySpaceViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
+        re_log::error_once!(
+            "Unexpected space view state type. Expected {}",
+            std::any::type_name::<T>()
+        );
     }
 }

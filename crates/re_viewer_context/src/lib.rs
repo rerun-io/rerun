@@ -7,7 +7,6 @@ mod app_options;
 mod caches;
 mod component_ui_registry;
 mod item;
-mod scene_query;
 mod selection_history;
 mod selection_state;
 mod space_view;
@@ -26,15 +25,15 @@ pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{Item, ItemCollection};
-pub use scene_query::SceneQuery;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, EmptySpaceViewState, Scene, SceneElement, SceneElementImpl,
-    SpaceViewClass, SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, SpaceViewState,
+    ArchetypeDefinition, Scene, SceneContext, SceneContextPart, ScenePart, ScenePartCollection,
+    SceneQuery, SpaceViewClass, SpaceViewClassImpl, SpaceViewClassName, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks, SpaceViewState, TypedScene,
 };
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};

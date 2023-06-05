@@ -1,19 +1,19 @@
 use re_components::{
     coordinates::{Handedness, SignedAxis3},
-    InstanceKey, Pinhole, ViewCoordinates,
+    Component, InstanceKey, Pinhole, ViewCoordinates,
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
-use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
-use re_viewer_context::TimeControl;
+use re_viewer_context::{ArchetypeDefinition, ScenePart, TimeControl};
 use re_viewer_context::{SceneQuery, ViewerContext};
+use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
-use super::{instance_path_hash_for_picking, ScenePart};
+use super::{instance_path_hash_for_picking, SpatialScenePartData, SpatialSpaceViewState};
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    scene::{EntityDepthOffsets, SceneSpatial},
+    scene::{contexts::SpatialSceneContext, SceneSpatial},
     space_camera_3d::SpaceCamera3D,
-    transform_cache::TransformCache,
+    SpatialSpaceViewClass,
 };
 
 /// Determine the view coordinates (i.e.) the axis semantics.
@@ -48,20 +48,24 @@ fn determine_view_coordinates(
     }
 }
 
-pub struct CamerasPart;
+#[derive(Default)]
+pub struct CamerasPart {
+    pub data: SpatialScenePartData,
+    pub space_cameras: Vec<SpaceCamera3D>,
+}
 
 impl CamerasPart {
-    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
-        scene: &mut SceneSpatial,
+        &mut self,
+        scene_context: &SpatialSceneContext,
         ent_path: &EntityPath,
-        instance_key: InstanceKey,
         props: &EntityProperties,
-        transforms: &TransformCache,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
+        let instance_key = InstanceKey(0);
+
         // The transform *at* this entity path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
         // We're however first interested in the rigid transform that led here, so query the parent transform.
@@ -71,15 +75,15 @@ impl CamerasPart {
         let parent_path = ent_path
             .parent()
             .expect("root path can't be part of scene query");
-        let Some(world_from_parent) = transforms.reference_from_entity(&parent_path) else {
+        let Some(world_from_parent) = scene_context.transforms.reference_from_entity(&parent_path) else {
                 return;
             };
 
         let frustum_length = *props.pinhole_image_plane_distance.get();
 
         // If the camera is our reference, there is nothing for us to display.
-        if transforms.reference_path() == ent_path {
-            scene.space_cameras.push(SpaceCamera3D {
+        if scene_context.transforms.reference_path() == ent_path {
+            self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 view_coordinates,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
@@ -95,7 +99,7 @@ impl CamerasPart {
             return;
         };
 
-        scene.space_cameras.push(SpaceCamera3D {
+        self.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
             view_coordinates,
             world_from_camera,
@@ -158,9 +162,8 @@ impl CamerasPart {
         );
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
-        let mut batch = scene
-            .primitives
-            .line_strips
+        let mut line_builder = scene_context.shared_render_builders.lines();
+        let mut batch = line_builder
             .batch("camera frustum")
             .world_from_obj(world_from_parent)
             .outline_mask_ids(entity_highlight.overall)
@@ -175,19 +178,26 @@ impl CamerasPart {
         if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
             lines.outline_mask_ids(*outline_mask_ids);
         }
+
+        scene_context
+            .num_3d_primitives
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
-impl ScenePart for CamerasPart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl ScenePart<SpatialSpaceViewClass> for CamerasPart {
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![Pinhole::name(),]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        _space_view_state: &SpatialSpaceViewState,
+        scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
-        _depth_offsets: &EntityDepthOffsets,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("CamerasPart");
 
         let store = &ctx.store_db.entity_db.data_store;
@@ -202,17 +212,21 @@ impl ScenePart for CamerasPart {
                 );
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
-                Self::visit_instance(
-                    scene,
+                self.visit_instance(
+                    scene_context,
                     ent_path,
-                    InstanceKey(0),
                     &props,
-                    transforms,
                     pinhole,
                     view_coordinates,
                     entity_highlight,
                 );
             }
         }
+
+        Vec::new()
+    }
+
+    fn data(&self) -> Option<&SpatialScenePartData> {
+        Some(&self.data)
     }
 }

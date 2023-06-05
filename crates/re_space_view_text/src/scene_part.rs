@@ -2,9 +2,12 @@ use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{ArchetypeDefinition, SceneElementImpl, SceneQuery, ViewerContext};
+use re_viewer_context::{
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClassImpl,
+    SpaceViewHighlights, ViewerContext,
+};
 
-use super::space_view_class::TextSpaceViewState;
+use crate::TextSpaceView;
 
 #[derive(Debug, Clone)]
 pub struct TextEntry {
@@ -29,9 +32,17 @@ pub struct SceneText {
     pub text_entries: Vec<TextEntry>,
 }
 
-impl SceneElementImpl for SceneText {
-    type State = TextSpaceViewState;
+impl ScenePartCollection<TextSpaceView> for SceneText {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<TextSpaceView>> {
+        vec![self]
+    }
 
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl ScenePart<TextSpaceView> for SceneText {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextEntry::name()]
     }
@@ -40,8 +51,10 @@ impl SceneElementImpl for SceneText {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        state: &TextSpaceViewState,
-    ) {
+        state: &<TextSpaceView as SpaceViewClassImpl>::SpaceViewState,
+        _scene_context: &<TextSpaceView as SpaceViewClassImpl>::SceneContext,
+        _highlights: &SpaceViewHighlights,
+    ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;
 
         for entity_path in query.entity_paths {
@@ -50,7 +63,7 @@ impl SceneElementImpl for SceneText {
             // Early filtering: if we're not showing it the view, there isn't much point
             // in querying it to begin with... at least for now.
             if !state.filters.is_entity_path_visible(ent_path) {
-                return;
+                continue;
             }
 
             let query = re_arrow_store::RangeQuery::new(
@@ -98,9 +111,7 @@ impl SceneElementImpl for SceneText {
                 }
             }
         }
-    }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+        Vec::new()
     }
 }

@@ -4,8 +4,10 @@ use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, EntityPathHash};
 use re_renderer::OutlineMaskPreference;
-use re_space_view::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
-use re_viewer_context::{HoverHighlight, Item, SelectionHighlight, SelectionState, SpaceViewId};
+use re_viewer_context::{
+    HoverHighlight, Item, SelectionHighlight, SelectionState, SpaceViewEntityHighlight,
+    SpaceViewHighlights, SpaceViewId, SpaceViewOutlineMasks,
+};
 
 use crate::SpaceViewBlueprint;
 

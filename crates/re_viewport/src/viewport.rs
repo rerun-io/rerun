@@ -7,10 +7,10 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_space_view::{DataBlueprintGroup, SpaceViewHighlights};
+use re_space_view::{DataBlueprintGroup, EmptySpaceViewState};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, EmptySpaceViewState, Item, SpaceViewClassName,
-    SpaceViewClassRegistry, SpaceViewId, ViewerContext,
+    DataBlueprintGroupHandle, Item, SpaceViewClassName, SpaceViewClassRegistry,
+    SpaceViewHighlights, SpaceViewId, ViewerContext,
 };
 
 use crate::{
@@ -705,7 +705,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             ui,
             space_view_blueprint,
             space_view_state,
-            &highlights,
+            highlights,
         );
 
         Default::default()
@@ -844,7 +844,7 @@ fn space_view_ui(
     ui: &mut egui::Ui,
     space_view_blueprint: &mut SpaceViewBlueprint,
     space_view_state: &mut SpaceViewState,
-    space_view_highlights: &SpaceViewHighlights,
+    space_view_highlights: SpaceViewHighlights,
 ) {
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {

@@ -1,5 +1,5 @@
 use re_renderer::{
-    renderer::{DepthCloudDrawData, GenericSkyboxDrawData, MeshDrawData, RectangleDrawData},
+    renderer::{DepthCloudDrawData, GenericSkyboxDrawData, RectangleDrawData},
     view_builder::ViewBuilder,
     RenderContext,
 };
@@ -24,9 +24,7 @@ pub fn fill_view_builder(
             render_ctx,
             &primitives.depth_clouds,
         )?)
-        .queue_draw(MeshDrawData::new(render_ctx, &primitives.mesh_instances())?)
         .queue_draw(primitives.line_strips.to_draw_data(render_ctx)?)
-        .queue_draw(primitives.points.to_draw_data(render_ctx)?)
         .queue_draw(RectangleDrawData::new(
             render_ctx,
             &primitives
