@@ -1,6 +1,6 @@
-use re_log_types::ComponentName;
+use re_log_types::{ComponentName, EntityPath};
 
-use crate::{Scene, ViewerContext};
+use crate::{Scene, SpaceViewId, ViewerContext};
 
 /// First element is the primary component, all others are optional.
 ///
@@ -49,6 +49,9 @@ pub trait SpaceViewClass {
         None
     }
 
+    /// Preferred aspect ratio for the ui tiles of this space view.
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32>;
+
     /// Executed before the scene is populated.
     ///
     /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
@@ -74,6 +77,8 @@ pub trait SpaceViewClass {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         scene: Box<dyn Scene>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 }
 

@@ -217,17 +217,14 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
-/// TODO(andreas): Split into smaller parts, more re-use with `ui_3d`
-#[allow(clippy::too_many_arguments)]
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    space: &EntityPath,
     scene: &mut SceneSpatial,
-    scene_rect_accum: Rect,
+    space_origin: &EntityPath,
     space_view_id: SpaceViewId,
-    entity_properties: &EntityPropertyMap,
+    scene_rect_accum: Rect,
 ) -> egui::Response {
     re_tracing::profile_function!();
 
@@ -246,8 +243,8 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole =
-        store.query_latest_component::<Pinhole>(space, &ctx.rec_cfg.time_ctrl.current_query());
+    let pinhole = store
+        .query_latest_component::<Pinhole>(space_origin, &ctx.rec_cfg.time_ctrl.current_query());
     let canvas_rect = pinhole
         .and_then(|p| p.resolution())
         .map_or(scene_rect_accum, |res| {
@@ -292,7 +289,7 @@ pub fn view_2d(
         let Ok(target_config) = setup_target_config(
                 &painter,
                 canvas_from_ui,
-                &space.to_string(),
+                &space_origin.to_string(),
                 state.auto_size_config(),
                 scene.highlights.any_outlines(),
                 pinhole
@@ -325,13 +322,11 @@ pub fn view_2d(
                 state,
                 scene,
                 &ui_rects,
-                space,
-                entity_properties,
+                space_origin,
             );
         }
 
-        // TODO(wumpf): Temporary manual insertion of drawdata. The SpaceViewClass framework will take this over.
-        for draw_data in scene.todo_remove_draw_data.replace(Vec::new()) {
+        for draw_data in scene.draw_data.drain(..) {
             view_builder.queue_draw(draw_data);
         }
         for draw_data in scene
@@ -378,7 +373,7 @@ pub fn view_2d(
         painter.extend(show_projections_from_3d_space(
             ctx,
             ui,
-            space,
+            space_origin,
             &ui_from_canvas,
         ));
 

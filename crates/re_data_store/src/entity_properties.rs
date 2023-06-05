@@ -16,16 +16,23 @@ pub struct EntityPropertyMap {
 
 #[cfg(feature = "serde")]
 impl EntityPropertyMap {
+    #[inline]
     pub fn get(&self, entity_path: &EntityPath) -> EntityProperties {
         self.props.get(entity_path).cloned().unwrap_or_default()
     }
 
+    #[inline]
     pub fn set(&mut self, entity_path: EntityPath, prop: EntityProperties) {
         if prop == EntityProperties::default() {
             self.props.remove(&entity_path); // save space
         } else {
             self.props.insert(entity_path, prop);
         }
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = (&EntityPath, &EntityProperties)> {
+        self.props.iter()
     }
 }
 

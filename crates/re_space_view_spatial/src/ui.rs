@@ -2,13 +2,15 @@ use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
+use nohash_hasher::{IntMap, IntSet};
 use re_components::{Pinhole, Tensor, TensorDataMeaning};
 use re_data_store::{EditableAutoValue, EntityPath, EntityPropertyMap};
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
+use re_log_types::EntityPathHash;
 use re_renderer::OutlineConfig;
-use re_space_view::{DataBlueprintTree, ScreenshotMode};
+use re_space_view::{DataBlueprintHeuristic, DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
     SpaceViewState, TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
@@ -116,6 +118,24 @@ impl SpaceViewState for SpatialSpaceViewState {
     }
 }
 
+impl DataBlueprintHeuristic for SpatialSpaceViewState {
+    fn update_object_property_heuristics(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        data_blueprint: &mut DataBlueprintTree,
+    ) {
+        re_tracing::profile_function!();
+
+        let query = ctx.current_query();
+
+        let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
+        for entity_path in entity_paths {
+            self.update_pinhole_property_heuristics(ctx, data_blueprint, &query, &entity_path);
+            self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
+        }
+    }
+}
+
 impl SpatialSpaceViewState {
     pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
@@ -148,22 +168,6 @@ impl SpatialSpaceViewState {
             (median_extent / (self.scene_num_primitives.at_least(1) as f32).powf(1.0 / 1.7)) * 0.25;
 
         heuristic0.min(heuristic1)
-    }
-
-    pub fn update_object_property_heuristics(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        data_blueprint: &mut DataBlueprintTree,
-    ) {
-        re_tracing::profile_function!();
-
-        let query = ctx.current_query();
-
-        let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
-        for entity_path in entity_paths {
-            self.update_pinhole_property_heuristics(ctx, data_blueprint, &query, &entity_path);
-            self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
-        }
     }
 
     fn update_pinhole_property_heuristics(
@@ -237,30 +241,24 @@ impl SpatialSpaceViewState {
         Some(())
     }
 
-    pub fn selection_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        data_blueprint: &DataBlueprintTree,
-        space_path: &EntityPath,
-        space_view_id: SpaceViewId,
-    ) {
+    pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Space root")
-                .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
-            // Specify space view id only if this is actually part of the space view itself.
-            // (otherwise we get a somewhat broken link)
-            item_ui::entity_path_button(ctx,
-                ui,
-                data_blueprint
-                    .contains_entity(space_path)
-                    .then_some(space_view_id),
-                space_path,
-            );
-            ui.end_row();
+            // TODO:
+            // ctx.re_ui.grid_left_hand_label(ui, "Space origin")
+            //     .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
+            // // Specify space view id only if this is actually part of the space view itself.
+            // // (otherwise we get a somewhat broken link)
+            // item_ui::entity_path_button(ctx,
+            //     ui,
+            //     data_blueprint
+            //         .contains_entity(space_path)
+            //         .then_some(space_view_id),
+            //     space_path,
+            // );
+            // ui.end_row();
 
             ctx.re_ui.grid_left_hand_label(ui, "Default size");
             ui.vertical(|ui| {
@@ -380,10 +378,9 @@ impl SpatialSpaceViewState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space: &EntityPath,
         scene: &mut SceneSpatial,
+        space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        entity_properties: &EntityPropertyMap,
     ) {
         self.scene_bbox = scene.parts.calculate_bounding_box();
         if self.scene_bbox_accum.is_nothing() {
@@ -393,7 +390,7 @@ impl SpatialSpaceViewState {
         }
 
         if self.nav_mode.is_auto() {
-            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(scene, space));
+            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(scene, space_origin));
         }
         self.scene_num_primitives = scene
             .context
@@ -403,17 +400,9 @@ impl SpatialSpaceViewState {
         let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates = store.query_latest_component(space, &ctx.current_query());
+                let coordinates = store.query_latest_component(space_origin, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                view_3d(
-                    ctx,
-                    ui,
-                    self,
-                    space,
-                    space_view_id,
-                    scene,
-                    entity_properties,
-                );
+                view_3d(ctx, ui, self, space_origin, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -424,11 +413,10 @@ impl SpatialSpaceViewState {
                     ctx,
                     ui,
                     self,
-                    space,
                     scene,
-                    scene_rect_accum,
+                    space_origin,
                     space_view_id,
-                    entity_properties,
+                    scene_rect_accum,
                 );
             }
         }
@@ -687,7 +675,6 @@ pub fn picking(
     scene: &SceneSpatial,
     ui_rects: &[PickableUiRect],
     space: &EntityPath,
-    entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     re_tracing::profile_function!();
 
@@ -742,14 +729,23 @@ pub fn picking(
         let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
             else { continue; };
 
-        let ent_properties = entity_properties.get(&instance_path.entity_path);
-        if !ent_properties.interactive {
+        if !scene
+            .context
+            .non_interactive_entities
+            .0
+            .contains(&instance_path.entity_path.hash())
+        {
             continue;
         }
 
         // Special hover ui for images.
+        let is_depth_cloud = scene
+            .parts
+            .images
+            .depth_cloud_entities
+            .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
-            || *ent_properties.backproject_depth.get()
+            || is_depth_cloud
         {
             let store = &ctx.store_db.entity_db.data_store;
             store
@@ -758,7 +754,7 @@ pub fn picking(
                     // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
                     // (the back-projection property may be true despite this not being a depth image!)
                     if hit.hit_type != PickingHitType::TexturedRect
-                        && *ent_properties.backproject_depth.get()
+                        && is_depth_cloud
                         && tensor.meaning != TensorDataMeaning::Depth
                     {
                         None

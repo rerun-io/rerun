@@ -1,8 +1,7 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataBlueprintTree, ScreenshotMode};
-use re_space_view_spatial::{SceneSpatial, SpatialSpaceViewState};
+use re_space_view::{DataBlueprintHeuristic, DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{
     Scene, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext,
 };
@@ -154,21 +153,11 @@ impl SpaceViewBlueprint {
 
             #[allow(clippy::match_same_arms)]
             match self.category {
-                ViewCategory::Text => {}
-                ViewCategory::TextBox => {
+                ViewCategory::Text | ViewCategory::Spatial | ViewCategory::TextBox => {
                     // migrated.
                 }
                 ViewCategory::TimeSeries => {}
                 ViewCategory::BarChart => {}
-                ViewCategory::Spatial => {
-                    view_state.state_spatial.selection_ui(
-                        ctx,
-                        ui,
-                        &self.data_blueprint,
-                        &self.space_path,
-                        self.id,
-                    );
-                }
                 ViewCategory::Tensor => {
                     if let Some(selected_tensor) = &view_state.selected_tensor {
                         if let Some(state_tensor) =
@@ -206,10 +195,17 @@ impl SpaceViewBlueprint {
         };
 
         if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
+            space_view_class.prepare_populate(ctx, view_state.state.as_mut());
+
+            if let Some(heuristic) = view_state
+                .state
+                .as_ref()
+                .as_any()
+                .downcast_ref::<dyn DataBlueprintHeuristic>()
             {
-                re_tracing::profile_scope!("prepare_populate", space_view_class.name());
-                space_view_class.prepare_populate(ctx, view_state.state.as_mut());
+                heuristic.update_object_property_heuristics(ctx, &mut self.data_blueprint);
             }
+
             let mut scene = space_view_class.new_scene();
             scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
 
@@ -222,7 +218,7 @@ impl SpaceViewBlueprint {
         } else {
             // Legacy handling
             match self.category {
-                ViewCategory::Text | ViewCategory::TextBox => {
+                ViewCategory::Text | ViewCategory::TextBox | ViewCategory::Spatial => {
                     // migrated.
                 }
 
@@ -236,23 +232,6 @@ impl SpaceViewBlueprint {
                     let mut scene = view_bar_chart::SceneBarChart::default();
                     scene.load(ctx, &query);
                     view_state.ui_bar_chart(ctx, ui, &scene);
-                }
-
-                ViewCategory::Spatial => {
-                    let mut scene = SceneSpatial::default();
-                    let draw_data =
-                        scene.populate(ctx, &query, &view_state.state_spatial, highlights);
-                    scene.todo_remove_draw_data.replace(draw_data);
-                    ui.vertical(|ui| {
-                        view_state.state_spatial.view_spatial(
-                            ctx,
-                            ui,
-                            &self.space_path,
-                            &mut scene,
-                            self.id,
-                            self.data_blueprint.data_blueprints_projected(),
-                        );
-                    });
                 }
 
                 ViewCategory::Tensor => {
@@ -322,7 +301,6 @@ pub struct SpaceViewState {
 
     pub state_time_series: view_time_series::ViewTimeSeriesState,
     pub state_bar_chart: view_bar_chart::BarChartState,
-    pub state_spatial: SpatialSpaceViewState,
     pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 

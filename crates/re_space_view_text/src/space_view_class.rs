@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, SpaceViewClassImpl, SpaceViewClassName, SpaceViewState, TypedScene,
-    ViewerContext,
+    level_to_rich_text, SpaceViewClassImpl, SpaceViewClassName, SpaceViewId, SpaceViewState,
+    TypedScene, ViewerContext,
 };
 
 use super::scene_part::{SceneText, TextEntry};
@@ -52,6 +52,10 @@ impl SpaceViewClassImpl for TextSpaceView {
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
+        Some(2.0) // Make text logs wide
     }
 
     fn selection_ui(
@@ -110,6 +114,8 @@ impl SpaceViewClassImpl for TextSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
         scene: &mut TypedScene<Self>,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
     ) {
         let scene = &scene.parts;
 

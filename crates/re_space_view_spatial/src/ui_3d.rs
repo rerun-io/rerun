@@ -4,7 +4,6 @@ use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
 use re_components::ViewCoordinates;
-use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
@@ -283,7 +282,6 @@ pub fn view_3d(
     space: &EntityPath,
     space_view_id: SpaceViewId,
     scene: &mut SceneSpatial,
-    entity_properties: &EntityPropertyMap,
 ) {
     re_tracing::profile_function!();
 
@@ -390,7 +388,6 @@ pub fn view_3d(
             scene,
             &ui_rects,
             space,
-            entity_properties,
         );
     }
 
@@ -518,7 +515,7 @@ pub fn view_3d(
     }
 
     // TODO(wumpf): Temporary manual insertion of drawdata. The SpaceViewClass framework will take this over.
-    for draw_data in scene.todo_remove_draw_data.replace(Vec::new()) {
+    for draw_data in scene.draw_data.drain(..) {
         view_builder.queue_draw(draw_data);
     }
     for draw_data in scene

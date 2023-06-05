@@ -1,6 +1,8 @@
+use re_log_types::EntityPath;
+
 use crate::{
-    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewState,
-    ViewerContext,
+    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewId,
+    SpaceViewState, ViewerContext,
 };
 
 use super::scene::TypedScene;
@@ -39,6 +41,11 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
+    /// Preferred aspect ratio for the ui tiles of this space view.
+    fn preferred_tile_aspect_ratio(&self, state: &Self::SpaceViewState) -> Option<f32> {
+        None
+    }
+
     /// Ui shown when the user selects a space view of this class.
     ///
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
@@ -59,6 +66,8 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
         scene: &mut TypedScene<Self>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 }
 
@@ -88,6 +97,10 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         Box::<T::SpaceViewState>::default()
     }
 
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
+        typed_state_wrapper(state, |state| self.preferred_tile_aspect_ratio(state))
+    }
+
     #[inline]
     fn selection_ui(
         &self,
@@ -95,7 +108,7 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
     ) {
-        typed_state_wrapper(state, |state| self.selection_ui(ctx, ui, state));
+        typed_state_wrapper_mut(state, |state| self.selection_ui(ctx, ui, state));
     }
 
     #[inline]
@@ -105,6 +118,8 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         mut scene: Box<dyn Scene>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     ) {
         let Some(typed_scene) = scene.as_any_mut().downcast_mut()
             else {
@@ -113,11 +128,13 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
                 return;
             };
 
-        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, typed_scene));
+        typed_state_wrapper_mut(state, |state| {
+            self.ui(ctx, ui, state, typed_scene, space_origin, space_view_id);
+        });
     }
 }
 
-fn typed_state_wrapper<T: SpaceViewState, F: FnOnce(&mut T)>(
+fn typed_state_wrapper_mut<T: SpaceViewState, F: FnOnce(&mut T)>(
     state: &mut dyn SpaceViewState,
     fun: F,
 ) {
@@ -128,5 +145,20 @@ fn typed_state_wrapper<T: SpaceViewState, F: FnOnce(&mut T)>(
             "Unexpected space view state type. Expected {}",
             std::any::type_name::<T>()
         );
+    }
+}
+
+fn typed_state_wrapper<T: SpaceViewState, R: Default, F: FnOnce(&T) -> R>(
+    state: &dyn SpaceViewState,
+    fun: F,
+) -> R {
+    if let Some(state) = state.as_any().downcast_ref() {
+        fun(state)
+    } else {
+        re_log::error_once!(
+            "Unexpected space view state type. Expected {}",
+            std::any::type_name::<T>()
+        );
+        R::default()
     }
 }

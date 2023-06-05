@@ -1,5 +1,6 @@
 mod annotation_context;
 mod depth_offsets;
+mod non_interactive_entities;
 mod shared_render_builders;
 mod transform_context;
 
@@ -16,12 +17,15 @@ use re_log_types::EntityPath;
 use re_renderer::DepthOffset;
 use re_viewer_context::{Annotations, SceneContext};
 
+use self::non_interactive_entities::NonInteractiveEntities;
+
 #[derive(Default)]
 pub struct SpatialSceneContext {
     pub transforms: TransformContext,
     pub depth_offsets: EntityDepthOffsets,
     pub annotations: AnnotationSceneContext,
     pub shared_render_builders: SharedRenderBuilders,
+    pub non_interactive_entities: NonInteractiveEntities,
 
     pub num_primitives: AtomicUsize,
     pub num_3d_primitives: AtomicUsize,
@@ -34,6 +38,7 @@ impl SceneContext for SpatialSceneContext {
             depth_offsets,
             annotations,
             shared_render_builders,
+            non_interactive_entities,
             num_3d_primitives: _,
             num_primitives: _,
         } = self;
@@ -42,6 +47,7 @@ impl SceneContext for SpatialSceneContext {
             depth_offsets,
             annotations,
             shared_render_builders,
+            non_interactive_entities,
         ]
     }
 

@@ -1,4 +1,5 @@
-use re_viewer_context::SpaceViewClassImpl;
+use re_log_types::EntityPath;
+use re_viewer_context::{SpaceViewClassImpl, SpaceViewId};
 
 use crate::{
     scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData},
@@ -28,20 +29,22 @@ impl SpaceViewClassImpl for SpatialSpaceViewClass {
 
     fn selection_ui(
         &self,
-        _ctx: &mut re_viewer_context::ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut Self::SpaceViewState,
+        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::SpaceViewState,
     ) {
-        // TODO(andreas)
+        state.selection_ui(ctx, ui);
     }
 
     fn ui(
         &self,
-        _ctx: &mut re_viewer_context::ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut Self::SpaceViewState,
-        _scene: &mut re_viewer_context::TypedScene<Self>,
+        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::SpaceViewState,
+        scene: &mut re_viewer_context::TypedScene<Self>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     ) {
-        // TODO(andreas)
+        state.view_spatial(ctx, ui, scene, space_origin, space_view_id);
     }
 }

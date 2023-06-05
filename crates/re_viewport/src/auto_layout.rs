@@ -17,7 +17,7 @@ use itertools::Itertools as _;
 
 use re_data_store::{EntityPath, EntityPathPart};
 use re_space_view_spatial::SpatialNavigationMode;
-use re_viewer_context::SpaceViewId;
+use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use super::{
     space_view::{SpaceViewBlueprint, SpaceViewState},
@@ -49,6 +49,7 @@ enum SplitDirection {
 }
 
 pub(crate) fn tree_from_space_views(
+    ctx: &mut ViewerContext<'_>,
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
     space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
@@ -66,29 +67,12 @@ pub(crate) fn tree_from_space_views(
             )
         })
         .map(|(space_view_id, space_view)| {
-            let aspect_ratio = match space_view.category {
-                ViewCategory::Spatial => {
-                    if let Some(space_view_state) = space_view_states.get(space_view_id) {
-                        let state_spatial = &space_view_state.state_spatial;
-                        match *state_spatial.nav_mode.get() {
-                            // This is the only thing where the aspect ratio makes complete sense.
-                            SpatialNavigationMode::TwoD => {
-                                let size = state_spatial.scene_bbox_accum.size();
-                                Some(size.x / size.y)
-                            }
-                            // 3D scenes can be pretty flexible
-                            SpatialNavigationMode::ThreeD => None,
-                        }
-                    } else {
-                        None
-                    }
-                }
-                ViewCategory::TextBox | ViewCategory::Tensor | ViewCategory::TimeSeries => {
-                    Some(1.0)
-                } // Not sure if we should do `None` here.
-                ViewCategory::Text => Some(2.0), // Make text logs wide
-                ViewCategory::BarChart => None,
-            };
+            let aspect_ratio = space_view_states.get(space_view_id).and_then(|state| {
+                ctx.space_view_class_registry
+                    .query(space_view.class)
+                    .ok()
+                    .and_then(|class| class.preferred_tile_aspect_ratio(state.state.as_ref()))
+            });
 
             SpaceMakeInfo {
                 id: *space_view_id,

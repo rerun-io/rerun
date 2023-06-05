@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use egui::NumExt;
 
 use itertools::Itertools as _;
+use nohash_hasher::IntSet;
 use re_components::{
     ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor, TensorData,
     TensorDataMeaning,
@@ -125,6 +126,7 @@ struct ImageGrouping {
 pub struct ImagesPart {
     pub data: SpatialScenePartData,
     pub images: Vec<Image>,
+    pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
 impl ImagesPart {
@@ -234,6 +236,7 @@ impl ImagesPart {
                         Ok(cloud) => {
                             self.data
                                 .extend_bounding_box(cloud.bbox(), ent_context.world_from_obj);
+                            self.depth_cloud_entities.insert(ent_path.hash());
                             depth_clouds.push(cloud);
                             return Ok(());
                         }
