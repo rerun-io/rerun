@@ -31,7 +31,7 @@ impl framework::Example for Render2D {
         let rerun_logo_texture = re_ctx
             .texture_manager_2d
             .create(
-                &mut re_ctx.gpu_resources.textures,
+                &re_ctx.gpu_resources.textures,
                 &Texture2DCreationDesc {
                     label: "rerun logo".into(),
                     data: image_data.into(),

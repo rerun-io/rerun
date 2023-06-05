@@ -57,25 +57,25 @@ pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_from_point: f
 }
 
 pub fn try_get_or_create_texture<'a, Err: std::fmt::Display>(
-    render_ctx: &mut RenderContext,
+    render_ctx: &RenderContext,
     texture_key: u64,
     try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
 ) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
     render_ctx.texture_manager_2d.get_or_try_create_with(
         texture_key,
-        &mut render_ctx.gpu_resources.textures,
+        &render_ctx.gpu_resources.textures,
         try_create_texture_desc,
     )
 }
 
 pub fn get_or_create_texture<'a>(
-    render_ctx: &mut RenderContext,
+    render_ctx: &RenderContext,
     texture_key: u64,
     create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
 ) -> Result<GpuTexture2D, TextureCreationError> {
     render_ctx.texture_manager_2d.get_or_create_with(
         texture_key,
-        &mut render_ctx.gpu_resources.textures,
+        &render_ctx.gpu_resources.textures,
         create_texture_desc,
     )
 }

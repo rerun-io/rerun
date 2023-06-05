@@ -16,7 +16,7 @@ impl MeshCache {
         &mut self,
         name: &str,
         mesh: &Mesh3D,
-        render_ctx: &mut RenderContext,
+        render_ctx: &RenderContext,
     ) -> Option<Arc<LoadedMesh>> {
         re_tracing::profile_function!();
 

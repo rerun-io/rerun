@@ -12,11 +12,7 @@ pub struct LoadedMesh {
 }
 
 impl LoadedMesh {
-    pub fn load(
-        name: String,
-        mesh: &Mesh3D,
-        render_ctx: &mut RenderContext,
-    ) -> anyhow::Result<Self> {
+    pub fn load(name: String, mesh: &Mesh3D, render_ctx: &RenderContext) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
             // Mesh from some file format. File passed in bytes.
@@ -32,7 +28,7 @@ impl LoadedMesh {
         name: String,
         format: MeshFormat,
         bytes: &[u8],
-        render_ctx: &mut RenderContext,
+        render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
@@ -60,7 +56,7 @@ impl LoadedMesh {
     fn load_encoded_mesh(
         name: String,
         encoded_mesh: &EncodedMesh3D,
-        render_ctx: &mut RenderContext,
+        render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
         let EncodedMesh3D {
@@ -88,7 +84,7 @@ impl LoadedMesh {
     fn load_raw_mesh(
         name: String,
         raw_mesh: &RawMesh3D,
-        render_ctx: &mut RenderContext,
+        render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
