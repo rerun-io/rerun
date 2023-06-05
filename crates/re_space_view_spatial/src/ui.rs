@@ -731,7 +731,7 @@ pub fn picking(
         let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
             else { continue; };
 
-        if !scene
+        if scene
             .context
             .non_interactive_entities
             .0
