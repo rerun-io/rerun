@@ -2,8 +2,8 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-    SpaceViewState, ViewerContext,
+    ArchetypeDefinition, Scene, SceneContext, ScenePartCollection, SpaceViewClass,
+    SpaceViewClassName, SpaceViewId, SpaceViewState, ViewerContext,
 };
 
 use super::scene::TypedScene;
@@ -44,6 +44,13 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
+        None
+    }
+
+    /// Optional archetype of the Space View's blueprint properties.
+    ///
+    /// Blueprint components that only apply to the space view itself, not to the entities it displays.
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
         None
     }
 
@@ -114,6 +121,10 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
         typed_state_wrapper(state, |state| self.preferred_tile_aspect_ratio(state))
+    }
+
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+        self.blueprint_archetype()
     }
 
     fn prepare_populate(

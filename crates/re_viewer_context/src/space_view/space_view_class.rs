@@ -46,9 +46,7 @@ pub trait SpaceViewClass {
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
-        None
-    }
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition>;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32>;
