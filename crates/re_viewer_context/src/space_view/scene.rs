@@ -20,8 +20,8 @@ pub trait Scene {
         highlights: SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
 
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
+    /// Converts itself to a mutable reference of [`std::any::Any`], which enables downcasting to concrete types.
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
 /// Implementation of [`Scene`] for a specific [`SpaceViewClassImpl`].
@@ -29,6 +29,8 @@ pub struct TypedScene<C: SpaceViewClassImpl> {
     pub context: C::SceneContext,
     pub parts: C::ScenePartCollection,
     pub highlights: SpaceViewHighlights,
+
+    pub todo_remove_draw_data: std::cell::Cell<Vec<re_renderer::QueueableDrawData>>,
 }
 
 impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
@@ -37,6 +39,7 @@ impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
             context: Default::default(),
             parts: Default::default(),
             highlights: Default::default(),
+            todo_remove_draw_data: Default::default(),
         }
     }
 }
@@ -77,7 +80,7 @@ impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
             .collect()
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 }

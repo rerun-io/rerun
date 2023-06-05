@@ -109,7 +109,7 @@ impl SpaceViewClassImpl for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
-        scene: &TypedScene<Self>,
+        scene: &mut TypedScene<Self>,
     ) {
         let scene = &scene.parts;
 

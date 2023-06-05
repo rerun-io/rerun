@@ -16,8 +16,6 @@ mod spatial_scene_part_data;
 pub use images::Image;
 pub use spatial_scene_part_data::SpatialScenePartData;
 
-use re_space_view::EmptySpaceViewState;
-
 use ahash::HashMap;
 use std::sync::Arc;
 
@@ -27,11 +25,9 @@ use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
 
-use crate::{scene::Keypoints, SpatialSpaceViewClass};
+use crate::{scene::Keypoints, ui::SpatialSpaceViewState, SpatialSpaceViewClass};
 
 use super::UiLabel;
-
-type SpatialSpaceViewState = EmptySpaceViewState;
 
 #[derive(Default)]
 pub struct SpatialScenePartCollection {

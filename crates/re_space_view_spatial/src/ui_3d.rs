@@ -8,7 +8,7 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Size,
+    LineStripSeriesBuilder, Size,
 };
 use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
@@ -17,17 +17,15 @@ use re_space_view::controls::{
 use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
 
 use crate::{
-    scene::SceneSpatial,
+    axis_lines::add_axis_lines,
+    scene::{SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
     space_camera_3d::SpaceCamera3D,
-    ui::{create_labels, outline_config, picking, screenshot_context_menu, ViewSpatialState},
+    ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
     ui_renderer_bridge::{fill_view_builder, ScreenBackground},
     SpatialNavigationMode,
 };
 
-use super::{
-    eye::{Eye, OrbitEye},
-    scene::SceneSpatialPrimitives,
-};
+use super::eye::{Eye, OrbitEye};
 
 // ---
 
@@ -281,15 +279,16 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewSpatialState,
+    state: &mut SpatialSpaceViewState,
     space: &EntityPath,
     space_view_id: SpaceViewId,
-    mut scene: SceneSpatial,
+    scene: &mut SceneSpatial,
     entity_properties: &EntityPropertyMap,
 ) {
     re_tracing::profile_function!();
 
-    let highlights = &scene.scene.highlights;
+    let highlights = &scene.highlights;
+    let space_cameras = &scene.parts.cameras.space_cameras;
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -305,10 +304,9 @@ pub fn view_3d(
         Some(_) => 4.0,
         None => 0.0,
     };
-    let orbit_eye =
-        state
-            .state_3d
-            .update_eye(&response, &state.scene_bbox_accum, scene.space_cameras());
+    let orbit_eye = state
+        .state_3d
+        .update_eye(&response, &state.scene_bbox_accum, space_cameras);
     let did_interact_with_eye = orbit_eye.update(&response, orbit_eye_drag_threshold);
 
     let orbit_eye = *orbit_eye;
@@ -321,14 +319,20 @@ pub fn view_3d(
         state.state_3d.camera_before_tracked_camera = None;
     }
 
+    let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
+        .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
-    for camera in &scene.scene.parts.cameras.space_cameras {
+    for camera in space_cameras {
         let transform = camera.world_from_cam();
         let axis_length =
             eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
-        scene
-            .primitives
-            .add_axis_lines(transform, Some(&camera.ent_path), axis_length);
+        add_axis_lines(
+            &mut line_builder,
+            transform,
+            Some(&camera.ent_path),
+            axis_length,
+        );
     }
 
     // Determine view port resolution and position.
@@ -355,7 +359,6 @@ pub fn view_3d(
         auto_size_config: state.auto_size_config(),
 
         outline_config: scene
-            .scene
             .highlights
             .any_outlines()
             .then(|| outline_config(ui.ctx())),
@@ -365,7 +368,7 @@ pub fn view_3d(
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
-        &scene.scene.parts.collect_ui_labels(),
+        &scene.parts.collect_ui_labels(),
         RectTransform::from_to(rect, rect),
         &eye,
         ui,
@@ -384,7 +387,7 @@ pub fn view_3d(
             &mut view_builder,
             space_view_id,
             state,
-            &scene,
+            scene,
             &ui_rects,
             space,
             entity_properties,
@@ -399,7 +402,7 @@ pub fn view_3d(
 
         // While hovering an entity, focuses the camera on it.
         if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
-            if let Some(camera) = find_camera(scene.space_cameras(), &instance_path.entity_path) {
+            if let Some(camera) = find_camera(space_cameras, &instance_path.entity_path) {
                 state.state_3d.camera_before_tracked_camera =
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
@@ -448,16 +451,20 @@ pub fn view_3d(
 
     show_projections_from_2d_space(
         ctx,
-        &mut scene,
+        &mut line_builder,
+        space_cameras,
         &state.state_3d.tracked_camera,
         &state.scene_bbox_accum,
     );
 
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
-        scene
-            .primitives
-            .add_axis_lines(macaw::IsoTransform::IDENTITY, None, axis_length);
+        add_axis_lines(
+            &mut line_builder,
+            macaw::IsoTransform::IDENTITY,
+            None,
+            axis_length,
+        );
     }
 
     if state.state_3d.show_bbox {
@@ -470,9 +477,7 @@ pub fn view_3d(
                 Default::default(),
                 translation,
             );
-            scene
-                .primitives
-                .line_strips
+            line_builder
                 .batch("scene_bbox")
                 .add_box_outline(bbox_from_unit_cube)
                 .radius(Size::AUTO)
@@ -491,9 +496,7 @@ pub fn view_3d(
             // Show center of orbit camera when interacting with camera (it's quite helpful).
             let half_line_length = orbit_eye.orbit_radius * 0.03;
 
-            scene
-                .primitives
-                .line_strips
+            line_builder
                 .batch("center orbit orientation help")
                 .add_segments(glam::Vec3::AXES.iter().map(|axis| {
                     (
@@ -514,16 +517,32 @@ pub fn view_3d(
         }
     }
 
-    // TODO(wumpf): Temporary manual inseration of drawdata. The SpaceViewClass framework will take this over.
-    for draw_data in scene.draw_data {
+    // TODO(wumpf): Temporary manual insertion of drawdata. The SpaceViewClass framework will take this over.
+    for draw_data in scene.todo_remove_draw_data.replace(Vec::new()) {
         view_builder.queue_draw(draw_data);
+    }
+    for draw_data in scene
+        .context
+        .shared_render_builders
+        .queuable_draw_data(ctx.render_ctx)
+    {
+        view_builder.queue_draw(draw_data);
+    }
+
+    // Commit ui induced lines.
+    match line_builder.to_draw_data(ctx.render_ctx) {
+        Ok(line_draw_data) => {
+            view_builder.queue_draw(line_draw_data);
+        }
+        Err(err) => {
+            re_log::error_once!("Failed to create draw data for lines from ui interaction: {err}");
+        }
     }
 
     // Composite viewbuilder into egui.
     let command_buffer = match fill_view_builder(
         ctx.render_ctx,
         &mut view_builder,
-        scene.primitives,
         &ScreenBackground::GenericSkybox,
     ) {
         Ok(command_buffer) => command_buffer,
@@ -547,17 +566,14 @@ pub fn view_3d(
 
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
-    scene: &mut SceneSpatial,
+    line_builder: &mut LineStripSeriesBuilder,
+    space_cameras: &[SpaceCamera3D],
     tracked_space_camera: &Option<EntityPath>,
     scene_bbox_accum: &BoundingBox,
 ) {
     match ctx.selection_state().hovered_space() {
         HoveredSpace::TwoD { space_2d, pos } => {
-            if let Some(cam) = scene
-                .space_cameras()
-                .iter()
-                .find(|cam| &cam.ent_path == space_2d)
-            {
+            if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
                     // If we don't have a z value, we only render the thick one.
@@ -567,12 +583,7 @@ fn show_projections_from_2d_space(
                         cam.picture_plane_distance
                     };
 
-                    add_picking_ray(
-                        &mut scene.primitives,
-                        ray,
-                        scene_bbox_accum,
-                        thick_ray_length,
-                    );
+                    add_picking_ray(line_builder, ray, scene_bbox_accum, thick_ray_length);
                 }
             }
         }
@@ -585,15 +596,14 @@ fn show_projections_from_2d_space(
                 .as_ref()
                 .map_or(true, |tracked| tracked != camera_path)
             {
-                if let Some(cam) = scene
-                    .space_cameras()
+                if let Some(cam) = space_cameras
                     .iter()
                     .find(|cam| &cam.ent_path == camera_path)
                 {
                     let cam_to_pos = *pos - cam.position();
                     let distance = cam_to_pos.length();
                     let ray = macaw::Ray3::from_origin_dir(cam.position(), cam_to_pos / distance);
-                    add_picking_ray(&mut scene.primitives, ray, scene_bbox_accum, distance);
+                    add_picking_ray(line_builder, ray, scene_bbox_accum, distance);
                 }
             }
         }
@@ -602,12 +612,12 @@ fn show_projections_from_2d_space(
 }
 
 fn add_picking_ray(
-    primitives: &mut SceneSpatialPrimitives,
+    line_builder: &mut LineStripSeriesBuilder,
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
 ) {
-    let mut line_batch = primitives.line_strips.batch("picking ray");
+    let mut line_batch = line_builder.batch("picking ray");
 
     let origin = ray.point_along(0.0);
     // No harm in making this ray _very_ long. (Infinite messes with things though!)

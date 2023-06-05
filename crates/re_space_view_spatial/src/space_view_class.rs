@@ -1,12 +1,14 @@
-use re_space_view::EmptySpaceViewState;
 use re_viewer_context::SpaceViewClassImpl;
 
-use crate::scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData};
+use crate::{
+    scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData},
+    SpatialSpaceViewState,
+};
 
 pub struct SpatialSpaceViewClass;
 
 impl SpaceViewClassImpl for SpatialSpaceViewClass {
-    type SpaceViewState = EmptySpaceViewState;
+    type SpaceViewState = SpatialSpaceViewState;
     type SceneContext = SpatialSceneContext;
     type ScenePartCollection = SpatialScenePartCollection;
     type ScenePartData = SpatialScenePartData;
@@ -38,7 +40,7 @@ impl SpaceViewClassImpl for SpatialSpaceViewClass {
         _ctx: &mut re_viewer_context::ViewerContext<'_>,
         _ui: &mut egui::Ui,
         _state: &mut Self::SpaceViewState,
-        _scene: &re_viewer_context::TypedScene<Self>,
+        _scene: &mut re_viewer_context::TypedScene<Self>,
     ) {
         // TODO(andreas)
     }

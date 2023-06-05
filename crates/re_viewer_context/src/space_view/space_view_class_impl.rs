@@ -58,7 +58,7 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
-        scene: &TypedScene<Self>,
+        scene: &mut TypedScene<Self>,
     );
 }
 
@@ -104,9 +104,9 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Box<dyn Scene>,
+        mut scene: Box<dyn Scene>,
     ) {
-        let Some(typed_scene) = scene.as_any().downcast_ref()
+        let Some(typed_scene) = scene.as_any_mut().downcast_mut()
             else {
                 re_log::error_once!("Unexpected space view state type. Expected {}",
                                     std::any::type_name::<TypedScene<T>>());

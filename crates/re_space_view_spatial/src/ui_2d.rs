@@ -14,7 +14,7 @@ use super::{
 };
 use crate::{
     scene::SceneSpatial,
-    ui::{outline_config, ViewSpatialState},
+    ui::{outline_config, SpatialSpaceViewState},
     ui_renderer_bridge::{fill_view_builder, ScreenBackground},
 };
 
@@ -222,9 +222,9 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewSpatialState,
+    state: &mut SpatialSpaceViewState,
     space: &EntityPath,
-    scene: SceneSpatial,
+    scene: &mut SceneSpatial,
     scene_rect_accum: Rect,
     space_view_id: SpaceViewId,
     entity_properties: &EntityPropertyMap,
@@ -294,7 +294,7 @@ pub fn view_2d(
                 canvas_from_ui,
                 &space.to_string(),
                 state.auto_size_config(),
-                scene.scene.highlights.any_outlines(),
+                scene.highlights.any_outlines(),
                 pinhole
             ) else {
                 return response;
@@ -304,11 +304,11 @@ pub fn view_2d(
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            &scene.scene.parts.collect_ui_labels(),
+            &scene.parts.collect_ui_labels(),
             ui_from_canvas,
             &eye,
             ui,
-            &scene.scene.highlights,
+            &scene.highlights,
             SpatialNavigationMode::TwoD,
         );
 
@@ -323,15 +323,22 @@ pub fn view_2d(
                 &mut view_builder,
                 space_view_id,
                 state,
-                &scene,
+                scene,
                 &ui_rects,
                 space,
                 entity_properties,
             );
         }
 
-        // TODO(wumpf): Temporary manual inseration of drawdata. The SpaceViewClass framework will take this over.
-        for draw_data in scene.draw_data {
+        // TODO(wumpf): Temporary manual insertion of drawdata. The SpaceViewClass framework will take this over.
+        for draw_data in scene.todo_remove_draw_data.replace(Vec::new()) {
+            view_builder.queue_draw(draw_data);
+        }
+        for draw_data in scene
+            .context
+            .shared_render_builders
+            .queuable_draw_data(ctx.render_ctx)
+        {
             view_builder.queue_draw(draw_data);
         }
 
@@ -351,7 +358,6 @@ pub fn view_2d(
             let command_buffer = match fill_view_builder(
                 ctx.render_ctx,
                 &mut view_builder,
-                scene.primitives,
                 &ScreenBackground::ClearColor(ui.visuals().extreme_bg_color.into()),
             ) {
                 Ok(command_buffer) => command_buffer,

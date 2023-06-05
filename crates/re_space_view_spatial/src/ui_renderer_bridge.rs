@@ -1,7 +1,5 @@
 use re_renderer::{renderer::GenericSkyboxDrawData, view_builder::ViewBuilder, RenderContext};
 
-use super::scene::SceneSpatialPrimitives;
-
 pub enum ScreenBackground {
     GenericSkybox,
     ClearColor(re_renderer::Rgba),
@@ -10,12 +8,9 @@ pub enum ScreenBackground {
 pub fn fill_view_builder(
     render_ctx: &mut RenderContext,
     view_builder: &mut ViewBuilder,
-    primitives: SceneSpatialPrimitives,
     background: &ScreenBackground,
 ) -> anyhow::Result<wgpu::CommandBuffer> {
     re_tracing::profile_function!();
-
-    view_builder.queue_draw(primitives.line_strips.to_draw_data(render_ctx)?);
 
     if matches!(background, ScreenBackground::GenericSkybox) {
         view_builder.queue_draw(GenericSkyboxDrawData::new(render_ctx));

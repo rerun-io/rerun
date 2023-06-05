@@ -11,7 +11,7 @@ use re_renderer::OutlineConfig;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
-    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
+    SpaceViewState, TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
 use super::{
@@ -21,6 +21,7 @@ use super::{
     ui_3d::View3DState,
 };
 
+use crate::scene::preferred_navigation_mode;
 use crate::{
     scene::{PickableUiRect, SceneSpatial, UiLabel, UiLabelTarget},
     ui_2d::view_2d,
@@ -62,7 +63,7 @@ impl From<AutoSizeUnit> for WidgetText {
 }
 
 #[derive(Clone)]
-pub struct ViewSpatialState {
+pub struct SpatialSpaceViewState {
     /// How the scene is navigated.
     pub nav_mode: EditableAutoValue<SpatialNavigationMode>,
 
@@ -87,7 +88,7 @@ pub struct ViewSpatialState {
     auto_size_config: re_renderer::AutoSizeConfig,
 }
 
-impl Default for ViewSpatialState {
+impl Default for SpatialSpaceViewState {
     fn default() -> Self {
         Self {
             nav_mode: EditableAutoValue::Auto(SpatialNavigationMode::ThreeD),
@@ -105,7 +106,17 @@ impl Default for ViewSpatialState {
     }
 }
 
-impl ViewSpatialState {
+impl SpaceViewState for SpatialSpaceViewState {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+impl SpatialSpaceViewState {
     pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
@@ -365,18 +376,16 @@ impl ViewSpatialState {
         });
     }
 
-    // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
-    #[allow(clippy::too_many_arguments)]
     pub fn view_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &EntityPath,
-        scene: SceneSpatial,
+        scene: &mut SceneSpatial,
         space_view_id: SpaceViewId,
         entity_properties: &EntityPropertyMap,
     ) {
-        self.scene_bbox = scene.scene.parts.calculate_bounding_box();
+        self.scene_bbox = scene.parts.calculate_bounding_box();
         if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
         } else {
@@ -384,10 +393,9 @@ impl ViewSpatialState {
         }
 
         if self.nav_mode.is_auto() {
-            self.nav_mode = EditableAutoValue::Auto(scene.preferred_navigation_mode(space));
+            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(scene, space));
         }
         self.scene_num_primitives = scene
-            .scene
             .context
             .num_3d_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
@@ -675,7 +683,7 @@ pub fn picking(
     eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     space_view_id: SpaceViewId,
-    state: &mut ViewSpatialState,
+    state: &mut SpatialSpaceViewState,
     scene: &SceneSpatial,
     ui_rects: &[PickableUiRect],
     space: &EntityPath,
@@ -720,7 +728,7 @@ pub fn picking(
         ctx.render_ctx,
         space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &scene.scene.parts.images.images,
+        &scene.parts.images.images,
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
@@ -826,7 +834,7 @@ pub fn picking(
                                         .entry::<TensorDecodeCache>()
                                         .entry(tensor) {
                                     Ok(decoded_tensor) => {
-                                        let annotations = scene.scene.context.annotations.0.find(&instance_path.entity_path);
+                                        let annotations = scene.context.annotations.0.find(&instance_path.entity_path);
                                         show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
@@ -872,7 +880,9 @@ pub fn picking(
                 pos: hovered_point,
                 tracked_space_camera: state.state_3d.tracked_camera.clone(),
                 point_in_space_cameras: scene
-                    .space_cameras()
+                    .parts
+                    .cameras
+                    .space_cameras
                     .iter()
                     .map(|cam| {
                         (

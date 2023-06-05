@@ -2,6 +2,7 @@
 //!
 //! Space Views that show entities in a 2D or 3D spatial relationship.
 
+mod axis_lines;
 mod eye;
 mod instance_hash_conversions;
 mod mesh_cache;
@@ -18,4 +19,4 @@ mod ui_renderer_bridge;
 pub use space_view_class::SpatialSpaceViewClass;
 
 pub use scene::{SceneSpatial, TransformContext, UnreachableTransform};
-pub use ui::{SpatialNavigationMode, ViewSpatialState};
+pub use ui::{SpatialNavigationMode, SpatialSpaceViewState};

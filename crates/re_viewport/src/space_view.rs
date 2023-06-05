@@ -1,9 +1,11 @@
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
+use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
-use re_space_view_spatial::{SceneSpatial, ViewSpatialState};
-use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
+use re_space_view_spatial::{SceneSpatial, SpatialSpaceViewState};
+use re_viewer_context::{
+    Scene, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext,
+};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -237,19 +239,20 @@ impl SpaceViewBlueprint {
                 }
 
                 ViewCategory::Spatial => {
-                    let mut scene = SceneSpatial::new(ctx.render_ctx);
-                    scene.load(ctx, &query, highlights);
-                    view_state
-                        .state_spatial
-                        .update_object_property_heuristics(ctx, &mut self.data_blueprint);
-                    view_state.ui_spatial(
-                        ctx,
-                        ui,
-                        &self.space_path,
-                        scene,
-                        self.id,
-                        self.data_blueprint.data_blueprints_projected(),
-                    );
+                    let mut scene = SceneSpatial::default();
+                    let draw_data =
+                        scene.populate(ctx, &query, &view_state.state_spatial, highlights);
+                    scene.todo_remove_draw_data.replace(draw_data);
+                    ui.vertical(|ui| {
+                        view_state.state_spatial.view_spatial(
+                            ctx,
+                            ui,
+                            &self.space_path,
+                            &mut scene,
+                            self.id,
+                            self.data_blueprint.data_blueprints_projected(),
+                        );
+                    });
                 }
 
                 ViewCategory::Tensor => {
@@ -319,34 +322,11 @@ pub struct SpaceViewState {
 
     pub state_time_series: view_time_series::ViewTimeSeriesState,
     pub state_bar_chart: view_bar_chart::BarChartState,
-    pub state_spatial: ViewSpatialState,
+    pub state_spatial: SpatialSpaceViewState,
     pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
 impl SpaceViewState {
-    // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
-    #[allow(clippy::too_many_arguments)]
-    fn ui_spatial(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        space: &EntityPath,
-        scene: SceneSpatial,
-        space_view_id: SpaceViewId,
-        entity_properties: &EntityPropertyMap,
-    ) {
-        ui.vertical(|ui| {
-            self.state_spatial.view_spatial(
-                ctx,
-                ui,
-                space,
-                scene,
-                space_view_id,
-                entity_properties,
-            );
-        });
-    }
-
     fn ui_tensor(
         &mut self,
         ctx: &mut ViewerContext<'_>,
