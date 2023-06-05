@@ -1,3 +1,36 @@
+# `landing` expects this file to have the following format:
+# root {
+#   prelude: string
+#   children: [
+#     {
+#       # the path in the url, e.g. `rerun.io/examples/minimal`
+#       name: string
+#       # path to the python example
+#       python: string?
+#       # path to the rust example
+#       rust: string?
+#       # at least one of `python` or `rust` should be set
+#     }
+#     OR
+#     {
+#       # the path in the url, e.g. `rerun.io/examples/artificial-data`
+#       name: string
+#       # the title in the side nav + header, e.g. `Examples with Artifical Data`
+#       title: string
+#       # the content that's placed right after the header.
+#       # used to include setup instructions and general info
+#       prelude: string
+#       children: [
+#         { # same as above
+#           name: string
+#           python: string?
+#           rust: string?
+#         }
+#       ]
+#     }
+#   ]
+# }
+
 root:
   prelude: |
     In the Rerun [GitHub](https://github.com/rerun-io/rerun) repository we maintain
