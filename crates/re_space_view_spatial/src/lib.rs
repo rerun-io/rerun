@@ -15,8 +15,4 @@ mod ui_2d;
 mod ui_3d;
 mod ui_renderer_bridge;
 
-// TODO(andreas) should only make the main type public
-pub use space_view_class::SpatialSpaceViewClass;
-
-pub use scene::{SceneSpatial, TransformContext, UnreachableTransform};
-pub use ui::{SpatialNavigationMode, SpatialSpaceViewState};
+pub use space_view_class::SpatialSpaceView;

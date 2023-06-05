@@ -120,7 +120,7 @@ fn add_entities_tree_ui(
         );
     } else {
         let level = tree.path.len();
-        let default_open = space_view.space_path.is_descendant_of(&tree.path)
+        let default_open = space_view.space_origin.is_descendant_of(&tree.path)
             || tree.children.len() <= 3
             || level < 2;
         egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -142,8 +142,8 @@ fn add_entities_tree_ui(
         .body(|ui| {
             for (path_comp, child_tree) in tree.children.iter().sorted_by_key(|(_, child_tree)| {
                 // Put descendants of the space path always first
-                let put_first = child_tree.path == space_view.space_path
-                    || child_tree.path.is_descendant_of(&space_view.space_path);
+                let put_first = child_tree.path == space_view.space_origin
+                    || child_tree.path.is_descendant_of(&space_view.space_origin);
                 !put_first
             }) {
                 add_entities_tree_ui(
@@ -180,7 +180,7 @@ fn add_entities_line_ui(
         let add_info = entities_add_info.get(entity_path).unwrap();
 
         ui.add_enabled_ui(add_info.can_add_self_or_descendant.is_compatible(), |ui| {
-            let widget_text = if entity_path == &space_view.space_path {
+            let widget_text = if entity_path == &space_view.space_origin {
                 egui::RichText::new(name).strong()
             } else {
                 egui::RichText::new(name)
@@ -192,7 +192,7 @@ fn add_entities_line_ui(
                 &InstancePath::entity_splat(entity_path.clone()),
                 widget_text,
             );
-            if entity_path == &space_view.space_path {
+            if entity_path == &space_view.space_origin {
                 response.highlight();
             }
         });
@@ -309,7 +309,7 @@ fn create_entity_add_info(
     tree.visit_children_recursively(&mut |entity_path| {
         let categories = categorize_entity_path(Timeline::log_time(), ctx.store_db, entity_path);
         let can_add: CanAddToSpaceView = if categories.contains(space_view.category) {
-            match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_path) {
+            match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                 Ok(()) => CanAddToSpaceView::Compatible {
                     already_added: space_view.data_blueprint.contains_entity(entity_path),
                 },

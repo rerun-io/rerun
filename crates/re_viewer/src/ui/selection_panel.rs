@@ -5,7 +5,7 @@ use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, Entity
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::TimeType;
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
-use re_viewport::{SpaceViewState, SpatialNavigationMode, Viewport, ViewportState};
+use re_viewport::{Viewport, ViewportState};
 
 use crate::ui::Blueprint;
 
@@ -279,22 +279,10 @@ fn blueprint_ui(
                         });
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
-                        let space_view_state = viewport_state.space_view_state(
-                            ctx.space_view_class_registry,
-                            space_view.id,
-                            space_view.class,
-                        );
-
                         // splat - the whole entity
                         let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                         let mut props = data_blueprint.get(&instance_path.entity_path);
-                        entity_props_ui(
-                            ctx,
-                            ui,
-                            Some(&instance_path.entity_path),
-                            &mut props,
-                            space_view_state,
-                        );
+                        entity_props_ui(ctx, ui, Some(&instance_path.entity_path), &mut props);
                         data_blueprint.set(instance_path.entity_path.clone(), props);
                     }
                 }
@@ -309,19 +297,7 @@ fn blueprint_ui(
                     .data_blueprint
                     .group_mut(*data_blueprint_group_handle)
                 {
-                    let space_view_state = viewport_state.space_view_state(
-                        ctx.space_view_class_registry,
-                        space_view.id,
-                        space_view.class,
-                    );
-
-                    entity_props_ui(
-                        ctx,
-                        ui,
-                        None,
-                        &mut group.properties_individual,
-                        space_view_state,
-                    );
+                    entity_props_ui(ctx, ui, None, &mut group.properties_individual);
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }
@@ -367,7 +343,6 @@ fn entity_props_ui(
     ui: &mut egui::Ui,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
-    view_state: &SpaceViewState,
 ) {
     ui.checkbox(&mut entity_props.visible, "Visible");
     ui.checkbox(&mut entity_props.interactive, "Interactive")
@@ -403,11 +378,11 @@ fn entity_props_ui(
             }
             ui.end_row();
 
-            if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-                if let Some(entity_path) = entity_path {
-                    pinhole_props_ui(ctx, ui, entity_path, entity_props);
-                    depth_props_ui(ctx, ui, entity_path, entity_props);
-                }
+            // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
+            // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
+            if let Some(entity_path) = entity_path {
+                pinhole_props_ui(ctx, ui, entity_path, entity_props);
+                depth_props_ui(ctx, ui, entity_path, entity_props);
             }
         });
 }

@@ -1,10 +1,10 @@
 use nohash_hasher::IntSet;
+use re_space_view::UnreachableTransform;
 use std::collections::BTreeMap;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
 use re_components::{DisconnectedSpace, Pinhole, Transform3D};
 use re_data_store::{store_db::EntityDb, EntityPath, EntityTree};
-use re_space_view_spatial::UnreachableTransform;
 
 /// Transform connecting two space paths.
 #[derive(Clone, Debug)]

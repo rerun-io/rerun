@@ -1,10 +1,8 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataBlueprintHeuristic, DataBlueprintTree, ScreenshotMode};
-use re_viewer_context::{
-    Scene, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext,
-};
+use re_space_view::{DataBlueprintTree, ScreenshotMode};
+use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -27,7 +25,7 @@ pub struct SpaceViewBlueprint {
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
-    pub space_path: EntityPath,
+    pub space_origin: EntityPath,
 
     /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
     /// It determines which entities are part of the spaceview.
@@ -67,7 +65,7 @@ impl SpaceViewBlueprint {
             display_name,
             class: space_view_class,
             id: SpaceViewId::random(),
-            space_path: space_path.clone(),
+            space_origin: space_path.clone(),
             data_blueprint: data_blueprint_tree,
             category,
             entities_determined_by_user: false,
@@ -84,9 +82,11 @@ impl SpaceViewBlueprint {
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
-                default_queried_entities(ctx, &self.space_path, spaces_info, self.category);
-            self.data_blueprint
-                .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
+                default_queried_entities(ctx, &self.space_origin, spaces_info, self.category);
+            self.data_blueprint.insert_entities_according_to_hierarchy(
+                queries_entities.iter(),
+                &self.space_origin,
+            );
         }
 
         while ScreenshotProcessor::next_readback_result(
@@ -145,7 +145,7 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
-        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
+        if let Ok(space_view_class) = ctx.space_view_class_registry.get(self.class) {
             re_tracing::profile_scope!("selection_ui", space_view_class.name());
             space_view_class.selection_ui(ctx, ui, view_state.state.as_mut());
         } else {
@@ -186,37 +186,42 @@ impl SpaceViewBlueprint {
             return;
         }
 
-        let query = re_viewer_context::SceneQuery {
-            space_origin: &self.space_path,
-            entity_paths: self.data_blueprint.entity_paths(),
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-            latest_at,
-            entity_props_map: self.data_blueprint.data_blueprints_projected(),
-        };
+        if let Ok(space_view_class) = ctx.space_view_class_registry.get(self.class) {
+            space_view_class.prepare_populate(
+                ctx,
+                view_state.state.as_mut(),
+                self.data_blueprint.data_blueprints_individual(),
+            );
 
-        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
-            space_view_class.prepare_populate(ctx, view_state.state.as_mut());
-
-            if let Some(heuristic) = view_state
-                .state
-                .as_ref()
-                .as_any()
-                .downcast_ref::<dyn DataBlueprintHeuristic>()
-            {
-                heuristic.update_object_property_heuristics(ctx, &mut self.data_blueprint);
-            }
+            let query = re_viewer_context::SceneQuery {
+                space_origin: &self.space_origin,
+                entity_paths: self.data_blueprint.entity_paths(),
+                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                latest_at,
+                entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            };
 
             let mut scene = space_view_class.new_scene();
             scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
 
-            // TODO(andreas): Pass scene to renderer.
-            // TODO(andreas): Setup re_renderer view.
-            {
-                re_tracing::profile_scope!("ui", space_view_class.name());
-                space_view_class.ui(ctx, ui, view_state.state.as_mut(), scene);
-            }
+            space_view_class.ui(
+                ctx,
+                ui,
+                view_state.state.as_mut(),
+                scene,
+                &self.space_origin,
+                self.id,
+            );
         } else {
             // Legacy handling
+            let query = re_viewer_context::SceneQuery {
+                space_origin: &self.space_origin,
+                entity_paths: self.data_blueprint.entity_paths(),
+                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                latest_at,
+                entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            };
+
             match self.category {
                 ViewCategory::Text | ViewCategory::TextBox | ViewCategory::Spatial => {
                     // migrated.
@@ -274,7 +279,7 @@ impl SpaceViewBlueprint {
             if entity_categories.contains(self.category)
                 && !self.data_blueprint.contains_entity(entity_path)
                 && spaces_info
-                    .is_reachable_by_transform(entity_path, &self.space_path)
+                    .is_reachable_by_transform(entity_path, &self.space_origin)
                     .is_ok()
             {
                 entities.push(entity_path.clone());
@@ -283,7 +288,7 @@ impl SpaceViewBlueprint {
 
         if !entities.is_empty() {
             self.data_blueprint
-                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_path);
+                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_origin);
             self.entities_determined_by_user = true;
         }
     }

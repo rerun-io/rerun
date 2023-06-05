@@ -2,7 +2,7 @@ mod contexts;
 mod parts;
 mod picking;
 
-pub use contexts::{SpatialSceneContext, TransformContext, UnreachableTransform};
+pub use contexts::{SpatialSceneContext, TransformContext};
 pub use parts::{SpatialScenePartCollection, SpatialScenePartData};
 pub use picking::{PickableUiRect, PickingContext, PickingHitType, PickingRayHit, PickingResult};
 
@@ -13,9 +13,7 @@ use re_data_store::{EntityPath, InstancePathHash};
 use re_renderer::{Color32, Size};
 use re_viewer_context::{auto_color, TypedScene};
 
-use crate::SpatialSpaceViewClass;
-
-use super::SpatialNavigationMode;
+use crate::{ui::SpatialNavigationMode, SpatialSpaceView};
 
 use self::contexts::SpatialSceneEntityContext;
 
@@ -46,7 +44,7 @@ pub struct UiLabel {
     pub labeled_instance: InstancePathHash,
 }
 
-pub type SceneSpatial = TypedScene<SpatialSpaceViewClass>;
+pub type SceneSpatial = TypedScene<SpatialSpaceView>;
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 /// Heuristic whether the default way of looking at this scene should be 2d or 3d.

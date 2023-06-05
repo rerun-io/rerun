@@ -11,7 +11,7 @@ use crate::{
         contexts::{SpatialSceneContext, SpatialSceneEntityContext},
         parts::entity_iterator::process_entity_views,
     },
-    SpatialSpaceViewClass,
+    SpatialSpaceView,
 };
 
 use super::{instance_key_to_picking_id, SpatialScenePartData, SpatialSpaceViewState};
@@ -81,7 +81,7 @@ impl Lines3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for Lines3DPart {
+impl ScenePart<SpatialSpaceView> for Lines3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             LineStrip3D::name(),

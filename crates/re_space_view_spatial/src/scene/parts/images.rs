@@ -28,7 +28,7 @@ use crate::{
         parts::entity_iterator::process_entity_views,
         SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
     },
-    SpatialSpaceViewClass,
+    SpatialSpaceView,
 };
 
 use super::{SpatialScenePartData, SpatialSpaceViewState};
@@ -409,7 +409,7 @@ impl ImagesPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for ImagesPart {
+impl ScenePart<SpatialSpaceView> for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Tensor::name(),

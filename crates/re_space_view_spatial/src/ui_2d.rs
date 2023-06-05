@@ -2,7 +2,7 @@ use eframe::emath::RectTransform;
 use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
 use macaw::IsoTransform;
 use re_components::Pinhole;
-use re_data_store::{EntityPath, EntityPropertyMap};
+use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
@@ -10,11 +10,10 @@ use re_viewer_context::{gpu_bridge, HoveredSpace, SpaceViewId, ViewerContext};
 use super::{
     eye::Eye,
     ui::{create_labels, picking, screenshot_context_menu},
-    SpatialNavigationMode,
 };
 use crate::{
     scene::SceneSpatial,
-    ui::{outline_config, SpatialSpaceViewState},
+    ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
     ui_renderer_bridge::{fill_view_builder, ScreenBackground},
 };
 

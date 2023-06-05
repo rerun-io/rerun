@@ -1,3 +1,4 @@
+use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
@@ -42,8 +43,20 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
-    fn preferred_tile_aspect_ratio(&self, state: &Self::SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
         None
+    }
+
+    /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`].
+    /// Passed entity properties are individual properties without propagated values.
+    fn prepare_populate(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        _state: &Self::SpaceViewState,
+        _entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
     }
 
     /// Ui shown when the user selects a space view of this class.
@@ -101,6 +114,17 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         typed_state_wrapper(state, |state| self.preferred_tile_aspect_ratio(state))
     }
 
+    fn prepare_populate(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        state: &mut dyn SpaceViewState,
+        entity_properties: &mut EntityPropertyMap,
+    ) {
+        typed_state_wrapper_mut(state, |state| {
+            self.prepare_populate(ctx, state, entity_properties);
+        });
+    }
+
     #[inline]
     fn selection_ui(
         &self,
@@ -134,17 +158,18 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
     }
 }
 
-fn typed_state_wrapper_mut<T: SpaceViewState, F: FnOnce(&mut T)>(
+fn typed_state_wrapper_mut<T: SpaceViewState, R: Default, F: FnOnce(&mut T) -> R>(
     state: &mut dyn SpaceViewState,
     fun: F,
-) {
+) -> R {
     if let Some(state) = state.as_any_mut().downcast_mut() {
-        fun(state);
+        fun(state)
     } else {
         re_log::error_once!(
             "Unexpected space view state type. Expected {}",
             std::any::type_name::<T>()
         );
+        R::default()
     }
 }
 

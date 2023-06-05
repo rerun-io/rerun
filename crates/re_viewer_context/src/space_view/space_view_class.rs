@@ -1,3 +1,4 @@
+use re_data_store::EntityPropertyMap;
 use re_log_types::{ComponentName, EntityPath};
 
 use crate::{Scene, SpaceViewId, ViewerContext};
@@ -52,10 +53,16 @@ pub trait SpaceViewClass {
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32>;
 
-    /// Executed before the scene is populated.
+    /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
     ///
     /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    fn prepare_populate(&self, _ctx: &mut ViewerContext<'_>, _state: &mut dyn SpaceViewState) {}
+    /// Passed entity properties are individual properties without propagated values.
+    fn prepare_populate(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        state: &mut dyn SpaceViewState,
+        entity_properties: &mut EntityPropertyMap,
+    );
 
     /// Ui shown when the user selects a space view of this class.
     ///

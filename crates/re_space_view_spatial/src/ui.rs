@@ -1,16 +1,15 @@
 use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, WidgetText};
+use itertools::Itertools as _;
 use macaw::BoundingBox;
 
-use nohash_hasher::{IntMap, IntSet};
 use re_components::{Pinhole, Tensor, TensorDataMeaning};
-use re_data_store::{EditableAutoValue, EntityPath, EntityPropertyMap};
+use re_data_store::{EditableAutoValue, EntityPath};
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
-use re_log_types::EntityPathHash;
 use re_renderer::OutlineConfig;
-use re_space_view::{DataBlueprintHeuristic, DataBlueprintTree, ScreenshotMode};
+use re_space_view::ScreenshotMode;
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
     SpaceViewState, TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
@@ -118,24 +117,6 @@ impl SpaceViewState for SpatialSpaceViewState {
     }
 }
 
-impl DataBlueprintHeuristic for SpatialSpaceViewState {
-    fn update_object_property_heuristics(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        data_blueprint: &mut DataBlueprintTree,
-    ) {
-        re_tracing::profile_function!();
-
-        let query = ctx.current_query();
-
-        let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
-        for entity_path in entity_paths {
-            self.update_pinhole_property_heuristics(ctx, data_blueprint, &query, &entity_path);
-            self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
-        }
-    }
-}
-
 impl SpatialSpaceViewState {
     pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
@@ -146,6 +127,30 @@ impl SpatialSpaceViewState {
             config.line_radius = re_renderer::Size::new_points(1.5); // default line radius
         }
         config
+    }
+
+    pub fn update_object_property_heuristics(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+        re_tracing::profile_function!();
+
+        let query = ctx.current_query();
+
+        let entity_paths = entity_properties
+            .iter_non_default_entities()
+            .cloned()
+            .collect_vec(); // TODO(andreas): Workaround borrow checker
+        for entity_path in entity_paths {
+            self.update_pinhole_property_heuristics(ctx, &query, &entity_path, entity_properties);
+            self.update_depth_cloud_property_heuristics(
+                ctx,
+                &query,
+                &entity_path,
+                entity_properties,
+            );
+        }
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {
@@ -173,16 +178,16 @@ impl SpatialSpaceViewState {
     fn update_pinhole_property_heuristics(
         &self,
         ctx: &mut ViewerContext<'_>,
-        data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
+        entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
         let store = &ctx.store_db.entity_db.data_store;
         if store
             .query_latest_component::<Pinhole>(entity_path, query)
             .is_some()
         {
-            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+            let mut properties = entity_properties.get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {
                 let scene_size = self.scene_bbox_accum.size().length();
                 let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
@@ -192,9 +197,7 @@ impl SpatialSpaceViewState {
                 };
                 properties.pinhole_image_plane_distance =
                     EditableAutoValue::Auto(default_image_plane_distance);
-                data_blueprint
-                    .data_blueprints_individual()
-                    .set(entity_path.clone(), properties);
+                entity_properties.set(entity_path.clone(), properties);
             }
         }
     }
@@ -202,14 +205,14 @@ impl SpatialSpaceViewState {
     fn update_depth_cloud_property_heuristics(
         &self,
         ctx: &mut ViewerContext<'_>,
-        data_blueprint: &mut DataBlueprintTree,
         query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
+        entity_properties: &mut re_data_store::EntityPropertyMap,
     ) -> Option<()> {
         let store = &ctx.store_db.entity_db.data_store;
         let tensor = store.query_latest_component::<Tensor>(entity_path, query)?;
 
-        let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+        let mut properties = entity_properties.get(entity_path);
         if properties.backproject_depth.is_auto() {
             properties.backproject_depth = EditableAutoValue::Auto(
                 tensor.meaning == TensorDataMeaning::Depth
@@ -233,9 +236,7 @@ impl SpatialSpaceViewState {
                 properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
             }
 
-            data_blueprint
-                .data_blueprints_individual()
-                .set(entity_path.clone(), properties);
+            entity_properties.set(entity_path.clone(), properties);
         }
 
         Some(())

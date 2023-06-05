@@ -127,8 +127,9 @@ pub struct App {
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
-    space_view_class_registry.add(re_space_view_text::TextSpaceView::default())?;
-    space_view_class_registry.add(re_space_view_text_box::TextBoxSpaceView::default())?;
+    space_view_class_registry.add::<re_space_view_text::TextSpaceView>()?;
+    space_view_class_registry.add::<re_space_view_text_box::TextBoxSpaceView>()?;
+    space_view_class_registry.add::<re_space_view_spatial::SpatialSpaceView>()?;
     Ok(())
 }
 
@@ -215,11 +216,10 @@ impl App {
     }
 
     /// Adds a new space view class to the viewer.
-    pub fn add_space_view_class(
+    pub fn add_space_view_class<T: SpaceViewClass + Default + 'static>(
         &mut self,
-        space_view_class: impl SpaceViewClass + 'static,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        self.space_view_class_registry.add(space_view_class)
+        self.space_view_class_registry.add::<T>()
     }
 
     /// Creates a promise with the specified name that will run `f` on a background

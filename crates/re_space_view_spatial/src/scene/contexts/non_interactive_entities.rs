@@ -13,9 +13,9 @@ impl SceneContextPart for NonInteractiveEntities {
 
     fn populate(
         &mut self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        _ctx: &mut re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::SceneQuery<'_>,
-        space_view_state: &dyn re_viewer_context::SpaceViewState,
+        _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         re_tracing::profile_function!();
 
@@ -29,6 +29,6 @@ impl SceneContextPart for NonInteractiveEntities {
                     Some(entity_path.hash())
                 }
             })
-            .collect()
+            .collect();
     }
 }

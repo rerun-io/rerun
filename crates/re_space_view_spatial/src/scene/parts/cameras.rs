@@ -11,7 +11,7 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use super::{instance_path_hash_for_picking, SpatialScenePartData, SpatialSpaceViewState};
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    scene::contexts::SpatialSceneContext, space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass,
+    scene::contexts::SpatialSceneContext, space_camera_3d::SpaceCamera3D, SpatialSpaceView,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -184,7 +184,7 @@ impl CamerasPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for CamerasPart {
+impl ScenePart<SpatialSpaceView> for CamerasPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Pinhole::name(),]
     }

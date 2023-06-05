@@ -16,7 +16,6 @@ use egui::Vec2;
 use itertools::Itertools as _;
 
 use re_data_store::{EntityPath, EntityPathPart};
-use re_space_view_spatial::SpatialNavigationMode;
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use super::{
@@ -61,7 +60,7 @@ pub(crate) fn tree_from_space_views(
         // Sort for determinism:
         .sorted_by_key(|(space_view_id, space_view)| {
             (
-                &space_view.space_path,
+                &space_view.space_origin,
                 &space_view.display_name,
                 *space_view_id,
             )
@@ -69,14 +68,14 @@ pub(crate) fn tree_from_space_views(
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = space_view_states.get(space_view_id).and_then(|state| {
                 ctx.space_view_class_registry
-                    .query(space_view.class)
+                    .get(space_view.class)
                     .ok()
                     .and_then(|class| class.preferred_tile_aspect_ratio(state.state.as_ref()))
             });
 
             SpaceMakeInfo {
                 id: *space_view_id,
-                path: space_view.space_path.clone(),
+                path: space_view.space_origin.clone(),
                 category: space_view.category,
                 aspect_ratio,
             }
