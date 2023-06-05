@@ -1,9 +1,9 @@
 use egui::Color32;
 use re_data_store::EntityPath;
 use re_log_types::InstanceKey;
-use re_renderer::{renderer::DepthClouds, LineStripSeriesBuilder};
+use re_renderer::LineStripSeriesBuilder;
 
-use super::{SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES};
+use super::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES;
 
 /// Primitives sent off to `re_renderer`.
 /// (Some meta information still relevant to ui setup as well)
@@ -17,9 +17,7 @@ pub struct SceneSpatialPrimitives {
 
     pub num_primitives: usize,
 
-    pub images: Vec<super::Image>,
     pub line_strips: LineStripSeriesBuilder,
-    pub depth_clouds: DepthClouds,
 
     pub any_outlines: bool,
 }
@@ -33,13 +31,8 @@ impl SceneSpatialPrimitives {
         Self {
             bounding_box: macaw::BoundingBox::nothing(),
             num_primitives: 0,
-            images: Default::default(),
             line_strips: LineStripSeriesBuilder::new(re_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
-            depth_clouds: DepthClouds {
-                clouds: Default::default(),
-                radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-            },
             any_outlines: false,
         }
     }
@@ -54,13 +47,11 @@ impl SceneSpatialPrimitives {
         let Self {
             bounding_box: _,
             num_primitives,
-            images,
             line_strips,
-            depth_clouds,
             any_outlines: _,
         } = &self;
 
-        images.len() + line_strips.vertices.len() + num_primitives + depth_clouds.clouds.len()
+        line_strips.vertices.len() + num_primitives
     }
 
     pub fn recalculate_bounding_box(&mut self) {
@@ -69,29 +60,24 @@ impl SceneSpatialPrimitives {
         let Self {
             bounding_box,
             num_primitives: _,
-            images,
             line_strips,
-            depth_clouds,
             any_outlines: _,
         } = self;
 
-        for image in images {
-            let rect = &image.textured_rect;
-            bounding_box.extend(rect.top_left_corner_position);
-            bounding_box.extend(rect.top_left_corner_position + rect.extent_u);
-            bounding_box.extend(rect.top_left_corner_position + rect.extent_v);
-            bounding_box.extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
-        }
+        // TODO:
+        // for image in images {
+        //     let rect = &image.textured_rect;
+        //     bounding_box.extend(rect.top_left_corner_position);
+        //     bounding_box.extend(rect.top_left_corner_position + rect.extent_u);
+        //     bounding_box.extend(rect.top_left_corner_position + rect.extent_v);
+        //     bounding_box.extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
+        // }
 
         // We don't need a very accurate bounding box, so in order to save some time,
         // we calculate a per batch bounding box for lines and points.
         for (batch, vertex_iter) in line_strips.iter_vertices_by_batch() {
             let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
             *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));
-        }
-
-        for cloud in &depth_clouds.clouds {
-            *bounding_box = bounding_box.union(cloud.bbox());
         }
     }
 

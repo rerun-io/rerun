@@ -13,8 +13,7 @@ mod points2d;
 mod points3d;
 mod spatial_scene_part_data;
 
-pub(crate) use images::ImagesPart;
-
+pub use images::Image;
 pub use spatial_scene_part_data::SpatialScenePartData;
 
 use re_space_view::EmptySpaceViewState;
@@ -46,6 +45,7 @@ pub struct SpatialScenePartCollection {
     pub lines2d: lines2d::Lines2DPart,
     pub lines3d: lines3d::Lines3DPart,
     pub meshes: meshes::MeshPart,
+    pub images: images::ImagesPart,
 }
 
 impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
@@ -60,9 +60,11 @@ impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
             lines2d,
             lines3d,
             meshes,
+            images,
         } = self;
         vec![
             points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
+            images,
         ]
     }
 

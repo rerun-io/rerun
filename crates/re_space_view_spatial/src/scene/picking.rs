@@ -5,7 +5,7 @@ use re_data_store::InstancePathHash;
 use re_log_types::InstanceKey;
 use re_renderer::PickingLayerProcessor;
 
-use super::{Image, SceneSpatialPrimitives, SceneSpatialUiData};
+use super::{parts::Image, SceneSpatialUiData};
 use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -107,7 +107,7 @@ impl PickingContext {
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
         previous_picking_result: &Option<PickingResult>,
-        primitives: &SceneSpatialPrimitives,
+        images: &[Image],
         ui_data: &SceneSpatialUiData,
     ) -> PickingResult {
         re_tracing::profile_function!();
@@ -119,7 +119,7 @@ impl PickingContext {
             self,
             previous_picking_result,
         );
-        let mut rect_hits = picking_textured_rects(self, &primitives.images);
+        let mut rect_hits = picking_textured_rects(self, images);
         rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
         let ui_rect_hits = picking_ui_rects(self, ui_data);
 
