@@ -666,7 +666,7 @@ impl eframe::App for App {
 
                 warning_panel(&self.re_ui, ui, frame);
 
-                crate::top_panel::top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
+                crate::ui::top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
 
                 self.memory_panel_ui(
                     ui,

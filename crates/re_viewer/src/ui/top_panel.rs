@@ -60,7 +60,7 @@ fn top_bar_ui(
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    crate::rerun_menu::rerun_menu_button_ui(ui, frame, app);
+    crate::ui::rerun_menu_button_ui(ui, frame, app);
 
     if app.app_options().show_metrics {
         ui.separator();
