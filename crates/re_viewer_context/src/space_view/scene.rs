@@ -7,6 +7,9 @@ use crate::{
 ///
 /// When populating a scene, first all contexts are populated,
 /// and then all elements with read access to the previously established context objects.
+///
+/// In practice, the only thing implementing [`Scene`] is [`TypedScene`] which in turn is defined by
+/// by a concrete [`SpaceViewClassImpl`].
 pub trait Scene {
     /// Populates the scene for a given query.
     fn populate(

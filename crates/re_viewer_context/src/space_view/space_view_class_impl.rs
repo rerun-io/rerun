@@ -21,6 +21,10 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
     type ScenePartCollection: ScenePartCollection<Self> + Default + 'static;
 
     /// A piece of data that all scene parts have in common, useful for iterating over them.
+    ///
+    /// This is useful for retrieving data that is common to all scene parts of a [`SpaceViewClass`].
+    /// For example, if most scene parts produce ui elements, a concrete [`SpaceViewClassImpl`]
+    /// can pick those up in its [`SpaceViewClassImpl::ui`] method by iterating over all scene parts.
     type ScenePartData;
 
     /// Name of this space view class.

@@ -77,7 +77,11 @@ pub trait SpaceViewClass {
     );
 }
 
-/// State of a space view.
+/// Unserialized frame to frame state of a space view.
+///
+/// For any state that should be persisted, use the Blueprint!
+/// This state is used for transient state, such as animation or uncommited ui state like dragging a camera.
+/// (on mouse release, the camera would be commited to the blueprint).
 pub trait SpaceViewState: std::any::Any {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;

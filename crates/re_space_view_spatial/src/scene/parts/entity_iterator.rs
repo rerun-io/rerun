@@ -5,6 +5,10 @@ use re_viewer_context::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, Vi
 
 use crate::scene::contexts::{SpatialSceneContext, SpatialSceneEntityContext};
 
+/// Iterates through all entity views for a given archetype.
+///
+/// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
+/// various useful information about an entity in the context of the current scene.
 pub fn process_entity_views<'a, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &SceneQuery<'_>,

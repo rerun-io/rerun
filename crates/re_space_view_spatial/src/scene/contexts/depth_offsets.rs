@@ -5,10 +5,12 @@ use re_components::DrawOrder;
 use re_log_types::{Component, EntityPathHash};
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
-// TODO(wumpf): In the new traitified system it would be likely more ergonomic to map from darw order to depth offset
-//              This would also yield more consistent/meaningful archetypes and avoid queries where not needed.
+/// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]
 pub struct EntityDepthOffsets {
+    // TODO(wumpf): Given that archetypes (should) contain DrawData, we should have a map of DrawData to DepthOffset.
+    //              Mapping entities to depth offset instead is inconsistent with the archetype queries which are
+    //              expected to care about DepthOffset iff they can make use of it.
     pub per_entity: IntMap<EntityPathHash, re_renderer::DepthOffset>,
     pub box2d: re_renderer::DepthOffset,
     pub lines2d: re_renderer::DepthOffset,
