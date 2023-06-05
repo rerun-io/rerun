@@ -34,10 +34,6 @@ pub struct AppState {
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[serde(skip)]
-    pub(crate) profiler: crate::Profiler, // TODO(emilk): move to `App`?
-
     // TODO(jleibs): This is sort of a weird place to put this but makes more
     // sense than the blueprint
     #[serde(skip)]
@@ -75,8 +71,6 @@ impl AppState {
             recording_configs,
             selection_panel,
             time_panel,
-            #[cfg(not(target_arch = "wasm32"))]
-                profiler: _,
             viewport_state,
         } = self;
 

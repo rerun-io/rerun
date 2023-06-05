@@ -79,6 +79,9 @@ pub struct App {
     re_ui: re_ui::ReUi,
     screenshotter: crate::screenshotter::Screenshotter,
 
+    #[cfg(not(target_arch = "wasm32"))]
+    profiler: crate::Profiler,
+
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
 
@@ -179,6 +182,8 @@ impl App {
             re_ui,
             screenshotter,
 
+            profiler: Default::default(),
+
             text_log_rx,
             component_ui_registry: re_data_ui::create_component_ui_registry(),
             rx,
@@ -204,7 +209,7 @@ impl App {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: crate::Profiler) {
-        self.state.profiler = profiler;
+        self.profiler = profiler;
     }
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
@@ -306,7 +311,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             Command::OpenProfiler => {
-                self.state.profiler.start();
+                self.profiler.start();
             }
 
             Command::ToggleMemoryPanel => {
