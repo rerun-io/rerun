@@ -482,6 +482,99 @@ impl App {
         let blueprint_db = self.store_hub.blueprint_entry(this_frame_blueprint_id);
         Blueprint::from_db(egui_ctx, blueprint_db)
     }
+
+    /// Top-level ui function.
+    ///
+    /// Shows the viewer ui.
+    #[allow(clippy::too_many_arguments)]
+    fn ui(
+        &mut self,
+        egui_ctx: &egui::Context,
+        frame: &mut eframe::Frame,
+        blueprint: &mut Blueprint,
+        gpu_resource_stats: &WgpuResourcePoolStatistics,
+        blueprint_config: &DataStoreConfig,
+        store_stats: &DataStoreStats,
+        blueprint_stats: &DataStoreStats,
+    ) {
+        let store_config = self
+            .store_db()
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        let mut main_panel_frame = egui::Frame::default();
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            // Add some margin so that we can later paint an outline around it all.
+            main_panel_frame.inner_margin = 1.0.into();
+        }
+
+        egui::CentralPanel::default()
+            .frame(main_panel_frame)
+            .show(egui_ctx, |ui| {
+                paint_background_fill(ui);
+
+                crate::ui::mobile_warning_ui(&self.re_ui, ui);
+
+                crate::ui::top_panel(&*blueprint, ui, frame, self, gpu_resource_stats);
+
+                self.memory_panel_ui(
+                    ui,
+                    gpu_resource_stats,
+                    &store_config,
+                    blueprint_config,
+                    store_stats,
+                    blueprint_stats,
+                );
+
+                // NOTE: cannot call `.store_db()` due to borrowck shenanigans
+                if let Some(store_db) = self
+                    .state
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|rec_id| self.store_hub.recording(rec_id))
+                {
+                    self.state
+                        .recording_config_entry(
+                            store_db.store_id().clone(),
+                            self.rx.source(),
+                            store_db,
+                        )
+                        .selection_state
+                        .on_frame_start(|item| blueprint.is_item_valid(item));
+
+                    // TODO(andreas): store the re_renderer somewhere else.
+                    let egui_renderer = {
+                        let render_state = frame.wgpu_render_state().unwrap();
+                        &mut render_state.renderer.write()
+                    };
+                    if let Some(render_ctx) = egui_renderer
+                        .paint_callback_resources
+                        .get_mut::<re_renderer::RenderContext>()
+                    {
+                        render_ctx.begin_frame();
+
+                        if store_db.is_empty() {
+                            crate::ui::wait_screen_ui(ui, &self.rx);
+                        } else {
+                            self.state.show(
+                                blueprint,
+                                ui,
+                                render_ctx,
+                                store_db,
+                                &self.re_ui,
+                                &self.component_ui_registry,
+                                &self.space_view_class_registry,
+                                &self.rx,
+                            );
+
+                            render_ctx.before_submit();
+                        }
+                    }
+                } else {
+                    crate::ui::wait_screen_ui(ui, &self.rx);
+                }
+            });
+    }
 }
 
 impl eframe::App for App {
@@ -561,20 +654,9 @@ impl eframe::App for App {
                 StoreId::from_string(StoreKind::Blueprint, self.selected_app_id().0)
             });
 
-        let store_config = self
-            .store_db()
-            .map(|store_db| store_db.entity_db.data_store.config().clone())
-            .unwrap_or_default();
-
         let store_stats = self
             .store_db()
             .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
-            .unwrap_or_default();
-
-        let blueprint_config = self
-            .store_hub
-            .blueprint_mut(&active_blueprint_id)
-            .map(|bp_db| bp_db.entity_db.data_store.config().clone())
             .unwrap_or_default();
 
         let blueprint_stats = self
@@ -583,7 +665,7 @@ impl eframe::App for App {
             .map(|bp_db| DataStoreStats::from_store(&bp_db.entity_db.data_store))
             .unwrap_or_default();
 
-        // do first, before doing too many allocations
+        // do early, before doing too many allocations
         self.memory_panel
             .update(&gpu_resource_stats, &store_stats, &blueprint_stats);
 
@@ -600,83 +682,26 @@ impl eframe::App for App {
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
-        let mut main_panel_frame = egui::Frame::default();
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
-            // Add some margin so that we can later paint an outline around it all.
-            main_panel_frame.inner_margin = 1.0.into();
-        }
-
         let blueprint_snapshot = self.load_or_create_blueprint(&active_blueprint_id, egui_ctx);
 
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
 
-        egui::CentralPanel::default()
-            .frame(main_panel_frame)
-            .show(egui_ctx, |ui| {
-                paint_background_fill(ui);
+        let blueprint_config = self
+            .store_hub
+            .blueprint_mut(&active_blueprint_id)
+            .map(|bp_db| bp_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
 
-                crate::ui::mobile_warning_ui(&self.re_ui, ui);
-
-                crate::ui::top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
-
-                self.memory_panel_ui(
-                    ui,
-                    &gpu_resource_stats,
-                    &store_config,
-                    &blueprint_config,
-                    &store_stats,
-                    &blueprint_stats,
-                );
-
-                // NOTE: cannot call `.store_db()` due to borrowck shenanigans
-                if let Some(store_db) = self
-                    .state
-                    .selected_rec_id
-                    .as_ref()
-                    .and_then(|rec_id| self.store_hub.recording(rec_id))
-                {
-                    self.state
-                        .recording_config_entry(
-                            store_db.store_id().clone(),
-                            self.rx.source(),
-                            store_db,
-                        )
-                        .selection_state
-                        .on_frame_start(|item| blueprint.is_item_valid(item));
-
-                    // TODO(andreas): store the re_renderer somewhere else.
-                    let egui_renderer = {
-                        let render_state = frame.wgpu_render_state().unwrap();
-                        &mut render_state.renderer.write()
-                    };
-                    if let Some(render_ctx) = egui_renderer
-                        .paint_callback_resources
-                        .get_mut::<re_renderer::RenderContext>()
-                    {
-                        render_ctx.begin_frame();
-
-                        if store_db.is_empty() {
-                            crate::ui::wait_screen_ui(ui, &self.rx);
-                        } else {
-                            self.state.show(
-                                &mut blueprint,
-                                ui,
-                                render_ctx,
-                                store_db,
-                                &self.re_ui,
-                                &self.component_ui_registry,
-                                &self.space_view_class_registry,
-                                &self.rx,
-                            );
-
-                            render_ctx.before_submit();
-                        }
-                    }
-                } else {
-                    crate::ui::wait_screen_ui(ui, &self.rx);
-                }
-            });
+        self.ui(
+            egui_ctx,
+            frame,
+            &mut blueprint,
+            &gpu_resource_stats,
+            &blueprint_config,
+            &store_stats,
+            &blueprint_stats,
+        );
 
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
             // Paint the main window frame on top of everything else
@@ -695,11 +720,6 @@ impl eframe::App for App {
 
         self.run_pending_commands(&mut blueprint, egui_ctx, frame);
 
-        self.frame_time_history.add(
-            egui_ctx.input(|i| i.time),
-            frame_start.elapsed().as_secs_f32(),
-        );
-
         // If there was a real active blueprint that came from the store, save the changes back.
         if let Some(blueprint_db) = self.store_hub.blueprint_mut(&active_blueprint_id) {
             blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
@@ -709,6 +729,12 @@ impl eframe::App for App {
             // keep it around for borrow-checker reasons.
             re_log::warn_once!("Blueprint unexpectedly missing from store.");
         }
+
+        // Frame time measurer - must be last
+        self.frame_time_history.add(
+            egui_ctx.input(|i| i.time),
+            frame_start.elapsed().as_secs_f32(),
+        );
     }
 
     #[cfg(not(target_arch = "wasm32"))]
