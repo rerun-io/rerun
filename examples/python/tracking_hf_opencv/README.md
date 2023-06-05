@@ -7,7 +7,7 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/tracking_h
 
 Another more elaborate example applying simple object detection and segmentation on a video using the Huggingface `transformers` library. Tracking across frames is performed using [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
 
-For more info see: https://huggingface.co/docs/transformers/index
+For more info see [here](https://huggingface.co/docs/transformers/index)
 
 ```bash
 pip install -r examples/python/tracking_hf_opencv/requirements.txt
