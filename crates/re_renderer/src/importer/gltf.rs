@@ -92,13 +92,8 @@ pub fn load_gltf_from_buffer(
     for ref mesh in doc.meshes() {
         re_tracing::profile_scope!("mesh");
 
-        let re_mesh = import_mesh(
-            mesh,
-            &buffers,
-            &images_as_textures,
-            &mut ctx.texture_manager_2d,
-        )
-        .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
+        let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, &ctx.texture_manager_2d)
+            .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
         meshes.insert(
             mesh.index(),
             (
@@ -143,7 +138,7 @@ fn import_mesh(
     mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
     gpu_image_handles: &[GpuTexture2D],
-    texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
+    texture_manager: &TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
     re_tracing::profile_function!();
 
