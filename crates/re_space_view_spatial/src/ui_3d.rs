@@ -23,7 +23,6 @@ use crate::{
         create_labels, outline_config, picking, screenshot_context_menu, SpatialNavigationMode,
         SpatialSpaceViewState,
     },
-    ui_renderer_bridge::{fill_view_builder, ScreenBackground},
 };
 
 use super::eye::{Eye, OrbitEye};
@@ -539,11 +538,10 @@ pub fn view_3d(
     }
 
     // Composite viewbuilder into egui.
-    let command_buffer = match fill_view_builder(
+    view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
         ctx.render_ctx,
-        &mut view_builder,
-        &ScreenBackground::GenericSkybox,
-    ) {
+    ));
+    let command_buffer = match view_builder.draw(ctx.render_ctx, re_renderer::Rgba::TRANSPARENT) {
         Ok(command_buffer) => command_buffer,
         Err(err) => {
             re_log::error_once!("Failed to fill view builder: {err}");

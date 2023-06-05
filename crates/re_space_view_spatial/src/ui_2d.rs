@@ -14,7 +14,6 @@ use super::{
 use crate::{
     scene::SceneSpatial,
     ui::{outline_config, SpatialNavigationMode, SpatialSpaceViewState},
-    ui_renderer_bridge::{fill_view_builder, ScreenBackground},
 };
 
 // ---
@@ -349,17 +348,14 @@ pub fn view_2d(
         // Draw a re_renderer driven view.
         // Camera & projection are configured to ingest space coordinates directly.
         {
-            let command_buffer = match fill_view_builder(
-                ctx.render_ctx,
-                &mut view_builder,
-                &ScreenBackground::ClearColor(ui.visuals().extreme_bg_color.into()),
-            ) {
-                Ok(command_buffer) => command_buffer,
-                Err(err) => {
-                    re_log::error_once!("Failed to fill view builder: {err}");
-                    return response;
-                }
-            };
+            let command_buffer =
+                match view_builder.draw(ctx.render_ctx, ui.visuals().extreme_bg_color.into()) {
+                    Ok(command_buffer) => command_buffer,
+                    Err(err) => {
+                        re_log::error_once!("Failed to fill view builder: {err}");
+                        return response;
+                    }
+                };
             painter.add(gpu_bridge::renderer_paint_callback(
                 ctx.render_ctx,
                 command_buffer,

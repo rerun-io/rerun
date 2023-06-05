@@ -13,6 +13,5 @@ mod space_view_class;
 mod ui;
 mod ui_2d;
 mod ui_3d;
-mod ui_renderer_bridge;
 
 pub use space_view_class::SpatialSpaceView;
