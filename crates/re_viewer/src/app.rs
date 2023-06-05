@@ -182,6 +182,7 @@ impl App {
             re_ui,
             screenshotter,
 
+            #[cfg(not(target_arch = "wasm32"))]
             profiler: Default::default(),
 
             text_log_rx,
