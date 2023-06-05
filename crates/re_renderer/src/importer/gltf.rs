@@ -19,7 +19,7 @@ pub fn load_gltf_from_buffer(
     mesh_name: &str,
     buffer: &[u8],
     lifetime: ResourceLifeTime,
-    ctx: &mut RenderContext,
+    ctx: &RenderContext,
 ) -> anyhow::Result<Vec<MeshInstance>> {
     re_tracing::profile_function!();
 
@@ -77,7 +77,7 @@ pub fn load_gltf_from_buffer(
         images_as_textures.push(
             match ctx
                 .texture_manager_2d
-                .create(&mut ctx.gpu_resources.textures, &texture)
+                .create(&ctx.gpu_resources.textures, &texture)
             {
                 Ok(texture) => texture,
                 Err(err) => {
@@ -92,13 +92,8 @@ pub fn load_gltf_from_buffer(
     for ref mesh in doc.meshes() {
         re_tracing::profile_scope!("mesh");
 
-        let re_mesh = import_mesh(
-            mesh,
-            &buffers,
-            &images_as_textures,
-            &mut ctx.texture_manager_2d,
-        )
-        .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
+        let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, &ctx.texture_manager_2d)
+            .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
         meshes.insert(
             mesh.index(),
             (
@@ -143,7 +138,7 @@ fn import_mesh(
     mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
     gpu_image_handles: &[GpuTexture2D],
-    texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
+    texture_manager: &TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
     re_tracing::profile_function!();
 

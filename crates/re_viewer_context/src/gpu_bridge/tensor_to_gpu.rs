@@ -29,7 +29,7 @@ use super::{get_or_create_texture, try_get_or_create_texture};
 /// `tensor_stats` is used for determining the range of the texture.
 // TODO(emilk): allow user to specify the range in ui.
 pub fn tensor_to_gpu(
-    render_ctx: &mut RenderContext,
+    render_ctx: &RenderContext,
     debug_name: &str,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
@@ -61,7 +61,7 @@ pub fn tensor_to_gpu(
 // Color textures:
 
 fn color_tensor_to_gpu(
-    render_ctx: &mut RenderContext,
+    render_ctx: &RenderContext,
     debug_name: &str,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
@@ -131,7 +131,7 @@ fn color_tensor_to_gpu(
 // Textures with class_id annotations:
 
 fn class_id_tensor_to_gpu(
-    render_ctx: &mut RenderContext,
+    render_ctx: &RenderContext,
     debug_name: &str,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
@@ -201,7 +201,7 @@ fn class_id_tensor_to_gpu(
 // Depth textures:
 
 fn depth_tensor_to_gpu(
-    render_ctx: &mut RenderContext,
+    render_ctx: &RenderContext,
     debug_name: &str,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
