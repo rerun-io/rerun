@@ -63,7 +63,7 @@ pub fn try_get_or_create_texture<'a, Err: std::fmt::Display>(
 ) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
     render_ctx.texture_manager_2d.get_or_try_create_with(
         texture_key,
-        &mut render_ctx.gpu_resources.textures,
+        &render_ctx.gpu_resources.textures,
         try_create_texture_desc,
     )
 }
@@ -75,7 +75,7 @@ pub fn get_or_create_texture<'a>(
 ) -> Result<GpuTexture2D, TextureCreationError> {
     render_ctx.texture_manager_2d.get_or_create_with(
         texture_key,
-        &mut render_ctx.gpu_resources.textures,
+        &render_ctx.gpu_resources.textures,
         create_texture_desc,
     )
 }

@@ -323,35 +323,31 @@ impl ImagesPart {
             let mut data_f32 = Vec::new();
             ctx.render_ctx
                 .texture_manager_2d
-                .get_or_try_create_with(
-                    texture_key,
-                    &mut ctx.render_ctx.gpu_resources.textures,
-                    || {
-                        // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
-                        // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
-                        let data = match &tensor.data {
-                            TensorData::U16(data) => {
-                                data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
-                                bytemuck::cast_slice(&data_f32).into()
-                            }
-                            TensorData::F32(data) => bytemuck::cast_slice(data).into(),
-                            _ => {
-                                return Err(format!(
-                                    "Tensor datatype {} is not supported for back-projection",
-                                    tensor.dtype()
-                                ));
-                            }
-                        };
+                .get_or_try_create_with(texture_key, &ctx.render_ctx.gpu_resources.textures, || {
+                    // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
+                    // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
+                    let data = match &tensor.data {
+                        TensorData::U16(data) => {
+                            data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
+                            bytemuck::cast_slice(&data_f32).into()
+                        }
+                        TensorData::F32(data) => bytemuck::cast_slice(data).into(),
+                        _ => {
+                            return Err(format!(
+                                "Tensor datatype {} is not supported for back-projection",
+                                tensor.dtype()
+                            ));
+                        }
+                    };
 
-                        Ok(Texture2DCreationDesc {
-                            label: format!("Depth cloud for {ent_path:?}").into(),
-                            data,
-                            format: wgpu::TextureFormat::R32Float,
-                            width: width as _,
-                            height: height as _,
-                        })
-                    },
-                )
+                    Ok(Texture2DCreationDesc {
+                        label: format!("Depth cloud for {ent_path:?}").into(),
+                        data,
+                        format: wgpu::TextureFormat::R32Float,
+                        width: width as _,
+                        height: height as _,
+                    })
+                })
                 .map_err(|err| format!("Failed to create depth cloud texture: {err}"))?
         };
 

@@ -157,7 +157,7 @@ impl TextureManager2D {
     pub(crate) fn new(
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
-        texture_pool: &mut GpuTexturePool,
+        texture_pool: &GpuTexturePool,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -201,7 +201,7 @@ impl TextureManager2D {
     /// TODO(jleibs): All usages of this should be be replaced with `get_or_create`, which is strictly preferable
     pub fn create(
         &mut self,
-        texture_pool: &mut GpuTexturePool,
+        texture_pool: &GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
     ) -> Result<GpuTexture2D, TextureCreationError> {
         // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
@@ -228,7 +228,7 @@ impl TextureManager2D {
     pub fn get_or_create(
         &mut self,
         key: u64,
-        texture_pool: &mut GpuTexturePool,
+        texture_pool: &GpuTexturePool,
         texture_desc: Texture2DCreationDesc<'_>,
     ) -> Result<GpuTexture2D, TextureCreationError> {
         self.get_or_create_with(key, texture_pool, || texture_desc)
@@ -239,7 +239,7 @@ impl TextureManager2D {
     pub fn get_or_create_with<'a>(
         &mut self,
         key: u64,
-        texture_pool: &mut GpuTexturePool,
+        texture_pool: &GpuTexturePool,
         create_texture_desc: impl FnOnce() -> Texture2DCreationDesc<'a>,
     ) -> Result<GpuTexture2D, TextureCreationError> {
         self.get_or_try_create_with(key, texture_pool, || -> Result<_, never::Never> {
@@ -253,7 +253,7 @@ impl TextureManager2D {
     pub fn get_or_try_create_with<'a, Err: std::fmt::Display>(
         &mut self,
         key: u64,
-        texture_pool: &mut GpuTexturePool,
+        texture_pool: &GpuTexturePool,
         try_create_texture_desc: impl FnOnce() -> Result<Texture2DCreationDesc<'a>, Err>,
     ) -> Result<GpuTexture2D, TextureManager2DError<Err>> {
         let texture_handle = match self.texture_cache.entry(key) {
@@ -311,7 +311,7 @@ impl TextureManager2D {
     fn create_and_upload_texture(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        texture_pool: &mut GpuTexturePool,
+        texture_pool: &GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
     ) -> Result<GpuTexture2D, TextureCreationError> {
         re_tracing::profile_function!();
@@ -385,7 +385,7 @@ impl TextureManager2D {
 }
 
 fn create_zero_texture(
-    texture_pool: &mut GpuTexturePool,
+    texture_pool: &GpuTexturePool,
     device: &Arc<wgpu::Device>,
     format: wgpu::TextureFormat,
 ) -> GpuTexture2D {

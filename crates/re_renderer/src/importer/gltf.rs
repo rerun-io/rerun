@@ -77,7 +77,7 @@ pub fn load_gltf_from_buffer(
         images_as_textures.push(
             match ctx
                 .texture_manager_2d
-                .create(&mut ctx.gpu_resources.textures, &texture)
+                .create(&ctx.gpu_resources.textures, &texture)
             {
                 Ok(texture) => texture,
                 Err(err) => {
