@@ -4479,6 +4479,7 @@ dependencies = [
  "macaw",
  "ndarray",
  "nohash-hasher",
+ "parking_lot 0.12.1",
  "re_arrow_store",
  "re_components",
  "re_data_store",
