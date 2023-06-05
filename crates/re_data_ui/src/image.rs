@@ -26,7 +26,8 @@ impl EntityDataUi for Tensor {
     ) {
         re_tracing::profile_function!();
 
-        match ctx.cache.entry::<TensorDecodeCache>().entry(self.clone()) {
+        let decoded = ctx.cache.entry::<TensorDecodeCache>().entry(self.clone());
+        match decoded {
             Ok(decoded) => {
                 let annotations = crate::annotations(ctx, query, entity_path);
                 tensor_ui(

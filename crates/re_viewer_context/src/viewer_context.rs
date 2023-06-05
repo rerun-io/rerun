@@ -8,12 +8,12 @@ use crate::{
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
-    pub app_options: &'a mut AppOptions,
+    pub app_options: &'a AppOptions,
 
     /// Things that need caching and are shared across the whole viewer.
     ///
     /// Use this only for things that you expected be shared across different panels and/or space views.
-    pub cache: &'a mut Caches,
+    pub cache: &'a Caches,
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,

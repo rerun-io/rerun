@@ -61,13 +61,13 @@ fn to_textured_rect(
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+    let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
-        tensor_stats,
+        &tensor_stats,
         &ent_context.annotations,
     ) {
         Ok(colormapped_texture) => {

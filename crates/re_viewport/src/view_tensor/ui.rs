@@ -178,11 +178,11 @@ fn paint_tensor_slice(
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     re_tracing::profile_function!();
 
-    let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+    let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
         ctx.render_ctx,
         tensor,
-        tensor_stats,
+        &tensor_stats,
         state,
     )?;
     let [width, height] = colormapped_texture.texture.width_height();
