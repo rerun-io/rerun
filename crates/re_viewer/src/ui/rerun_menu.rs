@@ -156,12 +156,12 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.selected_rec_id.as_ref() == Some(store_db.store_id()),
+                app.state.recording_id().as_ref() == Some(store_db.store_id()),
                 info,
             )
             .clicked()
         {
-            app.state.selected_rec_id = Some(store_db.store_id().clone());
+            app.state.set_recording_id(store_db.store_id().clone());
         }
     }
 }

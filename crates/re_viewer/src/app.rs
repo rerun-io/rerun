@@ -342,8 +342,7 @@ impl App {
             Command::SelectionPrevious => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state
-                    .selected_rec_id
-                    .clone()
+                    .recording_id()
                     .and_then(|rec_id| state.recording_config_mut(&rec_id))
                 {
                     rec_cfg.selection_state.select_previous();
@@ -352,8 +351,7 @@ impl App {
             Command::SelectionNext => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state
-                    .selected_rec_id
-                    .clone()
+                    .recording_id()
                     .and_then(|rec_id| state.recording_config_mut(&rec_id))
                 {
                     rec_cfg.selection_state.select_next();
@@ -387,7 +385,7 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let Some(rec_id) = self.state.selected_rec_id.clone() else { return; };
+        let Some(rec_id) = self.state.recording_id() else { return; };
         let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else { return; };
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
@@ -511,9 +509,8 @@ impl App {
                 // NOTE: cannot call `.store_db()` due to borrowck shenanigans
                 if let Some(store_db) = self
                     .state
-                    .selected_rec_id
-                    .as_ref()
-                    .and_then(|rec_id| self.store_hub.recording(rec_id))
+                    .recording_id()
+                    .and_then(|rec_id| self.store_hub.recording(&rec_id))
                 {
                     self.state
                         .recording_config_entry(
@@ -809,7 +806,7 @@ impl App {
                 match msg.info.store_id.kind {
                     StoreKind::Recording => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
-                        self.state.selected_rec_id = Some(store_id.clone());
+                        self.state.set_recording_id(store_id.clone());
                     }
 
                     StoreKind::Blueprint => {
@@ -909,10 +906,11 @@ impl App {
 
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, egui_ctx: &egui::Context) {
-        let selected_rec_id = self.state.selected_rec_id.clone();
-
+        let selected_rec_id = self.state.recording_id();
         self.state = Default::default();
-        self.state.selected_rec_id = selected_rec_id;
+        if let Some(selected_rec_id) = selected_rec_id {
+            self.state.set_recording_id(selected_rec_id);
+        }
 
         // Keep the style:
         let style = egui_ctx.style();
@@ -923,14 +921,13 @@ impl App {
     /// Get access to the currently shown [`StoreDb`], if any.
     pub fn store_db(&self) -> Option<&StoreDb> {
         self.state
-            .selected_rec_id
-            .as_ref()
-            .and_then(|rec_id| self.store_hub.recording(rec_id))
+            .recording_id()
+            .and_then(|rec_id| self.store_hub.recording(&rec_id))
     }
 
     fn on_rrd_loaded(&mut self, store_hub: StoreHub) {
         if let Some(store_db) = store_hub.recordings().next() {
-            self.state.selected_rec_id = Some(store_db.store_id().clone());
+            self.state.set_recording_id(store_db.store_id().clone());
             self.analytics.on_open_recording(store_db);
         }
 

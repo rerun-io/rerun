@@ -24,7 +24,7 @@ pub struct AppState {
     pub(crate) cache: Caches,
 
     #[serde(skip)]
-    pub(crate) selected_rec_id: Option<StoreId>,
+    selected_rec_id: Option<StoreId>,
     #[serde(skip)]
     pub(crate) selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
 
@@ -41,6 +41,16 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// The selected/visible recording id, if any.
+    pub fn recording_id(&self) -> Option<StoreId> {
+        self.selected_rec_id.clone()
+    }
+
+    /// The selected/visible recording id, if any.
+    pub fn set_recording_id(&mut self, recording_id: StoreId) {
+        self.selected_rec_id = Some(recording_id);
+    }
+
     pub fn app_options(&self) -> &AppOptions {
         &self.app_options
     }
