@@ -44,7 +44,10 @@ pub struct UiLabel {
     pub labeled_instance: InstancePathHash,
 }
 
+/// Type alias for spatial scenes.
 pub type SceneSpatial = TypedScene<SpatialSpaceView>;
+
+/// Collection of keypoints for annotation context.
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
