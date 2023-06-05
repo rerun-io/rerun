@@ -15,7 +15,7 @@
 #     {
 #       # the path in the url, e.g. `rerun.io/examples/artificial-data`
 #       name: string
-#       # the title in the side nav + header, e.g. `Examples with Artifical Data`
+#       # the title in the side nav + header, e.g. `Examples with Artificial Data`
 #       title: string
 #       # the content that's placed right after the header.
 #       # used to include setup instructions and general info
@@ -102,8 +102,8 @@ root:
         - name: tracking-hf-opencv
           python: python/tracking_hf_opencv
 
-    - name: artifical-data
-      title: Examples with Artifical Data
+    - name: artificial-data
+      title: Examples with Artificial Data
       prelude: |
         The following examples serve to illustrate various uses of the Rerun logging SDK.
         They should not require any additional data downloads, and should run offline.
