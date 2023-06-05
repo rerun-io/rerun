@@ -762,6 +762,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_id = *space_view_id;
 
         let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
+        let Some(space_view_state) = self.viewport_state.space_view_states.get(&space_view_id) else { return; };
 
         let num_space_views = tiles.tiles.values().filter(|tile| tile.is_pane()).count();
 
@@ -794,7 +795,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         // Show help last, since not all space views have help text
-        help_text_ui(self.ctx, ui, space_view);
+        help_text_ui(self.ctx, ui, space_view, space_view_state);
     }
 
     // Styling:
@@ -826,12 +827,13 @@ fn help_text_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_blueprint: &SpaceViewBlueprint,
+    space_view_state: &SpaceViewState,
 ) {
     let help_text = if let Ok(class) = ctx
         .space_view_class_registry
         .get(space_view_blueprint.class)
     {
-        Some(class.help_text(ctx.re_ui))
+        Some(class.help_text(ctx.re_ui, space_view_state.state.as_ref()))
     } else {
         match space_view_blueprint.category {
             ViewCategory::TimeSeries => Some(crate::view_time_series::help_text(ctx.re_ui)),

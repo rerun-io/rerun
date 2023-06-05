@@ -23,9 +23,8 @@ impl SpaceViewClassImpl for SpatialSpaceView {
         &re_ui::icons::SPACE_VIEW_3D
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        // TODO:
-        "todo".into()
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::SpaceViewState) -> egui::WidgetText {
+        state.help_text(re_ui)
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &Self::SpaceViewState) -> Option<f32> {
@@ -52,8 +51,10 @@ impl SpaceViewClassImpl for SpatialSpaceView {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     ) {
-        state.selection_ui(ctx, ui);
+        state.selection_ui(ctx, ui, space_origin, space_view_id);
     }
 
     fn ui(

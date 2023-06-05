@@ -147,7 +147,13 @@ impl SpaceViewBlueprint {
     ) {
         if let Ok(space_view_class) = ctx.space_view_class_registry.get(self.class) {
             re_tracing::profile_scope!("selection_ui", space_view_class.name());
-            space_view_class.selection_ui(ctx, ui, view_state.state.as_mut());
+            space_view_class.selection_ui(
+                ctx,
+                ui,
+                view_state.state.as_mut(),
+                &self.space_origin,
+                self.id,
+            );
         } else {
             // Legacy handling
 

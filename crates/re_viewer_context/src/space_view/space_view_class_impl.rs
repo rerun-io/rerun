@@ -40,7 +40,7 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::SpaceViewState) -> egui::WidgetText;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
@@ -67,6 +67,8 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 
     /// Draws the ui for this space view class and handles ui events.
@@ -96,8 +98,8 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
     }
 
     #[inline]
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        self.help_text(re_ui)
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText {
+        typed_state_wrapper(state, |state| self.help_text(re_ui, state))
     }
 
     #[inline]
@@ -131,8 +133,12 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     ) {
-        typed_state_wrapper_mut(state, |state| self.selection_ui(ctx, ui, state));
+        typed_state_wrapper_mut(state, |state| {
+            self.selection_ui(ctx, ui, state, space_origin, space_view_id);
+        });
     }
 
     #[inline]

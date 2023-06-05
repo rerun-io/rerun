@@ -49,7 +49,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::SpaceViewState) -> egui::WidgetText {
         "Displays text from a text entry components.".into()
     }
 
@@ -58,6 +58,8 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
     ) {
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");

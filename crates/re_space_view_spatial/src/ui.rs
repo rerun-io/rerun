@@ -242,24 +242,25 @@ impl SpatialSpaceViewState {
         Some(())
     }
 
-    pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn selection_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
+    ) {
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
-            // TODO:
-            // ctx.re_ui.grid_left_hand_label(ui, "Space origin")
-            //     .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
-            // // Specify space view id only if this is actually part of the space view itself.
-            // // (otherwise we get a somewhat broken link)
-            // item_ui::entity_path_button(ctx,
-            //     ui,
-            //     data_blueprint
-            //         .contains_entity(space_path)
-            //         .then_some(space_view_id),
-            //     space_path,
-            // );
-            // ui.end_row();
+            ctx.re_ui.grid_left_hand_label(ui, "Space origin")
+                .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
+            item_ui::entity_path_button(ctx,
+                ui,
+                Some(space_view_id),
+                space_origin,
+            );
+            ui.end_row();
 
             ctx.re_ui.grid_left_hand_label(ui, "Default size");
             ui.vertical(|ui| {

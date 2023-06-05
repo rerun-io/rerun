@@ -50,7 +50,7 @@ impl SpaceViewClassImpl for TextSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::SpaceViewState) -> egui::WidgetText {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
@@ -63,6 +63,8 @@ impl SpaceViewClassImpl for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
     ) {
         let ViewTextFilters {
             col_timelines,

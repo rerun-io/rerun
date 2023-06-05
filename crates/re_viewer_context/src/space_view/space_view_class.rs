@@ -30,7 +30,7 @@ pub trait SpaceViewClass {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText;
 
     /// Called once for every new space view instance of this class.
     ///
@@ -72,6 +72,8 @@ pub trait SpaceViewClass {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 
     /// Draws the ui for this space view type and handles ui events.
