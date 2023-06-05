@@ -29,7 +29,7 @@ pub struct AppState {
     pub(crate) selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
 
     /// Configuration for the current recording (found in [`StoreDb`]).
-    pub(crate) recording_configs: HashMap<StoreId, RecordingConfig>,
+    recording_configs: HashMap<StoreId, RecordingConfig>,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
@@ -140,6 +140,10 @@ impl AppState {
         if WATERMARK {
             re_ui.paint_watermark();
         }
+    }
+
+    pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
+        self.recording_configs.get_mut(rec_id)
     }
 
     pub fn recording_config_entry(

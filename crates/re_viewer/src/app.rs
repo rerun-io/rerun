@@ -345,8 +345,8 @@ impl App {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state
                     .selected_rec_id
-                    .as_ref()
-                    .and_then(|rec_id| state.recording_configs.get_mut(rec_id))
+                    .clone()
+                    .and_then(|rec_id| state.recording_config_mut(&rec_id))
                 {
                     rec_cfg.selection_state.select_previous();
                 }
@@ -355,8 +355,8 @@ impl App {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state
                     .selected_rec_id
-                    .as_ref()
-                    .and_then(|rec_id| state.recording_configs.get_mut(rec_id))
+                    .clone()
+                    .and_then(|rec_id| state.recording_config_mut(&rec_id))
                 {
                     rec_cfg.selection_state.select_next();
                 }
@@ -389,11 +389,11 @@ impl App {
     }
 
     fn run_time_control_command(&mut self, command: TimeControlCommand) {
-        let Some(rec_id) = &self.state.selected_rec_id else { return; };
-        let Some(rec_cfg) = self.state.recording_configs.get_mut(rec_id) else { return; };
+        let Some(rec_id) = self.state.selected_rec_id.clone() else { return; };
+        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else { return; };
         let time_ctrl = &mut rec_cfg.time_ctrl;
 
-        let Some(store_db) = self.store_hub.recording(rec_id) else { return; };
+        let Some(store_db) = self.store_hub.recording(&rec_id) else { return; };
         let times_per_timeline = store_db.times_per_timeline();
 
         match command {
