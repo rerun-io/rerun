@@ -42,11 +42,11 @@ impl MeshPart {
 
             let outline_mask_ids = ent_context.highlight.index_outline_mask(instance_key);
 
-            if let Some(mesh) =
-                ctx.cache
-                    .entry::<MeshCache>()
-                    .entry(&ent_path.to_string(), &mesh, ctx.render_ctx)
-            {
+            if let Some(mesh) = ctx.cache.entry::<MeshCache>().entry(
+                &ent_path.to_string(),
+                &mesh,
+                &mut ctx.render_ctx.lock(),
+            ) {
                 instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                     MeshInstance {
                         gpu_mesh: mesh_instance.gpu_mesh.clone(),
@@ -102,7 +102,7 @@ impl ScenePart<SpatialSpaceViewClass> for MeshPart {
             },
         );
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.render_ctx, &instances) {
+        match re_renderer::renderer::MeshDrawData::new(&mut ctx.render_ctx.lock(), &instances) {
             Ok(draw_data) => {
                 vec![draw_data.into()]
             }

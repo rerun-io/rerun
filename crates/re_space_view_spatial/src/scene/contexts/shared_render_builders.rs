@@ -36,11 +36,11 @@ impl SceneContextPart for SharedRenderBuilders {
         _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         self.lines = Some(Mutex::new(
-            LineStripSeriesBuilder::new(ctx.render_ctx)
+            LineStripSeriesBuilder::new(&mut ctx.render_ctx.lock())
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
         ));
         self.points = Some(Mutex::new(
-            PointCloudBuilder::new(ctx.render_ctx)
+            PointCloudBuilder::new(&mut ctx.render_ctx.lock())
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
         ));
     }

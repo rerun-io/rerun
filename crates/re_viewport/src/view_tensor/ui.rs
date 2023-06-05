@@ -77,7 +77,8 @@ impl ViewTensorState {
                     ctx.cache.entry::<TensorStatsCache>().entry(tensor),
                 );
                 self.texture_settings.ui(ctx.re_ui, ui);
-                self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
+                self.color_mapping
+                    .ui(&mut ctx.render_ctx.lock(), ctx.re_ui, ui);
             });
 
         ui.separator();
@@ -180,7 +181,7 @@ fn paint_tensor_slice(
 
     let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-        ctx.render_ctx,
+        &mut ctx.render_ctx.lock(),
         tensor,
         &tensor_stats,
         state,
@@ -208,7 +209,7 @@ fn paint_tensor_slice(
 
     let debug_name = "tensor_slice";
     gpu_bridge::render_image(
-        ctx.render_ctx,
+        &mut ctx.render_ctx.lock(),
         &painter,
         image_rect,
         colormapped_texture,

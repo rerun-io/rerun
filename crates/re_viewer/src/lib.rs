@@ -143,7 +143,7 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
 
         let paint_callback_resources = &mut render_state.renderer.write().paint_callback_resources;
 
-        paint_callback_resources.insert(RenderContext::new(
+        paint_callback_resources.insert(Mutex::new(RenderContext::new(
             &render_state.adapter,
             render_state.device.clone(),
             render_state.queue.clone(),
@@ -153,7 +153,7 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
                     &render_state.adapter,
                 ),
             },
-        ));
+        )));
     }
 
     re_ui::ReUi::load_and_apply(&cc.egui_ctx)

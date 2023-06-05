@@ -700,7 +700,7 @@ pub fn picking(
         .at_most(128.0) as u32;
 
     let _ = view_builder.schedule_picking_rect(
-        ctx.render_ctx,
+        &mut ctx.render_ctx.lock(),
         re_renderer::RectInt::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
@@ -711,7 +711,7 @@ pub fn picking(
     );
 
     let picking_result = picking_context.pick(
-        ctx.render_ctx,
+        &mut ctx.render_ctx.lock(),
         space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
         &scene.scene.parts.images.images,
@@ -821,7 +821,7 @@ pub fn picking(
                                         .entry(tensor) {
                                     Ok(decoded_tensor) =>
                                         show_zoomed_image_region(
-                                            ctx.render_ctx,
+                                            &mut ctx.render_ctx.lock(),
                                             ui,
                                             &decoded_tensor,
                                             ctx.cache.entry::<TensorStatsCache>().entry(&decoded_tensor),

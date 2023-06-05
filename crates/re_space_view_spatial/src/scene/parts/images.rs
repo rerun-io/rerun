@@ -64,7 +64,7 @@ fn to_textured_rect(
     let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
 
     match gpu_bridge::tensor_to_gpu(
-        ctx.render_ctx,
+        &mut ctx.render_ctx.lock(),
         &debug_name,
         tensor,
         &tensor_stats,
@@ -321,37 +321,38 @@ impl ImagesPart {
             // So to not couple this, we use a different key here
             let texture_key = egui::util::hash((tensor.id(), "depth_cloud"));
             let mut data_f32 = Vec::new();
-            ctx.render_ctx
-                .texture_manager_2d
-                .get_or_try_create_with(
-                    texture_key,
-                    &mut ctx.render_ctx.gpu_resources.textures,
-                    || {
-                        // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
-                        // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
-                        let data = match &tensor.data {
-                            TensorData::U16(data) => {
-                                data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
-                                bytemuck::cast_slice(&data_f32).into()
-                            }
-                            TensorData::F32(data) => bytemuck::cast_slice(data).into(),
-                            _ => {
-                                return Err(format!(
-                                    "Tensor datatype {} is not supported for back-projection",
-                                    tensor.dtype()
-                                ));
-                            }
-                        };
+            let mut render_ctx = ctx.render_ctx.lock();
+            let re_renderer::RenderContext {
+                texture_manager_2d,
+                gpu_resources,
+                ..
+            } = &mut *render_ctx;
+            texture_manager_2d
+                .get_or_try_create_with(texture_key, &mut gpu_resources.textures, || {
+                    // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
+                    // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
+                    let data = match &tensor.data {
+                        TensorData::U16(data) => {
+                            data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
+                            bytemuck::cast_slice(&data_f32).into()
+                        }
+                        TensorData::F32(data) => bytemuck::cast_slice(data).into(),
+                        _ => {
+                            return Err(format!(
+                                "Tensor datatype {} is not supported for back-projection",
+                                tensor.dtype()
+                            ));
+                        }
+                    };
 
-                        Ok(Texture2DCreationDesc {
-                            label: format!("Depth cloud for {ent_path:?}").into(),
-                            data,
-                            format: wgpu::TextureFormat::R32Float,
-                            width: width as _,
-                            height: height as _,
-                        })
-                    },
-                )
+                    Ok(Texture2DCreationDesc {
+                        label: format!("Depth cloud for {ent_path:?}").into(),
+                        data,
+                        format: wgpu::TextureFormat::R32Float,
+                        width: width as _,
+                        height: height as _,
+                    })
+                })
                 .map_err(|err| format!("Failed to create depth cloud texture: {err}"))?
         };
 
@@ -454,7 +455,7 @@ impl ScenePart<SpatialSpaceViewClass> for ImagesPart {
         let mut draw_data_list = Vec::new();
 
         match re_renderer::renderer::DepthCloudDrawData::new(
-            ctx.render_ctx,
+            &mut ctx.render_ctx.lock(),
             &DepthClouds {
                 clouds: depth_clouds,
                 radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -475,7 +476,8 @@ impl ScenePart<SpatialSpaceViewClass> for ImagesPart {
             .iter()
             .map(|image| image.textured_rect.clone())
             .collect_vec();
-        match re_renderer::renderer::RectangleDrawData::new(ctx.render_ctx, &rectangles) {
+        match re_renderer::renderer::RectangleDrawData::new(&mut ctx.render_ctx.lock(), &rectangles)
+        {
             Ok(draw_data) => {
                 draw_data_list.push(draw_data.into());
             }

@@ -80,7 +80,7 @@ impl AppState {
         &mut self,
         blueprint: &mut Blueprint,
         ui: &mut egui::Ui,
-        render_ctx: &mut re_renderer::RenderContext,
+        render_ctx: &parking_lot::RwLock<re_renderer::RenderContext>,
         store_db: &StoreDb,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,

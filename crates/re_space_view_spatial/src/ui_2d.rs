@@ -302,7 +302,7 @@ pub fn view_2d(
                 return response;
             };
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
+        let mut view_builder = ViewBuilder::new(&mut ctx.render_ctx.lock(), target_config);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let label_shapes = create_labels(
@@ -342,7 +342,11 @@ pub fn view_2d(
         let (response, screenshot_mode) = screenshot_context_menu(ctx, response);
         if let Some(mode) = screenshot_mode {
             view_builder
-                .schedule_screenshot(ctx.render_ctx, space_view_id.gpu_readback_id(), mode)
+                .schedule_screenshot(
+                    &mut ctx.render_ctx.lock(),
+                    space_view_id.gpu_readback_id(),
+                    mode,
+                )
                 .ok();
         }
 
@@ -350,7 +354,7 @@ pub fn view_2d(
         // Camera & projection are configured to ingest space coordinates directly.
         {
             let command_buffer = match fill_view_builder(
-                ctx.render_ctx,
+                &mut ctx.render_ctx.lock(),
                 &mut view_builder,
                 scene.primitives,
                 &ScreenBackground::ClearColor(ui.visuals().extreme_bg_color.into()),
@@ -362,7 +366,7 @@ pub fn view_2d(
                 }
             };
             painter.add(gpu_bridge::renderer_paint_callback(
-                ctx.render_ctx,
+                &mut ctx.render_ctx.lock(),
                 command_buffer,
                 view_builder,
                 painter.clip_rect(),

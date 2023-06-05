@@ -61,7 +61,7 @@ fn tensor_ui(
     let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
     let debug_name = entity_path.to_string();
     let texture_result = gpu_bridge::tensor_to_gpu(
-        ctx.render_ctx,
+        &mut ctx.render_ctx.lock(),
         &debug_name,
         tensor,
         &tensor_stats,
@@ -76,7 +76,7 @@ fn tensor_ui(
                     let max_height = 24.0;
                     let max_size = Vec2::new(4.0 * max_height, max_height);
                     show_image_at_max_size(
-                        ctx.render_ctx,
+                        &mut ctx.render_ctx.lock(),
                         ctx.re_ui,
                         ui,
                         texture.clone(),
@@ -87,7 +87,7 @@ fn tensor_ui(
                         // Show larger image on hover
                         let max_size = Vec2::splat(400.0);
                         show_image_at_max_size(
-                            ctx.render_ctx,
+                            &mut ctx.render_ctx.lock(),
                             ctx.re_ui,
                             ui,
                             texture.clone(),
@@ -117,7 +117,7 @@ fn tensor_ui(
                         .min(texture_size(texture))
                         .min(egui::vec2(150.0, 300.0));
                     let response = show_image_at_max_size(
-                        ctx.render_ctx,
+                        &mut ctx.render_ctx.lock(),
                         ctx.re_ui,
                         ui,
                         texture.clone(),
@@ -128,7 +128,7 @@ fn tensor_ui(
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                         let image_rect = response.rect;
                         show_zoomed_image_region_tooltip(
-                            ctx.render_ctx,
+                            &mut ctx.render_ctx.lock(),
                             ui,
                             response,
                             tensor,

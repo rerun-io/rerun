@@ -523,7 +523,7 @@ impl App {
                     };
                     if let Some(render_ctx) = egui_renderer
                         .paint_callback_resources
-                        .get_mut::<re_renderer::RenderContext>()
+                        .get_mut::<RwLock<re_renderer::RenderContext>>()
                     {
                         render_ctx.begin_frame();
 
@@ -825,7 +825,7 @@ impl eframe::App for App {
             };
             let render_ctx = egui_renderer
                 .paint_callback_resources
-                .get::<re_renderer::RenderContext>()
+                .get::<RwLock<re_renderer::RenderContext>>()
                 .unwrap();
 
             // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.

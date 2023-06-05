@@ -1,3 +1,5 @@
+use parking_lot::RwLock;
+
 use re_data_store::store_db::StoreDb;
 
 use crate::{
@@ -31,7 +33,7 @@ pub struct ViewerContext<'a> {
     pub re_ui: &'a re_ui::ReUi,
 
     /// The global `re_renderer` context, holds on to all GPU resources.
-    pub render_ctx: &'a mut re_renderer::RenderContext,
+    pub render_ctx: &'a RwLock<re_renderer::RenderContext>,
 }
 
 impl<'a> ViewerContext<'a> {

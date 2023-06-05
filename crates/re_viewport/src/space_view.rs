@@ -89,7 +89,7 @@ impl SpaceViewBlueprint {
         }
 
         while ScreenshotProcessor::next_readback_result(
-            ctx.render_ctx,
+            &mut ctx.render_ctx.lock(),
             self.id.gpu_readback_id(),
             |data, extent, mode| self.handle_pending_screenshots(data, extent, mode),
         )
@@ -237,7 +237,7 @@ impl SpaceViewBlueprint {
                 }
 
                 ViewCategory::Spatial => {
-                    let mut scene = SceneSpatial::new(ctx.render_ctx);
+                    let mut scene = SceneSpatial::new(&mut ctx.render_ctx.lock());
                     scene.load(ctx, &query, highlights);
                     view_state
                         .state_spatial

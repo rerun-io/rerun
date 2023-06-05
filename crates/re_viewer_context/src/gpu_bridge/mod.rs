@@ -8,6 +8,7 @@ use crate::TensorStats;
 // ----------------------------------------------------------------------------
 
 use egui::mutex::Mutex;
+use parking_lot::RwLock;
 
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleOptions},
@@ -94,6 +95,19 @@ pub fn renderer_paint_callback(
 
     type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
 
+    fn fun_name<'a>(
+        rctx: &'a RenderContext,
+        view_builder_handle: ViewBuilderHandle,
+        render_pass: &mut wgpu::RenderPass<'a>,
+        screen_position: glam::Vec2,
+    ) {
+        rctx.active_frame
+            .per_frame_data_helper
+            .get::<ViewBuilderMap>()
+            .unwrap()[view_builder_handle]
+            .composite(&rctx, render_pass, screen_position);
+    }
+
     // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
     let command_buffer = std::sync::Arc::new(Mutex::new(Some(command_buffer)));
 
@@ -124,12 +138,18 @@ pub fn renderer_paint_callback(
                     //                  Looks like a bug in egui, but unclear what's going on.
                     //let clip_rect = info.clip_rect_in_pixels();
 
-                    let ctx = paint_callback_resources.get::<RenderContext>().unwrap();
-                    ctx.active_frame
-                        .per_frame_data_helper
-                        .get::<ViewBuilderMap>()
-                        .unwrap()[view_builder_handle]
-                        .composite(ctx, render_pass, screen_position);
+                    let rctx_mutex = paint_callback_resources
+                        .get::<RwLock<RenderContext>>()
+                        .unwrap();
+                    let rctx_lock = rctx_mutex.read();
+                    let rctx: &RenderContext = &rctx_lock;
+
+                    // rctx.active_frame
+                    //     .per_frame_data_helper
+                    //     .get::<ViewBuilderMap>()
+                    //     .unwrap()[view_builder_handle]
+                    //     .composite(&rctx, render_pass, screen_position);
+                    fun_name(rctx, view_builder_handle, render_pass, screen_position);
                 }),
         ),
     }

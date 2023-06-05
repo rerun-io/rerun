@@ -130,13 +130,15 @@ impl SceneSpatial {
                 .shared_render_builders
                 .lines
                 .take()
-                .and_then(|l| match l.into_inner().to_draw_data(ctx.render_ctx) {
-                    Ok(d) => Some(d.into()),
-                    Err(err) => {
-                        re_log::error_once!("Failed to build line strip draw data: {err}");
-                        None
-                    }
-                }),
+                .and_then(
+                    |l| match l.into_inner().to_draw_data(&mut ctx.render_ctx.lock()) {
+                        Ok(d) => Some(d.into()),
+                        Err(err) => {
+                            re_log::error_once!("Failed to build line strip draw data: {err}");
+                            None
+                        }
+                    },
+                ),
         );
         self.draw_data.extend(
             scene
@@ -144,13 +146,15 @@ impl SceneSpatial {
                 .shared_render_builders
                 .points
                 .take()
-                .and_then(|l| match l.into_inner().to_draw_data(ctx.render_ctx) {
-                    Ok(d) => Some(d.into()),
-                    Err(err) => {
-                        re_log::error_once!("Failed to build point draw data: {err}");
-                        None
-                    }
-                }),
+                .and_then(
+                    |l| match l.into_inner().to_draw_data(&mut ctx.render_ctx.lock()) {
+                        Ok(d) => Some(d.into()),
+                        Err(err) => {
+                            re_log::error_once!("Failed to build point draw data: {err}");
+                            None
+                        }
+                    },
+                ),
         );
 
         self.scene = scene;
