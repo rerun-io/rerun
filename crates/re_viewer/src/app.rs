@@ -17,8 +17,6 @@ use crate::{
     StoreHub,
 };
 
-use re_log_types::TimeRangeF;
-
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1059,7 +1057,10 @@ fn open_rrd_dialog() -> Option<StoreHub> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRangeF)>) {
+fn save(
+    app: &mut App,
+    loop_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
+) {
     let Some(store_db) = app.store_db() else {
         // NOTE: Can only happen if saving through the command palette.
         re_log::error!("No data to save!");
@@ -1100,7 +1101,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
 fn save_database_to_file(
     store_db: &StoreDb,
     path: std::path::PathBuf,
-    time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
+    time_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
     use re_arrow_store::TimeRange;
 

@@ -50,6 +50,7 @@ impl AppState {
     }
 
     /// Currently selected section of time, if any.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
         self.selected_rec_id.as_ref().and_then(|rec_id| {
             self.recording_configs
