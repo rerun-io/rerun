@@ -1183,7 +1183,7 @@ impl AppState {
         re_tracing::profile_function!();
 
         let Self {
-            app_options: options,
+            app_options,
             cache,
             selected_rec_id: _,
             selected_blueprint_by_app: _,
@@ -1203,7 +1203,7 @@ impl AppState {
         );
 
         let mut ctx = ViewerContext {
-            app_options: options,
+            app_options,
             cache,
             space_view_class_registry,
             component_ui_registry,
