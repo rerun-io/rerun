@@ -664,7 +664,7 @@ impl eframe::App for App {
             .show(egui_ctx, |ui| {
                 paint_background_fill(ui);
 
-                warning_panel(&self.re_ui, ui, frame);
+                crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
                 crate::ui::top_panel(&blueprint, ui, frame, self, &gpu_resource_stats);
 
@@ -1192,31 +1192,6 @@ impl AppState {
         if WATERMARK {
             re_ui.paint_watermark();
         }
-    }
-}
-
-fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-    // We have not yet optimized the UI experience for mobile. Show a warning banner
-    // with a link to the tracking issue.
-
-    if ui.ctx().os() == egui::os::OperatingSystem::IOS
-        || ui.ctx().os() == egui::os::OperatingSystem::Android
-    {
-        let frame = egui::Frame {
-            fill: ui.visuals().panel_fill,
-            ..re_ui.bottom_panel_frame()
-        };
-
-        egui::TopBottomPanel::bottom("warning_panel")
-            .resizable(false)
-            .frame(frame)
-            .show_inside(ui, |ui| {
-                ui.centered_and_justified(|ui| {
-                    let text =
-                        re_ui.warning_text("Mobile OSes are not yet supported. Click for details.");
-                    ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1672");
-                });
-            });
     }
 }
 
