@@ -14,7 +14,7 @@ use re_components::{ClassId, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_renderer::{Color32, Size};
 use re_viewer_context::{
-    auto_color, AnnotationMap, Scene, SceneQuery, SpaceViewHighlights, TypedScene, ViewerContext,
+    auto_color, Scene, SceneQuery, SpaceViewHighlights, TypedScene, ViewerContext,
 };
 
 use crate::{space_camera_3d::SpaceCamera3D, SpatialSpaceViewClass};
@@ -53,7 +53,6 @@ pub struct UiLabel {
 }
 
 pub struct SceneSpatial {
-    pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
 
     // TODO(andreas): Temporary field. The hosting struct will be removed once SpatialScene is fully ported to the SpaceViewClass framework.
@@ -72,7 +71,6 @@ impl EntityDepthOffsets {
 impl SceneSpatial {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         Self {
-            annotation_map: Default::default(),
             primitives: SceneSpatialPrimitives::new(re_ctx),
             // TODO(andreas): Workaround for not having default on `Scene`. Soon not needed anyways
             scene: Default::default(),
@@ -88,8 +86,6 @@ impl SceneSpatial {
         highlights: SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
-
-        self.annotation_map.load(ctx, query);
 
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = TypedScene::<SpatialSpaceViewClass> {

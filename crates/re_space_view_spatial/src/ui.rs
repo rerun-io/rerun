@@ -825,17 +825,19 @@ pub fn picking(
                                 match ctx.cache
                                         .entry::<TensorDecodeCache>()
                                         .entry(tensor) {
-                                    Ok(decoded_tensor) =>
+                                    Ok(decoded_tensor) => {
+                                        let annotations = scene.scene.context.annotations.0.find(&instance_path.entity_path);
                                         show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
                                             &decoded_tensor,
                                             ctx.cache.entry::<TensorStatsCache>().entry(&decoded_tensor),
-                                            &scene.annotation_map.find(&instance_path.entity_path),
+                                            &annotations,
                                             decoded_tensor.meter,
                                             &tensor_name,
                                             [coords[0] as _, coords[1] as _],
-                                        ),
+                                        );
+                                    },
                                     Err(err) => re_log::warn_once!(
                                             "Encountered problem decoding tensor at path {tensor_name}: {err}"
                                         ),
