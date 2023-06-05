@@ -1199,12 +1199,8 @@ fn warning_panel(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, frame: &mut eframe::Fra
     // We have not yet optimized the UI experience for mobile. Show a warning banner
     // with a link to the tracking issue.
 
-    // Although this banner is applicable to IOS / Android generically without limit to web
-    // There is a small issue in egui where Windows native currently reports as android.
-    // TODO(jleibs): Remove the is_web gate once https://github.com/emilk/egui/pull/2832 has landed.
-    if frame.is_web()
-        && (ui.ctx().os() == egui::os::OperatingSystem::IOS
-            || ui.ctx().os() == egui::os::OperatingSystem::Android)
+    if ui.ctx().os() == egui::os::OperatingSystem::IOS
+        || ui.ctx().os() == egui::os::OperatingSystem::Android
     {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
