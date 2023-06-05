@@ -1,7 +1,7 @@
 use ahash::HashMap;
 
 use re_data_store::StoreDb;
-use re_log_types::{ApplicationId, LogMsg, StoreId};
+use re_log_types::{ApplicationId, LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::Receiver;
 use re_viewer_context::{
     AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry,
@@ -47,6 +47,21 @@ impl AppState {
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
         &mut self.app_options
+    }
+
+    /// Currently selected section of time, if any.
+    pub fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
+        self.selected_rec_id.as_ref().and_then(|rec_id| {
+            self.recording_configs
+                .get(rec_id)
+                // is there an active loop selection?
+                .and_then(|rec_cfg| {
+                    rec_cfg
+                        .time_ctrl
+                        .loop_selection()
+                        .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
+                })
+        })
     }
 
     #[allow(clippy::too_many_arguments)]

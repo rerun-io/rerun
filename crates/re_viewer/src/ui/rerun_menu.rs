@@ -285,7 +285,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             // button, as this will determine whether its grayed out or not!
             // TODO(cmc): In practice the loop (green) selection is always there
             // at the moment so...
-            let loop_selection = app.loop_selection();
+            let loop_selection = app.state.loop_selection();
 
             if ui
                 .add_enabled(loop_selection.is_some(), save_selection_button)

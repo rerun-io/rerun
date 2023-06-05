@@ -251,22 +251,6 @@ impl App {
         }
     }
 
-    /// Currently selected section of time, if any.
-    pub fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
-        self.state.selected_rec_id.as_ref().and_then(|rec_id| {
-            self.state
-                .recording_configs
-                .get(rec_id)
-                // is there an active loop selection?
-                .and_then(|rec_cfg| {
-                    rec_cfg
-                        .time_ctrl
-                        .loop_selection()
-                        .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
-                })
-        })
-    }
-
     fn run_pending_commands(
         &mut self,
         blueprint: &mut Blueprint,
@@ -295,7 +279,7 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::SaveSelection => {
-                save(self, self.loop_selection());
+                save(self, self.state.loop_selection());
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::Open => {
