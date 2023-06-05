@@ -8,6 +8,6 @@ If you are looking for other language support, search for an open issue on [GitH
 
 The fastest way to get started is with a quick start guide for [Python](getting-started/python.md) or [Rust](getting-started/rust.md).
 
-Many of our [examples](getting-started/examples.md) currently utilize Python. Even for
+Many of our [examples](/examples) currently utilize Python. Even for
 Rust users, these examples are a good way to get a sense of how Rerun works and how you might use it in your own
 project.
