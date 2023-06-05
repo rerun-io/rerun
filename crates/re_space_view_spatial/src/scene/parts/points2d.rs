@@ -2,23 +2,40 @@ use re_components::{
     ClassId, ColorRGBA, Component, InstanceKey, KeypointId, Label, Point2D, Radius,
 };
 use re_data_store::{EntityPath, InstancePathHash};
-use re_query::{query_primary_with_history, EntityView, QueryError};
-use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
-use re_viewer_context::{ResolvedAnnotationInfo, SceneQuery, ViewerContext};
+use re_query::{EntityView, QueryError};
+use re_viewer_context::{
+    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePart, SceneQuery, SpaceViewHighlights,
+    ViewerContext,
+};
 
 use crate::{
-    scene::{EntityDepthOffsets, SceneSpatial, UiLabel, UiLabelTarget},
-    transform_cache::TransformCache,
+    scene::{
+        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+        load_keypoint_connections,
+        parts::entity_iterator::process_entity_views,
+        UiLabel, UiLabelTarget,
+    },
+    SpatialSpaceViewClass,
 };
 
 use super::{
     instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
-    process_colors, process_radii, ScenePart,
+    process_colors, process_radii, SpatialScenePartData, SpatialSpaceViewState,
 };
 
 pub struct Points2DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
-    pub(crate) max_labels: usize,
+    pub max_labels: usize,
+    pub data: SpatialScenePartData,
+}
+
+impl Default for Points2DPart {
+    fn default() -> Self {
+        Self {
+            max_labels: 10,
+            data: Default::default(),
+        }
+    }
 }
 
 impl Points2DPart {
@@ -52,51 +69,42 @@ impl Points2DPart {
         Ok(labels)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
-        &self,
-        scene: &mut SceneSpatial,
+        &mut self,
         query: &SceneQuery<'_>,
-        entity_view: &EntityView<Point2D>,
+        ent_view: &EntityView<Point2D>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Affine3A,
-        entity_highlight: &SpaceViewOutlineMasks,
-        depth_offset: re_renderer::DepthOffset,
+        ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        scene.num_logged_2d_objects += 1;
-
-        let annotations = scene.annotation_map.find(ent_path);
-
         let (annotation_infos, keypoints) =
-            process_annotations_and_keypoints(query, entity_view, &annotations)?;
+            process_annotations_and_keypoints(query, ent_view, &ent_context.annotations)?;
 
-        let colors = process_colors(entity_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(ent_path, entity_view)?;
+        let colors = process_colors(ent_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(ent_path, ent_view)?;
 
-        if entity_view.num_instances() <= self.max_labels {
+        if ent_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(entity_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_colors(ent_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
-                entity_view
+                ent_view
                     .iter_instance_keys()
                     .map(|instance_key| {
                         instance_path_hash_for_picking(
                             ent_path,
                             instance_key,
-                            entity_view.num_instances(),
-                            entity_highlight.any_selection_highlight,
+                            ent_view.num_instances(),
+                            ent_context.highlight.any_selection_highlight,
                         )
                     })
                     .collect::<Vec<_>>()
             };
 
-            scene.ui.labels.extend(Self::process_labels(
-                entity_view,
+            self.data.ui_labels.extend(Self::process_labels(
+                ent_view,
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
@@ -104,36 +112,35 @@ impl Points2DPart {
         }
 
         {
-            let point_batch = scene
-                .primitives
-                .points
+            let mut point_builder = ent_context.shared_render_builders.points();
+            let point_batch = point_builder
                 .batch("2d points")
-                .depth_offset(depth_offset)
+                .depth_offset(ent_context.depth_offset)
                 .flags(
                     re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
                         | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
                 )
-                .world_from_obj(world_from_obj)
-                .outline_mask_ids(entity_highlight.overall)
+                .world_from_obj(ent_context.world_from_obj)
+                .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let point_positions = {
                 re_tracing::profile_scope!("collect_points");
-                entity_view
+                ent_view
                     .iter_primary()?
                     .filter_map(|pt| pt.map(glam::Vec2::from))
             };
 
-            let picking_instance_ids = entity_view.iter_instance_keys().map(|instance_key| {
+            let picking_instance_ids = ent_view.iter_instance_keys().map(|instance_key| {
                 instance_key_to_picking_id(
                     instance_key,
-                    entity_view.num_instances(),
-                    entity_highlight.any_selection_highlight,
+                    ent_view.num_instances(),
+                    ent_context.highlight.any_selection_highlight,
                 )
             });
 
             let mut point_range_builder = point_batch.add_points_2d(
-                entity_view.num_instances(),
+                ent_view.num_instances(),
                 point_positions,
                 radii,
                 colors,
@@ -143,9 +150,9 @@ impl Points2DPart {
             // Determine if there's any sub-ranges that need extra highlighting.
             {
                 re_tracing::profile_scope!("marking additional highlight points");
-                for (highlighted_key, instance_mask_ids) in &entity_highlight.instances {
+                for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                     // TODO(andreas/jeremy): We can do this much more efficiently
-                    let highlighted_point_index = entity_view
+                    let highlighted_point_index = ent_view
                         .iter_instance_keys()
                         .position(|key| key == *highlighted_key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
@@ -157,67 +164,60 @@ impl Points2DPart {
                     }
                 }
             }
-        }
+        };
 
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations);
+        load_keypoint_connections(ent_context, ent_path, keypoints);
+
+        self.data.extend_bounding_box_with_points(
+            ent_view
+                .iter_primary()?
+                .filter_map(|pt| pt.map(|pt| glam::vec3(pt.x, pt.y, 0.0))),
+            ent_context.world_from_obj,
+        );
 
         Ok(())
     }
 }
 
-impl ScenePart for Points2DPart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl ScenePart<SpatialSpaceViewClass> for Points2DPart {
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![
+            Point2D::name(),
+            InstanceKey::name(),
+            ColorRGBA::name(),
+            Radius::name(),
+            Label::name(),
+            ClassId::name(),
+            KeypointId::name(),
+        ]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        _space_view_state: &SpatialSpaceViewState,
+        scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points2DPart");
 
-        for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
-                continue;
-            };
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+        process_entity_views::<re_components::Point2D, 7, _>(
+            ctx,
+            query,
+            scene_context,
+            highlights,
+            scene_context.depth_offsets.points,
+            self.archetype(),
+            |_ctx, ent_path, entity_view, ent_context| {
+                self.process_entity_view(query, &entity_view, ent_path, ent_context)
+            },
+        );
 
-            match query_primary_with_history::<Point2D, 7>(
-                &ctx.store_db.entity_db.data_store,
-                &query.timeline,
-                &query.latest_at,
-                &props.visible_history,
-                ent_path,
-                [
-                    Point2D::name(),
-                    InstanceKey::name(),
-                    ColorRGBA::name(),
-                    Radius::name(),
-                    Label::name(),
-                    ClassId::name(),
-                    KeypointId::name(),
-                ],
-            )
-            .and_then(|entities| {
-                for entity in entities {
-                    self.process_entity_view(
-                        scene,
-                        query,
-                        &entity,
-                        ent_path,
-                        world_from_obj,
-                        entity_highlight,
-                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.points),
-                    )?;
-                }
-                Ok(())
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
-            }
-        }
+        Vec::new() // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+    }
+
+    fn data(&self) -> Option<&SpatialScenePartData> {
+        Some(&self.data)
     }
 }

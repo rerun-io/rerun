@@ -1,9 +1,10 @@
 use nohash_hasher::IntMap;
+
 use re_arrow_store::LatestAtQuery;
 use re_components::{DisconnectedSpace, Pinhole, Transform3D};
-use re_data_store::{store_db::EntityDb, EntityPath, EntityPropertyMap, EntityTree};
-use re_log_types::EntityPathHash;
-use re_viewer_context::TimeControl;
+use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
+use re_log_types::Component;
+use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -14,7 +15,7 @@ struct TransformInfo {
     ///
     /// None indicates that this entity is under the eye camera with no Pinhole camera in-between.
     /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the space view.
-    pub parent_pinhole: Option<EntityPathHash>,
+    pub parent_pinhole: Option<EntityPath>,
 }
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
@@ -25,9 +26,9 @@ struct TransformInfo {
 ///
 /// Should be recomputed every frame.
 #[derive(Clone)]
-pub struct TransformCache {
+pub struct TransformContext {
     /// All transforms provided are relative to this reference path.
-    reference_path: EntityPath,
+    space_origin: EntityPath,
 
     /// All reachable entities.
     transform_per_entity: IntMap<EntityPath, TransformInfo>,
@@ -37,6 +38,17 @@ pub struct TransformCache {
 
     /// The first parent of reference_path that is no longer reachable.
     first_unreachable_parent: Option<(EntityPath, UnreachableTransform)>,
+}
+
+impl Default for TransformContext {
+    fn default() -> Self {
+        Self {
+            space_origin: EntityPath::root(),
+            transform_per_entity: Default::default(),
+            unreachable_descendants: Default::default(),
+            first_unreachable_parent: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -71,45 +83,52 @@ impl std::fmt::Display for UnreachableTransform {
     }
 }
 
-impl TransformCache {
+impl SceneContextPart for TransformContext {
+    fn archetypes(&self) -> Vec<ArchetypeDefinition> {
+        vec![
+            vec1::vec1![Transform3D::name()],
+            vec1::vec1![Pinhole::name()],
+            vec1::vec1![DisconnectedSpace::name()],
+        ]
+    }
+
     /// Determines transforms for all entities relative to a space path which serves as the "reference".
     /// I.e. the resulting transforms are "reference from scene"
     ///
     /// This means that the entities in `reference_space` get the identity transform and all other
     /// entities are transformed relative to it.
-    pub fn determine_transforms(
-        entity_db: &EntityDb,
-        time_ctrl: &TimeControl,
-        space_path: &EntityPath,
-        entity_prop_map: &EntityPropertyMap,
-    ) -> Self {
+    fn populate(
+        &mut self,
+        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        scene_query: &re_viewer_context::SceneQuery<'_>,
+        _space_view_state: &dyn re_viewer_context::SpaceViewState,
+    ) {
         re_tracing::profile_function!();
 
-        let mut transforms = TransformCache {
-            reference_path: space_path.clone(),
-            transform_per_entity: Default::default(),
-            unreachable_descendants: Default::default(),
-            first_unreachable_parent: None,
-        };
+        let entity_db = &ctx.store_db.entity_db;
+        let time_ctrl = &ctx.rec_cfg.time_ctrl;
+        let entity_prop_map = scene_query.entity_props_map;
+
+        self.space_origin = scene_query.space_origin.clone();
 
         // Find the entity path tree for the root.
-        let Some(mut current_tree) = &entity_db.tree.subtree(space_path) else {
+        let Some(mut current_tree) = &entity_db.tree.subtree(scene_query.space_origin) else {
             // It seems the space path is not part of the object tree!
             // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
             // Naturally, in this case we don't have any transforms yet.
-            return transforms;
+            return;
         };
 
         let query = time_ctrl.current_query();
 
         // Child transforms of this space
-        transforms.gather_descendants_transforms(
+        self.gather_descendants_transforms(
             current_tree,
             &entity_db.data_store,
             &query,
             entity_prop_map,
             glam::Affine3A::IDENTITY,
-            None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
+            &None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
         );
 
         // Walk up from the reference to the highest reachable parent.
@@ -120,9 +139,9 @@ impl TransformCache {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",
-                    parent_path, space_path
+                    parent_path, scene_query.space_origin
                 );
-                return transforms;
+                return;
             };
 
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
@@ -137,7 +156,7 @@ impl TransformCache {
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
-                    transforms.first_unreachable_parent =
+                    self.first_unreachable_parent =
                         Some((parent_tree.path.clone(), unreachable_reason));
                     break;
                 }
@@ -148,21 +167,21 @@ impl TransformCache {
             }
 
             // (skip over everything at and under `current_tree` automatically)
-            transforms.gather_descendants_transforms(
+            self.gather_descendants_transforms(
                 parent_tree,
                 &entity_db.data_store,
                 &query,
                 entity_prop_map,
                 reference_from_ancestor,
-                encountered_pinhole,
+                &encountered_pinhole,
             );
 
             current_tree = parent_tree;
         }
-
-        transforms
     }
+}
 
+impl TransformContext {
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,
@@ -170,7 +189,7 @@ impl TransformCache {
         query: &LatestAtQuery,
         entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Affine3A,
-        encountered_pinhole: Option<EntityPathHash>,
+        encountered_pinhole: &Option<EntityPath>,
     ) {
         match self.transform_per_entity.entry(tree.path.clone()) {
             std::collections::hash_map::Entry::Occupied(_) => {
@@ -179,13 +198,13 @@ impl TransformCache {
             std::collections::hash_map::Entry::Vacant(e) => {
                 e.insert(TransformInfo {
                     reference_from_entity,
-                    parent_pinhole: encountered_pinhole,
+                    parent_pinhole: encountered_pinhole.clone(),
                 });
             }
         }
 
         for child_tree in tree.children.values() {
-            let mut encountered_pinhole = encountered_pinhole;
+            let mut encountered_pinhole = encountered_pinhole.clone();
             let reference_from_child = match transform_at(
                 &child_tree.path,
                 data_store,
@@ -207,13 +226,13 @@ impl TransformCache {
                 query,
                 entity_properties,
                 reference_from_child,
-                encountered_pinhole,
+                &encountered_pinhole,
             );
         }
     }
 
     pub fn reference_path(&self) -> &EntityPath {
-        &self.reference_path
+        &self.space_origin
     }
 
     /// Retrieves the transform of on entity from its local system to the space of the reference.
@@ -229,10 +248,10 @@ impl TransformCache {
     ///
     /// None indicates either that the entity does not exist in this hierarchy or that this entity is under the eye camera with no Pinhole camera in-between.
     /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the space view.
-    pub fn parent_pinhole(&self, ent_path: &EntityPath) -> Option<EntityPathHash> {
+    pub fn parent_pinhole(&self, ent_path: &EntityPath) -> Option<&EntityPath> {
         self.transform_per_entity
             .get(ent_path)
-            .and_then(|i| i.parent_pinhole)
+            .and_then(|i| i.parent_pinhole.as_ref())
     }
 
     // This method isn't currently implemented, but we might need it in the future.
@@ -249,14 +268,14 @@ fn transform_at(
     store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
-    encountered_pinhole: &mut Option<EntityPathHash>,
+    encountered_pinhole: &mut Option<EntityPath>,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
     let pinhole = store.query_latest_component::<Pinhole>(entity_path, query);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
             return Err(UnreachableTransform::NestedPinholeCameras);
         } else {
-            *encountered_pinhole = Some(entity_path.hash());
+            *encountered_pinhole = Some(entity_path.clone());
         }
     }
 

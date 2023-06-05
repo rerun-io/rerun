@@ -4,48 +4,70 @@ mod arrows3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
+mod entity_iterator;
 mod images;
 mod lines2d;
 mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
+mod spatial_scene_part_data;
 
-use std::sync::Arc;
+pub use images::Image;
+pub use spatial_scene_part_data::SpatialScenePartData;
+
+use re_space_view::EmptySpaceViewState;
 
 use ahash::HashMap;
-pub(crate) use arrows3d::Arrows3DPart;
-pub(crate) use boxes2d::Boxes2DPart;
-pub(crate) use boxes3d::Boxes3DPart;
-pub(crate) use cameras::CamerasPart;
-pub(crate) use images::ImagesPart;
-pub(crate) use lines2d::Lines2DPart;
-pub(crate) use lines3d::Lines3DPart;
-pub(crate) use meshes::MeshPart;
-
-pub(crate) use points2d::Points2DPart;
-pub(crate) use points3d::Points3DPart;
+use std::sync::Arc;
 
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
-use re_space_view::SpaceViewHighlights;
 use re_viewer_context::{
-    Annotations, DefaultColor, ResolvedAnnotationInfo, SceneQuery, ViewerContext,
+    Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
 
-use super::{EntityDepthOffsets, SceneSpatial};
-use crate::{scene::Keypoints, transform_cache::TransformCache};
+use crate::{scene::Keypoints, SpatialSpaceViewClass};
 
-pub trait ScenePart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        transforms: &TransformCache,
-        highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
-    );
+type SpatialSpaceViewState = EmptySpaceViewState;
+
+#[derive(Default)]
+pub struct SpatialScenePartCollection {
+    pub points2d: points2d::Points2DPart,
+    pub points3d: points3d::Points3DPart,
+    pub arrows3d: arrows3d::Arrows3DPart,
+    pub boxes2d: boxes2d::Boxes2DPart,
+    pub boxes3d: boxes3d::Boxes3DPart,
+    pub cameras: cameras::CamerasPart,
+    pub lines2d: lines2d::Lines2DPart,
+    pub lines3d: lines3d::Lines3DPart,
+    pub meshes: meshes::MeshPart,
+    pub images: images::ImagesPart,
+}
+
+impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
+    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart<SpatialSpaceViewClass>> {
+        let Self {
+            points2d,
+            points3d,
+            arrows3d,
+            boxes2d,
+            boxes3d,
+            cameras,
+            lines2d,
+            lines3d,
+            meshes,
+            images,
+        } = self;
+        vec![
+            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
+            images,
+        ]
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 /// Computes the instance hash that should be used for picking (in turn for selecting/hover)

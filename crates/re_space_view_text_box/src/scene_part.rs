@@ -2,8 +2,11 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, SceneElement, SceneQuery, SpaceViewState, ViewerContext,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClassImpl,
+    SpaceViewHighlights, ViewerContext,
 };
+
+use crate::TextBoxSpaceView;
 
 // ---
 
@@ -18,7 +21,17 @@ pub struct SceneTextBox {
     pub text_entries: Vec<TextBoxEntry>,
 }
 
-impl SceneElement for SceneTextBox {
+impl ScenePartCollection<TextBoxSpaceView> for SceneTextBox {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<TextBoxSpaceView>> {
+        vec![self]
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl ScenePart<TextBoxSpaceView> for SceneTextBox {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![re_components::TextBox::name()]
     }
@@ -27,8 +40,10 @@ impl SceneElement for SceneTextBox {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _state: &dyn SpaceViewState,
-    ) {
+        _space_view_state: &<TextBoxSpaceView as SpaceViewClassImpl>::SpaceViewState,
+        _scene_context: &<TextBoxSpaceView as SpaceViewClassImpl>::SceneContext,
+        _highlights: &SpaceViewHighlights,
+    ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;
 
         for (ent_path, props) in query.iter_entities() {
@@ -51,9 +66,6 @@ impl SceneElement for SceneTextBox {
                 }
             }
         }
-    }
-
-    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
-        self
+        Vec::new()
     }
 }

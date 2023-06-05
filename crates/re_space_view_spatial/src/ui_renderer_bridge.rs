@@ -1,8 +1,4 @@
-use re_renderer::{
-    renderer::{DepthCloudDrawData, GenericSkyboxDrawData, MeshDrawData, RectangleDrawData},
-    view_builder::ViewBuilder,
-    RenderContext,
-};
+use re_renderer::{renderer::GenericSkyboxDrawData, view_builder::ViewBuilder, RenderContext};
 
 use super::scene::SceneSpatialPrimitives;
 
@@ -19,22 +15,7 @@ pub fn fill_view_builder(
 ) -> anyhow::Result<wgpu::CommandBuffer> {
     re_tracing::profile_function!();
 
-    view_builder
-        .queue_draw(DepthCloudDrawData::new(
-            render_ctx,
-            &primitives.depth_clouds,
-        )?)
-        .queue_draw(MeshDrawData::new(render_ctx, &primitives.mesh_instances())?)
-        .queue_draw(primitives.line_strips.to_draw_data(render_ctx)?)
-        .queue_draw(primitives.points.to_draw_data(render_ctx)?)
-        .queue_draw(RectangleDrawData::new(
-            render_ctx,
-            &primitives
-                .images
-                .iter()
-                .map(|image| image.textured_rect.clone())
-                .collect::<Vec<_>>(),
-        )?);
+    view_builder.queue_draw(primitives.line_strips.to_draw_data(render_ctx)?);
 
     if matches!(background, ScreenBackground::GenericSkybox) {
         view_builder.queue_draw(GenericSkyboxDrawData::new(render_ctx));

@@ -1,9 +1,9 @@
 use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataBlueprintTree, ScreenshotMode, SpaceViewHighlights};
-use re_space_view_spatial::{SceneSpatial, TransformCache, ViewSpatialState};
-use re_viewer_context::{SpaceViewClassName, SpaceViewId, ViewerContext};
+use re_space_view::{DataBlueprintTree, ScreenshotMode};
+use re_space_view_spatial::{SceneSpatial, ViewSpatialState};
+use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -186,7 +186,7 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
-        highlights: &SpaceViewHighlights,
+        highlights: SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
 
@@ -196,6 +196,7 @@ impl SpaceViewBlueprint {
         }
 
         let query = re_viewer_context::SceneQuery {
+            space_origin: &self.space_path,
             entity_paths: self.data_blueprint.entity_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
@@ -208,10 +209,8 @@ impl SpaceViewBlueprint {
                 space_view_class.prepare_populate(ctx, view_state.state.as_mut());
             }
             let mut scene = space_view_class.new_scene();
-            {
-                re_tracing::profile_scope!("scene.populate", space_view_class.name());
-                scene.populate(ctx, &query, view_state.state.as_ref());
-            }
+            scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
+
             // TODO(andreas): Pass scene to renderer.
             // TODO(andreas): Setup re_renderer view.
             {
@@ -238,14 +237,8 @@ impl SpaceViewBlueprint {
                 }
 
                 ViewCategory::Spatial => {
-                    let transforms = TransformCache::determine_transforms(
-                        &ctx.store_db.entity_db,
-                        &ctx.rec_cfg.time_ctrl,
-                        &self.space_path,
-                        self.data_blueprint.data_blueprints_projected(),
-                    );
                     let mut scene = SceneSpatial::new(ctx.render_ctx);
-                    scene.load(ctx, &query, &transforms, highlights);
+                    scene.load(ctx, &query, highlights);
                     view_state
                         .state_spatial
                         .update_object_property_heuristics(ctx, &mut self.data_blueprint);
@@ -255,7 +248,6 @@ impl SpaceViewBlueprint {
                         &self.space_path,
                         scene,
                         self.id,
-                        highlights,
                         self.data_blueprint.data_blueprints_projected(),
                     );
                 }
@@ -341,7 +333,6 @@ impl SpaceViewState {
         space: &EntityPath,
         scene: SceneSpatial,
         space_view_id: SpaceViewId,
-        highlights: &SpaceViewHighlights,
         entity_properties: &EntityPropertyMap,
     ) {
         ui.vertical(|ui| {
@@ -351,7 +342,6 @@ impl SpaceViewState {
                 space,
                 scene,
                 space_view_id,
-                highlights,
                 entity_properties,
             );
         });

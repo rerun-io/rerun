@@ -8,10 +8,10 @@ use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
-use re_space_view::{DataBlueprintTree, ScreenshotMode, SpaceViewHighlights};
+use re_space_view::{DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{
-    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewId, TensorDecodeCache,
-    TensorStatsCache, UiVerbosity, ViewerContext,
+    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
+    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
 use super::{
@@ -374,7 +374,6 @@ impl ViewSpatialState {
         space: &EntityPath,
         scene: SceneSpatial,
         space_view_id: SpaceViewId,
-        highlights: &SpaceViewHighlights,
         entity_properties: &EntityPropertyMap,
     ) {
         self.scene_bbox = scene.primitives.bounding_box();
@@ -401,7 +400,6 @@ impl ViewSpatialState {
                     space,
                     space_view_id,
                     scene,
-                    highlights,
                     entity_properties,
                 );
             }
@@ -418,7 +416,6 @@ impl ViewSpatialState {
                     scene,
                     scene_rect_accum,
                     space_view_id,
-                    highlights,
                     entity_properties,
                 );
             }
@@ -717,7 +714,7 @@ pub fn picking(
         ctx.render_ctx,
         space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &scene.primitives,
+        &scene.scene.parts.images.images,
         &scene.ui,
     );
     state.previous_picking_result = Some(picking_result.clone());
@@ -867,7 +864,7 @@ pub fn picking(
                 pos: hovered_point,
                 tracked_space_camera: state.state_3d.tracked_camera.clone(),
                 point_in_space_cameras: scene
-                    .space_cameras
+                    .space_cameras()
                     .iter()
                     .map(|cam| {
                         (

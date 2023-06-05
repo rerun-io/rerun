@@ -10,12 +10,9 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Size,
 };
-use re_space_view::{
-    controls::{
-        DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-        ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
-    },
-    SpaceViewHighlights,
+use re_space_view::controls::{
+    DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
+    ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
 use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
 
@@ -281,7 +278,6 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 }
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
-#[allow(clippy::too_many_arguments)]
 pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -289,10 +285,11 @@ pub fn view_3d(
     space: &EntityPath,
     space_view_id: SpaceViewId,
     mut scene: SceneSpatial,
-    highlights: &SpaceViewHighlights,
     entity_properties: &EntityPropertyMap,
 ) {
     re_tracing::profile_function!();
+
+    let highlights = &scene.scene.highlights;
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -311,7 +308,7 @@ pub fn view_3d(
     let orbit_eye =
         state
             .state_3d
-            .update_eye(&response, &state.scene_bbox_accum, &scene.space_cameras);
+            .update_eye(&response, &state.scene_bbox_accum, scene.space_cameras());
     let did_interact_with_eye = orbit_eye.update(&response, orbit_eye_drag_threshold);
 
     let orbit_eye = *orbit_eye;
@@ -325,15 +322,13 @@ pub fn view_3d(
     }
 
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
-    for camera in &scene.space_cameras {
-        if ctx.app_options.show_camera_axes_in_3d {
-            let transform = camera.world_from_cam();
-            let axis_length =
-                eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
-            scene
-                .primitives
-                .add_axis_lines(transform, Some(&camera.ent_path), axis_length);
-        }
+    for camera in &scene.scene.parts.cameras.space_cameras {
+        let transform = camera.world_from_cam();
+        let axis_length =
+            eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
+        scene
+            .primitives
+            .add_axis_lines(transform, Some(&camera.ent_path), axis_length);
     }
 
     // Determine view port resolution and position.
@@ -402,7 +397,7 @@ pub fn view_3d(
 
         // While hovering an entity, focuses the camera on it.
         if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
-            if let Some(camera) = find_camera(&scene.space_cameras, &instance_path.entity_path) {
+            if let Some(camera) = find_camera(scene.space_cameras(), &instance_path.entity_path) {
                 state.state_3d.camera_before_tracked_camera =
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
@@ -517,6 +512,11 @@ pub fn view_3d(
         }
     }
 
+    // TODO(wumpf): Temporary manual inseration of drawdata. The SpaceViewClass framework will take this over.
+    for draw_data in scene.draw_data {
+        view_builder.queue_draw(draw_data);
+    }
+
     // Composite viewbuilder into egui.
     let command_buffer = match fill_view_builder(
         ctx.render_ctx,
@@ -552,7 +552,7 @@ fn show_projections_from_2d_space(
     match ctx.selection_state().hovered_space() {
         HoveredSpace::TwoD { space_2d, pos } => {
             if let Some(cam) = scene
-                .space_cameras
+                .space_cameras()
                 .iter()
                 .find(|cam| &cam.ent_path == space_2d)
             {
@@ -584,7 +584,7 @@ fn show_projections_from_2d_space(
                 .map_or(true, |tracked| tracked != camera_path)
             {
                 if let Some(cam) = scene
-                    .space_cameras
+                    .space_cameras()
                     .iter()
                     .find(|cam| &cam.ent_path == camera_path)
                 {

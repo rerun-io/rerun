@@ -4,8 +4,11 @@
 //! including all 2D and 3D visualization code.
 
 mod app;
+mod app_state;
+mod background_tasks;
 pub mod blueprint_components;
 pub mod env_vars;
+mod loading;
 #[cfg(not(target_arch = "wasm32"))]
 mod profiler;
 mod remote_viewer_app;
@@ -14,8 +17,10 @@ mod store_hub;
 mod ui;
 mod viewer_analytics;
 
-use re_log_types::PythonVersion;
-pub(crate) use ui::{memory_panel, selection_panel};
+pub(crate) use {
+    app_state::AppState,
+    ui::{memory_panel, selection_panel},
+};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
@@ -61,7 +66,7 @@ pub fn build_info() -> re_build_info::BuildInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppEnvironment {
     /// Created from the Rerun Python SDK.
-    PythonSdk(PythonVersion),
+    PythonSdk(re_log_types::PythonVersion),
 
     /// Created from the Rerun Rust SDK.
     RustSdk {

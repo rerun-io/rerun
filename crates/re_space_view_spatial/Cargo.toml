@@ -34,12 +34,14 @@ re_space_view.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
-egui.workspace = true
 eframe.workspace = true
+egui.workspace = true
 glam.workspace = true
 itertools.workspace = true
 macaw = { workspace = true, features = ["with_serde"] }
 nohash-hasher.workspace = true
+parking_lot.workspace = true
 serde = "1"
 smallvec = { workspace = true, features = ["serde"] }
+vec1.workspace = true
 wgpu.workspace = true

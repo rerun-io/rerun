@@ -1,14 +1,9 @@
 use egui::Color32;
 use re_data_store::EntityPath;
 use re_log_types::InstanceKey;
-use re_renderer::{
-    renderer::{DepthClouds, MeshInstance},
-    LineStripSeriesBuilder, PointCloudBuilder,
-};
+use re_renderer::LineStripSeriesBuilder;
 
-use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
-
-use super::MeshSource;
+use super::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES;
 
 /// Primitives sent off to `re_renderer`.
 /// (Some meta information still relevant to ui setup as well)
@@ -20,11 +15,9 @@ pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     pub(super) bounding_box: macaw::BoundingBox,
 
-    pub images: Vec<super::Image>,
+    pub num_primitives: usize,
+
     pub line_strips: LineStripSeriesBuilder,
-    pub points: PointCloudBuilder,
-    pub meshes: Vec<MeshSource>,
-    pub depth_clouds: DepthClouds,
 
     pub any_outlines: bool,
 }
@@ -33,23 +26,13 @@ const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
 const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
-const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
-const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
-
 impl SceneSpatialPrimitives {
     pub fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         Self {
             bounding_box: macaw::BoundingBox::nothing(),
-            images: Default::default(),
+            num_primitives: 0,
             line_strips: LineStripSeriesBuilder::new(re_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
-            points: PointCloudBuilder::new(re_ctx)
-                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
-            meshes: Default::default(),
-            depth_clouds: DepthClouds {
-                clouds: Default::default(),
-                radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-            },
             any_outlines: false,
         }
     }
@@ -63,19 +46,12 @@ impl SceneSpatialPrimitives {
     pub fn num_primitives(&self) -> usize {
         let Self {
             bounding_box: _,
-            images,
+            num_primitives,
             line_strips,
-            points,
-            meshes,
-            depth_clouds,
             any_outlines: _,
         } = &self;
 
-        images.len()
-            + line_strips.vertices.len()
-            + points.vertices.len()
-            + meshes.len()
-            + depth_clouds.clouds.len()
+        line_strips.vertices.len() + num_primitives
     }
 
     pub fn recalculate_bounding_box(&mut self) {
@@ -83,71 +59,17 @@ impl SceneSpatialPrimitives {
 
         let Self {
             bounding_box,
-            images,
+            num_primitives: _,
             line_strips,
-            points,
-            meshes,
-            depth_clouds,
             any_outlines: _,
         } = self;
 
-        *bounding_box = macaw::BoundingBox::nothing();
-
-        for image in images {
-            let rect = &image.textured_rect;
-            bounding_box.extend(rect.top_left_corner_position);
-            bounding_box.extend(rect.top_left_corner_position + rect.extent_u);
-            bounding_box.extend(rect.top_left_corner_position + rect.extent_v);
-            bounding_box.extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
-        }
-
         // We don't need a very accurate bounding box, so in order to save some time,
         // we calculate a per batch bounding box for lines and points.
-        // TODO(andreas): We should keep these around to speed up picking!
-        for (batch, vertex_iter) in points.iter_vertices_by_batch() {
-            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
-            *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));
-        }
         for (batch, vertex_iter) in line_strips.iter_vertices_by_batch() {
             let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
             *bounding_box = bounding_box.union(batch_bb.transform_affine3(&batch.world_from_obj));
         }
-
-        for mesh in meshes {
-            // TODO(jleibs): is this safe for meshes or should we be doing the equivalent of the above?
-            *bounding_box =
-                bounding_box.union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
-        }
-
-        for cloud in &depth_clouds.clouds {
-            *bounding_box = bounding_box.union(cloud.bbox());
-        }
-    }
-
-    pub fn mesh_instances(&self) -> Vec<MeshInstance> {
-        re_tracing::profile_function!();
-        self.meshes
-            .iter()
-            .flat_map(|mesh| {
-                let (scale, rotation, translation) =
-                    mesh.world_from_mesh.to_scale_rotation_translation();
-                // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
-                let base_transform =
-                    glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
-                mesh.mesh
-                    .mesh_instances
-                    .iter()
-                    .map(move |mesh_instance| MeshInstance {
-                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                        world_from_mesh: base_transform * mesh_instance.world_from_mesh,
-                        outline_mask_ids: mesh.outline_mask_ids,
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
-                            mesh.picking_instance_hash,
-                        ),
-                        ..Default::default()
-                    })
-            })
-            .collect()
     }
 
     pub fn add_axis_lines(

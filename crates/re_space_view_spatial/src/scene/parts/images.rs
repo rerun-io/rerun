@@ -2,55 +2,73 @@ use std::collections::BTreeMap;
 
 use egui::NumExt;
 
+use itertools::Itertools as _;
 use re_components::{
     ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor, TensorData,
     TensorDataMeaning,
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::EntityPathHash;
-use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_query::{EntityView, QueryError};
 use re_renderer::{
-    renderer::{DepthCloud, RectangleOptions},
+    renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     resource_managers::Texture2DCreationDesc,
-    Colormap, OutlineMaskPreference,
+    Colormap,
 };
-use re_space_view::{SpaceViewHighlights, SpaceViewOutlineMasks};
+use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
-    gpu_bridge, Annotations, DefaultColor, SceneQuery, TensorDecodeCache, TensorStatsCache,
-    ViewerContext,
+    gpu_bridge, ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, TensorDecodeCache,
+    TensorStatsCache, ViewerContext,
 };
 
 use crate::{
-    scene::{EntityDepthOffsets, Image, SceneSpatial},
-    transform_cache::TransformCache,
+    scene::{
+        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+        parts::entity_iterator::process_entity_views,
+        SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    },
+    SpatialSpaceViewClass,
 };
 
-use super::ScenePart;
+use super::{SpatialScenePartData, SpatialSpaceViewState};
+
+pub struct Image {
+    /// Path to the image (note image instance ids would refer to pixels!)
+    pub ent_path: EntityPath,
+
+    pub tensor: DecodedTensor,
+
+    /// Textured rectangle for the renderer.
+    pub textured_rect: TexturedRect,
+
+    /// Pinhole camera this image is under.
+    pub parent_pinhole: Option<EntityPathHash>,
+
+    /// Draw order value used.
+    pub draw_order: DrawOrder,
+}
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
     ctx: &mut ViewerContext<'_>,
-    annotations: &Annotations,
-    world_from_obj: glam::Affine3A,
     ent_path: &EntityPath,
+    ent_context: &SpatialSceneEntityContext<'_>,
     tensor: &DecodedTensor,
     multiplicative_tint: egui::Rgba,
-    outline_mask: OutlineMaskPreference,
-    depth_offset: re_renderer::DepthOffset,
 ) -> Option<re_renderer::renderer::TexturedRect> {
     re_tracing::profile_function!();
 
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+    let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
         tensor,
-        tensor_stats,
-        annotations,
+        &tensor_stats,
+        &ent_context.annotations,
     ) {
         Ok(colormapped_texture) => {
             // TODO(emilk): let users pick texture filtering.
@@ -71,16 +89,22 @@ fn to_textured_rect(
             };
 
             Some(re_renderer::renderer::TexturedRect {
-                top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
-                extent_u: world_from_obj.transform_vector3(glam::Vec3::X * width as f32),
-                extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * height as f32),
+                top_left_corner_position: ent_context
+                    .world_from_obj
+                    .transform_point3(glam::Vec3::ZERO),
+                extent_u: ent_context
+                    .world_from_obj
+                    .transform_vector3(glam::Vec3::X * width as f32),
+                extent_v: ent_context
+                    .world_from_obj
+                    .transform_vector3(glam::Vec3::Y * height as f32),
                 colormapped_texture,
                 options: RectangleOptions {
                     texture_filter_magnification,
                     texture_filter_minification,
                     multiplicative_tint,
-                    depth_offset,
-                    outline_mask,
+                    depth_offset: ent_context.depth_offset,
+                    outline_mask: ent_context.highlight.overall,
                 },
             })
         }
@@ -91,84 +115,89 @@ fn to_textured_rect(
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageGrouping {
     parent_pinhole: Option<EntityPathHash>,
     draw_order: DrawOrder,
 }
 
-fn handle_image_layering(scene: &mut SceneSpatial) {
-    re_tracing::profile_function!();
-
-    // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
-    let mut image_groups: BTreeMap<ImageGrouping, Vec<Image>> = BTreeMap::new();
-    for image in scene.primitives.images.drain(..) {
-        image_groups
-            .entry(ImageGrouping {
-                parent_pinhole: image.parent_pinhole,
-                draw_order: image.draw_order,
-            })
-            .or_default()
-            .push(image);
-    }
-
-    // Then, for each group do resorting and change transparency.
-    for (_, mut images) in image_groups {
-        // Since we change transparency depending on order and re_renderer doesn't handle transparency
-        // ordering either, we need to ensure that sorting is stable at the very least.
-        // Sorting is done by depth offset, not by draw order which is the same for the entire group.
-        //
-        // Class id images should generally come last within the same layer as
-        // they typically have large areas being zeroed out (which maps to fully transparent).
-        images.sort_by_key(|image| {
-            (
-                image.textured_rect.options.depth_offset,
-                image.tensor.meaning == TensorDataMeaning::ClassId,
-            )
-        });
-
-        let total_num_images = images.len();
-        for (idx, image) in images.iter_mut().enumerate() {
-            // make top images transparent
-            let opacity = if idx == 0 {
-                1.0
-            } else {
-                // avoid precision problems in framebuffer
-                1.0 / total_num_images.at_most(20) as f32
-            };
-            image.textured_rect.options.multiplicative_tint = image
-                .textured_rect
-                .options
-                .multiplicative_tint
-                .multiply(opacity);
-        }
-
-        scene.primitives.images.extend(images);
-    }
+#[derive(Default)]
+pub struct ImagesPart {
+    pub data: SpatialScenePartData,
+    pub images: Vec<Image>,
 }
 
-pub(crate) struct ImagesPart;
-
 impl ImagesPart {
+    fn handle_image_layering(&mut self) {
+        re_tracing::profile_function!();
+
+        // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
+        let mut image_groups: BTreeMap<ImageGrouping, Vec<Image>> = BTreeMap::new();
+        for image in self.images.drain(..) {
+            image_groups
+                .entry(ImageGrouping {
+                    parent_pinhole: image.parent_pinhole,
+                    draw_order: image.draw_order,
+                })
+                .or_default()
+                .push(image);
+        }
+
+        // Then, for each group do resorting and change transparency.
+        for (_, mut images) in image_groups {
+            // Since we change transparency depending on order and re_renderer doesn't handle transparency
+            // ordering either, we need to ensure that sorting is stable at the very least.
+            // Sorting is done by depth offset, not by draw order which is the same for the entire group.
+            //
+            // Class id images should generally come last within the same layer as
+            // they typically have large areas being zeroed out (which maps to fully transparent).
+            images.sort_by_key(|image| {
+                (
+                    image.textured_rect.options.depth_offset,
+                    image.tensor.meaning == TensorDataMeaning::ClassId,
+                )
+            });
+
+            let total_num_images = images.len();
+            for (idx, image) in images.iter_mut().enumerate() {
+                // make top images transparent
+                let opacity = if idx == 0 {
+                    1.0
+                } else {
+                    // avoid precision problems in framebuffer
+                    1.0 / total_num_images.at_most(20) as f32
+                };
+                image.textured_rect.options.multiplicative_tint = image
+                    .textured_rect
+                    .options
+                    .multiplicative_tint
+                    .multiply(opacity);
+            }
+
+            self.images.extend(images);
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
-        entity_view: &EntityView<Tensor>,
-        scene: &mut SceneSpatial,
+        &mut self,
         ctx: &mut ViewerContext<'_>,
-        transforms: &TransformCache,
-        properties: &EntityProperties,
+        depth_clouds: &mut Vec<DepthCloud>,
+        scene_context: &SpatialSceneContext,
+        ent_props: &EntityProperties,
+        ent_view: &EntityView<Tensor>,
         ent_path: &EntityPath,
-        world_from_obj: glam::Affine3A,
-        highlights: &SpaceViewHighlights,
-        depth_offset: re_renderer::DepthOffset,
+        ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
+        let parent_pinhole_path = scene_context.transforms.parent_pinhole(ent_path);
+
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
-            entity_view.iter_primary()?,
-            entity_view.iter_component::<ColorRGBA>()?,
-            entity_view.iter_component::<DrawOrder>()?
+            ent_view.iter_primary()?,
+            ent_view.iter_component::<ColorRGBA>()?,
+            ent_view.iter_component::<DrawOrder>()?
         ) {
             re_tracing::profile_scope!("loop_iter");
             let Some(tensor) = tensor else { continue; };
@@ -187,32 +216,27 @@ impl ImagesPart {
                 }
             };
 
-            let annotations = scene.annotation_map.find(ent_path);
-            let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
-
-            if *properties.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth {
-                let query = ctx.current_query();
-                let closet_pinhole = ctx
-                    .store_db
-                    .entity_db
-                    .data_store
-                    .query_latest_component_at_closest_ancestor::<Pinhole>(ent_path, &query);
-
-                if let Some((pinhole_ent_path, _)) = closet_pinhole {
+            if *ent_props.backproject_depth.get() && tensor.meaning == TensorDataMeaning::Depth {
+                if let Some(parent_pinhole_path) = scene_context.transforms.parent_pinhole(ent_path)
+                {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
                     // What we want are the extrinsics of the depth camera!
                     match Self::process_entity_view_as_depth_cloud(
-                        scene,
                         ctx,
-                        transforms,
-                        properties,
+                        scene_context,
+                        ent_context,
+                        ent_props,
                         &tensor,
                         ent_path,
-                        &pinhole_ent_path,
-                        entity_highlight,
+                        parent_pinhole_path,
                     ) {
-                        Ok(()) => return Ok(()),
+                        Ok(cloud) => {
+                            self.data
+                                .extend_bounding_box(cloud.bbox(), ent_context.world_from_obj);
+                            depth_clouds.push(cloud);
+                            return Ok(());
+                        }
                         Err(err) => {
                             re_log::warn_once!("{err}");
                         }
@@ -220,26 +244,37 @@ impl ImagesPart {
                 };
             }
 
-            let color = annotations.class_description(None).annotation_info().color(
-                color.map(|c| c.to_array()).as_ref(),
-                DefaultColor::OpaqueWhite,
-            );
+            let color = ent_context
+                .annotations
+                .class_description(None)
+                .annotation_info()
+                .color(
+                    color.map(|c| c.to_array()).as_ref(),
+                    DefaultColor::OpaqueWhite,
+                );
 
-            if let Some(textured_rect) = to_textured_rect(
-                ctx,
-                &annotations,
-                world_from_obj,
-                ent_path,
-                &tensor,
-                color.into(),
-                entity_highlight.overall,
-                depth_offset,
-            ) {
-                scene.primitives.images.push(Image {
+            if let Some(textured_rect) =
+                to_textured_rect(ctx, ent_path, ent_context, &tensor, color.into())
+            {
+                {
+                    let top_left = textured_rect.top_left_corner_position;
+                    self.data.bounding_box.extend(top_left);
+                    self.data
+                        .bounding_box
+                        .extend(top_left + textured_rect.extent_u);
+                    self.data
+                        .bounding_box
+                        .extend(top_left + textured_rect.extent_v);
+                    self.data
+                        .bounding_box
+                        .extend(top_left + textured_rect.extent_v + textured_rect.extent_u);
+                }
+
+                self.images.push(Image {
                     ent_path: ent_path.clone(),
                     tensor,
                     textured_rect,
-                    parent_pinhole: transforms.parent_pinhole(ent_path),
+                    parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
                     draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
                 });
             }
@@ -248,33 +283,32 @@ impl ImagesPart {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
-        transforms: &TransformCache,
+        scene_context: &SpatialSceneContext,
+        ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
-        pinhole_ent_path: &EntityPath,
-        entity_highlight: &SpaceViewOutlineMasks,
-    ) -> Result<(), String> {
+        parent_pinhole_path: &EntityPath,
+    ) -> Result<DepthCloud, String> {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
+
         let Some(intrinsics) = store.query_latest_component::<Pinhole>(
-            pinhole_ent_path,
+            parent_pinhole_path,
             &ctx.current_query(),
         ) else {
-            return Err(format!("Couldn't fetch pinhole intrinsics at {pinhole_ent_path:?}"));
+            return Err(format!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}"));
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
-        let world_from_obj = pinhole_ent_path
+        let world_from_obj = parent_pinhole_path
             .parent()
-            .and_then(|ent_path| transforms.reference_from_entity(&ent_path));
+            .and_then(|ent_path| scene_context.transforms.reference_from_entity(&ent_path));
         let Some(world_from_obj) = world_from_obj else {
-            return Err(format!("Couldn't fetch pinhole extrinsics at {pinhole_ent_path:?}"));
+            return Err(format!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}"));
         };
 
         let Some([height, width, _]) = tensor.image_height_width_channels() else {
@@ -357,7 +391,7 @@ impl ImagesPart {
                 }
             };
 
-        scene.primitives.depth_clouds.clouds.push(DepthCloud {
+        Ok(DepthCloud {
             world_from_obj: world_from_obj.into(),
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_texture_depth,
@@ -366,66 +400,94 @@ impl ImagesPart {
             depth_dimensions: dimensions,
             depth_texture,
             colormap,
-            outline_mask_id: entity_highlight.overall,
+            outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
-        });
-
-        Ok(())
+        })
     }
 }
 
-impl ScenePart for ImagesPart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
+impl ScenePart<SpatialSpaceViewClass> for ImagesPart {
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![
+            Tensor::name(),
+            InstanceKey::name(),
+            ColorRGBA::name(),
+            DrawOrder::name(),
+        ]
+    }
+
+    fn populate(
+        &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        _space_view_state: &SpatialSpaceViewState,
+        scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
-    ) {
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("ImagesPart");
 
-        for (ent_path, props) in query.iter_entities() {
-            let Some(world_from_obj) = transforms.reference_from_entity(ent_path) else {
-                continue;
-            };
+        let mut depth_clouds = Vec::new();
 
-            match query_primary_with_history::<Tensor, 4>(
-                &ctx.store_db.entity_db.data_store,
-                &query.timeline,
-                &query.latest_at,
-                &props.visible_history,
-                ent_path,
-                [
-                    Tensor::name(),
-                    InstanceKey::name(),
-                    ColorRGBA::name(),
-                    DrawOrder::name(),
-                ],
-            )
-            .and_then(|entities| {
-                for entity in entities {
-                    Self::process_entity_view(
-                        &entity,
-                        scene,
-                        ctx,
-                        transforms,
-                        &props,
-                        ent_path,
-                        world_from_obj,
-                        highlights,
-                        depth_offsets.get(ent_path).unwrap_or(depth_offsets.image),
-                    )?;
-                }
-                Ok(())
-            }) {
-                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
-                Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
-                }
+        process_entity_views::<_, 4, _>(
+            ctx,
+            query,
+            scene_context,
+            highlights,
+            scene_context.depth_offsets.points,
+            self.archetype(),
+            |ctx, ent_path, ent_view, ent_context| {
+                let ent_props = query.entity_props_map.get(ent_path);
+                self.process_entity_view(
+                    ctx,
+                    &mut depth_clouds,
+                    scene_context,
+                    &ent_props,
+                    &ent_view,
+                    ent_path,
+                    ent_context,
+                )
+            },
+        );
+
+        self.handle_image_layering();
+
+        let mut draw_data_list = Vec::new();
+
+        match re_renderer::renderer::DepthCloudDrawData::new(
+            ctx.render_ctx,
+            &DepthClouds {
+                clouds: depth_clouds,
+                radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+            },
+        ) {
+            Ok(draw_data) => {
+                draw_data_list.push(draw_data.into());
+            }
+            Err(err) => {
+                re_log::error_once!(
+                    "Failed to create depth cloud draw data from depth images: {err}"
+                );
             }
         }
-        handle_image_layering(scene);
+        // TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
+        let rectangles = self
+            .images
+            .iter()
+            .map(|image| image.textured_rect.clone())
+            .collect_vec();
+        match re_renderer::renderer::RectangleDrawData::new(ctx.render_ctx, &rectangles) {
+            Ok(draw_data) => {
+                draw_data_list.push(draw_data.into());
+            }
+            Err(err) => {
+                re_log::error_once!("Failed to create rectangle draw data from images: {err}");
+            }
+        }
+
+        draw_data_list
+    }
+
+    fn data(&self) -> Option<&SpatialScenePartData> {
+        Some(&self.data)
     }
 }
