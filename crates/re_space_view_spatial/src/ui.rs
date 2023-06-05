@@ -138,8 +138,8 @@ impl SpatialSpaceViewState {
         re_tracing::profile_function!();
 
         for entity_path in entity_paths {
-            self.update_pinhole_property_heuristics(ctx, &entity_path, entity_properties);
-            self.update_depth_cloud_property_heuristics(ctx, &entity_path, entity_properties);
+            self.update_pinhole_property_heuristics(ctx, entity_path, entity_properties);
+            self.update_depth_cloud_property_heuristics(ctx, entity_path, entity_properties);
         }
     }
 
