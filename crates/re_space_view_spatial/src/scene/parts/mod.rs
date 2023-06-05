@@ -13,8 +13,7 @@ mod points2d;
 mod points3d;
 mod spatial_scene_part_data;
 
-pub(crate) use images::ImagesPart;
-
+pub use images::Image;
 pub use spatial_scene_part_data::SpatialScenePartData;
 
 use re_space_view::EmptySpaceViewState;
@@ -25,13 +24,10 @@ use std::sync::Arc;
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_viewer_context::{
-    Annotations, DefaultColor, ResolvedAnnotationInfo, SceneQuery, ViewerContext,
+    Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
-use re_viewer_context::{ScenePartCollection, SpaceViewHighlights};
 
-use super::{EntityDepthOffsets, SceneSpatial};
-use crate::SpatialSpaceViewClass;
-use crate::{scene::Keypoints, TransformContext};
+use crate::{scene::Keypoints, SpatialSpaceViewClass};
 
 type SpatialSpaceViewState = EmptySpaceViewState;
 
@@ -46,6 +42,7 @@ pub struct SpatialScenePartCollection {
     pub lines2d: lines2d::Lines2DPart,
     pub lines3d: lines3d::Lines3DPart,
     pub meshes: meshes::MeshPart,
+    pub images: images::ImagesPart,
 }
 
 impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
@@ -60,28 +57,17 @@ impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
             lines2d,
             lines3d,
             meshes,
+            images,
         } = self;
         vec![
             points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
+            images,
         ]
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-}
-
-// TODO(wumpf): remove
-pub trait ScenePart {
-    fn load(
-        &self,
-        scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        transforms: &TransformContext,
-        highlights: &SpaceViewHighlights,
-        depth_offsets: &EntityDepthOffsets,
-    );
 }
 
 /// Computes the instance hash that should be used for picking (in turn for selecting/hover)

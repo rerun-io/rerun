@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use re_arrow_store::LatestAtQuery;
 use re_components::{DisconnectedSpace, Pinhole, Transform3D};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
-use re_log_types::{Component, EntityPathHash};
+use re_log_types::Component;
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
 #[derive(Clone)]
@@ -15,7 +15,7 @@ struct TransformInfo {
     ///
     /// None indicates that this entity is under the eye camera with no Pinhole camera in-between.
     /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the space view.
-    pub parent_pinhole: Option<EntityPathHash>,
+    pub parent_pinhole: Option<EntityPath>,
 }
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
@@ -128,7 +128,7 @@ impl SceneContextPart for TransformContext {
             &query,
             entity_prop_map,
             glam::Affine3A::IDENTITY,
-            None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
+            &None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
         );
 
         // Walk up from the reference to the highest reachable parent.
@@ -173,7 +173,7 @@ impl SceneContextPart for TransformContext {
                 &query,
                 entity_prop_map,
                 reference_from_ancestor,
-                encountered_pinhole,
+                &encountered_pinhole,
             );
 
             current_tree = parent_tree;
@@ -189,7 +189,7 @@ impl TransformContext {
         query: &LatestAtQuery,
         entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Affine3A,
-        encountered_pinhole: Option<EntityPathHash>,
+        encountered_pinhole: &Option<EntityPath>,
     ) {
         match self.transform_per_entity.entry(tree.path.clone()) {
             std::collections::hash_map::Entry::Occupied(_) => {
@@ -198,13 +198,13 @@ impl TransformContext {
             std::collections::hash_map::Entry::Vacant(e) => {
                 e.insert(TransformInfo {
                     reference_from_entity,
-                    parent_pinhole: encountered_pinhole,
+                    parent_pinhole: encountered_pinhole.clone(),
                 });
             }
         }
 
         for child_tree in tree.children.values() {
-            let mut encountered_pinhole = encountered_pinhole;
+            let mut encountered_pinhole = encountered_pinhole.clone();
             let reference_from_child = match transform_at(
                 &child_tree.path,
                 data_store,
@@ -226,7 +226,7 @@ impl TransformContext {
                 query,
                 entity_properties,
                 reference_from_child,
-                encountered_pinhole,
+                &encountered_pinhole,
             );
         }
     }
@@ -248,10 +248,10 @@ impl TransformContext {
     ///
     /// None indicates either that the entity does not exist in this hierarchy or that this entity is under the eye camera with no Pinhole camera in-between.
     /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the space view.
-    pub fn parent_pinhole(&self, ent_path: &EntityPath) -> Option<EntityPathHash> {
+    pub fn parent_pinhole(&self, ent_path: &EntityPath) -> Option<&EntityPath> {
         self.transform_per_entity
             .get(ent_path)
-            .and_then(|i| i.parent_pinhole)
+            .and_then(|i| i.parent_pinhole.as_ref())
     }
 
     // This method isn't currently implemented, but we might need it in the future.
@@ -268,14 +268,14 @@ fn transform_at(
     store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
-    encountered_pinhole: &mut Option<EntityPathHash>,
+    encountered_pinhole: &mut Option<EntityPath>,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
     let pinhole = store.query_latest_component::<Pinhole>(entity_path, query);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
             return Err(UnreachableTransform::NestedPinholeCameras);
         } else {
-            *encountered_pinhole = Some(entity_path.hash());
+            *encountered_pinhole = Some(entity_path.clone());
         }
     }
 

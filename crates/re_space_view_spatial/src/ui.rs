@@ -714,7 +714,7 @@ pub fn picking(
         ctx.render_ctx,
         space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &scene.primitives,
+        &scene.scene.parts.images.images,
         &scene.ui,
     );
     state.previous_picking_result = Some(picking_result.clone());

@@ -10,10 +10,9 @@ pub use primitives::SceneSpatialPrimitives;
 
 use ahash::HashMap;
 
-use re_components::{ClassId, DecodedTensor, DrawOrder, InstanceKey, KeypointId};
+use re_components::{ClassId, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
-use re_log_types::EntityPathHash;
-use re_renderer::{renderer::TexturedRect, Color32, Size};
+use re_renderer::{Color32, Size};
 use re_viewer_context::{
     auto_color, AnnotationMap, Scene, ScenePartCollection, SceneQuery, SpaceViewHighlights,
     TypedScene, ViewerContext,
@@ -29,22 +28,6 @@ use contexts::EntityDepthOffsets;
 
 const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
-
-pub struct Image {
-    /// Path to the image (note image instance ids would refer to pixels!)
-    pub ent_path: EntityPath,
-
-    pub tensor: DecodedTensor,
-
-    /// Textured rectangle for the renderer.
-    pub textured_rect: TexturedRect,
-
-    /// Pinhole camera this image is under.
-    pub parent_pinhole: Option<EntityPathHash>,
-
-    /// Draw order value used.
-    pub draw_order: DrawOrder,
-}
 
 #[derive(Clone)]
 pub enum UiLabelTarget {
@@ -121,8 +104,6 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        let parts: Vec<&dyn parts::ScenePart> = vec![&parts::ImagesPart];
-
         // TODO(wumpf): Temporary build up of scene. This will be handled by the SpaceViewClass framework later.
         let mut scene = TypedScene::<SpatialSpaceViewClass> {
             context: SpatialSceneContext::default(),
@@ -131,17 +112,6 @@ impl SceneSpatial {
         };
         self.draw_data =
             scene.populate(ctx, query, &re_space_view::EmptySpaceViewState, highlights);
-
-        for part in parts {
-            part.load(
-                self,
-                ctx,
-                query,
-                &scene.context.transforms,
-                &scene.highlights,
-                &scene.context.depth_offsets,
-            );
-        }
 
         self.primitives.any_outlines = scene.highlights.any_outlines();
         self.primitives.recalculate_bounding_box();
@@ -203,7 +173,7 @@ impl SceneSpatial {
             return SpatialNavigationMode::ThreeD;
         }
 
-        if !self.primitives.images.is_empty() {
+        if !self.scene.parts.images.images.is_empty() {
             return SpatialNavigationMode::TwoD;
         }
 
