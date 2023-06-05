@@ -13,7 +13,7 @@ pub struct ViewerContext<'a> {
     /// Things that need caching and are shared across the whole viewer.
     ///
     /// Use this only for things that you expected be shared across different panels and/or space views.
-    pub cache: &'a mut Caches,
+    pub cache: &'a Caches,
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,

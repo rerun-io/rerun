@@ -1,21 +1,25 @@
+use std::any::{Any, TypeId};
+
 use ahash::HashMap;
-use std::any::Any;
+use parking_lot::Mutex;
 
 /// Does memoization of different objects for the immediate mode UI.
 #[derive(Default)]
-pub struct Caches(HashMap<std::any::TypeId, Box<dyn Cache>>);
+pub struct Caches(Mutex<HashMap<TypeId, Box<dyn Cache>>>);
 
 impl Caches {
     /// Call once per frame to potentially flush the cache(s).
-    pub fn begin_frame(&mut self) {
-        for cache in self.0.values_mut() {
+    pub fn begin_frame(&self) {
+        re_tracing::profile_function!();
+        for cache in self.0.lock().values_mut() {
             cache.begin_frame();
         }
     }
 
     /// Attempt to free up memory.
-    pub fn purge_memory(&mut self) {
-        for cache in self.0.values_mut() {
+    pub fn purge_memory(&self) {
+        re_tracing::profile_function!();
+        for cache in self.0.lock().values_mut() {
             cache.purge_memory();
         }
     }
@@ -23,16 +27,16 @@ impl Caches {
     /// Retrieves a cache for reading and writing.
     ///
     /// Adds the cache lazily if it wasn't already there.
-    pub fn entry<T: Cache + Default>(&mut self) -> &mut T {
-        let cache = self
-            .0
-            .entry(std::any::TypeId::of::<T>())
-            .or_insert(Box::<T>::default());
-
-        cache
-            .as_any_mut()
-            .downcast_mut::<T>()
-            .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types.")
+    pub fn entry<C: Cache + Default>(&self) -> parking_lot::MappedMutexGuard<'_, C> {
+        parking_lot::MutexGuard::map(self.0.lock(), |map| {
+            map.entry(TypeId::of::<C>())
+                .or_insert(Box::<C>::default())
+                .as_any_mut()
+                .downcast_mut::<C>()
+                .expect(
+                    "Downcast failed, this indicates a bug in how `Caches` adds new cache types.",
+                )
+        })
     }
 }
 
