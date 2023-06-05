@@ -298,7 +298,9 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::Open => {
-                open(self);
+                if let Some(rrd) = open_rrd_dialog() {
+                    self.on_rrd_loaded(rrd);
+                }
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::Quit => {
@@ -1057,14 +1059,14 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn open(app: &mut App) {
+fn open_rrd_dialog() -> Option<StoreHub> {
     if let Some(path) = rfd::FileDialog::new()
         .add_filter("rerun data file", &["rrd"])
         .pick_file()
     {
-        if let Some(store_db) = crate::loading::load_file_path(&path) {
-            app.on_rrd_loaded(store_db);
-        }
+        crate::loading::load_file_path(&path)
+    } else {
+        None
     }
 }
 
