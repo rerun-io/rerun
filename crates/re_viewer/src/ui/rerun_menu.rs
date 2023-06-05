@@ -3,11 +3,11 @@
 use egui::NumExt as _;
 use itertools::Itertools as _;
 
-use re_log_types::StoreKind;
+use re_log_types::{ApplicationId, StoreKind};
 use re_ui::Command;
 use re_viewer_context::AppOptions;
 
-use crate::App;
+use crate::{app_state::AppState, App, StoreHub};
 
 pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
@@ -65,11 +65,11 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
         ui.add_space(spacing);
 
         ui.menu_button("Recordings", |ui| {
-            recordings_menu(ui, app);
+            recordings_menu(ui, &app.store_hub, &mut app.state);
         });
 
         ui.menu_button("Blueprints", |ui| {
-            blueprints_menu(ui, app);
+            blueprints_menu(ui, &app.selected_app_id(), &app.store_hub, &mut app.state);
         });
 
         ui.menu_button("Options", |ui| {
@@ -131,9 +131,8 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
     ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
 }
 
-fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
-    let store_dbs = app
-        .store_hub
+fn recordings_menu(ui: &mut egui::Ui, store_hub: &StoreHub, app_state: &mut AppState) {
+    let store_dbs = store_hub
         .recordings()
         .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
         .collect_vec();
@@ -156,25 +155,28 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.recording_id().as_ref() == Some(store_db.store_id()),
+                app_state.recording_id().as_ref() == Some(store_db.store_id()),
                 info,
             )
             .clicked()
         {
-            app.state.set_recording_id(store_db.store_id().clone());
+            app_state.set_recording_id(store_db.store_id().clone());
         }
     }
 }
 
-fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
-    let app_id = app.selected_app_id();
-    let blueprint_dbs = app
-        .store_hub
+fn blueprints_menu(
+    ui: &mut egui::Ui,
+    app_id: &ApplicationId,
+    store_hub: &StoreHub,
+    app_state: &mut AppState,
+) {
+    let blueprint_dbs = store_hub
         .blueprints()
         .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
         .filter(|log| {
             log.store_info()
-                .map_or(false, |ri| ri.application_id == app_id)
+                .map_or(false, |ri| &ri.application_id == app_id)
         })
         .collect_vec();
 
@@ -203,12 +205,12 @@ fn blueprints_menu(ui: &mut egui::Ui, app: &mut App) {
         };
         if ui
             .radio(
-                app.state.selected_blueprint_by_app.get(&app_id) == Some(store_db.store_id()),
+                app_state.selected_blueprint_by_app.get(app_id) == Some(store_db.store_id()),
                 info,
             )
             .clicked()
         {
-            app.state
+            app_state
                 .selected_blueprint_by_app
                 .insert(app_id.clone(), store_db.store_id().clone());
         }

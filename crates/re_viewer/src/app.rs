@@ -235,6 +235,10 @@ impl App {
         &self.rx
     }
 
+    pub fn store_hub(&self) -> &crate::StoreHub {
+        &self.store_hub
+    }
+
     /// Adds a new space view class to the viewer.
     pub fn add_space_view_class(
         &mut self,
