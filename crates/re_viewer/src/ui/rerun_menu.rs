@@ -251,7 +251,7 @@ fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut 
 // TODO(emilk): support saving data on web
 #[cfg(not(target_arch = "wasm32"))]
 fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
-    let file_save_in_progress = app.is_file_save_in_progress();
+    let file_save_in_progress = app.background_tasks.is_file_save_in_progress();
 
     let save_button = Command::Save.menu_button(ui.ctx());
     let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());

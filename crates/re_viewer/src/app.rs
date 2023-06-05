@@ -1,8 +1,4 @@
-use std::{any::Any, hash::Hash};
-
-use ahash::HashMap;
 use itertools::Itertools as _;
-use poll_promise::Promise;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -16,7 +12,10 @@ use re_viewer_context::{
     SpaceViewClassRegistryError,
 };
 
-use crate::{ui::Blueprint, viewer_analytics::ViewerAnalytics, AppState, StoreHub};
+use crate::{
+    background_tasks::BackgroundTasks, ui::Blueprint, viewer_analytics::ViewerAnalytics, AppState,
+    StoreHub,
+};
 
 use re_log_types::TimeRangeF;
 
@@ -93,8 +92,8 @@ pub struct App {
     /// What is serialized
     pub(crate) state: AppState,
 
-    /// Pending background tasks, using `poll_promise`.
-    pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
+    /// Pending background tasks, e.g. files being saved.
+    pub(crate) background_tasks: BackgroundTasks,
 
     /// Toast notifications.
     toasts: toasts::Toasts,
@@ -185,7 +184,7 @@ impl App {
             rx,
             store_hub: Default::default(),
             state,
-            pending_promises: Default::default(),
+            background_tasks: Default::default(),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -238,58 +237,6 @@ impl App {
         space_view_class: impl SpaceViewClass + 'static,
     ) -> Result<(), SpaceViewClassRegistryError> {
         self.space_view_class_registry.add(space_view_class)
-    }
-
-    /// Creates a promise with the specified name that will run `f` on a background
-    /// thread using the `poll_promise` crate.
-    ///
-    /// Names can only be re-used once the promise with that name has finished running,
-    /// otherwise an other is returned.
-    // TODO(cmc): offer `spawn_async_promise` once we open save_file to the web
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn spawn_threaded_promise<F, T>(
-        &mut self,
-        name: impl Into<String>,
-        f: F,
-    ) -> anyhow::Result<()>
-    where
-        F: FnOnce() -> T + Send + 'static,
-        T: Send + 'static,
-    {
-        let name = name.into();
-
-        if self.pending_promises.contains_key(&name) {
-            anyhow::bail!("there's already a promise {name:?} running!");
-        }
-
-        let f = move || Box::new(f()) as Box<dyn Any + Send>; // erase it
-        let promise = Promise::spawn_thread(&name, f);
-
-        self.pending_promises.insert(name, promise);
-
-        Ok(())
-    }
-
-    /// Polls the promise with the given name.
-    ///
-    /// Returns `Some<T>` it it's ready, or `None` otherwise.
-    ///
-    /// Panics if `T` does not match the actual return value of the promise.
-    pub fn poll_promise<T: Any>(&mut self, name: impl AsRef<str>) -> Option<T> {
-        self.pending_promises
-            .remove(name.as_ref())
-            .and_then(|promise| match promise.try_take() {
-                Ok(any) => Some(*any.downcast::<T>().unwrap()),
-                Err(promise) => {
-                    self.pending_promises
-                        .insert(name.as_ref().to_owned(), promise);
-                    None
-                }
-            })
-    }
-
-    pub fn is_file_save_in_progress(&self) -> bool {
-        self.pending_promises.contains_key(FILE_SAVER_PROMISE)
     }
 
     fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
@@ -643,7 +590,7 @@ impl eframe::App for App {
 
         self.cleanup();
 
-        file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
+        file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
         let mut main_panel_frame = egui::Frame::default();
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
@@ -1071,17 +1018,12 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
 
 // ----------------------------------------------------------------------------
 
-const FILE_SAVER_PROMISE: &str = "file_saver";
-
-fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
-    use std::path::PathBuf;
-
-    if app.is_file_save_in_progress() {
+fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut BackgroundTasks) {
+    if background_tasks.is_file_save_in_progress() {
         // There's already a file save running in the background.
 
-        if let Some(res) = app.poll_promise::<anyhow::Result<PathBuf>>(FILE_SAVER_PROMISE) {
+        if let Some(res) = background_tasks.poll_file_saver_promise() {
             // File save promise has returned.
-
             match res {
                 Ok(path) => {
                     re_log::info!("File saved to {path:?}."); // this will also show a notification the user
@@ -1147,7 +1089,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
                 return;
             }
         };
-        if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
+        if let Err(err) = app.background_tasks.spawn_file_saver(f) {
             // NOTE: Can only happen if saving through the command palette.
             re_log::error!("File saving failed: {err}");
         }

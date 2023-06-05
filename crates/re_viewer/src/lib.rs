@@ -5,6 +5,7 @@
 
 mod app;
 mod app_state;
+mod background_tasks;
 pub mod blueprint_components;
 pub mod env_vars;
 mod loading;
