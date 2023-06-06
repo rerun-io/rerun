@@ -11,22 +11,106 @@ This is a guide to how to build Rerun.
 * [`RELEASES.md`](RELEASES.md)
 
 
-## Getting started with the repository.
-* Install the Rust toolchain: <https://rustup.rs/>
-* `git clone git@github.com:rerun-io/rerun.git && cd rerun`
-* Run `./scripts/setup_dev.sh`.
-* Make sure `cargo --version` prints `1.69.0` once you are done
+## Getting started with the repository
 
-All Rust examples are separate executable projections. Meaning to run them you specify the package, e.g. `cargo run -p dna`.
+First, install the Rust toolchain using the installer from <https://rustup.rs/>.
 
-You can type `cargo rerun` to compile and run the `rerun` binary with most features enabled, thanks to a shortcut in `.cargo/config.toml`.
+Then, clone the repository:
+```sh
+git clone git@github.com:rerun-io/rerun.git
+cd rerun
+```
 
-### Apple-silicon Macs
+Finally, run the following script to install the dependencies and CLI tools needed for Rerun's build environment:
+
+```sh
+./scripts/setup_dev.sh
+```
+
+Make sure `cargo --version` prints `1.69.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
 rustup set default-host aarch64-apple-darwin && rustup install 1.69.0
+```
+
+## Building and running the viewer
+
+Use this command for building and running the viewer:
+
+```sh
+cargo rerun
+```
+
+This custom cargo command is enabled by an alias located in `.cargo/config.toml`.
+
+
+## Running the Rust examples
+
+All Rust examples are setup as separate executables, so they can be run by specifying the corresponding package, for example:
+
+```sh
+cargo run -p dna
+```
+
+
+## Building and installing the Rerun Python SDK
+
+Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`
+
+Additionally, prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
+
+However, if you want to build from source with the following instructions.
+
+### Mac/Linux
+
+First, a local virtual environment must be created and the necessary dependencies installed (this needs to be done only once):
+
+```sh
+just py-dev-env
+```
+
+Then, the SDK can be compiled and installed in the virtual environment using the following command:
+
+```sh
+just py-build
+```
+
+This needs to be repeated each time the Rust source code is updated, for example after pulling updates using `git pull`.
+
+Finally, the virtual environment must be activated to run Python examples:
+
+```sh
+source venv/bin/activate
+python examples/python/car/main.py
+```
+
+### Windows (PowerShell)
+
+The `justfile` currently doesn't support Windows, so most of the steps must be run manually.
+
+First, create and activate a local virtual environment and install the required dependencies using the following commands:
+
+```ps1
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pyhton -m pip install -r scripts/requirements-dev.txt
+```
+
+Then build and install the Rerun SDK with:
+
+```ps1
+maturin develop \
+    --manifest-path rerun_py/Cargo.toml \
+    --extras="tests"
+```
+
+You can then run the example using the following command:
+
+```ps1
+python examples/python/car/main.py
 ```
 
 ## Building the docs
@@ -36,47 +120,6 @@ High-level documentation for rerun can be found at [http://rerun.io/docs](http:/
 Python API docs can be found at <https://ref.rerun.io/docs/python> and are built via `mkdocs` and hosted on GitHub. For details on the python doc-system, see [Writing Docs](https://github.com/rerun-io/rerun/blob/main/rerun_py/docs/writing_docs.md).
 
 Rust documentation is hosted on <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`
-
-## Build and install the Rerun Python SDK
-Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`
-
-Additionally, prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/latest>.
-
-However, if you want to build from source you can follow the instructions below.
-
-### Set up virtualenv
-
-Mac/Linux:
-
-```sh
-python3 -m venv venv  # Rerun supports Python version >= 3.7
-source venv/bin/activate
-python -m pip install --upgrade pip  # We need pip version >=21.3
-```
-
-Windows (powershell):
-
-```ps1
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-```
-
-From here on out, we assume you have this virtualenv activated.
-
-### Build and install
-
-You need to setup your build environment once with
-```sh
-./scripts/setup.sh
-```
-
-Then install the Rerun SDK with:
-```
-pip install ./rerun_py
-```
-
-> Note: If you are unable to upgrade pip to version `>=21.3`, you need to pass `--use-feature=in-tree-build` to the `pip install` command.
 
 
 ## Building for the Web
