@@ -57,11 +57,11 @@ cargo run -p dna
 
 ## Building and installing the Rerun Python SDK
 
-Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`
+Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`.
 
 Additionally, prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
-However, if you want to build from source with the following instructions.
+If you want to build from source, use the following instructions.
 
 ### Mac/Linux
 
@@ -77,7 +77,7 @@ Then, the SDK can be compiled and installed in the virtual environment using the
 just py-build
 ```
 
-This needs to be repeated each time the Rust source code is updated, for example after pulling updates using `git pull`.
+This needs to be repeated each time the Rust source code is updated, for example after updating your clone using `git pull`.
 
 Finally, the virtual environment must be activated to run Python examples:
 
@@ -88,7 +88,7 @@ python examples/python/car/main.py
 
 ### Windows (PowerShell)
 
-The `justfile` currently doesn't support Windows, so most of the steps must be run manually.
+The `justfile` currently doesn't support Windows, so each step must be run manually.
 
 First, create and activate a local virtual environment and install the required dependencies using the following commands:
 
