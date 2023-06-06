@@ -52,11 +52,6 @@ def main() -> None:
 
         rr_exp.add_space_view(name="overlaid", origin="/", entity_paths=["image", "rect/0", "rect/1"])
 
-    # Workaround https://github.com/rerun-io/rerun/issues/2124
-    import time
-
-    time.sleep(0.1)
-
 
 if __name__ == "__main__":
     main()
