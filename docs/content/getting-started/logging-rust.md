@@ -308,4 +308,4 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-To go further, have a look at some of our other [examples](./examples.md).
+To go further, have a look at some of our other [examples](/examples).
