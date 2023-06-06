@@ -48,7 +48,7 @@ This custom cargo command is enabled by an alias located in `.cargo/config.toml`
 
 ## Running the Rust examples
 
-All Rust examples are setup as separate executables, so they can be run by specifying the corresponding package, for example:
+All Rust examples are set up as separate executables, so they can be run by specifying the corresponding package, for example:
 
 ```sh
 cargo run -p dna
@@ -96,7 +96,7 @@ First, create and activate a local virtual environment and install the required 
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pyhton -m pip install -r scripts/requirements-dev.txt
+python -m pip install -r scripts/requirements-dev.txt
 ```
 
 Then build and install the Rerun SDK with:
@@ -138,7 +138,7 @@ cargo run -p re_build_web_viewer -- --release
 
 ### Building with WebGPU support
 
-By default all web builds are using WebGL for rendering.
+By default, all web builds are using WebGL for rendering.
 However, Rerun can also build with experimental WebGPU support!
 Note that currently we can't build wasm files that support both WebGPU and WebGL.
 
@@ -157,7 +157,7 @@ cargo run -p re_build_web_viewer -- --release --webgpu
 
 As of today, we link everything statically in both debug and release builds, which makes custom linkers and split debuginfo the two most impactful tools we have at our disposal in order to improve compile times.
 
-These tools can configured through your `Cargo` configuration, available at `$HOME/.cargo/config.toml`.
+These tools can be configured through your `Cargo` configuration, available at `$HOME/.cargo/config.toml`.
 
 ### macOS
 
