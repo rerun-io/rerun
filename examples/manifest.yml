@@ -1,0 +1,133 @@
+# `landing` expects this file to have the following format:
+# root {
+#   prelude: string
+#   children: [
+#     {
+#       # the path in the url, e.g. to get `rerun.io/examples/minimal` set `name: "minimal"`
+#       name: string
+#       # path to the python example
+#       python: string?
+#       # path to the rust example
+#       rust: string?
+#       # at least one of `python` or `rust` should be set
+#     }
+#     OR
+#     {
+#       # the path in the url, e.g. `rerun.io/examples/artificial-data`
+#       name: string
+#       # the title in the side nav + header, e.g. `Examples with Artificial Data`
+#       title: string
+#       # the content that's placed right after the header.
+#       # used to include setup instructions and general info
+#       prelude: string
+#       children: [
+#         { # same as above
+#           name: string
+#           python: string?
+#           rust: string?
+#         }
+#       ]
+#     }
+#   ]
+# }
+
+root:
+  prelude: |
+    In the Rerun [GitHub](https://github.com/rerun-io/rerun) repository we maintain
+    a list of examples that demonstrate using the Rerun logging APIs. Generally the
+    examples are individually self-contained, and can be run directly from a Git
+    clone of the repository. Many of the Python examples need additional dependencies
+    set up in a `requirements.txt` next to the example. These are noted in the
+    individual example sections below.
+
+    ## Setup
+
+    Make sure you have the Rerun repository checked out and the latest SDK installed.
+
+    ```bash
+    pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+    git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+    cd rerun
+    git checkout latest  # Check out the commit matching the latest SDK release
+    ```
+    > Note: Make sure your SDK version matches the examples.
+    For example, if your SDK version is `0.3.1`, check out the matching tag
+    in the Rerun repository by running `git checkout v0.3.1`.
+  children:
+    - name: artificial-data
+      title: Examples with Artificial Data
+      prelude: |
+        The following examples serve to illustrate various uses of the Rerun logging SDK.
+        They should not require any additional data downloads, and should run offline.
+      children:
+        - name: minimal
+          python: python/minimal
+          rust: rust/minimal
+
+        - name: api-demo
+          python: python/api_demo
+          rust: rust/api_demo
+
+        - name: car
+          python: python/car
+
+        - name: clock
+          python: python/clock
+          rust: rust/clock
+
+        - name: multiprocessing
+          python: python/multiprocessing
+
+        - name: multithreading
+          python: python/multithreading
+
+        - name: plots
+          python: python/plots
+
+        - name: text-logging
+          python: python/text_logging
+
+    - name: real-data
+      title: Examples with Real Data
+      prelude: |
+        The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
+        They all require additional data to be downloaded, so an internet connection is needed at least once.
+        The dataset fetching logic is all built into the examples, so no additional steps are needed.
+        In some of the examples such as [Stable Diffusion](#stable-diffusion), the algorithm is run on-line,
+        and may benefit from a GPU-enabled PyTorch machine.
+      children:
+        - name: arkitscenes
+          python: python/arkitscenes
+
+        - name: colmap
+          python: python/colmap
+
+        - name: deep-sdf
+          python: python/deep_sdf
+
+        - name: dicom
+          python: python/dicom
+
+        - name: mp-pose
+          python: python/mp_pose
+
+        - name: nyud
+          python: python/nyud
+
+        - name: objectron
+          python: python/objectron
+          rust: rust/objectron
+
+        - name: raw-mesh
+          python: python/raw_mesh
+          rust: rust/raw_mesh
+
+        - name: segment-anything
+          python: python/segment_anything
+
+        - name: stable-diffusion
+          python: python/stable_diffusion
+
+        - name: tracking-hf-opencv
+          python: python/tracking_hf_opencv
+

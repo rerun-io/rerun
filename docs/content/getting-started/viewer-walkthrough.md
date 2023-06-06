@@ -241,6 +241,6 @@ Again, if you ran into any issues following this guide, please don't hesitate to
 To get started with writing a program to logging data with the Rerun SDK see the [Python](logging-python.md) or
 [Rust](logging-rust.md) getting started guides.
 
-To see and explore other data, you can check out the [examples](examples.md).
+To see and explore other data, you can check out the [examples](/examples).
 
 For deeper context on the ideas covered here, consult the [Concept overview](../concepts.md).
