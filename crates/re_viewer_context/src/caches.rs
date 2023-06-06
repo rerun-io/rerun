@@ -24,19 +24,18 @@ impl Caches {
         }
     }
 
-    /// Retrieves a cache for reading and writing.
+    /// Accesses a cache for reading and writing.
     ///
     /// Adds the cache lazily if it wasn't already there.
-    pub fn entry<C: Cache + Default>(&self) -> parking_lot::MappedMutexGuard<'_, C> {
-        parking_lot::MutexGuard::map(self.0.lock(), |map| {
-            map.entry(TypeId::of::<C>())
-                .or_insert(Box::<C>::default())
-                .as_any_mut()
-                .downcast_mut::<C>()
-                .expect(
-                    "Downcast failed, this indicates a bug in how `Caches` adds new cache types.",
-                )
-        })
+    pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
+        f(self
+            .0
+            .lock()
+            .entry(TypeId::of::<C>())
+            .or_insert(Box::<C>::default())
+            .as_any_mut()
+            .downcast_mut::<C>()
+            .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
     }
 }
 

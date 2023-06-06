@@ -42,11 +42,10 @@ impl MeshPart {
 
             let outline_mask_ids = ent_context.highlight.index_outline_mask(instance_key);
 
-            if let Some(mesh) =
-                ctx.cache
-                    .entry::<MeshCache>()
-                    .entry(&ent_path.to_string(), &mesh, ctx.render_ctx)
-            {
+            let mesh = ctx
+                .cache
+                .entry(|c: &mut MeshCache| c.entry(&ent_path.to_string(), &mesh, ctx.render_ctx));
+            if let Some(mesh) = mesh {
                 instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                     MeshInstance {
                         gpu_mesh: mesh_instance.gpu_mesh.clone(),

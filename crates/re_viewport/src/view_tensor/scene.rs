@@ -33,7 +33,7 @@ impl SceneTensor {
         tensor: Tensor,
     ) {
         if !tensor.is_shaped_like_an_image() {
-            match ctx.cache.entry::<TensorDecodeCache>().entry(tensor) {
+            match ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor)) {
                 Ok(tensor) => {
                     let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
                     self.tensors.insert(instance_path, tensor);

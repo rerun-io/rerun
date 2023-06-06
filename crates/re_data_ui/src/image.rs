@@ -26,7 +26,9 @@ impl EntityDataUi for Tensor {
     ) {
         re_tracing::profile_function!();
 
-        let decoded = ctx.cache.entry::<TensorDecodeCache>().entry(self.clone());
+        let decoded = ctx
+            .cache
+            .entry(|c: &mut TensorDecodeCache| c.entry(self.clone()));
         match decoded {
             Ok(decoded) => {
                 let annotations = crate::annotations(ctx, query, entity_path);
@@ -58,7 +60,7 @@ fn tensor_ui(
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
-    let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+    let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
     let debug_name = entity_path.to_string();
     let texture_result = gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
