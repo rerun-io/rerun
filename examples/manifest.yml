@@ -54,6 +54,39 @@ root:
     For example, if your SDK version is `0.3.1`, check out the matching tag
     in the Rerun repository by running `git checkout v0.3.1`.
   children:
+    - name: artificial-data
+      title: Examples with Artificial Data
+      prelude: |
+        The following examples serve to illustrate various uses of the Rerun logging SDK.
+        They should not require any additional data downloads, and should run offline.
+      children:
+        - name: minimal
+          python: python/minimal
+          rust: rust/minimal
+
+        - name: api-demo
+          python: python/api_demo
+          rust: rust/api_demo
+
+        - name: car
+          python: python/car
+
+        - name: clock
+          python: python/clock
+          rust: rust/clock
+
+        - name: multiprocessing
+          python: python/multiprocessing
+
+        - name: multithreading
+          python: python/multithreading
+
+        - name: plots
+          python: python/plots
+
+        - name: text-logging
+          python: python/text_logging
+
     - name: real-data
       title: Examples with Real Data
       prelude: |
@@ -97,37 +130,4 @@ root:
 
         - name: tracking-hf-opencv
           python: python/tracking_hf_opencv
-
-    - name: artificial-data
-      title: Examples with Artificial Data
-      prelude: |
-        The following examples serve to illustrate various uses of the Rerun logging SDK.
-        They should not require any additional data downloads, and should run offline.
-      children:
-        - name: minimal
-          python: python/minimal
-          rust: rust/minimal
-
-        - name: api-demo
-          python: python/api_demo
-          rust: rust/api_demo
-
-        - name: car
-          python: python/car
-
-        - name: clock
-          python: python/clock
-          rust: rust/clock
-
-        - name: multiprocessing
-          python: python/multiprocessing
-
-        - name: multithreading
-          python: python/multithreading
-
-        - name: plots
-          python: python/plots
-
-        - name: text-logging
-          python: python/text_logging
 
