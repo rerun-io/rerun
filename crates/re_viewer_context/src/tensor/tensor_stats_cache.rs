@@ -7,8 +7,9 @@ use crate::Cache;
 pub struct TensorStatsCache(nohash_hasher::IntMap<TensorId, TensorStats>);
 
 impl TensorStatsCache {
-    pub fn entry(&mut self, tensor: &Tensor) -> &TensorStats {
-        self.0
+    pub fn entry(&mut self, tensor: &Tensor) -> TensorStats {
+        *self
+            .0
             .entry(tensor.tensor_id)
             .or_insert_with(|| TensorStats::new(tensor))
     }

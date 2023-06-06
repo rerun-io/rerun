@@ -816,11 +816,10 @@ pub fn picking(
 
                                 let tensor_name = instance_path.to_string();
 
-                                match ctx.cache
-                                        .entry::<TensorDecodeCache>()
-                                        .entry(tensor) {
+                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor));
+                                match decoded_tensor {
                                     Ok(decoded_tensor) => {
-                                        let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(&decoded_tensor);
+                                        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(&decoded_tensor));
                                         show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,

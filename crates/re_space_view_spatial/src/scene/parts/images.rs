@@ -61,7 +61,7 @@ fn to_textured_rect(
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+    let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
@@ -206,7 +206,7 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            let tensor = match ctx.cache.entry::<TensorDecodeCache>().entry(tensor) {
+            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor)) {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
@@ -374,7 +374,7 @@ impl ImagesPart {
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
-        let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
         let max_data_value = if let Some((_min, max)) = tensor_stats.range {
             max as f32
         } else {
