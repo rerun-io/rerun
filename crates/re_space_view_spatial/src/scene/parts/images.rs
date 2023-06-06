@@ -374,18 +374,18 @@ impl ImagesPart {
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
-        let max_data_value =
-            if let Some((_min, max)) = ctx.cache.entry::<TensorStatsCache>().entry(tensor).range {
-                max as f32
-            } else {
-                // This could only happen for Jpegs, and we should never get here.
-                // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
-                re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
-                match tensor.data {
-                    TensorData::U16(_) => u16::MAX as f32,
-                    _ => 10.0,
-                }
-            };
+        let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+        let max_data_value = if let Some((_min, max)) = tensor_stats.range {
+            max as f32
+        } else {
+            // This could only happen for Jpegs, and we should never get here.
+            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
+            re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
+            match tensor.data {
+                TensorData::U16(_) => u16::MAX as f32,
+                _ => 10.0,
+            }
+        };
 
         Ok(DepthCloud {
             world_from_obj: world_from_obj.into(),

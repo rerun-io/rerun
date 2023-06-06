@@ -67,15 +67,11 @@ impl ViewTensorState {
             return;
         };
 
+        let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
         ctx.re_ui
             .selection_grid(ui, "tensor_selection_ui")
             .show(ui, |ui| {
-                tensor_summary_ui_grid_contents(
-                    ctx.re_ui,
-                    ui,
-                    tensor,
-                    ctx.cache.entry::<TensorStatsCache>().entry(tensor),
-                );
+                tensor_summary_ui_grid_contents(ctx.re_ui, ui, tensor, &tensor_stats);
                 self.texture_settings.ui(ctx.re_ui, ui);
                 self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
             });
