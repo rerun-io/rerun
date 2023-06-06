@@ -3,7 +3,7 @@
 #   prelude: string
 #   children: [
 #     {
-#       # the path in the url, e.g. `rerun.io/examples/minimal`
+#       # the path in the url, e.g. to get `rerun.io/examples/minimal` set `name: "minimal"`
 #       name: string
 #       # path to the python example
 #       python: string?
