@@ -10,7 +10,6 @@ mod space_view_heuristics;
 mod space_view_highlights;
 mod view_category;
 mod view_tensor;
-mod view_time_series;
 mod viewport;
 
 pub mod blueprint_components;
