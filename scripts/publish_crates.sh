@@ -121,6 +121,7 @@ cargo publish $FLAGS -p re_data_ui
 cargo publish $FLAGS -p re_time_panel
 cargo publish $FLAGS -p re_space_view
 cargo publish $FLAGS -p re_viewport
+cargo publish $FLAGS -p re_space_view_bar_chart
 cargo publish $FLAGS -p re_space_view_text
 cargo publish $FLAGS -p re_space_view_text_box
 cargo publish $FLAGS -p re_space_view_spatial
