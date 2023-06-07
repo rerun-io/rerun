@@ -226,6 +226,10 @@ impl Viewport {
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
         for entity_path in &entities {
+            if entity_path.is_root() {
+                continue;
+            }
+
             ui.horizontal(|ui| {
                 let mut properties = space_view
                     .data_blueprint

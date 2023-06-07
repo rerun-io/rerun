@@ -31,6 +31,15 @@ pub fn all_possible_space_views(
         .chain(root_children.values().map(|sub_tree| &sub_tree.path))
         .unique();
 
+    // TODO(andreas): Only needed for workaround for custom space views.
+    //                  This should go away together with ViewCategory.
+    let root_space = spaces_info.get_first_parent_with_info(&EntityPath::root());
+    let root_entitites = root_space
+        .descendants_without_transform
+        .iter()
+        .cloned()
+        .collect::<Vec<_>>();
+
     // For each candidate, create space views for all possible categories.
     candidate_space_paths
         .flat_map(|candidate_space_path| {
@@ -46,10 +55,19 @@ pub fn all_possible_space_views(
                 })
                 .collect::<Vec<_>>()
         })
-        // TODO(andreas): Hack to get in custom space views.
-        // .chain(ctx.space_view_class_registry.iter().map(|class| {
-        //     SpaceViewBlueprint::new(class.name(), ViewCategory::Text, &EntityPath::root(), &[])
-        // }))
+        // TODO(wumpf): Workaround to add custom space views.
+        .chain(ctx.space_view_class_registry.iter().filter_map(|class| {
+            if category_from_class_name(class.name()).is_none() {
+                Some(SpaceViewBlueprint::new(
+                    class.name(),
+                    ViewCategory::Text,
+                    &EntityPath::root(),
+                    &root_entitites,
+                ))
+            } else {
+                None
+            }
+        }))
         .collect()
 }
 
@@ -369,4 +387,16 @@ fn class_name_from_category(category: ViewCategory) -> SpaceViewClassName {
         ViewCategory::Tensor => "Tensor",
     }
     .into()
+}
+
+fn category_from_class_name(name: SpaceViewClassName) -> Option<ViewCategory> {
+    match name.as_str() {
+        "Text" => Some(ViewCategory::Text),
+        "Text Box" => Some(ViewCategory::TextBox),
+        "Time Series" => Some(ViewCategory::TimeSeries),
+        "Bar Chart" => Some(ViewCategory::BarChart),
+        "Spatial" => Some(ViewCategory::Spatial),
+        "Tensor" => Some(ViewCategory::Tensor),
+        _ => None,
+    }
 }
