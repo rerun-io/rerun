@@ -5,7 +5,7 @@ use re_data_store::InstancePathHash;
 use re_log_types::InstanceKey;
 use re_renderer::PickingLayerProcessor;
 
-use super::{parts::Image, SceneSpatialUiData};
+use super::parts::Image;
 use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -108,7 +108,7 @@ impl PickingContext {
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
         previous_picking_result: &Option<PickingResult>,
         images: &[Image],
-        ui_data: &SceneSpatialUiData,
+        ui_rects: &[PickableUiRect],
     ) -> PickingResult {
         re_tracing::profile_function!();
 
@@ -121,7 +121,7 @@ impl PickingContext {
         );
         let mut rect_hits = picking_textured_rects(self, images);
         rect_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
-        let ui_rect_hits = picking_ui_rects(self, ui_data);
+        let ui_rect_hits = picking_ui_rects(self, ui_rects);
 
         let mut hits = Vec::new();
 
@@ -285,18 +285,23 @@ fn picking_textured_rects(context: &PickingContext, images: &[Image]) -> Vec<Pic
     hits
 }
 
+pub struct PickableUiRect {
+    pub rect: egui::Rect,
+    pub instance_hash: InstancePathHash,
+}
+
 fn picking_ui_rects(
     context: &PickingContext,
-    ui_data: &SceneSpatialUiData,
+    ui_rects: &[PickableUiRect],
 ) -> Option<PickingRayHit> {
     re_tracing::profile_function!();
 
     let egui_pos = egui::pos2(context.pointer_in_space2d.x, context.pointer_in_space2d.y);
-    for (bbox, instance_hash) in &ui_data.pickable_ui_rects {
-        if bbox.contains(egui_pos) {
+    for ui_rect in ui_rects {
+        if ui_rect.rect.contains(egui_pos) {
             // Handle only a single ui rectangle (exit right away, ignore potential overlaps)
             return Some(PickingRayHit {
-                instance_path_hash: *instance_hash,
+                instance_path_hash: ui_rect.instance_hash,
                 space_position: context.ray_in_world.origin,
                 hit_type: PickingHitType::GuiOverlay,
                 depth_offset: 0,

@@ -16,7 +16,6 @@ mod viewport;
 
 pub mod blueprint_components;
 
-pub use re_space_view_spatial::SpatialNavigationMode; // TODO(andreas): Remove, have two kinds of space views instead.
 pub use space_info::SpaceInfoCollection;
 pub use space_view::{SpaceViewBlueprint, SpaceViewState};
 pub use view_category::ViewCategory;

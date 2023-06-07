@@ -114,7 +114,10 @@ impl Viewport {
                     .space_views
                     .keys()
                     .sorted_by_key(|space_view_id| {
-                        (&self.space_views[space_view_id].space_path, *space_view_id)
+                        (
+                            &self.space_views[space_view_id].space_origin,
+                            *space_view_id,
+                        )
                     })
                     .copied()
                     .collect_vec();
@@ -384,7 +387,7 @@ impl Viewport {
 
     fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
         for existing_view in self.space_views.values() {
-            if existing_view.space_path == space_view_candidate.space_path {
+            if existing_view.space_origin == space_view_candidate.space_origin {
                 if existing_view.entities_determined_by_user {
                     // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
                     // So let's skip that.
@@ -445,6 +448,7 @@ impl Viewport {
             .entry(visible_space_views.clone())
             .or_insert_with(|| {
                 super::auto_layout::tree_from_space_views(
+                    ctx,
                     ui.available_size(),
                     &visible_space_views,
                     &self.space_views,
@@ -479,10 +483,9 @@ impl Viewport {
 
             for space_view in all_possible_space_views(ctx, spaces_info)
                 .into_iter()
-                .sorted_by_key(|space_view| space_view.space_path.to_string())
+                .sorted_by_key(|space_view| space_view.space_origin.to_string())
             {
-                let icon = if let Ok(class) = ctx.space_view_class_registry.query(space_view.class)
-                {
+                let icon = if let Ok(class) = ctx.space_view_class_registry.get(space_view.class) {
                     class.icon()
                 } else {
                     // TODO(andreas): Error handling if class is not found once categories are gone.
@@ -494,10 +497,10 @@ impl Viewport {
                     .selectable_label_with_icon(
                         ui,
                         icon,
-                        if space_view.space_path.is_root() {
+                        if space_view.space_origin.is_root() {
                             space_view.display_name.clone()
                         } else {
-                            space_view.space_path.to_string()
+                            space_view.space_origin.to_string()
                         },
                         false,
                     )
@@ -549,7 +552,7 @@ impl ViewportState {
         self.space_view_states
             .entry(space_view_id)
             .or_insert_with(|| {
-                let state = if let Ok(state) = space_view_class_registry.query(space_view_class) {
+                let state = if let Ok(state) = space_view_class_registry.get(space_view_class) {
                     state.new_state()
                 } else {
                     // TODO(andreas): Enable this once categories are gone.
@@ -564,7 +567,6 @@ impl ViewportState {
                     selected_tensor: Default::default(),
                     state_time_series: Default::default(),
                     state_bar_chart: Default::default(),
-                    state_spatial: Default::default(),
                     state_tensors: Default::default(),
                 }
             })
@@ -793,7 +795,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         // Show help last, since not all space views have help text
-        help_text_ui(ui, self.ctx.re_ui, space_view, space_view_state);
+        help_text_ui(self.ctx, ui, space_view, space_view_state);
     }
 
     // Styling:
@@ -822,16 +824,25 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 }
 
 fn help_text_ui(
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    re_ui: &re_ui::ReUi,
     space_view_blueprint: &SpaceViewBlueprint,
     space_view_state: &SpaceViewState,
 ) {
-    let help_text = match space_view_blueprint.category {
-        ViewCategory::TimeSeries => Some(crate::view_time_series::help_text(re_ui)),
-        ViewCategory::BarChart => Some(crate::view_bar_chart::help_text(re_ui)),
-        ViewCategory::Spatial => Some(space_view_state.state_spatial.help_text(re_ui)),
-        ViewCategory::TextBox | ViewCategory::Text | ViewCategory::Tensor => None,
+    let help_text = if let Ok(class) = ctx
+        .space_view_class_registry
+        .get(space_view_blueprint.class)
+    {
+        Some(class.help_text(ctx.re_ui, space_view_state.state.as_ref()))
+    } else {
+        match space_view_blueprint.category {
+            ViewCategory::TimeSeries => Some(crate::view_time_series::help_text(ctx.re_ui)),
+            ViewCategory::BarChart => Some(crate::view_bar_chart::help_text(ctx.re_ui)),
+            ViewCategory::TextBox
+            | ViewCategory::Text
+            | ViewCategory::Tensor
+            | ViewCategory::Spatial => None,
+        }
     };
 
     if let Some(help_text) = help_text {

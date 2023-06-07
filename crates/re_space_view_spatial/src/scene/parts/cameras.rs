@@ -11,10 +11,10 @@ use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 use super::{instance_path_hash_for_picking, SpatialScenePartData, SpatialSpaceViewState};
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    scene::{contexts::SpatialSceneContext, SceneSpatial},
-    space_camera_3d::SpaceCamera3D,
-    SpatialSpaceViewClass,
+    scene::contexts::SpatialSceneContext, space_camera_3d::SpaceCamera3D, SpatialSpaceView,
 };
+
+const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
 /// Determine the view coordinates (i.e.) the axis semantics.
 ///
@@ -152,7 +152,6 @@ impl CamerasPart {
         ];
 
         let radius = re_renderer::Size::new_points(1.0);
-        let color = SceneSpatial::CAMERA_COLOR;
         let num_instances = 1; // There is only ever one instance of `Transform` per entity.
         let instance_path_for_picking = instance_path_hash_for_picking(
             ent_path,
@@ -171,7 +170,7 @@ impl CamerasPart {
         let lines = batch
             .add_segments(segments.into_iter())
             .radius(radius)
-            .color(color)
+            .color(CAMERA_COLOR)
             .flags(LineStripFlags::FLAG_CAP_END_ROUND | LineStripFlags::FLAG_CAP_START_ROUND)
             .picking_instance_id(instance_layer_id.instance);
 
@@ -185,7 +184,7 @@ impl CamerasPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for CamerasPart {
+impl ScenePart<SpatialSpaceView> for CamerasPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Pinhole::name(),]
     }

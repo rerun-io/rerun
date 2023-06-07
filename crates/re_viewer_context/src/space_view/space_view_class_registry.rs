@@ -21,10 +21,10 @@ impl SpaceViewClassRegistry {
     /// Adds a new space view type.
     ///
     /// Fails if a space view type with the same name was already registered.
-    pub fn add(
+    pub fn add<T: SpaceViewClass + Default + 'static>(
         &mut self,
-        space_view_type: impl SpaceViewClass + 'static,
     ) -> Result<(), SpaceViewClassRegistryError> {
+        let space_view_type = T::default();
         let type_name = space_view_type.name();
         if self
             .0
@@ -38,7 +38,7 @@ impl SpaceViewClassRegistry {
     }
 
     /// Queries a space view type by name.
-    pub fn query(
+    pub fn get(
         &self,
         name: SpaceViewClassName,
     ) -> Result<&dyn SpaceViewClass, SpaceViewClassRegistryError> {

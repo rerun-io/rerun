@@ -102,7 +102,7 @@ mod gpu_data {
 
 pub struct DepthCloud {
     /// The extrinsics of the camera used for the projection.
-    pub world_from_obj: glam::Mat4,
+    pub world_from_obj: glam::Affine3A,
 
     /// The intrinsics of the camera used for the projection.
     ///
@@ -159,7 +159,7 @@ impl DepthCloud {
         for corner in corners {
             let depth = corner.z;
             let pos_in_obj = ((corner.truncate() - offset) * depth / focal_length).extend(depth);
-            let pos_in_world = self.world_from_obj.project_point3(pos_in_obj);
+            let pos_in_world = self.world_from_obj.transform_point3(pos_in_obj);
             bbox.extend(pos_in_world);
         }
 

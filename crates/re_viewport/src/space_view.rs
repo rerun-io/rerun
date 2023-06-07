@@ -1,8 +1,7 @@
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, InstancePath, TimeInt};
+use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
-use re_space_view_spatial::{SceneSpatial, ViewSpatialState};
 use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
 
 use crate::{
@@ -26,7 +25,7 @@ pub struct SpaceViewBlueprint {
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
-    pub space_path: EntityPath,
+    pub space_origin: EntityPath,
 
     /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
     /// It determines which entities are part of the spaceview.
@@ -66,7 +65,7 @@ impl SpaceViewBlueprint {
             display_name,
             class: space_view_class,
             id: SpaceViewId::random(),
-            space_path: space_path.clone(),
+            space_origin: space_path.clone(),
             data_blueprint: data_blueprint_tree,
             category,
             entities_determined_by_user: false,
@@ -83,9 +82,11 @@ impl SpaceViewBlueprint {
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created
             let queries_entities =
-                default_queried_entities(ctx, &self.space_path, spaces_info, self.category);
-            self.data_blueprint
-                .insert_entities_according_to_hierarchy(queries_entities.iter(), &self.space_path);
+                default_queried_entities(ctx, &self.space_origin, spaces_info, self.category);
+            self.data_blueprint.insert_entities_according_to_hierarchy(
+                queries_entities.iter(),
+                &self.space_origin,
+            );
         }
 
         while ScreenshotProcessor::next_readback_result(
@@ -144,29 +145,25 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
-        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
+        if let Ok(space_view_class) = ctx.space_view_class_registry.get(self.class) {
             re_tracing::profile_scope!("selection_ui", space_view_class.name());
-            space_view_class.selection_ui(ctx, ui, view_state.state.as_mut());
+            space_view_class.selection_ui(
+                ctx,
+                ui,
+                view_state.state.as_mut(),
+                &self.space_origin,
+                self.id,
+            );
         } else {
             // Legacy handling
 
             #[allow(clippy::match_same_arms)]
             match self.category {
-                ViewCategory::Text => {}
-                ViewCategory::TextBox => {
+                ViewCategory::Text | ViewCategory::Spatial | ViewCategory::TextBox => {
                     // migrated.
                 }
                 ViewCategory::TimeSeries => {}
                 ViewCategory::BarChart => {}
-                ViewCategory::Spatial => {
-                    view_state.state_spatial.selection_ui(
-                        ctx,
-                        ui,
-                        &self.data_blueprint,
-                        &self.space_path,
-                        self.id,
-                    );
-                }
                 ViewCategory::Tensor => {
                     if let Some(selected_tensor) = &view_state.selected_tensor {
                         if let Some(state_tensor) =
@@ -195,32 +192,45 @@ impl SpaceViewBlueprint {
             return;
         }
 
-        let query = re_viewer_context::SceneQuery {
-            space_origin: &self.space_path,
-            entity_paths: self.data_blueprint.entity_paths(),
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-            latest_at,
-            entity_props_map: self.data_blueprint.data_blueprints_projected(),
-        };
+        if let Ok(space_view_class) = ctx.space_view_class_registry.get(self.class) {
+            space_view_class.prepare_populate(
+                ctx,
+                view_state.state.as_mut(),
+                &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
+                self.data_blueprint.data_blueprints_individual(),
+            );
 
-        if let Ok(space_view_class) = ctx.space_view_class_registry.query(self.class) {
-            {
-                re_tracing::profile_scope!("prepare_populate", space_view_class.name());
-                space_view_class.prepare_populate(ctx, view_state.state.as_mut());
-            }
+            let query = re_viewer_context::SceneQuery {
+                space_origin: &self.space_origin,
+                entity_paths: self.data_blueprint.entity_paths(),
+                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                latest_at,
+                entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            };
+
             let mut scene = space_view_class.new_scene();
             scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
 
-            // TODO(andreas): Pass scene to renderer.
-            // TODO(andreas): Setup re_renderer view.
-            {
-                re_tracing::profile_scope!("ui", space_view_class.name());
-                space_view_class.ui(ctx, ui, view_state.state.as_mut(), scene);
-            }
+            space_view_class.ui(
+                ctx,
+                ui,
+                view_state.state.as_mut(),
+                scene,
+                &self.space_origin,
+                self.id,
+            );
         } else {
             // Legacy handling
+            let query = re_viewer_context::SceneQuery {
+                space_origin: &self.space_origin,
+                entity_paths: self.data_blueprint.entity_paths(),
+                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                latest_at,
+                entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            };
+
             match self.category {
-                ViewCategory::Text | ViewCategory::TextBox => {
+                ViewCategory::Text | ViewCategory::TextBox | ViewCategory::Spatial => {
                     // migrated.
                 }
 
@@ -234,22 +244,6 @@ impl SpaceViewBlueprint {
                     let mut scene = view_bar_chart::SceneBarChart::default();
                     scene.load(ctx, &query);
                     view_state.ui_bar_chart(ctx, ui, &scene);
-                }
-
-                ViewCategory::Spatial => {
-                    let mut scene = SceneSpatial::new(ctx.render_ctx);
-                    scene.load(ctx, &query, highlights);
-                    view_state
-                        .state_spatial
-                        .update_object_property_heuristics(ctx, &mut self.data_blueprint);
-                    view_state.ui_spatial(
-                        ctx,
-                        ui,
-                        &self.space_path,
-                        scene,
-                        self.id,
-                        self.data_blueprint.data_blueprints_projected(),
-                    );
                 }
 
                 ViewCategory::Tensor => {
@@ -292,7 +286,7 @@ impl SpaceViewBlueprint {
             if entity_categories.contains(self.category)
                 && !self.data_blueprint.contains_entity(entity_path)
                 && spaces_info
-                    .is_reachable_by_transform(entity_path, &self.space_path)
+                    .is_reachable_by_transform(entity_path, &self.space_origin)
                     .is_ok()
             {
                 entities.push(entity_path.clone());
@@ -301,7 +295,7 @@ impl SpaceViewBlueprint {
 
         if !entities.is_empty() {
             self.data_blueprint
-                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_path);
+                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_origin);
             self.entities_determined_by_user = true;
         }
     }
@@ -319,34 +313,10 @@ pub struct SpaceViewState {
 
     pub state_time_series: view_time_series::ViewTimeSeriesState,
     pub state_bar_chart: view_bar_chart::BarChartState,
-    pub state_spatial: ViewSpatialState,
     pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
 impl SpaceViewState {
-    // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
-    #[allow(clippy::too_many_arguments)]
-    fn ui_spatial(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        space: &EntityPath,
-        scene: SceneSpatial,
-        space_view_id: SpaceViewId,
-        entity_properties: &EntityPropertyMap,
-    ) {
-        ui.vertical(|ui| {
-            self.state_spatial.view_spatial(
-                ctx,
-                ui,
-                space,
-                scene,
-                space_view_id,
-                entity_properties,
-            );
-        });
-    }
-
     fn ui_tensor(
         &mut self,
         ctx: &mut ViewerContext<'_>,

@@ -94,7 +94,7 @@ fn is_interesting_space_view_not_at_root(
     query: &LatestAtQuery,
 ) -> bool {
     // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
-    if candidate.space_path.len() == 1
+    if candidate.space_origin.len() == 1
         && !categories_with_interesting_roots.contains(candidate.category)
     {
         return true;
@@ -106,10 +106,10 @@ fn is_interesting_space_view_not_at_root(
     //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
     if candidate.category == ViewCategory::Spatial
         && (store
-            .query_latest_component::<Pinhole>(&candidate.space_path, query)
+            .query_latest_component::<Pinhole>(&candidate.space_origin, query)
             .is_some()
             || store
-                .query_latest_component::<DisconnectedSpace>(&candidate.space_path, query)
+                .query_latest_component::<DisconnectedSpace>(&candidate.space_origin, query)
                 .is_some())
     {
         return true;
@@ -141,7 +141,7 @@ fn default_created_space_views_from_candidates(
     let categories_with_interesting_roots = candidates
         .iter()
         .filter_map(|space_view_candidate| {
-            (space_view_candidate.space_path.is_root()
+            (space_view_candidate.space_origin.is_root()
                 && is_interesting_space_view_at_root(store, space_view_candidate, &query))
             .then_some(space_view_candidate.category)
         })
@@ -152,7 +152,7 @@ fn default_created_space_views_from_candidates(
     // Main pass through all candidates.
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for candidate in candidates {
-        if candidate.space_path.is_root() {
+        if candidate.space_origin.is_root() {
             if !categories_with_interesting_roots.contains(candidate.category) {
                 continue;
             }
@@ -237,7 +237,7 @@ fn default_created_space_views_from_candidates(
                     let mut space_view = SpaceViewBlueprint::new(
                         candidate.class,
                         candidate.category,
-                        &candidate.space_path,
+                        &candidate.space_origin,
                         &entities,
                     );
                     space_view.entities_determined_by_user = true; // Suppress auto adding of entities.

@@ -12,7 +12,7 @@ use crate::{
         contexts::{SpatialSceneContext, SpatialSceneEntityContext},
         parts::entity_iterator::process_entity_views,
     },
-    SpatialSpaceViewClass,
+    SpatialSpaceView,
 };
 
 #[derive(Default)]
@@ -93,7 +93,7 @@ impl Arrows3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for Arrows3DPart {
+impl ScenePart<SpatialSpaceView> for Arrows3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Arrow3D::name(),
