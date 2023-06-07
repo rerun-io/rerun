@@ -39,21 +39,22 @@ root:
     clone of the repository. Many of the Python examples need additional dependencies
     set up in a `requirements.txt` next to the example. These are noted in the
     individual example sections below.
-
-    ## Setup
-
-    Make sure you have the Rerun repository checked out and the latest SDK installed.
-
-    ```bash
-    pip install --upgrade rerun-sdk  # install the latest Rerun SDK
-    git clone git@github.com:rerun-io/rerun.git  # Clone the repository
-    cd rerun
-    git checkout latest  # Check out the commit matching the latest SDK release
-    ```
-    > Note: Make sure your SDK version matches the examples.
-    For example, if your SDK version is `0.3.1`, check out the matching tag
-    in the Rerun repository by running `git checkout v0.3.1`.
   children:
+    - name: setup
+      title: Setup
+      prelude: |
+        Make sure you have the Rerun repository checked out and the latest SDK installed.
+
+        ```bash
+        pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+        git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+        cd rerun
+        git checkout latest  # Check out the commit matching the latest SDK release
+        ```
+        > Note: Make sure your SDK version matches the examples.
+        For example, if your SDK version is `0.3.1`, check out the matching tag
+        in the Rerun repository by running `git checkout v0.3.1`.
+
     - name: artificial-data
       title: Examples with Artificial Data
       prelude: |
