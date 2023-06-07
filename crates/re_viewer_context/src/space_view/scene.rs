@@ -1,5 +1,5 @@
 use crate::{
-    SceneContext, ScenePartCollection, SceneQuery, SpaceViewClassImpl, SpaceViewHighlights,
+    SceneContext, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
     SpaceViewState, ViewerContext,
 };
 
@@ -9,7 +9,7 @@ use crate::{
 /// and then all elements with read access to the previously established context objects.
 ///
 /// In practice, the only thing implementing [`Scene`] is [`TypedScene`] which in turn is defined by
-/// by a concrete [`SpaceViewClassImpl`].
+/// by a concrete [`SpaceViewClass`].
 pub trait Scene {
     /// Populates the scene for a given query.
     fn populate(
@@ -24,10 +24,10 @@ pub trait Scene {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
-/// Implementation of [`Scene`] for a specific [`SpaceViewClassImpl`].
-pub struct TypedScene<C: SpaceViewClassImpl> {
-    pub context: C::SceneContext,
-    pub parts: C::ScenePartCollection,
+/// Implementation of [`Scene`] for a specific [`SpaceViewClass`].
+pub struct TypedScene<C: SpaceViewClass> {
+    pub context: C::Context,
+    pub parts: C::SceneParts,
     pub highlights: SpaceViewHighlights,
 
     /// All draw data gathered during the last call to [`Self::populate`].
@@ -38,7 +38,7 @@ pub struct TypedScene<C: SpaceViewClassImpl> {
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 }
 
-impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
+impl<C: SpaceViewClass> Default for TypedScene<C> {
     fn default() -> Self {
         Self {
             context: Default::default(),
@@ -49,7 +49,7 @@ impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
     }
 }
 
-impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
+impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -63,10 +63,10 @@ impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
 
         let Some(state) = space_view_state
             .as_any()
-            .downcast_ref::<C::SpaceViewState>()
+            .downcast_ref::<C::State>()
             else {
                 re_log::error_once!("Unexpected space view state type. Expected {}",
-                                    std::any::type_name::<C::SpaceViewState>());
+                                    std::any::type_name::<C::State>());
                 return;
             };
 

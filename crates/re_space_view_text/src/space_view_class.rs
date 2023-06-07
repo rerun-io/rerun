@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, SpaceViewClassImpl, SpaceViewClassName, SpaceViewId, SpaceViewState,
+    level_to_rich_text, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
     TypedScene, ViewerContext,
 };
 
@@ -36,10 +36,10 @@ impl SpaceViewState for TextSpaceViewState {
 #[derive(Default)]
 pub struct TextSpaceView;
 
-impl SpaceViewClassImpl for TextSpaceView {
-    type SpaceViewState = TextSpaceViewState;
-    type SceneContext = re_space_view::EmptySceneContext;
-    type ScenePartCollection = SceneText;
+impl SpaceViewClass for TextSpaceView {
+    type State = TextSpaceViewState;
+    type Context = re_space_view::EmptySceneContext;
+    type SceneParts = SceneText;
     type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
@@ -50,11 +50,11 @@ impl SpaceViewClassImpl for TextSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::SpaceViewState) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
         "Shows text entries over time.\nSelect the Space View for filtering options.".into()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         Some(2.0) // Make text logs wide
     }
 
@@ -62,7 +62,7 @@ impl SpaceViewClassImpl for TextSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) {
@@ -114,7 +114,7 @@ impl SpaceViewClassImpl for TextSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         scene: &mut TypedScene<Self>,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,

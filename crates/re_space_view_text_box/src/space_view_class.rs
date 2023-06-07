@@ -1,6 +1,6 @@
 use egui::Label;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClassImpl, SpaceViewClassName, SpaceViewId,
+    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName, SpaceViewId,
     SpaceViewState, TypedScene, ViewerContext,
 };
 
@@ -35,10 +35,10 @@ impl SpaceViewState for TextBoxSpaceViewState {
 #[derive(Default)]
 pub struct TextBoxSpaceView;
 
-impl SpaceViewClassImpl for TextBoxSpaceView {
-    type SpaceViewState = TextBoxSpaceViewState;
-    type ScenePartCollection = SceneTextBox;
-    type SceneContext = re_space_view::EmptySceneContext;
+impl SpaceViewClass for TextBoxSpaceView {
+    type State = TextBoxSpaceViewState;
+    type SceneParts = SceneTextBox;
+    type Context = re_space_view::EmptySceneContext;
     type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
@@ -49,7 +49,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::SpaceViewState) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
         "Displays text from a text entry components.".into()
     }
 
@@ -57,7 +57,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) {
@@ -76,7 +76,7 @@ impl SpaceViewClassImpl for TextBoxSpaceView {
         &self,
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         scene: &mut TypedScene<Self>,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,

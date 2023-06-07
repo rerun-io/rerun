@@ -3,7 +3,7 @@ use re_data_store::EntityPath;
 use re_log_types::{Component as _, InstanceKey, RowId};
 use re_query::{range_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClassImpl,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
     SpaceViewHighlights, ViewerContext,
 };
 
@@ -51,8 +51,8 @@ impl ScenePart<TextSpaceView> for SceneText {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        state: &<TextSpaceView as SpaceViewClassImpl>::SpaceViewState,
-        _scene_context: &<TextSpaceView as SpaceViewClassImpl>::SceneContext,
+        state: &<TextSpaceView as SpaceViewClass>::State,
+        _scene_context: &<TextSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;
