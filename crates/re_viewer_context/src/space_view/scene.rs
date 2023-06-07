@@ -26,8 +26,8 @@ pub trait Scene {
 
 /// Implementation of [`Scene`] for a specific [`SpaceViewClassImpl`].
 pub struct TypedScene<C: SpaceViewClass> {
-    pub context: C::SceneContext,
-    pub parts: C::ScenePartCollection,
+    pub context: C::Context,
+    pub parts: C::SceneParts,
     pub highlights: SpaceViewHighlights,
 
     /// All draw data gathered during the last call to [`Self::populate`].
@@ -63,10 +63,10 @@ impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
 
         let Some(state) = space_view_state
             .as_any()
-            .downcast_ref::<C::SpaceViewState>()
+            .downcast_ref::<C::State>()
             else {
                 re_log::error_once!("Unexpected space view state type. Expected {}",
-                                    std::any::type_name::<C::SpaceViewState>());
+                                    std::any::type_name::<C::State>());
                 return;
             };
 

@@ -11,9 +11,9 @@ use crate::{
 pub struct SpatialSpaceView;
 
 impl SpaceViewClass for SpatialSpaceView {
-    type SpaceViewState = SpatialSpaceViewState;
-    type SceneContext = SpatialSceneContext;
-    type ScenePartCollection = SpatialScenePartCollection;
+    type State = SpatialSpaceViewState;
+    type Context = SpatialSceneContext;
+    type SceneParts = SpatialScenePartCollection;
     type ScenePartData = SpatialScenePartData;
 
     fn name(&self) -> re_viewer_context::SpaceViewClassName {
@@ -24,11 +24,11 @@ impl SpaceViewClass for SpatialSpaceView {
         &re_ui::icons::SPACE_VIEW_3D
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::SpaceViewState) -> egui::WidgetText {
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::State) -> egui::WidgetText {
         state.help_text(re_ui)
     }
 
-    fn preferred_tile_aspect_ratio(&self, state: &Self::SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
         match state.nav_mode.get() {
             SpatialNavigationMode::TwoD => {
                 let size = state.scene_bbox_accum.size();
@@ -41,7 +41,7 @@ impl SpaceViewClass for SpatialSpaceView {
     fn prepare_populate(
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
-        state: &Self::SpaceViewState,
+        state: &Self::State,
         entity_paths: &IntSet<EntityPath>,
         entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
@@ -52,7 +52,7 @@ impl SpaceViewClass for SpatialSpaceView {
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
@@ -63,7 +63,7 @@ impl SpaceViewClass for SpatialSpaceView {
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         scene: &mut re_viewer_context::TypedScene<Self>,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,

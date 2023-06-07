@@ -36,9 +36,9 @@ impl SpaceViewState for TextBoxSpaceViewState {
 pub struct TextBoxSpaceView;
 
 impl SpaceViewClass for TextBoxSpaceView {
-    type SpaceViewState = TextBoxSpaceViewState;
-    type ScenePartCollection = SceneTextBox;
-    type SceneContext = re_space_view::EmptySceneContext;
+    type State = TextBoxSpaceViewState;
+    type SceneParts = SceneTextBox;
+    type Context = re_space_view::EmptySceneContext;
     type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
@@ -49,7 +49,7 @@ impl SpaceViewClass for TextBoxSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::SpaceViewState) -> egui::WidgetText {
+    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
         "Displays text from a text entry components.".into()
     }
 
@@ -57,7 +57,7 @@ impl SpaceViewClass for TextBoxSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) {
@@ -76,7 +76,7 @@ impl SpaceViewClass for TextBoxSpaceView {
         &self,
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         scene: &mut TypedScene<Self>,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,

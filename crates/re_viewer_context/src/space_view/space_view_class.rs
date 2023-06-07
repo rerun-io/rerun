@@ -16,13 +16,13 @@ use super::scene::TypedScene;
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
 pub trait SpaceViewClass: std::marker::Sized {
     /// State of a space view.
-    type SpaceViewState: SpaceViewState + Default + 'static;
+    type State: SpaceViewState + Default + 'static;
 
     /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
-    type SceneContext: SceneContext + Default + 'static;
+    type Context: SceneContext + Default + 'static;
 
     /// Collection of [`crate::ScenePart`]s that this scene populates.
-    type ScenePartCollection: ScenePartCollection<Self> + Default + 'static;
+    type SceneParts: ScenePartCollection<Self> + Default + 'static;
 
     /// A piece of data that all scene parts have in common, useful for iterating over them.
     ///
@@ -41,10 +41,10 @@ pub trait SpaceViewClass: std::marker::Sized {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::SpaceViewState) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::State) -> egui::WidgetText;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
     }
 
@@ -62,7 +62,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     fn prepare_populate(
         &self,
         _ctx: &mut ViewerContext<'_>,
-        _state: &Self::SpaceViewState,
+        _state: &Self::State,
         _entity_paths: &IntSet<EntityPath>,
         _entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
@@ -75,7 +75,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     );
@@ -88,7 +88,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::SpaceViewState,
+        state: &mut Self::State,
         scene: &mut TypedScene<Self>,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
@@ -118,7 +118,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
 
     #[inline]
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<T::SpaceViewState>::default()
+        Box::<T::State>::default()
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {

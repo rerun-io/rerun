@@ -51,8 +51,8 @@ impl ScenePart<TextSpaceView> for SceneText {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        state: &<TextSpaceView as SpaceViewClass>::SpaceViewState,
-        _scene_context: &<TextSpaceView as SpaceViewClass>::SceneContext,
+        state: &<TextSpaceView as SpaceViewClass>::State,
+        _scene_context: &<TextSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;
