@@ -1,7 +1,7 @@
 # Rerun Python Examples
 The simplest example is [`minimal`](minimal/main.py). You may want to start there!
 
-Read more about our examples at <https://www.rerun.io/docs/getting-started/examples>.
+Read more about our examples at <https://www.rerun.io/examples>.
 
 ## Setup
 First install the Rerun Python SDK with `pip install rerun-sdk`

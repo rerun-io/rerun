@@ -415,7 +415,7 @@ impl DepthTexture {
             .texture_manager_2d
             .get_or_create(
                 hash(&label),
-                &mut re_ctx.gpu_resources.textures,
+                &re_ctx.gpu_resources.textures,
                 Texture2DCreationDesc {
                     label: label.into(),
                     data: bytemuck::cast_slice(&data).into(),
@@ -458,7 +458,7 @@ impl AlbedoTexture {
             .texture_manager_2d
             .get_or_create(
                 hash(&label),
-                &mut re_ctx.gpu_resources.textures,
+                &re_ctx.gpu_resources.textures,
                 Texture2DCreationDesc {
                     label: label.into(),
                     data: bytemuck::cast_slice(&rgba8).into(),

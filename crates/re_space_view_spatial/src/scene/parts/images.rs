@@ -62,7 +62,7 @@ fn to_textured_rect(
     let Some([height, width, _]) = tensor.image_height_width_channels() else { return None; };
 
     let debug_name = ent_path.to_string();
-    let tensor_stats = *ctx.cache.entry::<TensorStatsCache>().entry(tensor);
+    let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
@@ -208,7 +208,7 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            let tensor = match ctx.cache.entry::<TensorDecodeCache>().entry(tensor) {
+            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor)) {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
@@ -326,35 +326,31 @@ impl ImagesPart {
             let mut data_f32 = Vec::new();
             ctx.render_ctx
                 .texture_manager_2d
-                .get_or_try_create_with(
-                    texture_key,
-                    &mut ctx.render_ctx.gpu_resources.textures,
-                    || {
-                        // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
-                        // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
-                        let data = match &tensor.data {
-                            TensorData::U16(data) => {
-                                data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
-                                bytemuck::cast_slice(&data_f32).into()
-                            }
-                            TensorData::F32(data) => bytemuck::cast_slice(data).into(),
-                            _ => {
-                                return Err(format!(
-                                    "Tensor datatype {} is not supported for back-projection",
-                                    tensor.dtype()
-                                ));
-                            }
-                        };
+                .get_or_try_create_with(texture_key, &ctx.render_ctx.gpu_resources.textures, || {
+                    // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
+                    // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
+                    let data = match &tensor.data {
+                        TensorData::U16(data) => {
+                            data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
+                            bytemuck::cast_slice(&data_f32).into()
+                        }
+                        TensorData::F32(data) => bytemuck::cast_slice(data).into(),
+                        _ => {
+                            return Err(format!(
+                                "Tensor datatype {} is not supported for back-projection",
+                                tensor.dtype()
+                            ));
+                        }
+                    };
 
-                        Ok(Texture2DCreationDesc {
-                            label: format!("Depth cloud for {ent_path:?}").into(),
-                            data,
-                            format: wgpu::TextureFormat::R32Float,
-                            width: width as _,
-                            height: height as _,
-                        })
-                    },
-                )
+                    Ok(Texture2DCreationDesc {
+                        label: format!("Depth cloud for {ent_path:?}").into(),
+                        data,
+                        format: wgpu::TextureFormat::R32Float,
+                        width: width as _,
+                        height: height as _,
+                    })
+                })
                 .map_err(|err| format!("Failed to create depth cloud texture: {err}"))?
         };
 
@@ -381,18 +377,18 @@ impl ImagesPart {
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
-        let max_data_value =
-            if let Some((_min, max)) = ctx.cache.entry::<TensorStatsCache>().entry(tensor).range {
-                max as f32
-            } else {
-                // This could only happen for Jpegs, and we should never get here.
-                // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
-                re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
-                match tensor.data {
-                    TensorData::U16(_) => u16::MAX as f32,
-                    _ => 10.0,
-                }
-            };
+        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
+        let max_data_value = if let Some((_min, max)) = tensor_stats.range {
+            max as f32
+        } else {
+            // This could only happen for Jpegs, and we should never get here.
+            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
+            re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
+            match tensor.data {
+                TensorData::U16(_) => u16::MAX as f32,
+                _ => 10.0,
+            }
+        };
 
         Ok(DepthCloud {
             world_from_obj,
