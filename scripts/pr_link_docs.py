@@ -17,7 +17,10 @@ EMPTY_LINK = "<!-- This comment will be replaced by a link to the documentation 
 LINK_START = "<!-- pr-link-docs:start -->"
 LINK_END = "<!-- pr-link-docs:end -->"
 
-LINK_TEMPLATE = "<!-- pr-link-docs:start -->\nDocs preview: {{ link }}\n<!-- pr-link-docs:end -->"
+LINK_TEMPLATE = """<!-- pr-link-docs:start -->
+Docs preview: {{ docs-link }}
+Examples preview: {{ examples-link }}
+<!-- pr-link-docs:end -->"""
 
 
 def main() -> None:
@@ -34,8 +37,10 @@ def main() -> None:
     latest_commit = pr.get_commits().reversed[0]
 
     print(f"Latest commit: {latest_commit.sha}")
+    short_sha = latest_commit.sha[:7]
 
-    link = LINK_TEMPLATE.replace("{{ link }}", f"https://rerun.io/preview/{latest_commit.sha[:7]}/docs")
+    link = LINK_TEMPLATE.replace("{{ docs-link }}", f"https://rerun.io/preview/{short_sha}/docs")
+    link = link.replace("{{ examples-link }}", f"https://rerun.io/preview/{short_sha}/examples")
     if EMPTY_LINK in pr.body:
         print("Empty link found, updating it")
         new_body = pr.body.replace(EMPTY_LINK, link)
