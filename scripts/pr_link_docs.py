@@ -40,7 +40,7 @@ def main() -> None:
     short_sha = latest_commit.sha[:7]
 
     link = LINK_TEMPLATE.replace("{{ docs-link }}", f"https://rerun.io/preview/{short_sha}/docs")
-    link = link.replace("{{ examples-link }}", f"https://rerun.io/preview{short_sha}/examples")
+    link = link.replace("{{ examples-link }}", f"https://rerun.io/preview/{short_sha}/examples")
     if EMPTY_LINK in pr.body:
         print("Empty link found, updating it")
         new_body = pr.body.replace(EMPTY_LINK, link)
