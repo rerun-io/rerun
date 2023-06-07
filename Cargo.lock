@@ -4569,19 +4569,14 @@ name = "re_viewport"
 version = "0.7.0-alpha.0"
 dependencies = [
  "ahash 0.8.3",
- "anyhow",
  "arrow2",
  "arrow2_convert",
- "bytemuck",
- "eframe",
  "egui",
  "egui_tiles",
  "enumset",
  "glam",
- "half 2.2.1",
  "image",
  "itertools",
- "ndarray",
  "nohash-hasher",
  "re_arrow_store",
  "re_components",
@@ -4591,13 +4586,10 @@ dependencies = [
  "re_log_types",
  "re_renderer",
  "re_space_view",
- "re_tensor_ops",
  "re_tracing",
  "re_ui",
  "re_viewer_context",
  "serde",
- "thiserror",
- "wgpu",
 ]
 
 [[package]]
