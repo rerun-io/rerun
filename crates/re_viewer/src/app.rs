@@ -8,7 +8,7 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
-    AppOptions, ComponentUiRegistry, PlayState, SpaceViewClass, SpaceViewClassRegistry,
+    AppOptions, ComponentUiRegistry, DynSpaceViewClass, PlayState, SpaceViewClassRegistry,
     SpaceViewClassRegistryError,
 };
 
@@ -231,7 +231,7 @@ impl App {
     }
 
     /// Adds a new space view class to the viewer.
-    pub fn add_space_view_class<T: SpaceViewClass + Default + 'static>(
+    pub fn add_space_view_class<T: DynSpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         self.space_view_class_registry.add::<T>()

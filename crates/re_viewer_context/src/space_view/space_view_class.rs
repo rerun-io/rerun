@@ -1,26 +1,36 @@
 use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
-use re_log_types::{ComponentName, EntityPath};
+use re_log_types::EntityPath;
 
-use crate::{Scene, SpaceViewId, ViewerContext};
+use crate::{
+    ArchetypeDefinition, DynSpaceViewClass, Scene, SceneContext, ScenePartCollection,
+    SpaceViewClassName, SpaceViewId, SpaceViewState, ViewerContext,
+};
 
-/// First element is the primary component, all others are optional.
-///
-/// TODO(andreas/clement): More formal definition of an archetype.
-pub type ArchetypeDefinition = vec1::Vec1<ComponentName>;
-
-re_string_interner::declare_new_type!(
-    /// The unique name of a space view type.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    pub struct SpaceViewClassName;
-);
+use super::scene::TypedScene;
 
 /// Defines a class of space view.
 ///
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
-pub trait SpaceViewClass {
+pub trait SpaceViewClass: std::marker::Sized {
+    /// State of a space view.
+    type SpaceViewState: SpaceViewState + Default + 'static;
+
+    /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
+    type SceneContext: SceneContext + Default + 'static;
+
+    /// Collection of [`crate::ScenePart`]s that this scene populates.
+    type ScenePartCollection: ScenePartCollection<Self> + Default + 'static;
+
+    /// A piece of data that all scene parts have in common, useful for iterating over them.
+    ///
+    /// This is useful for retrieving data that is common to all scene parts of a [`SpaceViewClass`].
+    /// For example, if most scene parts produce ui elements, a concrete [`SpaceViewClassImpl`]
+    /// can pick those up in its [`SpaceViewClassImpl::ui`] method by iterating over all scene parts.
+    type ScenePartData;
+
     /// Name of this space view class.
     ///
     /// Used for both ui display and identification.
@@ -31,38 +41,32 @@ pub trait SpaceViewClass {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::SpaceViewState) -> egui::WidgetText;
 
-    /// Called once for every new space view instance of this class.
-    ///
-    /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
-    fn new_state(&self) -> Box<dyn SpaceViewState>;
-
-    /// Returns a new scene for this space view class.
-    ///
-    /// Called both to determine the supported archetypes and
-    /// to populate a scene every frame.
-    fn new_scene(&self) -> Box<dyn Scene>;
+    /// Preferred aspect ratio for the ui tiles of this space view.
+    fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
+        None
+    }
 
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition>;
-
-    /// Preferred aspect ratio for the ui tiles of this space view.
-    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32>;
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+        None
+    }
 
     /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
     ///
-    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`].
     /// Passed entity properties are individual properties without propagated values.
     fn prepare_populate(
         &self,
-        ctx: &mut ViewerContext<'_>,
-        state: &mut dyn SpaceViewState,
-        entity_paths: &IntSet<EntityPath>,
-        entity_properties: &mut EntityPropertyMap,
-    );
+        _ctx: &mut ViewerContext<'_>,
+        _state: &Self::SpaceViewState,
+        _entity_paths: &IntSet<EntityPath>,
+        _entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+    }
 
     /// Ui shown when the user selects a space view of this class.
     ///
@@ -71,35 +75,135 @@ pub trait SpaceViewClass {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
+        state: &mut Self::SpaceViewState,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     );
 
-    /// Draws the ui for this space view type and handles ui events.
+    /// Draws the ui for this space view class and handles ui events.
     ///
-    /// The scene passed in was previously created by [`Self::new_scene`] and got populated by the time it is passed.
-    /// The state passed in was previously created by [`Self::new_state`] and is kept frame-to-frame.
+    /// The passed scene is already populated for this frame
+    /// The passed state is kept frame-to-frame.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut dyn SpaceViewState,
-        scene: Box<dyn Scene>,
+        state: &mut Self::SpaceViewState,
+        scene: &mut TypedScene<Self>,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     );
 }
 
-/// Unserialized frame to frame state of a space view.
-///
-/// For any state that should be persisted, use the Blueprint!
-/// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
-/// (on mouse release, the camera would be committed to the blueprint).
-pub trait SpaceViewState: std::any::Any {
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
+impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
+    #[inline]
+    fn name(&self) -> SpaceViewClassName {
+        self.name()
+    }
 
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+    #[inline]
+    fn icon(&self) -> &'static re_ui::Icon {
+        self.icon()
+    }
+
+    #[inline]
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText {
+        typed_state_wrapper(state, |state| self.help_text(re_ui, state))
+    }
+
+    #[inline]
+    fn new_scene(&self) -> Box<dyn Scene> {
+        Box::<TypedScene<Self>>::default()
+    }
+
+    #[inline]
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<T::SpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
+        typed_state_wrapper(state, |state| self.preferred_tile_aspect_ratio(state))
+    }
+
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+        self.blueprint_archetype()
+    }
+
+    fn prepare_populate(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        state: &mut dyn SpaceViewState,
+        entity_paths: &IntSet<EntityPath>,
+        entity_properties: &mut EntityPropertyMap,
+    ) {
+        typed_state_wrapper_mut(state, |state| {
+            self.prepare_populate(ctx, state, entity_paths, entity_properties);
+        });
+    }
+
+    #[inline]
+    fn selection_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut dyn SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
+    ) {
+        typed_state_wrapper_mut(state, |state| {
+            self.selection_ui(ctx, ui, state, space_origin, space_view_id);
+        });
+    }
+
+    #[inline]
+    fn ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut dyn SpaceViewState,
+        mut scene: Box<dyn Scene>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
+    ) {
+        let Some(typed_scene) = scene.as_any_mut().downcast_mut()
+            else {
+                re_log::error_once!("Unexpected space view state type. Expected {}",
+                                    std::any::type_name::<TypedScene<T>>());
+                return;
+            };
+
+        typed_state_wrapper_mut(state, |state| {
+            self.ui(ctx, ui, state, typed_scene, space_origin, space_view_id);
+        });
+    }
+}
+
+fn typed_state_wrapper_mut<T: SpaceViewState, R: Default, F: FnOnce(&mut T) -> R>(
+    state: &mut dyn SpaceViewState,
+    fun: F,
+) -> R {
+    if let Some(state) = state.as_any_mut().downcast_mut() {
+        fun(state)
+    } else {
+        re_log::error_once!(
+            "Unexpected space view state type. Expected {}",
+            std::any::type_name::<T>()
+        );
+        R::default()
+    }
+}
+
+fn typed_state_wrapper<T: SpaceViewState, R: Default, F: FnOnce(&T) -> R>(
+    state: &dyn SpaceViewState,
+    fun: F,
+) -> R {
+    if let Some(state) = state.as_any().downcast_ref() {
+        fun(state)
+    } else {
+        re_log::error_once!(
+            "Unexpected space view state type. Expected {}",
+            std::any::type_name::<T>()
+        );
+        R::default()
+    }
 }

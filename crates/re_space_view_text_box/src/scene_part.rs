@@ -2,7 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClassImpl,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
     SpaceViewHighlights, ViewerContext,
 };
 
@@ -40,8 +40,8 @@ impl ScenePart<TextBoxSpaceView> for SceneTextBox {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &<TextBoxSpaceView as SpaceViewClassImpl>::SpaceViewState,
-        _scene_context: &<TextBoxSpaceView as SpaceViewClassImpl>::SceneContext,
+        _space_view_state: &<TextBoxSpaceView as SpaceViewClass>::SpaceViewState,
+        _scene_context: &<TextBoxSpaceView as SpaceViewClass>::SceneContext,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;

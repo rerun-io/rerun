@@ -1,5 +1,5 @@
 use crate::{
-    SceneContext, ScenePartCollection, SceneQuery, SpaceViewClassImpl, SpaceViewHighlights,
+    SceneContext, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
     SpaceViewState, ViewerContext,
 };
 
@@ -25,7 +25,7 @@ pub trait Scene {
 }
 
 /// Implementation of [`Scene`] for a specific [`SpaceViewClassImpl`].
-pub struct TypedScene<C: SpaceViewClassImpl> {
+pub struct TypedScene<C: SpaceViewClass> {
     pub context: C::SceneContext,
     pub parts: C::ScenePartCollection,
     pub highlights: SpaceViewHighlights,
@@ -38,7 +38,7 @@ pub struct TypedScene<C: SpaceViewClassImpl> {
     pub draw_data: Vec<re_renderer::QueueableDrawData>,
 }
 
-impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
+impl<C: SpaceViewClass> Default for TypedScene<C> {
     fn default() -> Self {
         Self {
             context: Default::default(),
@@ -49,7 +49,7 @@ impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
     }
 }
 
-impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
+impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,

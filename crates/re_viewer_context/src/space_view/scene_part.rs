@@ -1,9 +1,7 @@
-use crate::{
-    ArchetypeDefinition, SceneQuery, SpaceViewClassImpl, SpaceViewHighlights, ViewerContext,
-};
+use crate::{ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext};
 
 /// Scene part collection, consisting of several [`ScenePart`] which may be populated in parallel.
-pub trait ScenePartCollection<C: SpaceViewClassImpl> {
+pub trait ScenePartCollection<C: SpaceViewClass> {
     /// Retrieves a list of all underlying scene context part for parallel population.
     fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<C>>;
 
@@ -14,7 +12,7 @@ pub trait ScenePartCollection<C: SpaceViewClassImpl> {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait ScenePart<C: SpaceViewClassImpl> {
+pub trait ScenePart<C: SpaceViewClass> {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
 

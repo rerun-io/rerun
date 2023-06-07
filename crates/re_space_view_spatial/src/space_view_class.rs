@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
-use re_viewer_context::{SpaceViewClassImpl, SpaceViewId};
+use re_viewer_context::{SpaceViewClass, SpaceViewId};
 
 use crate::{
     scene::{SpatialSceneContext, SpatialScenePartCollection, SpatialScenePartData},
@@ -10,7 +10,7 @@ use crate::{
 #[derive(Default)]
 pub struct SpatialSpaceView;
 
-impl SpaceViewClassImpl for SpatialSpaceView {
+impl SpaceViewClass for SpatialSpaceView {
     type SpaceViewState = SpatialSpaceViewState;
     type SceneContext = SpatialSceneContext;
     type ScenePartCollection = SpatialScenePartCollection;

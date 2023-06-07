@@ -1,6 +1,6 @@
 use egui::Label;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClassImpl, SpaceViewClassName, SpaceViewId,
+    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName, SpaceViewId,
     SpaceViewState, TypedScene, ViewerContext,
 };
 
@@ -35,7 +35,7 @@ impl SpaceViewState for TextBoxSpaceViewState {
 #[derive(Default)]
 pub struct TextBoxSpaceView;
 
-impl SpaceViewClassImpl for TextBoxSpaceView {
+impl SpaceViewClass for TextBoxSpaceView {
     type SpaceViewState = TextBoxSpaceViewState;
     type ScenePartCollection = SceneTextBox;
     type SceneContext = re_space_view::EmptySceneContext;

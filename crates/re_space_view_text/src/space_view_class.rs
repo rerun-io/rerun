@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, SpaceViewClassImpl, SpaceViewClassName, SpaceViewId, SpaceViewState,
+    level_to_rich_text, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
     TypedScene, ViewerContext,
 };
 
@@ -36,7 +36,7 @@ impl SpaceViewState for TextSpaceViewState {
 #[derive(Default)]
 pub struct TextSpaceView;
 
-impl SpaceViewClassImpl for TextSpaceView {
+impl SpaceViewClass for TextSpaceView {
     type SpaceViewState = TextSpaceViewState;
     type SceneContext = re_space_view::EmptySceneContext;
     type ScenePartCollection = SceneText;

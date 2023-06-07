@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use crate::{SpaceViewClass, SpaceViewClassName};
+use crate::{DynSpaceViewClass, SpaceViewClassName};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SpaceViewClassRegistryError {
@@ -15,13 +15,13 @@ pub enum SpaceViewClassRegistryError {
 ///
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
-pub struct SpaceViewClassRegistry(HashMap<SpaceViewClassName, Box<dyn SpaceViewClass>>);
+pub struct SpaceViewClassRegistry(HashMap<SpaceViewClassName, Box<dyn DynSpaceViewClass>>);
 
 impl SpaceViewClassRegistry {
     /// Adds a new space view type.
     ///
     /// Fails if a space view type with the same name was already registered.
-    pub fn add<T: SpaceViewClass + Default + 'static>(
+    pub fn add<T: DynSpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         let space_view_type = T::default();
@@ -41,14 +41,14 @@ impl SpaceViewClassRegistry {
     pub fn get(
         &self,
         name: SpaceViewClassName,
-    ) -> Result<&dyn SpaceViewClass, SpaceViewClassRegistryError> {
+    ) -> Result<&dyn DynSpaceViewClass, SpaceViewClassRegistryError> {
         self.0
             .get(&name)
             .map(|boxed| boxed.as_ref())
             .ok_or(SpaceViewClassRegistryError::TypeNotFound(name))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &dyn SpaceViewClass> {
+    pub fn iter(&self) -> impl Iterator<Item = &dyn DynSpaceViewClass> {
         self.0.values().map(|boxed| boxed.as_ref())
     }
 }
