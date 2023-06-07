@@ -469,7 +469,9 @@ impl App {
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
-                if let Some(store_db) = store_view.recording {
+                if let (Some(store_db), Some(blueprint_db)) =
+                    (store_view.recording, store_view.blueprint)
+                {
                     self.state
                         .recording_config_entry(
                             store_db.store_id().clone(),
@@ -498,6 +500,7 @@ impl App {
                                 ui,
                                 render_ctx,
                                 store_db,
+                                blueprint_db,
                                 &self.re_ui,
                                 &self.component_ui_registry,
                                 &self.space_view_class_registry,

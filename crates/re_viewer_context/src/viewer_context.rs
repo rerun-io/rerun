@@ -24,6 +24,9 @@ pub struct ViewerContext<'a> {
     /// The current recording.
     pub store_db: &'a StoreDb,
 
+    /// The current blueprint.
+    pub blueprint_db: &'a StoreDb,
+
     /// UI config for the current recording (found in [`StoreDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
 
