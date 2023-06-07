@@ -34,7 +34,7 @@ pub fn all_possible_space_views(
     // TODO(andreas): Only needed for workaround for custom space views.
     //                  This should go away together with ViewCategory.
     let root_space = spaces_info.get_first_parent_with_info(&EntityPath::root());
-    let root_entitites = root_space
+    let root_entities = root_space
         .descendants_without_transform
         .iter()
         .cloned()
@@ -62,7 +62,7 @@ pub fn all_possible_space_views(
                     class.name(),
                     ViewCategory::Text,
                     &EntityPath::root(),
-                    &root_entitites,
+                    &root_entities,
                 ))
             } else {
                 None
