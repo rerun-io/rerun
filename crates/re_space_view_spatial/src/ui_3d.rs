@@ -515,7 +515,6 @@ pub fn view_3d(
         }
     }
 
-    // TODO(wumpf): Temporary manual insertion of drawdata. The SpaceViewClass framework will take this over.
     for draw_data in scene.draw_data.drain(..) {
         view_builder.queue_draw(draw_data);
     }
