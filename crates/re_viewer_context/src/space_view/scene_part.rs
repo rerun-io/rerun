@@ -41,3 +41,14 @@ pub trait ScenePart<C: SpaceViewClass> {
         None
     }
 }
+
+/// Trivial implementation of a scene collection that consists only of a single scene part.
+impl<C: SpaceViewClass, T: ScenePart<C> + 'static> ScenePartCollection<C> for T {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<C>> {
+        vec![self]
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}

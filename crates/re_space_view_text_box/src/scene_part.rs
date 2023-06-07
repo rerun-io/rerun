@@ -2,8 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_components::Component;
 use re_query::{query_entity_with_primary, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
-    SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext,
 };
 
 use crate::TextBoxSpaceView;
@@ -19,16 +18,6 @@ pub struct TextBoxEntry {
 #[derive(Default)]
 pub struct SceneTextBox {
     pub text_entries: Vec<TextBoxEntry>,
-}
-
-impl ScenePartCollection<TextBoxSpaceView> for SceneTextBox {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<TextBoxSpaceView>> {
-        vec![self]
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl ScenePart<TextBoxSpaceView> for SceneTextBox {

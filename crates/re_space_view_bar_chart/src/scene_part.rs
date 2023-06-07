@@ -5,8 +5,7 @@ use re_components::Tensor;
 use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
-    SpaceViewHighlights, ViewerContext,
+    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext,
 };
 
 use crate::BarChartSpaceView;
@@ -15,16 +14,6 @@ use crate::BarChartSpaceView;
 #[derive(Default)]
 pub struct SceneBarChart {
     pub charts: BTreeMap<EntityPath, Tensor>,
-}
-
-impl ScenePartCollection<BarChartSpaceView> for SceneBarChart {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<BarChartSpaceView>> {
-        vec![self]
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 impl ScenePart<BarChartSpaceView> for SceneBarChart {
