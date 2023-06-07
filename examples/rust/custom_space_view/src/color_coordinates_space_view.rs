@@ -107,43 +107,33 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         state: &mut Self::State,
         scene: &mut TypedScene<Self>,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        space_view_id: SpaceViewId,
     ) {
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
             ..egui::Frame::default()
         }
-        .show(ui, |ui| match state.mode {
-            ColorCoordinatesMode::Hs => draw_color_space(
-                ui,
-                ctx,
-                scene,
-                |x, y| egui::ecolor::Hsva::new(x, y, 1.0, 1.0).into(),
-                |c| {
+        .show(ui, |ui| {
+            let color_at = match state.mode {
+                ColorCoordinatesMode::Hs => |x, y| egui::ecolor::Hsva::new(x, y, 1.0, 1.0).into(),
+                ColorCoordinatesMode::Hv => |x, y| egui::ecolor::Hsva::new(x, 1.0, y, 1.0).into(),
+                ColorCoordinatesMode::Rg => |x, y| egui::ecolor::Rgba::from_rgb(x, y, 0.0).into(),
+            };
+            let position_at = match state.mode {
+                ColorCoordinatesMode::Hs => |c: egui::Color32| {
                     let hsva: egui::ecolor::Hsva = c.into();
                     (hsva.h, hsva.s)
                 },
-            ),
-            ColorCoordinatesMode::Hv => draw_color_space(
-                ui,
-                ctx,
-                scene,
-                |x, y| egui::ecolor::Hsva::new(x, 1.0, y, 1.0).into(),
-                |c| {
+                ColorCoordinatesMode::Hv => |c: egui::Color32| {
                     let hsva: egui::ecolor::Hsva = c.into();
                     (hsva.h, hsva.v)
                 },
-            ),
-            ColorCoordinatesMode::Rg => draw_color_space(
-                ui,
-                ctx,
-                scene,
-                |x, y| egui::ecolor::Rgba::from_rgb(x, y, 0.0).into(),
-                |c| {
+                ColorCoordinatesMode::Rg => |c: egui::Color32| {
                     let rgba: egui::ecolor::Rgba = c.into();
                     (rgba.r(), rgba.g())
                 },
-            ),
+            };
+            draw_color_space(ui, ctx, space_view_id, scene, color_at, position_at);
         });
     }
 }
@@ -153,6 +143,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
 fn draw_color_space(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
+    space_view_id: SpaceViewId,
     scene: &mut TypedScene<ColorCoordinatesSpaceView>,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
@@ -219,10 +210,10 @@ fn draw_color_space(
                 egui::Sense::click(),
             );
 
-            // Update the globa selection state if the user interacts with this instance.
+            // Update the global selection state if the user interacts with this instance.
             if interact.hovered() {
                 if let Some(instance) = instance.resolve(&ctx.store_db.entity_db) {
-                    let item = Item::InstancePath(None, instance);
+                    let item = Item::InstancePath(Some(space_view_id), instance);
 
                     if interact.clicked() {
                         ctx.selection_state_mut()
