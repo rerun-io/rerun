@@ -2,6 +2,9 @@
 
 use re_viewer::external::{re_log, re_memory};
 
+mod color_coordinates_scene;
+mod color_coordinates_space_view;
+
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
 // By using `mimalloc` we get faster allocations.
@@ -53,7 +56,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // Register custom Space View(s)
-        // TODO
+        app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()
+            .unwrap();
 
         Box::new(app)
     }))?;

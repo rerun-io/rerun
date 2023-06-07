@@ -1,0 +1,82 @@
+use re_viewer::external::{
+    egui, re_components,
+    re_data_store::InstancePathHash,
+    re_log_types::Component as _,
+    re_query::query_entity_with_primary,
+    re_renderer,
+    re_viewer_context::{
+        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
+        SpaceViewHighlights, ViewerContext,
+    },
+};
+
+use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
+
+/// TODO:
+#[derive(Default)]
+pub struct SceneColorCoordinates {
+    pub colors: Vec<(InstancePathHash, egui::Color32)>,
+}
+
+// TODO: Conflicts with in-flight PR
+impl ScenePartCollection<ColorCoordinatesSpaceView> for SceneColorCoordinates {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<ColorCoordinatesSpaceView>> {
+        vec![self]
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl ScenePart<ColorCoordinatesSpaceView> for SceneColorCoordinates {
+    fn archetype(&self) -> ArchetypeDefinition {
+        ArchetypeDefinition::new(re_components::ColorRGBA::name())
+    }
+
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        _space_view_state: &<ColorCoordinatesSpaceView as SpaceViewClass>::State,
+        _scene_context: &<ColorCoordinatesSpaceView as SpaceViewClass>::Context,
+        _highlights: &SpaceViewHighlights,
+    ) -> Vec<re_renderer::QueueableDrawData> {
+        // For each entity in the space view...
+        for (ent_path, props) in query.iter_entities() {
+            if !props.visible {
+                continue;
+            }
+
+            // ...gather all colors and their instance ids.
+            if let Ok(ent_view) = query_entity_with_primary::<re_components::ColorRGBA>(
+                &ctx.store_db.entity_db.data_store,
+                &ctx.current_query(),
+                ent_path,
+                &[re_components::ColorRGBA::name()],
+            ) {
+                if let Ok(primary_iterator) = ent_view.iter_primary() {
+                    self.colors.extend(
+                        ent_view
+                            .iter_instance_keys()
+                            .zip(primary_iterator)
+                            .filter_map(|(instance_key, color)| {
+                                color.map(|color| {
+                                    let [r, g, b, _] = color.to_array();
+                                    (
+                                        InstancePathHash::instance(ent_path, instance_key),
+                                        egui::Color32::from_rgb(r, g, b),
+                                    )
+                                })
+                            }),
+                    );
+                }
+            }
+        }
+
+        // We're not using `re_renderer` here, so return an empty vector.
+        // For more advanced use cases, instead of drawing everything with egui,
+        // you may return one or more `QueueableDrawData` instances that are handled by `re_renderer`.
+        Vec::new()
+    }
+}
