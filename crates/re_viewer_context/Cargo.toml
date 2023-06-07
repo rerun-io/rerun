@@ -43,7 +43,6 @@ parking_lot.workspace = true
 serde = "1"
 slotmap.workspace = true
 thiserror.workspace = true
-tinyvec.workspace = true
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1.workspace = true
 wgpu.workspace = true
