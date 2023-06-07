@@ -9,7 +9,7 @@ use crate::{
 /// and then all elements with read access to the previously established context objects.
 ///
 /// In practice, the only thing implementing [`Scene`] is [`TypedScene`] which in turn is defined by
-/// by a concrete [`SpaceViewClassImpl`].
+/// by a concrete [`SpaceViewClass`].
 pub trait Scene {
     /// Populates the scene for a given query.
     fn populate(
@@ -24,7 +24,7 @@ pub trait Scene {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
-/// Implementation of [`Scene`] for a specific [`SpaceViewClassImpl`].
+/// Implementation of [`Scene`] for a specific [`SpaceViewClass`].
 pub struct TypedScene<C: SpaceViewClass> {
     pub context: C::Context,
     pub parts: C::SceneParts,

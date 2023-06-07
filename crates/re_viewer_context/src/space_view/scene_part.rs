@@ -35,8 +35,8 @@ pub trait ScenePart<C: SpaceViewClass> {
     /// Optionally retrieves a data store reference from the scene element.
     ///
     /// This is useful for retrieving data that is common to all scene parts of a [`crate::SpaceViewClass`].
-    /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClassImpl`]
-    /// can pick those up in its [`crate::SpaceViewClassImpl::ui`] method by iterating over all scene parts.
+    /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClass`]
+    /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all scene parts.
     fn data(&self) -> Option<&C::ScenePartData> {
         None
     }
