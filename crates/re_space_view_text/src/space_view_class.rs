@@ -38,7 +38,7 @@ pub struct TextSpaceView;
 
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
-    type Context = re_space_view::EmptySceneContext;
+    type Context = ();
     type SceneParts = SceneText;
     type ScenePartData = ();
 

@@ -1,7 +1,7 @@
 use re_viewer::external::{
     egui,
     re_log_types::EntityPath,
-    re_space_view, re_ui,
+    re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassName, SpaceViewId,
         SpaceViewState, TypedScene, ViewerContext,
@@ -10,6 +10,7 @@ use re_viewer::external::{
 
 use crate::color_coordinates_scene::SceneColorCoordinates;
 
+/// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
 enum ColorCoordinatesMode {
     #[default]
@@ -28,6 +29,9 @@ impl std::fmt::Display for ColorCoordinatesMode {
     }
 }
 
+/// Space view state for the custom space view.
+///
+/// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
 pub struct ColorCoordinatesSpaceViewState {
     // TODO(wumpf/jleibs): This should be part of the Blueprint so that it is serialized out.
@@ -49,14 +53,23 @@ impl SpaceViewState for ColorCoordinatesSpaceViewState {
 pub struct ColorCoordinatesSpaceView;
 
 impl SpaceViewClass for ColorCoordinatesSpaceView {
-    // TODO: document all of these.
+    // State type as described above.
     type State = ColorCoordinatesSpaceViewState;
+
+    // Scene context is shared between all scene parts.
+    // For this Space View we don't need any scene context.
+    type Context = ();
+
+    // Collection of scene parts that are needed every frame.
+    // We only have a single scene part, but it could be a collection of various.
     type SceneParts = SceneColorCoordinates;
-    type Context = re_space_view::EmptySceneContext;
+
+    // Scene parts can have a common data object that they expose.
+    // For this Space View this is not needed.
     type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
-        // Name and identifier of this space view.
+        // Name and identifier of this Space View.
         "Color Coordinates".into()
     }
 
