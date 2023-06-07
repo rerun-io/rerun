@@ -4,7 +4,7 @@ use re_arrow_store::LatestAtQuery;
 use re_components::{DisconnectedSpace, Pinhole, Transform3D};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_log_types::Component;
-use re_space_view::UnreachableTransform;
+use re_space_view::UnreachableTransformReason;
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
 #[derive(Clone)]
@@ -35,10 +35,10 @@ pub struct TransformContext {
     transform_per_entity: IntMap<EntityPath, TransformInfo>,
 
     /// All unreachable descendant paths of `reference_path`.
-    unreachable_descendants: Vec<(EntityPath, UnreachableTransform)>,
+    unreachable_descendants: Vec<(EntityPath, UnreachableTransformReason)>,
 
     /// The first parent of reference_path that is no longer reachable.
-    first_unreachable_parent: Option<(EntityPath, UnreachableTransform)>,
+    first_unreachable_parent: Option<(EntityPath, UnreachableTransformReason)>,
 }
 
 impl Default for TransformContext {
@@ -238,11 +238,11 @@ fn transform_at(
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
-) -> Result<Option<glam::Affine3A>, UnreachableTransform> {
+) -> Result<Option<glam::Affine3A>, UnreachableTransformReason> {
     let pinhole = store.query_latest_component::<Pinhole>(entity_path, query);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
-            return Err(UnreachableTransform::NestedPinholeCameras);
+            return Err(UnreachableTransformReason::NestedPinholeCameras);
         } else {
             *encountered_pinhole = Some(entity_path.clone());
         }
@@ -291,7 +291,7 @@ fn transform_at(
         .query_latest_component::<DisconnectedSpace>(entity_path, query)
         .is_some()
     {
-        Err(UnreachableTransform::DisconnectedSpace)
+        Err(UnreachableTransformReason::DisconnectedSpace)
     } else {
         Ok(None)
     }

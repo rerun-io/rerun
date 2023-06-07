@@ -1,5 +1,5 @@
 use nohash_hasher::IntSet;
-use re_space_view::UnreachableTransform;
+use re_space_view::UnreachableTransformReason;
 use std::collections::BTreeMap;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
@@ -228,7 +228,7 @@ impl SpaceInfoCollection {
         &self,
         from: &EntityPath,
         to_reference: &EntityPath,
-    ) -> Result<(), UnreachableTransform> {
+    ) -> Result<(), UnreachableTransformReason> {
         re_tracing::profile_function!();
 
         // Get closest space infos for the given entity paths.
@@ -257,18 +257,18 @@ impl SpaceInfoCollection {
                 // Matches the connectedness requirements in `inverse_transform_at`/`transform_at` in `transform_cache.rs`
                 match connection {
                     SpaceInfoConnection::Disconnected => {
-                        Err(UnreachableTransform::DisconnectedSpace)
+                        Err(UnreachableTransformReason::DisconnectedSpace)
                     }
                     SpaceInfoConnection::Connected {
                         pinhole: Some(pinhole),
                         ..
                     } => {
                         if encountered_pinhole {
-                            Err(UnreachableTransform::NestedPinholeCameras)
+                            Err(UnreachableTransformReason::NestedPinholeCameras)
                         } else {
                             encountered_pinhole = true;
                             if pinhole.resolution.is_none() && !walk_up_from {
-                                Err(UnreachableTransform::InversePinholeCameraWithoutResolution)
+                                Err(UnreachableTransformReason::InversePinholeCameraWithoutResolution)
                             } else {
                                 Ok(())
                             }
@@ -280,7 +280,7 @@ impl SpaceInfoCollection {
                 let Some(parent_space) = self.spaces.get(parent_path)
                 else {
                     re_log::warn_once!("{} not part of space infos", parent_path);
-                    return Err(UnreachableTransform::UnknownSpaceInfo);
+                    return Err(UnreachableTransformReason::UnknownSpaceInfo);
                 };
 
                 if walk_up_from {
@@ -294,7 +294,7 @@ impl SpaceInfoCollection {
                     from,
                     to_reference
                 );
-                return Err(UnreachableTransform::UnknownSpaceInfo);
+                return Err(UnreachableTransformReason::UnknownSpaceInfo);
             }
         }
 

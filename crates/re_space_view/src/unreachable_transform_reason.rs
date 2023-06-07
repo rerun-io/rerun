@@ -1,5 +1,5 @@
 #[derive(Clone, Copy)]
-pub enum UnreachableTransform {
+pub enum UnreachableTransformReason {
     /// `SpaceInfoCollection` is outdated and can't find a corresponding space info for the given path.
     ///
     /// If at all, this should only happen for a single frame until space infos are rebuilt.
@@ -15,7 +15,7 @@ pub enum UnreachableTransform {
     DisconnectedSpace,
 }
 
-impl std::fmt::Display for UnreachableTransform {
+impl std::fmt::Display for UnreachableTransformReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::UnknownSpaceInfo =>
