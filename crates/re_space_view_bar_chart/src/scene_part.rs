@@ -18,7 +18,7 @@ pub struct SceneBarChart {
 
 impl ScenePart<BarChartSpaceView> for SceneBarChart {
     fn archetype(&self) -> ArchetypeDefinition {
-        vec1::vec1![re_components::TextEntry::name()]
+        vec1::vec1![Tensor::name()]
     }
 
     fn populate(
