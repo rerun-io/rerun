@@ -82,8 +82,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) {
-        ui.vertical(|ui| {
-            ui.label("Color coordinates mode");
+        ui.horizontal(|ui| {
+            ui.label("Coordinates mode");
             egui::ComboBox::from_id_source("color_coordinates_mode")
                 .selected_text(state.mode.to_string())
                 .show_ui(ui, |ui| {
@@ -200,13 +200,14 @@ fn draw_color_space(
                 egui::lerp(rect.bottom()..=rect.top(), y),
             );
 
-            // Change color if this instance is selected.
-            let (color, radius) = if highlight.hover != HoverHighlight::None {
-                (ui.style().visuals.widgets.hovered.bg_fill, 4.0)
-            } else if highlight.selection != SelectionHighlight::None {
-                (ui.style().visuals.selection.bg_fill, 4.0)
-            } else {
-                (egui::Color32::BLACK, 2.0)
+            // Change color & size depending on whether this instance is selected.
+            let (color, radius) = match (
+                highlight.hover,
+                highlight.selection != SelectionHighlight::None,
+            ) {
+                (HoverHighlight::None, false) => (egui::Color32::BLACK, 2.0),
+                (HoverHighlight::None, true) => (ui.style().visuals.selection.bg_fill, 8.0),
+                (HoverHighlight::Hovered, ..) => (ui.style().visuals.widgets.hovered.bg_fill, 8.0),
             };
 
             ui.painter()
