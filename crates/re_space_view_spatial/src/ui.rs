@@ -2,27 +2,29 @@ use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
+use nohash_hasher::IntSet;
 use re_components::{Pinhole, Tensor, TensorDataMeaning};
-use re_data_store::{EditableAutoValue, EntityPath, EntityPropertyMap};
+use re_data_store::{EditableAutoValue, EntityPath};
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
-use re_space_view::{DataBlueprintTree, ScreenshotMode};
+use re_space_view::ScreenshotMode;
 use re_viewer_context::{
     HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
-    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
+    SpaceViewState, TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
 use super::{
     eye::Eye,
-    scene::{PickingHitType, PickingResult, SceneSpatialUiData},
+    scene::{PickingHitType, PickingResult},
     ui_2d::View2DState,
     ui_3d::View3DState,
 };
-use crate::scene::SceneSpatial;
+
+use crate::scene::preferred_navigation_mode;
 use crate::{
-    scene::UiLabelTarget,
+    scene::{PickableUiRect, SceneSpatial, UiLabel, UiLabelTarget},
     ui_2d::view_2d,
     ui_3d::{view_3d, SpaceSpecs},
 };
@@ -62,7 +64,7 @@ impl From<AutoSizeUnit> for WidgetText {
 }
 
 #[derive(Clone)]
-pub struct ViewSpatialState {
+pub struct SpatialSpaceViewState {
     /// How the scene is navigated.
     pub nav_mode: EditableAutoValue<SpatialNavigationMode>,
 
@@ -87,7 +89,7 @@ pub struct ViewSpatialState {
     auto_size_config: re_renderer::AutoSizeConfig,
 }
 
-impl Default for ViewSpatialState {
+impl Default for SpatialSpaceViewState {
     fn default() -> Self {
         Self {
             nav_mode: EditableAutoValue::Auto(SpatialNavigationMode::ThreeD),
@@ -105,7 +107,17 @@ impl Default for ViewSpatialState {
     }
 }
 
-impl ViewSpatialState {
+impl SpaceViewState for SpatialSpaceViewState {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+impl SpatialSpaceViewState {
     pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
@@ -115,6 +127,20 @@ impl ViewSpatialState {
             config.line_radius = re_renderer::Size::new_points(1.5); // default line radius
         }
         config
+    }
+
+    pub fn update_object_property_heuristics(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        entity_paths: &IntSet<EntityPath>,
+        entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+        re_tracing::profile_function!();
+
+        for entity_path in entity_paths {
+            self.update_pinhole_property_heuristics(ctx, entity_path, entity_properties);
+            self.update_depth_cloud_property_heuristics(ctx, entity_path, entity_properties);
+        }
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {
@@ -139,35 +165,18 @@ impl ViewSpatialState {
         heuristic0.min(heuristic1)
     }
 
-    pub fn update_object_property_heuristics(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        data_blueprint: &mut DataBlueprintTree,
-    ) {
-        re_tracing::profile_function!();
-
-        let query = ctx.current_query();
-
-        let entity_paths = data_blueprint.entity_paths().clone(); // TODO(andreas): Workaround borrow checker
-        for entity_path in entity_paths {
-            self.update_pinhole_property_heuristics(ctx, data_blueprint, &query, &entity_path);
-            self.update_depth_cloud_property_heuristics(ctx, data_blueprint, &query, &entity_path);
-        }
-    }
-
     fn update_pinhole_property_heuristics(
         &self,
         ctx: &mut ViewerContext<'_>,
-        data_blueprint: &mut DataBlueprintTree,
-        query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
+        entity_properties: &mut re_data_store::EntityPropertyMap,
     ) {
         let store = &ctx.store_db.entity_db.data_store;
         if store
-            .query_latest_component::<Pinhole>(entity_path, query)
+            .query_latest_component::<Pinhole>(entity_path, &ctx.current_query())
             .is_some()
         {
-            let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+            let mut properties = entity_properties.get(entity_path);
             if properties.pinhole_image_plane_distance.is_auto() {
                 let scene_size = self.scene_bbox_accum.size().length();
                 let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
@@ -177,9 +186,7 @@ impl ViewSpatialState {
                 };
                 properties.pinhole_image_plane_distance =
                     EditableAutoValue::Auto(default_image_plane_distance);
-                data_blueprint
-                    .data_blueprints_individual()
-                    .set(entity_path.clone(), properties);
+                entity_properties.set(entity_path.clone(), properties);
             }
         }
     }
@@ -187,14 +194,13 @@ impl ViewSpatialState {
     fn update_depth_cloud_property_heuristics(
         &self,
         ctx: &mut ViewerContext<'_>,
-        data_blueprint: &mut DataBlueprintTree,
-        query: &re_arrow_store::LatestAtQuery,
         entity_path: &EntityPath,
+        entity_properties: &mut re_data_store::EntityPropertyMap,
     ) -> Option<()> {
         let store = &ctx.store_db.entity_db.data_store;
-        let tensor = store.query_latest_component::<Tensor>(entity_path, query)?;
+        let tensor = store.query_latest_component::<Tensor>(entity_path, &ctx.current_query())?;
 
-        let mut properties = data_blueprint.data_blueprints_individual().get(entity_path);
+        let mut properties = entity_properties.get(entity_path);
         if properties.backproject_depth.is_auto() {
             properties.backproject_depth = EditableAutoValue::Auto(
                 tensor.meaning == TensorDataMeaning::Depth
@@ -218,9 +224,7 @@ impl ViewSpatialState {
                 properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
             }
 
-            data_blueprint
-                .data_blueprints_individual()
-                .set(entity_path.clone(), properties);
+            entity_properties.set(entity_path.clone(), properties);
         }
 
         Some(())
@@ -230,24 +234,19 @@ impl ViewSpatialState {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        data_blueprint: &DataBlueprintTree,
-        space_path: &EntityPath,
+        space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Space root")
+            ctx.re_ui.grid_left_hand_label(ui, "Space origin")
                 .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
-            // Specify space view id only if this is actually part of the space view itself.
-            // (otherwise we get a somewhat broken link)
             item_ui::entity_path_button(ctx,
                 ui,
-                data_blueprint
-                    .contains_entity(space_path)
-                    .then_some(space_view_id),
-                space_path,
+                Some(space_view_id),
+                space_origin,
             );
             ui.end_row();
 
@@ -365,18 +364,15 @@ impl ViewSpatialState {
         });
     }
 
-    // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
-    #[allow(clippy::too_many_arguments)]
     pub fn view_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space: &EntityPath,
-        scene: SceneSpatial,
+        scene: &mut SceneSpatial,
+        space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        entity_properties: &EntityPropertyMap,
     ) {
-        self.scene_bbox = scene.primitives.bounding_box();
+        self.scene_bbox = scene.parts.calculate_bounding_box();
         if self.scene_bbox_accum.is_nothing() {
             self.scene_bbox_accum = self.scene_bbox;
         } else {
@@ -384,24 +380,19 @@ impl ViewSpatialState {
         }
 
         if self.nav_mode.is_auto() {
-            self.nav_mode = EditableAutoValue::Auto(scene.preferred_navigation_mode(space));
+            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(scene, space_origin));
         }
-        self.scene_num_primitives = scene.primitives.num_primitives();
+        self.scene_num_primitives = scene
+            .context
+            .num_3d_primitives
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates = store.query_latest_component(space, &ctx.current_query());
+                let coordinates = store.query_latest_component(space_origin, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                view_3d(
-                    ctx,
-                    ui,
-                    self,
-                    space,
-                    space_view_id,
-                    scene,
-                    entity_properties,
-                );
+                view_3d(ctx, ui, self, space_origin, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -412,11 +403,10 @@ impl ViewSpatialState {
                     ctx,
                     ui,
                     self,
-                    space,
                     scene,
-                    scene_rect_accum,
+                    space_origin,
                     space_view_id,
-                    entity_properties,
+                    scene_rect_accum,
                 );
             }
         }
@@ -518,20 +508,21 @@ fn axis_name(axis: Option<glam::Vec3>) -> String {
 }
 
 pub fn create_labels(
-    scene_ui: &mut SceneSpatialUiData,
+    labels: &[UiLabel],
     ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &mut egui::Ui,
     highlights: &SpaceViewHighlights,
     nav_mode: SpatialNavigationMode,
-) -> Vec<egui::Shape> {
+) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
-    let mut label_shapes = Vec::with_capacity(scene_ui.labels.len() * 2);
+    let mut label_shapes = Vec::with_capacity(labels.len() * 2);
+    let mut ui_rects = Vec::with_capacity(labels.len());
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
 
-    for label in &scene_ui.labels {
+    for label in labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
                 // TODO(#1640): 2D labels are not visible in 3D for now.
@@ -609,13 +600,13 @@ pub fn create_labels(
         label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
         label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
 
-        scene_ui.pickable_ui_rects.push((
-            ui_from_canvas.inverse().transform_rect(bg_rect),
-            label.labeled_instance,
-        ));
+        ui_rects.push(PickableUiRect {
+            rect: ui_from_canvas.inverse().transform_rect(bg_rect),
+            instance_hash: label.labeled_instance,
+        });
     }
 
-    label_shapes
+    (label_shapes, ui_rects)
 }
 
 pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
@@ -670,10 +661,10 @@ pub fn picking(
     eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     space_view_id: SpaceViewId,
-    state: &mut ViewSpatialState,
+    state: &mut SpatialSpaceViewState,
     scene: &SceneSpatial,
+    ui_rects: &[PickableUiRect],
     space: &EntityPath,
-    entity_properties: &EntityPropertyMap,
 ) -> egui::Response {
     re_tracing::profile_function!();
 
@@ -714,8 +705,8 @@ pub fn picking(
         ctx.render_ctx,
         space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &scene.scene.parts.images.images,
-        &scene.ui,
+        &scene.parts.images.images,
+        ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
 
@@ -728,14 +719,23 @@ pub fn picking(
         let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
             else { continue; };
 
-        let ent_properties = entity_properties.get(&instance_path.entity_path);
-        if !ent_properties.interactive {
+        if scene
+            .context
+            .non_interactive_entities
+            .0
+            .contains(&instance_path.entity_path.hash())
+        {
             continue;
         }
 
         // Special hover ui for images.
+        let is_depth_cloud = scene
+            .parts
+            .images
+            .depth_cloud_entities
+            .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
-            || *ent_properties.backproject_depth.get()
+            || is_depth_cloud
         {
             let store = &ctx.store_db.entity_db.data_store;
             store
@@ -744,7 +744,7 @@ pub fn picking(
                     // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
                     // (the back-projection property may be true despite this not being a depth image!)
                     if hit.hit_type != PickingHitType::TexturedRect
-                        && *ent_properties.backproject_depth.get()
+                        && is_depth_cloud
                         && tensor.meaning != TensorDataMeaning::Depth
                     {
                         None
@@ -819,13 +819,14 @@ pub fn picking(
                                 let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor));
                                 match decoded_tensor {
                                     Ok(decoded_tensor) => {
+                                        let annotations = scene.context.annotations.0.find(&instance_path.entity_path);
                                         let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(&decoded_tensor));
                                         show_zoomed_image_region(
                                             ctx.render_ctx,
                                             ui,
                                             &decoded_tensor,
                                             &tensor_stats,
-                                            &scene.annotation_map.find(&instance_path.entity_path),
+                                            &annotations,
                                             decoded_tensor.meter,
                                             &tensor_name,
                                             [coords[0] as _, coords[1] as _],
@@ -865,7 +866,9 @@ pub fn picking(
                 pos: hovered_point,
                 tracked_space_camera: state.state_3d.tracked_camera.clone(),
                 point_in_space_cameras: scene
-                    .space_cameras()
+                    .parts
+                    .cameras
+                    .space_cameras
                     .iter()
                     .map(|cam| {
                         (

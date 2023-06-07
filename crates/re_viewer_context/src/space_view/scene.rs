@@ -18,10 +18,10 @@ pub trait Scene {
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData>;
+    );
 
-    /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
-    fn as_any(&self) -> &dyn std::any::Any;
+    /// Converts itself to a mutable reference of [`std::any::Any`], which enables downcasting to concrete types.
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
 /// Implementation of [`Scene`] for a specific [`SpaceViewClassImpl`].
@@ -29,6 +29,13 @@ pub struct TypedScene<C: SpaceViewClassImpl> {
     pub context: C::SceneContext,
     pub parts: C::ScenePartCollection,
     pub highlights: SpaceViewHighlights,
+
+    /// All draw data gathered during the last call to [`Self::populate`].
+    ///
+    /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
+    ///              In the future, we likely want to move view builder handling to `re_viewport` with
+    ///              minimal configuration options exposed via [`crate::SpaceViewClass`].
+    pub draw_data: Vec<re_renderer::QueueableDrawData>,
 }
 
 impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
@@ -37,6 +44,7 @@ impl<C: SpaceViewClassImpl> Default for TypedScene<C> {
             context: Default::default(),
             parts: Default::default(),
             highlights: Default::default(),
+            draw_data: Default::default(),
         }
     }
 }
@@ -48,7 +56,7 @@ impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
         query: &SceneQuery<'_>,
         space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
-    ) -> Vec<re_renderer::QueueableDrawData> {
+    ) {
         re_tracing::profile_function!();
 
         self.highlights = highlights;
@@ -59,7 +67,7 @@ impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
             else {
                 re_log::error_once!("Unexpected space view state type. Expected {}",
                                     std::any::type_name::<C::SpaceViewState>());
-                return Vec::new();
+                return;
             };
 
         // TODO(andreas): Both loops are great candidates for parallelization.
@@ -67,17 +75,18 @@ impl<C: SpaceViewClassImpl + 'static> Scene for TypedScene<C> {
             // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
             context.populate(ctx, query, state);
         }
-        self.parts
+        self.draw_data = self
+            .parts
             .vec_mut()
             .into_iter()
             .flat_map(|element| {
                 // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
                 element.populate(ctx, query, state, &self.context, &self.highlights)
             })
-            .collect()
+            .collect();
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 }

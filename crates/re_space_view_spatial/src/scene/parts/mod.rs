@@ -16,8 +16,6 @@ mod spatial_scene_part_data;
 pub use images::Image;
 pub use spatial_scene_part_data::SpatialScenePartData;
 
-use re_space_view::EmptySpaceViewState;
-
 use ahash::HashMap;
 use std::sync::Arc;
 
@@ -27,9 +25,9 @@ use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
 
-use crate::{scene::Keypoints, SpatialSpaceViewClass};
+use crate::{scene::Keypoints, ui::SpatialSpaceViewState, SpatialSpaceView};
 
-type SpatialSpaceViewState = EmptySpaceViewState;
+use super::UiLabel;
 
 #[derive(Default)]
 pub struct SpatialScenePartCollection {
@@ -45,8 +43,8 @@ pub struct SpatialScenePartCollection {
     pub images: images::ImagesPart,
 }
 
-impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart<SpatialSpaceViewClass>> {
+impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
+    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart<SpatialSpaceView>> {
         let Self {
             points2d,
             points3d,
@@ -67,6 +65,47 @@ impl ScenePartCollection<SpatialSpaceViewClass> for SpatialScenePartCollection {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+impl SpatialScenePartCollection {
+    fn vec(&self) -> Vec<&dyn re_viewer_context::ScenePart<SpatialSpaceView>> {
+        let Self {
+            points2d,
+            points3d,
+            arrows3d,
+            boxes2d,
+            boxes3d,
+            cameras,
+            lines2d,
+            lines3d,
+            meshes,
+            images,
+        } = self;
+        vec![
+            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
+            images,
+        ]
+    }
+
+    pub fn calculate_bounding_box(&self) -> macaw::BoundingBox {
+        let mut bounding_box = macaw::BoundingBox::nothing();
+        for scene_part in self.vec() {
+            if let Some(data) = scene_part.data() {
+                bounding_box = bounding_box.union(data.bounding_box);
+            }
+        }
+        bounding_box
+    }
+
+    pub fn collect_ui_labels(&self) -> Vec<UiLabel> {
+        let mut ui_labels = Vec::new();
+        for scene_part in self.vec() {
+            if let Some(data) = scene_part.data() {
+                ui_labels.extend(data.ui_labels.iter().cloned());
+            }
+        }
+        ui_labels
     }
 }
 

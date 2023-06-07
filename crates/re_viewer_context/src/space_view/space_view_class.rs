@@ -1,6 +1,8 @@
-use re_log_types::ComponentName;
+use nohash_hasher::IntSet;
+use re_data_store::EntityPropertyMap;
+use re_log_types::{ComponentName, EntityPath};
 
-use crate::{Scene, ViewerContext};
+use crate::{Scene, SpaceViewId, ViewerContext};
 
 /// First element is the primary component, all others are optional.
 ///
@@ -29,7 +31,7 @@ pub trait SpaceViewClass {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText;
 
     /// Called once for every new space view instance of this class.
     ///
@@ -45,14 +47,22 @@ pub trait SpaceViewClass {
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
-    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
-        None
-    }
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition>;
 
-    /// Executed before the scene is populated.
+    /// Preferred aspect ratio for the ui tiles of this space view.
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32>;
+
+    /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
     ///
     /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`]
-    fn prepare_populate(&self, _ctx: &mut ViewerContext<'_>, _state: &mut dyn SpaceViewState) {}
+    /// Passed entity properties are individual properties without propagated values.
+    fn prepare_populate(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        state: &mut dyn SpaceViewState,
+        entity_paths: &IntSet<EntityPath>,
+        entity_properties: &mut EntityPropertyMap,
+    );
 
     /// Ui shown when the user selects a space view of this class.
     ///
@@ -62,6 +72,8 @@ pub trait SpaceViewClass {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 
     /// Draws the ui for this space view type and handles ui events.
@@ -74,6 +86,8 @@ pub trait SpaceViewClass {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         scene: Box<dyn Scene>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 }
 

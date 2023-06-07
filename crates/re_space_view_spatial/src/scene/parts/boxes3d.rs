@@ -14,7 +14,7 @@ use crate::{
         parts::entity_iterator::process_entity_views,
         UiLabel, UiLabelTarget,
     },
-    SpatialSpaceViewClass,
+    SpatialSpaceView,
 };
 
 use super::{
@@ -107,7 +107,7 @@ impl Boxes3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for Boxes3DPart {
+impl ScenePart<SpatialSpaceView> for Boxes3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Box3D::name(),

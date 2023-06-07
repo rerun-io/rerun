@@ -1,6 +1,10 @@
+use nohash_hasher::IntSet;
+use re_data_store::EntityPropertyMap;
+use re_log_types::EntityPath;
+
 use crate::{
-    Scene, SceneContext, ScenePartCollection, SpaceViewClass, SpaceViewClassName, SpaceViewState,
-    ViewerContext,
+    ArchetypeDefinition, Scene, SceneContext, ScenePartCollection, SpaceViewClass,
+    SpaceViewClassName, SpaceViewId, SpaceViewState, ViewerContext,
 };
 
 use super::scene::TypedScene;
@@ -37,7 +41,32 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
     fn icon(&self) -> &'static re_ui::Icon;
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &Self::SpaceViewState) -> egui::WidgetText;
+
+    /// Preferred aspect ratio for the ui tiles of this space view.
+    fn preferred_tile_aspect_ratio(&self, _state: &Self::SpaceViewState) -> Option<f32> {
+        None
+    }
+
+    /// Optional archetype of the Space View's blueprint properties.
+    ///
+    /// Blueprint components that only apply to the space view itself, not to the entities it displays.
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+        None
+    }
+
+    /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
+    ///
+    /// Is only allowed to access archetypes defined by [`Self::blueprint_archetype`].
+    /// Passed entity properties are individual properties without propagated values.
+    fn prepare_populate(
+        &self,
+        _ctx: &mut ViewerContext<'_>,
+        _state: &Self::SpaceViewState,
+        _entity_paths: &IntSet<EntityPath>,
+        _entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+    }
 
     /// Ui shown when the user selects a space view of this class.
     ///
@@ -47,6 +76,8 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 
     /// Draws the ui for this space view class and handles ui events.
@@ -58,7 +89,9 @@ pub trait SpaceViewClassImpl: std::marker::Sized {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::SpaceViewState,
-        scene: &TypedScene<Self>,
+        scene: &mut TypedScene<Self>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     );
 }
 
@@ -74,8 +107,8 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
     }
 
     #[inline]
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        self.help_text(re_ui)
+    fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText {
+        typed_state_wrapper(state, |state| self.help_text(re_ui, state))
     }
 
     #[inline]
@@ -88,14 +121,38 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         Box::<T::SpaceViewState>::default()
     }
 
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
+        typed_state_wrapper(state, |state| self.preferred_tile_aspect_ratio(state))
+    }
+
+    fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {
+        self.blueprint_archetype()
+    }
+
+    fn prepare_populate(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        state: &mut dyn SpaceViewState,
+        entity_paths: &IntSet<EntityPath>,
+        entity_properties: &mut EntityPropertyMap,
+    ) {
+        typed_state_wrapper_mut(state, |state| {
+            self.prepare_populate(ctx, state, entity_paths, entity_properties);
+        });
+    }
+
     #[inline]
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     ) {
-        typed_state_wrapper(state, |state| self.selection_ui(ctx, ui, state));
+        typed_state_wrapper_mut(state, |state| {
+            self.selection_ui(ctx, ui, state, space_origin, space_view_id);
+        });
     }
 
     #[inline]
@@ -104,29 +161,49 @@ impl<T: SpaceViewClassImpl + 'static> SpaceViewClass for T {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Box<dyn Scene>,
+        mut scene: Box<dyn Scene>,
+        space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
     ) {
-        let Some(typed_scene) = scene.as_any().downcast_ref()
+        let Some(typed_scene) = scene.as_any_mut().downcast_mut()
             else {
                 re_log::error_once!("Unexpected space view state type. Expected {}",
                                     std::any::type_name::<TypedScene<T>>());
                 return;
             };
 
-        typed_state_wrapper(state, |state| self.ui(ctx, ui, state, typed_scene));
+        typed_state_wrapper_mut(state, |state| {
+            self.ui(ctx, ui, state, typed_scene, space_origin, space_view_id);
+        });
     }
 }
 
-fn typed_state_wrapper<T: SpaceViewState, F: FnOnce(&mut T)>(
+fn typed_state_wrapper_mut<T: SpaceViewState, R: Default, F: FnOnce(&mut T) -> R>(
     state: &mut dyn SpaceViewState,
     fun: F,
-) {
+) -> R {
     if let Some(state) = state.as_any_mut().downcast_mut() {
-        fun(state);
+        fun(state)
     } else {
         re_log::error_once!(
             "Unexpected space view state type. Expected {}",
             std::any::type_name::<T>()
         );
+        R::default()
+    }
+}
+
+fn typed_state_wrapper<T: SpaceViewState, R: Default, F: FnOnce(&T) -> R>(
+    state: &dyn SpaceViewState,
+    fun: F,
+) -> R {
+    if let Some(state) = state.as_any().downcast_ref() {
+        fun(state)
+    } else {
+        re_log::error_once!(
+            "Unexpected space view state type. Expected {}",
+            std::any::type_name::<T>()
+        );
+        R::default()
     }
 }

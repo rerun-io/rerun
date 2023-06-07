@@ -4528,7 +4528,6 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_space_view",
- "re_space_view_spatial",
  "re_tensor_ops",
  "re_tracing",
  "re_ui",

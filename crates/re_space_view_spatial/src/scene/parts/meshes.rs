@@ -12,7 +12,7 @@ use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
     parts::entity_iterator::process_entity_views,
 };
-use crate::SpatialSpaceViewClass;
+use crate::SpatialSpaceView;
 
 use super::{instance_path_hash_for_picking, SpatialScenePartData, SpatialSpaceViewState};
 
@@ -69,7 +69,7 @@ impl MeshPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for MeshPart {
+impl ScenePart<SpatialSpaceView> for MeshPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()]
     }

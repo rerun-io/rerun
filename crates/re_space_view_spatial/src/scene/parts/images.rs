@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use egui::NumExt;
 
 use itertools::Itertools as _;
+use nohash_hasher::IntSet;
 use re_components::{
     ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor, TensorData,
     TensorDataMeaning,
@@ -27,7 +28,7 @@ use crate::{
         parts::entity_iterator::process_entity_views,
         SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
     },
-    SpatialSpaceViewClass,
+    SpatialSpaceView,
 };
 
 use super::{SpatialScenePartData, SpatialSpaceViewState};
@@ -125,6 +126,7 @@ struct ImageGrouping {
 pub struct ImagesPart {
     pub data: SpatialScenePartData,
     pub images: Vec<Image>,
+    pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
 impl ImagesPart {
@@ -233,7 +235,8 @@ impl ImagesPart {
                     ) {
                         Ok(cloud) => {
                             self.data
-                                .extend_bounding_box(cloud.bbox(), ent_context.world_from_obj);
+                                .extend_bounding_box(cloud.bbox(), cloud.world_from_obj);
+                            self.depth_cloud_entities.insert(ent_path.hash());
                             depth_clouds.push(cloud);
                             return Ok(());
                         }
@@ -388,7 +391,7 @@ impl ImagesPart {
         };
 
         Ok(DepthCloud {
-            world_from_obj: world_from_obj.into(),
+            world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
@@ -402,7 +405,7 @@ impl ImagesPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for ImagesPart {
+impl ScenePart<SpatialSpaceView> for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Tensor::name(),

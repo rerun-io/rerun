@@ -1,5 +1,5 @@
 use parking_lot::{Mutex, MutexGuard};
-use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder};
+use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder, RenderContext};
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
 use crate::scene::{
@@ -21,6 +21,32 @@ impl SharedRenderBuilders {
 
     pub fn points(&self) -> MutexGuard<'_, PointCloudBuilder> {
         self.points.as_ref().unwrap().lock()
+    }
+
+    pub fn queuable_draw_data(
+        &mut self,
+        render_ctx: &mut RenderContext,
+    ) -> Vec<re_renderer::QueueableDrawData> {
+        let mut result = Vec::new();
+        result.extend(self.lines.take().and_then(
+            |l| match l.into_inner().to_draw_data(render_ctx) {
+                Ok(d) => Some(d.into()),
+                Err(err) => {
+                    re_log::error_once!("Failed to build line strip draw data: {err}");
+                    None
+                }
+            },
+        ));
+        result.extend(self.points.take().and_then(
+            |l| match l.into_inner().to_draw_data(render_ctx) {
+                Ok(d) => Some(d.into()),
+                Err(err) => {
+                    re_log::error_once!("Failed to build point draw data: {err}");
+                    None
+                }
+            },
+        ));
+        result
     }
 }
 

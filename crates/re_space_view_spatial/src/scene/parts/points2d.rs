@@ -15,7 +15,7 @@ use crate::{
         parts::entity_iterator::process_entity_views,
         UiLabel, UiLabelTarget,
     },
-    SpatialSpaceViewClass,
+    SpatialSpaceView,
 };
 
 use super::{
@@ -179,7 +179,7 @@ impl Points2DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceViewClass> for Points2DPart {
+impl ScenePart<SpatialSpaceView> for Points2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Point2D::name(),
