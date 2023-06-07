@@ -3,7 +3,7 @@ use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_renderer::WgpuResourcePoolStatistics;
 
-use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
+use crate::{env_vars::RERUN_TRACK_ALLOCATIONS, store_hub::StoreHubStats};
 
 // ----------------------------------------------------------------------------
 
@@ -18,8 +18,7 @@ impl MemoryPanel {
     pub fn update(
         &mut self,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &DataStoreStats,
-        blueprint_stats: &DataStoreStats,
+        store_stats: &StoreHubStats,
     ) {
         re_tracing::profile_function!();
         self.history.capture(
@@ -27,8 +26,8 @@ impl MemoryPanel {
                 (gpu_resource_stats.total_buffer_size_in_bytes
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
-            Some(store_stats.total.num_bytes as _),
-            Some(blueprint_stats.total.num_bytes as _),
+            Some(store_stats.recording_stats.total.num_bytes as _),
+            Some(store_stats.blueprint_stats.total.num_bytes as _),
         );
     }
 
