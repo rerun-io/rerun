@@ -1,6 +1,6 @@
-//! Rerun Text Space Views
+//! Rerun bar chart Space View.
 //!
-//! A Space View that shows text entries in a table and scrolls with the active time.
+//! A Space View that shows a single bar chart.
 
 mod scene_part;
 mod space_view_class;
