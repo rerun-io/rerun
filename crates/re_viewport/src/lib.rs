@@ -9,7 +9,6 @@ mod space_view_entity_picker;
 mod space_view_heuristics;
 mod space_view_highlights;
 mod view_category;
-mod view_tensor;
 mod viewport;
 
 pub mod blueprint_components;

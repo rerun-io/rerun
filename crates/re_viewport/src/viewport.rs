@@ -562,18 +562,9 @@ impl ViewportState {
                 {
                     state.new_state()
                 } else {
-                    // TODO(andreas): Enable this once categories are gone.
-                    // re_log::error_once!(
-                    //     "Space View class \"{}\" is not registered.",
-                    //     space_view_class
-                    // );
                     Box::<EmptySpaceViewState>::default()
                 };
-                SpaceViewState {
-                    state,
-                    selected_tensor: Default::default(),
-                    state_tensors: Default::default(),
-                }
+                SpaceViewState { state }
             })
     }
 }

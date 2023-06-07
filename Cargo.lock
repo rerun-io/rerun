@@ -4310,6 +4310,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_space_view_tensor"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "ahash 0.8.3",
+ "anyhow",
+ "bytemuck",
+ "eframe",
+ "egui",
+ "half 2.2.1",
+ "ndarray",
+ "re_arrow_store",
+ "re_components",
+ "re_data_store",
+ "re_data_ui",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_space_view",
+ "re_tensor_ops",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_context",
+ "thiserror",
+ "vec1",
+ "wgpu",
+]
+
+[[package]]
 name = "re_space_view_text"
 version = "0.7.0-alpha.0"
 dependencies = [
@@ -4480,6 +4508,7 @@ dependencies = [
  "re_smart_channel",
  "re_space_view_bar_chart",
  "re_space_view_spatial",
+ "re_space_view_tensor",
  "re_space_view_text",
  "re_space_view_text_box",
  "re_space_view_time_series",
