@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
-    let app_env = re_viewer::AppEnvironment::Custom("My Wrapper".to_owned());
+    let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());
 
     // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
     // to spawn the viewer in place and migrate the user callback to a new thread.
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             rx,
         );
 
-        // Register custom Space View(s)
+        // Register the custom space view
         app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()
             .unwrap();
 

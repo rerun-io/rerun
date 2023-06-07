@@ -60,7 +60,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // For this Space View we don't need any scene context.
     type Context = ();
 
-    // Collection of scene parts that are needed every frame.
+    // Collection of scene parts that are needed to display a frame.
     // We only have a single scene part, but it could be a collection of various.
     type SceneParts = SceneColorCoordinates;
 
@@ -87,6 +87,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     }
 
     /// Additional UI displayed when the space view is selected.
+    ///
+    /// In this sample we show a combo box to select the color coordinates mode.
     fn selection_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
@@ -113,6 +115,10 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         });
     }
 
+    /// The contents of the Space View window and all interaction within it.
+    ///
+    /// This is called with a fully populated scene which is a combination of all
+    /// scene contexts, parts and selection highlights.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,

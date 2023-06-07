@@ -12,13 +12,16 @@ use re_viewer::external::{
 
 use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
 
-/// TODO:
+/// The scene for the [`ColorCoordinatesSpaceView`].
+///
+/// This is a collection of all information needed to display a single frame for this Space View.
+/// The data is queried from the data store here and processed to consumption by the Space View's ui method.
 #[derive(Default)]
 pub struct SceneColorCoordinates {
     pub colors: Vec<(InstancePathHash, egui::Color32)>,
 }
 
-// TODO: Conflicts with in-flight PR
+// TODO(andreas): This conflicts with in-flight PR which makes this unnecessary for single-part scenes.
 impl ScenePartCollection<ColorCoordinatesSpaceView> for SceneColorCoordinates {
     fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<ColorCoordinatesSpaceView>> {
         vec![self]
@@ -29,11 +32,17 @@ impl ScenePartCollection<ColorCoordinatesSpaceView> for SceneColorCoordinates {
     }
 }
 
+// [`SceneColorCoordinates`] is itself its only scene part.
 impl ScenePart<ColorCoordinatesSpaceView> for SceneColorCoordinates {
+    /// The archetype this scene part is querying from the store.
+    ///
+    /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries within the `populate` method,
+    ///              to this here define archetype.
     fn archetype(&self) -> ArchetypeDefinition {
         ArchetypeDefinition::new(re_components::ColorRGBA::name())
     }
 
+    /// Populates the scene part with data from the store.
     fn populate(
         &mut self,
         ctx: &mut ViewerContext<'_>,
