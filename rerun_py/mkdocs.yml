@@ -2,6 +2,7 @@
 # Top-level config for mkdocs
 # See: https://www.mkdocs.org/user-guide/configuration/
 site_name: Rerun Python APIs
+site_url: https://ref.rerun.io/docs/python/latest
 repo_url: https://github.com/rerun-io/rerun/
 
 # Use the material theme
@@ -61,3 +62,4 @@ extra:
   version:
     provider: mike
     default: latest
+
