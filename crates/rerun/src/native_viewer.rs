@@ -45,7 +45,7 @@ where
         let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
         let startup_options = re_viewer::StartupOptions::default();
         Box::new(re_viewer::App::from_receiver(
-            re_build_info::build_info!(),
+            re_viewer::build_info(),
             &app_env,
             startup_options,
             re_ui,
@@ -73,7 +73,7 @@ pub fn show(msgs: Vec<LogMsg>) -> re_viewer::external::eframe::Result<()> {
 
     let startup_options = re_viewer::StartupOptions::default();
     re_viewer::run_native_viewer_with_messages(
-        re_build_info::build_info!(),
+        re_viewer::build_info(),
         re_viewer::AppEnvironment::from_store_source(&store_source),
         startup_options,
         msgs,
