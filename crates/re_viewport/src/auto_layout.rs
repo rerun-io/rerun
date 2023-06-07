@@ -51,7 +51,7 @@ pub(crate) fn tree_from_space_views(
     ctx: &mut ViewerContext<'_>,
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
-    space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
+    space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     space_view_states: &HashMap<SpaceViewId, SpaceViewState>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
