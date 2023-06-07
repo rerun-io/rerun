@@ -8,7 +8,6 @@ mod space_view;
 mod space_view_entity_picker;
 mod space_view_heuristics;
 mod space_view_highlights;
-mod view_bar_chart;
 mod view_category;
 mod view_tensor;
 mod view_time_series;
