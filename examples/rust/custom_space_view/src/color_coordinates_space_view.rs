@@ -74,7 +74,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_TEXT
+        &re_ui::icons::SPACE_VIEW_SCATTERPLOT
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
