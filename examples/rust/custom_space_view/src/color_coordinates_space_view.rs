@@ -19,6 +19,14 @@ enum ColorCoordinatesMode {
     Rg,
 }
 
+impl ColorCoordinatesMode {
+    pub const ALL: [ColorCoordinatesMode; 3] = [
+        ColorCoordinatesMode::Hs,
+        ColorCoordinatesMode::Hv,
+        ColorCoordinatesMode::Rg,
+    ];
+}
+
 impl std::fmt::Display for ColorCoordinatesMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -105,12 +113,9 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
                     ui.style_mut().wrap = Some(false);
                     ui.set_min_width(64.0);
 
-                    let mut selectable_value = |ui: &mut egui::Ui, e| {
-                        ui.selectable_value(&mut state.mode, e, e.to_string())
-                    };
-                    selectable_value(ui, ColorCoordinatesMode::Hs);
-                    selectable_value(ui, ColorCoordinatesMode::Hv);
-                    selectable_value(ui, ColorCoordinatesMode::Rg);
+                    for mode in &ColorCoordinatesMode::ALL {
+                        ui.selectable_value(&mut state.mode, *mode, mode.to_string());
+                    }
                 });
         });
     }
@@ -128,11 +133,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
-        egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
-            ..egui::Frame::default()
-        }
-        .show(ui, |ui| {
+        egui::Frame::default().show(ui, |ui| {
             let color_at = match state.mode {
                 ColorCoordinatesMode::Hs => |x, y| egui::ecolor::Hsva::new(x, y, 1.0, 1.0).into(),
                 ColorCoordinatesMode::Hv => |x, y| egui::ecolor::Hsva::new(x, 1.0, y, 1.0).into(),
@@ -140,26 +141,26 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
             };
             let position_at = match state.mode {
                 ColorCoordinatesMode::Hs => |c: egui::Color32| {
-                    let hsva: egui::ecolor::Hsva = c.into();
+                    let hsva = egui::ecolor::Hsva::from(c);
                     (hsva.h, hsva.s)
                 },
                 ColorCoordinatesMode::Hv => |c: egui::Color32| {
-                    let hsva: egui::ecolor::Hsva = c.into();
+                    let hsva = egui::ecolor::Hsva::from(c);
                     (hsva.h, hsva.v)
                 },
                 ColorCoordinatesMode::Rg => |c: egui::Color32| {
-                    let rgba: egui::ecolor::Rgba = c.into();
+                    let rgba = egui::ecolor::Rgba::from(c);
                     (rgba.r(), rgba.g())
                 },
             };
-            draw_color_space(ui, ctx, space_view_id, scene, color_at, position_at);
+            color_space_ui(ui, ctx, space_view_id, scene, color_at, position_at);
         });
     }
 }
 
 // Draw a mesh for displaying the color space
 // Inspired by https://github.com/emilk/egui/blob/0.22.0/crates/egui/src/widgets/color_picker.rs
-fn draw_color_space(
+fn color_space_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     space_view_id: SpaceViewId,
@@ -225,7 +226,7 @@ fn draw_color_space(
 
             let interact = ui.interact(
                 egui::Rect::from_center_size(center, egui::Vec2::splat(radius * 2.0)),
-                ui.id().with(i),
+                ui.id().with(("circle", i)),
                 egui::Sense::click(),
             );
 
