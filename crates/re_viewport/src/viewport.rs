@@ -561,7 +561,7 @@ impl ViewportState {
                 } else {
                     // TODO(andreas): Enable this once categories are gone.
                     // re_log::error_once!(
-                    //     "Space View class \"{}\" is not registered.",
+                    //     "Space View class {:?} is not registered.",
                     //     space_view_class
                     // );
                     Box::<EmptySpaceViewState>::default()

@@ -21,6 +21,7 @@ error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
 wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
+explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"') # looks for: \"{foo}\"
 
 
 def lint_line(line: str) -> Optional[str]:
@@ -77,6 +78,9 @@ def lint_line(line: str) -> Optional[str]:
     if nb_prefix.search(line):
         return "Don't use nb_things - use num_things or thing_count instead"
 
+    if explicit_quotes.search(line):
+        return "Prefer using {:?} - it will also escape newlines etc"
+
     return None
 
 
@@ -103,6 +107,7 @@ def test_lint_line() -> None:
         "num_instances",
         "instances_count",
         "let Some(foo) = bar else { return; };",
+        "{foo:?}",
     ]
 
     should_error = [
@@ -124,6 +129,9 @@ def test_lint_line() -> None:
         "let Some(foo) = bar else {return;};",
         "let Some(foo) = bar else {return};",
         "let Some(foo) = bar else { return };",
+        r'println!("Problem: \"{}\"", string)',
+        r'println!("Problem: \"{0}\"")',
+        r'println!("Problem: \"{string}\"")',
     ]
 
     for line in should_pass:
