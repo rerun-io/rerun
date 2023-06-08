@@ -1,6 +1,6 @@
 //! Information about the build of a Rust crate.
 //!
-//! To use this you also need to call `re_build_build_info::export_env_vars()` from your build.rs.
+//! To use this you also need to call `re_build_tools::export_env_vars()` from your build.rs.
 
 mod build_info;
 mod crate_version;
@@ -9,7 +9,7 @@ pub use build_info::BuildInfo;
 pub use crate_version::CrateVersion;
 
 /// Create a [`BuildInfo`] at compile-time using environment variables exported by
-/// calling `re_build_build_info::export_env_vars()` from your build.rs.
+/// calling `re_build_tools::export_env_vars()` from your build.rs.
 #[macro_export]
 macro_rules! build_info {
     () => {

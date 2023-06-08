@@ -43,4 +43,4 @@ web-sys = { version = "0.3.58", features = ["Storage"] }
 
 
 [build-dependencies]
-re_build_build_info.workspace = true
+re_build_tools.workspace = true

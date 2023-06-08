@@ -116,6 +116,11 @@ web-sys = { version = "0.3.61", features = [
 
 # For build.rs:
 [build-dependencies]
+
+# Rerun
+re_build_tools.workspace = true
+
+# External
 anyhow.workspace = true
 clean-path = "0.2"
 pathdiff = "0.2"

@@ -25,8 +25,8 @@ version = "0.7.0-alpha.0"
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 re_analytics = { path = "crates/re_analytics", version = "0.7.0-alpha.0", default-features = false }
 re_arrow_store = { path = "crates/re_arrow_store", version = "0.7.0-alpha.0", default-features = false }
-re_build_build_info = { path = "crates/re_build_build_info", version = "0.7.0-alpha.0", default-features = false }
 re_build_info = { path = "crates/re_build_info", version = "0.7.0-alpha.0", default-features = false }
+re_build_tools = { path = "crates/re_build_tools", version = "0.7.0-alpha.0", default-features = false }
 re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "0.7.0-alpha.0", default-features = false }
 re_components = { path = "crates/re_components", version = "0.7.0-alpha.0", default-features = false }
 re_crash_handler = { path = "crates/re_crash_handler", version = "0.7.0-alpha.0", default-features = false }
@@ -49,6 +49,7 @@ re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "
 re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "0.7.0-alpha.0", default-features = false }
 re_space_view_text = { path = "crates/re_space_view_text", version = "0.7.0-alpha.0", default-features = false }
 re_space_view_text_box = { path = "crates/re_space_view_text_box", version = "0.7.0-alpha.0", default-features = false }
+re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "0.7.0-alpha.0", default-features = false }
 re_string_interner = { path = "crates/re_string_interner", version = "0.7.0-alpha.0", default-features = false }
 re_tensor_ops = { path = "crates/re_tensor_ops", version = "0.7.0-alpha.0", default-features = false }
 re_time_panel = { path = "crates/re_time_panel", version = "=0.7.0-alpha.0", default-features = false }

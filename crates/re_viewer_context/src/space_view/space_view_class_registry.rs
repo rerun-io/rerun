@@ -5,10 +5,7 @@ use crate::{DynSpaceViewClass, SpaceViewClassName};
 #[derive(Debug, thiserror::Error)]
 pub enum SpaceViewClassRegistryError {
     #[error("Space view with class name {0:?} was already registered.")]
-    DuplicateClassName(SpaceViewClassName),
-
-    #[error("Space view with class name {0:?} was not found.")]
-    ClassNotFound(SpaceViewClassName),
+    DuplicateTypeName(SpaceViewClassName),
 }
 
 /// Registry of all known space view types.
@@ -37,15 +34,19 @@ impl SpaceViewClassRegistry {
         Ok(())
     }
 
-    /// Queries a space view type by name.
-    pub fn get(
-        &self,
-        name: SpaceViewClassName,
-    ) -> Result<&dyn DynSpaceViewClass, SpaceViewClassRegistryError> {
-        self.0
-            .get(&name)
-            .map(|boxed| boxed.as_ref())
-            .ok_or(SpaceViewClassRegistryError::ClassNotFound(name))
+    /// Queries a Space View type by class name.
+    fn get(&self, name: SpaceViewClassName) -> Option<&dyn DynSpaceViewClass> {
+        self.0.get(&name).map(|boxed| boxed.as_ref())
+    }
+
+    /// Queries a Space View type by class name and logs if it fails.
+    pub fn get_or_log_error(&self, name: SpaceViewClassName) -> Option<&dyn DynSpaceViewClass> {
+        let result = self.get(name);
+        // TODO(wumpf): Workaround for tensor not yet ported
+        if result.is_none() && name != "Tensor" {
+            re_log::error_once!("Unknown space view class {:?}", name);
+        }
+        result
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &dyn DynSpaceViewClass> {

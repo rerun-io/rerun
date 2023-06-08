@@ -64,6 +64,6 @@ re_analytics = { workspace = true, optional = true }
 
 
 [build-dependencies]
-re_build_build_info.workspace = true
+re_build_tools.workspace = true
 re_build_web_viewer.workspace = true
 re_error.workspace = true

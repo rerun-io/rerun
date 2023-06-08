@@ -13,6 +13,21 @@ pub trait SceneContext {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 
+/// Implementation of an empty scene context.
+impl SceneContext for () {
+    fn vec_mut(&mut self) -> Vec<&mut dyn SceneContextPart> {
+        Vec::new()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
 /// Scene context that can be used by scene elements and ui methods to retrieve information about the scene as a whole.
 ///
 /// Is always populated before scene elements.

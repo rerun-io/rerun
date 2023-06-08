@@ -37,8 +37,8 @@ pub struct TextBoxSpaceView;
 
 impl SpaceViewClass for TextBoxSpaceView {
     type State = TextBoxSpaceViewState;
+    type Context = ();
     type SceneParts = SceneTextBox;
-    type Context = re_space_view::EmptySceneContext;
     type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {

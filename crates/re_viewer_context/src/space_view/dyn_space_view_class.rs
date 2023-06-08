@@ -27,6 +27,8 @@ pub trait DynSpaceViewClass {
     ///
     /// Used for both ui display and identification.
     /// Must be unique within a viewer session.
+    ///
+    /// TODO(#2336): Display name and identifier should be separate.
     fn name(&self) -> SpaceViewClassName;
 
     /// Icon used to identify this space view class.
@@ -104,4 +106,15 @@ pub trait SpaceViewState: std::any::Any {
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+}
+
+/// Implementation of an empty space view state.
+impl SpaceViewState for () {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }

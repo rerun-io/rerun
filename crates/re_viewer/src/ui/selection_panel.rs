@@ -58,7 +58,7 @@ impl SelectionPanel {
                             &mut ctx.selection_state_mut().history,
                         ) {
                             ctx.selection_state_mut()
-                                .set_multi_selection(selection.iter().cloned());
+                                .set_selection(selection.iter().cloned());
                         }
                     });
 

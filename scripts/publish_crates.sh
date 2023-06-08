@@ -91,7 +91,7 @@ export RERUN_IS_PUBLISHING=yes
 echo "Publishing crates…"
 
 cargo publish $FLAGS -p re_build_info
-cargo publish $FLAGS -p re_build_build_info
+cargo publish $FLAGS -p re_build_tools
 cargo publish $FLAGS -p re_log
 cargo publish $FLAGS -p re_tracing
 cargo publish $FLAGS -p re_int_histogram
@@ -122,9 +122,10 @@ cargo publish $FLAGS -p re_time_panel
 cargo publish $FLAGS -p re_space_view
 cargo publish $FLAGS -p re_viewport
 cargo publish $FLAGS -p re_space_view_bar_chart
+cargo publish $FLAGS -p re_space_view_spatial
 cargo publish $FLAGS -p re_space_view_text
 cargo publish $FLAGS -p re_space_view_text_box
-cargo publish $FLAGS -p re_space_view_spatial
+cargo publish $FLAGS -p re_space_view_time_series
 cargo publish $FLAGS -p re_viewer
 cargo publish $FLAGS -p re_sdk
 cargo publish $FLAGS -p rerun
