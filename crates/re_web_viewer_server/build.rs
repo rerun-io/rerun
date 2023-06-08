@@ -1,20 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
-fn rerun_if_changed(path: &str) {
-    // Make sure the file exists, otherwise we'll be rebuilding all the time.
-    assert!(std::path::Path::new(path).exists(), "Failed to find {path}");
-    println!("cargo:rerun-if-changed={path}");
-}
-
-fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::VarError> {
-    println!("cargo:rerun-if-env-changed={env_var_name}");
-    std::env::var(env_var_name)
-}
-
-fn is_tracked_env_var_set(env_var_name: &str) -> bool {
-    let var = get_and_track_env_var(env_var_name).map(|v| v.to_lowercase());
-    var == Ok("1".to_owned()) || var == Ok("yes".to_owned()) || var == Ok("true".to_owned())
-}
+use re_build_tools::{
+    get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
+};
 
 fn main() {
     if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
@@ -37,7 +25,7 @@ fn main() {
     // We implicitly depend on re_viewer, which means we also implicitly depend on
     // all of its direct and indirect dependencies (which are potentially in-workspace
     // or patched!).
-    re_build_build_info::rebuild_if_crate_changed("re_viewer");
+    rebuild_if_crate_changed("re_viewer");
 
     if get_and_track_env_var("CARGO_FEATURE___CI").is_ok() {
         // If the `__ci` feature is set we skip building the web viewer wasm, saving a lot of time.

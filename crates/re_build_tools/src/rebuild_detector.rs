@@ -2,7 +2,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
@@ -38,32 +38,69 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
     }
 }
 
-fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::VarError> {
+/// Call from `build.rs` to trigger a rebuild whenever an environment variable changes.
+pub fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::VarError> {
     println!("cargo:rerun-if-env-changed={env_var_name}");
     std::env::var(env_var_name)
 }
 
-fn is_tracked_env_var_set(env_var_name: &str) -> bool {
+/// Call from `build.rs` to trigger a rebuild whenever an environment variable changes, and returns
+/// true if that variable has been set to a truthy value.
+pub fn is_tracked_env_var_set(env_var_name: &str) -> bool {
     let var = get_and_track_env_var(env_var_name).map(|v| v.to_lowercase());
     var == Ok("1".to_owned()) || var == Ok("yes".to_owned()) || var == Ok("true".to_owned())
 }
 
-fn rerun_if_changed(path: &std::path::Path) {
+/// Call from `build.rs` to trigger a rebuild whenever the file at `path` changes.
+///
+/// This requires the file to exist, which may or may not be what you want!
+pub fn rerun_if_changed(path: impl AsRef<Path>) {
+    let path = path.as_ref();
     // Make sure the file exists, otherwise we'll be rebuilding all the time.
     assert!(path.exists(), "Failed to find {path:?}");
     println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
 }
 
-fn rerun_if_changed_glob(path: &str, files_to_watch: &mut HashSet<PathBuf>) {
+/// Call from `build.rs` to trigger a rebuild whenever the file at `path` changes, or it doesn't
+/// exist.
+pub fn rerun_if_changed_or_doesnt_exist(path: impl AsRef<Path>) {
+    let path = path.as_ref();
+    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
+}
+
+/// Call from `build.rs` to trigger a rebuild whenever any of the files identified by the given
+/// globbed `path` change.
+pub fn rerun_if_changed_glob(path: impl AsRef<Path>, files_to_watch: &mut HashSet<PathBuf>) {
+    let path = path.as_ref();
+
     // Workaround for windows verbatim paths not working with glob.
     // Issue: https://github.com/rust-lang/glob/issues/111
     // Fix: https://github.com/rust-lang/glob/pull/112
     // Fixed on upstream, but no release containing the fix as of writing.
-    let path = path.trim_start_matches(r"\\?\");
+    let path = path.to_str().unwrap().trim_start_matches(r"\\?\");
 
     for path in glob::glob(path).unwrap() {
         files_to_watch.insert(path.unwrap());
     }
+}
+
+/// Writes `content` to a file iff it differs from what's already there.
+///
+/// This prevents recursive feedback loops where one generates source files from build.rs, which in
+/// turn triggers `cargo`'s implicit `rerun-if-changed=src/**` clause.
+//
+// TODO(cmc): use the same source tracking system as re_types* instead
+pub fn write_file_if_necessary(
+    path: impl AsRef<std::path::Path>,
+    content: &[u8],
+) -> std::io::Result<()> {
+    if let Ok(cur_bytes) = std::fs::read(&path) {
+        if cur_bytes == content {
+            return Ok(());
+        }
+    }
+
+    std::fs::write(path, content)
 }
 
 // ---
@@ -102,9 +139,9 @@ impl<'a> Packages<'a> {
 
             // NOTE: Since we track the cargo manifest, past this point we only need to
             // account for locally patched dependencies.
-            rerun_if_changed_glob(path.join("Cargo.toml").as_ref(), files_to_watch);
-            rerun_if_changed_glob(path.join("**/*.rs").as_ref(), files_to_watch);
-            rerun_if_changed_glob(path.join("**/*.wgsl").as_ref(), files_to_watch);
+            rerun_if_changed_glob(path.join("Cargo.toml"), files_to_watch);
+            rerun_if_changed_glob(path.join("**/*.rs"), files_to_watch);
+            rerun_if_changed_glob(path.join("**/*.wgsl"), files_to_watch);
         }
 
         // Track all direct and indirect dependencies of that root package
@@ -133,8 +170,8 @@ impl<'a> Packages<'a> {
                 let mut dep_path = dep_pkg.manifest_path.clone();
                 dep_path.pop();
 
-                rerun_if_changed_glob(dep_path.join("Cargo.toml").as_ref(), files_to_watch); // manifest too!
-                rerun_if_changed_glob(dep_path.join("**/*.rs").as_ref(), files_to_watch);
+                rerun_if_changed_glob(dep_path.join("Cargo.toml"), files_to_watch); // manifest too!
+                rerun_if_changed_glob(dep_path.join("**/*.rs"), files_to_watch);
             }
 
             if tracked.insert(dep_pkg.id.clone()) {

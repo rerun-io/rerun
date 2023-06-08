@@ -1,4 +1,4 @@
 fn main() {
-    re_build_build_info::rebuild_if_crate_changed("re_analytics");
-    re_build_build_info::export_env_vars();
+    re_build_tools::rebuild_if_crate_changed("re_analytics");
+    re_build_tools::export_env_vars();
 }

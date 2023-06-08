@@ -59,4 +59,4 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 
 [build-dependencies]
-re_build_build_info.workspace = true
+re_build_tools.workspace = true
