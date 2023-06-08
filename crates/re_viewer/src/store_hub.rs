@@ -78,6 +78,7 @@ impl StoreHub {
     }
 
     /// Change the selected/visible recording id.
+    /// This will also change the application-id to match the newly selected recording.
     pub fn set_recording_id(&mut self, recording_id: StoreId) {
         // If this recording corresponds to an app that we know about, then apdate the app-id.
         if let Some(app_id) = self
