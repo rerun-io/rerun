@@ -95,8 +95,11 @@ pub struct App {
     /// Pending background tasks, e.g. files being saved.
     pub(crate) background_tasks: BackgroundTasks,
 
-    /// Recording Id to switch to
+    /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
+
+    /// Recording Id to switch to
+    // TODO(jleibs): Switch this to use `pending_commands`
     pub(crate) requested_recording_id: Option<StoreId>,
 
     /// Toast notifications.
