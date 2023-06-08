@@ -51,9 +51,11 @@ re_log.workspace = true
 re_memory.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_smart_channel.workspace = true
+re_space_view_bar_chart.workspace = true
 re_space_view_spatial.workspace = true
 re_space_view_text_box.workspace = true
 re_space_view_text.workspace = true
+re_space_view_time_series.workspace = true
 re_time_panel.workspace = true
 re_tracing.workspace = true
 re_ui = { workspace = true, features = ["eframe"] }
@@ -110,4 +112,4 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.52", features = ["Window"] }
 
 [build-dependencies]
-re_build_build_info.workspace = true
+re_build_tools.workspace = true

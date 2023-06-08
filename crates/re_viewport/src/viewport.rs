@@ -2,6 +2,8 @@
 //!
 //! Contains all space views.
 
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
 use itertools::Itertools as _;
 
@@ -19,7 +21,6 @@ use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::{all_possible_space_views, default_created_space_views},
     space_view_highlights::highlights_for_space_view,
-    view_category::ViewCategory,
 };
 
 // ----------------------------------------------------------------------------
@@ -32,7 +33,9 @@ pub type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 #[serde(default)]
 pub struct Viewport {
     /// Where the space views are stored.
-    pub space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
+    ///
+    /// Not a hashmap in order to preserve the order of the space views.
+    pub space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 
     /// Which views are visible.
     pub visible: VisibilitySet,
@@ -489,10 +492,12 @@ impl Viewport {
                 .into_iter()
                 .sorted_by_key(|space_view| space_view.space_origin.to_string())
             {
-                let icon = if let Ok(class) = ctx.space_view_class_registry.get(space_view.class) {
+                let icon = if let Some(class) = ctx
+                    .space_view_class_registry
+                    .get_or_log_error(space_view.class)
+                {
                     class.icon()
                 } else {
-                    // TODO(andreas): Error handling if class is not found once categories are gone.
                     space_view.category.icon()
                 };
 
@@ -556,7 +561,9 @@ impl ViewportState {
         self.space_view_states
             .entry(space_view_id)
             .or_insert_with(|| {
-                let state = if let Ok(state) = space_view_class_registry.get(space_view_class) {
+                let state = if let Some(state) =
+                    space_view_class_registry.get_or_log_error(space_view_class)
+                {
                     state.new_state()
                 } else {
                     // TODO(andreas): Enable this once categories are gone.
@@ -569,8 +576,6 @@ impl ViewportState {
                 SpaceViewState {
                     state,
                     selected_tensor: Default::default(),
-                    state_time_series: Default::default(),
-                    state_bar_chart: Default::default(),
                     state_tensors: Default::default(),
                 }
             })
@@ -681,7 +686,7 @@ fn visibility_button_ui(
 struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
     ctx: &'a mut ViewerContext<'b>,
-    space_views: &'a mut HashMap<SpaceViewId, SpaceViewBlueprint>,
+    space_views: &'a mut BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
 }
 
@@ -833,23 +838,11 @@ fn help_text_ui(
     space_view_blueprint: &SpaceViewBlueprint,
     space_view_state: &SpaceViewState,
 ) {
-    let help_text = if let Ok(class) = ctx
+    if let Some(help_text) = ctx
         .space_view_class_registry
-        .get(space_view_blueprint.class)
+        .get_or_log_error(space_view_blueprint.class)
+        .map(|class| class.help_text(ctx.re_ui, space_view_state.state.as_ref()))
     {
-        Some(class.help_text(ctx.re_ui, space_view_state.state.as_ref()))
-    } else {
-        match space_view_blueprint.category {
-            ViewCategory::TimeSeries => Some(crate::view_time_series::help_text(ctx.re_ui)),
-            ViewCategory::BarChart => Some(crate::view_bar_chart::help_text(ctx.re_ui)),
-            ViewCategory::TextBox
-            | ViewCategory::Text
-            | ViewCategory::Tensor
-            | ViewCategory::Spatial => None,
-        }
-    };
-
-    if let Some(help_text) = help_text {
         re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
 }

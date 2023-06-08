@@ -1,4 +1,5 @@
-use ahash::HashMap;
+use std::collections::BTreeMap;
+
 use egui::NumExt;
 use nohash_hasher::IntMap;
 
@@ -14,7 +15,7 @@ use crate::SpaceViewBlueprint;
 pub fn highlights_for_space_view(
     selection_state: &SelectionState,
     space_view_id: SpaceViewId,
-    space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
+    space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> SpaceViewHighlights {
     re_tracing::profile_function!();
 

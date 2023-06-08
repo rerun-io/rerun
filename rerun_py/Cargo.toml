@@ -72,7 +72,7 @@ uuid = "1.1"
 
 
 [build-dependencies]
-re_build_build_info.workspace = true
+re_build_tools.workspace = true
 pyo3-build-config = "0.18.0"
 
 

@@ -3,7 +3,12 @@ use std::collections::BTreeMap;
 use re_arrow_store::LatestAtQuery;
 use re_components::Tensor;
 use re_data_store::EntityPath;
-use re_viewer_context::{SceneQuery, ViewerContext};
+use re_log_types::Component as _;
+use re_viewer_context::{
+    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext,
+};
+
+use crate::BarChartSpaceView;
 
 /// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
@@ -11,14 +16,19 @@ pub struct SceneBarChart {
     pub charts: BTreeMap<EntityPath, Tensor>,
 }
 
-impl SceneBarChart {
-    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        re_tracing::profile_function!();
-
-        self.load_tensors(ctx, query);
+impl ScenePart<BarChartSpaceView> for SceneBarChart {
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![Tensor::name()]
     }
 
-    fn load_tensors(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        _state: &<BarChartSpaceView as SpaceViewClass>::State,
+        _scene_context: &<BarChartSpaceView as SpaceViewClass>::Context,
+        _highlights: &SpaceViewHighlights,
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
@@ -37,5 +47,7 @@ impl SceneBarChart {
                 }
             }
         }
+
+        Vec::new()
     }
 }

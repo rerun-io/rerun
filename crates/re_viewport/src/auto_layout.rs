@@ -51,7 +51,7 @@ pub(crate) fn tree_from_space_views(
     ctx: &mut ViewerContext<'_>,
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
-    space_views: &HashMap<SpaceViewId, SpaceViewBlueprint>,
+    space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     space_view_states: &HashMap<SpaceViewId, SpaceViewState>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
@@ -68,8 +68,7 @@ pub(crate) fn tree_from_space_views(
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = space_view_states.get(space_view_id).and_then(|state| {
                 ctx.space_view_class_registry
-                    .get(space_view.class)
-                    .ok()
+                    .get_or_log_error(space_view.class)
                     .and_then(|class| class.preferred_tile_aspect_ratio(state.state.as_ref()))
             });
 

@@ -1,9 +1,9 @@
 use re_arrow_store::TimeRange;
-use re_log_types::{Component, InstanceKey};
+use re_log_types::{Component, ComponentName, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{AnnotationMap, DefaultColor, SceneQuery, ViewerContext};
+use re_viewer_context::{AnnotationMap, DefaultColor, ScenePart, SceneQuery, ViewerContext};
 
-// ---
+use crate::TimeSeriesSpaceView;
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
@@ -59,17 +59,41 @@ pub struct SceneTimeSeries {
     pub lines: Vec<PlotSeries>,
 }
 
-impl SceneTimeSeries {
-    /// Loads all plots into the scene according to the given query.
-    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+impl ScenePart<TimeSeriesSpaceView> for SceneTimeSeries {
+    fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
+        vec1::Vec1::try_from(Self::archetype_array()).unwrap() // TODO(wumpf): `archetype` should return a fixed sized array.
+    }
+
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        _space_view_state: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::State,
+        _scene_context: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::Context,
+        _highlights: &re_viewer_context::SpaceViewHighlights,
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
         self.load_scalars(ctx, query);
+
+        Vec::new()
+    }
+}
+
+impl SceneTimeSeries {
+    fn archetype_array() -> [ComponentName; 6] {
+        [
+            InstanceKey::name(),
+            re_components::Scalar::name(),
+            re_components::ScalarPlotProps::name(),
+            re_components::ColorRGBA::name(),
+            re_components::Radius::name(),
+            re_components::Label::name(),
+        ]
     }
 
-    #[inline(never)] // Better callstacks on crashes
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         re_tracing::profile_function!();
 
@@ -88,14 +112,7 @@ impl SceneTimeSeries {
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),
             );
 
-            let components = [
-                InstanceKey::name(),
-                re_components::Scalar::name(),
-                re_components::ScalarPlotProps::name(),
-                re_components::ColorRGBA::name(),
-                re_components::Radius::name(),
-                re_components::Label::name(),
-            ];
+            let components = Self::archetype_array();
             let ent_views = range_entity_with_primary::<re_components::Scalar, 6>(
                 store, &query, ent_path, components,
             );

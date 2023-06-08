@@ -5,8 +5,8 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
-        SpaceViewHighlights, ViewerContext,
+        ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights,
+        ViewerContext,
     },
 };
 
@@ -19,17 +19,6 @@ use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
 #[derive(Default)]
 pub struct SceneColorCoordinates {
     pub colors: Vec<(InstancePathHash, egui::Color32)>,
-}
-
-// TODO(andreas): This conflicts with in-flight PR which makes this unnecessary for single-part scenes.
-impl ScenePartCollection<ColorCoordinatesSpaceView> for SceneColorCoordinates {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<ColorCoordinatesSpaceView>> {
-        vec![self]
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 // [`SceneColorCoordinates`] is itself its only scene part.

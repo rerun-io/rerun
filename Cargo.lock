@@ -3195,6 +3195,7 @@ dependencies = [
  "prost",
  "prost-build",
  "protoc-prebuilt",
+ "re_build_tools",
  "rerun",
 ]
 
@@ -3855,8 +3856,8 @@ dependencies = [
  "crossbeam",
  "directories-next",
  "once_cell",
- "re_build_build_info",
  "re_build_info",
+ "re_build_tools",
  "re_log",
  "serde",
  "serde_json",
@@ -3897,7 +3898,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_build_build_info"
+name = "re_build_info"
+version = "0.7.0-alpha.0"
+
+[[package]]
+name = "re_build_tools"
 version = "0.7.0-alpha.0"
 dependencies = [
  "anyhow",
@@ -3905,10 +3910,6 @@ dependencies = [
  "glob",
  "time",
 ]
-
-[[package]]
-name = "re_build_info"
-version = "0.7.0-alpha.0"
 
 [[package]]
 name = "re_build_web_viewer"
@@ -4182,6 +4183,7 @@ dependencies = [
  "pathdiff",
  "pollster",
  "rand",
+ "re_build_tools",
  "re_error",
  "re_log",
  "re_tracing",
@@ -4217,7 +4219,7 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "rand",
- "re_build_build_info",
+ "re_build_tools",
  "re_components",
  "re_log",
  "re_log_encoding",
@@ -4256,18 +4258,32 @@ dependencies = [
 name = "re_space_view"
 version = "0.7.0-alpha.0"
 dependencies = [
- "ahash 0.8.3",
  "egui",
- "lazy_static",
  "nohash-hasher",
  "re_data_store",
- "re_log_types",
- "re_renderer",
  "re_tracing",
  "re_viewer_context",
  "serde",
  "slotmap",
  "smallvec",
+]
+
+[[package]]
+name = "re_space_view_bar_chart"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "egui",
+ "re_arrow_store",
+ "re_components",
+ "re_data_store",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_space_view",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_context",
+ "vec1",
 ]
 
 [[package]]
@@ -4336,6 +4352,25 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_space_view",
+ "re_ui",
+ "re_viewer_context",
+ "vec1",
+]
+
+[[package]]
+name = "re_space_view_time_series"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "egui",
+ "re_arrow_store",
+ "re_components",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_renderer",
+ "re_space_view",
+ "re_tracing",
  "re_ui",
  "re_viewer_context",
  "vec1",
@@ -4441,8 +4476,8 @@ dependencies = [
  "puffin_http",
  "re_analytics",
  "re_arrow_store",
- "re_build_build_info",
  "re_build_info",
+ "re_build_tools",
  "re_components",
  "re_data_store",
  "re_data_ui",
@@ -4454,9 +4489,11 @@ dependencies = [
  "re_memory",
  "re_renderer",
  "re_smart_channel",
+ "re_space_view_bar_chart",
  "re_space_view_spatial",
  "re_space_view_text",
  "re_space_view_text_box",
+ "re_space_view_time_series",
  "re_time_panel",
  "re_tracing",
  "re_ui",
@@ -4504,7 +4541,6 @@ dependencies = [
  "serde",
  "slotmap",
  "thiserror",
- "tinyvec",
  "uuid",
  "vec1",
  "wgpu",
@@ -4533,10 +4569,8 @@ dependencies = [
  "re_components",
  "re_data_store",
  "re_data_ui",
- "re_format",
  "re_log",
  "re_log_types",
- "re_query",
  "re_renderer",
  "re_space_view",
  "re_tensor_ops",
@@ -4557,7 +4591,7 @@ dependencies = [
  "futures-util",
  "hyper",
  "re_analytics",
- "re_build_build_info",
+ "re_build_tools",
  "re_build_web_viewer",
  "re_error",
  "re_log",
@@ -4655,8 +4689,8 @@ dependencies = [
  "puffin",
  "rayon",
  "re_analytics",
- "re_build_build_info",
  "re_build_info",
+ "re_build_tools",
  "re_crash_handler",
  "re_data_store",
  "re_format",
@@ -4681,8 +4715,8 @@ dependencies = [
  "anyhow",
  "document-features",
  "mimalloc",
- "re_build_build_info",
  "re_build_info",
+ "re_build_tools",
  "re_log",
  "re_memory",
  "rerun",
@@ -4704,8 +4738,8 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
- "re_build_build_info",
  "re_build_info",
+ "re_build_tools",
  "re_components",
  "re_error",
  "re_log",

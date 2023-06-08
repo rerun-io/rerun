@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
 
 use re_data_store::{query_timeless_single, EntityPath};
@@ -111,7 +113,7 @@ fn load_viewport(
         .map(|(k, v)| (*k, v.clone()))
         .collect();
 
-    let known_space_views: HashMap<_, _> = space_views
+    let known_space_views: BTreeMap<_, _> = space_views
         .into_iter()
         .filter(|(k, _)| viewport_layout.space_view_keys.contains(k))
         .collect();

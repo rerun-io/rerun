@@ -1,5 +1,5 @@
 [package]
-name = "re_build_build_info"
+name = "re_build_tools"
 authors.workspace = true
 description = "build.rs helpers for generating build info"
 edition.workspace = true

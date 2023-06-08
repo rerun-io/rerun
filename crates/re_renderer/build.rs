@@ -14,23 +14,14 @@
 
 #![allow(clippy::unwrap_used)]
 
-use std::path::Path;
-
-use walkdir::{DirEntry, WalkDir};
-
-// ---
-
-fn rerun_if_changed(path: &std::path::Path) {
-    // Make sure the file exists, otherwise we'll be rebuilding all the time.
-    assert!(path.exists(), "Failed to find {path:?}");
-    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
-}
-
-// ---
-
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, ensure, Context as _};
+use walkdir::{DirEntry, WalkDir};
+
+use re_build_tools::{is_tracked_env_var_set, rerun_if_changed, write_file_if_necessary};
+
+// ---
 
 /// A pre-parsed import clause, as in `#import <something>`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -118,11 +109,11 @@ fn main() {
         // repository.
         return;
     }
-    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
     }
-    if std::env::var("RERUN_IS_PUBLISHING") == Ok("yes".to_owned()) {
+    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
         // We don't need to rebuild - we should have done so beforehand!
         // See `RELEASES.md`
         return;
@@ -240,18 +231,4 @@ pub fn init() {
     contents = format!("{}\n}}\n", contents.trim_end());
 
     write_file_if_necessary(file_path, contents.as_bytes()).unwrap();
-}
-
-/// Only touch the file if the contents has actually changed
-fn write_file_if_necessary(
-    dst_path: impl AsRef<std::path::Path>,
-    content: &[u8],
-) -> std::io::Result<()> {
-    if let Ok(cur_bytes) = std::fs::read(&dst_path) {
-        if cur_bytes == content {
-            return Ok(());
-        }
-    }
-
-    std::fs::write(dst_path, content)
 }
