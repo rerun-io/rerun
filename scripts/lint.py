@@ -21,7 +21,7 @@ error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
 wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
-explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"') # looks for: \"{foo}\"
+explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 
 
 def lint_line(line: str) -> Optional[str]:
