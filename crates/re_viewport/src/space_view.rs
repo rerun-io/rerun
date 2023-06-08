@@ -145,8 +145,7 @@ impl SpaceViewBlueprint {
         ui: &mut egui::Ui,
     ) {
         re_tracing::profile_function!();
-        if let Some(space_view_class) = ctx.space_view_class_registry.get_and_log_error(self.class)
-        {
+        if let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) {
             space_view_class.selection_ui(
                 ctx,
                 ui,
@@ -193,8 +192,7 @@ impl SpaceViewBlueprint {
             return;
         }
 
-        if let Some(space_view_class) = ctx.space_view_class_registry.get_and_log_error(self.class)
-        {
+        if let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) {
             space_view_class.prepare_populate(
                 ctx,
                 view_state.state.as_mut(),

@@ -490,7 +490,7 @@ impl Viewport {
             {
                 let icon = if let Some(class) = ctx
                     .space_view_class_registry
-                    .get_and_log_error(space_view.class)
+                    .get_or_log_error(space_view.class)
                 {
                     class.icon()
                 } else {
@@ -558,7 +558,7 @@ impl ViewportState {
             .entry(space_view_id)
             .or_insert_with(|| {
                 let state = if let Some(state) =
-                    space_view_class_registry.get_and_log_error(space_view_class)
+                    space_view_class_registry.get_or_log_error(space_view_class)
                 {
                     state.new_state()
                 } else {
@@ -836,7 +836,7 @@ fn help_text_ui(
 ) {
     if let Some(help_text) = ctx
         .space_view_class_registry
-        .get_and_log_error(space_view_blueprint.class)
+        .get_or_log_error(space_view_blueprint.class)
         .map(|class| class.help_text(ctx.re_ui, space_view_state.state.as_ref()))
     {
         re_ui::help_hover_button(ui).on_hover_text(help_text);
