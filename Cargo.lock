@@ -3184,6 +3184,7 @@ dependencies = [
  "prost",
  "prost-build",
  "protoc-prebuilt",
+ "re_build_build_info",
  "rerun",
 ]
 

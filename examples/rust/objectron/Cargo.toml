@@ -20,5 +20,6 @@ prost = "0.11"
 
 
 [build-dependencies]
+re_build_build_info = { path = "../../../crates/re_build_build_info" }
 prost-build = "0.11"
 protoc-prebuilt = "0.2"

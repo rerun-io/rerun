@@ -1,12 +1,14 @@
 use std::path::PathBuf;
 
+use re_build_build_info::{is_tracked_env_var_set, write_file_if_necessary};
+
 fn main() -> Result<(), std::io::Error> {
     if std::env::var("CI").is_ok() {
         // No need to run this on CI (which means setting up `protoc` etc) since the code is committed
         // anyway.
         return Ok(());
     }
-    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
         // Only run if we are in the rerun workspace, not on users machines (if we ever publish the example).
         return Ok(());
     }
@@ -51,19 +53,4 @@ fn main() -> Result<(), std::io::Error> {
     // loop when using tools like e.g. `bacon` that watch the filesystem for any changes to the
     // project's files.
     write_file_if_necessary(dst_path, &bytes)
-}
-
-/// Only touch the file if the contents has actually changed
-// TODO(cmc): use the same source tracking system as re_types*
-fn write_file_if_necessary(
-    dst_path: impl AsRef<std::path::Path>,
-    content: &[u8],
-) -> std::io::Result<()> {
-    if let Ok(cur_bytes) = std::fs::read(&dst_path) {
-        if cur_bytes == content {
-            return Ok(());
-        }
-    }
-
-    std::fs::write(dst_path, content)
 }
