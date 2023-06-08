@@ -6,7 +6,7 @@ use re_data_store::store_db::StoreDb;
 use re_log_types::{ApplicationId, LogMsg, StoreId, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
-use re_ui::{toasts, Command};
+use re_ui::{toasts, Command, CommandReceiver, CommandSender};
 use re_viewer_context::{
     AppOptions, ComponentUiRegistry, DynSpaceViewClass, PlayState, SpaceViewClassRegistry,
     SpaceViewClassRegistryError,
@@ -108,7 +108,8 @@ pub struct App {
     pub(crate) frame_time_history: egui::util::History<f32>,
 
     /// Commands to run at the end of the frame.
-    pub(crate) pending_commands: Vec<Command>,
+    pub command_sender: CommandSender,
+    command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
@@ -164,6 +165,8 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(screenshot_path);
         }
 
+        let (command_sender, command_receiver) = crossbeam::channel::unbounded();
+
         Self {
             build_info,
             startup_options,
@@ -188,13 +191,23 @@ impl App {
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
-            pending_commands: Default::default(),
+            command_sender,
+            command_receiver,
             cmd_palette: Default::default(),
 
             space_view_class_registry,
 
             analytics,
         }
+    }
+
+    /// Enqueues a command for later execution.
+    ///
+    /// Commands are executed at the end of every frame.
+    pub fn enqueue_command(&self, cmd: Command) {
+        // Channel is unbounded, so this can only fail if the receiver has been dropped,
+        // in which case the application already shut down.
+        self.command_sender.send(cmd).ok();
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -237,9 +250,9 @@ impl App {
         self.space_view_class_registry.add::<T>()
     }
 
-    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
+    fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
         if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.enqueue_command(cmd);
         }
     }
 
@@ -249,8 +262,7 @@ impl App {
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
-        let commands = self.pending_commands.drain(..).collect_vec();
-        for cmd in commands {
+        while let Ok(cmd) = self.command_receiver.try_recv() {
             self.run_command(cmd, blueprint, frame, egui_ctx);
         }
     }
@@ -906,7 +918,7 @@ impl eframe::App for App {
         }
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.enqueue_command(cmd);
         }
 
         self.run_pending_commands(&mut blueprint, egui_ctx, frame);

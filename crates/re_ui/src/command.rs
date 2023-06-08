@@ -1,5 +1,11 @@
 use egui::{Key, KeyboardShortcut, Modifiers};
 
+/// Sender that queues up the execution of a command.
+pub type CommandSender = crossbeam::channel::Sender<Command>;
+
+/// Receiver for the [`CommandSender`]
+pub type CommandReceiver = crossbeam::channel::Receiver<Command>;
+
 /// All the commands we support.
 ///
 /// Most are available in the GUI,
@@ -232,12 +238,12 @@ impl Command {
     pub fn menu_button_ui(
         self,
         ui: &mut egui::Ui,
-        pending_commands: &mut Vec<Command>,
+        command_sender: &CommandSender,
     ) -> egui::Response {
         let button = self.menu_button(ui.ctx());
         let response = ui.add(button).on_hover_text(self.tooltip());
         if response.clicked() {
-            pending_commands.push(self);
+            command_sender.send(self).ok();
             ui.close_menu();
         }
         response

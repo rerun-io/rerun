@@ -1,4 +1,4 @@
-use re_ui::{toasts, Command, CommandPalette};
+use re_ui::{toasts, Command, CommandPalette, CommandReceiver, CommandSender};
 
 fn main() -> eframe::Result<()> {
     re_log::setup_native_logging();
@@ -49,7 +49,8 @@ pub struct ExampleApp {
     cmd_palette: CommandPalette,
 
     /// Commands to run at the end of the frame.
-    pending_commands: Vec<Command>,
+    pub command_sender: CommandSender,
+    command_receiver: CommandReceiver,
     latest_cmd: String,
 }
 
@@ -59,6 +60,8 @@ impl ExampleApp {
         re_log::add_boxed_logger(Box::new(logger)).unwrap();
 
         let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
+
+        let (command_sender, command_receiver) = crossbeam::channel::unbounded();
 
         Self {
             re_ui,
@@ -74,7 +77,8 @@ impl ExampleApp {
             dummy_bool: true,
 
             cmd_palette: CommandPalette::default(),
-            pending_commands: Default::default(),
+            command_sender,
+            command_receiver,
             latest_cmd: Default::default(),
         }
     }
@@ -205,13 +209,13 @@ impl eframe::App for ExampleApp {
             });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.command_sender.send(cmd).ok();
         }
         if let Some(cmd) = re_ui::Command::listen_for_kb_shortcut(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.command_sender.send(cmd).ok();
         }
 
-        for cmd in self.pending_commands.drain(..) {
+        while let Ok(cmd) = self.command_receiver.try_recv() {
             self.latest_cmd = cmd.text().to_owned();
 
             #[allow(clippy::single_match)]
@@ -248,7 +252,7 @@ impl ExampleApp {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 
-                    ui.menu_button("File", |ui| file_menu(ui, &mut self.pending_commands));
+                    ui.menu_button("File", |ui| file_menu(ui, &self.command_sender));
 
                     self.top_bar_ui(ui, frame);
                 })
@@ -297,11 +301,11 @@ impl ExampleApp {
     }
 }
 
-fn file_menu(ui: &mut egui::Ui, pending_commands: &mut Vec<Command>) {
-    Command::Save.menu_button_ui(ui, pending_commands);
-    Command::SaveSelection.menu_button_ui(ui, pending_commands);
-    Command::Open.menu_button_ui(ui, pending_commands);
-    Command::Quit.menu_button_ui(ui, pending_commands);
+fn file_menu(ui: &mut egui::Ui, command_sender: &CommandSender) {
+    Command::Save.menu_button_ui(ui, command_sender);
+    Command::SaveSelection.menu_button_ui(ui, command_sender);
+    Command::Open.menu_button_ui(ui, command_sender);
+    Command::Quit.menu_button_ui(ui, command_sender);
 }
 
 fn selection_buttons(ui: &mut egui::Ui) {
