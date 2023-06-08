@@ -278,11 +278,25 @@ pub fn tensor_summary_ui_grid_contents(
         }
     }
 
-    let TensorStats { range } = tensor_stats;
+    let TensorStats {
+        range,
+        finite_range,
+    } = tensor_stats;
 
     if let Some((min, max)) = range {
         ui.label("Data range")
             .on_hover_text("All values of the tensor range within these bounds.");
+        ui.monospace(format!(
+            "[{} - {}]",
+            re_format::format_f64(*min),
+            re_format::format_f64(*max)
+        ));
+        ui.end_row();
+    }
+    // Show finite range only if it is different from the actual range.
+    if let (true, Some((min, max))) = (range != finite_range, finite_range) {
+        ui.label("Range without inf/NaN:")
+            .on_hover_text("The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds.");
         ui.monospace(format!(
             "[{} - {}]",
             re_format::format_f64(*min),
