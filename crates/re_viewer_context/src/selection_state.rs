@@ -144,13 +144,13 @@ impl SelectionState {
     ///
     /// Returns the previous selection.
     pub fn set_single_selection(&mut self, item: Item) -> ItemCollection {
-        self.set_multi_selection(std::iter::once(item))
+        self.set_selection(std::iter::once(item))
     }
 
     /// Sets several objects to be selected, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_multi_selection(&mut self, items: impl Iterator<Item = Item>) -> ItemCollection {
+    pub fn set_selection(&mut self, items: impl Iterator<Item = Item>) -> ItemCollection {
         let new_selection = ItemCollection::new(items);
         self.history.update_selection(&new_selection);
         std::mem::replace(&mut self.selection, new_selection)
@@ -190,7 +190,7 @@ impl SelectionState {
                 .filter(|item| toggle_items_set.contains(item)),
         );
 
-        self.set_multi_selection(new_selection.into_iter());
+        self.set_selection(new_selection.into_iter());
     }
 
     pub fn hovered_space(&self) -> &HoveredSpace {

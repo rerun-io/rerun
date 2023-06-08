@@ -19,6 +19,10 @@ pub use space_view::{SpaceViewBlueprint, SpaceViewState};
 pub use view_category::ViewCategory;
 pub use viewport::{Viewport, ViewportState};
 
+pub mod external {
+    pub use re_space_view;
+}
+
 // ---------------------------------------------------------------------------
 
 // TODO(andreas): This should be part of re_data_ui::item_ui.

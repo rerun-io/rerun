@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_space_view::{DataBlueprintGroup, EmptySpaceViewState};
+use re_space_view::DataBlueprintGroup;
 use re_viewer_context::{
     DataBlueprintGroupHandle, Item, SpaceViewClassName, SpaceViewClassRegistry,
     SpaceViewHighlights, SpaceViewId, ViewerContext,
@@ -229,6 +229,10 @@ impl Viewport {
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
         for entity_path in &entities {
+            if entity_path.is_root() {
+                continue;
+            }
+
             ui.horizontal(|ui| {
                 let mut properties = space_view
                     .data_blueprint
@@ -567,7 +571,7 @@ impl ViewportState {
                     //     "Space View class \"{}\" is not registered.",
                     //     space_view_class
                     // );
-                    Box::<EmptySpaceViewState>::default()
+                    Box::<()>::default()
                 };
                 SpaceViewState {
                     state,
