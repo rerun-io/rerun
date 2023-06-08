@@ -708,8 +708,9 @@ impl App {
     }
 
     fn on_rrd_loaded(&mut self, store_hub: &mut StoreHub, loaded_store_bundle: StoreBundle) {
+        let mut new_rec_id = None;
         if let Some(store_db) = loaded_store_bundle.recordings().next() {
-            store_hub.set_recording_id(store_db.store_id().clone());
+            new_rec_id = Some(store_db.store_id().clone());
             self.analytics.on_open_recording(store_db);
         }
 
@@ -720,6 +721,12 @@ impl App {
         }
 
         store_hub.add_bundle(loaded_store_bundle);
+
+        // Set recording-id after adding to the store so that app-id, etc.
+        // is available internally.
+        if let Some(rec_id) = new_rec_id {
+            store_hub.set_recording_id(rec_id);
+        }
     }
 
     fn handle_dropping_files(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
