@@ -9,7 +9,7 @@ The example starts an SDK server which the Python or Rust logging SDK can connec
 
 ![image](https://github.com/rerun-io/rerun/assets/1148717/cbbad63e-9b18-4e54-bafe-b6ffd723f63e)
 
-Note that in order to spawn a web viewer with these customizations applied,
+[#2337](https://github.com/rerun-io/rerun/issues/2337): Note that in order to spawn a web viewer with these customizations applied,
 you have to build the web viewer of the version yourself.
 This is currently not supported outside of the Rerun repository.
 

@@ -25,8 +25,8 @@ pub struct ColorsScene {
 impl ScenePart<ColorCoordinatesSpaceView> for ColorsScene {
     /// The archetype this scene part is querying from the store.
     ///
-    /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries within the `populate` method,
-    ///              to this here define archetype.
+    /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries
+    ///              within the `populate` method to this archetype.
     fn archetype(&self) -> ArchetypeDefinition {
         ArchetypeDefinition::new(re_components::ColorRGBA::name())
     }
@@ -73,8 +73,7 @@ impl ScenePart<ColorCoordinatesSpaceView> for ColorsScene {
         }
 
         // We're not using `re_renderer` here, so return an empty vector.
-        // For more advanced use cases, instead of drawing everything with egui,
-        // you may return one or more `QueueableDrawData` instances that are handled by `re_renderer`.
+        // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
         Vec::new()
     }
 }

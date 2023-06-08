@@ -41,8 +41,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
     let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());
 
-    // NOTE: Some platforms still mandate that the UI must run on the main thread, so make sure
-    // to spawn the viewer in place and migrate the user callback to a new thread.
     re_viewer::run_native_app(Box::new(move |cc, re_ui| {
         let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
 
