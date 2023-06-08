@@ -4171,6 +4171,7 @@ dependencies = [
  "pathdiff",
  "pollster",
  "rand",
+ "re_build_build_info",
  "re_error",
  "re_log",
  "re_tracing",

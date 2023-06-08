@@ -14,23 +14,14 @@
 
 #![allow(clippy::unwrap_used)]
 
-use std::path::Path;
-
-use walkdir::{DirEntry, WalkDir};
-
-// ---
-
-fn rerun_if_changed(path: &std::path::Path) {
-    // Make sure the file exists, otherwise we'll be rebuilding all the time.
-    assert!(path.exists(), "Failed to find {path:?}");
-    println!("cargo:rerun-if-changed={}", path.to_str().unwrap());
-}
-
-// ---
-
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{bail, ensure, Context as _};
+use walkdir::{DirEntry, WalkDir};
+
+use re_build_build_info::rerun_if_changed;
+
+// ---
 
 /// A pre-parsed import clause, as in `#import <something>`.
 #[derive(Clone, Debug, PartialEq, Eq)]
