@@ -54,6 +54,7 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 /// Only touch the file if the contents has actually changed
+// TODO(cmc): use the same source tracking system as re_types*
 fn write_file_if_necessary(
     dst_path: impl AsRef<std::path::Path>,
     content: &[u8],

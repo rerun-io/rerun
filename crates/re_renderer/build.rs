@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, ensure, Context as _};
 use walkdir::{DirEntry, WalkDir};
 
-use re_build_build_info::rerun_if_changed;
+use re_build_build_info::{is_tracked_env_var_set, rerun_if_changed};
 
 // ---
 
@@ -109,11 +109,11 @@ fn main() {
         // repository.
         return;
     }
-    if std::env::var("IS_IN_RERUN_WORKSPACE") != Ok("yes".to_owned()) {
+    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
     }
-    if std::env::var("RERUN_IS_PUBLISHING") == Ok("yes".to_owned()) {
+    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
         // We don't need to rebuild - we should have done so beforehand!
         // See `RELEASES.md`
         return;
@@ -234,6 +234,7 @@ pub fn init() {
 }
 
 /// Only touch the file if the contents has actually changed
+// TODO(cmc): re-use the same source tracking system as re_types_*
 fn write_file_if_necessary(
     dst_path: impl AsRef<std::path::Path>,
     content: &[u8],
