@@ -5,6 +5,7 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools as _;
 use poll_promise::Promise;
+
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -1874,6 +1875,7 @@ fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
+    use itertools::Itertools as _;
     use re_arrow_store::TimeRange;
 
     crate::profile_scope!("dump_messages");
