@@ -5,7 +5,7 @@ use re_data_store::store_db::StoreDb;
 use re_log_types::{LogMsg, StoreId, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
-use re_ui::{toasts, Command};
+use re_ui::{toasts, Command, CommandReceiver, CommandSender};
 use re_viewer_context::{
     AppOptions, ComponentUiRegistry, DynSpaceViewClass, PlayState, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, StoreContext,
@@ -114,7 +114,8 @@ pub struct App {
     pub(crate) frame_time_history: egui::util::History<f32>,
 
     /// Commands to run at the end of the frame.
-    pub(crate) pending_commands: Vec<Command>,
+    pub command_sender: CommandSender,
+    command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
@@ -170,6 +171,8 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(screenshot_path);
         }
 
+        let (command_sender, command_receiver) = re_ui::command_channel();
+
         Self {
             build_info,
             startup_options,
@@ -195,7 +198,8 @@ impl App {
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
-            pending_commands: Default::default(),
+            command_sender,
+            command_receiver,
             cmd_palette: Default::default(),
 
             space_view_class_registry,
@@ -240,9 +244,9 @@ impl App {
         self.space_view_class_registry.add::<T>()
     }
 
-    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
+    fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
         if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.command_sender.send(cmd);
         }
     }
 
@@ -253,8 +257,7 @@ impl App {
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
-        let commands = self.pending_commands.drain(..).collect_vec();
-        for cmd in commands {
+        while let Some(cmd) = self.command_receiver.recv() {
             self.run_command(cmd, blueprint, store_hub, frame, egui_ctx);
         }
     }
@@ -877,7 +880,7 @@ impl eframe::App for App {
         }
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.command_sender.send(cmd);
         }
 
         self.run_pending_commands(&mut blueprint, &mut store_hub, egui_ctx, frame);

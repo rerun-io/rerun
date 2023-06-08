@@ -29,13 +29,13 @@ pub fn rerun_menu_button_ui(
 
         ui.add_space(spacing);
 
-        Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
+        Command::ToggleCommandPalette.menu_button_ui(ui, &app.command_sender);
 
         ui.add_space(spacing);
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            Command::Open.menu_button_ui(ui, &mut app.pending_commands);
+            Command::Open.menu_button_ui(ui, &app.command_sender);
 
             save_buttons_ui(ui, store_context, app);
 
@@ -45,24 +45,24 @@ pub fn rerun_menu_button_ui(
             let zoom_factor = app.app_options().zoom_factor;
             ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
                 .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
-            Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
-            Command::ZoomOut.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ZoomIn.menu_button_ui(ui, &app.command_sender);
+            Command::ZoomOut.menu_button_ui(ui, &app.command_sender);
             ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
-                Command::ZoomReset.menu_button_ui(ui, &mut app.pending_commands)
+                Command::ZoomReset.menu_button_ui(ui, &app.command_sender)
             });
 
-            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ToggleFullscreen.menu_button_ui(ui, &app.command_sender);
 
             ui.add_space(spacing);
         }
 
         {
-            Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ResetViewer.menu_button_ui(ui, &app.command_sender);
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
+            Command::OpenProfiler.menu_button_ui(ui, &app.command_sender);
 
-            Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ToggleMemoryPanel.menu_button_ui(ui, &app.command_sender);
         }
 
         ui.add_space(spacing);
@@ -86,7 +86,7 @@ pub fn rerun_menu_button_ui(
         #[cfg(not(target_arch = "wasm32"))]
         {
             ui.add_space(spacing);
-            Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
+            Command::Quit.menu_button_ui(ui, &app.command_sender);
         }
     });
 }
@@ -228,7 +228,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>, app
                 .clicked()
             {
                 ui.close_menu();
-                app.pending_commands.push(Command::Save);
+                app.command_sender.send(Command::Save);
             }
 
             // We need to know the loop selection _before_ we can even display the
@@ -245,7 +245,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>, app
                 .clicked()
             {
                 ui.close_menu();
-                app.pending_commands.push(Command::SaveSelection);
+                app.command_sender.send(Command::SaveSelection);
             }
         });
     }
