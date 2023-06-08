@@ -102,30 +102,31 @@ rr.spawn(blueprint)
 The assorted objects used in blueprint construction are:
  - `App`: Container for top-level application state such as panel-visibility, menus, etc.
  - `TimeControl`: Specific state relevant to the time controls.
- - `Tile`: Common base-class between `rrb.Container` and `rrb.SpaceView` (follows egui-tile-tree)
-    - `Container`: A layout of components (interface only)
+ - `View`: Common base-class between `rrb.Container` and `rrb.SpaceView`
+    - `Container`: A view that specifies layout of sub-views (interface only)
         - `HorizontalLayout`
         - `VerticalLayout`
         - ... additional layouts
-    - `SpaceView`: An actual view of data
+    - `SpaceView`: An actual view of data in a coordinate space.
         - `View2D`
         - `View3D`
         - `ViewTimeSeries`
         - ... additional space-views
- - `DataGroup`: A group of data entities with potentially shared overrides or defaults.
-    - `RecursiveData`: A special DataGroup that recursively includes all data entities under a given path.
- - `Data`: A singular data entity.
-    - `Points2D`: A typed data entity for 2d points
-    - `Points3D`: A typed data entity for 3d points
-    - `Image`: A typed data entity for images
-    - ... additional typed data entities
+ - `Data`: A query that builds archetypes to draw in the space view
+    - `Auto`: A query to automatically build archetypes from an entity path
+    - `Points2D`: A query to build a Points2D archetype
+    - `Points3D`: A query to build a Points3D archetype
+    - `Image`: A query to build an Image archetype
+    - ... additional typed archetype queries
+ - `DataGroup`: A group of archetype queries with potentially shared overrides or defaults.
+    - `RecursiveAuto`: A special DataGroup that recursively includes `Auto` queries for all entities under a given path.
 
 Many Blueprint objects will allow for flexible upcasting into an obvious parent-type to reduce unnecessary typing. In
 particular:
  - `Data` -> `DataGroup`
  - `[Data]` -> `DataGroup`
  - `DataGroup` -> `SpaceView` (If view category can be inferred)
- - `Tile` -> `Viewport`
+ - `View` -> `Viewport`
  - `Viewport` -> `App`
 
 This means a trivial expression like: `rr.show(rrb.Points3D("points"))` is still a valid Blueprint.
@@ -144,7 +145,7 @@ for t in range(100):
     rr.log("world/points", rr.Points3D(points))
 ...
 # Construct Blueprint
-rrb.Data("/world/points")
+rrb.Auto("/world/points")
 ```
 While static data skips the logging step all together, but only allows for a single element:
 ```python
