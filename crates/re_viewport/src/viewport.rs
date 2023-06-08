@@ -2,6 +2,8 @@
 //!
 //! Contains all space views.
 
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
 use itertools::Itertools as _;
 
@@ -32,7 +34,9 @@ pub type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 #[serde(default)]
 pub struct Viewport {
     /// Where the space views are stored.
-    pub space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
+    ///
+    /// Not a hashmap in order to preserve the order of the space views.
+    pub space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 
     /// Which views are visible.
     pub visible: VisibilitySet,
@@ -677,7 +681,7 @@ fn visibility_button_ui(
 struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
     ctx: &'a mut ViewerContext<'b>,
-    space_views: &'a mut HashMap<SpaceViewId, SpaceViewBlueprint>,
+    space_views: &'a mut BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
 }
 
