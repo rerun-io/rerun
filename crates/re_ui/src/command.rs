@@ -17,7 +17,7 @@ pub struct CommandReceiver(crossbeam::channel::Receiver<Command>);
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
     pub fn recv(&self) -> Option<Command> {
-        // The onily way this can fail (other than being empty)
+        // The only way this can fail (other than being empty)
         // is if the sender has been dropped.
         self.0.try_recv().ok()
     }
