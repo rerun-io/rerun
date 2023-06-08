@@ -45,18 +45,18 @@ pub fn command_channel() -> (CommandSender, CommandReceiver) {
 
 // ----------------------------------------------------------------------------
 
-impl UICommandSender for CommandSender {
-    /// Send a command to be executed.
-    fn send_ui(&self, command: UICommand) {
-        // The only way this can fail is if the receiver has been dropped.
-        self.0.send(Command::UICommand(command)).ok();
-    }
-}
-
 impl SystemCommandSender for CommandSender {
     /// Send a command to be executed.
     fn send_system(&self, command: SystemCommand) {
         // The only way this can fail is if the receiver has been dropped.
         self.0.send(Command::SystemCommand(command)).ok();
+    }
+}
+
+impl UICommandSender for CommandSender {
+    /// Send a command to be executed.
+    fn send_ui(&self, command: UICommand) {
+        // The only way this can fail is if the receiver has been dropped.
+        self.0.send(Command::UICommand(command)).ok();
     }
 }
