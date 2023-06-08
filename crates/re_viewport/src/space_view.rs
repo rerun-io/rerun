@@ -8,7 +8,7 @@ use crate::{
     space_info::SpaceInfoCollection,
     space_view_heuristics::default_queried_entities,
     view_category::{categorize_entity_path, ViewCategory},
-    view_tensor, view_time_series,
+    view_tensor,
 };
 
 // ----------------------------------------------------------------------------
@@ -144,8 +144,8 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
-        if let Ok(space_view_class) = ctx.space_view_class_registry.get(self.class) {
-            re_tracing::profile_scope!("selection_ui", space_view_class.name());
+        re_tracing::profile_function!();
+        if let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) {
             space_view_class.selection_ui(
                 ctx,
                 ui,
@@ -155,14 +155,15 @@ impl SpaceViewBlueprint {
             );
         } else {
             // Legacy handling
-
             #[allow(clippy::match_same_arms)]
             match self.category {
-                ViewCategory::Text | ViewCategory::Spatial | ViewCategory::TextBox => {
+                ViewCategory::Text
+                | ViewCategory::Spatial
+                | ViewCategory::TextBox
+                | ViewCategory::TimeSeries
+                | ViewCategory::BarChart => {
                     // migrated.
                 }
-                ViewCategory::TimeSeries => {}
-                ViewCategory::BarChart => {}
                 ViewCategory::Tensor => {
                     if let Some(selected_tensor) = &view_state.selected_tensor {
                         if let Some(state_tensor) =
@@ -191,7 +192,7 @@ impl SpaceViewBlueprint {
             return;
         }
 
-        if let Ok(space_view_class) = ctx.space_view_class_registry.get(self.class) {
+        if let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) {
             space_view_class.prepare_populate(
                 ctx,
                 view_state.state.as_mut(),
@@ -210,14 +211,16 @@ impl SpaceViewBlueprint {
             let mut scene = space_view_class.new_scene();
             scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
 
-            space_view_class.ui(
-                ctx,
-                ui,
-                view_state.state.as_mut(),
-                scene,
-                &self.space_origin,
-                self.id,
-            );
+            ui.scope(|ui| {
+                space_view_class.ui(
+                    ctx,
+                    ui,
+                    view_state.state.as_mut(),
+                    scene,
+                    &self.space_origin,
+                    self.id,
+                );
+            });
         } else {
             // Legacy handling
             let query = re_viewer_context::SceneQuery {
@@ -232,14 +235,9 @@ impl SpaceViewBlueprint {
                 ViewCategory::Text
                 | ViewCategory::TextBox
                 | ViewCategory::Spatial
-                | ViewCategory::BarChart => {
+                | ViewCategory::BarChart
+                | ViewCategory::TimeSeries => {
                     // migrated.
-                }
-
-                ViewCategory::TimeSeries => {
-                    let mut scene = view_time_series::SceneTimeSeries::default();
-                    scene.load(ctx, &query);
-                    view_state.ui_time_series(ctx, ui, &scene);
                 }
 
                 ViewCategory::Tensor => {
@@ -307,7 +305,6 @@ pub struct SpaceViewState {
     /// Selects in [`Self::state_tensors`].
     pub selected_tensor: Option<InstancePath>,
 
-    pub state_time_series: view_time_series::ViewTimeSeriesState,
     pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
@@ -353,18 +350,5 @@ impl SpaceViewState {
                 }
             }
         }
-    }
-
-    fn ui_time_series(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene: &view_time_series::SceneTimeSeries,
-    ) {
-        ui.vertical(|ui| {
-            ui.scope(|ui| {
-                view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
-            });
-        });
     }
 }

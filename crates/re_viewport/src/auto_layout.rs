@@ -68,8 +68,7 @@ pub(crate) fn tree_from_space_views(
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = space_view_states.get(space_view_id).and_then(|state| {
                 ctx.space_view_class_registry
-                    .get(space_view.class)
-                    .ok()
+                    .get_or_log_error(space_view.class)
                     .and_then(|class| class.preferred_tile_aspect_ratio(state.state.as_ref()))
             });
 

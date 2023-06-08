@@ -20,10 +20,8 @@ re_arrow_store.workspace = true
 re_components = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_data_store = { workspace = true, features = ["serde"] }
 re_data_ui.workspace = true
-re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
-re_query.workspace = true
 re_renderer = { workspace = true, default-features = false, features = [
   "arrow",
   "import-gltf",
