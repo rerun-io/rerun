@@ -102,13 +102,11 @@ impl MyApp {
         });
         ui.separator();
 
-        self.rerun_app.recording_db(|store_db| {
-            if let Some(store_db) = store_db {
-                store_db_ui(ui, store_db);
-            } else {
-                ui.label("No log database loaded yet.");
-            }
-        });
+        if let Some(store_db) = self.rerun_app.recording_db() {
+            store_db_ui(ui, store_db);
+        } else {
+            ui.label("No log database loaded yet.");
+        }
     }
 }
 

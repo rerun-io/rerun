@@ -87,8 +87,6 @@ image = { workspace = true, default-features = false, features = [
   "png",
 ] }
 itertools = { workspace = true }
-lazy_static.workspace = true
-parking_lot.workspace = true
 poll-promise = "0.2"
 rfd.workspace = true
 serde = { version = "1", features = ["derive"] }

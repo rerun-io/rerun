@@ -13,7 +13,7 @@ use re_viewer_context::{
 
 use crate::{
     background_tasks::BackgroundTasks,
-    store_hub::{StoreHub, StoreHubStats, StoreView},
+    store_hub::{StoreHubImpl, StoreHubStats, StoreView},
     ui::Blueprint,
     viewer_analytics::ViewerAnalytics,
     AppState, StoreBundle,
@@ -96,6 +96,7 @@ pub struct App {
     pub(crate) background_tasks: BackgroundTasks,
 
     /// Recording Id to switch to
+    pub(crate) store_hub: Option<StoreHubImpl>,
     pub(crate) requested_recording_id: Option<StoreId>,
 
     /// Toast notifications.
@@ -181,6 +182,7 @@ impl App {
             rx,
             state,
             background_tasks: Default::default(),
+            store_hub: Some(StoreHubImpl::default()),
             requested_recording_id: Default::default(),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
@@ -244,13 +246,13 @@ impl App {
     fn run_pending_commands(
         &mut self,
         blueprint: &mut Blueprint,
-        store_view: &StoreView<'_>,
+        store_hub: &mut StoreHubImpl,
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
         let commands = self.pending_commands.drain(..).collect_vec();
         for cmd in commands {
-            self.run_command(cmd, blueprint, store_view, frame, egui_ctx);
+            self.run_command(cmd, blueprint, store_hub, frame, egui_ctx);
         }
     }
 
@@ -258,7 +260,7 @@ impl App {
         &mut self,
         cmd: Command,
         blueprint: &mut Blueprint,
-        store_view: &StoreView<'_>,
+        store_hub: &mut StoreHubImpl,
         _frame: &mut eframe::Frame,
         egui_ctx: &egui::Context,
     ) {
@@ -267,16 +269,18 @@ impl App {
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
-                save(self, store_view, None);
+                let store_view = store_hub.view();
+                save(self, &store_view, None);
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::SaveSelection => {
-                save(self, store_view, self.state.loop_selection(store_view));
+                let store_view = store_hub.view();
+                save(self, &store_view, self.state.loop_selection(&store_view));
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::Open => {
                 if let Some(rrd) = open_rrd_dialog() {
-                    self.on_rrd_loaded(rrd);
+                    self.on_rrd_loaded(store_hub, rrd);
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -334,6 +338,7 @@ impl App {
             }
 
             Command::SelectionPrevious => {
+                let store_view = store_hub.view();
                 let state = &mut self.state;
                 if let Some(rec_cfg) = store_view
                     .recording
@@ -344,6 +349,7 @@ impl App {
                 }
             }
             Command::SelectionNext => {
+                let store_view = store_hub.view();
                 let state = &mut self.state;
                 if let Some(rec_cfg) = store_view
                     .recording
@@ -358,19 +364,24 @@ impl App {
             }
 
             Command::PlaybackTogglePlayPause => {
-                self.run_time_control_command(store_view, TimeControlCommand::TogglePlayPause);
+                let store_view = store_hub.view();
+                self.run_time_control_command(&store_view, TimeControlCommand::TogglePlayPause);
             }
             Command::PlaybackFollow => {
-                self.run_time_control_command(store_view, TimeControlCommand::Follow);
+                let store_view = store_hub.view();
+                self.run_time_control_command(&store_view, TimeControlCommand::Follow);
             }
             Command::PlaybackStepBack => {
-                self.run_time_control_command(store_view, TimeControlCommand::StepBack);
+                let store_view = store_hub.view();
+                self.run_time_control_command(&store_view, TimeControlCommand::StepBack);
             }
             Command::PlaybackStepForward => {
-                self.run_time_control_command(store_view, TimeControlCommand::StepForward);
+                let store_view = store_hub.view();
+                self.run_time_control_command(&store_view, TimeControlCommand::StepForward);
             }
             Command::PlaybackRestart => {
-                self.run_time_control_command(store_view, TimeControlCommand::Restart);
+                let store_view = store_hub.view();
+                self.run_time_control_command(&store_view, TimeControlCommand::Restart);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -543,7 +554,7 @@ impl App {
         }
     }
 
-    fn receive_messages(&mut self, egui_ctx: &egui::Context) {
+    fn receive_messages(&mut self, store_hub: &mut StoreHubImpl, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
         let start = web_time::Instant::now();
@@ -567,13 +578,13 @@ impl App {
                 match msg.info.store_id.kind {
                     StoreKind::Recording => {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
-                        StoreHub::set_recording_id(store_id.clone());
-                        StoreHub::set_app_id(msg.info.application_id.clone());
+                        store_hub.set_recording_id(store_id.clone());
+                        store_hub.set_app_id(msg.info.application_id.clone());
                     }
 
                     StoreKind::Blueprint => {
                         re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        StoreHub::set_blueprint_for_app_id(
+                        store_hub.set_blueprint_for_app_id(
                             store_id.clone(),
                             msg.info.application_id.clone(),
                         );
@@ -584,22 +595,22 @@ impl App {
                 false
             };
 
-            StoreHub::access_store_db_mut(store_id, |store_db| {
-                if store_db.data_source.is_none() {
-                    store_db.data_source = Some(self.rx.source().clone());
-                }
+            let store_db = store_hub.store_db_mut(store_id);
 
-                if let Err(err) = store_db.add(&msg) {
-                    re_log::error!("Failed to add incoming msg: {err}");
-                };
+            if store_db.data_source.is_none() {
+                store_db.data_source = Some(self.rx.source().clone());
+            }
 
-                if is_new_store && store_db.store_kind() == StoreKind::Recording {
-                    // Do analytics after ingesting the new message,
-                    // because thats when the `store_db.store_info` is set,
-                    // which we use in the analytics call.
-                    self.analytics.on_open_recording(store_db);
-                }
-            });
+            if let Err(err) = store_db.add(&msg) {
+                re_log::error!("Failed to add incoming msg: {err}");
+            };
+
+            if is_new_store && store_db.store_kind() == StoreKind::Recording {
+                // Do analytics after ingesting the new message,
+                // because thats when the `store_db.store_info` is set,
+                // which we use in the analytics call.
+                self.analytics.on_open_recording(store_db);
+            }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
                 egui_ctx.request_repaint(); // make sure we keep receiving messages asap
@@ -608,7 +619,7 @@ impl App {
         }
     }
 
-    fn purge_memory_if_needed(&mut self) {
+    fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHubImpl) {
         re_tracing::profile_function!();
 
         fn format_limit(limit: Option<i64>) -> String {
@@ -644,7 +655,7 @@ impl App {
                     format_bytes(counted as f64 * fraction_to_purge as f64)
                 );
             }
-            StoreHub::purge_fraction_of_ram(fraction_to_purge);
+            store_hub.purge_fraction_of_ram(fraction_to_purge);
             self.state.cache.purge_memory();
 
             let mem_use_after = MemoryUse::capture();
@@ -676,26 +687,28 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
-    pub fn recording_db<R>(&self, f: impl FnOnce(Option<&StoreDb>) -> R) -> R {
-        StoreHub::with_view(|store_view| f(store_view.recording))
+    pub fn recording_db(&self) -> Option<&StoreDb> {
+        self.store_hub
+            .as_ref()
+            .and_then(|store_hub| store_hub.recording_id())
     }
 
-    fn on_rrd_loaded(&mut self, loaded_store_bundle: StoreBundle) {
+    fn on_rrd_loaded(&mut self, store_hub: &mut StoreHubImpl, loaded_store_bundle: StoreBundle) {
         if let Some(store_db) = loaded_store_bundle.recordings().next() {
-            StoreHub::set_recording_id(store_db.store_id().clone());
+            store_hub.set_recording_id(store_db.store_id().clone());
             self.analytics.on_open_recording(store_db);
         }
 
         for blueprint_db in loaded_store_bundle.blueprints() {
             if let Some(app_id) = blueprint_db.app_id() {
-                StoreHub::set_blueprint_for_app_id(blueprint_db.store_id().clone(), app_id.clone());
+                store_hub.set_blueprint_for_app_id(blueprint_db.store_id().clone(), app_id.clone());
             }
         }
 
-        StoreHub::add_bundle(loaded_store_bundle);
+        store_hub.add_bundle(loaded_store_bundle);
     }
 
-    fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
+    fn handle_dropping_files(&mut self, store_hub: &mut StoreHubImpl, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
         // Collect dropped files:
@@ -709,9 +722,8 @@ impl App {
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
                 if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
-                    self.on_rrd_loaded(rrd);
+                    self.on_rrd_loaded(store_hub, rrd);
 
-                    #[allow(clippy::needless_return)] // false positive on wasm32
                     return;
                 }
             }
@@ -719,7 +731,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
                 if let Some(rrd) = crate::loading::load_file_path(path) {
-                    self.on_rrd_loaded(rrd);
+                    self.on_rrd_loaded(store_hub, rrd);
                 }
             }
         }
@@ -739,6 +751,8 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
+
+        let mut store_hub = self.store_hub.take().unwrap();
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
@@ -766,7 +780,7 @@ impl eframe::App for App {
                 let mut zoom_factor = self.app_options().zoom_factor;
                 zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
                 zoom_factor = (zoom_factor * 10.).round() / 10.;
-                self.app_options_mut().zoom_factor = zoom_factor;
+                self.state.app_options_mut().zoom_factor = zoom_factor;
             }
 
             // Apply zoom factor on top of natively reported pixel per point.
@@ -790,22 +804,22 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = StoreHub::store_stats();
+        let store_stats = store_hub.store_stats();
 
         // do early, before doing too many allocations
         self.memory_panel.update(&gpu_resource_stats, &store_stats);
 
         self.check_keyboard_shortcuts(egui_ctx);
 
-        self.purge_memory_if_needed();
+        self.purge_memory_if_needed(&mut store_hub);
 
         self.state.cache.begin_frame();
 
         self.show_text_logs_as_notifications();
-        self.receive_messages(egui_ctx);
+        self.receive_messages(&mut store_hub, egui_ctx);
 
-        StoreHub::purge_empty();
-        StoreHub::access_bundle(|bundle| {
+        store_hub.purge_empty();
+        store_hub.access_bundle(|bundle| {
             self.state.cleanup(bundle);
         });
 
@@ -816,27 +830,28 @@ impl eframe::App for App {
         // means holding a reference to a StoreDb precludes us from calling any mut functions on
         // App. A future refactor to move those mut functions out of app into a separate helper would
         // streamline this.
-        let (blueprint_snapshot, blueprint) = StoreHub::with_view(|store_view| {
-            let blueprint_snapshot = Blueprint::from_db(egui_ctx, store_view.blueprint);
+        let store_view = store_hub.view();
+        let blueprint_snapshot = Blueprint::from_db(egui_ctx, store_view.blueprint);
 
-            // Make a mutable copy we can edit.
-            let mut blueprint = blueprint_snapshot.clone();
+        // Make a mutable copy we can edit.
+        let mut blueprint = blueprint_snapshot.clone();
 
-            self.ui(
-                egui_ctx,
-                frame,
-                &mut blueprint,
-                &gpu_resource_stats,
-                &store_view,
-                &store_stats,
-            );
+        self.ui(
+            egui_ctx,
+            frame,
+            &mut blueprint,
+            &gpu_resource_stats,
+            &store_view,
+            &store_stats,
+        );
 
-            if re_ui::CUSTOM_WINDOW_DECORATIONS {
-                // Paint the main window frame on top of everything else
-                paint_native_window_frame(egui_ctx);
-            }
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            // Paint the main window frame on top of everything else
+            paint_native_window_frame(egui_ctx);
+        }
 
-            self.handle_dropping_files(egui_ctx);
+        {
+            self.handle_dropping_files(&mut store_hub, egui_ctx);
 
             if !self.screenshotter.is_screenshotting() {
                 self.toasts.show(egui_ctx);
@@ -846,20 +861,20 @@ impl eframe::App for App {
                 self.pending_commands.push(cmd);
             }
 
-            self.run_pending_commands(&mut blueprint, &store_view, egui_ctx, frame);
-
-            (blueprint_snapshot, blueprint)
-        });
+            self.run_pending_commands(&mut blueprint, &mut store_hub, egui_ctx, frame);
+        }
 
         if let Some(blueprint_id) = &blueprint.blueprint_id {
-            StoreHub::access_store_db_mut(blueprint_id, |blueprint_db| {
+            store_hub.access_store_db_mut(blueprint_id, |blueprint_db| {
                 blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
             });
         }
 
         if let Some(recording_id) = self.requested_recording_id.take() {
-            StoreHub::set_recording_id(recording_id);
+            store_hub.set_recording_id(recording_id);
         }
+
+        self.store_hub = Some(store_hub);
 
         // Frame time measurer - must be last
         self.frame_time_history.add(

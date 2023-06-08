@@ -3,13 +3,6 @@ use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
-
-lazy_static! {
-    static ref GLOBAL_HUB: Mutex<StoreHubImpl> = Mutex::new(StoreHubImpl::default());
-}
-
 #[derive(Default)]
 pub struct StoreHubStats {
     pub blueprint_stats: DataStoreStats,
@@ -24,63 +17,8 @@ pub struct StoreView<'a> {
     pub bundle: &'a StoreBundle,
 }
 
-pub struct StoreHub;
-
-impl StoreHub {
-    pub fn add_bundle(bundle: StoreBundle) {
-        GLOBAL_HUB.lock().add_bundle(bundle);
-    }
-
-    pub fn with_view<R>(f: impl FnOnce(StoreView<'_>) -> R) -> R {
-        GLOBAL_HUB.lock().with_view(f)
-    }
-
-    /// The selected/visible recording id, if any.
-    pub fn set_recording_id(recording_id: StoreId) {
-        GLOBAL_HUB.lock().set_recording_id(recording_id);
-    }
-
-    pub fn set_app_id(app_id: ApplicationId) {
-        GLOBAL_HUB.lock().set_app_id(app_id);
-    }
-
-    pub fn set_blueprint_for_app_id(blueprint_id: StoreId, app_id: ApplicationId) {
-        GLOBAL_HUB
-            .lock()
-            .set_blueprint_for_app_id(blueprint_id, app_id);
-    }
-
-    pub fn store_stats() -> StoreHubStats {
-        // TODO
-        StoreHubStats::default()
-        /*
-                self.recording_db(|store_db| {
-            store_db
-                .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
-                .unwrap_or_default()
-        });
-        */
-    }
-
-    pub fn purge_empty() {
-        GLOBAL_HUB.lock().purge_empty();
-    }
-
-    pub fn purge_fraction_of_ram(fraction_to_purge: f32) {
-        GLOBAL_HUB.lock().purge_fraction_of_ram(fraction_to_purge);
-    }
-
-    pub fn access_bundle<R>(f: impl FnOnce(&StoreBundle) -> R) -> R {
-        GLOBAL_HUB.lock().access_bundle(f)
-    }
-
-    pub fn access_store_db_mut<R>(store_id: &StoreId, f: impl FnOnce(&mut StoreDb) -> R) -> R {
-        GLOBAL_HUB.lock().access_store_db_mut(store_id, f)
-    }
-}
-
 #[derive(Default)]
-struct StoreHubImpl {
+pub struct StoreHubImpl {
     selected_rec_id: Option<StoreId>,
     application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
@@ -88,13 +26,13 @@ struct StoreHubImpl {
 }
 
 impl StoreHubImpl {
-    fn add_bundle(&mut self, bundle: StoreBundle) {
+    pub fn add_bundle(&mut self, bundle: StoreBundle) {
         self.store_dbs.append(bundle);
 
         // TODO: mutate app_id / selected_rec_id
     }
 
-    fn with_view<R>(&mut self, f: impl FnOnce(StoreView<'_>) -> R) -> R {
+    pub fn view(&mut self) -> StoreView<'_> {
         // First maybe create blueprint if it's necessary.
         // TODO(jleibs): Can we hold onto this version here instead of
         // requerying below?
@@ -117,21 +55,19 @@ impl StoreHubImpl {
             .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
             .and_then(|id| self.store_dbs.blueprint(id));
 
-        let view = StoreView {
+        StoreView {
             blueprint,
             recording,
             bundle: &self.store_dbs,
-        };
-
-        f(view)
+        }
     }
 
     /// The selected/visible recording id, if any.
-    fn set_recording_id(&mut self, recording_id: StoreId) {
+    pub fn set_recording_id(&mut self, recording_id: StoreId) {
         self.selected_rec_id = Some(recording_id);
     }
 
-    fn set_app_id(&mut self, app_id: ApplicationId) {
+    pub fn set_app_id(&mut self, app_id: ApplicationId) {
         self.application_id = Some(app_id);
     }
 
@@ -143,12 +79,16 @@ impl StoreHubImpl {
         f(&self.store_dbs)
     }
 
+    pub fn store_db_mut(&mut self, store_id: &StoreId) -> &mut StoreDb {
+        self.store_dbs.store_db_entry(store_id)
+    }
+
     pub fn access_store_db_mut<R>(
         &mut self,
         store_id: &StoreId,
         f: impl FnOnce(&mut StoreDb) -> R,
     ) -> R {
-        f(self.store_dbs.store_db_entry(store_id))
+        f(self.store_db_mut(store_id))
     }
 
     pub fn purge_empty(&mut self) {
@@ -157,6 +97,16 @@ impl StoreHubImpl {
 
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         self.store_dbs.purge_fraction_of_ram(fraction_to_purge);
+    }
+
+    pub fn recording_id(&self) -> Option<&StoreDb> {
+        self.selected_rec_id
+            .as_ref()
+            .and_then(|id| self.store_dbs.recording(id))
+    }
+
+    pub fn store_stats(&self) -> StoreHubStats {
+        StoreHubStats::default()
     }
 }
 
