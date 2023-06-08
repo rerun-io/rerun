@@ -295,7 +295,7 @@ pub fn tensor_summary_ui_grid_contents(
     }
     // Show finite range only if it is different from the actual range.
     if let (true, Some((min, max))) = (range != finite_range, finite_range) {
-        ui.label("Range without inf/NaN:")
+        ui.label("Finite data range")
             .on_hover_text("The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds.");
         ui.monospace(format!(
             "[{} - {}]",
