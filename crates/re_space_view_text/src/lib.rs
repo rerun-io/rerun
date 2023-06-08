@@ -1,4 +1,4 @@
-//! Rerun Text Space Views
+//! Rerun text Space View
 //!
 //! A Space View that shows text entries in a table and scrolls with the active time.
 

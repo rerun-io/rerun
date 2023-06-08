@@ -7,7 +7,6 @@ use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, Vi
 use crate::{
     space_info::SpaceInfoCollection,
     space_view_heuristics::default_queried_entities,
-    view_bar_chart,
     view_category::{categorize_entity_path, ViewCategory},
     view_tensor, view_time_series,
 };
@@ -230,7 +229,10 @@ impl SpaceViewBlueprint {
             };
 
             match self.category {
-                ViewCategory::Text | ViewCategory::TextBox | ViewCategory::Spatial => {
+                ViewCategory::Text
+                | ViewCategory::TextBox
+                | ViewCategory::Spatial
+                | ViewCategory::BarChart => {
                     // migrated.
                 }
 
@@ -238,12 +240,6 @@ impl SpaceViewBlueprint {
                     let mut scene = view_time_series::SceneTimeSeries::default();
                     scene.load(ctx, &query);
                     view_state.ui_time_series(ctx, ui, &scene);
-                }
-
-                ViewCategory::BarChart => {
-                    let mut scene = view_bar_chart::SceneBarChart::default();
-                    scene.load(ctx, &query);
-                    view_state.ui_bar_chart(ctx, ui, &scene);
                 }
 
                 ViewCategory::Tensor => {
@@ -312,7 +308,6 @@ pub struct SpaceViewState {
     pub selected_tensor: Option<InstancePath>,
 
     pub state_time_series: view_time_series::ViewTimeSeriesState,
-    pub state_bar_chart: view_bar_chart::BarChartState,
     pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
 }
 
@@ -358,19 +353,6 @@ impl SpaceViewState {
                 }
             }
         }
-    }
-
-    fn ui_bar_chart(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene: &view_bar_chart::SceneBarChart,
-    ) {
-        ui.vertical(|ui| {
-            ui.scope(|ui| {
-                view_bar_chart::view_bar_chart(ctx, ui, &mut self.state_bar_chart, scene);
-            });
-        });
     }
 
     fn ui_time_series(

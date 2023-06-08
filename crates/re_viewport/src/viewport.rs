@@ -570,7 +570,6 @@ impl ViewportState {
                     state,
                     selected_tensor: Default::default(),
                     state_time_series: Default::default(),
-                    state_bar_chart: Default::default(),
                     state_tensors: Default::default(),
                 }
             })
@@ -841,11 +840,11 @@ fn help_text_ui(
     } else {
         match space_view_blueprint.category {
             ViewCategory::TimeSeries => Some(crate::view_time_series::help_text(ctx.re_ui)),
-            ViewCategory::BarChart => Some(crate::view_bar_chart::help_text(ctx.re_ui)),
             ViewCategory::TextBox
             | ViewCategory::Text
             | ViewCategory::Tensor
-            | ViewCategory::Spatial => None,
+            | ViewCategory::Spatial
+            | ViewCategory::BarChart => None,
         }
     };
 

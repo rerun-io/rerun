@@ -4245,18 +4245,32 @@ dependencies = [
 name = "re_space_view"
 version = "0.7.0-alpha.0"
 dependencies = [
- "ahash 0.8.3",
  "egui",
- "lazy_static",
  "nohash-hasher",
  "re_data_store",
- "re_log_types",
- "re_renderer",
  "re_tracing",
  "re_viewer_context",
  "serde",
  "slotmap",
  "smallvec",
+]
+
+[[package]]
+name = "re_space_view_bar_chart"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "egui",
+ "re_arrow_store",
+ "re_components",
+ "re_data_store",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_space_view",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_context",
+ "vec1",
 ]
 
 [[package]]
@@ -4443,6 +4457,7 @@ dependencies = [
  "re_memory",
  "re_renderer",
  "re_smart_channel",
+ "re_space_view_bar_chart",
  "re_space_view_spatial",
  "re_space_view_text",
  "re_space_view_text_box",
@@ -4493,7 +4508,6 @@ dependencies = [
  "serde",
  "slotmap",
  "thiserror",
- "tinyvec",
  "uuid",
  "vec1",
  "wgpu",
