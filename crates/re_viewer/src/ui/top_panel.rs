@@ -1,6 +1,6 @@
 use re_format::format_number;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_ui::Command;
+use re_ui::{UICommand, UICommandSender};
 use re_viewer_context::StoreContext;
 
 use crate::{ui::Blueprint, App};
@@ -95,11 +95,11 @@ fn top_bar_ui(
             )
             .on_hover_text(format!(
                 "Toggle Selection View{}",
-                Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
+                UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
             ))
             .clicked()
         {
-            app.command_sender.send(Command::ToggleSelectionPanel);
+            app.command_sender.send_ui(UICommand::ToggleSelectionPanel);
         }
 
         let mut time_panel_expanded = blueprint.time_panel_expanded;
@@ -112,11 +112,11 @@ fn top_bar_ui(
             )
             .on_hover_text(format!(
                 "Toggle Timeline View{}",
-                Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
+                UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
             ))
             .clicked()
         {
-            app.command_sender.send(Command::ToggleTimePanel);
+            app.command_sender.send_ui(UICommand::ToggleTimePanel);
         }
 
         let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
@@ -129,11 +129,11 @@ fn top_bar_ui(
             )
             .on_hover_text(format!(
                 "Toggle Blueprint View{}",
-                Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
+                UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
             ))
             .clicked()
         {
-            app.command_sender.send(Command::ToggleBlueprintPanel);
+            app.command_sender.send_ui(UICommand::ToggleBlueprintPanel);
         }
 
         if cfg!(debug_assertions) && app.app_options().show_metrics {

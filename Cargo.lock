@@ -4557,6 +4557,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "bytemuck",
+ "crossbeam",
  "egui",
  "egui-wgpu",
  "glam",

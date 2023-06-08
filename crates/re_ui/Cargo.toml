@@ -29,7 +29,6 @@ eframe = ["dep:eframe"]
 
 
 [dependencies]
-crossbeam.workspace = true
 egui_extras.workspace = true
 egui.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
@@ -44,6 +43,7 @@ sublime_fuzzy = "0.7"
 eframe = { workspace = true, optional = true, default-features = false }
 
 [dev-dependencies]
+crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_tiles.workspace = true
 re_log.workspace = true

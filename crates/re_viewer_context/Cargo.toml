@@ -30,6 +30,7 @@ re_ui.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
+crossbeam.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
 glam.workspace = true

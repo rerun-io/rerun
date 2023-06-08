@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use egui::{Align2, Key, NumExt as _};
 
-use crate::Command;
+use crate::UICommand;
 
 #[derive(Default)]
 pub struct CommandPalette {
@@ -18,7 +18,7 @@ impl CommandPalette {
 
     /// Show the command palette, if it is visible.
     #[must_use = "Returns the command that was selected"]
-    pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<Command> {
+    pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<UICommand> {
         self.visible &= !egui_ctx.input_mut(|i| i.consume_key(Default::default(), Key::Escape));
         if !self.visible {
             self.query.clear();
@@ -39,7 +39,7 @@ impl CommandPalette {
     }
 
     #[must_use = "Returns the command that was selected"]
-    fn window_content_ui(&mut self, ui: &mut egui::Ui) -> Option<Command> {
+    fn window_content_ui(&mut self, ui: &mut egui::Ui) -> Option<UICommand> {
         // Check _before_ we add the `TextEdit`, so it doesn't steal it.
         let enter_pressed = ui.input_mut(|i| i.consume_key(Default::default(), Key::Enter));
 
@@ -75,7 +75,7 @@ impl CommandPalette {
         ui: &mut egui::Ui,
         enter_pressed: bool,
         mut scroll_to_selected_alternative: bool,
-    ) -> Option<Command> {
+    ) -> Option<UICommand> {
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowUp));
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowDown));
 
@@ -172,7 +172,7 @@ impl CommandPalette {
 }
 
 struct FuzzyMatch {
-    command: Command,
+    command: UICommand,
     score: isize,
     fuzzy_match: Option<sublime_fuzzy::Match>,
 }
@@ -181,7 +181,7 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
     use strum::IntoEnumIterator as _;
 
     if query.is_empty() {
-        Command::iter()
+        UICommand::iter()
             .map(|command| FuzzyMatch {
                 command,
                 score: 0,
@@ -189,7 +189,7 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
             })
             .collect()
     } else {
-        let mut matches: Vec<_> = Command::iter()
+        let mut matches: Vec<_> = UICommand::iter()
             .filter_map(|command| {
                 let target_text = command.text();
                 sublime_fuzzy::best_match(query, target_text).map(|fuzzy_match| FuzzyMatch {

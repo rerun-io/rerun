@@ -5,6 +5,7 @@
 mod annotations;
 mod app_options;
 mod caches;
+mod command_sender;
 mod component_ui_registry;
 mod item;
 mod selection_history;
@@ -24,6 +25,9 @@ use std::hash::BuildHasher;
 pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSING_ANNOTATIONS};
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
+pub use command_sender::{
+    command_channel, Command, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+};
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{Item, ItemCollection};
 pub use selection_history::SelectionHistory;

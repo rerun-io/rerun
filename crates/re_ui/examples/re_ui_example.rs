@@ -1,4 +1,33 @@
-use re_ui::{toasts, Command, CommandPalette, CommandReceiver, CommandSender};
+use re_ui::{toasts, CommandPalette, UICommand, UICommandSender};
+
+/// Sender that queues up the execution of a command.
+pub struct CommandSender(crossbeam::channel::Sender<UICommand>);
+
+impl UICommandSender for CommandSender {
+    /// Send a command to be executed.
+    fn send_ui(&self, command: UICommand) {
+        // The only way this can fail is if the receiver has been dropped.
+        self.0.send(command).ok();
+    }
+}
+
+/// Receiver for the [`CommandSender`]
+pub struct CommandReceiver(crossbeam::channel::Receiver<UICommand>);
+
+impl CommandReceiver {
+    /// Receive a command to be executed if any is queued.
+    pub fn recv(&self) -> Option<UICommand> {
+        // The only way this can fail (other than being empty)
+        // is if the sender has been dropped.
+        self.0.try_recv().ok()
+    }
+}
+
+/// Creates a new command channel.
+fn command_channel() -> (CommandSender, CommandReceiver) {
+    let (sender, receiver) = crossbeam::channel::unbounded();
+    (CommandSender(sender), CommandReceiver(receiver))
+}
 
 fn main() -> eframe::Result<()> {
     re_log::setup_native_logging();
@@ -61,7 +90,7 @@ impl ExampleApp {
 
         let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
 
-        let (command_sender, command_receiver) = re_ui::command_channel();
+        let (command_sender, command_receiver) = command_channel();
 
         Self {
             re_ui,
@@ -209,10 +238,10 @@ impl eframe::App for ExampleApp {
             });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send(cmd);
+            self.command_sender.send_ui(cmd);
         }
-        if let Some(cmd) = re_ui::Command::listen_for_kb_shortcut(egui_ctx) {
-            self.command_sender.send(cmd);
+        if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(egui_ctx) {
+            self.command_sender.send_ui(cmd);
         }
 
         while let Some(cmd) = self.command_receiver.recv() {
@@ -220,7 +249,7 @@ impl eframe::App for ExampleApp {
 
             #[allow(clippy::single_match)]
             match cmd {
-                Command::ToggleCommandPalette => self.cmd_palette.toggle(),
+                UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 _ => {}
             }
         }
@@ -302,10 +331,10 @@ impl ExampleApp {
 }
 
 fn file_menu(ui: &mut egui::Ui, command_sender: &CommandSender) {
-    Command::Save.menu_button_ui(ui, command_sender);
-    Command::SaveSelection.menu_button_ui(ui, command_sender);
-    Command::Open.menu_button_ui(ui, command_sender);
-    Command::Quit.menu_button_ui(ui, command_sender);
+    UICommand::Save.menu_button_ui(ui, command_sender);
+    UICommand::SaveSelection.menu_button_ui(ui, command_sender);
+    UICommand::Open.menu_button_ui(ui, command_sender);
+    UICommand::Quit.menu_button_ui(ui, command_sender);
 }
 
 fn selection_buttons(ui: &mut egui::Ui) {

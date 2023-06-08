@@ -1,13 +1,14 @@
 use web_time::Instant;
 
 use re_data_store::store_db::StoreDb;
-use re_log_types::{LogMsg, StoreId, StoreKind};
+use re_log_types::{LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
-use re_ui::{toasts, Command, CommandReceiver, CommandSender};
+use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    AppOptions, ComponentUiRegistry, DynSpaceViewClass, PlayState, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, StoreContext,
+    command_channel, AppOptions, Command, CommandReceiver, CommandSender, ComponentUiRegistry,
+    DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    StoreContext, SystemCommand,
 };
 
 use crate::{
@@ -97,10 +98,6 @@ pub struct App {
     /// Interface for all recordings and blueprints
     pub(crate) store_hub: Option<StoreHub>,
 
-    /// Recording Id to switch to
-    // TODO(jleibs): Switch this to use `pending_commands`
-    pub(crate) requested_recording_id: Option<StoreId>,
-
     /// Toast notifications.
     toasts: toasts::Toasts,
 
@@ -170,7 +167,7 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(screenshot_path);
         }
 
-        let (command_sender, command_receiver) = re_ui::command_channel();
+        let (command_sender, command_receiver) = command_channel();
 
         Self {
             build_info,
@@ -188,7 +185,6 @@ impl App {
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::default()),
-            requested_recording_id: Default::default(),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -244,8 +240,8 @@ impl App {
     }
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
-        if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
-            self.command_sender.send(cmd);
+        if let Some(cmd) = UICommand::listen_for_kb_shortcut(egui_ctx) {
+            self.command_sender.send_ui(cmd);
         }
     }
 
@@ -273,128 +269,144 @@ impl App {
         let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
 
         match cmd {
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::Save => {
-                save(self, store_context.as_ref(), None);
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::SaveSelection => {
-                save(
-                    self,
-                    store_context.as_ref(),
-                    self.state.loop_selection(store_context.as_ref()),
-                );
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::Open => {
-                if let Some(rrd) = open_rrd_dialog() {
-                    self.on_rrd_loaded(store_hub, rrd);
+            Command::UICommand(cmd) => match cmd {
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::Save => {
+                    save(self, store_context.as_ref(), None);
                 }
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::Quit => {
-                _frame.close();
-            }
-
-            Command::ResetViewer => {
-                self.reset(store_hub, egui_ctx);
-            }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::OpenProfiler => {
-                self.profiler.start();
-            }
-
-            Command::ToggleMemoryPanel => {
-                self.memory_panel_open ^= true;
-            }
-            Command::ToggleBlueprintPanel => {
-                blueprint.blueprint_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.blueprint_panel_expanded {
-                    blueprint.selection_panel_expanded = false;
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::SaveSelection => {
+                    save(
+                        self,
+                        store_context.as_ref(),
+                        self.state.loop_selection(store_context.as_ref()),
+                    );
                 }
-            }
-            Command::ToggleSelectionPanel => {
-                blueprint.selection_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.selection_panel_expanded {
-                    blueprint.blueprint_panel_expanded = false;
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::Open => {
+                    if let Some(rrd) = open_rrd_dialog() {
+                        self.on_rrd_loaded(store_hub, rrd);
+                    }
                 }
-            }
-            Command::ToggleTimePanel => {
-                blueprint.time_panel_expanded ^= true;
-            }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ToggleFullscreen => {
-                _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomIn => {
-                self.app_options_mut().zoom_factor += 0.1;
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomOut => {
-                self.app_options_mut().zoom_factor -= 0.1;
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomReset => {
-                self.app_options_mut().zoom_factor = 1.0;
-            }
-
-            Command::SelectionPrevious => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .and_then(|ctx| ctx.recording)
-                    .map(|rec| rec.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_previous();
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::Quit => {
+                    _frame.close();
                 }
-            }
-            Command::SelectionNext => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .and_then(|ctx| ctx.recording)
-                    .map(|rec| rec.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_next();
+
+                UICommand::ResetViewer => {
+                    self.reset(store_hub, egui_ctx);
                 }
-            }
-            Command::ToggleCommandPalette => {
-                self.cmd_palette.toggle();
-            }
 
-            Command::PlaybackTogglePlayPause => {
-                self.run_time_control_command(
-                    store_context.as_ref(),
-                    TimeControlCommand::TogglePlayPause,
-                );
-            }
-            Command::PlaybackFollow => {
-                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::Follow);
-            }
-            Command::PlaybackStepBack => {
-                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::StepBack);
-            }
-            Command::PlaybackStepForward => {
-                self.run_time_control_command(
-                    store_context.as_ref(),
-                    TimeControlCommand::StepForward,
-                );
-            }
-            Command::PlaybackRestart => {
-                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::Restart);
-            }
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::OpenProfiler => {
+                    self.profiler.start();
+                }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ScreenshotWholeApp => {
-                self.screenshotter.request_screenshot();
-            }
+                UICommand::ToggleMemoryPanel => {
+                    self.memory_panel_open ^= true;
+                }
+                UICommand::ToggleBlueprintPanel => {
+                    blueprint.blueprint_panel_expanded ^= true;
+
+                    // Only one of blueprint or selection panel can be open at a time on mobile:
+                    if is_narrow_screen && blueprint.blueprint_panel_expanded {
+                        blueprint.selection_panel_expanded = false;
+                    }
+                }
+                UICommand::ToggleSelectionPanel => {
+                    blueprint.selection_panel_expanded ^= true;
+
+                    // Only one of blueprint or selection panel can be open at a time on mobile:
+                    if is_narrow_screen && blueprint.selection_panel_expanded {
+                        blueprint.blueprint_panel_expanded = false;
+                    }
+                }
+                UICommand::ToggleTimePanel => {
+                    blueprint.time_panel_expanded ^= true;
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::ToggleFullscreen => {
+                    _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::ZoomIn => {
+                    self.app_options_mut().zoom_factor += 0.1;
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::ZoomOut => {
+                    self.app_options_mut().zoom_factor -= 0.1;
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::ZoomReset => {
+                    self.app_options_mut().zoom_factor = 1.0;
+                }
+
+                UICommand::SelectionPrevious => {
+                    let state = &mut self.state;
+                    if let Some(rec_cfg) = store_context
+                        .and_then(|ctx| ctx.recording)
+                        .map(|rec| rec.store_id())
+                        .and_then(|rec_id| state.recording_config_mut(rec_id))
+                    {
+                        rec_cfg.selection_state.select_previous();
+                    }
+                }
+                UICommand::SelectionNext => {
+                    let state = &mut self.state;
+                    if let Some(rec_cfg) = store_context
+                        .and_then(|ctx| ctx.recording)
+                        .map(|rec| rec.store_id())
+                        .and_then(|rec_id| state.recording_config_mut(rec_id))
+                    {
+                        rec_cfg.selection_state.select_next();
+                    }
+                }
+                UICommand::ToggleCommandPalette => {
+                    self.cmd_palette.toggle();
+                }
+
+                UICommand::PlaybackTogglePlayPause => {
+                    self.run_time_control_command(
+                        store_context.as_ref(),
+                        TimeControlCommand::TogglePlayPause,
+                    );
+                }
+                UICommand::PlaybackFollow => {
+                    self.run_time_control_command(
+                        store_context.as_ref(),
+                        TimeControlCommand::Follow,
+                    );
+                }
+                UICommand::PlaybackStepBack => {
+                    self.run_time_control_command(
+                        store_context.as_ref(),
+                        TimeControlCommand::StepBack,
+                    );
+                }
+                UICommand::PlaybackStepForward => {
+                    self.run_time_control_command(
+                        store_context.as_ref(),
+                        TimeControlCommand::StepForward,
+                    );
+                }
+                UICommand::PlaybackRestart => {
+                    self.run_time_control_command(
+                        store_context.as_ref(),
+                        TimeControlCommand::Restart,
+                    );
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::ScreenshotWholeApp => {
+                    self.screenshotter.request_screenshot();
+                }
+            },
+            Command::SystemCommand(cmd) => match cmd {
+                SystemCommand::SetRecordingId(recording_id) => {
+                    store_hub.set_recording_id(recording_id);
+                }
+            },
         }
     }
 
@@ -876,7 +888,7 @@ impl eframe::App for App {
         }
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send(cmd);
+            self.command_sender.send_ui(cmd);
         }
 
         self.run_pending_commands(&mut blueprint, &mut store_hub, egui_ctx, frame);
@@ -886,10 +898,6 @@ impl eframe::App for App {
         if let Some(blueprint_id) = &blueprint.blueprint_id {
             let blueprint_db = store_hub.store_db_mut(blueprint_id);
             blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
-        }
-
-        if let Some(recording_id) = self.requested_recording_id.take() {
-            store_hub.set_recording_id(recording_id);
         }
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
