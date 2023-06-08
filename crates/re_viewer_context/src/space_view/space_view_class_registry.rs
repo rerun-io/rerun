@@ -4,11 +4,11 @@ use crate::{DynSpaceViewClass, SpaceViewClassName};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SpaceViewClassRegistryError {
-    #[error("Space view with typename {0:?} was already registered.")]
-    DuplicateTypeName(SpaceViewClassName),
+    #[error("Space view with class name {0:?} was already registered.")]
+    DuplicateClassName(SpaceViewClassName),
 
-    #[error("Space view with typename {0:?} was not found.")]
-    TypeNotFound(SpaceViewClassName),
+    #[error("Space view with class name {0:?} was not found.")]
+    ClassNotFound(SpaceViewClassName),
 }
 
 /// Registry of all known space view types.
@@ -31,7 +31,7 @@ impl SpaceViewClassRegistry {
             .insert(type_name, Box::new(space_view_type))
             .is_some()
         {
-            return Err(SpaceViewClassRegistryError::DuplicateTypeName(type_name));
+            return Err(SpaceViewClassRegistryError::DuplicateClassName(type_name));
         }
 
         Ok(())
@@ -45,7 +45,7 @@ impl SpaceViewClassRegistry {
         self.0
             .get(&name)
             .map(|boxed| boxed.as_ref())
-            .ok_or(SpaceViewClassRegistryError::TypeNotFound(name))
+            .ok_or(SpaceViewClassRegistryError::ClassNotFound(name))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &dyn DynSpaceViewClass> {
