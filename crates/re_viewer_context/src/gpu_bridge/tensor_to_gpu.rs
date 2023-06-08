@@ -27,7 +27,7 @@ use super::{get_or_create_texture, try_get_or_create_texture};
 /// This will only upload the tensor if it isn't on the GPU already.
 ///
 /// `tensor_stats` is used for determining the range of the texture.
-// TODO(emilk): allow user to specify the range in ui.
+// TODO(#2341): allow user to specify the range in ui.
 pub fn tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
@@ -66,8 +66,9 @@ fn color_tensor_to_gpu(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
+    let [height, width, depth] = height_width_depth(tensor)?;
+
     let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor.id()), || {
-        let [height, width, depth] = height_width_depth(tensor)?;
         let (data, format) = match (depth, &tensor.data) {
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
             // Why? Because premul must happen _before_ sRGB decode, so we can't
@@ -98,7 +99,8 @@ fn color_tensor_to_gpu(
     let texture_format = texture_handle.format();
 
     // TODO(emilk): let the user specify the color space.
-    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm;
+    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
+        || super::tensor_decode_srgb_heuristic(tensor_stats, tensor.data.dtype(), depth)?;
 
     // Special casing for normalized textures used above:
     let range = if matches!(
@@ -109,7 +111,7 @@ fn color_tensor_to_gpu(
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
     } else {
-        // TODO(#2274): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
+        // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
         super::tensor_data_range_heuristic(tensor_stats, tensor.data.dtype())?
     };
 

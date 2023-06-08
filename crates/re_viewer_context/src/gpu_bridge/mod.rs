@@ -55,6 +55,29 @@ pub fn tensor_data_range_heuristic(
     }
 }
 
+/// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
+pub fn tensor_decode_srgb_heuristic(
+    tensor_stats: &TensorStats,
+    data_type: re_components::TensorDataType,
+    channels: u32,
+) -> Result<bool, RangeError> {
+    if channels >= 3 {
+        let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
+        #[allow(clippy::if_same_then_else)]
+        if min >= 0.0 && max <= 255.0 {
+            // If the range is suspiciously reminding us of a "regular image", assume sRGB.
+            Ok(true)
+        } else if data_type.is_float() && min >= 0.0 && max <= 1.0 {
+            // Floating point images between 0 and 1 are often sRGB as well.
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    } else {
+        Ok(false)
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_from_point: f32) -> [u32; 2] {
