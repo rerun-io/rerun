@@ -540,6 +540,7 @@ impl App {
                                 &self.component_ui_registry,
                                 &self.space_view_class_registry,
                                 &self.rx,
+                                &self.command_sender,
                             );
 
                             render_ctx.before_submit();
