@@ -15,7 +15,7 @@ pub struct Blueprint {
 }
 
 impl Blueprint {
-    /// Prefer this to [`Blueprint::default`] to get better defaults based on screen size.
+    /// Create a [`Blueprint`] with appropriate defaults.
     pub fn new(blueprint_id: Option<StoreId>, egui_ctx: &egui::Context) -> Self {
         let screen_size = egui_ctx.screen_rect().size();
         Self {

@@ -29,7 +29,7 @@ pub struct StoreHubStats {
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
 /// id` ([`StoreId`]) are currently selected in the viewer. These can be configured
-/// using [`set_recording_id`] and [`set_app_id`] respectively.
+/// using [`StoreHub::set_recording_id`] and [`StoreHub::set_app_id`] respectively.
 impl StoreHub {
     /// Add a [`StoreBundle`] to the [`StoreHub`]
     pub fn add_bundle(&mut self, bundle: StoreBundle) {
