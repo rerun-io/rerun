@@ -747,7 +747,7 @@ impl App {
                 if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
                     self.on_rrd_loaded(store_hub, rrd);
 
-                    #[cfg(not(target_arch = "wasm32"))]
+                    #[allow(clippy::needless_return)] // false positive on wasm32
                     return;
                 }
             }
