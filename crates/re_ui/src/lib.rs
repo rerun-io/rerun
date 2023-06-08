@@ -10,7 +10,7 @@ mod static_image_cache;
 pub mod toasts;
 mod toggle_switch;
 
-pub use command::Command;
+pub use command::{command_channel, Command, CommandReceiver, CommandSender};
 pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
