@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, ensure, Context as _};
 use walkdir::{DirEntry, WalkDir};
 
-use re_build_build_info::{is_tracked_env_var_set, rerun_if_changed, write_file_if_necessary};
+use re_build_tools::{is_tracked_env_var_set, rerun_if_changed, write_file_if_necessary};
 
 // ---
 

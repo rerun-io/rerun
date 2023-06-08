@@ -56,4 +56,4 @@ similar-asserts = "1.4.2"
 
 
 [build-dependencies]
-re_build_build_info.workspace = true
+re_build_tools.workspace = true

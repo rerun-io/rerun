@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use re_build_build_info::{is_tracked_env_var_set, write_file_if_necessary};
+use re_build_tools::{is_tracked_env_var_set, write_file_if_necessary};
 
 fn main() -> Result<(), std::io::Error> {
     if std::env::var("CI").is_ok() {

@@ -111,4 +111,4 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.52", features = ["Window"] }
 
 [build-dependencies]
-re_build_build_info.workspace = true
+re_build_tools.workspace = true

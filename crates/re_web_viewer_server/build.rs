@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use re_build_build_info::{
+use re_build_tools::{
     get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
 };
 
