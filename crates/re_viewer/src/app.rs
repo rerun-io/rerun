@@ -1,4 +1,3 @@
-use itertools::Itertools as _;
 use web_time::Instant;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
@@ -1107,6 +1106,7 @@ fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
+    use itertools::Itertools as _;
     use re_arrow_store::TimeRange;
 
     re_tracing::profile_scope!("dump_messages");
