@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, ensure, Context as _};
 use walkdir::{DirEntry, WalkDir};
 
-use re_build_build_info::{is_tracked_env_var_set, rerun_if_changed};
+use re_build_build_info::{is_tracked_env_var_set, rerun_if_changed, write_file_if_necessary};
 
 // ---
 
@@ -231,19 +231,4 @@ pub fn init() {
     contents = format!("{}\n}}\n", contents.trim_end());
 
     write_file_if_necessary(file_path, contents.as_bytes()).unwrap();
-}
-
-/// Only touch the file if the contents has actually changed
-// TODO(cmc): re-use the same source tracking system as re_types_*
-fn write_file_if_necessary(
-    dst_path: impl AsRef<std::path::Path>,
-    content: &[u8],
-) -> std::io::Result<()> {
-    if let Ok(cur_bytes) = std::fs::read(&dst_path) {
-        if cur_bytes == content {
-            return Ok(());
-        }
-    }
-
-    std::fs::write(dst_path, content)
 }

@@ -84,6 +84,25 @@ pub fn rerun_if_changed_glob(path: impl AsRef<Path>, files_to_watch: &mut HashSe
     }
 }
 
+/// Writes `content` to a file iff it differs from what's already there.
+///
+/// This prevents recursive feedback loops where one generates source files from build.rs, which in
+/// turn triggers `cargo`'s implicit `rerun-if-changed=src/**` clause.
+//
+// TODO(cmc): use the same source tracking system as re_types* instead
+pub fn write_file_if_necessary(
+    path: impl AsRef<std::path::Path>,
+    content: &[u8],
+) -> std::io::Result<()> {
+    if let Ok(cur_bytes) = std::fs::read(&path) {
+        if cur_bytes == content {
+            return Ok(());
+        }
+    }
+
+    std::fs::write(path, content)
+}
+
 // ---
 
 struct Packages<'a> {
