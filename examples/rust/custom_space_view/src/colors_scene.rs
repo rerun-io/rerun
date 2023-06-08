@@ -17,12 +17,12 @@ use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
 /// This is a collection of all information needed to display a single frame for this Space View.
 /// The data is queried from the data store here and processed to consumption by the Space View's ui method.
 #[derive(Default)]
-pub struct SceneColorCoordinates {
+pub struct ColorsScene {
     pub colors: Vec<(InstancePathHash, egui::Color32)>,
 }
 
 // [`SceneColorCoordinates`] is itself its only scene part.
-impl ScenePart<ColorCoordinatesSpaceView> for SceneColorCoordinates {
+impl ScenePart<ColorCoordinatesSpaceView> for ColorsScene {
     /// The archetype this scene part is querying from the store.
     ///
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries within the `populate` method,

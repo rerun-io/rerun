@@ -8,7 +8,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::color_coordinates_scene::SceneColorCoordinates;
+use crate::colors_scene::ColorsScene;
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -62,7 +62,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
 
     // Collection of scene parts that are needed to display a frame.
     // We only have a single scene part, but it could be a collection of various.
-    type SceneParts = SceneColorCoordinates;
+    type SceneParts = ColorsScene;
 
     // Scene parts can have a common data object that they expose.
     // For this Space View this is not needed.
