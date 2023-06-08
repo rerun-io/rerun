@@ -17,6 +17,37 @@ pub struct StoreView<'a> {
     pub bundle: &'a StoreBundle,
 }
 
+impl<'a> StoreView<'a> {
+    pub fn stats(&self) -> StoreHubStats {
+        let blueprint_stats = self
+            .blueprint
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        let blueprint_config = self
+            .blueprint
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        let recording_stats = self
+            .recording
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        let recording_config = self
+            .recording
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        StoreHubStats {
+            blueprint_stats,
+            blueprint_config,
+            recording_stats,
+            recording_config,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct StoreHub {
     selected_rec_id: Option<StoreId>,
@@ -28,8 +59,6 @@ pub struct StoreHub {
 impl StoreHub {
     pub fn add_bundle(&mut self, bundle: StoreBundle) {
         self.store_dbs.append(bundle);
-
-        // TODO: mutate app_id / selected_rec_id
     }
 
     pub fn view(&mut self) -> StoreView<'_> {
@@ -75,20 +104,12 @@ impl StoreHub {
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
     }
 
-    pub fn access_bundle<R>(&self, f: impl FnOnce(&StoreBundle) -> R) -> R {
-        f(&self.store_dbs)
+    pub fn bundle(&self) -> &StoreBundle {
+        &self.store_dbs
     }
 
     pub fn store_db_mut(&mut self, store_id: &StoreId) -> &mut StoreDb {
         self.store_dbs.store_db_entry(store_id)
-    }
-
-    pub fn access_store_db_mut<R>(
-        &mut self,
-        store_id: &StoreId,
-        f: impl FnOnce(&mut StoreDb) -> R,
-    ) -> R {
-        f(self.store_db_mut(store_id))
     }
 
     pub fn purge_empty(&mut self) {
@@ -103,10 +124,6 @@ impl StoreHub {
         self.selected_rec_id
             .as_ref()
             .and_then(|id| self.store_dbs.recording(id))
-    }
-
-    pub fn store_stats(&self) -> StoreHubStats {
-        StoreHubStats::default()
     }
 }
 

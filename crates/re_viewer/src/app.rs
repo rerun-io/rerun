@@ -804,7 +804,10 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = store_hub.store_stats();
+        // TODO(jleibs): Work through this ordering. Would be great to move the
+        // memory panel update *after* the calls to purge/receive so we don't
+        // need to generate the view twice.
+        let store_stats = store_hub.view().stats();
 
         // do early, before doing too many allocations
         self.memory_panel.update(&gpu_resource_stats, &store_stats);
@@ -819,18 +822,12 @@ impl eframe::App for App {
         self.receive_messages(&mut store_hub, egui_ctx);
 
         store_hub.purge_empty();
-        store_hub.access_bundle(|bundle| {
-            self.state.cleanup(bundle);
-        });
+        self.state.cleanup(store_hub.bundle());
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
-        // This implicitly holds a lock on the `StoreHub`
-        // TODO(jleibs): ideally this whole thing would just be a member of App, but the borrow-checker
-        // means holding a reference to a StoreDb precludes us from calling any mut functions on
-        // App. A future refactor to move those mut functions out of app into a separate helper would
-        // streamline this.
         let store_view = store_hub.view();
+
         let blueprint_snapshot = Blueprint::from_db(egui_ctx, store_view.blueprint);
 
         // Make a mutable copy we can edit.
@@ -865,9 +862,8 @@ impl eframe::App for App {
         }
 
         if let Some(blueprint_id) = &blueprint.blueprint_id {
-            store_hub.access_store_db_mut(blueprint_id, |blueprint_db| {
-                blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
-            });
+            let blueprint_db = store_hub.store_db_mut(blueprint_id);
+            blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
         }
 
         if let Some(recording_id) = self.requested_recording_id.take() {
