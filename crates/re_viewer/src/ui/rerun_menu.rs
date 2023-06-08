@@ -280,7 +280,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
                 .clicked()
             {
                 ui.close_menu();
-                app.enqueue_command(Command::Save);
+                app.command_sender.send(Command::Save);
             }
 
             // We need to know the loop selection _before_ we can even display the
@@ -297,7 +297,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
                 .clicked()
             {
                 ui.close_menu();
-                app.enqueue_command(Command::SaveSelection);
+                app.command_sender.send(Command::SaveSelection);
             }
         });
     }

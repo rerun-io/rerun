@@ -96,7 +96,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.enqueue_command(Command::ToggleSelectionPanel);
+            app.command_sender.send(Command::ToggleSelectionPanel);
         }
 
         let mut time_panel_expanded = blueprint.time_panel_expanded;
@@ -113,7 +113,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.enqueue_command(Command::ToggleTimePanel);
+            app.command_sender.send(Command::ToggleTimePanel);
         }
 
         let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
@@ -130,7 +130,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.enqueue_command(Command::ToggleBlueprintPanel);
+            app.command_sender.send(Command::ToggleBlueprintPanel);
         }
 
         if cfg!(debug_assertions) && app.app_options().show_metrics {

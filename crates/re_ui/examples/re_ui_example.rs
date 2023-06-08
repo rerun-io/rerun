@@ -61,7 +61,7 @@ impl ExampleApp {
 
         let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
 
-        let (command_sender, command_receiver) = crossbeam::channel::unbounded();
+        let (command_sender, command_receiver) = re_ui::command_channel();
 
         Self {
             re_ui,
@@ -209,13 +209,13 @@ impl eframe::App for ExampleApp {
             });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send(cmd).ok();
+            self.command_sender.send(cmd);
         }
         if let Some(cmd) = re_ui::Command::listen_for_kb_shortcut(egui_ctx) {
-            self.command_sender.send(cmd).ok();
+            self.command_sender.send(cmd);
         }
 
-        while let Ok(cmd) = self.command_receiver.try_recv() {
+        while let Some(cmd) = self.command_receiver.recv() {
             self.latest_cmd = cmd.text().to_owned();
 
             #[allow(clippy::single_match)]

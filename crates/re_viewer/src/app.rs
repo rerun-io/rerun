@@ -165,7 +165,7 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(screenshot_path);
         }
 
-        let (command_sender, command_receiver) = crossbeam::channel::unbounded();
+        let (command_sender, command_receiver) = re_ui::command_channel();
 
         Self {
             build_info,
@@ -199,15 +199,6 @@ impl App {
 
             analytics,
         }
-    }
-
-    /// Enqueues a command for later execution.
-    ///
-    /// Commands are executed at the end of every frame.
-    pub fn enqueue_command(&self, cmd: Command) {
-        // Channel is unbounded, so this can only fail if the receiver has been dropped,
-        // in which case the application already shut down.
-        self.command_sender.send(cmd).ok();
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -252,7 +243,7 @@ impl App {
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
         if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
-            self.enqueue_command(cmd);
+            self.command_sender.send(cmd);
         }
     }
 
@@ -262,7 +253,7 @@ impl App {
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
-        while let Ok(cmd) = self.command_receiver.try_recv() {
+        while let Some(cmd) = self.command_receiver.recv() {
             self.run_command(cmd, blueprint, frame, egui_ctx);
         }
     }
@@ -918,7 +909,7 @@ impl eframe::App for App {
         }
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.enqueue_command(cmd);
+            self.command_sender.send(cmd);
         }
 
         self.run_pending_commands(&mut blueprint, egui_ctx, frame);
