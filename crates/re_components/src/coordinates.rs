@@ -448,7 +448,7 @@ impl Handedness {
 
 #[cfg(feature = "glam")]
 #[test]
-fn view_coordinatess() {
+fn view_coordinates() {
     use glam::{vec3, Mat3};
 
     {
