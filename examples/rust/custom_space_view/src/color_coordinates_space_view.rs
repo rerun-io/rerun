@@ -8,7 +8,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::colors_scene::ColorsScene;
+use crate::color_coordinates_scene_parts::ColorCoordinatesSceneParts;
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -69,8 +69,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     type Context = ();
 
     // Collection of scene parts that are needed to display a frame.
-    // We only have a single scene part, but it could be a collection of various.
-    type SceneParts = ColorsScene;
+    type SceneParts = ColorCoordinatesSceneParts;
 
     // Scene parts can have a common data object that they expose.
     // For this Space View this is not needed.
@@ -199,7 +198,7 @@ fn color_space_ui(
         ui.painter().add(egui::Shape::mesh(mesh));
 
         // Circles for the colors in the scene.
-        for (i, (instance, color)) in scene.parts.colors.iter().enumerate() {
+        for (i, (instance, color)) in scene.parts.colors.colors.iter().enumerate() {
             let highlight = scene
                 .highlights
                 .entity_highlight(instance.entity_path_hash)

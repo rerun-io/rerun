@@ -5,8 +5,8 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights,
-        ViewerContext,
+        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
+        SpaceViewHighlights, ViewerContext,
     },
 };
 
@@ -17,12 +17,27 @@ use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
 /// This is a collection of all information needed to display a single frame for this Space View.
 /// The data is queried from the data store here and processed to consumption by the Space View's ui method.
 #[derive(Default)]
-pub struct ColorsScene {
+pub struct ColorCoordinatesSceneParts {
+    pub colors: InstanceColors,
+}
+
+impl ScenePartCollection<ColorCoordinatesSpaceView> for ColorCoordinatesSceneParts {
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<ColorCoordinatesSpaceView>> {
+        vec![&mut self.colors]
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+/// Our scene(-parts) consist of single part which holds a list of egui-colors and their instance ids.
+#[derive(Default)]
+pub struct InstanceColors {
     pub colors: Vec<(InstancePathHash, egui::Color32)>,
 }
 
-// [`SceneColorCoordinates`] is itself its only scene part.
-impl ScenePart<ColorCoordinatesSpaceView> for ColorsScene {
+impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
     /// The archetype this scene part is querying from the store.
     ///
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries
