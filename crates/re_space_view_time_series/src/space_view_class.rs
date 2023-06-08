@@ -78,142 +78,137 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) {
-        ui.scope(|ui| {
-            re_tracing::profile_function!();
+        re_tracing::profile_function!();
 
-            let time_ctrl = &ctx.rec_cfg.time_ctrl;
-            let current_time = time_ctrl.time_i64();
-            let time_type = time_ctrl.time_type();
-            let timeline = time_ctrl.timeline();
+        let time_ctrl = &ctx.rec_cfg.time_ctrl;
+        let current_time = time_ctrl.time_i64();
+        let time_type = time_ctrl.time_type();
+        let timeline = time_ctrl.timeline();
 
-            let timeline_name = timeline.name().to_string();
+        let timeline_name = timeline.name().to_string();
 
-            // Compute the minimum time/X value for the entire plot…
-            let min_time = scene
-                .parts
-                .lines
-                .iter()
-                .flat_map(|line| line.points.iter().map(|p| p.0))
-                .min()
-                .unwrap_or(0);
+        // Compute the minimum time/X value for the entire plot…
+        let min_time = scene
+            .parts
+            .lines
+            .iter()
+            .flat_map(|line| line.points.iter().map(|p| p.0))
+            .min()
+            .unwrap_or(0);
 
-            // …then use that as an offset to avoid nasty precision issues with
-            // large times (nanos since epoch does not fit into an f64).
-            let time_offset = if timeline.typ() == TimeType::Time {
-                // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
-                // we need to round to a whole day:
-                round_ns_to_start_of_day(min_time)
-            } else {
-                min_time
-            };
+        // …then use that as an offset to avoid nasty precision issues with
+        // large times (nanos since epoch does not fit into an f64).
+        let time_offset = if timeline.typ() == TimeType::Time {
+            // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
+            // we need to round to a whole day:
+            round_ns_to_start_of_day(min_time)
+        } else {
+            min_time
+        };
 
-            // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
-            let plot_id_src = ("plot", &timeline_name);
+        // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
+        let plot_id_src = ("plot", &timeline_name);
 
-            let mut plot = Plot::new(plot_id_src)
-                .legend(Legend {
-                    position: egui::plot::Corner::RightBottom,
-                    ..Default::default()
-                })
-                .x_axis_formatter(move |time, _| format_time(time_type, time as i64 + time_offset))
-                .label_formatter(move |name, value| {
-                    let name = if name.is_empty() { "y" } else { name };
-                    let is_integer = value.y.round() == value.y;
-                    let decimals = if is_integer { 0 } else { 5 };
-                    format!(
-                        "{timeline_name}: {}\n{name}: {:.*}",
-                        time_type.format((value.x as i64 + time_offset).into()),
-                        decimals,
-                        value.y,
-                    )
-                });
-
-            if timeline.typ() == TimeType::Time {
-                let canvas_size = ui.available_size();
-                plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
-            }
-
-            let egui::plot::PlotResponse {
-                inner: time_x,
-                response,
-                transform,
-            } = plot.show(ui, |plot_ui| {
-                if plot_ui.plot_secondary_clicked() {
-                    let timeline = ctx.rec_cfg.time_ctrl.timeline();
-                    ctx.rec_cfg.time_ctrl.set_timeline_and_time(
-                        *timeline,
-                        plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
-                    );
-                    ctx.rec_cfg.time_ctrl.pause();
-                }
-
-                for line in &scene.parts.lines {
-                    let points = line
-                        .points
-                        .iter()
-                        .map(|p| [(p.0 - time_offset) as _, p.1])
-                        .collect::<Vec<_>>();
-
-                    let c = line.color;
-                    let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
-
-                    match line.kind {
-                        PlotSeriesKind::Continuous => plot_ui.line(
-                            Line::new(points)
-                                .name(&line.label)
-                                .color(color)
-                                .width(line.width),
-                        ),
-                        PlotSeriesKind::Scatter => plot_ui.points(
-                            Points::new(points)
-                                .name(&line.label)
-                                .color(color)
-                                .radius(line.width),
-                        ),
-                    }
-                }
-
-                current_time.map(|current_time| {
-                    let time_x = (current_time - time_offset) as f64;
-                    plot_ui.screen_from_plot([time_x, 0.0].into()).x
-                })
+        let mut plot = Plot::new(plot_id_src)
+            .legend(Legend {
+                position: egui::plot::Corner::RightBottom,
+                ..Default::default()
+            })
+            .x_axis_formatter(move |time, _| format_time(time_type, time as i64 + time_offset))
+            .label_formatter(move |name, value| {
+                let name = if name.is_empty() { "y" } else { name };
+                let is_integer = value.y.round() == value.y;
+                let decimals = if is_integer { 0 } else { 5 };
+                format!(
+                    "{timeline_name}: {}\n{name}: {:.*}",
+                    time_type.format((value.x as i64 + time_offset).into()),
+                    decimals,
+                    value.y,
+                )
             });
 
-            if let Some(time_x) = time_x {
-                let interact_radius = ui.style().interaction.resize_grab_radius_side;
-                let line_rect =
-                    egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
-                        .expand(interact_radius);
+        if timeline.typ() == TimeType::Time {
+            let canvas_size = ui.available_size();
+            plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+        }
 
-                let time_drag_id = ui.id().with("time_drag");
-                let response = ui
-                    .interact(line_rect, time_drag_id, egui::Sense::drag())
-                    .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
-
-                if response.dragged() {
-                    if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
-                        let time = time_offset
-                            + transform.value_from_position(pointer_pos).x.round() as i64;
-
-                        let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
-                        time_ctrl.set_time(time);
-                        time_ctrl.pause();
-                    }
-                }
-
-                let stroke = if response.dragged() {
-                    ui.style().visuals.widgets.active.fg_stroke
-                } else if response.hovered() {
-                    ui.style().visuals.widgets.hovered.fg_stroke
-                } else {
-                    ui.visuals().widgets.inactive.fg_stroke
-                };
-                ctx.re_ui
-                    .paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
+        let egui::plot::PlotResponse {
+            inner: time_x,
+            response,
+            transform,
+        } = plot.show(ui, |plot_ui| {
+            if plot_ui.plot_secondary_clicked() {
+                let timeline = ctx.rec_cfg.time_ctrl.timeline();
+                ctx.rec_cfg.time_ctrl.set_timeline_and_time(
+                    *timeline,
+                    plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
+                );
+                ctx.rec_cfg.time_ctrl.pause();
             }
 
-            response
+            for line in &scene.parts.lines {
+                let points = line
+                    .points
+                    .iter()
+                    .map(|p| [(p.0 - time_offset) as _, p.1])
+                    .collect::<Vec<_>>();
+
+                let c = line.color;
+                let color = Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]);
+
+                match line.kind {
+                    PlotSeriesKind::Continuous => plot_ui.line(
+                        Line::new(points)
+                            .name(&line.label)
+                            .color(color)
+                            .width(line.width),
+                    ),
+                    PlotSeriesKind::Scatter => plot_ui.points(
+                        Points::new(points)
+                            .name(&line.label)
+                            .color(color)
+                            .radius(line.width),
+                    ),
+                }
+            }
+
+            current_time.map(|current_time| {
+                let time_x = (current_time - time_offset) as f64;
+                plot_ui.screen_from_plot([time_x, 0.0].into()).x
+            })
         });
+
+        if let Some(time_x) = time_x {
+            let interact_radius = ui.style().interaction.resize_grab_radius_side;
+            let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
+                .expand(interact_radius);
+
+            let time_drag_id = ui.id().with("time_drag");
+            let response = ui
+                .interact(line_rect, time_drag_id, egui::Sense::drag())
+                .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
+
+            if response.dragged() {
+                if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
+                    let time =
+                        time_offset + transform.value_from_position(pointer_pos).x.round() as i64;
+
+                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    time_ctrl.set_time(time);
+                    time_ctrl.pause();
+                }
+            }
+
+            let stroke = if response.dragged() {
+                ui.style().visuals.widgets.active.fg_stroke
+            } else if response.hovered() {
+                ui.style().visuals.widgets.hovered.fg_stroke
+            } else {
+                ui.visuals().widgets.inactive.fg_stroke
+            };
+            ctx.re_ui
+                .paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
+        }
     }
 }
 

@@ -213,14 +213,16 @@ impl SpaceViewBlueprint {
             let mut scene = space_view_class.new_scene();
             scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
 
-            space_view_class.ui(
-                ctx,
-                ui,
-                view_state.state.as_mut(),
-                scene,
-                &self.space_origin,
-                self.id,
-            );
+            ui.scope(|ui| {
+                space_view_class.ui(
+                    ctx,
+                    ui,
+                    view_state.state.as_mut(),
+                    scene,
+                    &self.space_origin,
+                    self.id,
+                );
+            });
         } else {
             // Legacy handling
             let query = re_viewer_context::SceneQuery {
