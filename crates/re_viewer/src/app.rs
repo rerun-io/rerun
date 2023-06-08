@@ -264,17 +264,16 @@ impl App {
         _frame: &mut eframe::Frame,
         egui_ctx: &egui::Context,
     ) {
+        let store_view = store_hub.view();
         let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
 
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
-                let store_view = store_hub.view();
                 save(self, &store_view, None);
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::SaveSelection => {
-                let store_view = store_hub.view();
                 save(self, &store_view, self.state.loop_selection(&store_view));
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -338,7 +337,6 @@ impl App {
             }
 
             Command::SelectionPrevious => {
-                let store_view = store_hub.view();
                 let state = &mut self.state;
                 if let Some(rec_cfg) = store_view
                     .recording
@@ -349,7 +347,6 @@ impl App {
                 }
             }
             Command::SelectionNext => {
-                let store_view = store_hub.view();
                 let state = &mut self.state;
                 if let Some(rec_cfg) = store_view
                     .recording
@@ -364,23 +361,18 @@ impl App {
             }
 
             Command::PlaybackTogglePlayPause => {
-                let store_view = store_hub.view();
                 self.run_time_control_command(&store_view, TimeControlCommand::TogglePlayPause);
             }
             Command::PlaybackFollow => {
-                let store_view = store_hub.view();
                 self.run_time_control_command(&store_view, TimeControlCommand::Follow);
             }
             Command::PlaybackStepBack => {
-                let store_view = store_hub.view();
                 self.run_time_control_command(&store_view, TimeControlCommand::StepBack);
             }
             Command::PlaybackStepForward => {
-                let store_view = store_hub.view();
                 self.run_time_control_command(&store_view, TimeControlCommand::StepForward);
             }
             Command::PlaybackRestart => {
-                let store_view = store_hub.view();
                 self.run_time_control_command(&store_view, TimeControlCommand::Restart);
             }
 
