@@ -763,6 +763,7 @@ impl eframe::App for App {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
 
+        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
         let mut store_hub = self.store_hub.take().unwrap();
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -859,20 +860,20 @@ impl eframe::App for App {
             paint_native_window_frame(egui_ctx);
         }
 
-        {
-            self.handle_dropping_files(&mut store_hub, egui_ctx);
+        self.handle_dropping_files(&mut store_hub, egui_ctx);
 
-            if !self.screenshotter.is_screenshotting() {
-                self.toasts.show(egui_ctx);
-            }
-
-            if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-                self.pending_commands.push(cmd);
-            }
-
-            self.run_pending_commands(&mut blueprint, &mut store_hub, egui_ctx, frame);
+        if !self.screenshotter.is_screenshotting() {
+            self.toasts.show(egui_ctx);
         }
 
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+            self.pending_commands.push(cmd);
+        }
+
+        self.run_pending_commands(&mut blueprint, &mut store_hub, egui_ctx, frame);
+
+        // The only we we don't have a `blueprint_id` is if we don't have a blueprint
+        // and the only way we don't have a blueprint is if we don't have an app.
         if let Some(blueprint_id) = &blueprint.blueprint_id {
             let blueprint_db = store_hub.store_db_mut(blueprint_id);
             blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
@@ -882,6 +883,7 @@ impl eframe::App for App {
             store_hub.set_recording_id(recording_id);
         }
 
+        // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
 
         // Frame time measurer - must be last
