@@ -1,12 +1,13 @@
 use re_format::format_number;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::Command;
+use re_viewer_context::StoreContext;
 
-use crate::{store_hub::StoreView, ui::Blueprint, App};
+use crate::{ui::Blueprint, App};
 
 pub fn top_panel(
     blueprint: &Blueprint,
-    store_view: &StoreView<'_>,
+    store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
@@ -38,7 +39,7 @@ pub fn top_panel(
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
-                top_bar_ui(blueprint, store_view, ui, frame, app, gpu_resource_stats);
+                top_bar_ui(blueprint, store_context, ui, frame, app, gpu_resource_stats);
             })
             .response;
 
@@ -56,13 +57,13 @@ pub fn top_panel(
 
 fn top_bar_ui(
     blueprint: &Blueprint,
-    store_view: &StoreView<'_>,
+    store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    crate::ui::rerun_menu_button_ui(store_view, ui, frame, app);
+    crate::ui::rerun_menu_button_ui(store_context, ui, frame, app);
 
     if app.app_options().show_metrics {
         ui.separator();

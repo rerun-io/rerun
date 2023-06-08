@@ -8,12 +8,12 @@ use re_smart_channel::Receiver;
 use re_ui::{toasts, Command};
 use re_viewer_context::{
     AppOptions, ComponentUiRegistry, DynSpaceViewClass, PlayState, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError,
+    SpaceViewClassRegistryError, StoreContext,
 };
 
 use crate::{
     background_tasks::BackgroundTasks,
-    store_hub::{StoreHub, StoreHubStats, StoreView},
+    store_hub::{StoreHub, StoreHubStats},
     ui::Blueprint,
     viewer_analytics::ViewerAnalytics,
     AppState, StoreBundle,
@@ -264,17 +264,21 @@ impl App {
         _frame: &mut eframe::Frame,
         egui_ctx: &egui::Context,
     ) {
-        let store_view = store_hub.view();
+        let store_context = store_hub.read_context();
         let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
 
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
-                save(self, &store_view, None);
+                save(self, store_context.as_ref(), None);
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::SaveSelection => {
-                save(self, &store_view, self.state.loop_selection(&store_view));
+                save(
+                    self,
+                    store_context.as_ref(),
+                    self.state.loop_selection(store_context.as_ref()),
+                );
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::Open => {
@@ -338,8 +342,8 @@ impl App {
 
             Command::SelectionPrevious => {
                 let state = &mut self.state;
-                if let Some(rec_cfg) = store_view
-                    .recording
+                if let Some(rec_cfg) = store_context
+                    .and_then(|ctx| ctx.recording)
                     .map(|rec| rec.store_id())
                     .and_then(|rec_id| state.recording_config_mut(rec_id))
                 {
@@ -348,8 +352,8 @@ impl App {
             }
             Command::SelectionNext => {
                 let state = &mut self.state;
-                if let Some(rec_cfg) = store_view
-                    .recording
+                if let Some(rec_cfg) = store_context
+                    .and_then(|ctx| ctx.recording)
                     .map(|rec| rec.store_id())
                     .and_then(|rec_id| state.recording_config_mut(rec_id))
                 {
@@ -361,19 +365,25 @@ impl App {
             }
 
             Command::PlaybackTogglePlayPause => {
-                self.run_time_control_command(&store_view, TimeControlCommand::TogglePlayPause);
+                self.run_time_control_command(
+                    store_context.as_ref(),
+                    TimeControlCommand::TogglePlayPause,
+                );
             }
             Command::PlaybackFollow => {
-                self.run_time_control_command(&store_view, TimeControlCommand::Follow);
+                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::Follow);
             }
             Command::PlaybackStepBack => {
-                self.run_time_control_command(&store_view, TimeControlCommand::StepBack);
+                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::StepBack);
             }
             Command::PlaybackStepForward => {
-                self.run_time_control_command(&store_view, TimeControlCommand::StepForward);
+                self.run_time_control_command(
+                    store_context.as_ref(),
+                    TimeControlCommand::StepForward,
+                );
             }
             Command::PlaybackRestart => {
-                self.run_time_control_command(&store_view, TimeControlCommand::Restart);
+                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::Restart);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -385,10 +395,10 @@ impl App {
 
     fn run_time_control_command(
         &mut self,
-        store_view: &StoreView<'_>,
+        store_context: Option<&StoreContext<'_>>,
         command: TimeControlCommand,
     ) {
-        let Some(store_db) = store_view.recording else { return; };
+        let Some(store_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else { return; };
         let rec_id = store_db.store_id();
         let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else { return; };
         let time_ctrl = &mut rec_cfg.time_ctrl;
@@ -452,7 +462,7 @@ impl App {
         frame: &mut eframe::Frame,
         blueprint: &mut Blueprint,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_view: &StoreView<'_>,
+        store_context: Option<&StoreContext<'_>>,
         store_stats: &StoreHubStats,
     ) {
         let mut main_panel_frame = egui::Frame::default();
@@ -468,42 +478,50 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                crate::ui::top_panel(blueprint, store_view, ui, frame, self, gpu_resource_stats);
+                crate::ui::top_panel(
+                    blueprint,
+                    store_context,
+                    ui,
+                    frame,
+                    self,
+                    gpu_resource_stats,
+                );
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
-                if let (Some(store_db), Some(blueprint_db)) =
-                    (store_view.recording, store_view.blueprint)
-                {
-                    self.state
-                        .recording_config_entry(
-                            store_db.store_id().clone(),
-                            self.rx.source(),
-                            store_db,
-                        )
-                        .selection_state
-                        .on_frame_start(|item| blueprint.is_item_valid(item));
+                if let Some(store_view) = store_context {
+                    // TODO(jleibs): We don't necessarily want to show the wait
+                    // screen just because we're missing a recording. If we've
+                    // loaded a blueprint, we can still show the empty layouts or
+                    // static data, but we need to jump through some hoops to
+                    // handle a missing `RecordingConfig` in this case.
+                    if let Some(store_db) = store_view.recording {
+                        self.state
+                            .recording_config_entry(
+                                store_db.store_id().clone(),
+                                self.rx.source(),
+                                store_db,
+                            )
+                            .selection_state
+                            .on_frame_start(|item| blueprint.is_item_valid(item));
 
-                    // TODO(andreas): store the re_renderer somewhere else.
-                    let egui_renderer = {
-                        let render_state = frame.wgpu_render_state().unwrap();
-                        &mut render_state.renderer.write()
-                    };
-                    if let Some(render_ctx) = egui_renderer
-                        .paint_callback_resources
-                        .get_mut::<re_renderer::RenderContext>()
-                    {
-                        render_ctx.begin_frame();
+                        // TODO(andreas): store the re_renderer somewhere else.
+                        let egui_renderer = {
+                            let render_state = frame.wgpu_render_state().unwrap();
+                            &mut render_state.renderer.write()
+                        };
+                        if let Some(render_ctx) = egui_renderer
+                            .paint_callback_resources
+                            .get_mut::<re_renderer::RenderContext>()
+                        {
+                            render_ctx.begin_frame();
 
-                        if store_db.is_empty() {
-                            crate::ui::wait_screen_ui(ui, &self.rx);
-                        } else {
                             self.state.show(
                                 blueprint,
                                 ui,
                                 render_ctx,
                                 store_db,
-                                blueprint_db,
+                                store_view,
                                 &self.re_ui,
                                 &self.component_ui_registry,
                                 &self.space_view_class_registry,
@@ -512,6 +530,8 @@ impl App {
 
                             render_ctx.before_submit();
                         }
+                    } else {
+                        crate::ui::wait_screen_ui(ui, &self.rx);
                     }
                 } else {
                     crate::ui::wait_screen_ui(ui, &self.rx);
@@ -566,26 +586,7 @@ impl App {
 
             let store_id = msg.store_id();
 
-            let is_new_store = if let LogMsg::SetStoreInfo(msg) = &msg {
-                match msg.info.store_id.kind {
-                    StoreKind::Recording => {
-                        re_log::debug!("Opening a new recording: {:?}", msg.info);
-                        store_hub.set_recording_id(store_id.clone());
-                        store_hub.set_app_id(msg.info.application_id.clone());
-                    }
-
-                    StoreKind::Blueprint => {
-                        re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        store_hub.set_blueprint_for_app_id(
-                            store_id.clone(),
-                            msg.info.application_id.clone(),
-                        );
-                    }
-                }
-                true
-            } else {
-                false
-            };
+            let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
 
             let store_db = store_hub.store_db_mut(store_id);
 
@@ -602,6 +603,24 @@ impl App {
                 // because thats when the `store_db.store_info` is set,
                 // which we use in the analytics call.
                 self.analytics.on_open_recording(store_db);
+            }
+
+            // Set the recording-id *after* creating the store
+            if let LogMsg::SetStoreInfo(msg) = &msg {
+                match msg.info.store_id.kind {
+                    StoreKind::Recording => {
+                        re_log::debug!("Opening a new recording: {:?}", msg.info);
+                        store_hub.set_recording_id(store_id.clone());
+                    }
+
+                    StoreKind::Blueprint => {
+                        re_log::debug!("Opening a new blueprint: {:?}", msg.info);
+                        store_hub.set_blueprint_for_app_id(
+                            store_id.clone(),
+                            msg.info.application_id.clone(),
+                        );
+                    }
+                }
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
@@ -682,7 +701,7 @@ impl App {
     pub fn recording_db(&self) -> Option<&StoreDb> {
         self.store_hub
             .as_ref()
-            .and_then(|store_hub| store_hub.recording_id())
+            .and_then(|store_hub| store_hub.current_recording())
     }
 
     fn on_rrd_loaded(&mut self, store_hub: &mut StoreHub, loaded_store_bundle: StoreBundle) {
@@ -799,7 +818,7 @@ impl eframe::App for App {
         // TODO(jleibs): Work through this ordering. Would be great to move the
         // memory panel update *after* the calls to purge/receive so we don't
         // need to generate the view twice.
-        let store_stats = store_hub.view().stats();
+        let store_stats = store_hub.stats();
 
         // do early, before doing too many allocations
         self.memory_panel.update(&gpu_resource_stats, &store_stats);
@@ -814,13 +833,14 @@ impl eframe::App for App {
         self.receive_messages(&mut store_hub, egui_ctx);
 
         store_hub.purge_empty();
-        self.state.cleanup(store_hub.bundle());
+        self.state.cleanup(&store_hub);
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
-        let store_view = store_hub.view();
+        let store_context = store_hub.read_context();
 
-        let blueprint_snapshot = Blueprint::from_db(egui_ctx, store_view.blueprint);
+        let blueprint_snapshot =
+            Blueprint::from_db(egui_ctx, store_context.as_ref().map(|ctx| ctx.blueprint));
 
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
@@ -830,7 +850,7 @@ impl eframe::App for App {
             frame,
             &mut blueprint,
             &gpu_resource_stats,
-            &store_view,
+            store_context.as_ref(),
             &store_stats,
         );
 
@@ -1003,10 +1023,10 @@ fn open_rrd_dialog() -> Option<StoreBundle> {
 #[cfg(not(target_arch = "wasm32"))]
 fn save(
     app: &mut App,
-    store_view: &StoreView<'_>,
+    store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) {
-    let Some(store_db) = store_view.recording else {
+    let Some(store_db) = store_context.as_ref().and_then(|view| view.recording) else {
             // NOTE: Can only happen if saving through the command palette.
             re_log::error!("No data to save!");
             return;

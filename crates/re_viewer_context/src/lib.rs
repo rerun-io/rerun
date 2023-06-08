@@ -10,6 +10,7 @@ mod item;
 mod selection_history;
 mod selection_state;
 mod space_view;
+mod store;
 mod tensor;
 mod time_control;
 mod utils;
@@ -35,6 +36,7 @@ pub use space_view::{
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, TypedScene,
 };
+pub use store::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use utils::{auto_color, level_to_rich_text, DefaultColor};

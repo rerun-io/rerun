@@ -1,15 +1,14 @@
 //! The main Rerun drop-down menu found in the top panel.
 
 use egui::NumExt as _;
-use itertools::Itertools as _;
 
 use re_ui::Command;
-use re_viewer_context::AppOptions;
+use re_viewer_context::{AppOptions, StoreContext};
 
-use crate::{store_hub::StoreView, App};
+use crate::App;
 
 pub fn rerun_menu_button_ui(
-    store_view: &StoreView<'_>,
+    store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
@@ -38,7 +37,7 @@ pub fn rerun_menu_button_ui(
         {
             Command::Open.menu_button_ui(ui, &mut app.pending_commands);
 
-            save_buttons_ui(ui, store_view, app);
+            save_buttons_ui(ui, store_context, app);
 
             ui.add_space(spacing);
 
@@ -70,10 +69,7 @@ pub fn rerun_menu_button_ui(
 
         {
             ui.menu_button("Recordings", |ui| {
-                recordings_menu(ui, store_view, app);
-            });
-            ui.menu_button("Blueprints", |ui| {
-                blueprints_menu(ui, store_view, app);
+                recordings_menu(ui, store_context, app);
             });
         }
 
@@ -136,19 +132,17 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
     ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
 }
 
-fn recordings_menu(ui: &mut egui::Ui, store_view: &StoreView<'_>, app: &mut App) {
-    let store_dbs = store_view
-        .bundle
-        .recordings()
-        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
-        .collect_vec();
+fn recordings_menu(ui: &mut egui::Ui, store_context: Option<&StoreContext<'_>>, app: &mut App) {
+    let store_dbs = store_context.map_or(vec![], |ctx| ctx.alternate_recordings.clone());
 
     if store_dbs.is_empty() {
         ui.weak("(empty)");
         return;
     }
 
-    let active_recording = store_view.recording.map(|rec| rec.store_id());
+    let active_recording = store_context
+        .and_then(|ctx| ctx.recording)
+        .map(|rec| rec.store_id());
 
     ui.style_mut().wrap = Some(false);
     for store_db in &store_dbs {
@@ -167,45 +161,6 @@ fn recordings_menu(ui: &mut egui::Ui, store_view: &StoreView<'_>, app: &mut App)
         {
             // TODO(jleibs): This is gross but necessary to avoid a deadlock
             app.requested_recording_id = Some(store_db.store_id().clone());
-        }
-    }
-}
-
-fn blueprints_menu(ui: &mut egui::Ui, store_view: &StoreView<'_>, _app: &mut App) {
-    let blueprint_dbs = store_view
-        .bundle
-        .blueprints()
-        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
-        .collect_vec();
-
-    if blueprint_dbs.is_empty() {
-        ui.weak("(empty)");
-        return;
-    }
-
-    let active_blueprint = store_view.blueprint.map(|rec| rec.store_id());
-
-    ui.style_mut().wrap = Some(false);
-    for store_db in &blueprint_dbs {
-        let info = if let Some(store_info) = store_db.store_info() {
-            if store_info.is_app_default_blueprint() {
-                format!("{} - Default Blueprint", store_info.application_id,)
-            } else {
-                format!(
-                    "{} - {}",
-                    store_info.application_id,
-                    store_info.started.format()
-                )
-            }
-        } else {
-            "<UNKNOWN>".to_owned()
-        };
-
-        if ui
-            .radio(active_blueprint == Some(store_db.store_id()), info)
-            .clicked()
-        {
-            re_log::info!("Clicked! {}", store_db.store_id());
         }
     }
 }
@@ -245,7 +200,7 @@ fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut 
 
 // TODO(emilk): support saving data on web
 #[cfg(not(target_arch = "wasm32"))]
-fn save_buttons_ui(ui: &mut egui::Ui, store_view: &StoreView<'_>, app: &mut App) {
+fn save_buttons_ui(ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>, app: &mut App) {
     let file_save_in_progress = app.background_tasks.is_file_save_in_progress();
 
     let save_button = Command::Save.menu_button(ui.ctx());
@@ -264,8 +219,8 @@ fn save_buttons_ui(ui: &mut egui::Ui, store_view: &StoreView<'_>, app: &mut App)
         });
     } else {
         let store_db_is_nonempty = store_view
-            .recording
-            .map_or(false, |store_db| !store_db.is_empty());
+            .and_then(|view| view.recording)
+            .map_or(false, |recording| !recording.is_empty());
         ui.add_enabled_ui(store_db_is_nonempty, |ui| {
             if ui
                 .add(save_button)

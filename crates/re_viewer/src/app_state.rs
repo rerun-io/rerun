@@ -5,11 +5,11 @@ use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::Receiver;
 use re_viewer_context::{
     AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry,
-    ViewerContext,
+    StoreContext, ViewerContext,
 };
 use re_viewport::ViewportState;
 
-use crate::{store_hub::StoreView, ui::Blueprint};
+use crate::{store_hub::StoreHub, ui::Blueprint};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -48,10 +48,11 @@ impl AppState {
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(
         &self,
-        store_view: &StoreView<'_>,
+        store_context: Option<&StoreContext<'_>>,
     ) -> Option<(re_data_store::Timeline, TimeRangeF)> {
-        store_view
-            .recording
+        store_context
+            .as_ref()
+            .and_then(|ctx| ctx.recording)
             .map(|rec| rec.store_id())
             .and_then(|rec_id| {
                 self.recording_configs
@@ -73,7 +74,7 @@ impl AppState {
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
         store_db: &StoreDb,
-        blueprint_db: &StoreDb,
+        store_context: &StoreContext<'_>,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
@@ -103,7 +104,7 @@ impl AppState {
             space_view_class_registry,
             component_ui_registry,
             store_db,
-            blueprint_db,
+            store_context,
             rec_cfg,
             re_ui,
             render_ctx,
@@ -157,7 +158,7 @@ impl AppState {
         recording_config_entry(&mut self.recording_configs, id, data_source, store_db)
     }
 
-    pub fn cleanup(&mut self, store_hub: &crate::StoreBundle) {
+    pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
 
         self.recording_configs
