@@ -10,7 +10,10 @@ use std::process::Command;
 
 mod rebuild_detector;
 
-pub use rebuild_detector::rebuild_if_crate_changed;
+pub use rebuild_detector::{
+    get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
+    rerun_if_changed_glob, rerun_if_changed_or_doesnt_exist,
+};
 
 // Situations to consider
 // ----------------------
@@ -74,20 +77,11 @@ pub fn export_env_vars() {
         if let Ok(head) = std::fs::read_to_string(&head_path) {
             if let Some(git_file) = head.strip_prefix("ref: ") {
                 if let Ok(path) = git_path(git_file) {
-                    rerun_if_changed(&path); // Track changes to commit hash
+                    rerun_if_changed(path); // Track changes to commit hash
                 }
             }
         }
     }
-}
-
-fn rerun_if_changed(path: &str) {
-    // Make sure the file exists, otherwise we'll be rebuilding all the time.
-    assert!(
-        std::path::Path::new(path).exists(),
-        "Failed to find {path:?}"
-    );
-    println!("cargo:rerun-if-changed={path}");
 }
 
 fn set_env(name: &str, value: &str) {
