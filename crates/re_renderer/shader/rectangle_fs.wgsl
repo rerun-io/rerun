@@ -17,8 +17,8 @@ fn tex_filter(pixel_coord: Vec2) -> u32 {
 fn decode_color(rgba_arg: Vec4) -> Vec4 {
     var rgba = rgba_arg;
 
-    // Convert to linear space:
-    if rect_info.decode_srgb != 0u {
+    // Convert to linear space. Skip if values are not in the 0..1 range (might be inf).
+    if rect_info.decode_srgb != 0u && all(rgba.rgb <= 1.0) && all(rgba.rgb >= 0.0) {
         rgba = linear_from_srgba(rgba);
     }
 
@@ -109,6 +109,8 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     } else {
         return ERROR_RGBA; // unknown color mapper
     }
+
+    texture_color = select(texture_color, Vec4(1.0), texture_color > 1.0);
 
     return texture_color * rect_info.multiplicative_tint;
 }
