@@ -2625,6 +2625,7 @@ checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg",
  "scopeguard",
+ "serde",
 ]
 
 [[package]]
@@ -4408,6 +4409,7 @@ dependencies = [
 name = "re_ui"
 version = "0.7.0-alpha.0"
 dependencies = [
+ "crossbeam",
  "eframe",
  "egui",
  "egui_extras",
@@ -4433,12 +4435,14 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "cocoa",
+ "crossbeam",
  "eframe",
  "egui",
  "egui-wgpu",
  "image",
  "itertools",
  "objc",
+ "parking_lot 0.12.1",
  "poll-promise",
  "puffin",
  "puffin_http",

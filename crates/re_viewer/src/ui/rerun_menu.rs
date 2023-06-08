@@ -5,11 +5,10 @@ use itertools::Itertools as _;
 
 use re_log_types::{ApplicationId, StoreKind};
 use re_ui::Command;
-use re_viewer_context::AppOptions;
 
 use crate::{app_state::AppState, App, StoreHub};
 
-pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &App) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
     let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
@@ -26,13 +25,13 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
 
         ui.add_space(spacing);
 
-        Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
+        Command::ToggleCommandPalette.menu_button_ui(ui, &app.command_sender);
 
         ui.add_space(spacing);
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            Command::Open.menu_button_ui(ui, &mut app.pending_commands);
+            Command::Open.menu_button_ui(ui, &app.command_sender);
 
             save_buttons_ui(ui, app);
 
@@ -42,38 +41,38 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
             let zoom_factor = app.app_options().zoom_factor;
             ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
                 .on_hover_text("The zoom factor applied on top of the OS scaling factor.");
-            Command::ZoomIn.menu_button_ui(ui, &mut app.pending_commands);
-            Command::ZoomOut.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ZoomIn.menu_button_ui(ui, &app.command_sender);
+            Command::ZoomOut.menu_button_ui(ui, &app.command_sender);
             ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
-                Command::ZoomReset.menu_button_ui(ui, &mut app.pending_commands)
+                Command::ZoomReset.menu_button_ui(ui, &app.command_sender)
             });
 
-            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ToggleFullscreen.menu_button_ui(ui, &app.command_sender);
 
             ui.add_space(spacing);
         }
 
         {
-            Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ResetViewer.menu_button_ui(ui, &app.command_sender);
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
+            Command::OpenProfiler.menu_button_ui(ui, &app.command_sender);
 
-            Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
+            Command::ToggleMemoryPanel.menu_button_ui(ui, &app.command_sender);
         }
 
         ui.add_space(spacing);
 
         ui.menu_button("Recordings", |ui| {
-            recordings_menu(ui, &app.store_hub, &mut app.state);
+            recordings_menu(ui, &app.store_hub, &app.state);
         });
 
         ui.menu_button("Blueprints", |ui| {
-            blueprints_menu(ui, &app.selected_app_id(), &app.store_hub, &mut app.state);
+            blueprints_menu(ui, &app.selected_app_id(), &app.store_hub, &app.state);
         });
 
         ui.menu_button("Options", |ui| {
-            options_menu_ui(ui, frame, app.app_options_mut());
+            options_menu_ui(ui, frame, app);
         });
 
         ui.add_space(spacing);
@@ -85,7 +84,7 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
         #[cfg(not(target_arch = "wasm32"))]
         {
             ui.add_space(spacing);
-            Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
+            Command::Quit.menu_button_ui(ui, &app.command_sender);
         }
     });
 }
@@ -131,7 +130,7 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
     ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
 }
 
-fn recordings_menu(ui: &mut egui::Ui, store_hub: &StoreHub, app_state: &mut AppState) {
+fn recordings_menu(ui: &mut egui::Ui, store_hub: &StoreHub, app_state: &AppState) {
     let store_dbs = store_hub
         .recordings()
         .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
@@ -169,7 +168,7 @@ fn blueprints_menu(
     ui: &mut egui::Ui,
     app_id: &ApplicationId,
     store_hub: &StoreHub,
-    app_state: &mut AppState,
+    app_state: &AppState,
 ) {
     let blueprint_dbs = store_hub
         .blueprints()
@@ -205,26 +204,27 @@ fn blueprints_menu(
         };
         if ui
             .radio(
-                app_state.selected_blueprint_by_app.get(app_id) == Some(store_db.store_id()),
+                app_state.selected_blueprint(app_id).as_ref() == Some(store_db.store_id()),
                 info,
             )
             .clicked()
         {
-            app_state
-                .selected_blueprint_by_app
-                .insert(app_id.clone(), store_db.store_id().clone());
+            app_state.set_selected_blueprint(app_id.clone(), store_db.store_id().clone());
         }
     }
 }
 
-fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut AppOptions) {
+fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &App) {
     ui.style_mut().wrap = Some(false);
+
+    let mut options = app.app_options();
 
     if ui
         .checkbox(&mut options.show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar.")
         .clicked()
     {
+        app.app_options_write(|o| o.show_metrics = options.show_metrics);
         ui.close_menu();
     }
 
@@ -235,6 +235,7 @@ fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut 
             .on_hover_text("Allow taking screenshots of 2D & 3D space views via their context menu. Does not contain labels.")
             .clicked()
         {
+            app.app_options_write(|o| o.experimental_space_view_screenshots = options.experimental_space_view_screenshots);
             ui.close_menu();
         }
     }
@@ -246,13 +247,13 @@ fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut 
 
         egui_debug_options_ui(ui);
         ui.separator();
-        debug_menu_options_ui(ui, options, _frame);
+        debug_menu_options_ui(ui, app, _frame);
     }
 }
 
 // TODO(emilk): support saving data on web
 #[cfg(not(target_arch = "wasm32"))]
-fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
+fn save_buttons_ui(ui: &mut egui::Ui, app: &App) {
     let file_save_in_progress = app.background_tasks.is_file_save_in_progress();
 
     let save_button = Command::Save.menu_button(ui.ctx());
@@ -280,7 +281,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
                 .clicked()
             {
                 ui.close_menu();
-                app.pending_commands.push(Command::Save);
+                app.enqueue_command(Command::Save);
             }
 
             // We need to know the loop selection _before_ we can even display the
@@ -297,7 +298,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
                 .clicked()
             {
                 ui.close_menu();
-                app.pending_commands.push(Command::SaveSelection);
+                app.enqueue_command(Command::SaveSelection);
             }
         });
     }
@@ -343,7 +344,7 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
 }
 
 #[cfg(debug_assertions)]
-fn debug_menu_options_ui(ui: &mut egui::Ui, options: &mut AppOptions, _frame: &mut eframe::Frame) {
+fn debug_menu_options_ui(ui: &mut egui::Ui, app: &App, _frame: &mut eframe::Frame) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         if ui.button("Mobile size").clicked() {
@@ -359,11 +360,17 @@ fn debug_menu_options_ui(ui: &mut egui::Ui, options: &mut AppOptions, _frame: &m
         re_log::info!("Logging some info");
     }
 
-    ui.checkbox(
-        &mut options.show_picking_debug_overlay,
-        "Picking Debug Overlay",
-    )
-    .on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
+    let mut options = app.app_options();
+    if ui.checkbox(
+            &mut options.show_picking_debug_overlay,
+            "Picking Debug Overlay",
+        )
+        .on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.")
+        .clicked()
+    {
+        app.app_options_write(|o| o.show_picking_debug_overlay = options.show_picking_debug_overlay);
+        ui.close_menu();
+    }
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

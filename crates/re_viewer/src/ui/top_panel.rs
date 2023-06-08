@@ -8,7 +8,7 @@ pub fn top_panel(
     blueprint: &Blueprint,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
-    app: &mut App,
+    app: &App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     re_tracing::profile_function!();
@@ -57,7 +57,7 @@ fn top_bar_ui(
     blueprint: &Blueprint,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
-    app: &mut App,
+    app: &App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     crate::ui::rerun_menu_button_ui(ui, frame, app);
@@ -96,7 +96,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.pending_commands.push(Command::ToggleSelectionPanel);
+            app.enqueue_command(Command::ToggleSelectionPanel);
         }
 
         let mut time_panel_expanded = blueprint.time_panel_expanded;
@@ -113,7 +113,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.pending_commands.push(Command::ToggleTimePanel);
+            app.enqueue_command(Command::ToggleTimePanel);
         }
 
         let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
@@ -130,7 +130,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.pending_commands.push(Command::ToggleBlueprintPanel);
+            app.enqueue_command(Command::ToggleBlueprintPanel);
         }
 
         if cfg!(debug_assertions) && app.app_options().show_metrics {
@@ -143,7 +143,7 @@ fn top_bar_ui(
     });
 }
 
-fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
+fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
     if let Some(frame_time) = app.frame_time_history.average() {
         let ms = frame_time * 1e3;
 
@@ -241,7 +241,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
     }
 }
 
-fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
+fn input_latency_label_ui(ui: &mut egui::Ui, app: &App) {
     let rx = app.msg_receiver();
 
     // TODO(emilk): it would be nice to know if the network stream is still open
@@ -253,10 +253,10 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
     let latency_sec = rx.latency_ns() as f32 / 1e9;
     if queue_len > 0 && (!is_latency_interesting || app.app_options().warn_latency < latency_sec) {
         // we use this to avoid flicker
-        app.latest_queue_interest = web_time::Instant::now();
+        app.latest_queue_interest.store(web_time::Instant::now());
     }
 
-    if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+    if app.latest_queue_interest.load().elapsed().as_secs_f32() < 1.0 {
         ui.separator();
         if is_latency_interesting {
             let text = format!(

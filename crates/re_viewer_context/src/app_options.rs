@@ -1,5 +1,5 @@
 /// Global options for the viewer.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppOptions {
     pub low_latency: f32,

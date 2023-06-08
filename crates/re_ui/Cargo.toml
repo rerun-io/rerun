@@ -38,6 +38,7 @@ serde_json = "1"
 strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 sublime_fuzzy = "0.7"
+crossbeam.workspace = true
 
 ## Optional dependencies:
 eframe = { workspace = true, optional = true, default-features = false }

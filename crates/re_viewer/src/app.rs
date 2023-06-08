@@ -1,3 +1,4 @@
+use crossbeam::atomic::AtomicCell;
 use itertools::Itertools as _;
 use web_time::Instant;
 
@@ -6,7 +7,7 @@ use re_data_store::store_db::StoreDb;
 use re_log_types::{ApplicationId, LogMsg, StoreId, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
-use re_ui::{toasts, Command};
+use re_ui::{toasts, Command, CommandReceiver, CommandSender};
 use re_viewer_context::{
     AppOptions, ComponentUiRegistry, DynSpaceViewClass, PlayState, SpaceViewClassRegistry,
     SpaceViewClassRegistryError,
@@ -102,13 +103,16 @@ pub struct App {
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 
-    pub(crate) latest_queue_interest: web_time::Instant,
+    // web_time::Instant is typically 16byte, which would make this lock free
+    // .. at least in the future, as of writing it is not yet since AtomicU128 is unstable.
+    pub(crate) latest_queue_interest: AtomicCell<web_time::Instant>,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
 
     /// Commands to run at the end of the frame.
-    pub(crate) pending_commands: Vec<Command>,
+    pub command_sender: CommandSender,
+    command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
 
     analytics: ViewerAnalytics,
@@ -164,6 +168,8 @@ impl App {
             screenshotter.screenshot_to_path_then_quit(screenshot_path);
         }
 
+        let (command_sender, command_receiver) = crossbeam::channel::unbounded();
+
         Self {
             build_info,
             startup_options,
@@ -184,17 +190,28 @@ impl App {
             memory_panel: Default::default(),
             memory_panel_open: false,
 
-            latest_queue_interest: web_time::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+            // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+            latest_queue_interest: AtomicCell::new(web_time::Instant::now()),
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
-            pending_commands: Default::default(),
+            command_sender,
+            command_receiver,
             cmd_palette: Default::default(),
 
             space_view_class_registry,
 
             analytics,
         }
+    }
+
+    /// Enqueues a command for later execution.
+    ///
+    /// Commands are executed at the end of every frame.
+    pub fn enqueue_command(&self, cmd: Command) {
+        // Channel is unbounded, so this can only fail if the receiver has been dropped,
+        // in which case the application already shut down.
+        self.command_sender.send(cmd).ok();
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -210,8 +227,12 @@ impl App {
         &self.re_ui
     }
 
-    pub fn app_options(&self) -> &AppOptions {
+    pub fn app_options(&self) -> AppOptions {
         self.state.app_options()
+    }
+
+    pub fn app_options_write(&self, writer: impl FnMut(&mut AppOptions)) {
+        self.state.app_options_write(writer);
     }
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
@@ -237,9 +258,9 @@ impl App {
         self.space_view_class_registry.add::<T>()
     }
 
-    fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context) {
+    fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
         if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.enqueue_command(cmd);
         }
     }
 
@@ -249,8 +270,7 @@ impl App {
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
-        let commands = self.pending_commands.drain(..).collect_vec();
-        for cmd in commands {
+        while let Ok(cmd) = self.command_receiver.try_recv() {
             self.run_command(cmd, blueprint, frame, egui_ctx);
         }
     }
@@ -322,15 +342,15 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomIn => {
-                self.app_options_mut().zoom_factor += 0.1;
+                self.app_options_write(|o| o.zoom_factor += 0.1);
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomOut => {
-                self.app_options_mut().zoom_factor -= 0.1;
+                self.app_options_write(|o| o.zoom_factor -= 0.1);
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::ZoomReset => {
-                self.app_options_mut().zoom_factor = 1.0;
+                self.app_options_write(|o| o.zoom_factor = 1.0);
             }
 
             Command::SelectionPrevious => {
@@ -605,9 +625,10 @@ impl App {
 
                     StoreKind::Blueprint => {
                         re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        self.state
-                            .selected_blueprint_by_app
-                            .insert(msg.info.application_id.clone(), msg.info.store_id.clone());
+                        self.state.set_selected_blueprint(
+                            msg.info.application_id.clone(),
+                            msg.info.store_id.clone(),
+                        );
                     }
                 }
                 true
@@ -728,8 +749,7 @@ impl App {
         for blueprint_db in store_hub.blueprints() {
             if let Some(app_id) = blueprint_db.app_id() {
                 self.state
-                    .selected_blueprint_by_app
-                    .insert(app_id.clone(), blueprint_db.store_id().clone());
+                    .set_selected_blueprint(app_id.clone(), blueprint_db.store_id().clone());
             }
         }
 
@@ -807,7 +827,7 @@ impl eframe::App for App {
                 let mut zoom_factor = self.app_options().zoom_factor;
                 zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
                 zoom_factor = (zoom_factor * 10.).round() / 10.;
-                self.app_options_mut().zoom_factor = zoom_factor;
+                self.app_options_write(|o| o.zoom_factor = zoom_factor);
             }
 
             // Apply zoom factor on top of natively reported pixel per point.
@@ -837,9 +857,7 @@ impl eframe::App for App {
         // to save changes back to the correct blueprint at the end.
         let active_blueprint_id = self
             .state
-            .selected_blueprint_by_app
-            .get(&self.selected_app_id())
-            .cloned()
+            .selected_blueprint(&self.selected_app_id())
             .unwrap_or_else(|| {
                 StoreId::from_string(StoreKind::Blueprint, self.selected_app_id().0)
             });
@@ -906,7 +924,7 @@ impl eframe::App for App {
         }
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.pending_commands.push(cmd);
+            self.enqueue_command(cmd);
         }
 
         self.run_pending_commands(&mut blueprint, egui_ctx, frame);

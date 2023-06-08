@@ -1,4 +1,5 @@
 use ahash::HashMap;
+use parking_lot::RwLock;
 
 use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, LogMsg, StoreId, TimeRangeF};
@@ -17,16 +18,16 @@ const WATERMARK: bool = false; // Nice for recording media material
 #[serde(default)]
 pub struct AppState {
     /// Global options for the whole viewer.
-    app_options: AppOptions,
+    app_options: RwLock<AppOptions>,
 
     /// Things that need caching.
     #[serde(skip)]
     pub(crate) cache: Caches,
 
     #[serde(skip)]
-    selected_rec_id: Option<StoreId>,
+    selected_rec_id: RwLock<Option<StoreId>>,
     #[serde(skip)]
-    pub(crate) selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
+    selected_blueprint_by_app: RwLock<HashMap<ApplicationId, StoreId>>,
 
     /// Configuration for the current recording (found in [`StoreDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
@@ -43,28 +44,45 @@ pub struct AppState {
 impl AppState {
     /// The selected/visible recording id, if any.
     pub fn recording_id(&self) -> Option<StoreId> {
-        self.selected_rec_id.clone()
+        self.selected_rec_id.read().clone()
     }
 
-    /// The selected/visible recording id, if any.
-    pub fn set_recording_id(&mut self, recording_id: StoreId) {
-        self.selected_rec_id = Some(recording_id);
+    /// Set the selected/visible recording id.
+    pub fn set_recording_id(&self, recording_id: StoreId) {
+        *self.selected_rec_id.write() = Some(recording_id);
     }
 
-    pub fn app_options(&self) -> &AppOptions {
-        &self.app_options
+    /// The selected/visible recording id for a given app.
+    pub fn selected_blueprint(&self, id: &ApplicationId) -> Option<StoreId> {
+        self.selected_blueprint_by_app.read().get(id).cloned()
+    }
+
+    /// Sets the selected/visible recording id for a given app.
+    pub fn set_selected_blueprint(&self, id: ApplicationId, blueprint_id: StoreId) {
+        self.selected_blueprint_by_app
+            .write()
+            .insert(id, blueprint_id);
+    }
+
+    pub fn app_options(&self) -> AppOptions {
+        self.app_options.read().clone()
+    }
+
+    pub fn app_options_write(&self, mut writer: impl FnMut(&mut AppOptions)) {
+        let mut app_options = self.app_options.write();
+        writer(&mut app_options);
     }
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
-        &mut self.app_options
+        self.app_options.get_mut()
     }
 
     /// Currently selected section of time, if any.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
-        self.selected_rec_id.as_ref().and_then(|rec_id| {
+        self.recording_id().and_then(|rec_id| {
             self.recording_configs
-                .get(rec_id)
+                .get(&rec_id)
                 // is there an active loop selection?
                 .and_then(|rec_cfg| {
                     rec_cfg
@@ -108,7 +126,7 @@ impl AppState {
         );
 
         let mut ctx = ViewerContext {
-            app_options,
+            app_options: app_options.get_mut(),
             cache,
             space_view_class_registry,
             component_ui_registry,
@@ -170,15 +188,17 @@ impl AppState {
         re_tracing::profile_function!();
 
         if !self
-            .selected_rec_id
-            .as_ref()
-            .map_or(false, |rec_id| store_hub.contains_recording(rec_id))
+            .recording_id()
+            .map_or(false, |rec_id| store_hub.contains_recording(&rec_id))
         {
             // Pick any:
-            self.selected_rec_id = store_hub
+            if let Some(id) = store_hub
                 .recordings()
                 .next()
-                .map(|log| log.store_id().clone());
+                .map(|log| log.store_id().clone())
+            {
+                self.set_recording_id(id);
+            }
         }
 
         self.recording_configs
