@@ -27,6 +27,8 @@ pub trait DynSpaceViewClass {
     ///
     /// Used for both ui display and identification.
     /// Must be unique within a viewer session.
+    ///
+    /// TODO(#2336): Display name and identifier should be separate.
     fn name(&self) -> SpaceViewClassName;
 
     /// Icon used to identify this space view class.
