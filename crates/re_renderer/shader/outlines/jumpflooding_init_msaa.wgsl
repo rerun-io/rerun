@@ -69,7 +69,7 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
         edge_pos_a_and_b += edge.xxyy * 0.5;
     }
 
-    // A lot of this code is repetetive, but wgsl/naga doesn't know yet how to do static indexing from unrolled loops.
+    // A lot of this code is repetitive, but wgsl/naga doesn't know yet how to do static indexing from unrolled loops.
 
     // Sample closest neighbors top/bottom/left/right
     { // right
