@@ -13,7 +13,7 @@ use re_viewer_context::{
 
 use crate::{
     background_tasks::BackgroundTasks,
-    store_hub::{StoreHubImpl, StoreHubStats, StoreView},
+    store_hub::{StoreHub, StoreHubStats, StoreView},
     ui::Blueprint,
     viewer_analytics::ViewerAnalytics,
     AppState, StoreBundle,
@@ -96,7 +96,7 @@ pub struct App {
     pub(crate) background_tasks: BackgroundTasks,
 
     /// Recording Id to switch to
-    pub(crate) store_hub: Option<StoreHubImpl>,
+    pub(crate) store_hub: Option<StoreHub>,
     pub(crate) requested_recording_id: Option<StoreId>,
 
     /// Toast notifications.
@@ -182,7 +182,7 @@ impl App {
             rx,
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHubImpl::default()),
+            store_hub: Some(StoreHub::default()),
             requested_recording_id: Default::default(),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
@@ -246,7 +246,7 @@ impl App {
     fn run_pending_commands(
         &mut self,
         blueprint: &mut Blueprint,
-        store_hub: &mut StoreHubImpl,
+        store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
@@ -260,7 +260,7 @@ impl App {
         &mut self,
         cmd: Command,
         blueprint: &mut Blueprint,
-        store_hub: &mut StoreHubImpl,
+        store_hub: &mut StoreHub,
         _frame: &mut eframe::Frame,
         egui_ctx: &egui::Context,
     ) {
@@ -554,7 +554,7 @@ impl App {
         }
     }
 
-    fn receive_messages(&mut self, store_hub: &mut StoreHubImpl, egui_ctx: &egui::Context) {
+    fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
         let start = web_time::Instant::now();
@@ -619,7 +619,7 @@ impl App {
         }
     }
 
-    fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHubImpl) {
+    fn purge_memory_if_needed(&mut self, store_hub: &mut StoreHub) {
         re_tracing::profile_function!();
 
         fn format_limit(limit: Option<i64>) -> String {
@@ -693,7 +693,7 @@ impl App {
             .and_then(|store_hub| store_hub.recording_id())
     }
 
-    fn on_rrd_loaded(&mut self, store_hub: &mut StoreHubImpl, loaded_store_bundle: StoreBundle) {
+    fn on_rrd_loaded(&mut self, store_hub: &mut StoreHub, loaded_store_bundle: StoreBundle) {
         if let Some(store_db) = loaded_store_bundle.recordings().next() {
             store_hub.set_recording_id(store_db.store_id().clone());
             self.analytics.on_open_recording(store_db);
@@ -708,7 +708,7 @@ impl App {
         store_hub.add_bundle(loaded_store_bundle);
     }
 
-    fn handle_dropping_files(&mut self, store_hub: &mut StoreHubImpl, egui_ctx: &egui::Context) {
+    fn handle_dropping_files(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         preview_files_being_dropped(egui_ctx);
 
         // Collect dropped files:

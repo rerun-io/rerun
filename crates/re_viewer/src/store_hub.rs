@@ -18,14 +18,14 @@ pub struct StoreView<'a> {
 }
 
 #[derive(Default)]
-pub struct StoreHubImpl {
+pub struct StoreHub {
     selected_rec_id: Option<StoreId>,
     application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_dbs: StoreBundle,
 }
 
-impl StoreHubImpl {
+impl StoreHub {
     pub fn add_bundle(&mut self, bundle: StoreBundle) {
         self.store_dbs.append(bundle);
 
