@@ -69,7 +69,7 @@ impl TensorStats {
                 fn $name(tensor: ndarray::ArrayViewD<'_, $typ>) -> (f64, f64) {
                     re_tracing::profile_function!();
                     let (min, max) =
-                        tensor.fold((<$typ>::MIN, <$typ>::MAX), |(min, max), &value| {
+                        tensor.fold((<$typ>::MAX, <$typ>::MIN), |(min, max), &value| {
                             if value.is_finite() {
                                 (min.min(value), max.max(value))
                             } else {
