@@ -132,7 +132,7 @@ impl SpaceViewClass for TensorSpaceView {
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
-        "".into() // TODO:
+        "Select the Space View to configure which dimensions are shown.".into()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
