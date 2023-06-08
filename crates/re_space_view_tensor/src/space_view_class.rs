@@ -119,7 +119,7 @@ impl PerTensorState {
 
 impl SpaceViewClass for TensorSpaceView {
     type State = ViewTensorState;
-    type Context = re_space_view::EmptySceneContext;
+    type Context = ();
     type SceneParts = SceneTensor;
     type ScenePartData = ();
 

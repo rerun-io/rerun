@@ -1,7 +1,7 @@
 use egui::util::hash;
 use re_components::TensorData;
 use re_log_types::EntityPath;
-use re_space_view::{controls, EmptySpaceViewState};
+use re_space_view::controls;
 use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
 };
@@ -12,8 +12,8 @@ use super::scene_part::SceneBarChart;
 pub struct BarChartSpaceView;
 
 impl SpaceViewClass for BarChartSpaceView {
-    type State = EmptySpaceViewState;
-    type Context = re_space_view::EmptySceneContext;
+    type State = ();
+    type Context = ();
     type SceneParts = SceneBarChart;
     type ScenePartData = ();
 

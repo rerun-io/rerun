@@ -6,7 +6,7 @@ use egui::{
 use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::EntityPath;
-use re_space_view::{controls, EmptySpaceViewState};
+use re_space_view::controls;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
 };
@@ -17,8 +17,8 @@ use crate::scene_part::{PlotSeriesKind, SceneTimeSeries};
 pub struct TimeSeriesSpaceView;
 
 impl SpaceViewClass for TimeSeriesSpaceView {
-    type State = EmptySpaceViewState;
-    type Context = re_space_view::EmptySceneContext;
+    type State = ();
+    type Context = ();
     type SceneParts = SceneTimeSeries;
     type ScenePartData = ();
 
