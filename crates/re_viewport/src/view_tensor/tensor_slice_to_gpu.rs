@@ -4,7 +4,7 @@ use re_renderer::{
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
 use re_viewer_context::{
-    gpu_bridge::{self, range, RangeError},
+    gpu_bridge::{self, tensor_data_range_heuristic, RangeError},
     TensorStats,
 };
 
@@ -33,8 +33,8 @@ pub fn colormapped_texture(
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
 
-    let range =
-        range(tensor_stats).map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
+    let range = tensor_data_range_heuristic(tensor_stats, tensor.dtype())
+        .map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
     let texture = upload_texture_slice_to_gpu(render_ctx, tensor, state.slice())?;
 
     let color_mapping = state.color_mapping();

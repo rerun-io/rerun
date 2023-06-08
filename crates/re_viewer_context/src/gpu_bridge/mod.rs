@@ -25,24 +25,32 @@ pub enum RangeError {
     /// This is weird. Should only happen with JPEGs, and those should have been decoded already
     #[error("Missing a range.")]
     MissingRange,
-
-    #[error("Non-finite range of values")]
-    NonfiniteRange,
 }
 
 /// Get a valid, finite range for the gpu to use.
-pub fn range(tensor_stats: &TensorStats) -> Result<[f32; 2], RangeError> {
-    let (min, max) = tensor_stats.range.ok_or(RangeError::MissingRange)?;
+pub fn tensor_data_range_heuristic(
+    tensor_stats: &TensorStats,
+    data_type: re_components::TensorDataType,
+) -> Result<[f32; 2], RangeError> {
+    let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
 
     let min = min as f32;
     let max = max as f32;
 
-    if !min.is_finite() || !max.is_finite() {
-        Err(RangeError::NonfiniteRange)
+    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
+    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
+    if data_type.is_float() && min >= 0.0 && max <= 1.0 {
+        // Float values that are all between 0 and 1, assume that this is the range.
+        Ok([0.0, 1.0])
+    } else if min >= 0.0 && max <= 255.0 {
+        // If all values are between 0 and 255, assume this is the range.
+        // (This is very common, independent of the data type)
+        Ok([0.0, 255.0])
     } else if min == max {
         // uniform range. This can explode the colormapping, so let's map all colors to the middle:
         Ok([min - 1.0, max + 1.0])
     } else {
+        // Use range as is if nothing matches.
         Ok([min, max])
     }
 }

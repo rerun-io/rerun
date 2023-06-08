@@ -97,7 +97,8 @@ fn color_tensor_to_gpu(
 
     let texture_format = texture_handle.format();
 
-    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm; // TODO(emilk): let the user specify the color space.
+    // TODO(emilk): let the user specify the color space.
+    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm;
 
     // Special casing for normalized textures used above:
     let range = if matches!(
@@ -108,7 +109,8 @@ fn color_tensor_to_gpu(
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
     } else {
-        super::range(tensor_stats)?
+        // TODO(#2274): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
+        super::tensor_data_range_heuristic(tensor_stats, tensor.data.dtype())?
     };
 
     let color_mapper = if re_renderer::texture_info::num_texture_components(texture_format) == 1 {
