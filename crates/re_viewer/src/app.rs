@@ -1,4 +1,3 @@
-use itertools::Itertools as _;
 use web_time::Instant;
 
 use re_data_store::store_db::StoreDb;
@@ -748,6 +747,7 @@ impl App {
                 if let Some(rrd) = crate::loading::load_file_contents(&file.name, &mut bytes) {
                     self.on_rrd_loaded(store_hub, rrd);
 
+                    #[cfg(not(target_arch = "wasm32"))]
                     return;
                 }
             }
@@ -1083,6 +1083,7 @@ fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
+    use itertools::Itertools as _;
     use re_arrow_store::TimeRange;
 
     re_tracing::profile_scope!("dump_messages");
