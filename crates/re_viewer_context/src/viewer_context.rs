@@ -1,7 +1,7 @@
 use re_data_store::store_db::StoreDb;
 
 use crate::{
-    AppOptions, Caches, ComponentUiRegistry, Item, ItemCollection, SelectionState,
+    AppOptions, Caches, CommandSender, ComponentUiRegistry, Item, ItemCollection, SelectionState,
     SpaceViewClassRegistry, StoreContext, TimeControl,
 };
 
@@ -36,6 +36,9 @@ pub struct ViewerContext<'a> {
 
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub render_ctx: &'a mut re_renderer::RenderContext,
+
+    /// Interface for sending commands back to the app
+    pub command_sender: &'a CommandSender,
 }
 
 impl<'a> ViewerContext<'a> {

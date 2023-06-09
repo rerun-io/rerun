@@ -29,7 +29,6 @@ eframe = ["dep:eframe"]
 
 
 [dependencies]
-crossbeam.workspace = true
 egui_extras.workspace = true
 egui.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }

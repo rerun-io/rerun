@@ -4,8 +4,8 @@ use re_data_store::StoreDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::Receiver;
 use re_viewer_context::{
-    AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry,
-    StoreContext, ViewerContext,
+    AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
+    SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
 use re_viewport::ViewportState;
 
@@ -79,6 +79,7 @@ impl AppState {
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &Receiver<LogMsg>,
+        command_sender: &CommandSender,
     ) {
         re_tracing::profile_function!();
 
@@ -108,6 +109,7 @@ impl AppState {
             rec_cfg,
             re_ui,
             render_ctx,
+            command_sender,
         };
 
         time_panel.show_panel(&mut ctx, ui, blueprint.time_panel_expanded);

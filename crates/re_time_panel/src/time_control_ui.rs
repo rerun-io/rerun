@@ -213,7 +213,7 @@ impl TimeControlUi {
 }
 
 fn toggle_playback_text(egui_ctx: &egui::Context) -> String {
-    if let Some(shortcut) = re_ui::Command::PlaybackTogglePlayPause.kb_shortcut() {
+    if let Some(shortcut) = re_ui::UICommand::PlaybackTogglePlayPause.kb_shortcut() {
         format!(" Toggle with {}", egui_ctx.format_shortcut(&shortcut))
     } else {
         Default::default()
