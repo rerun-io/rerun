@@ -1,6 +1,6 @@
 use re_data_store::StoreDb;
 use re_viewer_context::{Item, ViewerContext};
-use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
+use re_viewport::{SpaceInfoCollection, Viewport};
 
 /// Defines the layout of the whole Viewer (or will, eventually).
 #[derive(Clone)]
@@ -27,38 +27,7 @@ impl<'a> Blueprint<'a> {
         }
     }
 
-    pub fn blueprint_panel_and_viewport(
-        &mut self,
-        viewport_state: &mut ViewportState,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-    ) {
-        re_tracing::profile_function!();
-
-        let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
-
-        self.viewport.on_frame_start(ctx, &spaces_info);
-
-        self.blueprint_panel(ctx, ui, &spaces_info);
-
-        let viewport_frame = egui::Frame {
-            fill: ui.style().visuals.panel_fill,
-            ..Default::default()
-        };
-
-        egui::CentralPanel::default()
-            .frame(viewport_frame)
-            .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(viewport_state, ui, ctx);
-            });
-
-        // If the viewport was user-edited, then disable auto space views
-        if self.viewport.has_been_user_edited {
-            self.viewport.auto_space_views = false;
-        }
-    }
-
-    fn blueprint_panel(
+    pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,

@@ -7,7 +7,7 @@ use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
-use re_viewport::ViewportState;
+use re_viewport::{SpaceInfoCollection, ViewportState};
 
 use crate::{store_hub::StoreHub, ui::Blueprint};
 
@@ -124,7 +124,29 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| {
-                blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
+                re_tracing::profile_function!();
+
+                let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
+
+                blueprint.viewport.on_frame_start(&mut ctx, &spaces_info);
+
+                blueprint.show_panel(&mut ctx, ui, &spaces_info);
+
+                let viewport_frame = egui::Frame {
+                    fill: ui.style().visuals.panel_fill,
+                    ..Default::default()
+                };
+
+                egui::CentralPanel::default()
+                    .frame(viewport_frame)
+                    .show_inside(ui, |ui| {
+                        blueprint.viewport.viewport_ui(viewport_state, ui, &mut ctx);
+                    });
+
+                // If the viewport was user-edited, then disable auto space views
+                if blueprint.viewport.has_been_user_edited {
+                    blueprint.viewport.auto_space_views = false;
+                }
             });
 
         {
