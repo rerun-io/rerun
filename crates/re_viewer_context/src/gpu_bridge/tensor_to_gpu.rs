@@ -100,7 +100,7 @@ fn color_tensor_to_gpu(
 
     // TODO(emilk): let the user specify the color space.
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || super::tensor_decode_srgb_heuristic(tensor_stats, tensor.data.dtype(), depth)?;
+        || super::tensor_decode_srgb_gamma_heuristic(tensor_stats, tensor.data.dtype(), depth)?;
 
     // Special casing for normalized textures used above:
     let range = if matches!(

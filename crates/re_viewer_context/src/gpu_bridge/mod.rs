@@ -56,12 +56,12 @@ pub fn tensor_data_range_heuristic(
 }
 
 /// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
-pub fn tensor_decode_srgb_heuristic(
+pub fn tensor_decode_srgb_gamma_heuristic(
     tensor_stats: &TensorStats,
     data_type: re_components::TensorDataType,
     channels: u32,
 ) -> Result<bool, RangeError> {
-    if channels >= 3 {
+    if matches!(channels, 1 | 3 | 4) {
         let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
         #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
