@@ -449,10 +449,7 @@ impl App {
                     ui,
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
-                    &store_stats.recording_config,
-                    &store_stats.blueprint_config,
-                    &store_stats.recording_stats,
-                    &store_stats.blueprint_stats,
+                    store_stats,
                 );
             });
     }
