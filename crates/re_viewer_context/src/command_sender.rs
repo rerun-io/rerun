@@ -23,10 +23,10 @@ pub enum Command {
 }
 
 /// Sender that queues up the execution of a command.
-pub struct CommandSender(crossbeam::channel::Sender<Command>);
+pub struct CommandSender(std::sync::mpsc::Sender<Command>);
 
 /// Receiver for the [`CommandSender`]
-pub struct CommandReceiver(crossbeam::channel::Receiver<Command>);
+pub struct CommandReceiver(std::sync::mpsc::Receiver<Command>);
 
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
@@ -39,7 +39,7 @@ impl CommandReceiver {
 
 /// Creates a new command channel.
 pub fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (sender, receiver) = crossbeam::channel::unbounded();
+    let (sender, receiver) = std::sync::mpsc::channel();
     (CommandSender(sender), CommandReceiver(receiver))
 }
 

@@ -43,7 +43,6 @@ sublime_fuzzy = "0.7"
 eframe = { workspace = true, optional = true, default-features = false }
 
 [dev-dependencies]
-crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_tiles.workspace = true
 re_log.workspace = true

@@ -1,7 +1,7 @@
 use re_ui::{toasts, CommandPalette, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
-pub struct CommandSender(crossbeam::channel::Sender<UICommand>);
+pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
 
 impl UICommandSender for CommandSender {
     /// Send a command to be executed.
@@ -12,7 +12,7 @@ impl UICommandSender for CommandSender {
 }
 
 /// Receiver for the [`CommandSender`]
-pub struct CommandReceiver(crossbeam::channel::Receiver<UICommand>);
+pub struct CommandReceiver(std::sync::mpsc::Receiver<UICommand>);
 
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
@@ -25,7 +25,7 @@ impl CommandReceiver {
 
 /// Creates a new command channel.
 fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (sender, receiver) = crossbeam::channel::unbounded();
+    let (sender, receiver) = std::sync::mpsc::channel();
     (CommandSender(sender), CommandReceiver(receiver))
 }
 
