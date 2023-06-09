@@ -105,6 +105,15 @@ impl StoreHub {
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
     }
 
+    /// Clear the current blueprint
+    pub fn clear_blueprint(&mut self) {
+        if let Some(app_id) = &self.application_id {
+            if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
+                self.store_dbs.remove(&blueprint_id);
+            }
+        }
+    }
+
     /// Mutable access to a [`StoreDb`] by id
     pub fn store_db_mut(&mut self, store_id: &StoreId) -> &mut StoreDb {
         self.store_dbs.store_db_entry(store_id)
@@ -209,6 +218,10 @@ impl StoreBundle {
         for (id, store_db) in other.store_dbs.drain() {
             self.store_dbs.insert(id, store_db);
         }
+    }
+
+    pub fn remove(&mut self, id: &StoreId) {
+        self.store_dbs.remove(id);
     }
 
     // --

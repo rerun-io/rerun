@@ -297,7 +297,7 @@ impl App {
             }
 
             Command::ResetViewer => {
-                self.reset(egui_ctx);
+                self.reset(store_hub, egui_ctx);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -607,7 +607,9 @@ impl App {
                 self.analytics.on_open_recording(store_db);
             }
 
-            // Set the recording-id *after* creating the store
+            // Set the recording-id after potentially creating the store in the
+            // hub. This ordering is important because the `StoreHub` internally
+            // updates the app-id when changing the recording.
             if let LogMsg::SetStoreInfo(msg) = &msg {
                 match msg.info.store_id.kind {
                     StoreKind::Recording => {
@@ -690,9 +692,9 @@ impl App {
     }
 
     /// Reset the viewer to how it looked the first time you ran it.
-    fn reset(&mut self, egui_ctx: &egui::Context) {
+    fn reset(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         self.state = Default::default();
-        // TODO(jleibs): This presumably means throwing away the Blueprint?
+        store_hub.clear_blueprint();
 
         // Keep the style:
         let style = egui_ctx.style();
