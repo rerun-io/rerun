@@ -72,9 +72,10 @@ fn color_tensor_to_gpu(
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
             // Why? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
-            (3, TensorData::U8(buf)) => {
-                (pad_and_cast(buf.as_slice(), 255), TextureFormat::Rgba8Unorm)
-            }
+            (3, TensorData::U8(buf)) => (
+                pad_rgb_to_rgba(buf.as_slice(), u8::MAX).into(),
+                TextureFormat::Rgba8Unorm,
+            ),
             (4, TensorData::U8(buf)) => {
                 (cast_slice_to_cow(buf.as_slice()), TextureFormat::Rgba8Unorm)
             }
@@ -318,7 +319,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
             // TODO(emilk): tell the shader to ignore the alpha channel instead!
             match &tensor.data {
                 TensorData::U8(buf) => (
-                    pad_and_cast(buf.as_slice(), u8::MAX),
+                    pad_rgb_to_rgba(buf.as_slice(), u8::MAX).into(),
                     TextureFormat::Rgba8Uint,
                 ),
                 TensorData::U16(buf) => (pad_and_cast(buf, u16::MAX), TextureFormat::Rgba16Uint),
@@ -428,6 +429,7 @@ fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
 
 fn pad_and_cast<T: Copy + Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
     crate::profile_function!();
+    // TODO(emilk): optimize by combining the two steps into one; avoiding one allocation and memcpy
     let padded: Vec<T> = pad_rgb_to_rgba(data, pad);
     let bytes: Vec<u8> = pod_collect_to_vec(&padded);
     bytes.into()
