@@ -39,10 +39,10 @@ pub fn tensor_data_range_heuristic(
 
     // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
     // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    if data_type.is_float() && min >= 0.0 && max <= 1.0 {
+    if data_type.is_float() && 0.0 <= min && max <= 1.0 {
         // Float values that are all between 0 and 1, assume that this is the range.
         Ok([0.0, 1.0])
-    } else if min >= 0.0 && max <= 255.0 {
+    } else if 0.0 <= min && max <= 255.0 {
         // If all values are between 0 and 255, assume this is the range.
         // (This is very common, independent of the data type)
         Ok([0.0, 255.0])
@@ -64,10 +64,10 @@ pub fn tensor_decode_srgb_heuristic(
     if channels >= 3 {
         let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
         #[allow(clippy::if_same_then_else)]
-        if min >= 0.0 && max <= 255.0 {
+        if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
             Ok(true)
-        } else if data_type.is_float() && min >= 0.0 && max <= 1.0 {
+        } else if data_type.is_float() && 0.0 <= min && max <= 1.0 {
             // Floating point images between 0 and 1 are often sRGB as well.
             Ok(true)
         } else {
