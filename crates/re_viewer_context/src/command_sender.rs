@@ -8,9 +8,21 @@ use re_ui::{UICommand, UICommandSender};
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
+    /// Load an RRD by Filename
+    #[cfg(not(target_arch = "wasm32"))]
     LoadRrd(PathBuf),
+
+    /// Reset the `Viewer` to the default state
     ResetViewer,
+
+    /// Change the active recording-id in the `StoreHub`
     SetRecordingId(StoreId),
+
+    /// Update the blueprint with additional data
+    ///
+    /// The [`StoreId`] should generally be the currently selected blueprint
+    /// but is tracked manually to ensure self-consistency if the blueprint
+    /// is both modified and changed in the same frame.
     UpdateBlueprint(StoreId, Vec<DataRow>),
 }
 

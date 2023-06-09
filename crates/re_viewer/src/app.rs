@@ -273,6 +273,7 @@ impl App {
             SystemCommand::SetRecordingId(recording_id) => {
                 store_hub.set_recording_id(recording_id);
             }
+            #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::LoadRrd(path) => {
                 if let Some(rrd) = crate::loading::load_file_path(&path) {
                     store_hub.add_bundle(rrd);
