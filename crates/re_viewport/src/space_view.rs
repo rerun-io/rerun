@@ -1,5 +1,5 @@
 use re_arrow_store::Timeline;
-use re_data_store::{EntityPath, EntityTree, InstancePath, TimeInt};
+use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
@@ -8,7 +8,6 @@ use crate::{
     space_info::SpaceInfoCollection,
     space_view_heuristics::default_queried_entities,
     view_category::{categorize_entity_path, ViewCategory},
-    view_tensor,
 };
 
 // ----------------------------------------------------------------------------
@@ -153,27 +152,6 @@ impl SpaceViewBlueprint {
                 &self.space_origin,
                 self.id,
             );
-        } else {
-            // Legacy handling
-            #[allow(clippy::match_same_arms)]
-            match self.category {
-                ViewCategory::Text
-                | ViewCategory::Spatial
-                | ViewCategory::TextBox
-                | ViewCategory::TimeSeries
-                | ViewCategory::BarChart => {
-                    // migrated.
-                }
-                ViewCategory::Tensor => {
-                    if let Some(selected_tensor) = &view_state.selected_tensor {
-                        if let Some(state_tensor) =
-                            view_state.state_tensors.get_mut(selected_tensor)
-                        {
-                            state_tensor.ui(ctx, ui);
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -192,61 +170,38 @@ impl SpaceViewBlueprint {
             return;
         }
 
-        if let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) {
-            space_view_class.prepare_populate(
+        let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) else {
+            return;
+        };
+
+        space_view_class.prepare_populate(
+            ctx,
+            view_state.state.as_mut(),
+            &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
+            self.data_blueprint.data_blueprints_individual(),
+        );
+
+        let query = re_viewer_context::SceneQuery {
+            space_origin: &self.space_origin,
+            entity_paths: self.data_blueprint.entity_paths(),
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            latest_at,
+            entity_props_map: self.data_blueprint.data_blueprints_projected(),
+        };
+
+        let mut scene = space_view_class.new_scene();
+        scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
+
+        ui.scope(|ui| {
+            space_view_class.ui(
                 ctx,
+                ui,
                 view_state.state.as_mut(),
-                &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
-                self.data_blueprint.data_blueprints_individual(),
+                scene,
+                &self.space_origin,
+                self.id,
             );
-
-            let query = re_viewer_context::SceneQuery {
-                space_origin: &self.space_origin,
-                entity_paths: self.data_blueprint.entity_paths(),
-                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                latest_at,
-                entity_props_map: self.data_blueprint.data_blueprints_projected(),
-            };
-
-            let mut scene = space_view_class.new_scene();
-            scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
-
-            ui.scope(|ui| {
-                space_view_class.ui(
-                    ctx,
-                    ui,
-                    view_state.state.as_mut(),
-                    scene,
-                    &self.space_origin,
-                    self.id,
-                );
-            });
-        } else {
-            // Legacy handling
-            let query = re_viewer_context::SceneQuery {
-                space_origin: &self.space_origin,
-                entity_paths: self.data_blueprint.entity_paths(),
-                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                latest_at,
-                entity_props_map: self.data_blueprint.data_blueprints_projected(),
-            };
-
-            match self.category {
-                ViewCategory::Text
-                | ViewCategory::TextBox
-                | ViewCategory::Spatial
-                | ViewCategory::BarChart
-                | ViewCategory::TimeSeries => {
-                    // migrated.
-                }
-
-                ViewCategory::Tensor => {
-                    let mut scene = view_tensor::SceneTensor::default();
-                    scene.load(ctx, &query);
-                    view_state.ui_tensor(ctx, ui, &scene);
-                }
-            };
-        }
+        });
     }
 
     /// Removes a subtree of entities from the blueprint tree.
@@ -298,57 +253,7 @@ impl SpaceViewBlueprint {
 // ----------------------------------------------------------------------------
 
 /// Camera position and similar.
+// TODO(wumpf): Remove this field
 pub struct SpaceViewState {
-    // TODO(andreas): Reduce this struct to just this field.
     pub state: Box<dyn re_viewer_context::SpaceViewState>,
-
-    /// Selects in [`Self::state_tensors`].
-    pub selected_tensor: Option<InstancePath>,
-
-    pub state_tensors: ahash::HashMap<InstancePath, view_tensor::ViewTensorState>,
-}
-
-impl SpaceViewState {
-    fn ui_tensor(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene: &view_tensor::SceneTensor,
-    ) {
-        if scene.tensors.is_empty() {
-            ui.centered_and_justified(|ui| ui.label("(empty)"));
-            self.selected_tensor = None;
-        } else {
-            if let Some(selected_tensor) = &self.selected_tensor {
-                if !scene.tensors.contains_key(selected_tensor) {
-                    self.selected_tensor = None;
-                }
-            }
-            if self.selected_tensor.is_none() {
-                self.selected_tensor = Some(scene.tensors.iter().next().unwrap().0.clone());
-            }
-
-            if scene.tensors.len() > 1 {
-                // Show radio buttons for the different tensors we have in this view - better than nothing!
-                ui.horizontal(|ui| {
-                    for instance_path in scene.tensors.keys() {
-                        let is_selected = self.selected_tensor.as_ref() == Some(instance_path);
-                        if ui.radio(is_selected, instance_path.to_string()).clicked() {
-                            self.selected_tensor = Some(instance_path.clone());
-                        }
-                    }
-                });
-            }
-
-            if let Some(selected_tensor) = &self.selected_tensor {
-                if let Some(tensor) = scene.tensors.get(selected_tensor) {
-                    let state_tensor = self
-                        .state_tensors
-                        .entry(selected_tensor.clone())
-                        .or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
-                    view_tensor::view_tensor(ctx, ui, state_tensor, tensor);
-                }
-            }
-        }
-    }
 }

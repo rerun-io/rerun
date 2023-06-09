@@ -28,32 +28,22 @@ re_renderer = { workspace = true, default-features = false, features = [
   "import-obj",
   "serde",
 ] }
-re_tensor_ops.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_space_view.workspace = true
 
 ahash.workspace = true
-anyhow.workspace = true
 arrow2.workspace = true
 arrow2_convert.workspace = true
-bytemuck.workspace = true
-eframe = { workspace = true, default-features = false, features = [
-  "persistence",
-] }
 egui_tiles.workspace = true
 egui.workspace = true
 enumset.workspace = true
 glam.workspace = true
-half.workspace = true
 image = { workspace = true, default-features = false, features = [
   "jpeg",
   "png",
 ] }
 itertools.workspace = true
-ndarray.workspace = true
 nohash-hasher = "0.2"
 serde = "1.0"
-thiserror.workspace = true
-wgpu.workspace = true

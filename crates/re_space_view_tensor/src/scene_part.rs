@@ -1,17 +1,33 @@
 use re_arrow_store::LatestAtQuery;
-use re_components::{DecodedTensor, InstanceKey, Tensor};
+use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
-use re_viewer_context::{SceneQuery, TensorDecodeCache, ViewerContext};
+use re_log_types::{Component as _, InstanceKey};
+use re_viewer_context::{
+    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights,
+    TensorDecodeCache, ViewerContext,
+};
 
-/// A tensor scene, with everything needed to render it.
+use crate::TensorSpaceView;
+
+/// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
 pub struct SceneTensor {
     pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
 }
 
-impl SceneTensor {
-    /// Loads all tensors into the scene according to the given query.
-    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+impl ScenePart<TensorSpaceView> for SceneTensor {
+    fn archetype(&self) -> ArchetypeDefinition {
+        vec1::vec1![Tensor::name()]
+    }
+
+    fn populate(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        _state: &<TensorSpaceView as SpaceViewClass>::State,
+        _scene_context: &<TensorSpaceView as SpaceViewClass>::Context,
+        _highlights: &SpaceViewHighlights,
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
@@ -23,8 +39,12 @@ impl SceneTensor {
                 self.load_tensor_entity(ctx, ent_path, &props, tensor);
             }
         }
-    }
 
+        Vec::new()
+    }
+}
+
+impl SceneTensor {
     fn load_tensor_entity(
         &mut self,
         ctx: &mut ViewerContext<'_>,

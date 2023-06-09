@@ -42,8 +42,7 @@ impl SpaceViewClassRegistry {
     /// Queries a Space View type by class name and logs if it fails.
     pub fn get_or_log_error(&self, name: SpaceViewClassName) -> Option<&dyn DynSpaceViewClass> {
         let result = self.get(name);
-        // TODO(wumpf): Workaround for tensor not yet ported
-        if result.is_none() && name != "Tensor" {
+        if result.is_none() {
             re_log::error_once!("Unknown space view class {:?}", name);
         }
         result
