@@ -287,7 +287,7 @@ impl App {
         cmd: UICommand,
         blueprint: &mut Blueprint,
         store_hub: &mut StoreHub,
-        frame: &mut eframe::Frame,
+        _frame: &mut eframe::Frame,
         egui_ctx: &egui::Context,
     ) {
         let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
@@ -313,7 +313,7 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => {
-                frame.close();
+                _frame.close();
             }
 
             UICommand::ResetViewer => {
@@ -350,7 +350,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => {
-                frame.set_fullscreen(!frame.info().window_info.fullscreen);
+                _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
