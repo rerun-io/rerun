@@ -27,6 +27,7 @@ impl SelectionPanel {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         blueprint: &mut Blueprint<'_>,
+        expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
 
@@ -40,41 +41,37 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        panel.show_animated_inside(
-            ui,
-            blueprint.selection_panel_expanded,
-            |ui: &mut egui::Ui| {
-                egui::TopBottomPanel::top("selection_panel_title_bar")
-                    .exact_height(re_ui::ReUi::title_bar_height())
-                    .frame(egui::Frame {
-                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
-                        ..Default::default()
-                    })
-                    .show_inside(ui, |ui| {
-                        if let Some(selection) = self.selection_state_ui.selection_ui(
-                            ctx.re_ui,
-                            ui,
-                            blueprint,
-                            &mut ctx.selection_state_mut().history,
-                        ) {
-                            ctx.selection_state_mut()
-                                .set_selection(selection.iter().cloned());
-                        }
-                    });
+        panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+            egui::TopBottomPanel::top("selection_panel_title_bar")
+                .exact_height(re_ui::ReUi::title_bar_height())
+                .frame(egui::Frame {
+                    inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
+                    ..Default::default()
+                })
+                .show_inside(ui, |ui| {
+                    if let Some(selection) = self.selection_state_ui.selection_ui(
+                        ctx.re_ui,
+                        ui,
+                        blueprint,
+                        &mut ctx.selection_state_mut().history,
+                    ) {
+                        ctx.selection_state_mut()
+                            .set_selection(selection.iter().cloned());
+                    }
+                });
 
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
+            egui::ScrollArea::both()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    egui::Frame {
+                        inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                        ..Default::default()
+                    }
                     .show(ui, |ui| {
-                        egui::Frame {
-                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-                            ..Default::default()
-                        }
-                        .show(ui, |ui| {
-                            self.contents(viewport_state, ctx, ui, blueprint);
-                        });
+                        self.contents(viewport_state, ctx, ui, blueprint);
                     });
-            },
-        );
+                });
+        });
     }
 
     #[allow(clippy::unused_self)]

@@ -13,14 +13,10 @@ use re_viewport::{
 };
 
 use super::Blueprint;
-use crate::blueprint_components::panel::PanelState;
 
 impl<'a> Blueprint<'a> {
-    pub fn from_db(
-        egui_ctx: &egui::Context,
-        blueprint_db: Option<&'a re_data_store::StoreDb>,
-    ) -> Self {
-        let mut ret = Self::new(blueprint_db, egui_ctx);
+    pub fn from_db(blueprint_db: Option<&'a re_data_store::StoreDb>) -> Self {
+        let mut ret = Self::new(blueprint_db);
 
         if let Some(blueprint_db) = blueprint_db {
             let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
@@ -42,30 +38,9 @@ impl<'a> Blueprint<'a> {
             };
 
             ret.viewport = load_viewport(blueprint_db, space_views);
-
-            if let Some(expanded) =
-                load_panel_state(&PanelState::BLUEPRINT_VIEW_PATH.into(), blueprint_db)
-            {
-                ret.blueprint_panel_expanded = expanded;
-            }
-            if let Some(expanded) =
-                load_panel_state(&PanelState::SELECTION_VIEW_PATH.into(), blueprint_db)
-            {
-                ret.selection_panel_expanded = expanded;
-            }
-            if let Some(expanded) =
-                load_panel_state(&PanelState::TIMELINE_VIEW_PATH.into(), blueprint_db)
-            {
-                ret.time_panel_expanded = expanded;
-            }
         }
         ret
     }
-}
-
-fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) -> Option<bool> {
-    query_timeless_single::<PanelState>(&blueprint_db.entity_db.data_store, path)
-        .map(|p| p.expanded)
 }
 
 fn load_space_view(

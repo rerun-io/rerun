@@ -12,6 +12,7 @@ use re_viewer_context::{
 };
 
 use crate::{
+    app_blueprint::AppBlueprint,
     background_tasks::BackgroundTasks,
     store_hub::{StoreHub, StoreHubStats},
     ui::Blueprint,
@@ -253,13 +254,12 @@ impl App {
 
     fn run_pending_ui_commands(
         &mut self,
-        blueprint: &mut Blueprint<'_>,
+        app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
-        egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(cmd, blueprint, store_context, frame, egui_ctx);
+            self.run_ui_command(cmd, app_blueprint, store_context, frame);
         }
     }
 
@@ -280,18 +280,27 @@ impl App {
                 }
             }
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
+            SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
+                let blueprint_db = store_hub.store_db_mut(&blueprint_id);
+                for row in updates {
+                    match blueprint_db.entity_db.try_add_data_row(&row) {
+                        Ok(()) => {}
+                        Err(err) => {
+                            re_log::warn_once!("Failed to store blueprint delta: {err}",);
+                        }
+                    }
+                }
+            }
         }
     }
 
     fn run_ui_command(
         &mut self,
         cmd: UICommand,
-        blueprint: &mut Blueprint<'_>,
+        app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
         _frame: &mut eframe::Frame,
-        egui_ctx: &egui::Context,
     ) {
-        let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Save => {
@@ -328,24 +337,12 @@ impl App {
                 self.memory_panel_open ^= true;
             }
             UICommand::ToggleBlueprintPanel => {
-                blueprint.blueprint_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.blueprint_panel_expanded {
-                    blueprint.selection_panel_expanded = false;
-                }
+                app_blueprint.toggle_blueprint_panel(&self.command_sender);
             }
             UICommand::ToggleSelectionPanel => {
-                blueprint.selection_panel_expanded ^= true;
-
-                // Only one of blueprint or selection panel can be open at a time on mobile:
-                if is_narrow_screen && blueprint.selection_panel_expanded {
-                    blueprint.blueprint_panel_expanded = false;
-                }
+                app_blueprint.toggle_selection_panel(&self.command_sender);
             }
-            UICommand::ToggleTimePanel => {
-                blueprint.time_panel_expanded ^= true;
-            }
+            UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => {
@@ -475,6 +472,7 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
+        app_blueprint: &AppBlueprint<'_>,
         blueprint: &mut Blueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
@@ -494,7 +492,7 @@ impl App {
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
                 crate::ui::top_panel(
-                    blueprint,
+                    app_blueprint,
                     store_context,
                     ui,
                     frame,
@@ -532,6 +530,7 @@ impl App {
                             render_ctx.begin_frame();
 
                             self.state.show(
+                                app_blueprint,
                                 blueprint,
                                 ui,
                                 render_ctx,
@@ -864,14 +863,17 @@ impl eframe::App for App {
         let store_context = store_hub.read_context();
 
         let blueprint_snapshot =
-            Blueprint::from_db(egui_ctx, store_context.as_ref().map(|ctx| ctx.blueprint));
+            Blueprint::from_db(store_context.as_ref().map(|ctx| ctx.blueprint));
 
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
 
+        let app_blueprint = AppBlueprint::new(store_context.as_ref(), egui_ctx);
+
         self.ui(
             egui_ctx,
             frame,
+            &app_blueprint,
             &mut blueprint,
             &gpu_resource_stats,
             store_context.as_ref(),
@@ -891,7 +893,7 @@ impl eframe::App for App {
             self.command_sender.send_ui(cmd);
         }
 
-        self.run_pending_ui_commands(&mut blueprint, store_context.as_ref(), egui_ctx, frame);
+        self.run_pending_ui_commands(&app_blueprint, store_context.as_ref(), frame);
 
         let deltas = blueprint.compute_deltas(&blueprint_snapshot);
         let blueprint_id = blueprint.blueprint.map(|bp| bp.store_id().clone());
@@ -899,15 +901,8 @@ impl eframe::App for App {
         // The only way we don't have a `blueprint_id` is if we don't have a blueprint
         // and the only way we don't have a blueprint is if we don't have an app.Z
         if let Some(blueprint_id) = blueprint_id {
-            let blueprint_db = store_hub.store_db_mut(&blueprint_id);
-            for row in deltas {
-                match blueprint_db.entity_db.try_add_data_row(&row) {
-                    Ok(()) => {}
-                    Err(err) => {
-                        re_log::warn_once!("Failed to store blueprint delta: {err}",);
-                    }
-                }
-            }
+            self.command_sender
+                .send_system(SystemCommand::UpdateBlueprint(blueprint_id, deltas));
         }
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);

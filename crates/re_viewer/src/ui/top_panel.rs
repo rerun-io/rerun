@@ -1,12 +1,12 @@
 use re_format::format_number;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_ui::{UICommand, UICommandSender};
+use re_ui::UICommand;
 use re_viewer_context::StoreContext;
 
-use crate::{ui::Blueprint, App};
+use crate::{app_blueprint::AppBlueprint, App};
 
 pub fn top_panel(
-    blueprint: &Blueprint<'_>,
+    app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
@@ -39,7 +39,14 @@ pub fn top_panel(
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
-                top_bar_ui(blueprint, store_context, ui, frame, app, gpu_resource_stats);
+                top_bar_ui(
+                    app_blueprint,
+                    store_context,
+                    ui,
+                    frame,
+                    app,
+                    gpu_resource_stats,
+                );
             })
             .response;
 
@@ -56,7 +63,7 @@ pub fn top_panel(
 }
 
 fn top_bar_ui(
-    blueprint: &Blueprint<'_>,
+    app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
@@ -85,7 +92,7 @@ fn top_bar_ui(
             ui.add_space(extra_margin);
         }
 
-        let mut selection_panel_expanded = blueprint.selection_panel_expanded;
+        let mut selection_panel_expanded = app_blueprint.selection_panel_expanded;
         if app
             .re_ui()
             .medium_icon_toggle_button(
@@ -99,10 +106,10 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.command_sender.send_ui(UICommand::ToggleSelectionPanel);
+            app_blueprint.toggle_selection_panel(&app.command_sender);
         }
 
-        let mut time_panel_expanded = blueprint.time_panel_expanded;
+        let mut time_panel_expanded = app_blueprint.time_panel_expanded;
         if app
             .re_ui()
             .medium_icon_toggle_button(
@@ -116,10 +123,10 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.command_sender.send_ui(UICommand::ToggleTimePanel);
+            app_blueprint.toggle_time_panel(&app.command_sender);
         }
 
-        let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
+        let mut blueprint_panel_expanded = app_blueprint.blueprint_panel_expanded;
         if app
             .re_ui()
             .medium_icon_toggle_button(
@@ -133,7 +140,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.command_sender.send_ui(UICommand::ToggleBlueprintPanel);
+            app_blueprint.toggle_blueprint_panel(&app.command_sender);
         }
 
         if cfg!(debug_assertions) && app.app_options().show_metrics {

@@ -12,7 +12,6 @@ use re_viewport::{
 };
 
 use super::Blueprint;
-use crate::blueprint_components::panel::PanelState;
 
 pub fn push_one_component<C: SerializableComponent>(
     deltas: &mut Vec<DataRow>,
@@ -37,26 +36,6 @@ impl<'a> Blueprint<'a> {
     pub fn compute_deltas(&self, snapshot: &Self) -> Vec<DataRow> {
         let mut deltas = vec![];
 
-        // Update the panel states
-        sync_panel_expanded(
-            &mut deltas,
-            PanelState::BLUEPRINT_VIEW_PATH,
-            self.blueprint_panel_expanded,
-            snapshot.blueprint_panel_expanded,
-        );
-        sync_panel_expanded(
-            &mut deltas,
-            PanelState::SELECTION_VIEW_PATH,
-            self.selection_panel_expanded,
-            snapshot.selection_panel_expanded,
-        );
-        sync_panel_expanded(
-            &mut deltas,
-            PanelState::TIMELINE_VIEW_PATH,
-            self.time_panel_expanded,
-            snapshot.time_panel_expanded,
-        );
-
         sync_viewport(&mut deltas, &self.viewport, &snapshot.viewport);
 
         // Add any new or modified space views
@@ -74,23 +53,6 @@ impl<'a> Blueprint<'a> {
         }
 
         deltas
-    }
-}
-
-pub fn sync_panel_expanded(
-    deltas: &mut Vec<DataRow>,
-    panel_name: &str,
-    expanded: bool,
-    snapshot: bool,
-) {
-    if expanded != snapshot {
-        let entity_path = EntityPath::from(panel_name);
-        // TODO(jleibs): Seq instead of timeless?
-        let timepoint = TimePoint::timeless();
-
-        let component = PanelState { expanded };
-
-        push_one_component(deltas, &entity_path, &timepoint, component);
     }
 }
 

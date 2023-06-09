@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use re_log_types::StoreId;
+use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 // ----------------------------------------------------------------------------
@@ -11,6 +11,7 @@ pub enum SystemCommand {
     LoadRrd(PathBuf),
     ResetViewer,
     SetRecordingId(StoreId),
+    UpdateBlueprint(StoreId, Vec<DataRow>),
 }
 
 /// Interface for sending [`SystemCommand`] messages.

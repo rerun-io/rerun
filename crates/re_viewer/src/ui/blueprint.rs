@@ -7,22 +7,14 @@ use re_viewport::{SpaceInfoCollection, Viewport};
 pub struct Blueprint<'a> {
     pub blueprint: Option<&'a StoreDb>,
 
-    pub blueprint_panel_expanded: bool,
-    pub selection_panel_expanded: bool,
-    pub time_panel_expanded: bool,
-
     pub viewport: Viewport,
 }
 
 impl<'a> Blueprint<'a> {
     /// Create a [`Blueprint`] with appropriate defaults.
-    pub fn new(blueprint: Option<&'a StoreDb>, egui_ctx: &egui::Context) -> Self {
-        let screen_size = egui_ctx.screen_rect().size();
+    pub fn new(blueprint: Option<&'a StoreDb>) -> Self {
         Self {
             blueprint,
-            blueprint_panel_expanded: screen_size.x > 750.0,
-            selection_panel_expanded: screen_size.x > 1000.0,
-            time_panel_expanded: screen_size.y > 600.0,
             viewport: Default::default(),
         }
     }
@@ -32,6 +24,7 @@ impl<'a> Blueprint<'a> {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
+        expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
 
@@ -44,7 +37,7 @@ impl<'a> Blueprint<'a> {
             .min_width(120.0)
             .default_width((0.35 * screen_width).min(200.0).round());
 
-        panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
+        panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             self.title_bar_ui(ctx, ui, spaces_info);
 
             egui::Frame {

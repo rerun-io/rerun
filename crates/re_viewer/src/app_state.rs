@@ -9,7 +9,7 @@ use re_viewer_context::{
 };
 use re_viewport::{SpaceInfoCollection, ViewportState};
 
-use crate::{store_hub::StoreHub, ui::Blueprint};
+use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::Blueprint};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -70,6 +70,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
+        app_blueprint: &AppBlueprint<'_>,
         blueprint: &mut Blueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
@@ -112,8 +113,14 @@ impl AppState {
             command_sender,
         };
 
-        time_panel.show_panel(&mut ctx, ui, blueprint.time_panel_expanded);
-        selection_panel.show_panel(viewport_state, &mut ctx, ui, blueprint);
+        time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
+        selection_panel.show_panel(
+            viewport_state,
+            &mut ctx,
+            ui,
+            blueprint,
+            app_blueprint.selection_panel_expanded,
+        );
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -130,7 +137,12 @@ impl AppState {
 
                 blueprint.viewport.on_frame_start(&mut ctx, &spaces_info);
 
-                blueprint.show_panel(&mut ctx, ui, &spaces_info);
+                blueprint.show_panel(
+                    &mut ctx,
+                    ui,
+                    &spaces_info,
+                    app_blueprint.blueprint_panel_expanded,
+                );
 
                 let viewport_frame = egui::Frame {
                     fill: ui.style().visuals.panel_fill,
