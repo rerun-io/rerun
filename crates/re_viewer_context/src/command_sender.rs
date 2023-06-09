@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
@@ -10,7 +8,7 @@ use re_ui::{UICommand, UICommandSender};
 pub enum SystemCommand {
     /// Load an RRD by Filename
     #[cfg(not(target_arch = "wasm32"))]
-    LoadRrd(PathBuf),
+    LoadRrd(std::path::PathBuf),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
