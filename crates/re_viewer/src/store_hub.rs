@@ -144,30 +144,40 @@ impl StoreHub {
     /// Populate a [`StoreHubStats`] based on the selected app.
     // TODO(jleibs): We probably want stats for all recordings, not just
     // the currently selected recording.
-    pub fn stats(&mut self) -> StoreHubStats {
-        if let Some(ctx) = self.read_context() {
-            let blueprint_stats = DataStoreStats::from_store(&ctx.blueprint.entity_db.data_store);
+    pub fn stats(&self) -> StoreHubStats {
+        // If we have an app-id, then use it to look up the blueprint.
+        let blueprint = self
+            .application_id
+            .as_ref()
+            .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
+            .and_then(|blueprint_id| self.store_dbs.blueprint(blueprint_id));
 
-            let blueprint_config = ctx.blueprint.entity_db.data_store.config().clone();
+        let blueprint_stats = blueprint
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .unwrap_or_default();
 
-            let recording_stats = ctx
-                .recording
-                .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
-                .unwrap_or_default();
+        let blueprint_config = blueprint
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
 
-            let recording_config = ctx
-                .recording
-                .map(|store_db| store_db.entity_db.data_store.config().clone())
-                .unwrap_or_default();
+        let recording = self
+            .selected_rec_id
+            .as_ref()
+            .and_then(|rec_id| self.store_dbs.recording(rec_id));
 
-            StoreHubStats {
-                blueprint_stats,
-                blueprint_config,
-                recording_stats,
-                recording_config,
-            }
-        } else {
-            StoreHubStats::default()
+        let recording_stats = recording
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        let recording_config = recording
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        StoreHubStats {
+            blueprint_stats,
+            blueprint_config,
+            recording_stats,
+            recording_config,
         }
     }
 }

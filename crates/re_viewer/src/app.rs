@@ -828,9 +828,6 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        // TODO(jleibs): Work through this ordering. Would be great to move the
-        // memory panel update *after* the calls to purge/receive so we don't
-        // need to generate the view twice.
         let store_stats = store_hub.stats();
 
         // do early, before doing too many allocations
