@@ -8,7 +8,7 @@ mod wait_screen_ui;
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;
 
-pub use blueprint_panel::show_blueprint_panel;
+pub use blueprint_panel::blueprint_panel_ui;
 // ----
 
 pub(crate) use {

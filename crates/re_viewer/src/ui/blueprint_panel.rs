@@ -1,7 +1,7 @@
 use re_viewer_context::ViewerContext;
 use re_viewport::{SpaceInfoCollection, Viewport, ViewportBlueprint};
 
-pub fn show_blueprint_panel(
+pub fn blueprint_panel_ui(
     blueprint: &mut ViewportBlueprint<'_>,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,

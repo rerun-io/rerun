@@ -6,7 +6,7 @@ use re_data_store::{query_timeless_single, StoreDb};
 use re_log_types::{
     Component, DataCell, DataRow, EntityPath, RowId, SerializableComponent, TimePoint,
 };
-use re_viewer_context::{Item, SpaceViewId};
+use re_viewer_context::{CommandSender, Item, SpaceViewId, SystemCommand, SystemCommandSender};
 
 use crate::{
     blueprint_components::{
@@ -22,6 +22,7 @@ pub struct ViewportBlueprint<'a> {
     pub blueprint_db: &'a StoreDb,
 
     pub viewport: Viewport,
+    snapshot: Viewport,
 }
 
 impl<'a> ViewportBlueprint<'a> {
@@ -44,9 +45,12 @@ impl<'a> ViewportBlueprint<'a> {
             Default::default()
         };
 
+        let viewport = load_viewport(blueprint_db, space_views);
+
         Self {
             blueprint_db,
-            viewport: load_viewport(blueprint_db, space_views),
+            viewport: viewport.clone(),
+            snapshot: viewport,
         }
     }
 
@@ -71,26 +75,29 @@ impl<'a> ViewportBlueprint<'a> {
         }
     }
 
-    pub fn compute_deltas(&self, snapshot: &Self) -> Vec<DataRow> {
+    pub fn save_changes(&self, command_sender: &CommandSender) {
         let mut deltas = vec![];
 
-        sync_viewport(&mut deltas, &self.viewport, &snapshot.viewport);
+        sync_viewport(&mut deltas, &self.viewport, &self.snapshot);
 
         // Add any new or modified space views
         for id in self.viewport.space_view_ids() {
             if let Some(space_view) = self.viewport.space_view(id) {
-                sync_space_view(&mut deltas, space_view, snapshot.viewport.space_view(id));
+                sync_space_view(&mut deltas, space_view, self.snapshot.space_view(id));
             }
         }
 
         // Remove any deleted space views
-        for space_view_id in snapshot.viewport.space_view_ids() {
+        for space_view_id in self.snapshot.space_view_ids() {
             if self.viewport.space_view(space_view_id).is_none() {
                 clear_space_view(&mut deltas, space_view_id);
             }
         }
 
-        deltas
+        command_sender.send_system(SystemCommand::UpdateBlueprint(
+            self.blueprint_db.store_id().clone(),
+            deltas,
+        ));
     }
 }
 

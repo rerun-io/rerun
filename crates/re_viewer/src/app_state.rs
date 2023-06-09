@@ -5,11 +5,11 @@ use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::Receiver;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
-    SpaceViewClassRegistry, StoreContext, SystemCommand, SystemCommandSender, ViewerContext,
+    SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
 use re_viewport::{SpaceInfoCollection, ViewportBlueprint, ViewportState};
 
-use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::show_blueprint_panel};
+use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -83,9 +83,7 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
-        let blueprint_snapshot = ViewportBlueprint::from_db(store_context.blueprint);
-        // Make a mutable copy we can edit.
-        let mut blueprint = blueprint_snapshot.clone();
+        let mut blueprint = ViewportBlueprint::from_db(store_context.blueprint);
 
         let Self {
             app_options,
@@ -149,7 +147,7 @@ impl AppState {
 
                 blueprint.viewport.on_frame_start(&mut ctx, &spaces_info);
 
-                show_blueprint_panel(
+                blueprint_panel_ui(
                     &mut blueprint,
                     &mut ctx,
                     ui,
@@ -174,11 +172,7 @@ impl AppState {
                 }
             });
 
-        let deltas = blueprint.compute_deltas(&blueprint_snapshot);
-        command_sender.send_system(SystemCommand::UpdateBlueprint(
-            blueprint.blueprint_db.store_id().clone(),
-            deltas,
-        ));
+        blueprint.save_changes(command_sender);
 
         {
             // We move the time at the very end of the frame,
