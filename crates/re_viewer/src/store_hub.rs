@@ -5,23 +5,6 @@ use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
 
-#[derive(Default)]
-pub struct StoreHub {
-    selected_rec_id: Option<StoreId>,
-    application_id: Option<ApplicationId>,
-    blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
-    store_dbs: StoreBundle,
-}
-
-#[derive(Default)]
-/// Convenient information used for `MemoryPanel`
-pub struct StoreHubStats {
-    pub blueprint_stats: DataStoreStats,
-    pub blueprint_config: DataStoreConfig,
-    pub recording_stats: DataStoreStats,
-    pub recording_config: DataStoreConfig,
-}
-
 /// Interface for accessing all blueprints and recordings
 ///
 /// The [`StoreHub`] provides access to the [`StoreDb`] instances that are used
@@ -30,6 +13,23 @@ pub struct StoreHubStats {
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
 /// id` ([`StoreId`]) are currently selected in the viewer. These can be configured
 /// using [`StoreHub::set_recording_id`] and [`StoreHub::set_app_id`] respectively.
+#[derive(Default)]
+pub struct StoreHub {
+    selected_rec_id: Option<StoreId>,
+    application_id: Option<ApplicationId>,
+    blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+    store_dbs: StoreBundle,
+}
+
+/// Convenient information used for `MemoryPanel`
+#[derive(Default)]
+pub struct StoreHubStats {
+    pub blueprint_stats: DataStoreStats,
+    pub blueprint_config: DataStoreConfig,
+    pub recording_stats: DataStoreStats,
+    pub recording_config: DataStoreConfig,
+}
+
 impl StoreHub {
     /// Add a [`StoreBundle`] to the [`StoreHub`]
     pub fn add_bundle(&mut self, bundle: StoreBundle) {
@@ -41,40 +41,42 @@ impl StoreHub {
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
-        // If we have an app-id, then use it to look up the blueprint or else
-        // create the default blueprint.
+        // If we have an app-id, then use it to look up the blueprint.
         let blueprint_id = self.application_id.as_ref().map(|app_id| {
             self.blueprint_by_app_id
                 .entry(app_id.clone())
                 .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0))
         });
 
-        // TODO(jleibs) entry is what I want, but holds a mutable reference. We know that
-        // unwrap won't fail since we just created the entry, but
+        // As long as we have a blueprint-id, create the blueprint.
         blueprint_id
             .as_ref()
             .map(|id| self.store_dbs.blueprint_entry(id));
 
-        let blueprint = blueprint_id.map(|id| self.store_dbs.blueprint(id).unwrap());
+        // If we have a blueprint, we can return the `StoreContext`. In most
+        // cases it should have already existed or been created above.
+        blueprint_id
+            .and_then(|id| self.store_dbs.blueprint(id))
+            .map(|blueprint| {
+                let recording = self
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|id| self.store_dbs.recording(id));
 
-        let recording = self
-            .selected_rec_id
-            .as_ref()
-            .and_then(|id| self.store_dbs.recording(id));
-
-        // TODO(antoine): The below filter will limit our recording view to the current
-        // `ApplicationId`. Leaving this commented out for now since that is a bigger
-        // behavioral change we might want to plan/communicate around as it breaks things
-        // like --split-recordings in the api_demo.
-        blueprint.map(|blueprint| StoreContext {
-            blueprint,
-            recording,
-            alternate_recordings: self
-                .store_dbs
-                .recordings()
-                //.filter(|rec| rec.app_id() == self.application_id.as_ref())
-                .collect_vec(),
-        })
+                // TODO(antoine): The below filter will limit our recording view to the current
+                // `ApplicationId`. Leaving this commented out for now since that is a bigger
+                // behavioral change we might want to plan/communicate around as it breaks things
+                // like --split-recordings in the api_demo.
+                StoreContext {
+                    blueprint,
+                    recording,
+                    alternate_recordings: self
+                        .store_dbs
+                        .recordings()
+                        //.filter(|rec| rec.app_id() == self.application_id.as_ref())
+                        .collect_vec(),
+                }
+            })
     }
 
     /// Change the selected/visible recording id.
