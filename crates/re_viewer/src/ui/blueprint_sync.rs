@@ -1,6 +1,7 @@
 use arrow2_convert::field::ArrowField;
-use re_data_store::store_one_component;
-use re_log_types::{Component, DataCell, DataRow, EntityPath, RowId, TimePoint};
+use re_log_types::{
+    Component, DataCell, DataRow, EntityPath, RowId, SerializableComponent, TimePoint,
+};
 use re_viewer_context::SpaceViewId;
 use re_viewport::{
     blueprint_components::{
@@ -13,53 +14,71 @@ use re_viewport::{
 use super::Blueprint;
 use crate::blueprint_components::panel::PanelState;
 
+pub fn push_one_component<C: SerializableComponent>(
+    deltas: &mut Vec<DataRow>,
+    entity_path: &EntityPath,
+    timepoint: &TimePoint,
+    component: C,
+) {
+    let mut row = DataRow::from_cells1(
+        RowId::random(),
+        entity_path.clone(),
+        timepoint.clone(),
+        1,
+        [component].as_slice(),
+    );
+    row.compute_all_size_bytes();
+
+    deltas.push(row);
+}
+
 // Resolving and applying updates
-impl Blueprint {
-    pub fn sync_changes_to_store(
-        &self,
-        snapshot: &Self,
-        blueprint_db: &mut re_data_store::StoreDb,
-    ) {
+impl<'a> Blueprint<'a> {
+    pub fn compute_deltas(&self, snapshot: &Self) -> Vec<DataRow> {
+        let mut deltas = vec![];
+
         // Update the panel states
         sync_panel_expanded(
-            blueprint_db,
+            &mut deltas,
             PanelState::BLUEPRINT_VIEW_PATH,
             self.blueprint_panel_expanded,
             snapshot.blueprint_panel_expanded,
         );
         sync_panel_expanded(
-            blueprint_db,
+            &mut deltas,
             PanelState::SELECTION_VIEW_PATH,
             self.selection_panel_expanded,
             snapshot.selection_panel_expanded,
         );
         sync_panel_expanded(
-            blueprint_db,
+            &mut deltas,
             PanelState::TIMELINE_VIEW_PATH,
             self.time_panel_expanded,
             snapshot.time_panel_expanded,
         );
 
-        sync_viewport(blueprint_db, &self.viewport, &snapshot.viewport);
+        sync_viewport(&mut deltas, &self.viewport, &snapshot.viewport);
 
         // Add any new or modified space views
         for id in self.viewport.space_view_ids() {
             if let Some(space_view) = self.viewport.space_view(id) {
-                sync_space_view(blueprint_db, space_view, snapshot.viewport.space_view(id));
+                sync_space_view(&mut deltas, space_view, snapshot.viewport.space_view(id));
             }
         }
 
         // Remove any deleted space views
         for space_view_id in snapshot.viewport.space_view_ids() {
             if self.viewport.space_view(space_view_id).is_none() {
-                clear_space_view(blueprint_db, space_view_id);
+                clear_space_view(&mut deltas, space_view_id);
             }
         }
+
+        deltas
     }
 }
 
 pub fn sync_panel_expanded(
-    blueprint_db: &mut re_data_store::StoreDb,
+    deltas: &mut Vec<DataRow>,
     panel_name: &str,
     expanded: bool,
     snapshot: bool,
@@ -71,12 +90,12 @@ pub fn sync_panel_expanded(
 
         let component = PanelState { expanded };
 
-        store_one_component(blueprint_db, &entity_path, &timepoint, component);
+        push_one_component(deltas, &entity_path, &timepoint, component);
     }
 }
 
 pub fn sync_space_view(
-    blueprint_db: &mut re_data_store::StoreDb,
+    deltas: &mut Vec<DataRow>,
     space_view: &SpaceViewBlueprint,
     snapshot: Option<&SpaceViewBlueprint>,
 ) {
@@ -94,11 +113,11 @@ pub fn sync_space_view(
             space_view: space_view.clone(),
         };
 
-        store_one_component(blueprint_db, &entity_path, &timepoint, component);
+        push_one_component(deltas, &entity_path, &timepoint, component);
     }
 }
 
-pub fn clear_space_view(blueprint_db: &mut re_data_store::StoreDb, space_view_id: &SpaceViewId) {
+pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
     let entity_path = EntityPath::from(format!(
         "{}/{}",
         SpaceViewComponent::SPACEVIEW_PREFIX,
@@ -114,19 +133,10 @@ pub fn clear_space_view(blueprint_db: &mut re_data_store::StoreDb, space_view_id
     let mut row = DataRow::from_cells1(RowId::random(), entity_path, timepoint, 0, cell);
     row.compute_all_size_bytes();
 
-    match blueprint_db.entity_db.try_add_data_row(&row) {
-        Ok(()) => {}
-        Err(err) => {
-            re_log::warn_once!("Failed to clear space view {}: {err}", space_view_id,);
-        }
-    }
+    deltas.push(row);
 }
 
-pub fn sync_viewport(
-    blueprint_db: &mut re_data_store::StoreDb,
-    viewport: &Viewport,
-    snapshot: &Viewport,
-) {
+pub fn sync_viewport(deltas: &mut Vec<DataRow>, viewport: &Viewport, snapshot: &Viewport) {
     let entity_path = EntityPath::from(VIEWPORT_PATH);
 
     // TODO(jleibs): Seq instead of timeless?
@@ -134,17 +144,17 @@ pub fn sync_viewport(
 
     if viewport.auto_space_views != snapshot.auto_space_views {
         let component = AutoSpaceViews(viewport.auto_space_views);
-        store_one_component(blueprint_db, &entity_path, &timepoint, component);
+        push_one_component(deltas, &entity_path, &timepoint, component);
     }
 
     if viewport.visible != snapshot.visible {
         let component = SpaceViewVisibility(viewport.visible.clone());
-        store_one_component(blueprint_db, &entity_path, &timepoint, component);
+        push_one_component(deltas, &entity_path, &timepoint, component);
     }
 
     if viewport.maximized != snapshot.maximized {
         let component = SpaceViewMaximized(viewport.maximized);
-        store_one_component(blueprint_db, &entity_path, &timepoint, component);
+        push_one_component(deltas, &entity_path, &timepoint, component);
     }
 
     // Note: we can't just check `viewport.trees != snapshot.trees` because the
@@ -165,13 +175,13 @@ pub fn sync_viewport(
             has_been_user_edited: viewport.has_been_user_edited,
         };
 
-        store_one_component(blueprint_db, &entity_path, &timepoint, component);
+        push_one_component(deltas, &entity_path, &timepoint, component);
 
         // TODO(jleibs): Sort out this causality mess
         // If we are saving a new layout, we also need to save the visibility-set because
         // it gets mutated on load but isn't guaranteed to be mutated on layout-change
         // which means it won't get saved.
         let component = SpaceViewVisibility(viewport.visible.clone());
-        store_one_component(blueprint_db, &entity_path, &timepoint, component);
+        push_one_component(deltas, &entity_path, &timepoint, component);
     }
 }

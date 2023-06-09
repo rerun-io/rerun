@@ -15,7 +15,7 @@ impl SelectionHistoryUi {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
-        blueprint: &Blueprint,
+        blueprint: &Blueprint<'_>,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         ui.horizontal_centered(|ui| {
@@ -37,7 +37,7 @@ impl SelectionHistoryUi {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
-        blueprint: &Blueprint,
+        blueprint: &Blueprint<'_>,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // undo selection
@@ -81,7 +81,7 @@ impl SelectionHistoryUi {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
-        blueprint: &Blueprint,
+        blueprint: &Blueprint<'_>,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // redo selection
@@ -124,7 +124,7 @@ impl SelectionHistoryUi {
     #[allow(clippy::unused_self)]
     fn history_item_ui(
         &mut self,
-        blueprint: &Blueprint,
+        blueprint: &Blueprint<'_>,
         ui: &mut egui::Ui,
         index: usize,
         history: &mut SelectionHistory,
@@ -155,7 +155,7 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn item_collection_to_string(blueprint: &Blueprint, items: &ItemCollection) -> String {
+fn item_collection_to_string(blueprint: &Blueprint<'_>, items: &ItemCollection) -> String {
     assert!(!items.is_empty()); // history never contains empty selections.
     if items.len() == 1 {
         item_to_string(blueprint, items.iter().next().unwrap())
@@ -166,7 +166,7 @@ fn item_collection_to_string(blueprint: &Blueprint, items: &ItemCollection) -> S
     }
 }
 
-fn item_to_string(blueprint: &Blueprint, item: &Item) -> String {
+fn item_to_string(blueprint: &Blueprint<'_>, item: &Item) -> String {
     match item {
         Item::SpaceView(sid) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {

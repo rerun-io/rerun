@@ -6,9 +6,9 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel, AppOptions, Command, CommandReceiver, CommandSender, ComponentUiRegistry,
+    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
     DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    StoreContext, SystemCommand,
+    StoreContext, SystemCommand, SystemCommandSender,
 };
 
 use crate::{
@@ -245,70 +245,71 @@ impl App {
         }
     }
 
-    fn run_pending_commands(
-        &mut self,
-        blueprint: &mut Blueprint,
-        store_hub: &mut StoreHub,
-        egui_ctx: &egui::Context,
-        frame: &mut eframe::Frame,
-    ) {
-        while let Some(cmd) = self.command_receiver.recv() {
-            self.run_command(cmd, blueprint, store_hub, frame, egui_ctx);
+    fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+        while let Some(cmd) = self.command_receiver.recv_system() {
+            self.run_system_command(cmd, store_hub, egui_ctx);
         }
     }
 
-    fn run_command(
+    fn run_pending_ui_commands(
         &mut self,
-        cmd: Command,
-        blueprint: &mut Blueprint,
-        store_hub: &mut StoreHub,
-        frame: &mut eframe::Frame,
+        blueprint: &mut Blueprint<'_>,
+        store_context: Option<&StoreContext<'_>>,
         egui_ctx: &egui::Context,
+        frame: &mut eframe::Frame,
     ) {
-        match cmd {
-            Command::SystemCommand(cmd) => self.run_system_command(cmd, store_hub),
-            Command::UICommand(cmd) => {
-                self.run_ui_command(cmd, blueprint, store_hub, frame, egui_ctx);
-            }
+        while let Some(cmd) = self.command_receiver.recv_ui() {
+            self.run_ui_command(cmd, blueprint, store_context, frame, egui_ctx);
         }
     }
 
     #[allow(clippy::unused_self)]
-    fn run_system_command(&mut self, cmd: SystemCommand, store_hub: &mut StoreHub) {
+    fn run_system_command(
+        &mut self,
+        cmd: SystemCommand,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+    ) {
         match cmd {
             SystemCommand::SetRecordingId(recording_id) => {
                 store_hub.set_recording_id(recording_id);
             }
+            SystemCommand::LoadRrd(path) => {
+                if let Some(rrd) = crate::loading::load_file_path(&path) {
+                    store_hub.add_bundle(rrd);
+                }
+            }
+            SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
         }
     }
 
     fn run_ui_command(
         &mut self,
         cmd: UICommand,
-        blueprint: &mut Blueprint,
-        store_hub: &mut StoreHub,
+        blueprint: &mut Blueprint<'_>,
+        store_context: Option<&StoreContext<'_>>,
         _frame: &mut eframe::Frame,
         egui_ctx: &egui::Context,
     ) {
         let is_narrow_screen = egui_ctx.screen_rect().width() < 600.0; // responsive ui for mobiles etc
-        let store_context = store_hub.read_context();
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Save => {
-                save(self, store_context.as_ref(), None);
+                save(self, store_context, None);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::SaveSelection => {
                 save(
                     self,
-                    store_context.as_ref(),
-                    self.state.loop_selection(store_context.as_ref()),
+                    store_context,
+                    self.state.loop_selection(store_context),
                 );
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
-                if let Some(rrd) = open_rrd_dialog() {
-                    self.on_rrd_loaded(store_hub, rrd);
+                if let Some(rrd_file) = open_rrd_dialog() {
+                    self.command_sender
+                        .send_system(SystemCommand::LoadRrd(rrd_file));
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -316,9 +317,7 @@ impl App {
                 _frame.close();
             }
 
-            UICommand::ResetViewer => {
-                self.reset(store_hub, egui_ctx);
-            }
+            UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
@@ -390,25 +389,19 @@ impl App {
             }
 
             UICommand::PlaybackTogglePlayPause => {
-                self.run_time_control_command(
-                    store_context.as_ref(),
-                    TimeControlCommand::TogglePlayPause,
-                );
+                self.run_time_control_command(store_context, TimeControlCommand::TogglePlayPause);
             }
             UICommand::PlaybackFollow => {
-                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::Follow);
+                self.run_time_control_command(store_context, TimeControlCommand::Follow);
             }
             UICommand::PlaybackStepBack => {
-                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::StepBack);
+                self.run_time_control_command(store_context, TimeControlCommand::StepBack);
             }
             UICommand::PlaybackStepForward => {
-                self.run_time_control_command(
-                    store_context.as_ref(),
-                    TimeControlCommand::StepForward,
-                );
+                self.run_time_control_command(store_context, TimeControlCommand::StepForward);
             }
             UICommand::PlaybackRestart => {
-                self.run_time_control_command(store_context.as_ref(), TimeControlCommand::Restart);
+                self.run_time_control_command(store_context, TimeControlCommand::Restart);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -482,7 +475,7 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
-        blueprint: &mut Blueprint,
+        blueprint: &mut Blueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
         store_stats: &StoreHubStats,
@@ -890,8 +883,6 @@ impl eframe::App for App {
             paint_native_window_frame(egui_ctx);
         }
 
-        self.handle_dropping_files(&mut store_hub, egui_ctx);
-
         if !self.screenshotter.is_screenshotting() {
             self.toasts.show(egui_ctx);
         }
@@ -900,14 +891,28 @@ impl eframe::App for App {
             self.command_sender.send_ui(cmd);
         }
 
-        self.run_pending_commands(&mut blueprint, &mut store_hub, egui_ctx, frame);
+        self.run_pending_ui_commands(&mut blueprint, store_context.as_ref(), egui_ctx, frame);
+
+        let deltas = blueprint.compute_deltas(&blueprint_snapshot);
+        let blueprint_id = blueprint.blueprint.map(|bp| bp.store_id().clone());
 
         // The only way we don't have a `blueprint_id` is if we don't have a blueprint
-        // and the only way we don't have a blueprint is if we don't have an app.
-        if let Some(blueprint_id) = &blueprint.blueprint_id {
-            let blueprint_db = store_hub.store_db_mut(blueprint_id);
-            blueprint.sync_changes_to_store(&blueprint_snapshot, blueprint_db);
+        // and the only way we don't have a blueprint is if we don't have an app.Z
+        if let Some(blueprint_id) = blueprint_id {
+            let blueprint_db = store_hub.store_db_mut(&blueprint_id);
+            for row in deltas {
+                match blueprint_db.entity_db.try_add_data_row(&row) {
+                    Ok(()) => {}
+                    Err(err) => {
+                        re_log::warn_once!("Failed to store blueprint delta: {err}",);
+                    }
+                }
+            }
         }
+
+        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        self.handle_dropping_files(&mut store_hub, egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
@@ -1038,15 +1043,12 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn open_rrd_dialog() -> Option<StoreBundle> {
-    if let Some(path) = rfd::FileDialog::new()
+use std::path::PathBuf;
+#[cfg(not(target_arch = "wasm32"))]
+fn open_rrd_dialog() -> Option<PathBuf> {
+    rfd::FileDialog::new()
         .add_filter("rerun data file", &["rrd"])
         .pick_file()
-    {
-        crate::loading::load_file_path(&path)
-    } else {
-        None
-    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

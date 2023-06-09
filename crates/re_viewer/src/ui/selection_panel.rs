@@ -26,7 +26,7 @@ impl SelectionPanel {
         viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        blueprint: &mut Blueprint,
+        blueprint: &mut Blueprint<'_>,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
 
@@ -83,7 +83,7 @@ impl SelectionPanel {
         viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        blueprint: &mut Blueprint,
+        blueprint: &mut Blueprint<'_>,
     ) {
         re_tracing::profile_function!();
 
@@ -219,7 +219,7 @@ fn blueprint_ui(
     viewport_state: &mut ViewportState,
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
+    blueprint: &mut Blueprint<'_>,
     item: &Item,
 ) {
     match item {
@@ -310,7 +310,7 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     entity_path: &EntityPath,
-    blueprint: &Blueprint,
+    blueprint: &Blueprint<'_>,
 ) {
     let space_views_with_path = blueprint
         .viewport

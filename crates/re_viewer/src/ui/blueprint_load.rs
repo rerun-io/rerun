@@ -15,12 +15,12 @@ use re_viewport::{
 use super::Blueprint;
 use crate::blueprint_components::panel::PanelState;
 
-impl Blueprint {
+impl<'a> Blueprint<'a> {
     pub fn from_db(
         egui_ctx: &egui::Context,
-        blueprint_db: Option<&re_data_store::StoreDb>,
+        blueprint_db: Option<&'a re_data_store::StoreDb>,
     ) -> Self {
-        let mut ret = Self::new(blueprint_db.map(|bp| bp.store_id()).cloned(), egui_ctx);
+        let mut ret = Self::new(blueprint_db, egui_ctx);
 
         if let Some(blueprint_db) = blueprint_db {
             let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =

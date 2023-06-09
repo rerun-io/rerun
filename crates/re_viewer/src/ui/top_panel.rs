@@ -6,7 +6,7 @@ use re_viewer_context::StoreContext;
 use crate::{ui::Blueprint, App};
 
 pub fn top_panel(
-    blueprint: &Blueprint,
+    blueprint: &Blueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
@@ -56,7 +56,7 @@ pub fn top_panel(
 }
 
 fn top_bar_ui(
-    blueprint: &Blueprint,
+    blueprint: &Blueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,

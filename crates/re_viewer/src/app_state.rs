@@ -70,7 +70,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
-        blueprint: &mut Blueprint,
+        blueprint: &mut Blueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
         store_db: &StoreDb,
