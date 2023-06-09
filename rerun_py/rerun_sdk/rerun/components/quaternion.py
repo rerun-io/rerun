@@ -22,6 +22,9 @@ class Quaternion:
     def __init__(self, *, xyzw: npt.ArrayLike):
         self.xyzw = xyzw
 
+    def __array__(self) -> npt.NDArray[np.float32]:
+        return np.asarray(self.xyzw, dtype=np.float32)
+
 
 class QuaternionArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> QuaternionArray:
