@@ -122,10 +122,15 @@ fn color_tensor_to_gpu(
         None
     };
 
+    // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
+    // Assume that the texture is not pre-multiplied if it has an alpha channel.
+    let multiply_rgb_with_alpha = depth == 4;
+
     Ok(ColormappedTexture {
         texture: texture_handle,
-        decode_srgb,
         range,
+        decode_srgb,
+        multiply_rgb_with_alpha,
         gamma: 1.0,
         color_mapper,
     })
@@ -194,8 +199,9 @@ fn class_id_tensor_to_gpu(
 
     Ok(ColormappedTexture {
         texture: main_texture_handle,
-        decode_srgb: true,
         range: [0.0, (colormap_width * colormap_height) as f32],
+        decode_srgb: true,
+        multiply_rgb_with_alpha: false, // already premultiplied!
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
     })
@@ -225,8 +231,9 @@ fn depth_tensor_to_gpu(
 
     Ok(ColormappedTexture {
         texture,
-        decode_srgb: false,
         range: [min as f32, max as f32],
+        decode_srgb: false,
+        multiply_rgb_with_alpha: false,
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Function(re_renderer::Colormap::Turbo)),
     })
