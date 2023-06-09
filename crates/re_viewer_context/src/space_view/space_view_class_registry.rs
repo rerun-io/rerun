@@ -4,8 +4,8 @@ use crate::{DynSpaceViewClass, SpaceViewClassName};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SpaceViewClassRegistryError {
-    #[error("Space view with typename \"{0}\" was already registered.")]
-    DuplicateTypeName(SpaceViewClassName),
+    #[error("Space view with class name {0:?} was already registered.")]
+    DuplicateClassName(SpaceViewClassName),
 }
 
 /// Registry of all known space view types.
@@ -28,7 +28,7 @@ impl SpaceViewClassRegistry {
             .insert(type_name, Box::new(space_view_type))
             .is_some()
         {
-            return Err(SpaceViewClassRegistryError::DuplicateTypeName(type_name));
+            return Err(SpaceViewClassRegistryError::DuplicateClassName(type_name));
         }
 
         Ok(())
