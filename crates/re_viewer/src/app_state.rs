@@ -5,7 +5,7 @@ use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::Receiver;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
-    SpaceViewClassRegistry, StoreContext, ViewerContext,
+    SpaceViewClassRegistry, StoreContext, SystemCommand, SystemCommandSender, ViewerContext,
 };
 use re_viewport::{SpaceInfoCollection, ViewportState};
 
@@ -71,7 +71,6 @@ impl AppState {
     pub fn show(
         &mut self,
         app_blueprint: &AppBlueprint<'_>,
-        blueprint: &mut Blueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
         store_db: &StoreDb,
@@ -84,6 +83,10 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
+        let blueprint_snapshot = Blueprint::from_db(store_context.blueprint);
+        // Make a mutable copy we can edit.
+        let mut blueprint = blueprint_snapshot.clone();
+
         let Self {
             app_options,
             cache,
@@ -92,6 +95,15 @@ impl AppState {
             time_panel,
             viewport_state,
         } = self;
+
+        recording_config_entry(
+            recording_configs,
+            store_db.store_id().clone(),
+            rx.source(),
+            store_db,
+        )
+        .selection_state
+        .on_frame_start(|item| blueprint.is_item_valid(item));
 
         let rec_cfg = recording_config_entry(
             recording_configs,
@@ -118,7 +130,7 @@ impl AppState {
             viewport_state,
             &mut ctx,
             ui,
-            blueprint,
+            &mut blueprint,
             app_blueprint.selection_panel_expanded,
         );
 
@@ -161,6 +173,12 @@ impl AppState {
                 }
             });
 
+        let deltas = blueprint.compute_deltas(&blueprint_snapshot);
+        command_sender.send_system(SystemCommand::UpdateBlueprint(
+            blueprint.blueprint.store_id().clone(),
+            deltas,
+        ));
+
         {
             // We move the time at the very end of the frame,
             // so we have one frame to see the first data before we move the time.
@@ -183,15 +201,6 @@ impl AppState {
 
     pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
         self.recording_configs.get_mut(rec_id)
-    }
-
-    pub fn recording_config_entry(
-        &mut self,
-        id: StoreId,
-        data_source: &'_ re_smart_channel::SmartChannelSource,
-        store_db: &'_ StoreDb,
-    ) -> &mut RecordingConfig {
-        recording_config_entry(&mut self.recording_configs, id, data_source, store_db)
     }
 
     pub fn cleanup(&mut self, store_hub: &StoreHub) {

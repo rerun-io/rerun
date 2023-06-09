@@ -15,7 +15,6 @@ use crate::{
     app_blueprint::AppBlueprint,
     background_tasks::BackgroundTasks,
     store_hub::{StoreHub, StoreHubStats},
-    ui::Blueprint,
     viewer_analytics::ViewerAnalytics,
     AppState, StoreBundle,
 };
@@ -473,7 +472,6 @@ impl App {
         egui_ctx: &egui::Context,
         frame: &mut eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
-        blueprint: &mut Blueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
         store_stats: &StoreHubStats,
@@ -509,15 +507,6 @@ impl App {
                     // static data, but we need to jump through some hoops to
                     // handle a missing `RecordingConfig` in this case.
                     if let Some(store_db) = store_view.recording {
-                        self.state
-                            .recording_config_entry(
-                                store_db.store_id().clone(),
-                                self.rx.source(),
-                                store_db,
-                            )
-                            .selection_state
-                            .on_frame_start(|item| blueprint.is_item_valid(item));
-
                         // TODO(andreas): store the re_renderer somewhere else.
                         let egui_renderer = {
                             let render_state = frame.wgpu_render_state().unwrap();
@@ -531,7 +520,6 @@ impl App {
 
                             self.state.show(
                                 app_blueprint,
-                                blueprint,
                                 ui,
                                 render_ctx,
                                 store_db,
@@ -862,19 +850,12 @@ impl eframe::App for App {
 
         let store_context = store_hub.read_context();
 
-        let blueprint_snapshot =
-            Blueprint::from_db(store_context.as_ref().map(|ctx| ctx.blueprint));
-
-        // Make a mutable copy we can edit.
-        let mut blueprint = blueprint_snapshot.clone();
-
         let app_blueprint = AppBlueprint::new(store_context.as_ref(), egui_ctx);
 
         self.ui(
             egui_ctx,
             frame,
             &app_blueprint,
-            &mut blueprint,
             &gpu_resource_stats,
             store_context.as_ref(),
             &store_stats,
@@ -894,16 +875,6 @@ impl eframe::App for App {
         }
 
         self.run_pending_ui_commands(&app_blueprint, store_context.as_ref(), frame);
-
-        let deltas = blueprint.compute_deltas(&blueprint_snapshot);
-        let blueprint_id = blueprint.blueprint.map(|bp| bp.store_id().clone());
-
-        // The only way we don't have a `blueprint_id` is if we don't have a blueprint
-        // and the only way we don't have a blueprint is if we don't have an app.Z
-        if let Some(blueprint_id) = blueprint_id {
-            self.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(blueprint_id, deltas));
-        }
 
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

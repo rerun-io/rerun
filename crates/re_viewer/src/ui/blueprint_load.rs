@@ -15,30 +15,28 @@ use re_viewport::{
 use super::Blueprint;
 
 impl<'a> Blueprint<'a> {
-    pub fn from_db(blueprint_db: Option<&'a re_data_store::StoreDb>) -> Self {
+    pub fn from_db(blueprint_db: &'a re_data_store::StoreDb) -> Self {
         let mut ret = Self::new(blueprint_db);
 
-        if let Some(blueprint_db) = blueprint_db {
-            let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
-                blueprint_db
-                    .entity_db
-                    .tree
-                    .children
-                    .get(&re_data_store::EntityPathPart::Name(
-                        SpaceViewComponent::SPACEVIEW_PREFIX.into(),
-                    )) {
-                space_views
-                    .children
-                    .values()
-                    .filter_map(|view_tree| load_space_view(&view_tree.path, blueprint_db))
-                    .map(|sv| (sv.id, sv))
-                    .collect()
-            } else {
-                Default::default()
-            };
+        let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
+            blueprint_db
+                .entity_db
+                .tree
+                .children
+                .get(&re_data_store::EntityPathPart::Name(
+                    SpaceViewComponent::SPACEVIEW_PREFIX.into(),
+                )) {
+            space_views
+                .children
+                .values()
+                .filter_map(|view_tree| load_space_view(&view_tree.path, blueprint_db))
+                .map(|sv| (sv.id, sv))
+                .collect()
+        } else {
+            Default::default()
+        };
 
-            ret.viewport = load_viewport(blueprint_db, space_views);
-        }
+        ret.viewport = load_viewport(blueprint_db, space_views);
         ret
     }
 }

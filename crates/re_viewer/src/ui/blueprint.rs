@@ -5,14 +5,14 @@ use re_viewport::{SpaceInfoCollection, Viewport};
 /// Defines the layout of the whole Viewer (or will, eventually).
 #[derive(Clone)]
 pub struct Blueprint<'a> {
-    pub blueprint: Option<&'a StoreDb>,
+    pub blueprint: &'a StoreDb,
 
     pub viewport: Viewport,
 }
 
 impl<'a> Blueprint<'a> {
     /// Create a [`Blueprint`] with appropriate defaults.
-    pub fn new(blueprint: Option<&'a StoreDb>) -> Self {
+    pub fn new(blueprint: &'a StoreDb) -> Self {
         Self {
             blueprint,
             viewport: Default::default(),
