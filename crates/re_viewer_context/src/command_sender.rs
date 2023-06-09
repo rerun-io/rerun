@@ -40,6 +40,7 @@ impl CommandReceiver {
         // is if the sender has been dropped.
         self.system_receiver.try_recv().ok()
     }
+
     /// Receive a [`UICommand`] to be executed if any is queued.
     pub fn recv_ui(&self) -> Option<UICommand> {
         // The only way this can fail (other than being empty)
