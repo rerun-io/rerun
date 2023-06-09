@@ -29,8 +29,9 @@ eframe = ["dep:eframe"]
 
 
 [dependencies]
-egui.workspace = true
+crossbeam.workspace = true
 egui_extras.workspace = true
+egui.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 parking_lot.workspace = true
 serde = { version = "1", features = ["derive"] }

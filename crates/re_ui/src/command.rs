@@ -1,5 +1,34 @@
 use egui::{Key, KeyboardShortcut, Modifiers};
 
+/// Sender that queues up the execution of a command.
+pub struct CommandSender(crossbeam::channel::Sender<Command>);
+
+impl CommandSender {
+    /// Send a command to be executed.
+    pub fn send(&self, command: Command) {
+        // The only way this can fail is if the receiver has been dropped.
+        self.0.send(command).ok();
+    }
+}
+
+/// Receiver for the [`CommandSender`]
+pub struct CommandReceiver(crossbeam::channel::Receiver<Command>);
+
+impl CommandReceiver {
+    /// Receive a command to be executed if any is queued.
+    pub fn recv(&self) -> Option<Command> {
+        // The only way this can fail (other than being empty)
+        // is if the sender has been dropped.
+        self.0.try_recv().ok()
+    }
+}
+
+/// Creates a new command channel.
+pub fn command_channel() -> (CommandSender, CommandReceiver) {
+    let (sender, receiver) = crossbeam::channel::unbounded();
+    (CommandSender(sender), CommandReceiver(receiver))
+}
+
 /// All the commands we support.
 ///
 /// Most are available in the GUI,
@@ -232,12 +261,12 @@ impl Command {
     pub fn menu_button_ui(
         self,
         ui: &mut egui::Ui,
-        pending_commands: &mut Vec<Command>,
+        command_sender: &CommandSender,
     ) -> egui::Response {
         let button = self.menu_button(ui.ctx());
         let response = ui.add(button).on_hover_text(self.tooltip());
         if response.clicked() {
-            pending_commands.push(self);
+            command_sender.send(self);
             ui.close_menu();
         }
         response

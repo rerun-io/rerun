@@ -96,7 +96,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.pending_commands.push(Command::ToggleSelectionPanel);
+            app.command_sender.send(Command::ToggleSelectionPanel);
         }
 
         let mut time_panel_expanded = blueprint.time_panel_expanded;
@@ -113,7 +113,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.pending_commands.push(Command::ToggleTimePanel);
+            app.command_sender.send(Command::ToggleTimePanel);
         }
 
         let mut blueprint_panel_expanded = blueprint.blueprint_panel_expanded;
@@ -130,7 +130,7 @@ fn top_bar_ui(
             ))
             .clicked()
         {
-            app.pending_commands.push(Command::ToggleBlueprintPanel);
+            app.command_sender.send(Command::ToggleBlueprintPanel);
         }
 
         if cfg!(debug_assertions) && app.app_options().show_metrics {
@@ -143,7 +143,7 @@ fn top_bar_ui(
     });
 }
 
-fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
+fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
     if let Some(frame_time) = app.frame_time_history.average() {
         let ms = frame_time * 1e3;
 

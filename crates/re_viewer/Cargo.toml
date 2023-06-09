@@ -53,6 +53,7 @@ re_renderer = { workspace = true, default-features = false }
 re_smart_channel.workspace = true
 re_space_view_bar_chart.workspace = true
 re_space_view_spatial.workspace = true
+re_space_view_tensor.workspace = true
 re_space_view_text_box.workspace = true
 re_space_view_text.workspace = true
 re_space_view_time_series.workspace = true

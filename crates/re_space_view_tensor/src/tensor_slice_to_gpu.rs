@@ -8,10 +8,7 @@ use re_viewer_context::{
     TensorStats,
 };
 
-use super::{
-    ui::{selected_tensor_slice, SliceSelection},
-    ViewTensorState,
-};
+use crate::space_view_class::{selected_tensor_slice, PerTensorState, SliceSelection};
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorUploadError {
@@ -29,7 +26,7 @@ pub fn colormapped_texture(
     render_ctx: &mut re_renderer::RenderContext,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    state: &ViewTensorState,
+    state: &PerTensorState,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
 

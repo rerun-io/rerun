@@ -47,6 +47,7 @@ re_smart_channel = { path = "crates/re_smart_channel", version = "0.7.0-alpha.0"
 re_space_view = { path = "crates/re_space_view", version = "0.7.0-alpha.0", default-features = false }
 re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "0.7.0-alpha.0", default-features = false }
 re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "0.7.0-alpha.0", default-features = false }
+re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "0.7.0-alpha.0", default-features = false }
 re_space_view_text = { path = "crates/re_space_view_text", version = "0.7.0-alpha.0", default-features = false }
 re_space_view_text_box = { path = "crates/re_space_view_text_box", version = "0.7.0-alpha.0", default-features = false }
 re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "0.7.0-alpha.0", default-features = false }

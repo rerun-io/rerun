@@ -5,17 +5,41 @@ use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
 use re_components::{DecodedTensor, Tensor, TensorDimension};
+use re_data_store::InstancePath;
 use re_data_ui::tensor_summary_ui_grid_contents;
+use re_log_types::EntityPath;
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
-use re_viewer_context::{gpu_bridge, TensorStatsCache, ViewerContext};
+use re_viewer_context::{
+    gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState, TensorStatsCache,
+    TypedScene, ViewerContext,
+};
 
-use super::dimension_mapping_ui;
+use crate::{scene_part::SceneTensor, tensor_dimension_mapper::dimension_mapping_ui};
 
-// ---
+#[derive(Default)]
+pub struct TensorSpaceView;
+
+#[derive(Default)]
+pub struct ViewTensorState {
+    /// Selects in [`Self::state_tensors`].
+    pub selected_tensor: Option<InstancePath>,
+
+    pub state_tensors: ahash::HashMap<InstancePath, PerTensorState>,
+}
+
+impl SpaceViewState for ViewTensorState {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
 
 /// How we slice a given tensor
-#[derive(Clone, Debug, Hash, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Default, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct SliceSelection {
     /// How we select which dimensions to project the tensor onto.
     pub dim_mapping: DimensionMapping,
@@ -24,8 +48,7 @@ pub struct SliceSelection {
     pub selector_values: BTreeMap<usize, u64>,
 }
 
-#[derive(Clone)]
-pub struct ViewTensorState {
+pub struct PerTensorState {
     /// What slice are we vieiwing?
     slice: SliceSelection,
 
@@ -40,8 +63,8 @@ pub struct ViewTensorState {
     tensor: Option<DecodedTensor>,
 }
 
-impl ViewTensorState {
-    pub fn create(tensor: &DecodedTensor) -> ViewTensorState {
+impl PerTensorState {
+    pub fn create(tensor: &DecodedTensor) -> PerTensorState {
         Self {
             slice: SliceSelection {
                 dim_mapping: DimensionMapping::create(tensor.shape()),
@@ -61,7 +84,7 @@ impl ViewTensorState {
         &self.color_mapping
     }
 
-    pub(crate) fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         let Some(tensor) = &self.tensor else {
             ui.label("No Tensor shown in this Space View.");
             return;
@@ -94,10 +117,98 @@ impl ViewTensorState {
     }
 }
 
-pub(crate) fn view_tensor(
+impl SpaceViewClass for TensorSpaceView {
+    type State = ViewTensorState;
+    type Context = ();
+    type SceneParts = SceneTensor;
+    type ScenePartData = ();
+
+    fn name(&self) -> SpaceViewClassName {
+        "Tensor".into()
+    }
+
+    fn icon(&self) -> &'static re_ui::Icon {
+        &re_ui::icons::SPACE_VIEW_HISTOGRAM
+    }
+
+    fn help_text(&self, _re_ui: &re_ui::ReUi, _state: &Self::State) -> egui::WidgetText {
+        "Select the Space View to configure which dimensions are shown.".into()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+        None
+    }
+
+    fn selection_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::State,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
+    ) {
+        if let Some(selected_tensor) = &state.selected_tensor {
+            if let Some(state_tensor) = state.state_tensors.get_mut(selected_tensor) {
+                state_tensor.ui(ctx, ui);
+            }
+        }
+    }
+
+    fn ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut Self::State,
+        scene: &mut TypedScene<Self>,
+        _space_origin: &EntityPath,
+        _space_view_id: SpaceViewId,
+    ) {
+        re_tracing::profile_function!();
+
+        let tensors = &mut scene.parts.tensors;
+
+        if tensors.is_empty() {
+            ui.centered_and_justified(|ui| ui.label("(empty)"));
+            state.selected_tensor = None;
+        } else {
+            if let Some(selected_tensor) = &state.selected_tensor {
+                if !tensors.contains_key(selected_tensor) {
+                    state.selected_tensor = None;
+                }
+            }
+            if state.selected_tensor.is_none() {
+                state.selected_tensor = Some(tensors.iter().next().unwrap().0.clone());
+            }
+
+            if tensors.len() > 1 {
+                // Show radio buttons for the different tensors we have in this view - better than nothing!
+                ui.horizontal(|ui| {
+                    for instance_path in tensors.keys() {
+                        let is_selected = state.selected_tensor.as_ref() == Some(instance_path);
+                        if ui.radio(is_selected, instance_path.to_string()).clicked() {
+                            state.selected_tensor = Some(instance_path.clone());
+                        }
+                    }
+                });
+            }
+
+            if let Some(selected_tensor) = &state.selected_tensor {
+                if let Some(tensor) = tensors.get(selected_tensor) {
+                    let state_tensor = state
+                        .state_tensors
+                        .entry(selected_tensor.clone())
+                        .or_insert_with(|| PerTensorState::create(tensor));
+                    view_tensor(ctx, ui, state_tensor, tensor);
+                }
+            }
+        }
+    }
+}
+
+fn view_tensor(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewTensorState,
+    state: &mut PerTensorState,
     tensor: &DecodedTensor,
 ) {
     re_tracing::profile_function!();
@@ -152,7 +263,7 @@ pub(crate) fn view_tensor(
 fn tensor_slice_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewTensorState,
+    state: &mut PerTensorState,
     tensor: &DecodedTensor,
     dimension_labels: [(String, bool); 2],
 ) -> anyhow::Result<()> {
@@ -169,7 +280,7 @@ fn tensor_slice_ui(
 fn paint_tensor_slice(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut ViewTensorState,
+    state: &mut PerTensorState,
     tensor: &DecodedTensor,
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     re_tracing::profile_function!();
@@ -218,7 +329,7 @@ fn paint_tensor_slice(
 // ----------------------------------------------------------------------------
 
 /// How we map values to colors.
-#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ColorMapping {
     pub map: Colormap,
     pub gamma: f32,
@@ -339,7 +450,7 @@ fn paint_colormap_gradient(
 // ----------------------------------------------------------------------------
 
 /// Should we scale the rendered texture, and if so, how?
-#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum TextureScaling {
     /// No scaling, texture size will match the tensor's width/height dimensions.
     Original,
@@ -364,7 +475,7 @@ impl Display for TextureScaling {
 }
 
 /// Scaling, filtering, aspect ratio, etc for the rendered texture.
-#[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 struct TextureSettings {
     /// Should the aspect ratio of the tensor be kept when scaling?
     keep_aspect_ratio: bool,
@@ -627,7 +738,7 @@ fn paint_axis_names(
     }
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
+fn selectors_ui(ui: &mut egui::Ui, state: &mut PerTensorState, tensor: &Tensor) {
     for selector in &state.slice.dim_mapping.selectors {
         if !selector.visible {
             continue;

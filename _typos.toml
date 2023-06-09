@@ -16,3 +16,10 @@ teh = "teh" # part of @teh-cmc
 
 # American English:
 grey = "gray"
+
+[default]
+# Work around for typos inside of 8-character hashes. These show up inside of ipynb.
+# e.g. "f4e1caf9" -> `caf` should be `calf`
+# Specifically limit ourselves to exactly 8 chars in a quoted strong.
+# Just don't spell "defaced" wrong.
+extend-ignore-re = ["\"[a-f0-9]{8}\""]
