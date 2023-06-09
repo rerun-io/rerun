@@ -172,7 +172,7 @@ impl AppState {
                 }
             });
 
-        blueprint.save_changes(command_sender);
+        blueprint.sync_changes(command_sender);
 
         {
             // We move the time at the very end of the frame,

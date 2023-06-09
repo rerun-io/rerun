@@ -1,6 +1,7 @@
 use re_viewer_context::ViewerContext;
 use re_viewport::{SpaceInfoCollection, Viewport, ViewportBlueprint};
 
+/// Show the left-handle panel based on the current [`ViewportBlueprint`]
 pub fn blueprint_panel_ui(
     blueprint: &mut ViewportBlueprint<'_>,
     ctx: &mut ViewerContext<'_>,

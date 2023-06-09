@@ -16,7 +16,9 @@ use crate::{
     SpaceViewBlueprint, Viewport,
 };
 
-/// Defines the layout of the whole Viewer (or will, eventually).
+// ----------------------------------------------------------------------------
+
+/// Defines the layout of the Viewport
 #[derive(Clone)]
 pub struct ViewportBlueprint<'a> {
     pub blueprint_db: &'a StoreDb,
@@ -75,7 +77,7 @@ impl<'a> ViewportBlueprint<'a> {
         }
     }
 
-    pub fn save_changes(&self, command_sender: &CommandSender) {
+    pub fn sync_changes(&self, command_sender: &CommandSender) {
         let mut deltas = vec![];
 
         sync_viewport(&mut deltas, &self.viewport, &self.snapshot);
@@ -100,6 +102,29 @@ impl<'a> ViewportBlueprint<'a> {
         ));
     }
 }
+
+// ----------------------------------------------------------------------------
+
+// TODO(jleibs): Move this helper to a better location
+fn push_one_component<C: SerializableComponent>(
+    deltas: &mut Vec<DataRow>,
+    entity_path: &EntityPath,
+    timepoint: &TimePoint,
+    component: C,
+) {
+    let mut row = DataRow::from_cells1(
+        RowId::random(),
+        entity_path.clone(),
+        timepoint.clone(),
+        1,
+        [component].as_slice(),
+    );
+    row.compute_all_size_bytes();
+
+    deltas.push(row);
+}
+
+// ----------------------------------------------------------------------------
 
 fn load_space_view(
     path: &EntityPath,
@@ -174,25 +199,9 @@ fn load_viewport(
     viewport
 }
 
-pub fn push_one_component<C: SerializableComponent>(
-    deltas: &mut Vec<DataRow>,
-    entity_path: &EntityPath,
-    timepoint: &TimePoint,
-    component: C,
-) {
-    let mut row = DataRow::from_cells1(
-        RowId::random(),
-        entity_path.clone(),
-        timepoint.clone(),
-        1,
-        [component].as_slice(),
-    );
-    row.compute_all_size_bytes();
+// ----------------------------------------------------------------------------
 
-    deltas.push(row);
-}
-
-pub fn sync_space_view(
+fn sync_space_view(
     deltas: &mut Vec<DataRow>,
     space_view: &SpaceViewBlueprint,
     snapshot: Option<&SpaceViewBlueprint>,
@@ -215,7 +224,7 @@ pub fn sync_space_view(
     }
 }
 
-pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
+fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
     let entity_path = EntityPath::from(format!(
         "{}/{}",
         SpaceViewComponent::SPACEVIEW_PREFIX,
@@ -234,7 +243,7 @@ pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) 
     deltas.push(row);
 }
 
-pub fn sync_viewport(deltas: &mut Vec<DataRow>, viewport: &Viewport, snapshot: &Viewport) {
+fn sync_viewport(deltas: &mut Vec<DataRow>, viewport: &Viewport, snapshot: &Viewport) {
     let entity_path = EntityPath::from(VIEWPORT_PATH);
 
     // TODO(jleibs): Seq instead of timeless?

@@ -4,6 +4,7 @@ use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemComman
 
 use crate::blueprint_components::panel::PanelState;
 
+/// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
     blueprint_db: Option<&'a StoreDb>,
     is_narrow_screen: bool,
@@ -76,8 +77,12 @@ impl<'a> AppBlueprint<'a> {
             command_sender,
         );
     }
+}
 
-    pub fn send_panel_expanded(
+// ----------------------------------------------------------------------------
+
+impl<'a> AppBlueprint<'a> {
+    fn send_panel_expanded(
         &self,
         panel_name: &str,
         expanded: bool,
