@@ -881,7 +881,7 @@ impl eframe::App for App {
 
         self.run_pending_commands(&mut blueprint, &mut store_hub, egui_ctx, frame);
 
-        // The only we we don't have a `blueprint_id` is if we don't have a blueprint
+        // The only way we don't have a `blueprint_id` is if we don't have a blueprint
         // and the only way we don't have a blueprint is if we don't have an app.
         if let Some(blueprint_id) = &blueprint.blueprint_id {
             let blueprint_db = store_hub.store_db_mut(blueprint_id);
