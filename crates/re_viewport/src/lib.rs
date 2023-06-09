@@ -14,7 +14,7 @@ mod viewport;
 pub mod blueprint_components;
 
 pub use space_info::SpaceInfoCollection;
-pub use space_view::{SpaceViewBlueprint, SpaceViewState};
+pub use space_view::SpaceViewBlueprint;
 pub use view_category::ViewCategory;
 pub use viewport::{Viewport, ViewportState};
 

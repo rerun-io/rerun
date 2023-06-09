@@ -2,7 +2,9 @@ use re_arrow_store::Timeline;
 use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
-use re_viewer_context::{SpaceViewClassName, SpaceViewHighlights, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, ViewerContext,
+};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -139,25 +141,19 @@ impl SpaceViewBlueprint {
 
     pub fn selection_ui(
         &mut self,
-        view_state: &mut SpaceViewState,
+        view_state: &mut dyn SpaceViewState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) {
         re_tracing::profile_function!();
         if let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) {
-            space_view_class.selection_ui(
-                ctx,
-                ui,
-                view_state.state.as_mut(),
-                &self.space_origin,
-                self.id,
-            );
+            space_view_class.selection_ui(ctx, ui, view_state, &self.space_origin, self.id);
         }
     }
 
     pub(crate) fn scene_ui(
         &mut self,
-        view_state: &mut SpaceViewState,
+        view_state: &mut dyn SpaceViewState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
@@ -176,7 +172,7 @@ impl SpaceViewBlueprint {
 
         space_view_class.prepare_populate(
             ctx,
-            view_state.state.as_mut(),
+            view_state,
             &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
             self.data_blueprint.data_blueprints_individual(),
         );
@@ -190,17 +186,10 @@ impl SpaceViewBlueprint {
         };
 
         let mut scene = space_view_class.new_scene();
-        scene.populate(ctx, &query, view_state.state.as_ref(), highlights);
+        scene.populate(ctx, &query, view_state, highlights);
 
         ui.scope(|ui| {
-            space_view_class.ui(
-                ctx,
-                ui,
-                view_state.state.as_mut(),
-                scene,
-                &self.space_origin,
-                self.id,
-            );
+            space_view_class.ui(ctx, ui, view_state, scene, &self.space_origin, self.id);
         });
     }
 
@@ -248,12 +237,4 @@ impl SpaceViewBlueprint {
             self.entities_determined_by_user = true;
         }
     }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Camera position and similar.
-// TODO(wumpf): Remove this field
-pub struct SpaceViewState {
-    pub state: Box<dyn re_viewer_context::SpaceViewState>,
 }
