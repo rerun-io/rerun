@@ -40,7 +40,7 @@ impl SpaceViewClassRegistry {
     }
 
     /// Queries a Space View type by class name, returning `None` if it is not registered.
-    pub fn get(&self, name: &SpaceViewClassName) -> Option<&dyn DynSpaceViewClass> {
+    fn get(&self, name: &SpaceViewClassName) -> Option<&dyn DynSpaceViewClass> {
         self.registry.get(name).map(|boxed| boxed.as_ref())
     }
 
