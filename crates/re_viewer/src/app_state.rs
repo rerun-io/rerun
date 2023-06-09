@@ -7,9 +7,9 @@ use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SpaceViewClassRegistry, StoreContext, SystemCommand, SystemCommandSender, ViewerContext,
 };
-use re_viewport::{SpaceInfoCollection, ViewportState};
+use re_viewport::{SpaceInfoCollection, ViewportBlueprint, ViewportState};
 
-use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::Blueprint};
+use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::show_blueprint_panel};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -83,7 +83,7 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
-        let blueprint_snapshot = Blueprint::from_db(store_context.blueprint);
+        let blueprint_snapshot = ViewportBlueprint::from_db(store_context.blueprint);
         // Make a mutable copy we can edit.
         let mut blueprint = blueprint_snapshot.clone();
 
@@ -149,7 +149,8 @@ impl AppState {
 
                 blueprint.viewport.on_frame_start(&mut ctx, &spaces_info);
 
-                blueprint.show_panel(
+                show_blueprint_panel(
+                    &mut blueprint,
                     &mut ctx,
                     ui,
                     &spaces_info,
@@ -175,7 +176,7 @@ impl AppState {
 
         let deltas = blueprint.compute_deltas(&blueprint_snapshot);
         command_sender.send_system(SystemCommand::UpdateBlueprint(
-            blueprint.blueprint.store_id().clone(),
+            blueprint.blueprint_db.store_id().clone(),
             deltas,
         ));
 
