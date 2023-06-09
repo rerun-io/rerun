@@ -24,7 +24,7 @@ pub(crate) use {
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
-pub use store_hub::StoreHub;
+pub use store_hub::StoreBundle;
 
 pub mod external {
     pub use {eframe, egui};

@@ -1,15 +1,18 @@
 //! The main Rerun drop-down menu found in the top panel.
 
 use egui::NumExt as _;
-use itertools::Itertools as _;
 
-use re_log_types::{ApplicationId, StoreKind};
 use re_ui::Command;
-use re_viewer_context::AppOptions;
+use re_viewer_context::{AppOptions, StoreContext};
 
-use crate::{app_state::AppState, App, StoreHub};
+use crate::App;
 
-pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+pub fn rerun_menu_button_ui(
+    store_context: Option<&StoreContext<'_>>,
+    ui: &mut egui::Ui,
+    frame: &mut eframe::Frame,
+    app: &mut App,
+) {
     // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
     let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
     let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
@@ -34,7 +37,7 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
         {
             Command::Open.menu_button_ui(ui, &app.command_sender);
 
-            save_buttons_ui(ui, app);
+            save_buttons_ui(ui, store_context, app);
 
             ui.add_space(spacing);
 
@@ -64,13 +67,11 @@ pub fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &
 
         ui.add_space(spacing);
 
-        ui.menu_button("Recordings", |ui| {
-            recordings_menu(ui, &app.store_hub, &mut app.state);
-        });
-
-        ui.menu_button("Blueprints", |ui| {
-            blueprints_menu(ui, &app.selected_app_id(), &app.store_hub, &mut app.state);
-        });
+        {
+            ui.menu_button("Recordings", |ui| {
+                recordings_menu(ui, store_context, app);
+            });
+        }
 
         ui.menu_button("Options", |ui| {
             options_menu_ui(ui, frame, app.app_options_mut());
@@ -131,16 +132,17 @@ fn about_rerun_ui(ui: &mut egui::Ui, build_info: &re_build_info::BuildInfo) {
     ui.hyperlink_to("www.rerun.io", "https://www.rerun.io/");
 }
 
-fn recordings_menu(ui: &mut egui::Ui, store_hub: &StoreHub, app_state: &mut AppState) {
-    let store_dbs = store_hub
-        .recordings()
-        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
-        .collect_vec();
+fn recordings_menu(ui: &mut egui::Ui, store_context: Option<&StoreContext<'_>>, app: &mut App) {
+    let store_dbs = store_context.map_or(vec![], |ctx| ctx.alternate_recordings.clone());
 
     if store_dbs.is_empty() {
         ui.weak("(empty)");
         return;
     }
+
+    let active_recording = store_context
+        .and_then(|ctx| ctx.recording)
+        .map(|rec| rec.store_id());
 
     ui.style_mut().wrap = Some(false);
     for store_db in &store_dbs {
@@ -154,65 +156,11 @@ fn recordings_menu(ui: &mut egui::Ui, store_hub: &StoreHub, app_state: &mut AppS
             "<UNKNOWN>".to_owned()
         };
         if ui
-            .radio(
-                app_state.recording_id().as_ref() == Some(store_db.store_id()),
-                info,
-            )
+            .radio(active_recording == Some(store_db.store_id()), info)
             .clicked()
         {
-            app_state.set_recording_id(store_db.store_id().clone());
-        }
-    }
-}
-
-fn blueprints_menu(
-    ui: &mut egui::Ui,
-    app_id: &ApplicationId,
-    store_hub: &StoreHub,
-    app_state: &mut AppState,
-) {
-    let blueprint_dbs = store_hub
-        .blueprints()
-        .sorted_by_key(|store_db| store_db.store_info().map(|ri| ri.started))
-        .filter(|log| {
-            log.store_info()
-                .map_or(false, |ri| &ri.application_id == app_id)
-        })
-        .collect_vec();
-
-    if blueprint_dbs.is_empty() {
-        ui.weak("(empty)");
-        return;
-    }
-
-    ui.style_mut().wrap = Some(false);
-    for store_db in blueprint_dbs
-        .iter()
-        .filter(|log| log.store_kind() == StoreKind::Blueprint)
-    {
-        let info = if let Some(store_info) = store_db.store_info() {
-            if store_info.is_app_default_blueprint() {
-                format!("{} - Default Blueprint", store_info.application_id,)
-            } else {
-                format!(
-                    "{} - {}",
-                    store_info.application_id,
-                    store_info.started.format()
-                )
-            }
-        } else {
-            "<UNKNOWN>".to_owned()
-        };
-        if ui
-            .radio(
-                app_state.selected_blueprint_by_app.get(app_id) == Some(store_db.store_id()),
-                info,
-            )
-            .clicked()
-        {
-            app_state
-                .selected_blueprint_by_app
-                .insert(app_id.clone(), store_db.store_id().clone());
+            // TODO(jleibs): This is gross but necessary to avoid a deadlock
+            app.requested_recording_id = Some(store_db.store_id().clone());
         }
     }
 }
@@ -252,7 +200,7 @@ fn options_menu_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, options: &mut 
 
 // TODO(emilk): support saving data on web
 #[cfg(not(target_arch = "wasm32"))]
-fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
+fn save_buttons_ui(ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>, app: &mut App) {
     let file_save_in_progress = app.background_tasks.is_file_save_in_progress();
 
     let save_button = Command::Save.menu_button(ui.ctx());
@@ -270,9 +218,9 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             });
         });
     } else {
-        let store_db_is_nonempty = app
-            .recording_db()
-            .map_or(false, |store_db| !store_db.is_empty());
+        let store_db_is_nonempty = store_view
+            .and_then(|view| view.recording)
+            .map_or(false, |recording| !recording.is_empty());
         ui.add_enabled_ui(store_db_is_nonempty, |ui| {
             if ui
                 .add(save_button)
@@ -287,7 +235,7 @@ fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
             // button, as this will determine whether its grayed out or not!
             // TODO(cmc): In practice the loop (green) selection is always there
             // at the moment so...
-            let loop_selection = app.state.loop_selection();
+            let loop_selection = app.state.loop_selection(store_view);
 
             if ui
                 .add_enabled(loop_selection.is_some(), save_selection_button)

@@ -1,13 +1,13 @@
-use crate::StoreHub;
+use crate::StoreBundle;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use]
-pub fn load_file_path(path: &std::path::Path) -> Option<StoreHub> {
-    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<StoreHub> {
+pub fn load_file_path(path: &std::path::Path) -> Option<StoreBundle> {
+    fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<StoreBundle> {
         re_tracing::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
-        StoreHub::from_rrd(file)
+        StoreBundle::from_rrd(file)
     }
 
     re_log::info!("Loading {path:?}…");
@@ -35,8 +35,8 @@ pub fn load_file_path(path: &std::path::Path) -> Option<StoreHub> {
 }
 
 #[must_use]
-pub fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<StoreHub> {
-    match StoreHub::from_rrd(read) {
+pub fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<StoreBundle> {
+    match StoreBundle::from_rrd(read) {
         Ok(mut rrd) => {
             re_log::info!("Loaded {name:?}");
             for store_db in rrd.store_dbs_mut() {

@@ -3,7 +3,7 @@ use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_renderer::WgpuResourcePoolStatistics;
 
-use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
+use crate::{env_vars::RERUN_TRACK_ALLOCATIONS, store_hub::StoreHubStats};
 
 // ----------------------------------------------------------------------------
 
@@ -18,8 +18,7 @@ impl MemoryPanel {
     pub fn update(
         &mut self,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &DataStoreStats,
-        blueprint_stats: &DataStoreStats,
+        store_stats: &StoreHubStats,
     ) {
         re_tracing::profile_function!();
         self.history.capture(
@@ -27,8 +26,8 @@ impl MemoryPanel {
                 (gpu_resource_stats.total_buffer_size_in_bytes
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
-            Some(store_stats.total.num_bytes as _),
-            Some(blueprint_stats.total.num_bytes as _),
+            Some(store_stats.recording_stats.total.num_bytes as _),
+            Some(store_stats.blueprint_stats.total.num_bytes as _),
         );
     }
 
@@ -43,10 +42,7 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_config: &DataStoreConfig,
-        blueprint_config: &DataStoreConfig,
-        store_stats: &DataStoreStats,
-        blueprint_stats: &DataStoreStats,
+        store_stats: &StoreHubStats,
     ) {
         re_tracing::profile_function!();
 
@@ -58,15 +54,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(
-                    ui,
-                    limit,
-                    gpu_resource_stats,
-                    store_config,
-                    blueprint_config,
-                    store_stats,
-                    blueprint_stats,
-                );
+                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -79,10 +67,7 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_config: &DataStoreConfig,
-        blueprint_config: &DataStoreConfig,
-        store_stats: &DataStoreStats,
-        blueprint_stats: &DataStoreStats,
+        store_stats: &StoreHubStats,
     ) {
         ui.strong("Rerun Viewer resource usage");
 
@@ -98,12 +83,20 @@ impl MemoryPanel {
 
         ui.separator();
         ui.collapsing("Datastore Resources", |ui| {
-            Self::store_stats(ui, store_config, store_stats);
+            Self::store_stats(
+                ui,
+                &store_stats.recording_config,
+                &store_stats.recording_stats,
+            );
         });
 
         ui.separator();
         ui.collapsing("Blueprint Resources", |ui| {
-            Self::store_stats(ui, blueprint_config, blueprint_stats);
+            Self::store_stats(
+                ui,
+                &store_stats.blueprint_config,
+                &store_stats.blueprint_stats,
+            );
         });
     }
 

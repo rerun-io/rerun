@@ -2,7 +2,7 @@ use re_data_store::store_db::StoreDb;
 
 use crate::{
     AppOptions, Caches, ComponentUiRegistry, Item, ItemCollection, SelectionState,
-    SpaceViewClassRegistry, TimeControl,
+    SpaceViewClassRegistry, StoreContext, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -22,7 +22,11 @@ pub struct ViewerContext<'a> {
     pub space_view_class_registry: &'a SpaceViewClassRegistry,
 
     /// The current recording.
+    /// TODO(jleibs): This can go away
     pub store_db: &'a StoreDb,
+
+    /// The current view of the store
+    pub store_context: &'a StoreContext<'a>,
 
     /// UI config for the current recording (found in [`StoreDb`]).
     pub rec_cfg: &'a mut RecordingConfig,

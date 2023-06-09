@@ -1,15 +1,15 @@
 use ahash::HashMap;
 
 use re_data_store::StoreDb;
-use re_log_types::{ApplicationId, LogMsg, StoreId, TimeRangeF};
+use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::Receiver;
 use re_viewer_context::{
     AppOptions, Caches, ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry,
-    ViewerContext,
+    StoreContext, ViewerContext,
 };
 use re_viewport::ViewportState;
 
-use crate::ui::Blueprint;
+use crate::{store_hub::StoreHub, ui::Blueprint};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -22,11 +22,6 @@ pub struct AppState {
     /// Things that need caching.
     #[serde(skip)]
     pub(crate) cache: Caches,
-
-    #[serde(skip)]
-    selected_rec_id: Option<StoreId>,
-    #[serde(skip)]
-    pub(crate) selected_blueprint_by_app: HashMap<ApplicationId, StoreId>,
 
     /// Configuration for the current recording (found in [`StoreDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
@@ -41,16 +36,6 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// The selected/visible recording id, if any.
-    pub fn recording_id(&self) -> Option<StoreId> {
-        self.selected_rec_id.clone()
-    }
-
-    /// The selected/visible recording id, if any.
-    pub fn set_recording_id(&mut self, recording_id: StoreId) {
-        self.selected_rec_id = Some(recording_id);
-    }
-
     pub fn app_options(&self) -> &AppOptions {
         &self.app_options
     }
@@ -61,18 +46,25 @@ impl AppState {
 
     /// Currently selected section of time, if any.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    pub fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
-        self.selected_rec_id.as_ref().and_then(|rec_id| {
-            self.recording_configs
-                .get(rec_id)
-                // is there an active loop selection?
-                .and_then(|rec_cfg| {
-                    rec_cfg
-                        .time_ctrl
-                        .loop_selection()
-                        .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
-                })
-        })
+    pub fn loop_selection(
+        &self,
+        store_context: Option<&StoreContext<'_>>,
+    ) -> Option<(re_data_store::Timeline, TimeRangeF)> {
+        store_context
+            .as_ref()
+            .and_then(|ctx| ctx.recording)
+            .map(|rec| rec.store_id())
+            .and_then(|rec_id| {
+                self.recording_configs
+                    .get(rec_id)
+                    // is there an active loop selection?
+                    .and_then(|rec_cfg| {
+                        rec_cfg
+                            .time_ctrl
+                            .loop_selection()
+                            .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
+                    })
+            })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -82,6 +74,7 @@ impl AppState {
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
         store_db: &StoreDb,
+        store_context: &StoreContext<'_>,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
@@ -92,8 +85,6 @@ impl AppState {
         let Self {
             app_options,
             cache,
-            selected_rec_id: _,
-            selected_blueprint_by_app: _,
             recording_configs,
             selection_panel,
             time_panel,
@@ -113,6 +104,7 @@ impl AppState {
             space_view_class_registry,
             component_ui_registry,
             store_db,
+            store_context,
             rec_cfg,
             re_ui,
             render_ctx,
@@ -166,20 +158,8 @@ impl AppState {
         recording_config_entry(&mut self.recording_configs, id, data_source, store_db)
     }
 
-    pub fn cleanup(&mut self, store_hub: &crate::StoreHub) {
+    pub fn cleanup(&mut self, store_hub: &StoreHub) {
         re_tracing::profile_function!();
-
-        if !self
-            .selected_rec_id
-            .as_ref()
-            .map_or(false, |rec_id| store_hub.contains_recording(rec_id))
-        {
-            // Pick any:
-            self.selected_rec_id = store_hub
-                .recordings()
-                .next()
-                .map(|log| log.store_id().clone());
-        }
 
         self.recording_configs
             .retain(|store_id, _| store_hub.contains_recording(store_id));
