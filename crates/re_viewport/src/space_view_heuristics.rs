@@ -253,7 +253,7 @@ fn default_created_space_views_from_candidates(
                         .collect_vec();
 
                     let mut space_view = SpaceViewBlueprint::new(
-                        candidate.class,
+                        *candidate.class_name(),
                         candidate.category,
                         &candidate.space_origin,
                         &entities,

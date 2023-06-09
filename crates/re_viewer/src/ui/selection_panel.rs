@@ -180,10 +180,10 @@ fn what_is_selected_ui(
             });
         }
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
-                    .group_mut(*data_blueprint_group_handle)
+                    .group(*data_blueprint_group_handle)
                 {
                     egui::Grid::new("data_blueprint_group")
                         .num_columns(2)
@@ -199,13 +199,7 @@ fn what_is_selected_ui(
                             ui.end_row();
 
                             ui.label("in Space View:");
-                            re_viewport::item_ui::space_view_button_to(
-                                ctx,
-                                ui,
-                                space_view.display_name.clone(),
-                                space_view.id,
-                                space_view.category,
-                            );
+                            re_viewport::item_ui::space_view_button(ctx, ui, space_view);
                             ui.end_row();
                         });
                 }
@@ -258,9 +252,16 @@ fn blueprint_ui(
                 let space_view_state = viewport_state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
-                    space_view.class,
+                    space_view.class_name(),
                 );
-                space_view.selection_ui(space_view_state, ctx, ui);
+
+                space_view.class(ctx).selection_ui(
+                    ctx,
+                    ui,
+                    space_view_state,
+                    &space_view.space_origin,
+                    space_view.id,
+                );
             }
         }
 

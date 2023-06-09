@@ -31,32 +31,6 @@ pub enum ViewCategory {
     Tensor,
 }
 
-impl ViewCategory {
-    pub fn icon(self) -> &'static re_ui::Icon {
-        match self {
-            ViewCategory::Text => &re_ui::icons::SPACE_VIEW_TEXT,
-            ViewCategory::TextBox => &re_ui::icons::SPACE_VIEW_TEXTBOX,
-            ViewCategory::TimeSeries => &re_ui::icons::SPACE_VIEW_SCATTERPLOT,
-            ViewCategory::BarChart => &re_ui::icons::SPACE_VIEW_HISTOGRAM,
-            ViewCategory::Spatial => &re_ui::icons::SPACE_VIEW_3D,
-            ViewCategory::Tensor => &re_ui::icons::SPACE_VIEW_TENSOR,
-        }
-    }
-}
-
-impl std::fmt::Display for ViewCategory {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            ViewCategory::Text => "Text",
-            ViewCategory::TextBox => "Text Box",
-            ViewCategory::TimeSeries => "Time Series",
-            ViewCategory::BarChart => "Bar Chart",
-            ViewCategory::Spatial => "Spatial",
-            ViewCategory::Tensor => "Tensor",
-        })
-    }
-}
-
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 
 // TODO(cmc): these `categorize_*` functions below are pretty dangerous: make sure you've covered

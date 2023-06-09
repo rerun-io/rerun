@@ -492,20 +492,11 @@ impl Viewport {
                 .into_iter()
                 .sorted_by_key(|space_view| space_view.space_origin.to_string())
             {
-                let icon = if let Some(class) = ctx
-                    .space_view_class_registry
-                    .get_or_log_error(space_view.class)
-                {
-                    class.icon()
-                } else {
-                    space_view.category.icon()
-                };
-
                 if ctx
                     .re_ui
                     .selectable_label_with_icon(
                         ui,
-                        icon,
+                        space_view.class(ctx).icon(),
                         if space_view.space_origin.is_root() {
                             space_view.display_name.clone()
                         } else {
@@ -556,16 +547,14 @@ impl ViewportState {
         &mut self,
         space_view_class_registry: &SpaceViewClassRegistry,
         space_view_id: SpaceViewId,
-        space_view_class: SpaceViewClassName,
+        space_view_class: &SpaceViewClassName,
     ) -> &mut dyn SpaceViewState {
         self.space_view_states
             .entry(space_view_id)
             .or_insert_with(|| {
-                if let Some(state) = space_view_class_registry.get_or_log_error(space_view_class) {
-                    state.new_state()
-                } else {
-                    Box::<()>::default()
-                }
+                space_view_class_registry
+                    .get_or_log_error(space_view_class)
+                    .new_state()
             })
             .as_mut()
     }
@@ -697,7 +686,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_state = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
-            space_view_blueprint.class,
+            space_view_blueprint.class_name(),
         );
 
         space_view_ui(
@@ -763,7 +752,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_state = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_id,
-            space_view.class,
+            space_view.class_name(),
         );
 
         let num_space_views = tiles.tiles.values().filter(|tile| tile.is_pane()).count();
@@ -796,8 +785,10 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             }
         }
 
-        // Show help last, since not all space views have help text
-        help_text_ui(self.ctx, ui, space_view, space_view_state);
+        let help_text = space_view
+            .class(self.ctx)
+            .help_text(self.ctx.re_ui, space_view_state);
+        re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
 
     // Styling:
@@ -822,21 +813,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             all_panes_must_have_tabs: true,
             ..Default::default()
         }
-    }
-}
-
-fn help_text_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    space_view_blueprint: &SpaceViewBlueprint,
-    space_view_state: &dyn SpaceViewState,
-) {
-    if let Some(help_text) = ctx
-        .space_view_class_registry
-        .get_or_log_error(space_view_blueprint.class)
-        .map(|class| class.help_text(ctx.re_ui, space_view_state))
-    {
-        re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
 }
 
