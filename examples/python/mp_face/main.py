@@ -27,17 +27,69 @@ SAMPLE_IMAGE_PATH = (DATASET_DIR / "image.jpg").resolve()
 # from https://pixabay.com/photos/brother-sister-girl-family-boy-977170/
 SAMPLE_IMAGE_URL = "https://i.imgur.com/Vu2Nqwb.jpg"
 
-
-def download_file(url: str, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    logging.info("Downloading %s to %s", url, path)
-    response = requests.get(url)
-    response.raise_for_status()
-    with open(path, "wb") as f:
-        f.write(response.content)
+# uncomment blendshapes of interest
+BLENDSHAPES_CATEGORIES = {
+    # "_neutral",
+    # "browDownLeft",
+    # "browDownRight",
+    # "browInnerUp",
+    # "browOuterUpLeft",
+    # "browOuterUpRight",
+    # "cheekPuff",
+    # "cheekSquintLeft",
+    # "cheekSquintRight",
+    "eyeBlinkLeft",
+    "eyeBlinkRight",
+    # "eyeLookDownLeft",
+    # "eyeLookDownRight",
+    # "eyeLookInLeft",
+    # "eyeLookInRight",
+    # "eyeLookOutLeft",
+    # "eyeLookOutRight",
+    # "eyeLookUpLeft",
+    # "eyeLookUpRight",
+    "eyeSquintLeft",
+    "eyeSquintRight",
+    "eyeWideLeft",
+    "eyeWideRight",
+    # "jawForward",
+    # "jawLeft",
+    "jawOpen",
+    # "jawRight",
+    # "mouthClose",
+    # "mouthDimpleLeft",
+    # "mouthDimpleRight",
+    # "mouthFrownLeft",
+    # "mouthFrownRight",
+    # "mouthFunnel",
+    # "mouthLeft",
+    # "mouthLowerDownLeft",
+    # "mouthLowerDownRight",
+    # "mouthPressLeft",
+    # "mouthPressRight",
+    # "mouthPucker",
+    # "mouthRight",
+    # "mouthRollLower",
+    # "mouthRollUpper",
+    # "mouthShrugLower",
+    # "mouthShrugUpper",
+    "mouthSmileLeft",
+    "mouthSmileRight",
+    # "mouthStretchLeft",
+    # "mouthStretchRight",
+    # "mouthUpperUpLeft",
+    # "mouthUpperUpRight",
+    # "noseSneerLeft",
+    # "noseSneerRight",
+}
 
 
 class FaceDetectorLogger:
+    """Logger for the MediaPipe Face Detection solution.
+
+    https://developers.google.com/mediapipe/solutions/vision/face_detector
+    """
+
     MODEL_PATH: Final = (MODEL_DIR / "blaze_face_short_range.tflite").resolve()
     MODEL_URL: Final = (
         "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/"
@@ -61,16 +113,11 @@ class FaceDetectorLogger:
         self._detector = vision.FaceDetector.create_from_options(self._options)
 
         rr.log_annotation_context(
-            "/",
+            "video/detector",
             rr.ClassDescription(keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]),
         )
 
-    def log_frame(self, image, frame_idx: int | None = None, frame_time_nano: int | None = None):
-        if frame_idx is not None:
-            rr.set_time_sequence("frame_nr", frame_idx)
-        if frame_time_nano is not None:
-            rr.set_time_nanos("frame_time", frame_time_nano)
-
+    def log_frame(self, image, frame_time_nano: int | None = None):
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
 
@@ -79,23 +126,143 @@ class FaceDetectorLogger:
             if self._video_mode
             else self._detector.detect(image)
         )
-        rr.log_cleared("video/faces", recursive=True)
+        rr.log_cleared("video/detector/faces/", recursive=True)
         for i, detection in enumerate(detection_result.detections):
             # log bounding box
             bbox = detection.bounding_box
             index, score = detection.categories[0].index, detection.categories[0].score
 
             # log bounding box
-            rr.log_rect(f"video/faces/{i}/bbox", [bbox.origin_x, bbox.origin_y, bbox.width, bbox.height])
-            rr.log_extension_components(f"video/faces/{i}/bbox", {"index": index, "score": score})
+            rr.log_rect(f"video/detector/faces/{i}/bbox", [bbox.origin_x, bbox.origin_y, bbox.width, bbox.height])
+            rr.log_extension_components(f"video/detector/faces/{i}/bbox", {"index": index, "score": score})
 
             # log keypoints
             pts = [
                 (math.floor(keypoint.x * width), math.floor(keypoint.y * height)) for keypoint in detection.keypoints
             ]
-            rr.log_points(f"video/faces/{i}/keypoints", pts, radii=3, keypoint_ids=list(range(6)))
+            rr.log_points(f"video/detector/faces/{i}/keypoints", pts, radii=3, keypoint_ids=list(range(6)))
 
-        rr.log_image("video/image", image.numpy_view())
+
+class FaceLandmarkerLogger:
+    """Logger for the MediaPipe Face Landmark Detection solution.
+
+    https://developers.google.com/mediapipe/solutions/vision/face_landmarker
+    """
+
+    MODEL_PATH: Final = (MODEL_DIR / "face_landmarker.task").resolve()
+    MODEL_URL: Final = (
+        "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/"
+        "face_landmarker.task"
+    )
+
+    def __init__(self, video_mode: bool = False, num_faces: int = 1):
+        self._video_mode = video_mode
+
+        # download model if necessary
+        if not self.MODEL_PATH.exists():
+            download_file(self.MODEL_URL, self.MODEL_PATH)
+
+        self._base_options = mp.tasks.BaseOptions(
+            model_asset_path=str(self.MODEL_PATH),
+        )
+        self._options = vision.FaceLandmarkerOptions(
+            base_options=self._base_options,
+            output_face_blendshapes=True,
+            num_faces=num_faces,
+            running_mode=mp.tasks.vision.RunningMode.VIDEO if self._video_mode else mp.tasks.vision.RunningMode.IMAGE,
+        )
+        self._detector = vision.FaceLandmarker.create_from_options(self._options)
+
+        # Extract classes from MediaPipe face mesh solution. The goal of this code is:
+        # 1) Log an annotation context with one class ID per facial feature. For each class ID, the class description
+        #    contains the connections between corresponding keypoints (taken from the MediaPipe face mesh solution)
+        # 2) A class ID array matching the class IDs in the annotation context to keypoint indices (to be passed as
+        #    the `class_ids` argument to `rr.log_points`).
+
+        classes = [
+            mp.solutions.face_mesh.FACEMESH_LIPS,
+            mp.solutions.face_mesh.FACEMESH_LEFT_EYE,
+            mp.solutions.face_mesh.FACEMESH_LEFT_IRIS,
+            mp.solutions.face_mesh.FACEMESH_LEFT_EYEBROW,
+            mp.solutions.face_mesh.FACEMESH_RIGHT_EYE,
+            mp.solutions.face_mesh.FACEMESH_RIGHT_EYEBROW,
+            mp.solutions.face_mesh.FACEMESH_RIGHT_IRIS,
+            mp.solutions.face_mesh.FACEMESH_FACE_OVAL,
+            mp.solutions.face_mesh.FACEMESH_NOSE,
+        ]
+
+        self._class_ids = [0] * mp.solutions.face_mesh.FACEMESH_NUM_LANDMARKS_WITH_IRISES
+        class_descriptions = []
+        for i, klass in enumerate(classes):
+            # MediaPipe only provides connections for class, not actual class per keypoint. So we have to extract the
+            # classes from the connections.
+            ids = set()
+            for connection in klass:
+                ids.add(connection[0])
+                ids.add(connection[1])
+
+            for id_ in ids:
+                self._class_ids[id_] = i
+
+            class_descriptions.append(
+                rr.ClassDescription(
+                    info=rr.AnnotationInfo(id=i),
+                    keypoint_connections=klass,
+                )
+            )
+
+        rr.log_annotation_context("video/landmarker", class_descriptions)
+        rr.log_annotation_context("reconstruction", class_descriptions)
+
+    def log_frame(self, image, frame_time_nano: int | None = None):
+        height, width, _ = image.shape
+        image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
+
+        detection_result = (
+            self._detector.detect_for_video(image, int(frame_time_nano / 1e6))
+            if self._video_mode
+            else self._detector.detect(image)
+        )
+        rr.log_cleared("video/landmarker/faces", recursive=True)
+        rr.log_cleared("reconstruction/faces", recursive=True)
+        rr.log_cleared("blendshapes", recursive=True)
+
+        for i, (landmark, blendshapes) in enumerate(
+            zip(detection_result.face_landmarks, detection_result.face_blendshapes)
+        ):
+            pts = [(math.floor(lm.x * width), math.floor(lm.y * height)) for lm in landmark]
+            keypoint_ids = list(range(len(landmark)))
+            rr.log_points(
+                f"video/landmarker/faces/{i}/landmarks",
+                pts,
+                radii=3,
+                keypoint_ids=keypoint_ids,
+                class_ids=self._class_ids,
+            )
+
+            rr.log_points(
+                f"reconstruction/faces/{i}",
+                [(lm.x, lm.y, lm.z) for lm in landmark],
+                keypoint_ids=keypoint_ids,
+                class_ids=self._class_ids,
+            )
+
+            for blendshape in blendshapes:
+                if blendshape.category_name in BLENDSHAPES_CATEGORIES:
+                    rr.log_scalar(f"blendshapes/{i}/{blendshape.category_name}", blendshape.score)
+
+
+# ========================================================================================
+# Main & CLI code
+
+
+def download_file(url: str, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    logging.info("Downloading %s to %s", url, path)
+    response = requests.get(url)
+    response.raise_for_status()
+    with open(path, "wb") as f:
+        f.write(response.content)
 
 
 def resize_image(image: npt.NDArray, max_dim: int | None) -> npt.NDArray:
@@ -109,7 +276,7 @@ def resize_image(image: npt.NDArray, max_dim: int | None) -> npt.NDArray:
     return image
 
 
-def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count: int | None) -> None:
+def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count: int | None, num_faces: int) -> None:
     """Run the face detector on a video stream.
 
     Args:
@@ -120,7 +287,8 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
     cap = cv2.VideoCapture(vid)
     fps = cap.get(cv2.CAP_PROP_FPS)
 
-    logger = FaceDetectorLogger(video_mode=True)
+    detector = FaceDetectorLogger(video_mode=True)
+    landmarker = FaceLandmarkerLogger(video_mode=True, num_faces=num_faces)
 
     print("Capturing video stream. Press ctrl-c to stop.")
     try:
@@ -145,7 +313,13 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
 
             # convert to rgb
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            logger.log_frame(frame, frame_idx=frame_idx, frame_time_nano=frame_time_nano)
+
+            # log data
+            rr.set_time_sequence("frame_nr", frame_idx)
+            rr.set_time_nanos("frame_time", frame_time_nano)
+            detector.log_frame(frame, frame_time_nano)
+            landmarker.log_frame(frame, frame_time_nano)
+            rr.log_image("video/image", frame)
 
     except KeyboardInterrupt:
         pass
@@ -155,13 +329,16 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
     cv2.destroyAllWindows()
 
 
-def run_from_sample_image(path: Path, max_dim: int | None) -> None:
+def run_from_sample_image(path: Path, max_dim: int | None, num_faces: int) -> None:
     """Run the face detector on a single image."""
     image = cv2.imread(str(path))
     image = resize_image(image, max_dim)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     logger = FaceDetectorLogger(video_mode=False)
+    landmarker = FaceLandmarkerLogger(video_mode=False, num_faces=num_faces)
     logger.log_frame(image)
+    landmarker.log_frame(image)
+    rr.log_image("video/image", image)
 
 
 def main() -> None:
@@ -193,6 +370,12 @@ def main() -> None:
         type=int,
         help="Resize the image such as its maximum dimension is not larger than this value.",
     )
+    parser.add_argument(
+        "--num-faces",
+        type=int,
+        default=1,
+        help="Max number of faces detected by the landmark model (temporal smoothing is applied only for a value of 1).",
+    )
 
     rr.script_add_args(parser)
 
@@ -204,13 +387,13 @@ def main() -> None:
         if not SAMPLE_IMAGE_PATH.exists():
             download_file(SAMPLE_IMAGE_URL, SAMPLE_IMAGE_PATH)
 
-        run_from_sample_image(SAMPLE_IMAGE_PATH, args.max_dim)
+        run_from_sample_image(SAMPLE_IMAGE_PATH, args.max_dim, args.num_faces)
     elif args.image is not None:
-        run_from_sample_image(args.image, args.max_dim)
+        run_from_sample_image(args.image, args.max_dim, args.num_faces)
     elif args.video is not None:
-        run_from_video_capture(str(args.video), args.max_dim, args.max_frame)
+        run_from_video_capture(str(args.video), args.max_dim, args.max_frame, args.num_faces)
     else:
-        run_from_video_capture(args.camera, args.max_dim, args.max_frame)
+        run_from_video_capture(args.camera, args.max_dim, args.max_frame, args.num_faces)
 
     rr.script_teardown(args)
 
