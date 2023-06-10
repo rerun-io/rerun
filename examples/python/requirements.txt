@@ -9,6 +9,7 @@
 -r dna/requirements.txt
 -r minimal/requirements.txt
 -r minimal_options/requirements.txt
+-r mp_face/requirements.txt
 -r mp_pose/requirements.txt
 -r multiprocessing/requirements.txt
 -r multithreading/requirements.txt
@@ -23,3 +24,4 @@
 -r stable_diffusion/requirements.txt
 -r text_logging/requirements.txt
 -r tracking_hf_opencv/requirements.txt
+p
