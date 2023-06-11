@@ -3729,7 +3729,7 @@ dependencies = [
  "pyo3-build-config",
  "pyo3-ffi",
  "pyo3-macros",
- "unindent 0.1.11",
+ "unindent",
 ]
 
 [[package]]
@@ -3938,7 +3938,7 @@ dependencies = [
  "glob",
  "sha2",
  "time",
- "unindent 0.1.11",
+ "unindent",
  "walkdir",
 ]
 
@@ -4225,7 +4225,7 @@ dependencies = [
  "thiserror",
  "tobj",
  "type-map",
- "unindent 0.2.1",
+ "unindent",
  "walkdir",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4505,7 +4505,7 @@ dependencies = [
  "flatbuffers",
  "indent",
  "re_build_tools",
- "unindent 0.2.1",
+ "unindent",
  "xshell",
 ]
 
@@ -5798,12 +5798,6 @@ name = "unindent"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1766d682d402817b5ac4490b3c3002d91dfa0d22812f341609f97b08757359c"
-
-[[package]]
-name = "unindent"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aa30f5ea51ff7edfc797c6d3f9ec8cbd8cfedef5371766b7181d33977f4814f"
 
 [[package]]
 name = "untrusted"
