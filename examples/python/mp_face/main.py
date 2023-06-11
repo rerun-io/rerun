@@ -12,12 +12,11 @@ from typing import Final
 
 import cv2
 import mediapipe as mp
-import tqdm
-import requests
-from mediapipe.tasks.python import vision
 import numpy.typing as npt
-
+import requests
 import rerun as rr  # pip install rerun-sdk
+import tqdm
+from mediapipe.tasks.python import vision
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
@@ -85,7 +84,8 @@ BLENDSHAPES_CATEGORIES = {
 
 
 class FaceDetectorLogger:
-    """Logger for the MediaPipe Face Detection solution.
+    """
+    Logger for the MediaPipe Face Detection solution.
 
     https://developers.google.com/mediapipe/solutions/vision/face_detector
     """
@@ -144,7 +144,8 @@ class FaceDetectorLogger:
 
 
 class FaceLandmarkerLogger:
-    """Logger for the MediaPipe Face Landmark Detection solution.
+    """
+    Logger for the MediaPipe Face Landmark Detection solution.
 
     https://developers.google.com/mediapipe/solutions/vision/face_landmarker
     """
@@ -277,13 +278,21 @@ def resize_image(image: npt.NDArray, max_dim: int | None) -> npt.NDArray:
 
 
 def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count: int | None, num_faces: int) -> None:
-    """Run the face detector on a video stream.
-
-    Args:
-        vid: The video stream to run the detector on. Use 0 for the default camera or a path to a video file.
-        max_dim: The maximum dimension of the image. If the image is larger, it will be scaled down.
-        max_frame_count: The maximum number of frames to process. If None, process all frames.
     """
+    Run the face detector on a video stream.
+
+    Parameters
+    ----------
+    vid:
+        The video stream to run the detector on. Use 0 for the default camera or a path to a video file.
+    max_dim:
+        The maximum dimension of the image. If the image is larger, it will be scaled down.
+    max_frame_count:
+        The maximum number of frames to process. If None, process all frames.
+    num_faces:
+        The number of faces to track. If set to 1, temporal smoothing will be applied.
+    """
+
     cap = cv2.VideoCapture(vid)
     fps = cap.get(cv2.CAP_PROP_FPS)
 
@@ -374,7 +383,10 @@ def main() -> None:
         "--num-faces",
         type=int,
         default=1,
-        help="Max number of faces detected by the landmark model (temporal smoothing is applied only for a value of 1).",
+        help=(
+            "Max number of faces detected by the landmark model "
+            "(temporal smoothing is applied only for a value of 1)."
+        ),
     )
 
     rr.script_add_args(parser)
