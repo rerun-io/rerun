@@ -367,7 +367,7 @@ def main() -> None:
     )
     parser.add_argument("--video", type=Path, help="Run on the provided video file.")
     parser.add_argument(
-        "--camera", type=int, default=0, help="Run from the camera stream (parameter is the camera ID, usually 0"
+        "--camera", type=int, default=0, help="Run from the camera stream (parameter is the camera ID, usually 0)"
     )
     parser.add_argument(
         "--max-frame",
