@@ -1,8 +1,30 @@
 """Color conversion utilities."""
-from typing import Union
+from typing import List, Union
 
 import numpy as np
 import numpy.typing as npt
+
+
+def rgba_to_u8_array(rgba: np.uint32) -> List[np.uint8]:
+    """
+    Convert a uint32 into an array[4] of uint8 values.
+
+    Parameters
+    ----------
+    rgba: int
+        The uint32 value as 0xRRGGBBAA.
+
+    Returns
+    -------
+    List[int]
+        The array of uint8 values converted in RGBA order.
+
+    """
+    red = rgba >> 24 & 0xFF
+    green = rgba >> 16 & 0xFF
+    blue = rgba >> 8 & 0xFF
+    alpha = rgba & 0xFF
+    return [red, green, blue, alpha]  # type: ignore[return-value]
 
 
 def u8_array_to_rgba(arr: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint32]:
