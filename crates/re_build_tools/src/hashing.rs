@@ -5,8 +5,6 @@ use std::{fs, io};
 use anyhow::Context as _;
 use sha2::{Digest, Sha256};
 
-use crate::{rerun_if_changed, rerun_if_changed_or_doesnt_exist};
-
 // ---
 
 fn encode_hex(bytes: &[u8]) -> String {
@@ -19,8 +17,8 @@ fn encode_hex(bytes: &[u8]) -> String {
 
 /// Walks the directory at `path` in filename order.
 ///
-/// If `extensions` is specified, only files with the right extensions will be iterated.
-/// Specified extensions should _not_ include the leading dot, e.g. `fbs` rather than `.fbs`.
+/// If `extensions` is specified, only files with the right extensions will be hashed.
+/// Specified extensions should include the dot, e.g. `.fbs`.
 pub fn iter_dir<'a>(
     path: impl AsRef<Path>,
     extensions: Option<&'a [&'a str]>,
@@ -30,9 +28,9 @@ pub fn iter_dir<'a>(
         let is_interesting = extensions.map_or(true, |extensions| {
             extensions.iter().any(|ext| {
                 entry
-                    .path()
-                    .extension()
-                    .map_or(false, |ext2| *ext == ext2.to_string_lossy())
+                    .file_name()
+                    .to_str()
+                    .map_or(false, |s| s.ends_with(ext))
             })
         });
         is_dir || is_interesting
@@ -50,8 +48,6 @@ pub fn iter_dir<'a>(
 /// Given a file path, computes the sha256 hash of its contents and returns an hexadecimal string
 /// for it.
 ///
-/// This will automatically emit a `rerun-if-changed` clause for the specified file.
-///
 /// Panics if the file doesn't exist.
 pub fn compute_file_hash(path: impl AsRef<Path>) -> String {
     let mut hasher = Sha256::new();
@@ -64,20 +60,14 @@ pub fn compute_file_hash(path: impl AsRef<Path>) -> String {
         .with_context(|| format!("couldn't copy from {path:?}"))
         .unwrap();
 
-    rerun_if_changed(path);
-
     encode_hex(hasher.finalize().as_slice())
 }
 
-/// Given a directory path, computes the sha256 hash of the accumulated contents of all of its
-/// files (ordered by filename), and returns an hexadecimal string for it.
+/// Given a directory path, computes the sha256 hash of its contents (ordered by filename) and
+/// returns an hexadecimal string for it.
 ///
-/// This includes files in sub-directories (i.e. it's recursive).
-///
-/// This will automatically emit a `rerun-if-changed` clause for all the files that were hashed.
-///
-/// If `extensions` is specified, only files with the right extensions will be iterated.
-/// Specified extensions should _not_ include the leading dot, e.g. `fbs` rather than `.fbs`.
+/// If `extensions` is specified, only files with the right extensions will be hashed.
+/// Specified extensions should include the dot, e.g. `.fbs`.
 pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a str]>) -> String {
     let mut hasher = Sha256::new();
 
@@ -89,19 +79,13 @@ pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a 
         io::copy(&mut file, &mut hasher)
             .with_context(|| format!("couldn't copy from {filepath:?}"))
             .unwrap();
-
-        rerun_if_changed(path);
     }
 
     encode_hex(hasher.finalize().as_slice())
 }
 
-/// Given a crate name, computes the sha256 hash of its source code (ordered by filename) and
+/// Given a crate name, computes the sha256 hash of its source (ordered by filename) and
 /// returns an hexadecimal string for it.
-///
-/// This includes the source code of all its direct and indirect dependencies.
-///
-/// This will automatically emit a `rerun-if-changed` clause for all the files that were hashed.
 pub fn compute_crate_hash(pkg_name: impl AsRef<str>) -> String {
     use cargo_metadata::{CargoOpt, MetadataCommand};
     let metadata = MetadataCommand::new()
@@ -138,9 +122,6 @@ pub fn compute_strings_hash(strs: &[&str]) -> String {
 
 /// Writes the given `hash` at the specified `path`.
 ///
-/// `hash` should have been computed using of the methods in this module: [`compute_file_hash`],
-/// [`compute_dir_hash`], [`compute_crate_hash`].
-///
 /// Panics on I/O errors.
 ///
 /// Use [`read_versioning_hash`] to read it back.
@@ -156,23 +137,16 @@ pub fn write_versioning_hash(path: impl AsRef<Path>, hash: impl AsRef<str>) {
         {hash}
         "
     ));
-    std::fs::write(path, contents.trim())
+    std::fs::write(path, contents)
         .with_context(|| format!("couldn't write to {path:?}"))
         .unwrap();
 }
 
 /// Reads back a versioning hash that was written with [`write_versioning_hash`].
 ///
-/// This will automatically emit a `rerun-if-changed` clause for the specified filepath.
-///
 /// Returns `None` on error.
 pub fn read_versioning_hash(path: impl AsRef<Path>) -> Option<String> {
     let path = path.as_ref();
-
-    // NOTE: It's important we trigger if the file doesn't exist, as this means the user explicitly
-    // deleted the versioning file, i.e. they're trying to force a rebuild.
-    rerun_if_changed_or_doesnt_exist(path);
-
     std::fs::read_to_string(path).ok().and_then(|contents| {
         contents
             .lines()
