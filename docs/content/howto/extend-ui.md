@@ -4,7 +4,9 @@ order: 4
 description: How to extend the Rerun Viewer UI using Rust and egui
 ---
 
-### What you can build
+# What you can build
+
+## Custom UI embedding the Viewer
 
 ![The Rerun Viewer, extended with a custom panel to the right](https://github.com/rerun-io/rerun/assets/1148717/cbbad63e-9b18-4e54-bafe-b6ffd723f63e)
 
@@ -17,5 +19,16 @@ The Rerun Viewer is defined by the crate [`re_viewer`](https://github.com/rerun-
 The best way to get started is by reading [the source code of the `extend_viewer_ui` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/extend_viewer_ui).
 
 
-### Future work
-We plan to also support embedding your own GUI widgets and views inside the viewer.
+## Custom Space Views classes
+
+![The Rerun Viewer, extended with a custom Space View that is shown three times, each time showing points on a colored plane](https://static.rerun.io/9c04c0140552ff9ddd526f98381765382a71e86c_custom_space_view.jpeg)
+
+Above screenshot shows the [`custom_space_view`](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_space_view) example.
+This example demonstrates how to add a fully custom Space View class to Rerun on startup.
+Space Views that are added this way have access to the exact same interfaces as all other Space Views,
+meaning that any of the built-in Space Views serves can serve as an additional example on how to implement Space Views.
+
+**⚠️ Note that the interface for adding Space Views are very far from stable.** Expect code implementing custom Space Views to break with every release of Rerun.
+
+# Future work
+We plan to also support embedding your own GUI widgets inside existing space views.

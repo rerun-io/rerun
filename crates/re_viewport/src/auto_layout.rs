@@ -18,10 +18,7 @@ use itertools::Itertools as _;
 use re_data_store::{EntityPath, EntityPathPart};
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
-use super::{
-    space_view::{SpaceViewBlueprint, SpaceViewState},
-    view_category::ViewCategory,
-};
+use super::{space_view::SpaceViewBlueprint, view_category::ViewCategory};
 
 #[derive(Clone, Debug)]
 pub struct SpaceMakeInfo {
@@ -52,7 +49,7 @@ pub(crate) fn tree_from_space_views(
     viewport_size: egui::Vec2,
     visible: &std::collections::BTreeSet<SpaceViewId>,
     space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
-    space_view_states: &HashMap<SpaceViewId, SpaceViewState>,
+    space_view_states: &HashMap<SpaceViewId, Box<dyn re_viewer_context::SpaceViewState>>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
         .iter()
@@ -69,7 +66,7 @@ pub(crate) fn tree_from_space_views(
             let aspect_ratio = space_view_states.get(space_view_id).and_then(|state| {
                 ctx.space_view_class_registry
                     .get_or_log_error(space_view.class)
-                    .and_then(|class| class.preferred_tile_aspect_ratio(state.state.as_ref()))
+                    .and_then(|class| class.preferred_tile_aspect_ratio(state.as_ref()))
             });
 
             SpaceMakeInfo {

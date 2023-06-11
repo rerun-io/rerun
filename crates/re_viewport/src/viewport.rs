@@ -9,15 +9,15 @@ use itertools::Itertools as _;
 
 use re_data_store::EntityPath;
 use re_data_ui::item_ui;
-use re_space_view::{DataBlueprintGroup, EmptySpaceViewState};
+use re_space_view::DataBlueprintGroup;
 use re_viewer_context::{
     DataBlueprintGroupHandle, Item, SpaceViewClassName, SpaceViewClassRegistry,
-    SpaceViewHighlights, SpaceViewId, ViewerContext,
+    SpaceViewHighlights, SpaceViewId, SpaceViewState, ViewerContext,
 };
 
 use crate::{
     space_info::SpaceInfoCollection,
-    space_view::{SpaceViewBlueprint, SpaceViewState},
+    space_view::SpaceViewBlueprint,
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::{all_possible_space_views, default_created_space_views},
     space_view_highlights::highlights_for_space_view,
@@ -229,6 +229,10 @@ impl Viewport {
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
         for entity_path in &entities {
+            if entity_path.is_root() {
+                continue;
+            }
+
             ui.horizontal(|ui| {
                 let mut properties = space_view
                     .data_blueprint
@@ -540,7 +544,7 @@ impl Viewport {
 #[derive(Default)]
 pub struct ViewportState {
     pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
-    space_view_states: HashMap<SpaceViewId, SpaceViewState>,
+    space_view_states: HashMap<SpaceViewId, Box<dyn SpaceViewState>>,
 }
 
 impl ViewportState {
@@ -548,33 +552,22 @@ impl ViewportState {
         self.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
     }
 
-    pub fn space_view_state(
+    pub fn space_view_state_mut(
         &mut self,
         space_view_class_registry: &SpaceViewClassRegistry,
         space_view_id: SpaceViewId,
         space_view_class: SpaceViewClassName,
-    ) -> &mut SpaceViewState {
+    ) -> &mut dyn SpaceViewState {
         self.space_view_states
             .entry(space_view_id)
             .or_insert_with(|| {
-                let state = if let Some(state) =
-                    space_view_class_registry.get_or_log_error(space_view_class)
-                {
+                if let Some(state) = space_view_class_registry.get_or_log_error(space_view_class) {
                     state.new_state()
                 } else {
-                    // TODO(andreas): Enable this once categories are gone.
-                    // re_log::error_once!(
-                    //     "Space View class \"{}\" is not registered.",
-                    //     space_view_class
-                    // );
-                    Box::<EmptySpaceViewState>::default()
-                };
-                SpaceViewState {
-                    state,
-                    selected_tensor: Default::default(),
-                    state_tensors: Default::default(),
+                    Box::<()>::default()
                 }
             })
+            .as_mut()
     }
 }
 
@@ -701,7 +694,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             .space_views
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
-        let space_view_state = self.viewport_state.space_view_state(
+        let space_view_state = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
             space_view_blueprint.class,
@@ -767,7 +760,11 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_id = *space_view_id;
 
         let Some(space_view) = self.space_views.get(&space_view_id) else { return; };
-        let Some(space_view_state) = self.viewport_state.space_view_states.get(&space_view_id) else { return; };
+        let space_view_state = self.viewport_state.space_view_state_mut(
+            self.ctx.space_view_class_registry,
+            space_view_id,
+            space_view.class,
+        );
 
         let num_space_views = tiles.tiles.values().filter(|tile| tile.is_pane()).count();
 
@@ -832,12 +829,12 @@ fn help_text_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_blueprint: &SpaceViewBlueprint,
-    space_view_state: &SpaceViewState,
+    space_view_state: &dyn SpaceViewState,
 ) {
     if let Some(help_text) = ctx
         .space_view_class_registry
         .get_or_log_error(space_view_blueprint.class)
-        .map(|class| class.help_text(ctx.re_ui, space_view_state.state.as_ref()))
+        .map(|class| class.help_text(ctx.re_ui, space_view_state))
     {
         re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
@@ -847,7 +844,7 @@ fn space_view_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_blueprint: &mut SpaceViewBlueprint,
-    space_view_state: &mut SpaceViewState,
+    space_view_state: &mut dyn SpaceViewState,
     space_view_highlights: SpaceViewHighlights,
 ) {
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {

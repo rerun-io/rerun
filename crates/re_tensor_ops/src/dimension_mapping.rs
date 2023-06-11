@@ -15,7 +15,7 @@ impl DimensionSelector {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DimensionMapping {
     /// Which dimensions have selectors, and are they visible?
     pub selectors: Vec<DimensionSelector>,

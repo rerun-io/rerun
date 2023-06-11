@@ -58,7 +58,7 @@ impl SelectionPanel {
                             &mut ctx.selection_state_mut().history,
                         ) {
                             ctx.selection_state_mut()
-                                .set_multi_selection(selection.iter().cloned());
+                                .set_selection(selection.iter().cloned());
                         }
                     });
 
@@ -255,7 +255,7 @@ fn blueprint_ui(
             ui.add_space(ui.spacing().item_spacing.y);
 
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
-                let space_view_state = viewport_state.space_view_state(
+                let space_view_state = viewport_state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
                     space_view.class,

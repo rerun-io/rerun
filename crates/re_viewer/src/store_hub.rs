@@ -1,14 +1,195 @@
+use ahash::HashMap;
+use itertools::Itertools;
+use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::StoreDb;
-use re_log_types::{StoreId, StoreKind};
+use re_log_types::{ApplicationId, StoreId, StoreKind};
+use re_viewer_context::StoreContext;
+
+/// Interface for accessing all blueprints and recordings
+///
+/// The [`StoreHub`] provides access to the [`StoreDb`] instances that are used
+/// to store both blueprints and recordings.
+///
+/// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
+/// id` ([`StoreId`]) are currently selected in the viewer. These can be configured
+/// using [`StoreHub::set_recording_id`] and [`StoreHub::set_app_id`] respectively.
+#[derive(Default)]
+pub struct StoreHub {
+    selected_rec_id: Option<StoreId>,
+    application_id: Option<ApplicationId>,
+    blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+    store_dbs: StoreBundle,
+}
+
+/// Convenient information used for `MemoryPanel`
+#[derive(Default)]
+pub struct StoreHubStats {
+    pub blueprint_stats: DataStoreStats,
+    pub blueprint_config: DataStoreConfig,
+    pub recording_stats: DataStoreStats,
+    pub recording_config: DataStoreConfig,
+}
+
+impl StoreHub {
+    /// Add a [`StoreBundle`] to the [`StoreHub`]
+    pub fn add_bundle(&mut self, bundle: StoreBundle) {
+        self.store_dbs.append(bundle);
+    }
+
+    /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
+    ///
+    /// All of the returned references to blueprints and recordings will have a
+    /// matching [`ApplicationId`].
+    pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
+        // If we have an app-id, then use it to look up the blueprint.
+        let blueprint_id = self.application_id.as_ref().map(|app_id| {
+            self.blueprint_by_app_id
+                .entry(app_id.clone())
+                .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0))
+        });
+
+        // As long as we have a blueprint-id, create the blueprint.
+        blueprint_id
+            .as_ref()
+            .map(|id| self.store_dbs.blueprint_entry(id));
+
+        // If we have a blueprint, we can return the `StoreContext`. In most
+        // cases it should have already existed or been created above.
+        blueprint_id
+            .and_then(|id| self.store_dbs.blueprint(id))
+            .map(|blueprint| {
+                let recording = self
+                    .selected_rec_id
+                    .as_ref()
+                    .and_then(|id| self.store_dbs.recording(id));
+
+                // TODO(antoine): The below filter will limit our recording view to the current
+                // `ApplicationId`. Leaving this commented out for now since that is a bigger
+                // behavioral change we might want to plan/communicate around as it breaks things
+                // like --split-recordings in the api_demo.
+                StoreContext {
+                    blueprint,
+                    recording,
+                    alternate_recordings: self
+                        .store_dbs
+                        .recordings()
+                        //.filter(|rec| rec.app_id() == self.application_id.as_ref())
+                        .collect_vec(),
+                }
+            })
+    }
+
+    /// Change the selected/visible recording id.
+    /// This will also change the application-id to match the newly selected recording.
+    pub fn set_recording_id(&mut self, recording_id: StoreId) {
+        // If this recording corresponds to an app that we know about, then apdate the app-id.
+        if let Some(app_id) = self
+            .store_dbs
+            .recording(&recording_id)
+            .as_ref()
+            .and_then(|recording| recording.app_id())
+        {
+            self.set_app_id(app_id.clone());
+        }
+
+        self.selected_rec_id = Some(recording_id);
+    }
+
+    /// Change the selected [`ApplicationId`]
+    pub fn set_app_id(&mut self, app_id: ApplicationId) {
+        self.application_id = Some(app_id);
+    }
+
+    /// Change which blueprint is active for a given [`ApplicationId`]
+    pub fn set_blueprint_for_app_id(&mut self, blueprint_id: StoreId, app_id: ApplicationId) {
+        self.blueprint_by_app_id.insert(app_id, blueprint_id);
+    }
+
+    /// Clear the current blueprint
+    pub fn clear_blueprint(&mut self) {
+        if let Some(app_id) = &self.application_id {
+            if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
+                self.store_dbs.remove(&blueprint_id);
+            }
+        }
+    }
+
+    /// Mutable access to a [`StoreDb`] by id
+    pub fn store_db_mut(&mut self, store_id: &StoreId) -> &mut StoreDb {
+        self.store_dbs.store_db_entry(store_id)
+    }
+
+    /// Remove any empty [`StoreDb`]s from the hub
+    pub fn purge_empty(&mut self) {
+        self.store_dbs.purge_empty();
+    }
+
+    /// Call [`StoreDb::purge_fraction_of_ram`] on every recording
+    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+        self.store_dbs.purge_fraction_of_ram(fraction_to_purge);
+    }
+
+    /// Directly access the [`StoreDb`] for the selected recording
+    pub fn current_recording(&self) -> Option<&StoreDb> {
+        self.selected_rec_id
+            .as_ref()
+            .and_then(|id| self.store_dbs.recording(id))
+    }
+
+    /// Check whether the [`StoreHub`] contains the referenced recording
+    pub fn contains_recording(&self, id: &StoreId) -> bool {
+        self.store_dbs.contains_recording(id)
+    }
+
+    /// Populate a [`StoreHubStats`] based on the selected app.
+    // TODO(jleibs): We probably want stats for all recordings, not just
+    // the currently selected recording.
+    pub fn stats(&self) -> StoreHubStats {
+        // If we have an app-id, then use it to look up the blueprint.
+        let blueprint = self
+            .application_id
+            .as_ref()
+            .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
+            .and_then(|blueprint_id| self.store_dbs.blueprint(blueprint_id));
+
+        let blueprint_stats = blueprint
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        let blueprint_config = blueprint
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        let recording = self
+            .selected_rec_id
+            .as_ref()
+            .and_then(|rec_id| self.store_dbs.recording(rec_id));
+
+        let recording_stats = recording
+            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .unwrap_or_default();
+
+        let recording_config = recording
+            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .unwrap_or_default();
+
+        StoreHubStats {
+            blueprint_stats,
+            blueprint_config,
+            recording_stats,
+            recording_config,
+        }
+    }
+}
 
 /// Stores many [`StoreDb`]s of recordings and blueprints.
 #[derive(Default)]
-pub struct StoreHub {
+pub struct StoreBundle {
     // TODO(emilk): two separate maps per [`StoreKind`].
     store_dbs: ahash::HashMap<StoreId, StoreDb>,
 }
 
-impl StoreHub {
+impl StoreBundle {
     /// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
     pub fn from_rrd(read: impl std::io::Read) -> anyhow::Result<Self> {
@@ -47,6 +228,10 @@ impl StoreHub {
         for (id, store_db) in other.store_dbs.drain() {
             self.store_dbs.insert(id, store_db);
         }
+    }
+
+    pub fn remove(&mut self, id: &StoreId) {
+        self.store_dbs.remove(id);
     }
 
     // --

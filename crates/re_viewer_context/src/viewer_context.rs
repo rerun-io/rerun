@@ -1,8 +1,8 @@
 use re_data_store::store_db::StoreDb;
 
 use crate::{
-    AppOptions, Caches, ComponentUiRegistry, Item, ItemCollection, SelectionState,
-    SpaceViewClassRegistry, TimeControl,
+    AppOptions, Caches, CommandSender, ComponentUiRegistry, Item, ItemCollection, SelectionState,
+    SpaceViewClassRegistry, StoreContext, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -22,7 +22,11 @@ pub struct ViewerContext<'a> {
     pub space_view_class_registry: &'a SpaceViewClassRegistry,
 
     /// The current recording.
+    /// TODO(jleibs): This can go away
     pub store_db: &'a StoreDb,
+
+    /// The current view of the store
+    pub store_context: &'a StoreContext<'a>,
 
     /// UI config for the current recording (found in [`StoreDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
@@ -32,6 +36,9 @@ pub struct ViewerContext<'a> {
 
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub render_ctx: &'a mut re_renderer::RenderContext,
+
+    /// Interface for sending commands back to the app
+    pub command_sender: &'a CommandSender,
 }
 
 impl<'a> ViewerContext<'a> {

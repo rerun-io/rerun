@@ -1,10 +1,12 @@
+use re_log_types::StoreId;
 use re_viewer_context::{Item, ViewerContext};
 use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
 
 /// Defines the layout of the whole Viewer (or will, eventually).
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[derive(Clone)]
 pub struct Blueprint {
+    pub blueprint_id: Option<StoreId>,
+
     pub blueprint_panel_expanded: bool,
     pub selection_panel_expanded: bool,
     pub time_panel_expanded: bool,
@@ -13,10 +15,11 @@ pub struct Blueprint {
 }
 
 impl Blueprint {
-    /// Prefer this to [`Blueprint::default`] to get better defaults based on screen size.
-    pub fn new(egui_ctx: &egui::Context) -> Self {
+    /// Create a [`Blueprint`] with appropriate defaults.
+    pub fn new(blueprint_id: Option<StoreId>, egui_ctx: &egui::Context) -> Self {
         let screen_size = egui_ctx.screen_rect().size();
         Self {
+            blueprint_id,
             blueprint_panel_expanded: screen_size.x > 750.0,
             selection_panel_expanded: screen_size.x > 1000.0,
             time_panel_expanded: screen_size.y > 600.0,

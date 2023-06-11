@@ -1201,6 +1201,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_space_view"
+version = "0.7.0"
+dependencies = [
+ "mimalloc",
+ "re_crash_handler",
+ "re_sdk_comms",
+ "re_viewer",
+ "tokio",
+]
+
+[[package]]
 name = "d3d12"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2728,6 +2739,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memoffset"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a634b1c61a95585bd15607c6ab0c4e5b226e695ff2800ba0cdccddf208c406c"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "memory-stats"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3086,9 +3106,9 @@ dependencies = [
 
 [[package]]
 name = "numpy"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96b0fee4571867d318651c24f4a570c3f18408cf95f16ccb576b3ce85496a46e"
+checksum = "437213adf41bbccf4aeae535fbfcdad0f6fed241e1ae182ebe97fa1f3ce19389"
 dependencies = [
  "half 2.2.1",
  "libc",
@@ -3678,14 +3698,14 @@ dependencies = [
 
 [[package]]
 name = "pyo3"
-version = "0.18.3"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3b1ac5b3731ba34fdaa9785f8d74d17448cd18f30cf19e0c7e7b1fdb5272109"
+checksum = "cffef52f74ec3b1a1baf295d9b8fcc3070327aefc39a6d00656b13c1d0b8885c"
 dependencies = [
  "cfg-if",
  "indoc",
  "libc",
- "memoffset 0.8.0",
+ "memoffset 0.9.0",
  "parking_lot 0.12.1",
  "pyo3-build-config",
  "pyo3-ffi",
@@ -3695,9 +3715,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-build-config"
-version = "0.18.3"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cb946f5ac61bb61a5014924910d936ebd2b23b705f7a4a3c40b05c720b079a3"
+checksum = "713eccf888fb05f1a96eb78c0dbc51907fee42b3377272dc902eb38985f418d5"
 dependencies = [
  "once_cell",
  "target-lexicon",
@@ -3705,9 +3725,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-ffi"
-version = "0.18.3"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd4d7c5337821916ea2a1d21d1092e8443cf34879e53a0ac653fbb98f44ff65c"
+checksum = "5b2ecbdcfb01cbbf56e179ce969a048fd7305a66d4cdf3303e0da09d69afe4c3"
 dependencies = [
  "libc",
  "pyo3-build-config",
@@ -3715,9 +3735,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros"
-version = "0.18.3"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9d39c55dab3fc5a4b25bbd1ac10a2da452c4aca13bb450f22818a002e29648d"
+checksum = "b78fdc0899f2ea781c463679b20cb08af9247febc8d052de941951024cd8aea0"
 dependencies = [
  "proc-macro2",
  "pyo3-macros-backend",
@@ -3727,9 +3747,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros-backend"
-version = "0.18.3"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97daff08a4c48320587b5224cc98d609e3c27b6d437315bd40b605c98eeb5918"
+checksum = "60da7b84f1227c3e2fe7593505de274dcf4c8928b4e0a1c23d551a14e4e80a0f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4310,6 +4330,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_space_view_tensor"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "ahash 0.8.3",
+ "anyhow",
+ "bytemuck",
+ "eframe",
+ "egui",
+ "half 2.2.1",
+ "ndarray",
+ "re_arrow_store",
+ "re_components",
+ "re_data_store",
+ "re_data_ui",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_space_view",
+ "re_tensor_ops",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_context",
+ "thiserror",
+ "vec1",
+ "wgpu",
+]
+
+[[package]]
 name = "re_space_view_text"
 version = "0.7.0-alpha.0"
 dependencies = [
@@ -4480,6 +4528,7 @@ dependencies = [
  "re_smart_channel",
  "re_space_view_bar_chart",
  "re_space_view_spatial",
+ "re_space_view_tensor",
  "re_space_view_text",
  "re_space_view_text_box",
  "re_space_view_time_series",
@@ -4540,19 +4589,14 @@ name = "re_viewport"
 version = "0.7.0-alpha.0"
 dependencies = [
  "ahash 0.8.3",
- "anyhow",
  "arrow2",
  "arrow2_convert",
- "bytemuck",
- "eframe",
  "egui",
  "egui_tiles",
  "enumset",
  "glam",
- "half 2.2.1",
  "image",
  "itertools",
- "ndarray",
  "nohash-hasher",
  "re_arrow_store",
  "re_components",
@@ -4562,13 +4606,10 @@ dependencies = [
  "re_log_types",
  "re_renderer",
  "re_space_view",
- "re_tensor_ops",
  "re_tracing",
  "re_ui",
  "re_viewer_context",
  "serde",
- "thiserror",
- "wgpu",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 use egui::RichText;
-use re_ui::Command;
+use re_ui::UICommand;
 use re_viewer_context::{Item, ItemCollection, SelectionHistory};
 
 use crate::ui::Blueprint;
@@ -49,7 +49,7 @@ impl SelectionHistoryUi {
                 {}\n\
                 \n\
                 Right-click for more.",
-                    Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
+                    UICommand::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
                     item_collection_to_string(blueprint, &previous.selection),
                 ));
 
@@ -93,7 +93,7 @@ impl SelectionHistoryUi {
                 {}\n\
                 \n\
                 Right-click for more.",
-                    Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
+                    UICommand::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
                     item_collection_to_string(blueprint, &next.selection),
                 ));
 

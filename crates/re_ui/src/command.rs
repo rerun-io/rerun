@@ -1,12 +1,17 @@
 use egui::{Key, KeyboardShortcut, Modifiers};
 
+/// Interface for sending [`UICommand`] messages.
+pub trait UICommandSender {
+    fn send_ui(&self, command: UICommand);
+}
+
 /// All the commands we support.
 ///
 /// Most are available in the GUI,
 /// some have keyboard shortcuts,
 /// and all are visible in the [`crate::CommandPalette`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
-pub enum Command {
+pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     #[cfg(not(target_arch = "wasm32"))]
     Open,
@@ -53,7 +58,7 @@ pub enum Command {
     ScreenshotWholeApp,
 }
 
-impl Command {
+impl UICommand {
     pub fn text(self) -> &'static str {
         self.text_and_tooltip().0
     }
@@ -65,76 +70,76 @@ impl Command {
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Save => ("Save…", "Save all data to a Rerun data file (.rrd)"),
+            UICommand::Save => ("Save…", "Save all data to a Rerun data file (.rrd)"),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::SaveSelection => (
+            UICommand::SaveSelection => (
                 "Save loop selection…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
+            UICommand::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Quit => ("Quit", "Close the Rerun Viewer"),
+            UICommand::Quit => ("Quit", "Close the Rerun Viewer"),
 
-            Command::ResetViewer => (
+            UICommand::ResetViewer => (
                 "Reset viewer",
                 "Reset the viewer to how it looked the first time you ran it",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::OpenProfiler => (
+            UICommand::OpenProfiler => (
                 "Open profiler",
                 "Starts a profiler, showing what makes the viewer run slow",
             ),
 
-            Command::ToggleMemoryPanel => (
+            UICommand::ToggleMemoryPanel => (
                 "Toggle memory panel",
                 "Investigate what is using up RAM in Rerun Viewer",
             ),
-            Command::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
-            Command::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
-            Command::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom time panel"),
+            UICommand::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
+            UICommand::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
+            UICommand::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom time panel"),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::ToggleFullscreen => (
+            UICommand::ToggleFullscreen => (
                 "Toggle fullscreen",
                 "Toggle between windowed and fullscreen viewer",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomIn => ("Zoom In", "Increases the ui scaling factor"),
+            UICommand::ZoomIn => ("Zoom In", "Increases the ui scaling factor"),
             #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomOut => ("Zoom Out", "Decreases the ui scaling factor"),
+            UICommand::ZoomOut => ("Zoom Out", "Decreases the ui scaling factor"),
             #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomReset => (
+            UICommand::ZoomReset => (
                 "Reset Zoom",
                 "Resets ui scaling factor to the OS provided default",
             ),
 
-            Command::SelectionPrevious => ("Previous selection", "Go to previous selection"),
-            Command::SelectionNext => ("Next selection", "Go to next selection"),
-            Command::ToggleCommandPalette => {
+            UICommand::SelectionPrevious => ("Previous selection", "Go to previous selection"),
+            UICommand::SelectionNext => ("Next selection", "Go to next selection"),
+            UICommand::ToggleCommandPalette => {
                 ("Command palette…", "Toggle the command palette window")
             }
 
-            Command::PlaybackTogglePlayPause => {
+            UICommand::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")
             }
-            Command::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
-            Command::PlaybackStepBack => (
+            UICommand::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
+            UICommand::PlaybackStepBack => (
                 "Step time back",
                 "Move the time marker back to the previous point in time with any data",
             ),
-            Command::PlaybackStepForward => (
+            UICommand::PlaybackStepForward => (
                 "Step time forward",
                 "Move the time marker to the next point in time with any data",
             ),
-            Command::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
+            UICommand::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::ScreenshotWholeApp => (
+            UICommand::ScreenshotWholeApp => (
                 "Screenshot",
                 "Copy screenshot of the whole app to clipboard",
             ),
@@ -161,52 +166,52 @@ impl Command {
 
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Save => Some(cmd(Key::S)),
+            UICommand::Save => Some(cmd(Key::S)),
             #[cfg(not(target_arch = "wasm32"))]
-            Command::SaveSelection => Some(cmd_shift(Key::S)),
+            UICommand::SaveSelection => Some(cmd_shift(Key::S)),
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Open => Some(cmd(Key::O)),
+            UICommand::Open => Some(cmd(Key::O)),
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
-            Command::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),
+            UICommand::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),
 
             #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
-            Command::Quit => Some(cmd(Key::Q)),
+            UICommand::Quit => Some(cmd(Key::Q)),
 
-            Command::ResetViewer => Some(ctrl_shift(Key::R)),
+            UICommand::ResetViewer => Some(ctrl_shift(Key::R)),
             #[cfg(not(target_arch = "wasm32"))]
-            Command::OpenProfiler => Some(ctrl_shift(Key::P)),
-            Command::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
-            Command::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
-            Command::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
-            Command::ToggleTimePanel => Some(ctrl_shift(Key::T)),
-
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ToggleFullscreen => Some(key(Key::F11)),
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomIn => Some(egui::gui_zoom::kb_shortcuts::ZOOM_IN),
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomOut => Some(egui::gui_zoom::kb_shortcuts::ZOOM_OUT),
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ZoomReset => Some(egui::gui_zoom::kb_shortcuts::ZOOM_RESET),
-
-            Command::SelectionPrevious => Some(ctrl_shift(Key::ArrowLeft)),
-            Command::SelectionNext => Some(ctrl_shift(Key::ArrowRight)),
-            Command::ToggleCommandPalette => Some(cmd(Key::P)),
-
-            Command::PlaybackTogglePlayPause => Some(key(Key::Space)),
-            Command::PlaybackFollow => Some(cmd(Key::ArrowRight)),
-            Command::PlaybackStepBack => Some(key(Key::ArrowLeft)),
-            Command::PlaybackStepForward => Some(key(Key::ArrowRight)),
-            Command::PlaybackRestart => Some(cmd(Key::ArrowLeft)),
+            UICommand::OpenProfiler => Some(ctrl_shift(Key::P)),
+            UICommand::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
+            UICommand::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
+            UICommand::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
+            UICommand::ToggleTimePanel => Some(ctrl_shift(Key::T)),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::ScreenshotWholeApp => None,
+            UICommand::ToggleFullscreen => Some(key(Key::F11)),
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ZoomIn => Some(egui::gui_zoom::kb_shortcuts::ZOOM_IN),
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ZoomOut => Some(egui::gui_zoom::kb_shortcuts::ZOOM_OUT),
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ZoomReset => Some(egui::gui_zoom::kb_shortcuts::ZOOM_RESET),
+
+            UICommand::SelectionPrevious => Some(ctrl_shift(Key::ArrowLeft)),
+            UICommand::SelectionNext => Some(ctrl_shift(Key::ArrowRight)),
+            UICommand::ToggleCommandPalette => Some(cmd(Key::P)),
+
+            UICommand::PlaybackTogglePlayPause => Some(key(Key::Space)),
+            UICommand::PlaybackFollow => Some(cmd(Key::ArrowRight)),
+            UICommand::PlaybackStepBack => Some(key(Key::ArrowLeft)),
+            UICommand::PlaybackStepForward => Some(key(Key::ArrowRight)),
+            UICommand::PlaybackRestart => Some(cmd(Key::ArrowLeft)),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ScreenshotWholeApp => None,
         }
     }
 
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
-    pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Command> {
+    pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<UICommand> {
         use strum::IntoEnumIterator as _;
 
         let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
@@ -215,7 +220,7 @@ impl Command {
         }
 
         egui_ctx.input_mut(|input| {
-            for command in Command::iter() {
+            for command in UICommand::iter() {
                 if let Some(kb_shortcut) = command.kb_shortcut() {
                     if input.consume_shortcut(&kb_shortcut) {
                         return Some(command);
@@ -232,12 +237,12 @@ impl Command {
     pub fn menu_button_ui(
         self,
         ui: &mut egui::Ui,
-        pending_commands: &mut Vec<Command>,
+        command_sender: &impl UICommandSender,
     ) -> egui::Response {
         let button = self.menu_button(ui.ctx());
         let response = ui.add(button).on_hover_text(self.tooltip());
         if response.clicked() {
-            pending_commands.push(self);
+            command_sender.send_ui(self);
             ui.close_menu();
         }
         response
