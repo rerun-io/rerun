@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A unique numeric identifier for each individual instance within a batch.
+struct InstanceKey (
+  "arrow.attr.transparent",
+  "python.attr.aliases": "int",
+  "python.attr.array_aliases": "npt.NDArray[np.uint64]",
+  "rust.attr.tuple_struct",
+  "rust.attr.derive": "Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord",
+  order: 100
+) {
+  value: uint64;
+}
