@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A 16-bit ID representing a type of semantic class.
+///
+/// \rs Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`.
+struct ClassId (
+  "arrow.attr.transparent",
+  "python.attr.aliases": "float",
+  "python.attr.array_aliases": "npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]",
+  "rust.attr.derive": "Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "rust.attr.tuple_struct",
+  order: 100
+) {
+  id: ushort;
+}
