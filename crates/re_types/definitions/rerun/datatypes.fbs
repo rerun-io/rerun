@@ -1,0 +1,3 @@
+include "./datatypes/vec2d.fbs";
+
+namespace rerun.datatypes;
