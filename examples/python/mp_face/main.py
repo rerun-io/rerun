@@ -8,10 +8,11 @@ import logging
 import math
 import os
 from pathlib import Path
-from typing import Final
+from typing import Final, Iterable
 
 import cv2
 import mediapipe as mp
+import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
@@ -117,7 +118,7 @@ class FaceDetectorLogger:
             rr.ClassDescription(keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]),
         )
 
-    def log_frame(self, image, frame_time_nano: int | None = None):
+    def log_frame(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
 
@@ -215,7 +216,7 @@ class FaceLandmarkerLogger:
         rr.log_annotation_context("video/landmarker", class_descriptions)
         rr.log_annotation_context("reconstruction", class_descriptions)
 
-    def log_frame(self, image, frame_time_nano: int | None = None):
+    def log_frame(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
 
@@ -266,7 +267,7 @@ def download_file(url: str, path: Path) -> None:
         f.write(response.content)
 
 
-def resize_image(image: npt.NDArray, max_dim: int | None) -> npt.NDArray:
+def resize_image(image: npt.NDArray[np.uint8], max_dim: int | None) -> npt.NDArray[np.uint8]:
     """Resize an image if it is larger than max_dim."""
     if max_dim is None:
         return image
@@ -301,10 +302,7 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
 
     print("Capturing video stream. Press ctrl-c to stop.")
     try:
-        if max_frame_count is not None:
-            it = range(max_frame_count)
-        else:
-            it = itertools.count()
+        it: Iterable[int] = itertools.count() if max_frame_count is None else range(max_frame_count)
 
         for frame_idx in tqdm.tqdm(it):
             # Capture frame-by-frame
@@ -345,8 +343,8 @@ def run_from_sample_image(path: Path, max_dim: int | None, num_faces: int) -> No
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     logger = FaceDetectorLogger(video_mode=False)
     landmarker = FaceLandmarkerLogger(video_mode=False, num_faces=num_faces)
-    logger.log_frame(image)
-    landmarker.log_frame(image)
+    logger.log_frame(image, 0)
+    landmarker.log_frame(image, 0)
     rr.log_image("video/image", image)
 
 
@@ -392,7 +390,8 @@ def main() -> None:
     rr.script_add_args(parser)
 
     args, unknown = parser.parse_known_args()
-    [logging.warning(f"unknown arg: {arg}") for arg in unknown]
+    for arg in unknown:
+        logging.warning(f"unknown arg: {arg}")
     rr.script_setup(args, "mp_face_detection")
 
     if args.demo_image:
