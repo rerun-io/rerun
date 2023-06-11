@@ -1,0 +1,19 @@
+namespace rerun.attributes;
+
+/// Marks a component as required, which is likely to impact the generated code in
+/// backend-specific ways.
+///
+/// Only applies to the fields of an archetype.
+attribute "rerun.attr.component_required";
+
+/// Marks a component as recommended, which is likely to impact the generated code in
+/// backend-specific ways.
+///
+/// Only applies to the fields of an archetype.
+attribute "rerun.attr.component_recommended";
+
+/// Marks a component as optional, which is likely to impact the generated code in
+/// ways.
+///
+/// Only applies to the fields of an archetype.
+attribute "rerun.attr.component_optional";
