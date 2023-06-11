@@ -1,0 +1,16 @@
+namespace fbs.attributes;
+
+/// Mandatory attribute that applies to all kinds of objects: structs, enums, unions and even the
+/// fields within.
+///
+/// This defines a stable order between objects of the same kind, e.g. the order in which fields of a
+/// struct should be laid out when generating code.
+/// This is always required since flatbuffers works entirely with unordered maps internally, which
+/// would results in flaky code generation.
+///
+/// In unions, this effectively defines the arrow type of each variant, since that depends on the
+/// fields's order!
+///
+/// NOTE: We do not use flatbuffers' builtin `id` attribute as it only works on `table`s, whereas we
+/// need a stable order for all kinds of things.
+attribute "order";
