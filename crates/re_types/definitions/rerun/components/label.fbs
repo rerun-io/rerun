@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A String label component.
+table Label (
+  "arrow.attr.transparent",
+  "python.attr.aliases": "str",
+  "rust.attr.derive": "Debug, Clone, PartialEq, Eq, PartialOrd, Ord",
+  "rust.attr.repr": "transparent",
+  "rust.attr.tuple_struct",
+  order: 100
+) {
+  value: string (required, order: 100);
+}

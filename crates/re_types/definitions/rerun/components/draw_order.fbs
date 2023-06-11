@@ -1,0 +1,29 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// Draw order used for the display order of 2D elements.
+///
+/// Higher values are drawn on top of lower values.
+/// An entity can have only a single draw order component.
+/// Within an entity draw order is governed by the order of the components.
+///
+/// Draw order for entities with the same draw order is generally undefined.
+struct DrawOrder (
+  "arrow.attr.transparent",
+  "python.attr.aliases": "float",
+  "python.attr.array_aliases": "npt.NDArray[np.float32]",
+  "rust.attr.derive": "Debug, Clone, Copy",
+  "rust.attr.repr": "transparent",
+  "rust.attr.tuple_struct",
+  order: 100
+) {
+   value: float;
+}

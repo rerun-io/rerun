@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A Radius component.
+struct Radius (
+  "arrow.attr.transparent",
+  "python.attr.aliases": "float",
+  "python.attr.array_aliases": "npt.NDArray[np.float32]",
+  "rust.attr.tuple_struct",
+  "rust.attr.derive": "Debug, Clone, Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  value: float;
+}
