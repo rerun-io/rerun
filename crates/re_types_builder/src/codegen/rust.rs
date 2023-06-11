@@ -18,7 +18,6 @@ use crate::{
 
 // ---
 
-// TODO(cmc): find a way to extract attr name constants directly from the IDL definitions
 pub const ATTR_DERIVE: &str = "rust.attr.derive";
 pub const ATTR_REPR: &str = "rust.attr.repr";
 pub const ATTR_TUPLE_STRUCT: &str = "rust.attr.tuple_struct";
@@ -149,7 +148,7 @@ fn quote_objects(
         for module in mods.keys() {
             code.push_str(&format!("mod {module};\n"));
 
-            // NOTE: detect if someone manually created an extension file, and automatically
+            // Detect if someone manually created an extension file, and automatically
             // import it if so.
             let mut ext_path = out_path.join(format!("{module}_ext"));
             ext_path.set_extension("rs");
@@ -230,7 +229,7 @@ impl QuotedObject {
                 typ: _,
                 attrs: _,
                 required,
-                // TODO(cmc): support for deprecation notices
+                // TODO(#2366): support for deprecation notices
                 deprecated: _,
             } = field;
 
@@ -356,7 +355,8 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
 /// Returns type name as string and whether it was force unwrapped.
 fn quote_field_type_from_field(field: &ObjectField, unwrap: bool) -> (String, bool) {
     let mut unwrapped = false;
-    let typ = match &field.typ {
+    let typ = &field.typ;
+    let typ = match typ {
         Type::UInt8 => "u8".to_owned(),
         Type::UInt16 => "u16".to_owned(),
         Type::UInt32 => "u32".to_owned(),
@@ -366,10 +366,9 @@ fn quote_field_type_from_field(field: &ObjectField, unwrap: bool) -> (String, bo
         Type::Int32 => "i32".to_owned(),
         Type::Int64 => "i64".to_owned(),
         Type::Bool => "bool".to_owned(),
-        Type::Float16 => unimplemented!("ResolvedType::Float16"), // NOLINT
+        Type::Float16 => unimplemented!("{typ:#?}"), // NOLINT
         Type::Float32 => "f32".to_owned(),
         Type::Float64 => "f64".to_owned(),
-        // TODO(cmc): ref for deserialization?
         Type::String => "String".to_owned(),
         Type::Array { elem_type, length } => {
             let typ = quote_type_from_element_type(elem_type);
@@ -406,10 +405,9 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
         ElementType::Int32 => "i32".to_owned(),
         ElementType::Int64 => "i64".to_owned(),
         ElementType::Bool => "bool".to_owned(),
-        ElementType::Float16 => unimplemented!("ResolvedType::Float16"), // NOLINT
+        ElementType::Float16 => unimplemented!("{typ:#?}"), // NOLINT
         ElementType::Float32 => "f32".to_owned(),
         ElementType::Float64 => "f64".to_owned(),
-        // TODO(cmc): ref for deserialization?
         ElementType::String => "String".to_owned(),
         ElementType::Object(fqname) => fqname.replace('.', "::").replace("rerun", "crate"),
     }
@@ -536,6 +534,7 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> S
 
                     #[allow(clippy::unimplemented)]
                     fn to_arrow_datatypes() -> Vec<arrow2::datatypes::DataType> {{
+                        // TODO(#2368): dump the arrow registry into the generated code
                         unimplemented!("query the registry for all fqnames"); // NOLINT
                     }}
                 }}
