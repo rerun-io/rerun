@@ -61,6 +61,8 @@
 //!
 //! Make sure to test the behavior of its output though: `re_types`!
 
+// TODO(#2365): support for external IDL definitions
+
 // ---
 
 // NOTE: Official generated code from flatbuffers; ignore _everything_.
@@ -146,7 +148,6 @@ pub fn compile_binary_schemas(
 /// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `output_crate_path`: path to the root of the output crate.
 /// - `entrypoint_path`: path to the root file of the fbs definition tree.
-/// - `source_hash`: optional sha256 hash of the source definition files.
 ///
 /// E.g.:
 /// ```no_run

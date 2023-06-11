@@ -17,7 +17,6 @@ use crate::{
 // NOTE: `rerun2` while we figure out how to integrate back into the main SDK.
 const MODULE_NAME: &str = "rerun2";
 
-// TODO(cmc): find a way to extract attr name constants directly from the IDL definitions
 pub const ATTR_TRANSPARENT: &str = "python.attr.transparent";
 pub const ATTR_ALIASES: &str = "python.attr.aliases";
 pub const ATTR_ARRAY_ALIASES: &str = "python.attr.array_aliases";
@@ -440,7 +439,7 @@ impl QuotedObject {
 // --- Code generators ---
 
 fn quote_module_prelude() -> String {
-    // NOTE: All the extraneous stull will be cleaned up courtesy of `ruff`.
+    // NOTE: All the extraneous stuff will be cleaned up courtesy of `ruff`.
     unindent::unindent(
         r#"
         from __future__ import annotations
@@ -722,7 +721,6 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
         ElementType::Object(fqname) => {
             let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
             if from.starts_with("rerun.datatypes") {
-                // NOTE: Only need the class name, pre-generated import clause takes care of the rest.
                 format!("datatypes.{class}")
             } else if from.starts_with("rerun.components") {
                 format!("components.{class}")
@@ -808,7 +806,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                                 many_aliases={many_aliases},
                                 arrow={arrow},
                             )
-            "#
+                "#
             ))
         }
         ObjectKind::Archetype => String::new(),
@@ -936,11 +934,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
                 .join(", ");
             format!("pa.struct([{fields}])")
         }
-        DataType::Extension(_, datatype, _) => {
-            // TODO(cmc): not sure we need all that for the python backend since we already
-            // do the wrapping trick...?
-            quote_arrow_datatype(datatype)
-        }
+        DataType::Extension(_, datatype, _) => quote_arrow_datatype(datatype),
         _ => unimplemented!("{datatype:#?}"), // NOLINT
     }
 }
