@@ -765,8 +765,8 @@ pub enum TensorImageLoadError {
     #[error(transparent)]
     Image(std::sync::Arc<image::ImageError>),
 
-    #[error("Unsupported JPEG color type: {0:?}. Only RGB Jpegs are supported")]
-    UnsupportedJpegColorType(image::ColorType),
+    #[error("Expexted a HxW, HxWx1 or HxWx3 tensor, but got {0:?}")]
+    UnexpectedJpegShape(Vec<TensorDimension>),
 
     #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
     UnsupportedImageColorType(image::ColorType),
@@ -774,11 +774,11 @@ pub enum TensorImageLoadError {
     #[error("Failed to load file: {0}")]
     ReadError(std::sync::Arc<std::io::Error>),
 
-    #[error("The encoded tensor did not match its metadata {expected:?} != {found:?}")]
-    InvalidMetaData {
-        expected: Vec<TensorDimension>,
-        found: Vec<TensorDimension>,
-    },
+    #[error("The encoded tensor shape did not match its metadata {expected:?} != {found:?}")]
+    InvalidMetaData { expected: Vec<u64>, found: Vec<u64> },
+
+    #[error(transparent)]
+    JpegDecode(#[from] zune_jpeg::errors::DecodeErrors),
 }
 
 #[cfg(feature = "image")]
@@ -899,20 +899,17 @@ impl Tensor {
         }
     }
 
-    /// Construct a tensor from the contents of a JPEG file.
+    /// Construct a tensor from the contents of a JPEG file, without decoding it now.
     ///
     /// Requires the `image` feature.
     pub fn from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
         re_tracing::profile_function!();
-        use image::ImageDecoder as _;
-        let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
-        if jpeg.color_type() != image::ColorType::Rgb8 {
-            // TODO(emilk): support gray-scale jpeg as well
-            return Err(TensorImageLoadError::UnsupportedJpegColorType(
-                jpeg.color_type(),
-            ));
-        }
-        let (w, h) = jpeg.dimensions();
+
+        use zune_jpeg::JpegDecoder;
+
+        let mut decoder = JpegDecoder::new(&jpeg_bytes);
+        decoder.decode_headers()?;
+        let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode_headers
 
         Ok(Self {
             tensor_id: TensorId::random(),
@@ -1181,8 +1178,6 @@ impl DecodedTensor {
     }
 
     pub fn try_decode(maybe_encoded_tensor: Tensor) -> Result<Self, TensorImageLoadError> {
-        re_tracing::profile_function!();
-
         match &maybe_encoded_tensor.data {
             TensorData::U8(_)
             | TensorData::U16(_)
@@ -1196,25 +1191,77 @@ impl DecodedTensor {
             | TensorData::F32(_)
             | TensorData::F64(_) => Ok(Self(maybe_encoded_tensor)),
 
-            TensorData::JPEG(buf) => {
-                use image::io::Reader as ImageReader;
-                let mut reader = ImageReader::new(std::io::Cursor::new(buf.as_slice()));
-                reader.set_format(image::ImageFormat::Jpeg);
-                let img = {
-                    re_tracing::profile_scope!("decode_jpeg");
-                    reader.decode()?
-                };
-                let decoded_tensor = DecodedTensor::from_image(img)?;
-                if decoded_tensor.shape() == maybe_encoded_tensor.shape() {
-                    Ok(decoded_tensor)
-                } else {
-                    Err(TensorImageLoadError::InvalidMetaData {
-                        expected: maybe_encoded_tensor.shape().into(),
-                        found: decoded_tensor.shape().into(),
-                    })
-                }
+            TensorData::JPEG(jpeg_bytes) => {
+                re_log::debug!(
+                    "Decoding JPEG image of shape {:?}",
+                    maybe_encoded_tensor.shape()
+                );
+
+                let [h, w, c] = maybe_encoded_tensor
+                    .image_height_width_channels()
+                    .ok_or_else(|| {
+                        TensorImageLoadError::UnexpectedJpegShape(
+                            maybe_encoded_tensor.shape().to_vec(),
+                        )
+                    })?;
+
+                Self::decode_jpeg_bytes(jpeg_bytes, [h, w, c])
             }
         }
+    }
+
+    pub fn decode_jpeg_bytes(
+        jpeg_bytes: &Buffer<u8>,
+        [expected_height, expected_width, expected_channels]: [u64; 3],
+    ) -> Result<DecodedTensor, TensorImageLoadError> {
+        re_tracing::profile_function!();
+
+        re_log::debug!("Decoding {expected_width}x{expected_height} JPEG");
+
+        use zune_core::colorspace::ColorSpace;
+        use zune_core::options::DecoderOptions;
+        use zune_jpeg::JpegDecoder;
+
+        let mut options = DecoderOptions::default();
+
+        let depth = if expected_channels == 1 {
+            options = options.jpeg_set_out_colorspace(ColorSpace::Luma);
+            1
+        } else {
+            // We decode to RGBA directly so we don't need to pad to four bytes later when uploading to GPU.
+            options = options.jpeg_set_out_colorspace(ColorSpace::RGBA);
+            4
+        };
+
+        let mut decoder = JpegDecoder::new_with_options(options, jpeg_bytes);
+        let pixels = decoder.decode()?;
+        let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode
+
+        let (w, h) = (w as u64, h as u64);
+
+        if w != expected_width || h != expected_height {
+            return Err(TensorImageLoadError::InvalidMetaData {
+                expected: [expected_height, expected_width, expected_channels].into(),
+                found: [h, w, depth].into(),
+            });
+        }
+
+        assert_eq!(pixels.len() as u64, w * h * depth, "Bug in JPEG decoder");
+
+        let tensor = Tensor {
+            tensor_id: TensorId::random(),
+            shape: vec![
+                TensorDimension::height(h),
+                TensorDimension::width(w),
+                TensorDimension::depth(depth),
+            ],
+            data: TensorData::U8(pixels.into()),
+            meaning: TensorDataMeaning::Unknown,
+            meter: None,
+        };
+        let decoded_tensor = DecodedTensor(tensor);
+
+        Ok(decoded_tensor)
     }
 }
 
