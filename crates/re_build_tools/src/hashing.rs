@@ -17,7 +17,7 @@ fn encode_hex(bytes: &[u8]) -> String {
 
 /// Walks the directory at `path` in filename order.
 ///
-/// If `extensions` is specified, only files with the right extensions will be hashed.
+/// If `extensions` is specified, only files with the right extensions will be iterated.
 /// Specified extensions should include the dot, e.g. `.fbs`.
 pub fn iter_dir<'a>(
     path: impl AsRef<Path>,
@@ -63,8 +63,10 @@ pub fn compute_file_hash(path: impl AsRef<Path>) -> String {
     encode_hex(hasher.finalize().as_slice())
 }
 
-/// Given a directory path, computes the sha256 hash of its contents (ordered by filename) and
-/// returns an hexadecimal string for it.
+/// Given a directory path, computes the sha256 hash of the accumulated contents of all of its
+/// files (ordered by filename), and returns an hexadecimal string for it.
+///
+/// This includes files in sub-directories (i.e. it's recursive).
 ///
 /// If `extensions` is specified, only files with the right extensions will be hashed.
 /// Specified extensions should include the dot, e.g. `.fbs`.
@@ -84,8 +86,10 @@ pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a 
     encode_hex(hasher.finalize().as_slice())
 }
 
-/// Given a crate name, computes the sha256 hash of its source (ordered by filename) and
+/// Given a crate name, computes the sha256 hash of its source code (ordered by filename) and
 /// returns an hexadecimal string for it.
+///
+/// This includes the source code of all its direct and indirect dependencies.
 pub fn compute_crate_hash(pkg_name: impl AsRef<str>) -> String {
     use cargo_metadata::{CargoOpt, MetadataCommand};
     let metadata = MetadataCommand::new()
@@ -137,7 +141,7 @@ pub fn write_versioning_hash(path: impl AsRef<Path>, hash: impl AsRef<str>) {
         {hash}
         "
     ));
-    std::fs::write(path, contents)
+    std::fs::write(path, contents.trim())
         .with_context(|| format!("couldn't write to {path:?}"))
         .unwrap();
 }
