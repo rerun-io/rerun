@@ -50,6 +50,8 @@ fn main() {
         }
     }
 
+    // NOTE: This requires `flatc` to be in $PATH, but only for contributors, not end users.
+    // Even for contributors, `flatc` won't be needed unless they edit some of the .fbs files.
     let sh = Shell::new().unwrap();
     cmd!(
         sh,
@@ -60,8 +62,8 @@ fn main() {
 
     // NOTE: We're purposefully ignoring the error here.
     //
-    // In the very unlikely chance that the user doesn't have `rustfmt` in their $PATH, there's
-    // still no good reason to fail the build.
+    // In the very unlikely chance that the user doesn't have the `fmt` component installed,
+    // there's still no good reason to fail the build.
     //
     // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
     cmd!(sh, "cargo fmt").run().ok();
