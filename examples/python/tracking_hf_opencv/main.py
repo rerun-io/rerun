@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Example applying simple object detection and tracking on a video."""
+from __future__ import annotations
+
 import argparse
 import json
 import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Final, List, Sequence
+from typing import Any, Final, Sequence
 
 import cv2 as cv
 import numpy as np
@@ -40,16 +42,16 @@ class Detection:
     """Information about a detected object."""
 
     class_id: int
-    bbox_xywh: List[float]
+    bbox_xywh: list[float]
     image_width: int
     image_height: int
 
-    def scaled_to_fit_image(self, target_image: npt.NDArray[Any]) -> "Detection":
+    def scaled_to_fit_image(self, target_image: npt.NDArray[Any]) -> Detection:
         """Rescales detection to fit to target image."""
         target_height, target_width = target_image.shape[:2]
         return self.scaled_to_fit_size(target_width=target_width, target_height=target_height)
 
-    def scaled_to_fit_size(self, target_width: int, target_height: int) -> "Detection":
+    def scaled_to_fit_size(self, target_width: int, target_height: int) -> Detection:
         """Rescales detection to fit to target image with given size."""
         if target_height == self.image_height and target_width == self.image_width:
             return self
@@ -67,14 +69,14 @@ class Detection:
 class Detector:
     """Detects objects to track."""
 
-    def __init__(self, coco_categories: List[Dict[str, Any]]) -> None:
+    def __init__(self, coco_categories: list[dict[str, Any]]) -> None:
         logging.info("Initializing neural net for detection and segmentation.")
         self.feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
         self.model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
-        self.is_thing_from_id = {cat["id"]: bool(cat["isthing"]) for cat in coco_categories}  # type: Dict[int, bool]
+        self.is_thing_from_id: dict[int, bool] = {cat["id"]: bool(cat["isthing"]) for cat in coco_categories}
 
-    def detect_objects_to_track(self, rgb: npt.NDArray[np.uint8], frame_idx: int) -> List[Detection]:
+    def detect_objects_to_track(self, rgb: npt.NDArray[np.uint8], frame_idx: int) -> list[Detection]:
         logging.info("Looking for things to track on frame %d", frame_idx)
 
         logging.debug("Preprocess image for detection network")
@@ -105,7 +107,7 @@ class Detector:
 
         self.log_detections(boxes, class_ids, things)
 
-        objects_to_track = []  # type: List[Detection]
+        objects_to_track: list[Detection] = []
         for idx, (class_id, is_thing) in enumerate(zip(class_ids, things)):
             if is_thing:
                 x_min, y_min, x_max, y_max = boxes[idx, :]
@@ -121,7 +123,7 @@ class Detector:
 
         return objects_to_track
 
-    def log_detections(self, boxes: npt.NDArray[np.float32], class_ids: List[int], things: List[bool]) -> None:
+    def log_detections(self, boxes: npt.NDArray[np.float32], class_ids: list[int], things: list[bool]) -> None:
         things_np = np.array(things)
         class_ids_np = np.array(class_ids, dtype=np.uint16)
 
@@ -165,7 +167,7 @@ class Tracker:
         self.log_tracked()
 
     @classmethod
-    def create_new_tracker(cls, detection: Detection, bgr: npt.NDArray[np.uint8]) -> "Tracker":
+    def create_new_tracker(cls, detection: Detection, bgr: npt.NDArray[np.uint8]) -> Tracker:
         new_tracker = cls(cls.next_tracking_id, detection, bgr)
         cls.next_tracking_id += 1
         return new_tracker
@@ -234,7 +236,7 @@ class Tracker:
         return box_iou(tracked_bbox, other_bbox)
 
 
-def box_iou(first: List[float], second: List[float]) -> float:
+def box_iou(first: list[float], second: list[float]) -> float:
     """Calculate Intersection over Union (IoU) between two 2D rectangles in XYWH format."""
     left = max(first[0], second[0])
     right = min(first[0] + first[2], second[0] + second[2])
@@ -252,7 +254,7 @@ def box_iou(first: List[float], second: List[float]) -> float:
     return intersection_area / union_area
 
 
-def clip_bbox_to_image(bbox_xywh: List[float], image_width: int, image_height: int) -> List[float]:
+def clip_bbox_to_image(bbox_xywh: list[float], image_width: int, image_height: int) -> list[float]:
     x_min = max(0, bbox_xywh[0])
     y_min = max(0, bbox_xywh[1])
     x_max = min(image_width - 1, bbox_xywh[0] + bbox_xywh[2])
@@ -262,11 +264,11 @@ def clip_bbox_to_image(bbox_xywh: List[float], image_width: int, image_height: i
 
 
 def update_trackers_with_detections(
-    trackers: List[Tracker],
+    trackers: list[Tracker],
     detections: Sequence[Detection],
     label_strs: Sequence[str],
     bgr: npt.NDArray[np.uint8],
-) -> List[Tracker]:
+) -> list[Tracker]:
     """
     Tries to match detections to existing trackers and updates the trackers if they match.
 
@@ -274,7 +276,7 @@ def update_trackers_with_detections(
     Returns the new set of trackers.
     """
     non_updated_trackers = list(trackers)  # shallow copy
-    updated_trackers = []  # type: List[Tracker]
+    updated_trackers: list[Tracker] = []
 
     logging.debug("Updating %d trackers with %d new detections", len(trackers), len(detections))
     for detection in detections:
@@ -322,7 +324,7 @@ def track_objects(video_path: str) -> None:
     frame_idx = 0
 
     label_strs = [cat["name"] or str(cat["id"]) for cat in coco_categories]
-    trackers = []  # type: List[Tracker]
+    trackers: list[Tracker] = []
     while cap.isOpened():
         ret, bgr = cap.read()
         rr.set_time_sequence("frame", frame_idx)
@@ -400,7 +402,7 @@ def main() -> None:
 
     setup_looging()
 
-    video_path = args.video_path  # type: str
+    video_path: str = args.video_path
     if not video_path:
         video_path = get_downloaded_path(args.dataset_dir, args.video)
 

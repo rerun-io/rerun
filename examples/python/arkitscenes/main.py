@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import json
 import os
 from pathlib import Path, PosixPath
-from typing import Any, Dict, List, Tuple
+from typing import Any, Tuple
 
 import cv2
 import matplotlib.pyplot as plt
@@ -30,13 +32,13 @@ assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
 
-def load_json(js_path: Path) -> Dict[str, Any]:
-    with open(js_path, "r") as f:
-        json_data = json.load(f)  # type: Dict[str, Any]
+def load_json(js_path: Path) -> dict[str, Any]:
+    with open(js_path) as f:
+        json_data: dict[str, Any] = json.load(f)
     return json_data
 
 
-def log_annotated_bboxes(annotation: Dict[str, Any]) -> Tuple[npt.NDArray[np.float64], List[str], List[Color]]:
+def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.float64], list[str], list[Color]]:
     """
     Logs annotated oriented bounding boxes to Rerun.
 
@@ -229,11 +231,11 @@ def project_3d_bboxes_to_2d_keypoints(
 def log_camera(
     intri_path: Path,
     frame_id: str,
-    poses_from_traj: Dict[str, rr.TranslationRotationScale3D],
+    poses_from_traj: dict[str, rr.TranslationRotationScale3D],
     entity_id: str,
     bboxes: npt.NDArray[np.float64],
-    bbox_labels: List[str],
-    colors: List[Color],
+    bbox_labels: list[str],
+    colors: list[Color],
 ) -> None:
     """Logs camera transform and 3D bounding boxes in the image frame."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
@@ -256,7 +258,7 @@ def log_camera(
     rr.log_pinhole(f"{entity_id}", child_from_parent=intrinsic, width=w, height=h)
 
 
-def read_camera_from_world(traj_string: str) -> Tuple[str, rr.TranslationRotationScale3D]:
+def read_camera_from_world(traj_string: str) -> tuple[str, rr.TranslationRotationScale3D]:
     """
     Reads out camera_from_world transform from trajectory string.
 
@@ -298,7 +300,7 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, rr.TranslationRotatio
     return (ts, camera_from_world)
 
 
-def find_closest_frame_id(target_id: str, frame_ids: Dict[str, Any]) -> str:
+def find_closest_frame_id(target_id: str, frame_ids: dict[str, Any]) -> str:
     """Finds the closest frame id to the target id."""
     target_value = float(target_id)
     closest_id = min(frame_ids.keys(), key=lambda x: abs(float(x) - target_value))
@@ -338,7 +340,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
 
     # dict of timestamp to pose which is a tuple of translation and quaternion
     camera_from_world_dict = {}
-    with open(traj_path, "r", encoding="utf-8") as f:
+    with open(traj_path, encoding="utf-8") as f:
         trajectory = f.readlines()
 
     for line in trajectory:

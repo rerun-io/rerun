@@ -7,13 +7,14 @@ Run:
 python3 examples/python/dicom/main.py
 ```
 """
+from __future__ import annotations
 
 import argparse
 import io
 import os
 import zipfile
 from pathlib import Path
-from typing import Final, Iterable, Tuple
+from typing import Final, Iterable
 
 import dicom_numpy
 import numpy as np
@@ -28,7 +29,7 @@ DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dico
 
 def extract_voxel_data(
     dicom_files: Iterable[Path],
-) -> Tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
+) -> tuple[npt.NDArray[np.int16], npt.NDArray[np.float32]]:
     slices = [dicom.read_file(f) for f in dicom_files]  # type: ignore[misc]
     try:
         voxel_ndarray, ijk_to_xyz = dicom_numpy.combine_slices(slices)

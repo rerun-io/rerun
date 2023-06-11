@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 """
 Demonstrates how to log simple plots with the Rerun SDK.
 
@@ -8,7 +7,7 @@ Run:
 ./examples/python/plot/main.py
 ```
 """
-
+from __future__ import annotations
 
 import argparse
 import random

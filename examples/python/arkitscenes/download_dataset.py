@@ -1,11 +1,13 @@
 # Copied from https://github.com/apple/ARKitScenes/blob/main/download_data.py
 # Licensing information: https://github.com/apple/ARKitScenes/blob/main/LICENSE
+from __future__ import annotations
+
 import math
 import os
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Final
 
 import pandas as pd
 
@@ -62,7 +64,7 @@ missing_3dod_assets_video_ids = [
 ]
 
 
-def raw_files(video_id: str, assets: List[str], metadata: pd.DataFrame) -> List[str]:
+def raw_files(video_id: str, assets: list[str], metadata: pd.DataFrame) -> list[str]:
     file_names = []
     for asset in assets:
         if HIGRES_DEPTH_ASSET_NAME == asset:
@@ -153,7 +155,7 @@ def download_laser_scanner_point_clouds_for_video(video_id: str, metadata: pd.Da
         download_laser_scanner_point_clouds(point_cloud_id, visit_id, download_dir)
 
 
-def laser_scanner_point_clouds_for_visit_id(visit_id: int, download_dir: Path) -> List[str]:
+def laser_scanner_point_clouds_for_visit_id(visit_id: int, download_dir: Path) -> list[str]:
     point_cloud_to_visit_id_mapping_filename = "laser_scanner_point_clouds_mapping.csv"
     if not os.path.exists(point_cloud_to_visit_id_mapping_filename):
         point_cloud_to_visit_id_mapping_url = (
@@ -209,11 +211,11 @@ def get_metadata(dataset: str, download_dir: Path) -> pd.DataFrame:
 
 def download_data(
     dataset: str,
-    video_ids: List[str],
-    dataset_splits: List[str],
+    video_ids: list[str],
+    dataset_splits: list[str],
     download_dir: Path,
     keep_zip: bool,
-    raw_dataset_assets: Optional[List[str]] = None,
+    raw_dataset_assets: list[str] | None = None,
     should_download_laser_scanner_point_cloud: bool = False,
 ) -> None:
     """

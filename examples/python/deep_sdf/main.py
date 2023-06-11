@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 """
 Generate SDFs for arbitrary meshes and visualize the results using the Rerun SDK.
 
@@ -26,13 +25,13 @@ Run:
 examples/python/deep_sdf/main.py
 ```
 """
-
+from __future__ import annotations
 
 import argparse
 import os
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import Tuple, cast
+from typing import cast
 
 import mesh_to_sdf
 import numpy as np
@@ -88,7 +87,7 @@ def compute_voxel_sdf(mesh: Trimesh, resolution: int) -> npt.NDArray[np.float32]
 
 
 @log_timing_decorator("global/sample_sdf", rr.LogLevel.DEBUG)  # type: ignore[misc]
-def compute_sample_sdf(mesh: Trimesh, num_points: int) -> Tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
+def compute_sample_sdf(mesh: Trimesh, num_points: int) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     print("computing sample-based SDF")
     points, sdf, _ = mesh_to_sdf.sample_sdf_near_surface(mesh, number_of_points=num_points, return_gradients=True)
     return (points, sdf)

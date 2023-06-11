@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Shows how to use the Rerun SDK."""
+from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from typing import Iterator, Tuple
+from typing import Iterator
 
 import cv2
 import numpy as np
@@ -57,8 +58,8 @@ class DummyCar:
 
     def __init__(
         self,
-        center: Tuple[int, int],
-        size: Tuple[int, int],
+        center: tuple[int, int],
+        size: tuple[int, int],
         distance_mm: float,
     ):
         self.center: npt.NDArray[np.int32] = np.array(center, dtype=np.int32)
@@ -157,7 +158,7 @@ class SampleFrame:
     camera: CameraParameters
     depth_image_mm: npt.NDArray[np.float32]
     rgb_image: npt.NDArray[np.float32]
-    car_bbox: Tuple[npt.NDArray[np.int32], npt.NDArray[np.int32]]
+    car_bbox: tuple[npt.NDArray[np.int32], npt.NDArray[np.int32]]
 
 
 class SimpleDepthCamera:

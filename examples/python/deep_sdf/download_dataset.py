@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import io
 import os
 import zipfile
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final
 
 import requests
 
@@ -49,7 +50,7 @@ def download_mesh(name: str) -> Path:
     raise RuntimeError(f"Unknown mesh named: {name}")
 
 
-def find_mesh_path_if_downloaded(name: str) -> Optional[Path]:
+def find_mesh_path_if_downloaded(name: str) -> Path | None:
     for mesh_format in ("obj", "glb"):
         for path in DOWNLOADED_DIR.glob(f"{name}/**/*.{mesh_format}"):
             return path

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-
 """Demonstrates the most barebone usage of the Rerun SDK."""
-
+from __future__ import annotations
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
