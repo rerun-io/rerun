@@ -3,7 +3,8 @@
 use xshell::{cmd, Shell};
 
 use re_build_tools::{
-    compute_file_hash, is_tracked_env_var_set, read_versioning_hash, write_versioning_hash,
+    compute_file_hash, is_tracked_env_var_set, read_versioning_hash, rerun_if_changed,
+    rerun_if_changed_or_doesnt_exist, write_versioning_hash,
 };
 
 // ---
@@ -32,14 +33,9 @@ fn main() {
         return;
     }
 
-    // We're building an actual build graph here, and Cargo has no idea about it.
-    //
-    // Worse: some nodes in our build graph actually output artifacts into the src/ directory,
-    // which Cargo always interprets as "need to rebuild everything ASAP", leading to an infinite
-    // feedback loop.
-    //
-    // For these reasons, we manually compute and track signature hashes for the graph nodes we
-    // depend on, and make sure to exit early if everything's already up to date.
+    rerun_if_changed_or_doesnt_exist(SOURCE_HASH_PATH);
+    rerun_if_changed(FBS_REFLECTION_DEFINITION_PATH);
+
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
     let new_hash = compute_file_hash(FBS_REFLECTION_DEFINITION_PATH);
 
@@ -54,8 +50,6 @@ fn main() {
         }
     }
 
-    // NOTE: This requires `flatc` to be in $PATH, but only for contributors, not end users.
-    // Even for contributors, `flatc` won't be needed unless they edit some of the .fbs files.
     let sh = Shell::new().unwrap();
     cmd!(
         sh,
@@ -66,8 +60,8 @@ fn main() {
 
     // NOTE: We're purposefully ignoring the error here.
     //
-    // In the very unlikely chance that the user doesn't have the `fmt` component installed,
-    // there's still no good reason to fail the build.
+    // In the very unlikely chance that the user doesn't have `rustfmt` in their $PATH, there's
+    // still no good reason to fail the build.
     //
     // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
     cmd!(sh, "cargo fmt").run().ok();
