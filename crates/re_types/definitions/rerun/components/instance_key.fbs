@@ -11,11 +11,11 @@ namespace rerun.components;
 
 /// A unique numeric identifier for each individual instance within a batch.
 struct InstanceKey (
-  "attr.arrow.transparent",
-  "attr.python.aliases": "int",
-  "attr.python.array_aliases": "npt.NDArray[np.uint64]",
-  "attr.rust.tuple_struct",
-  "attr.rust.derive": "Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord",
+  "arrow.attr.transparent",
+  "python.attr.aliases": "int",
+  "python.attr.array_aliases": "npt.NDArray[np.uint64]",
+  "rust.attr.tuple_struct",
+  "rust.attr.derive": "Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord",
   order: 100
 ) {
   value: uint64;
