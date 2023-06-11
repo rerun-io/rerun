@@ -11,11 +11,11 @@ namespace rerun.components;
 
 /// A String label component.
 table Label (
-  "attr.arrow.transparent",
-  "attr.python.aliases": "str",
-  "attr.rust.derive": "Debug, Clone, PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
+  "arrow.attr.transparent",
+  "python.attr.aliases": "str",
+  "rust.attr.derive": "Debug, Clone, PartialEq, Eq, PartialOrd, Ord",
+  "rust.attr.repr": "transparent",
+  "rust.attr.tuple_struct",
   order: 100
 ) {
   value: string (required, order: 100);
