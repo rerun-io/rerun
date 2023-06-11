@@ -8,15 +8,19 @@ use std::{
 };
 
 use crate::{
-    codegen::{StringExt as _, AUTOGEN_WARNING},
-    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_PYTHON_TRANSPARENT,
+    codegen::AUTOGEN_WARNING, ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField,
+    ObjectKind, Objects, Type,
 };
 
 // ---
 
 // NOTE: `rerun2` while we figure out how to integrate back into the main SDK.
 const MODULE_NAME: &str = "rerun2";
+
+// TODO(cmc): find a way to extract attr name constants directly from the IDL definitions
+pub const ATTR_TRANSPARENT: &str = "python.attr.transparent";
+pub const ATTR_ALIASES: &str = "python.attr.aliases";
+pub const ATTR_ARRAY_ALIASES: &str = "python.attr.array_aliases";
 
 pub struct PythonCodeGenerator {
     pkg_path: PathBuf,
@@ -90,20 +94,17 @@ fn quote_lib(out_path: impl AsRef<Path>, archetype_names: &[String]) -> PathBuf 
         .unwrap();
 
     let path = out_path.join("__init__.py");
-    let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
 
     let mut code = String::new();
 
+    // NOTE: noqa F401 (unused import) because while unnecessary these listings are
+    // very useful to look at.
     code += &unindent::unindent(&format!(
         r#"
         # {AUTOGEN_WARNING}
 
-        from __future__ import annotations
-
-        __all__ = [{manifest}]
-
-        from .archetypes import {archetype_names}
+        from .archetypes import {archetype_names} # noqa: F401
         "#
     ));
 
@@ -135,9 +136,16 @@ fn quote_objects(
         } else {
             QuotedObject::from_union(arrow_registry, all_objects, obj)
         };
-
         let filepath = out_path.join(obj.filepath.file_name().unwrap());
-        files.entry(filepath.clone()).or_default().push(obj);
+
+        match files.entry(filepath.clone()) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().push(obj);
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(vec![obj]);
+            }
+        };
     }
 
     // (module_name, [object_name])
@@ -147,27 +155,25 @@ fn quote_objects(
     for (filepath, objs) in files {
         let names = objs
             .iter()
-            .flat_map(|obj| match obj.kind {
+            .map(|obj| match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
                     let name = &obj.name;
-
-                    vec![
-                        format!("{name}"),
-                        format!("{name}Like"),
-                        format!("{name}Array"),
-                        format!("{name}ArrayLike"),
-                        format!("{name}Type"),
-                    ]
+                    format!("{name}, {name}Like, {name}Array, {name}ArrayLike, {name}Type")
                 }
-                ObjectKind::Archetype => vec![obj.name.clone()],
+                ObjectKind::Archetype => obj.name.clone(),
             })
             .collect::<Vec<_>>();
 
         // NOTE: Isolating the file stem only works because we're handling datatypes, components
         // and archetypes separately (and even then it's a bit shady, eh).
-        mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string())
-            .or_default()
-            .extend(names.iter().cloned());
+        match mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string()) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(names);
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(names);
+            }
+        };
 
         filepaths.push(filepath.clone());
         let mut file = std::fs::File::create(&filepath)
@@ -175,23 +181,11 @@ fn quote_objects(
             .unwrap();
 
         let mut code = String::new();
-        code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
-
-        let manifest = quote_manifest(names);
-        code.push_unindented_text(
-            format!(
-                "
-                from __future__ import annotations
-
-                __all__ = [{manifest}]
-
-                ",
-            ),
-            0,
-        );
+        code.push_str(&format!("# {AUTOGEN_WARNING}\n\n"));
 
         for obj in objs {
-            code.push_text(&obj.code, 1, 0);
+            code.push_str(&obj.code);
+            code.push('\n');
         }
         file.write_all(code.as_bytes())
             .with_context(|| format!("{filepath:?}"))
@@ -204,25 +198,20 @@ fn quote_objects(
 
         let mut code = String::new();
 
-        let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+        code.push_str(&format!("# {AUTOGEN_WARNING}\n\n"));
+        code.push_str(&unindent::unindent(
+            "
+            # NOTE:
+            # - we use fully qualified paths to prevent lazy circular imports
+            # - `noqa F401` (unused import) everywhere because, while not strictly necessary,
+            #   these imports are very nice for end users.
 
-        code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
-        code.push_unindented_text(
-            format!(
-                "
-                from __future__ import annotations
-
-                __all__ = [{manifest}]
-
-                # NOTE: we use fully qualified paths to prevent lazy circular imports.
-                ",
-            ),
-            0,
-        );
+            ",
+        ));
 
         for (module, names) in &mods {
             let names = names.join(", ");
-            code.push_text(&format!("from .{module} import {names}"), 1, 0);
+            code.push_str(&format!("from .{module} import {names} # noqa: F401\n"));
         }
 
         filepaths.push(path.clone());
@@ -262,28 +251,26 @@ impl QuotedObject {
 
         let mut code = String::new();
 
-        code.push_text(&quote_module_prelude(), 0, 0);
+        code.push_str(&quote_module_prelude());
 
         for clause in obj
             .fields
             .iter()
             .filter_map(quote_import_clauses_from_field)
         {
-            code.push_text(&clause, 1, 0);
+            code.push_str(&clause);
+            code.push('\n');
         }
 
-        code.push_unindented_text(
-            format!(
-                r#"
+        code.push_str(&unindent::unindent(&format!(
+            r#"
 
-                @dataclass
-                class {name}:
-                "#
-            ),
-            0,
-        );
+            @dataclass
+            class {name}:
+            "#
+        )));
 
-        code.push_text(quote_doc_from_docs(docs), 0, 4);
+        code.push_str(&indent::indent_all_by(4, quote_doc_from_docs(docs)));
 
         for field in fields {
             let ObjectField {
@@ -308,25 +295,42 @@ impl QuotedObject {
             let typ = if field.required {
                 typ
             } else {
-                format!("{typ} | None = None")
+                format!("Optional[{typ}] = None")
             };
 
-            code.push_text(format!("{name}: {typ}"), 1, 4);
+            code.push_str(&indent::indent_all_by(4, format!("{name}: {typ}\n")));
 
-            code.push_text(quote_doc_from_docs(docs), 0, 4);
+            code.push_str(&indent::indent_all_by(4, quote_doc_from_docs(docs)));
         }
 
-        code.push_text(quote_str_repr_from_obj(obj), 1, 4);
-        code.push_text(quote_array_method_from_obj(objects, obj), 1, 4);
-        code.push_text(quote_str_method_from_obj(objects, obj), 1, 4);
+        code.push_str(&indent::indent_all_by(4, quote_str_repr_from_obj(obj)));
+        code.push('\n');
+
+        code.push_str(&indent::indent_all_by(
+            4,
+            quote_array_method_from_obj(objects, obj),
+        ));
+        code.push('\n');
+
+        code.push_str(&indent::indent_all_by(
+            4,
+            quote_str_method_from_obj(objects, obj),
+        ));
+        code.push('\n');
 
         if obj.kind == ObjectKind::Archetype {
-            code.push_text(quote_builder_from_obj(objects, obj), 1, 4);
+            code.push_str(&indent::indent_all_by(
+                4,
+                quote_builder_from_obj(objects, obj),
+            ));
+            code.push('\n');
         } else {
-            code.push_text(quote_aliases_from_object(obj), 1, 0);
+            code.push_str(&quote_aliases_from_object(obj));
+            code.push('\n');
         }
 
-        code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 0);
+        code.push_str(&quote_arrow_support_from_obj(arrow_registry, obj));
+        code.push('\n');
 
         let mut filepath = PathBuf::from(filepath);
         filepath.set_extension("py");
@@ -356,28 +360,26 @@ impl QuotedObject {
 
         let mut code = String::new();
 
-        code.push_text(&quote_module_prelude(), 0, 0);
+        code.push_str(&quote_module_prelude());
 
         for clause in obj
             .fields
             .iter()
             .filter_map(quote_import_clauses_from_field)
         {
-            code.push_text(&clause, 1, 0);
+            code.push_str(&clause);
+            code.push('\n');
         }
 
-        code.push_unindented_text(
-            format!(
-                r#"
+        code.push_str(&unindent::unindent(&format!(
+            r#"
 
-                @dataclass
-                class {name}:
-                "#
-            ),
-            0,
-        );
+            @dataclass
+            class {name}:
+            "#
+        )));
 
-        code.push_text(quote_doc_from_docs(docs), 0, 4);
+        code.push_str(&indent::indent_all_by(4, quote_doc_from_docs(docs)));
 
         for field in fields {
             let ObjectField {
@@ -394,17 +396,34 @@ impl QuotedObject {
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
             // NOTE: It's always optional since only one of the fields can be set at a time.
-            code.push_text(format!("{name}: {typ} | None = None"), 1, 4);
+            code.push_str(&indent::indent_all_by(
+                4,
+                format!("{name}: Optional[{typ}] = None\n"),
+            ));
 
-            code.push_text(quote_doc_from_docs(docs), 0, 4);
+            code.push_str(&indent::indent_all_by(4, quote_doc_from_docs(docs)));
         }
 
-        code.push_text(quote_str_repr_from_obj(obj), 1, 4);
-        code.push_text(quote_array_method_from_obj(objects, obj), 1, 4);
-        code.push_text(quote_str_method_from_obj(objects, obj), 1, 4);
+        code.push_str(&indent::indent_all_by(4, quote_str_repr_from_obj(obj)));
+        code.push('\n');
 
-        code.push_text(quote_aliases_from_object(obj), 1, 0);
-        code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 0);
+        code.push_str(&indent::indent_all_by(
+            4,
+            quote_array_method_from_obj(objects, obj),
+        ));
+        code.push('\n');
+
+        code.push_str(&indent::indent_all_by(
+            4,
+            quote_str_method_from_obj(objects, obj),
+        ));
+        code.push('\n');
+
+        code.push_str(&quote_aliases_from_object(obj));
+        code.push('\n');
+
+        code.push_str(&quote_arrow_support_from_obj(arrow_registry, obj));
+        code.push('\n');
 
         let mut filepath = PathBuf::from(filepath);
         filepath.set_extension("py");
@@ -420,20 +439,12 @@ impl QuotedObject {
 
 // --- Code generators ---
 
-fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
-    let mut quoted_names: Vec<_> = names
-        .into_iter()
-        .map(|name| format!("{:?}", name.as_ref()))
-        .collect();
-    quoted_names.sort();
-
-    quoted_names.join(", ")
-}
-
 fn quote_module_prelude() -> String {
-    // NOTE: All the extraneous stuff will be cleaned up courtesy of `ruff`.
+    // NOTE: All the extraneous stull will be cleaned up courtesy of `ruff`.
     unindent::unindent(
         r#"
+        from __future__ import annotations
+
         import numpy as np
         import numpy.typing as npt
         import pyarrow as pa
@@ -466,7 +477,7 @@ fn quote_str_repr_from_obj(obj: &Object) -> String {
 
     unindent::unindent(
         r#"
-        def __str__(self) -> str:
+        def __str__(self):
             s = f"rr.{type(self).__name__}(\n"
 
             from dataclasses import fields
@@ -482,7 +493,7 @@ fn quote_str_repr_from_obj(obj: &Object) -> String {
 
             return s
 
-        def __repr__(self) -> str:
+        def __repr__(self):
             return str(self)
 
         "#,
@@ -510,7 +521,7 @@ fn quote_array_method_from_obj(objects: &Objects, obj: &Object) -> String {
     let field_name = &obj.fields[0].name;
     unindent::unindent(&format!(
         "
-        def __array__(self) -> npt.ArrayLike:
+        def __array__(self):
             return np.asarray(self.{field_name})
         ",
     ))
@@ -535,7 +546,7 @@ fn quote_str_method_from_obj(objects: &Objects, obj: &Object) -> String {
     let field_name = &obj.fields[0].name;
     unindent::unindent(&format!(
         "
-        def __str__(self) -> str:
+        def __str__(self):
             return self.{field_name}
         ",
     ))
@@ -545,43 +556,38 @@ fn quote_str_method_from_obj(objects: &Objects, obj: &Object) -> String {
 fn quote_aliases_from_object(obj: &Object) -> String {
     assert!(obj.kind != ObjectKind::Archetype);
 
-    let aliases = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES);
+    let aliases = obj.try_get_attr::<String>(ATTR_ALIASES);
     let array_aliases = obj
-        .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
+        .try_get_attr::<String>(ATTR_ARRAY_ALIASES)
         .unwrap_or_default();
 
     let name = &obj.name;
 
     let mut code = String::new();
 
-    code.push_unindented_text(
-        &if let Some(aliases) = aliases {
-            format!(
-                r#"
-                {name}Like = Union[
-                    {name},
-                    {aliases}
-                ]
-                "#,
-            )
-        } else {
-            format!("{name}Like = {name}")
-        },
-        1,
-    );
-
-    code.push_unindented_text(
-        format!(
+    code.push_str(&if let Some(aliases) = aliases {
+        unindent::unindent(&format!(
             r#"
-            {name}ArrayLike = Union[
-                {name}Like,
-                Sequence[{name}Like],
-                {array_aliases}
+            {name}Like = Union[
+                {name},
+                {aliases}
             ]
+
             "#,
-        ),
-        0,
-    );
+        ))
+    } else {
+        format!("{name}Like = {name}\n")
+    });
+
+    code.push_str(&unindent::unindent(&format!(
+        r#"
+        {name}ArrayLike = Union[
+            {name}Like,
+            Sequence[{name}Like],
+            {array_aliases}
+        ]
+        "#,
+    )));
 
     code
 }
@@ -622,10 +628,6 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
 }
 
 /// Returns type name as string and whether it was force unwrapped.
-///
-/// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
-/// becomes just `String`.
-/// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_field_type_from_field(
     objects: &Objects,
     field: &ObjectField,
@@ -682,9 +684,7 @@ fn quote_field_type_from_field(
             // TODO(cmc): it is a bit weird to be doing the transparency logic (which is language
             // agnostic) in a python specific quoting function... a static helper at the very least
             // would be nice.
-            let is_transparent = field
-                .try_get_attr::<String>(ATTR_PYTHON_TRANSPARENT)
-                .is_some();
+            let is_transparent = field.try_get_attr::<String>(ATTR_TRANSPARENT).is_some();
             if is_transparent {
                 let target = objects.get(fqname);
                 assert!(
@@ -722,6 +722,7 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
         ElementType::Object(fqname) => {
             let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
             if from.starts_with("rerun.datatypes") {
+                // NOTE: Only need the class name, pre-generated import clause takes care of the rest.
                 format!("datatypes.{class}")
             } else if from.starts_with("rerun.components") {
                 format!("components.{class}")
@@ -771,7 +772,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 from .{pkg}_ext import {many}Ext # noqa: E402
 
-                class {arrow}(pa.ExtensionType): # type: ignore[misc]
+                class {arrow}(pa.ExtensionType):
                     def __init__(self: type[pa.ExtensionType]) -> None:
                         pa.ExtensionType.__init__(
                             self, {datatype}, "{fqname}"
@@ -795,11 +796,11 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 class {many}(pa.ExtensionArray, {many}Ext):  # type: ignore[misc]
                     @staticmethod
-                    def from_similar(data: {many_aliases} | None) -> pa.Array:
+                    def from_similar(data: Optional[{many_aliases}]):
                         if data is None:
                             return {arrow}().wrap_array(pa.array([], type={arrow}().storage_type))
                         else:
-                            return {many}Ext._from_similar(
+                            return {many}Ext.from_similar(
                                 data,
                                 mono={mono},
                                 mono_aliases={mono_aliases},
@@ -807,7 +808,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                                 many_aliases={many_aliases},
                                 arrow={arrow},
                             )
-                "#
+            "#
             ))
         }
         ObjectKind::Archetype => String::new(),
@@ -850,42 +851,38 @@ fn quote_builder_from_obj(objects: &Objects, obj: &Object) -> String {
             let (typ, unwrapped) = quote_field_type_from_field(objects, field, true);
             if unwrapped {
                 // This was originally a vec/array!
-                format!("{}: {typ}ArrayLike | None = None", field.name)
+                format!("{}: Optional[{typ}ArrayLike] = None", field.name)
             } else {
-                format!("{}: {typ}Like | None = None", field.name)
+                format!("{}: Optional[{typ}Like] = None", field.name)
             }
         })
         .collect::<Vec<_>>()
         .join(", ");
 
-    code.push_text(
-        format!("def __init__(self, {required_args}, *, {optional_args}) -> None:"),
-        1,
-        0,
-    );
+    code.push_str(&format!(
+        "def __init__(self, {required_args}, *, {optional_args}) -> None:\n"
+    ));
 
-    code.push_text("# Required components", 1, 4);
+    code.push_str(&indent::indent_all_by(4, "# Required components\n"));
     for field in required {
         let name = &field.name;
         let (typ, _) = quote_field_type_from_field(objects, field, true);
-        code.push_text(
-            format!("self.{name} = {typ}Array.from_similar({name})"),
-            1,
+        code.push_str(&indent::indent_all_by(
             4,
-        );
+            format!("self.{name} = {typ}Array.from_similar({name})\n"),
+        ));
     }
 
     code.push('\n');
 
-    code.push_text("# Optional components\n", 1, 4);
+    code.push_str(&indent::indent_all_by(4, "# Optional components\n"));
     for field in optional {
         let name = &field.name;
         let (typ, _) = quote_field_type_from_field(objects, field, true);
-        code.push_text(
-            format!("self.{name} = {typ}Array.from_similar({name})"),
-            1,
+        code.push_str(&indent::indent_all_by(
             4,
-        );
+            format!("self.{name} = {typ}Array.from_similar({name})\n"),
+        ));
     }
 
     code
@@ -939,7 +936,11 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
                 .join(", ");
             format!("pa.struct([{fields}])")
         }
-        DataType::Extension(_, datatype, _) => quote_arrow_datatype(datatype),
+        DataType::Extension(_, datatype, _) => {
+            // TODO(cmc): not sure we need all that for the python backend since we already
+            // do the wrapping trick...?
+            quote_arrow_datatype(datatype)
+        }
         _ => unimplemented!("{datatype:#?}"), // NOLINT
     }
 }
