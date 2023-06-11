@@ -1,0 +1,12 @@
+namespace arrow;
+
+/// Marks a union as sparse from Arrow's standpoint, affecting its Arrow datatype.
+///
+/// Only applies to unions.
+attribute "arrow.attr.sparse_union";
+
+/// Marks a single-field object as transparent from Arrow's standpoint, affecting its Arrow
+/// datatype.
+///
+/// This is generally most useful for getting rid of extraneous `struct` layers.
+attribute "arrow.attr.transparent";
