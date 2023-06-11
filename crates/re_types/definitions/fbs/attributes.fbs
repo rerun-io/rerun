@@ -8,8 +8,8 @@ namespace fbs.attributes;
 /// This is always required since flatbuffers works entirely with unordered maps internally, which
 /// would results in flaky code generation.
 ///
-/// In unions, this effectively defines the arrow type of each variant, since that depends on the
-/// fields's order!
+/// In unions, this effectively defines the arrow tag of each variant, since the tag depends on the
+/// fields's order in the datatype!
 ///
 /// NOTE: We do not use flatbuffers' builtin `id` attribute as it only works on `table`s, whereas we
 /// need a stable order for all kinds of things.
