@@ -4498,6 +4498,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_types"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "arrow2",
+ "bytemuck",
+ "document-features",
+ "ecolor",
+ "glam",
+ "itertools",
+ "macaw",
+ "re_build_tools",
+ "re_types_builder",
+ "xshell",
+]
+
+[[package]]
 name = "re_types_builder"
 version = "0.7.0-alpha.0"
 dependencies = [
