@@ -7,8 +7,9 @@ namespace rerun.archetypes;
 
 // ---
 
-// TODO(cmc): archetype IDL definitions must always be tables
-// TODO(cmc): archetype IDL definitions must refer to objects of kind component
+// TODO(#2371): archetype IDL definitions must always be tables
+// TODO(#2372): archetype IDL definitions must refer to objects of kind component
+// TODO(#2373): `rerun.attr.component_required` implies `required`
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.
 table Points2D (
