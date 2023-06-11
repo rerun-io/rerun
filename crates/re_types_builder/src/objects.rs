@@ -124,22 +124,6 @@ pub enum ObjectKind {
     Archetype,
 }
 
-impl ObjectKind {
-    // TODO(#2364): use an attr instead of the path
-    pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
-        let pkg_name = pkg_name.as_ref();
-        if pkg_name.starts_with("rerun.datatypes") {
-            ObjectKind::Datatype
-        } else if pkg_name.starts_with("rerun.components") {
-            ObjectKind::Component
-        } else if pkg_name.starts_with("rerun.archetypes") {
-            ObjectKind::Archetype
-        } else {
-            panic!("unknown package {pkg_name:?}");
-        }
-    }
-}
-
 /// A high-level representation of a flatbuffers object's documentation.
 #[derive(Debug, Clone)]
 pub struct Docs {
@@ -272,7 +256,18 @@ impl Object {
             .unwrap();
 
         let docs = Docs::from_raw_docs(obj.documentation());
-        let kind = ObjectKind::from_pkg_name(&pkg_name);
+
+        let kind = if pkg_name.starts_with("rerun.datatypes") {
+            ObjectKind::Datatype
+        } else if pkg_name.starts_with("rerun.components") {
+            ObjectKind::Component
+        } else if pkg_name.starts_with("rerun.archetypes") {
+            ObjectKind::Archetype
+        } else {
+            // TODO(cmc): support IDL definitions from outside the repo
+            panic!("unknown package {pkg_name:?}");
+        };
+
         let attrs = Attributes::from_raw_attrs(obj.attributes());
 
         let fields = {
@@ -317,7 +312,17 @@ impl Object {
             .unwrap();
 
         let docs = Docs::from_raw_docs(enm.documentation());
-        let kind = ObjectKind::from_pkg_name(&pkg_name);
+
+        let kind = if pkg_name.starts_with("rerun.datatypes") {
+            ObjectKind::Datatype
+        } else if pkg_name.starts_with("rerun.components") {
+            ObjectKind::Component
+        } else if pkg_name.starts_with("rerun.archetypes") {
+            ObjectKind::Archetype
+        } else {
+            // TODO(cmc): support IDL definitions from outside the repo
+            panic!("unknown package {pkg_name:?}");
+        };
 
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
@@ -443,13 +448,12 @@ pub struct ObjectField {
 
     /// Whether the field is required.
     ///
-    /// Always true for IDL definitions using flatbuffers' `struct` type (as opposed to `table`).
+    /// Always true for `struct` types.
     pub required: bool,
 
     /// Whether the field is deprecated.
     //
-    // TODO(#2366): do something with this
-    // TODO(#2367): implement custom attr to specify deprecation reason
+    // TODO(cmc): implement custom attr to specify deprecation reason
     pub deprecated: bool,
 }
 
@@ -566,7 +570,7 @@ impl ObjectField {
     }
 }
 
-/// The underlying type of an [`ObjectField`].
+/// The underlying type of a `ResolvedObjectField`.
 #[derive(Debug, Clone)]
 pub enum Type {
     UInt8,
@@ -592,35 +596,24 @@ pub enum Type {
     Object(String), // fqname
 }
 
-impl From<ElementType> for Type {
-    fn from(typ: ElementType) -> Self {
-        match typ {
-            ElementType::UInt8 => Self::UInt8,
-            ElementType::UInt16 => Self::UInt16,
-            ElementType::UInt32 => Self::UInt32,
-            ElementType::UInt64 => Self::UInt64,
-            ElementType::Int8 => Self::Int8,
-            ElementType::Int16 => Self::Int16,
-            ElementType::Int32 => Self::Int32,
-            ElementType::Int64 => Self::Int64,
-            ElementType::Bool => Self::Bool,
-            ElementType::Float16 => Self::Float16,
-            ElementType::Float32 => Self::Float32,
-            ElementType::Float64 => Self::Float64,
-            ElementType::String => Self::String,
-            ElementType::Object(fqname) => Self::Object(fqname),
-        }
-    }
-}
-
 impl Type {
     pub fn from_raw_type(
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
     ) -> Self {
-        let typ = field_type.base_type();
-        match typ {
+        fn flatten_scalar_wrappers(obj: &FbsObject<'_>) -> Type {
+            if obj.name().starts_with("fbs.scalars.") {
+                match obj.name() {
+                    "fbs.scalars.Float32" => Type::Float32,
+                    _ => unimplemented!(), // NOLINT
+                }
+            } else {
+                Type::Object(obj.name().to_owned())
+            }
+        }
+
+        match field_type.base_type() {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
             FbsBaseType::UByte => Self::UInt8,
@@ -636,12 +629,14 @@ impl Type {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[field_type.index() as usize];
-                flatten_scalar_wrappers(obj).into()
+                flatten_scalar_wrappers(obj)
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];
                 Self::Object(union.name().to_owned())
             }
+            // NOTE: flatbuffers doesn't support directly nesting multiple layers of arrays, they
+            // always have to be wrapped into intermediate layers of structs or tables.
             FbsBaseType::Array => Self::Array {
                 elem_type: ElementType::from_raw_base_type(
                     enums,
@@ -659,11 +654,10 @@ impl Type {
                     field_type.element(),
                 ),
             },
-            FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
-                unimplemented!("{typ:#?}") // NOLINT
-            } // NOLINT
-            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants...
-            _ => unreachable!("{typ:#?}"),
+            FbsBaseType::None => unimplemented!(),  // NOLINT
+            FbsBaseType::UType => unimplemented!(), // NOLINT
+            FbsBaseType::Vector64 => unimplemented!(), // NOLINT
+            _ => unreachable!(),
         }
     }
 }
@@ -697,7 +691,18 @@ impl ElementType {
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
     ) -> Self {
-        #[allow(clippy::match_same_arms)]
+        /// Helper to turn wrapped scalars into actual scalars.
+        fn flatten_scalar_wrappers(obj: &FbsObject<'_>) -> ElementType {
+            if obj.name().starts_with("fbs.scalars.") {
+                match obj.name() {
+                    "fbs.scalars.Float32" => ElementType::Float32,
+                    _ => unimplemented!(), // NOLINT
+                }
+            } else {
+                ElementType::Object(obj.name().to_owned())
+            }
+        }
+
         match inner_type {
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -708,6 +713,7 @@ impl ElementType {
             FbsBaseType::UInt => Self::UInt32,
             FbsBaseType::Long => Self::Int64,
             FbsBaseType::ULong => Self::UInt64,
+            // TODO(cmc): half support
             FbsBaseType::Float => Self::Float32,
             FbsBaseType::Double => Self::Float64,
             FbsBaseType::String => Self::String,
@@ -715,14 +721,15 @@ impl ElementType {
                 let obj = &objs[outer_type.index() as usize];
                 flatten_scalar_wrappers(obj)
             }
-            FbsBaseType::Union => unimplemented!("{inner_type:#?}"), // NOLINT
-            FbsBaseType::None
-            | FbsBaseType::UType
-            | FbsBaseType::Array
-            | FbsBaseType::Vector
-            | FbsBaseType::Vector64 => unreachable!("{inner_type:#?}"),
-            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants...
-            _ => unreachable!("{inner_type:#?}"),
+            FbsBaseType::Union => unimplemented!(), // NOLINT
+            // NOTE: flatbuffers doesn't support directly nesting multiple layers of arrays, they
+            // always have to be wrapped into intermediate layers of structs or tables.
+            FbsBaseType::Array => unimplemented!(),  // NOLINT
+            FbsBaseType::None => unimplemented!(),   // NOLINT
+            FbsBaseType::UType => unimplemented!(),  // NOLINT
+            FbsBaseType::Vector => unimplemented!(), // NOLINT
+            FbsBaseType::Vector64 => unimplemented!(), // NOLINT
+            _ => unreachable!(),
         }
     }
 }
@@ -770,10 +777,9 @@ impl Attributes {
         value_str
             .parse()
             .with_context(|| {
-                let type_of_t = std::any::type_name::<T>();
                 format!(
                     "invalid `{name}` attribute for `{owner_fqname}`: \
-                    expected {type_of_t}, got `{value_str}` instead"
+                    expected unsigned integer, got `{value_str}` instead"
                 )
             })
             .unwrap()
@@ -797,26 +803,12 @@ impl Attributes {
             value_str
                 .parse()
                 .with_context(|| {
-                    let type_of_t = std::any::type_name::<T>();
                     format!(
                         "invalid `{name}` attribute for `{owner_fqname}`: \
-                        expected {type_of_t}, got `{value_str}` instead"
+                        expected unsigned integer, got `{value_str}` instead"
                     )
                 })
                 .unwrap(),
         )
-    }
-}
-
-/// Helper to turn wrapped scalars into actual scalars.
-fn flatten_scalar_wrappers(obj: &FbsObject<'_>) -> ElementType {
-    let name = obj.name();
-    if name.starts_with("fbs.scalars.") {
-        match name {
-            "fbs.scalars.Float32" => ElementType::Float32,
-            _ => unimplemented!("{name:#?}"), // NOLINT
-        }
-    } else {
-        ElementType::Object(name.to_owned())
     }
 }
