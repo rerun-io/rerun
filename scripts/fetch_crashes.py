@@ -126,7 +126,7 @@ for res in results:
 
 
 def count_uniques(backtrace):
-    return len(set([prop["user_id"] for prop in backtrace[1]]))
+    return len({prop["user_id"] for prop in backtrace[1]})
 
 
 backtraces = list(backtraces.items())
@@ -141,13 +141,13 @@ for backtrace, props in backtraces:
     signal = props[0].get("signal")
     title = file_line if file_line is not None else signal
 
-    timestamps = sorted(list(set([prop["timestamp"] for prop in props])))
+    timestamps = sorted(list({prop["timestamp"] for prop in props}))
     first_occurrence = timestamps[0]
     last_occurrence = timestamps[-1]
 
-    targets = sorted(list(set([prop["target"] for prop in props])))
-    rust_versions = sorted(list(set([prop["rust_version"] for prop in props])))
-    rerun_versions = sorted(list(set([prop["rerun_version"] for prop in props])))
+    targets = sorted(list({prop["target"] for prop in props}))
+    rust_versions = sorted(list({prop["rust_version"] for prop in props}))
+    rerun_versions = sorted(list({prop["rerun_version"] for prop in props}))
 
     print(
         f"## {n} distinct user(s) affected by {event} crash @ `{title}`\n"

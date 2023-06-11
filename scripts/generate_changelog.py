@@ -55,7 +55,7 @@ def get_github_token() -> str:
     token_file = os.path.join(home_dir, ".githubtoken")
 
     try:
-        with open(token_file, "r") as f:
+        with open(token_file) as f:
             token = f.read().strip()
         return token
     except Exception:
