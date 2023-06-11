@@ -2,7 +2,7 @@ namespace python.attributes;
 
 /// Marks a field as transparent, meaning its type will be replaced by the underlying type.
 ///
-/// Only applies to field whose types have a single-field.
+/// Only applies to fields whose type is an object with a single-field.
 attribute "python.attr.transparent";
 
 /// Defines the type aliases for a component, e.g. the types that make up `ComponentLike`.
