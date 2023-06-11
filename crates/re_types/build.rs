@@ -1,7 +1,5 @@
 //! Generates Rust & Python code from flatbuffers definitions.
 
-use std::path::PathBuf;
-
 use xshell::{cmd, Shell};
 
 use re_build_tools::{
@@ -17,7 +15,7 @@ use re_build_tools::{
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
-const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun2";
+const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun2";
 
 fn main() {
     if std::env::var("CI").is_ok() {
@@ -45,19 +43,19 @@ fn main() {
 
     // NOTE: We need to hash both the flatbuffers definitions as well as the source code of the
     // code generator itself!
-    let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
     let re_types_builder_hash = compute_crate_hash("re_types_builder");
-    let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&[".fbs"]));
-    let new_hash = compute_strings_hash(&[&re_types_builder_hash, &definitions_hash]);
+    let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
+    let new_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&[".fbs"]));
+    let new_hash_final = compute_strings_hash(&[&re_types_builder_hash, &new_hash]);
 
     // Leave these be please, very useful when debugging.
     eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
     eprintln!("cur_hash: {cur_hash:?}");
-    eprintln!("definitions_hash: {definitions_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
+    eprintln!("new_hash_final: {new_hash_final:?}");
 
     if let Some(cur_hash) = cur_hash {
-        if cur_hash == new_hash {
+        if cur_hash == new_hash_final {
             // Neither the source of the code generator nor the IDL definitions have changed, no need
             // to do anything at this point.
             return;
@@ -74,10 +72,10 @@ fn main() {
 
     // NOTE: We're purposefully ignoring the error here.
     //
-    // In the very unlikely chance that the user doesn't have the `fmt` component installed,
-    // there's still no good reason to fail the build.
+    // In the very unlikely chance that the user doesn't have `cargo` in their $PATH, there's
+    // still no good reason to fail the build.
     //
-    // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
+    // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
     cmd!(sh, "cargo fmt").run().ok();
 
     re_types_builder::generate_python_code(
@@ -86,33 +84,13 @@ fn main() {
         "./definitions/rerun/archetypes.fbs",
     );
 
-    let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("pyproject.toml")
-        .to_string_lossy()
-        .to_string();
-
-    // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
-    // not end users.
-    // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
-    // .fbs files... and even then, this won't crash if they are missing, it will just fail to pass
-    // the CI!
-
     // NOTE: We're purposefully ignoring the error here.
     //
     // If the user doesn't have `black` in their $PATH, there's still no good reason to fail
     // the build.
     //
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "black --config {pyproject_path} {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
+    cmd!(sh, "black {PYTHON_OUTPUT_DIR_PATH}").run().ok();
 
     // NOTE: We're purposefully ignoring the error here.
     //
@@ -120,12 +98,7 @@ fn main() {
     // the build.
     //
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(
-        sh,
-        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
-    )
-    .run()
-    .ok();
+    cmd!(sh, "ruff --fix {PYTHON_OUTPUT_DIR_PATH}").run().ok();
 
-    write_versioning_hash(SOURCE_HASH_PATH, new_hash);
+    write_versioning_hash(SOURCE_HASH_PATH, new_hash_final);
 }

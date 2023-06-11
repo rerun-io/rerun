@@ -1,17 +1,12 @@
 namespace arrow;
 
-/// Marks a union as sparse, affecting its Arrow datatype.
-///
-/// This does _not_ affect the generated object structure in and of itself, it is a pure Arrow
-/// matter that only impacts (de)serialization.
+/// Marks a union as sparse from Arrow's standpoint, affecting its Arrow datatype.
 ///
 /// Only applies to unions.
-attribute "attr.arrow.sparse_union";
+attribute "arrow.attr.sparse_union";
 
-/// Marks a single-field object as transparent, affecting its Arrow datatype.
-///
-/// This does _not_ affect the generated object structure in and of itself, it is a pure Arrow
-/// matter that only impacts (de)serialization.
+/// Marks a single-field object as transparent from Arrow's standpoint, affecting its Arrow
+/// datatype.
 ///
 /// This is generally most useful for getting rid of extraneous `struct` layers.
-attribute "attr.arrow.transparent";
+attribute "arrow.attr.transparent";
