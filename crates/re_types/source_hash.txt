@@ -1,4 +1,10 @@
 # This is a sha256 hash for all direct and indirect dependencies of this crate's build script.
 # It can be safely removed at anytime to force the build script to run again.
 # Check out build.rs to see how it's computed.
+<<<<<<< HEAD
 2d611d0d686a6314da94b1797472e7690413465d16a611aae3560a847668d53d
+||||||| parent of 5d0acef1a (fixing typo in re_types_builder doc)
+400c988b3f50d5081c883356351d7e6506b47a96409777441d05e5efa5e00239
+=======
+400c988b3f50d5081c883356351d7e6506b47a96409777441d05e5efa5e00239
+>>>>>>> 5d0acef1a (fixing typo in re_types_builder doc)
