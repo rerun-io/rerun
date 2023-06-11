@@ -8,9 +8,16 @@ use anyhow::Context as _;
 
 use std::process::Command;
 
+mod hashing;
 mod rebuild_detector;
 
-pub use rebuild_detector::{
+pub(crate) use self::rebuild_detector::Packages;
+
+pub use self::hashing::{
+    compute_crate_hash, compute_dir_hash, compute_file_hash, compute_strings_hash, iter_dir,
+    read_versioning_hash, write_versioning_hash,
+};
+pub use self::rebuild_detector::{
     get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
     rerun_if_changed_glob, rerun_if_changed_or_doesnt_exist, write_file_if_necessary,
 };

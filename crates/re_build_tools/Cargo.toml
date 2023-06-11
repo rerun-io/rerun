@@ -20,4 +20,7 @@ all-features = true
 anyhow.workspace = true
 cargo_metadata = "0.15"
 glob = "0.3"
+sha2 = "0.10"
 time = { workspace = true, features = ["formatting"] }
+unindent = "0.1"
+walkdir = "2.0"

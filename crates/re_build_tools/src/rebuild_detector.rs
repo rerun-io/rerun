@@ -105,7 +105,7 @@ pub fn write_file_if_necessary(
 
 // ---
 
-struct Packages<'a> {
+pub struct Packages<'a> {
     pkgs: HashMap<&'a str, &'a Package>,
 }
 
