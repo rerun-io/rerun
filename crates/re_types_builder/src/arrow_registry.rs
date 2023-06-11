@@ -8,7 +8,6 @@ use crate::{ElementType, Object, Type};
 
 // ---
 
-// TODO(cmc): find a way to extract attr name constants directly from the IDL definitions
 pub const ARROW_ATTR_TRANSPARENT: &str = "arrow.attr.transparent";
 pub const ARROW_ATTR_SPARSE_UNION: &str = "arrow.attr.sparse_union";
 
@@ -56,7 +55,6 @@ impl ArrowRegistry {
 
     fn arrow_datatype_from_object(&self, obj: &Object) -> LazyDatatype {
         let is_struct = obj.is_struct();
-
         let is_transparent = obj.try_get_attr::<String>(ARROW_ATTR_TRANSPARENT).is_some();
         let num_fields = obj.fields.len();
 
@@ -170,6 +168,9 @@ impl ArrowRegistry {
 // --- Field ---
 
 /// A yet-to-be-resolved [`arrow2::datatypes::Field`].
+///
+/// Type resolution is a two-pass process as we first need to register all existing types before we
+/// can denormalize their definitions into their parents.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct LazyField {
     /// Its name
