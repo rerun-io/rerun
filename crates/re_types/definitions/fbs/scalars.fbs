@@ -1,0 +1,10 @@
+/// Unions cannot directly refer to scalar types, they need to be wrapped in a struct or table
+/// first.
+/// This package provides pre-wrapped scalars that will be automatically flattened down to their
+/// inner type by our parsers.
+namespace fbs.scalars;
+
+/// Flattens down to a 32-bit float.
+struct Float32 {
+  v: float;
+}
