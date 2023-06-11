@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import inspect
 import logging
-from typing import Optional
 
 import rerun
 from rerun.log.text_internal import LogLevel, log_text_entry_internal
@@ -20,7 +21,7 @@ def _build_warning_context_string(skip_first: int) -> str:
 def _send_warning(
     message: str,
     depth_to_user_code: int,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Sends a warning about the usage of the Rerun SDK.

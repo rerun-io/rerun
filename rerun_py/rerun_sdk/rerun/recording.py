@@ -1,10 +1,11 @@
 """Helper functions for directly working with recordings."""
+from __future__ import annotations
 
 import base64
 import logging
 import random
 import string
-from typing import Any, Optional
+from typing import Any
 
 from rerun import bindings
 
@@ -29,9 +30,9 @@ class MemoryRecording:
         self,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
-        app_url: Optional[str] = None,
+        app_url: str | None = None,
         timeout_ms: int = DEFAULT_TIMEOUT,
-        other: Optional["MemoryRecording"] = None,
+        other: MemoryRecording | None = None,
     ) -> str:
         """
         Generate an HTML snippet that displays the recording in an IFrame.
@@ -106,10 +107,10 @@ class MemoryRecording:
 
     def show(
         self,
-        other: Optional["MemoryRecording"] = None,
+        other: MemoryRecording | None = None,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
-        app_url: Optional[str] = None,
+        app_url: str | None = None,
         timeout_ms: int = DEFAULT_TIMEOUT,
     ) -> Any:
         """

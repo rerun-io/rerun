@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from rerun.components import (
-    REGISTERED_COMPONENT_NAMES,
-    ComponentTypeFactory,
-)
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 from rerun.log import _normalize_matrix3
 
 __all__ = [
@@ -27,7 +23,7 @@ class Pinhole:
     image_from_cam: npt.ArrayLike
 
     # Pixel resolution (usually integers) of child image space. Width and height.
-    resolution: Union[npt.ArrayLike, None]
+    resolution: npt.ArrayLike | None
 
 
 class PinholeArray(pa.ExtensionArray):  # type: ignore[misc]

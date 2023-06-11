@@ -1,4 +1,6 @@
-from typing import Any, Dict, Iterable, Optional, Protocol, Union
+from __future__ import annotations
+
+from typing import Any, Iterable, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -45,11 +47,11 @@ def log_tensor(
     entity_path: str,
     tensor: npt.ArrayLike,
     *,
-    names: Optional[Iterable[Optional[str]]] = None,
-    meter: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    names: Iterable[str | None] | None = None,
+    meter: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log an n-dimensional tensor.
@@ -88,13 +90,13 @@ def log_tensor(
 def _log_tensor(
     entity_path: str,
     tensor: npt.NDArray[Any],
-    draw_order: Optional[float] = None,
-    names: Optional[Iterable[Optional[str]]] = None,
-    meter: Optional[float] = None,
+    draw_order: float | None = None,
+    names: Iterable[str | None] | None = None,
+    meter: float | None = None,
     meaning: bindings.TensorDataMeaning = None,
-    ext: Optional[Dict[str, Any]] = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
 
@@ -134,8 +136,8 @@ def _log_tensor(
         )
         return
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     instanced["rerun.tensor"] = TensorArray.from_numpy(tensor, names, meaning, meter)
 

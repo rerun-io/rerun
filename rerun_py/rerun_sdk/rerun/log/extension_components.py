@@ -1,15 +1,18 @@
-from typing import Any, Dict, Optional, Sequence
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-# Fully qualified to avoid circular import
 import rerun.log.error_utils
 from rerun import bindings
 from rerun.components.instance import InstanceArray
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
+
+# Fully qualified to avoid circular import
 
 __all__ = [
     "_add_extension_components",
@@ -18,14 +21,14 @@ __all__ = [
 
 EXT_PREFIX = "ext."
 
-EXT_COMPONENT_TYPES: Dict[str, Any] = {}
+EXT_COMPONENT_TYPES: dict[str, Any] = {}
 
 
 def _add_extension_components(
-    instanced: Dict[str, Any],
-    splats: Dict[str, Any],
-    ext: Dict[str, Any],
-    identifiers: Optional[npt.NDArray[np.uint64]],
+    instanced: dict[str, Any],
+    splats: dict[str, Any],
+    ext: dict[str, Any],
+    identifiers: npt.NDArray[np.uint64] | None,
 ) -> None:
     for name, value in ext.items():
         # Don't log empty components
@@ -66,11 +69,11 @@ def _add_extension_components(
 @log_decorator
 def log_extension_components(
     entity_path: str,
-    ext: Dict[str, Any],
+    ext: dict[str, Any],
     *,
-    identifiers: Optional[Sequence[int]] = None,
+    identifiers: Sequence[int] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log an arbitrary collection of extension components.
@@ -126,8 +129,8 @@ def log_extension_components(
         except ValueError:
             rerun.log.error_utils._send_warning("Only integer identifiers supported", 1)
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if len(identifiers_np):
         instanced["rerun.instance_key"] = InstanceArray.from_numpy(identifiers_np)

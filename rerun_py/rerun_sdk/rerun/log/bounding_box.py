@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -26,16 +28,16 @@ __all__ = [
 def log_obb(
     entity_path: str,
     *,
-    half_size: Optional[npt.ArrayLike],
-    position: Optional[npt.ArrayLike] = None,
-    rotation_q: Optional[npt.ArrayLike] = None,
-    color: Optional[Color] = None,
-    stroke_width: Optional[float] = None,
-    label: Optional[str] = None,
-    class_id: Optional[int] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    half_size: npt.ArrayLike | None,
+    position: npt.ArrayLike | None = None,
+    rotation_q: npt.ArrayLike | None = None,
+    color: Color | None = None,
+    stroke_width: float | None = None,
+    label: str | None = None,
+    class_id: int | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a 3D Oriented Bounding Box, or OBB.
@@ -76,8 +78,8 @@ def log_obb(
     """
     recording = RecordingStream.to_native(recording)
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if half_size is not None:
         half_size = np.require(half_size, dtype="float32")

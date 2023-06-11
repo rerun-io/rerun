@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional, Sequence, Union
 
 import numpy as np
@@ -11,11 +13,11 @@ OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
-def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
+def _to_sequence(array: npt.ArrayLike | None) -> Sequence[float] | None:
     return np.require(array, float).tolist()  # type: ignore[no-any-return]
 
 
-def _normalize_colors(colors: Optional[Union[Color, Colors]] = None) -> npt.NDArray[np.uint8]:
+def _normalize_colors(colors: Color | Colors | None = None) -> npt.NDArray[np.uint8]:
     """
     Normalize flexible colors arrays.
 
@@ -47,7 +49,7 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
         return np.atleast_1d(np.array(class_ids, dtype=np.uint16, copy=False))
 
 
-def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.float32]:
+def _normalize_radii(radii: npt.ArrayLike | None = None) -> npt.NDArray[np.float32]:
     """Normalize flexible radii arrays."""
     if radii is None:
         return np.array((), dtype=np.float32)
@@ -55,14 +57,14 @@ def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.fl
         return np.atleast_1d(np.array(radii, dtype=np.float32, copy=False))
 
 
-def _normalize_labels(labels: Optional[Union[str, Sequence[str]]]) -> Sequence[str]:
+def _normalize_labels(labels: str | Sequence[str] | None) -> Sequence[str]:
     if labels is None:
         return []
     else:
         return labels
 
 
-def _normalize_matrix3(matrix: Union[npt.ArrayLike, None]) -> npt.ArrayLike:
+def _normalize_matrix3(matrix: npt.ArrayLike | None) -> npt.ArrayLike:
     matrix = np.eye(3) if matrix is None else matrix
     matrix = np.array(matrix, dtype=np.float32, order="F")
     if matrix.shape != (3, 3):

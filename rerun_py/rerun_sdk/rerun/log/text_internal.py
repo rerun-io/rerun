@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Final, Optional
+from typing import Any, Final
 
-# Fully qualified to avoid circular import
 from rerun import bindings
 from rerun.components.color import ColorRGBAArray
 from rerun.components.instance import InstanceArray
 from rerun.components.text_entry import TextEntryArray
 from rerun.log import Color, _normalize_colors
 from rerun.recording_stream import RecordingStream
+
+# Fully qualified to avoid circular import
 
 __all__ = [
     "LogLevel",
@@ -48,10 +51,10 @@ def log_text_entry_internal(
     entity_path: str,
     text: str,
     *,
-    level: Optional[str] = LogLevel.INFO,
-    color: Optional[Color] = None,
+    level: str | None = LogLevel.INFO,
+    color: Color | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Internal API to log a text entry, with optional level.
@@ -81,8 +84,8 @@ def log_text_entry_internal(
     """
     recording = RecordingStream.to_native(recording)
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if text:
         instanced["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
