@@ -20,6 +20,7 @@ See Also
 ```
 python scripts/fetch_crashes.py --help
 ```
+
 """
 
 import argparse

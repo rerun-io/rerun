@@ -261,7 +261,9 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, rr.TranslationRotatio
     Reads out camera_from_world transform from trajectory string.
 
     Args:
-        traj_string: A space-delimited file where each line represents a camera position at a particular timestamp.
+    ----
+    traj_string:
+        A space-delimited file where each line represents a camera position at a particular timestamp.
             The file has seven columns:
             * Column 1: timestamp
             * Columns 2-4: rotation (axis-angle representation in radians)
@@ -276,7 +278,8 @@ def read_camera_from_world(traj_string: str) -> Tuple[str, rr.TranslationRotatio
 
     Raises
     ------
-        AssertionError: If the input string does not contain 7 tokens.
+    AssertionError:
+        If the input string does not contain 7 tokens.
     """
     tokens = traj_string.split()  # Split the input string into tokens
     assert len(tokens) == 7, f"Input string must have 7 tokens, but found {len(tokens)}."
@@ -307,11 +310,16 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     Logs ARKit recording data using Rerun.
 
     Args:
-        recording_path (Path): The path to the ARKit recording.
+    ----
+    recording_path (Path):
+        The path to the ARKit recording.
+
+    include_highres (bool):
+        Whether to include high resolution data.
 
     Returns
     -------
-        None
+    None
     """
     video_id = recording_path.stem
     lowres_image_dir = recording_path / "lowres_wide"

@@ -307,15 +307,20 @@ def ensure_recording_available(video_id: str, include_highres: bool) -> Path:
     Returns the path to the recording for a given video_id.
 
     Args:
-        video_id (str): Identifier for the recording.
+    ----
+    video_id (str):
+        Identifier for the recording.
+    include_highres (bool):
+        Whether to include the high resolution recording.
 
     Returns
     -------
-        Path: Path object representing the path to the recording.
+    Path: Path object representing the path to the recording.
 
     Raises
     ------
-        AssertionError: If the recording path does not exist.
+    AssertionError:
+        If the recording path does not exist.
     """
     recording_path = ensure_recording_downloaded(video_id, include_highres)
     assert recording_path.exists(), f"Recording path {recording_path} does not exist."
