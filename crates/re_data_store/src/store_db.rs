@@ -77,7 +77,7 @@ impl EntityDb {
 
     // TODO(jleibs): If this shouldn't be public, chain together other setters
     // TODO(cmc): Updates of secondary datastructures should be the result of subscribing to the
-    // datastore's changelog and reacting to these changes apropriately. We shouldn't be creating
+    // datastore's changelog and reacting to these changes appropriately. We shouldn't be creating
     // many sources of truth.
     pub fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
         for (&timeline, &time_int) in row.timepoint().iter() {
