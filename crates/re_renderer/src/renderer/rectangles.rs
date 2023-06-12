@@ -111,7 +111,6 @@ impl ColormappedTexture {
             decode_srgb,
             range: [0.0, 1.0],
             gamma: 1.0,
-            // Assume the texture does *not* use premultiplied alpha.
             multiply_rgb_with_alpha: true,
             color_mapper: None,
         }
