@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Iterable, Optional, Sequence, Tuple, Union
+from typing import Iterable, Sequence, Tuple, Union
 
 from rerun import bindings
 from rerun.log import Color, _normalize_colors
@@ -25,10 +27,10 @@ class AnnotationInfo:
     id: int = 0
     """The id of the class or key-point to annotate"""
 
-    label: Optional[str] = None
+    label: str | None = None
     """The label that will be shown in the UI"""
 
-    color: Optional[Color] = None
+    color: Color | None = None
     """The color that will be applied to the annotated entity"""
 
 
@@ -53,13 +55,13 @@ class ClassDescription:
     Keypoints in turn may be connected to each other by connections (typically used for skeleton edges).
     """
 
-    info: Optional[AnnotationInfoLike] = None
+    info: AnnotationInfoLike | None = None
     """The annotation info for the class"""
 
-    keypoint_annotations: Optional[Iterable[AnnotationInfoLike]] = None
+    keypoint_annotations: Iterable[AnnotationInfoLike] | None = None
     """The annotation infos for the all key-points"""
 
-    keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]] = None
+    keypoint_connections: Iterable[int | tuple[int, int]] | None = None
     """The connections between key-points"""
 
 
@@ -77,10 +79,10 @@ def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
 @log_decorator
 def log_annotation_context(
     entity_path: str,
-    class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
+    class_descriptions: ClassDescriptionLike | Iterable[ClassDescriptionLike],
     *,
     timeless: bool = True,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log an annotation context made up of a collection of [ClassDescription][rerun.log.annotation.ClassDescription]s.
@@ -131,7 +133,7 @@ def log_annotation_context(
 
     # Convert back to fixed tuple for easy pyo3 conversion
     # This is pretty messy but will likely go away / be refactored with pending data-model changes.
-    def info_to_tuple(info: Optional[AnnotationInfoLike]) -> Tuple[int, Optional[str], Optional[Sequence[int]]]:
+    def info_to_tuple(info: AnnotationInfoLike | None) -> tuple[int, str | None, Sequence[int] | None]:
         if info is None:
             return (0, None, None)
         info = coerce_annotation_info(info)
@@ -139,7 +141,7 @@ def log_annotation_context(
         return (info.id, info.label, color)
 
     def keypoint_connections_to_flat_list(
-        keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]]
+        keypoint_connections: Iterable[int | tuple[int, int]] | None
     ) -> Sequence[int]:
         if keypoint_connections is None:
             return []

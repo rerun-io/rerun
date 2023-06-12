@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional, Sequence, Union
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -10,14 +12,7 @@ from rerun.components.draw_order import DrawOrderArray
 from rerun.components.instance import InstanceArray
 from rerun.components.label import LabelArray
 from rerun.components.rect2d import Rect2DArray, RectFormat
-from rerun.log import (
-    Color,
-    Colors,
-    OptionalClassIds,
-    _normalize_colors,
-    _normalize_ids,
-    _normalize_labels,
-)
+from rerun.log import Color, Colors, OptionalClassIds, _normalize_colors, _normalize_ids, _normalize_labels
 from rerun.log.error_utils import _send_warning
 from rerun.log.extension_components import _add_extension_components
 from rerun.log.log_decorator import log_decorator
@@ -33,16 +28,16 @@ __all__ = [
 @log_decorator
 def log_rect(
     entity_path: str,
-    rect: Optional[npt.ArrayLike],
+    rect: npt.ArrayLike | None,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    color: Optional[Color] = None,
-    label: Optional[str] = None,
-    class_id: Optional[int] = None,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    color: Color | None = None,
+    label: str | None = None,
+    class_id: int | None = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a 2D rectangle.
@@ -85,8 +80,8 @@ def log_rect(
         rects = np.zeros((0, 4), dtype="float32")
     assert type(rects) is np.ndarray
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     instanced["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
@@ -129,17 +124,17 @@ def log_rect(
 @log_decorator
 def log_rects(
     entity_path: str,
-    rects: Optional[npt.ArrayLike],
+    rects: npt.ArrayLike | None,
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    identifiers: Optional[Sequence[int]] = None,
-    colors: Optional[Union[Color, Colors]] = None,
-    labels: Optional[Sequence[str]] = None,
+    identifiers: Sequence[int] | None = None,
+    colors: Color | Colors | None = None,
+    labels: Sequence[str] | None = None,
     class_ids: OptionalClassIds = None,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log multiple 2D rectangles.

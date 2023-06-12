@@ -8,11 +8,7 @@ import numpy.typing as npt
 import pyarrow as pa
 
 from rerun import bindings
-from rerun.components import (
-    REGISTERED_COMPONENT_NAMES,
-    ComponentTypeFactory,
-    build_dense_union,
-)
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory, build_dense_union
 
 __all__ = [
     "TensorArray",

@@ -2,10 +2,7 @@ from __future__ import annotations
 
 import pyarrow as pa
 
-from rerun.components import (
-    REGISTERED_COMPONENT_NAMES,
-    ComponentTypeFactory,
-)
+from rerun.components import REGISTERED_COMPONENT_NAMES, ComponentTypeFactory
 
 __all__ = [
     "DisconnectedSpaceArray",

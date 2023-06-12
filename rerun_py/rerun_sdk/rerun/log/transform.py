@@ -3,7 +3,9 @@ Methods for logging transforms on entity paths.
 
 Learn more about transforms [in the manual](https://www.rerun.io/docs/concepts/spaces-and-transforms)
 """
-from typing import Any, Dict, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import Any
 
 import numpy.typing as npt
 from deprecated import deprecated
@@ -40,9 +42,9 @@ def log_view_coordinates(
     *,
     xyz: str = "",
     up: str = "",
-    right_handed: Optional[bool] = None,
+    right_handed: bool | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log the view coordinates for an entity.
@@ -131,7 +133,7 @@ def log_view_coordinates(
 def log_unknown_transform(
     entity_path: str,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log that this entity is NOT in the same space as the parent, but you do not (yet) know how they relate.
@@ -151,7 +153,7 @@ def log_unknown_transform(
     """
     recording = RecordingStream.to_native(recording)
 
-    instanced: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
     instanced["rerun.disconnected_transform"] = DisconnectedSpaceArray.single()
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
@@ -160,7 +162,7 @@ def log_unknown_transform(
 def log_disconnected_space(
     entity_path: str,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log that this entity is NOT in the same space as the parent.
@@ -183,7 +185,7 @@ def log_disconnected_space(
     """
     recording = RecordingStream.to_native(recording)
 
-    instanced: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
     instanced["rerun.disconnected_transform"] = DisconnectedSpaceArray.single()
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless, recording=recording)
 
@@ -191,19 +193,19 @@ def log_disconnected_space(
 @log_decorator
 def log_transform3d(
     entity_path: str,
-    transform: Union[
-        TranslationAndMat3,
-        TranslationRotationScale3D,
-        RotationAxisAngle,
-        Translation3D,
-        Scale3D,
-        Quaternion,
-        Rigid3D,
-    ],
+    transform: (
+        TranslationAndMat3
+        | TranslationRotationScale3D
+        | RotationAxisAngle
+        | Translation3D
+        | Scale3D
+        | Quaternion
+        | Rigid3D
+    ),
     *,
     from_parent: bool = False,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log an (affine) 3D transform between this entity and the parent.
@@ -288,11 +290,11 @@ def log_transform3d(
 def log_rigid3(
     entity_path: str,
     *,
-    parent_from_child: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
-    child_from_parent: Optional[Tuple[npt.ArrayLike, npt.ArrayLike]] = None,
+    parent_from_child: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
+    child_from_parent: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
     xyz: str = "",
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a proper rigid 3D transform between this entity and the parent.

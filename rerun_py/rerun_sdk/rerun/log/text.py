@@ -1,7 +1,8 @@
-import logging
-from typing import Any, Dict, Final, Optional
+from __future__ import annotations
 
-# Fully qualified to avoid circular import
+import logging
+from typing import Any, Final
+
 import rerun.log.extension_components
 from rerun import bindings
 from rerun.components.color import ColorRGBAArray
@@ -11,6 +12,8 @@ from rerun.log import Color, _normalize_colors
 from rerun.log.log_decorator import log_decorator
 from rerun.log.text_internal import LogLevel
 from rerun.recording_stream import RecordingStream
+
+# Fully qualified to avoid circular import
 
 __all__ = [
     "LogLevel",
@@ -51,7 +54,7 @@ class LoggingHandler(logging.Handler):
         logging.DEBUG: LogLevel.DEBUG,
     }
 
-    def __init__(self, root_entity_path: Optional[str] = None):
+    def __init__(self, root_entity_path: str | None = None):
         logging.Handler.__init__(self)
         self.root_entity_path = root_entity_path
 
@@ -72,11 +75,11 @@ def log_text_entry(
     entity_path: str,
     text: str,
     *,
-    level: Optional[str] = LogLevel.INFO,
-    color: Optional[Color] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    level: str | None = LogLevel.INFO,
+    color: Color | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a text entry, with optional level.
@@ -106,8 +109,8 @@ def log_text_entry(
 
     recording = RecordingStream.to_native(recording)
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if text:
         instanced["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])

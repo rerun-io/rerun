@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -21,10 +23,10 @@ def log_image(
     entity_path: str,
     image: Tensor,
     *,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a gray or color image.
@@ -96,11 +98,11 @@ def log_depth_image(
     entity_path: str,
     image: Tensor,
     *,
-    draw_order: Optional[float] = None,
-    meter: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    draw_order: float | None = None,
+    meter: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a depth image.
@@ -175,10 +177,10 @@ def log_segmentation_image(
     entity_path: str,
     image: npt.ArrayLike,
     *,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log an image made up of integer class-ids.

@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -49,11 +50,11 @@ def log_mesh_file(
     entity_path: str,
     mesh_format: MeshFormat,
     *,
-    mesh_bytes: Optional[bytes] = None,
-    mesh_path: Optional[Path] = None,
-    transform: Optional[npt.ArrayLike] = None,
+    mesh_bytes: bytes | None = None,
+    mesh_path: Path | None = None,
+    transform: npt.ArrayLike | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log the contents of a mesh file (.gltf, .glb, .obj, …).
@@ -116,11 +117,11 @@ def log_mesh_file(
 def log_image_file(
     entity_path: str,
     *,
-    img_bytes: Optional[bytes] = None,
-    img_path: Optional[Path] = None,
-    img_format: Optional[ImageFormat] = None,
+    img_bytes: bytes | None = None,
+    img_path: Path | None = None,
+    img_format: ImageFormat | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log an image file given its contents or path on disk.

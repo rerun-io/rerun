@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 
@@ -23,12 +25,12 @@ def log_scalar(
     entity_path: str,
     scalar: float,
     *,
-    label: Optional[str] = None,
-    color: Optional[Color] = None,
-    radius: Optional[float] = None,
-    scattered: Optional[bool] = None,
-    ext: Optional[Dict[str, Any]] = None,
-    recording: Optional[RecordingStream] = None,
+    label: str | None = None,
+    color: Color | None = None,
+    radius: float | None = None,
+    scattered: bool | None = None,
+    ext: dict[str, Any] | None = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a double-precision scalar that will be visualized as a timeseries plot.
@@ -120,8 +122,8 @@ def log_scalar(
     """
     recording = RecordingStream.to_native(recording)
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     instanced["rerun.scalar"] = ScalarArray.from_numpy(np.array([scalar]))
 

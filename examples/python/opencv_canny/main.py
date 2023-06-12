@@ -20,15 +20,15 @@ python examples/python/opencv_canny/main.py --connect
 ```
 
 """
+from __future__ import annotations
 
 import argparse
-from typing import Optional
 
 import cv2
 import rerun as rr  # pip install rerun-sdk
 
 
-def run_canny(num_frames: Optional[int]) -> None:
+def run_canny(num_frames: int | None) -> None:
     # Create a new video capture
     cap = cv2.VideoCapture(0)
 

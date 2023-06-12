@@ -38,34 +38,34 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
 
     for commit in all_commits:
         commit_short = commit[:7]
-        print("Checking commit: {}...".format(commit_short))
+        print(f"Checking commit: {commit_short}...")
 
         found: Dict[str, Any] = {}
 
         # Check if there is a hosted app for the current commit
         app_blob = viewer_bucket.blob(f"commit/{commit_short}/index.html")
         if app_blob.exists():
-            print("Found web assets commit: {}".format(commit_short))
+            print(f"Found web assets commit: {commit_short}")
             found["hosted_app"] = f"https://app.rerun.io/commit/{commit_short}"
 
         # Check if there are benchmark results
         bench_blob = builds_bucket.blob(f"commit/{commit_short}/bench_results.txt")
         if bench_blob.exists():
-            print("Found benchmark results: {}".format(commit_short))
+            print(f"Found benchmark results: {commit_short}")
             found["bench_results"] = f"https://build.rerun.io/{bench_blob.name}"
 
         # Check if there are notebook results
         notebook_blobs = list(builds_bucket.list_blobs(prefix=f"commit/{commit_short}/notebooks"))
         notebooks = [f"https://build.rerun.io/{blob.name}" for blob in notebook_blobs if blob.name.endswith(".html")]
         if notebooks:
-            print("Found notebooks for commit: {}".format(commit_short))
+            print(f"Found notebooks for commit: {commit_short}")
             found["notebooks"] = notebooks
 
         # Get the wheel files for the commit
         wheel_blobs = list(builds_bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
         wheels = [f"https://build.rerun.io/{blob.name}" for blob in wheel_blobs if blob.name.endswith(".whl")]
         if wheels:
-            print("Found wheels for commit: {}".format(commit_short))
+            print(f"Found wheels for commit: {commit_short}")
             found["wheels"] = wheels
 
         if found:
@@ -83,7 +83,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
 
     if upload:
         upload_blob = builds_bucket.blob(f"pull_request/{pr_number}/index.html")
-        print("Uploading results to {}".format(upload_blob.name))
+        print(f"Uploading results to {upload_blob.name}")
         upload_blob.upload_from_file(buffer, content_type="text/html")
 
         # If there's a {{ pr-build-summary }} string in the PR description, replace it with a link to the summary page.

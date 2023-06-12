@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-
 """
 The example from our Getting Started page.
 
 `examples/python/dna/main.py`
 """
+from __future__ import annotations
 
 from math import tau
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 turbo_colormap_data = np.array(

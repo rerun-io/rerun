@@ -1,13 +1,12 @@
-from typing import Any, Optional, Sequence
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
 
 from rerun import bindings
-from rerun.log import (
-    Colors,
-    _normalize_colors,
-)
+from rerun.log import Colors, _normalize_colors
 from rerun.log.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -22,12 +21,12 @@ def log_mesh(
     entity_path: str,
     positions: Any,
     *,
-    indices: Optional[Any] = None,
-    normals: Optional[Any] = None,
-    albedo_factor: Optional[Any] = None,
-    vertex_colors: Optional[Colors] = None,
+    indices: Any | None = None,
+    normals: Any | None = None,
+    albedo_factor: Any | None = None,
+    vertex_colors: Colors | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a raw 3D mesh by specifying its vertex positions, and optionally indices, normals and albedo factor.
@@ -113,12 +112,12 @@ def log_meshes(
     entity_path: str,
     position_buffers: Sequence[npt.ArrayLike],
     *,
-    vertex_color_buffers: Sequence[Optional[Colors]],
-    index_buffers: Sequence[Optional[npt.ArrayLike]],
-    normal_buffers: Sequence[Optional[npt.ArrayLike]],
-    albedo_factors: Sequence[Optional[npt.ArrayLike]],
+    vertex_color_buffers: Sequence[Colors | None],
+    index_buffers: Sequence[npt.ArrayLike | None],
+    normal_buffers: Sequence[npt.ArrayLike | None],
+    albedo_factors: Sequence[npt.ArrayLike | None],
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log multiple raw 3D meshes by specifying their different buffers and albedo factors.
