@@ -24,12 +24,13 @@ The Summary should look like:
 * [Helpers](helpers.md)
 ```
 """
+from __future__ import annotations
 
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Final
 
 import griffe
 import mkdocs_gen_files
@@ -38,13 +39,13 @@ import mkdocs_gen_files
 @dataclass
 class Section:
     title: str
-    module_summary: Optional[str]
-    func_list: List[str]
+    module_summary: str | None
+    func_list: list[str]
 
 
 # This is the list of sections and functions that will be included in the index
 # for each of them.
-SECTION_TABLE: Final[List[Section]] = [
+SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Initialization",
         module_summary=None,

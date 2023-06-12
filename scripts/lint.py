@@ -5,12 +5,13 @@ Runs custom linting on our code.
 
 Adding "NOLINT" to any line makes the linter ignore that line.
 """
+from __future__ import annotations
 
 import argparse
 import os
 import re
 import sys
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 # -----------------------------------------------------------------------------
 
@@ -22,7 +23,7 @@ wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 
 
-def lint_line(line: str) -> Optional[str]:
+def lint_line(line: str) -> str | None:
     if "NOLINT" in line:
         return None  # NOLINT ignores the linter
 
@@ -166,7 +167,7 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
     return False
 
 
-def lint_vertical_spacing(lines_in: List[str]) -> Tuple[List[str], List[str]]:
+def lint_vertical_spacing(lines_in: list[str]) -> tuple[list[str], list[str]]:
     """Only for Rust files."""
     prev_line = None
 
@@ -266,7 +267,7 @@ def test_lint_vertical_spacing() -> None:
 re_workspace_dep = re.compile(r"workspace\s*=\s*(true|false)")
 
 
-def lint_workspace_deps(lines_in: List[str]) -> Tuple[List[str], List[str]]:
+def lint_workspace_deps(lines_in: list[str]) -> tuple[list[str], list[str]]:
     """Only for Cargo files."""
 
     errors = []

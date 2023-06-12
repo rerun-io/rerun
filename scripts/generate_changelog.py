@@ -5,12 +5,13 @@ Summarizes recent PRs based on their GitHub labels.
 
 The result can be copy-pasted into CHANGELOG.md, though it often needs some manual editing too.
 """
+from __future__ import annotations
 
 import multiprocessing
 import re
 import sys
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any
 
 import requests
 from git import Repo  # pip install GitPython
@@ -34,14 +35,14 @@ OFFICIAL_RERUN_DEVS = [
 class PrInfo:
     gh_user_name: str
     pr_title: str
-    labels: List[str]
+    labels: list[str]
 
 
 @dataclass
 class CommitInfo:
     hexsha: str
     title: str
-    pr_number: Optional[int]
+    pr_number: int | None
 
 
 def get_github_token() -> str:
@@ -66,7 +67,7 @@ def get_github_token() -> str:
 
 
 # Slow
-def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> Optional[PrInfo]:
+def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> PrInfo | None:
     if commit_info.pr_number is None:
         return None
     else:
@@ -74,7 +75,7 @@ def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> Optional[PrInfo]:
 
 
 # Slow
-def fetch_pr_info(pr_number: int) -> Optional[PrInfo]:
+def fetch_pr_info(pr_number: int) -> PrInfo | None:
     url = f"https://api.github.com/repos/{OWNER}/{REPO}/pulls/{pr_number}"
     gh_access_token = get_github_token()
     headers = {"Authorization": f"Token {gh_access_token}"}
@@ -99,7 +100,7 @@ def get_commit_info(commit: Any) -> CommitInfo:
         return CommitInfo(hexsha=commit.hexsha, title=commit.summary, pr_number=None)
 
 
-def print_section(title: str, items: List[str]) -> None:
+def print_section(title: str, items: list[str]) -> None:
     if 0 < len(items):
         print(f"#### {title}")
         for line in items:

@@ -9,11 +9,12 @@ This is expected to be run by the `reusable_pip_index.yml` GitHub workflow.
 Requires the following packages:
   pip install google-cloud-storage Jinja2 PyGithub # NOLINT
 """
+from __future__ import annotations
 
 import argparse
 import io
 import os
-from typing import Any, Dict
+from typing import Any
 
 from google.cloud import storage
 from jinja2 import Template
@@ -30,7 +31,7 @@ def generate_pip_index(commit: str, upload: bool) -> None:
     commit_short = commit[:7]
     print(f"Checking commit: {commit_short}...")
 
-    found: Dict[str, Any] = {}
+    found: dict[str, Any] = {}
 
     # Get the wheel files for the commit
     wheel_blobs = list(wheels_bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
