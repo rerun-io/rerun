@@ -32,7 +32,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
     )
-    parser.add_argument("--repeat", type=int, default=1, help="How many times do we want to run the log function?")
     rr.script_add_args(parser)
     args, unknown = parser.parse_known_args()
     [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
@@ -40,6 +39,8 @@ def main() -> None:
     rr.script_setup(args, "text_logging")
 
     setup_logging()
+
+    # ... example code
 
     rr.script_teardown(args)
 
