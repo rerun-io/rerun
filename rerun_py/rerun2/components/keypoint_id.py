@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -63,7 +63,7 @@ pa.register_extension_type(KeypointIdType())
 
 class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[KeypointIdArrayLike]):
+    def from_similar(data: KeypointIdArrayLike | None):
         if data is None:
             return KeypointIdType().wrap_array(pa.array([], type=KeypointIdType().storage_type))
         else:
