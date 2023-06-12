@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -54,7 +54,7 @@ pa.register_extension_type(InstanceKeyType())
 
 class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[InstanceKeyArrayLike]):
+    def from_similar(data: InstanceKeyArrayLike | None):
         if data is None:
             return InstanceKeyType().wrap_array(pa.array([], type=InstanceKeyType().storage_type))
         else:

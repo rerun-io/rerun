@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import pyarrow as pa
 
@@ -55,7 +55,7 @@ pa.register_extension_type(LabelType())
 
 class LabelArray(pa.ExtensionArray, LabelArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[LabelArrayLike]):
+    def from_similar(data: LabelArrayLike | None):
         if data is None:
             return LabelType().wrap_array(pa.array([], type=LabelType().storage_type))
         else:

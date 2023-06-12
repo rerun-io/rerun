@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -64,7 +64,7 @@ pa.register_extension_type(ColorType())
 
 class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[ColorArrayLike]):
+    def from_similar(data: ColorArrayLike | None):
         if data is None:
             return ColorType().wrap_array(pa.array([], type=ColorType().storage_type))
         else:

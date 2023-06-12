@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -56,7 +56,7 @@ pa.register_extension_type(ClassIdType())
 
 class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[ClassIdArrayLike]):
+    def from_similar(data: ClassIdArrayLike | None):
         if data is None:
             return ClassIdType().wrap_array(pa.array([], type=ClassIdType().storage_type))
         else:
