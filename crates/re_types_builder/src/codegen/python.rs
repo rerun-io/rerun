@@ -294,7 +294,7 @@ impl QuotedObject {
             let typ = if field.required {
                 typ
             } else {
-                format!("Optional[{typ}] = None")
+                format!("{typ} | None = None")
             };
 
             code.push_str(&indent::indent_all_by(4, format!("{name}: {typ}\n")));
@@ -397,7 +397,7 @@ impl QuotedObject {
             // NOTE: It's always optional since only one of the fields can be set at a time.
             code.push_str(&indent::indent_all_by(
                 4,
-                format!("{name}: Optional[{typ}] = None\n"),
+                format!("{name}: {typ} | None = None\n"),
             ));
 
             code.push_str(&indent::indent_all_by(4, quote_doc_from_docs(docs)));
@@ -794,7 +794,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 class {many}(pa.ExtensionArray, {many}Ext):  # type: ignore[misc]
                     @staticmethod
-                    def from_similar(data: Optional[{many_aliases}]):
+                    def from_similar(data: {many_aliases} | None):
                         if data is None:
                             return {arrow}().wrap_array(pa.array([], type={arrow}().storage_type))
                         else:
@@ -849,9 +849,9 @@ fn quote_builder_from_obj(objects: &Objects, obj: &Object) -> String {
             let (typ, unwrapped) = quote_field_type_from_field(objects, field, true);
             if unwrapped {
                 // This was originally a vec/array!
-                format!("{}: Optional[{typ}ArrayLike] = None", field.name)
+                format!("{}: {typ}ArrayLike | None = None", field.name)
             } else {
-                format!("{}: Optional[{typ}Like] = None", field.name)
+                format!("{}: {typ}Like | None = None", field.name)
             }
         })
         .collect::<Vec<_>>()
