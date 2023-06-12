@@ -20,7 +20,7 @@ struct DrawOrder (
   "arrow.attr.transparent",
   "python.attr.aliases": "float",
   "python.attr.array_aliases": "npt.NDArray[np.float32]",
-  "rust.attr.derive": "Debug, Clone, Copy",
+  "rust.attr.derive": "Debug, Clone, Copy, PartialEq, PartialOrd",
   "rust.attr.repr": "transparent",
   "rust.attr.tuple_struct",
   order: 100
