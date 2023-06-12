@@ -3,7 +3,7 @@ title: MP Face
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/mp_face/main.py
 ---
 
-![mp_face example](https://user-images.githubusercontent.com/49431240/244929834-697f3a3a-5882-4c1a-b088-6b0abcabcd63.png)
+![mp_face example](https://static.rerun.io/af5af72f7af2d50947f4aac5ac2d3ddc343aca07_mp_face_screenshot.png)
 
 Use the [MediaPipe](https://google.github.io/mediapipe/) Face Detector and Landmarker solutions to detect and track a human face in image, videos, and camera stream.
 
