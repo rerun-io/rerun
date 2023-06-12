@@ -1,4 +1,5 @@
 use arrow2_convert::field::ArrowField;
+use re_data_store::store_one_component;
 use re_log_types::{Component, DataCell, DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::SpaceViewId;
 use re_viewport::{
@@ -70,9 +71,7 @@ pub fn sync_panel_expanded(
 
         let component = PanelState { expanded };
 
-        blueprint_db
-            .store_mut()
-            .insert_component(&entity_path, &timepoint, component);
+        store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 }
 
@@ -95,9 +94,7 @@ pub fn sync_space_view(
             space_view: space_view.clone(),
         };
 
-        blueprint_db
-            .store_mut()
-            .insert_component(&entity_path, &timepoint, component);
+        store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 }
 
@@ -137,23 +134,17 @@ pub fn sync_viewport(
 
     if viewport.auto_space_views != snapshot.auto_space_views {
         let component = AutoSpaceViews(viewport.auto_space_views);
-        blueprint_db
-            .store_mut()
-            .insert_component(&entity_path, &timepoint, component);
+        store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 
     if viewport.visible != snapshot.visible {
         let component = SpaceViewVisibility(viewport.visible.clone());
-        blueprint_db
-            .store_mut()
-            .insert_component(&entity_path, &timepoint, component);
+        store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 
     if viewport.maximized != snapshot.maximized {
         let component = SpaceViewMaximized(viewport.maximized);
-        blueprint_db
-            .store_mut()
-            .insert_component(&entity_path, &timepoint, component);
+        store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 
     // Note: we can't just check `viewport.trees != snapshot.trees` because the
@@ -174,17 +165,13 @@ pub fn sync_viewport(
             has_been_user_edited: viewport.has_been_user_edited,
         };
 
-        blueprint_db
-            .store_mut()
-            .insert_component(&entity_path, &timepoint, component);
+        store_one_component(blueprint_db, &entity_path, &timepoint, component);
 
         // TODO(jleibs): Sort out this causality mess
         // If we are saving a new layout, we also need to save the visibility-set because
         // it gets mutated on load but isn't guaranteed to be mutated on layout-change
         // which means it won't get saved.
         let component = SpaceViewVisibility(viewport.visible.clone());
-        blueprint_db
-            .store_mut()
-            .insert_component(&entity_path, &timepoint, component);
+        store_one_component(blueprint_db, &entity_path, &timepoint, component);
     }
 }
