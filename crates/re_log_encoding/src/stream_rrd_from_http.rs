@@ -43,7 +43,31 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     // TODO(emilk): stream the http request, progressively decoding the .rrd file.
-    ehttp::fetch(ehttp::Request::get(&url), move |result| match result {
+    ehttp::streaming::fetch(ehttp::Request::get(&url), move |part| match part {
+        Ok(part) => match part {
+            ehttp::streaming::Part::Response(response) => {
+                if response.ok {
+                    re_log::debug!("Decoding .rrd file from {url:?}…");
+                    ehttp::streaming::Control::Continue
+                } else {
+                    let err = format!(
+                        "Failed to fetch .rrd file from {url}: {} {}",
+                        response.status, response.status_text
+                    );
+                    on_msg(HttpMessage::Failure(err.into()));
+                    ehttp::streaming::Control::Break
+                }
+            }
+            ehttp::streaming::Part::Chunk(_) => todo!(),
+        },
+        Err(err) => {
+            on_msg(HttpMessage::Failure(
+                format!("Failed to fetch .rrd file from {url}: {err}").into(),
+            ));
+            ehttp::streaming::Control::Break
+        }
+    });
+    /* ehttp::fetch(ehttp::Request::get(&url), move |result| match result {
         Ok(response) => {
             if response.ok {
                 re_log::debug!("Decoding .rrd file from {url:?}…");
@@ -61,7 +85,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                 format!("Failed to fetch .rrd file from {url}: {err}").into(),
             ));
         }
-    });
+    }); */
 }
 
 #[cfg(target_arch = "wasm32")]

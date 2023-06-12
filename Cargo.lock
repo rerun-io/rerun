@@ -1486,13 +1486,14 @@ dependencies = [
 [[package]]
 name = "ehttp"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80b69a6f9168b96c0ae04763bec27a8b06b34343c334dd2703a4ec21f0f5e110"
+source = "git+https://github.com/jprochazk/ehttp.git#da91b8795f44badee53d3a9438d11c13d3116753"
 dependencies = [
+ "futures-util",
  "js-sys",
  "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
 ]
 
@@ -6055,6 +6056,19 @@ dependencies = [
  "log",
  "walrus",
  "wasm-bindgen-wasm-conventions",
+]
+
+[[package]]
+name = "wasm-streams"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4609d447824375f43e1ffbc051b50ad8f4b3ae8219680c94452ea05eb240ac7"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

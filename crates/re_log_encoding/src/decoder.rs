@@ -1,5 +1,7 @@
 //! Decoding [`LogMsg`]:es from `.rrd` files/streams.
 
+pub mod stream;
+
 use re_log_types::LogMsg;
 
 use crate::{Compression, EncodingOptions, Serializer};
