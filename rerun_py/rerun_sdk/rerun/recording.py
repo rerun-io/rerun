@@ -1,10 +1,11 @@
 """Helper functions for directly working with recordings."""
+from __future__ import annotations
 
 import base64
 import logging
 import random
 import string
-from typing import Any, Optional
+from typing import Any
 
 from rerun import bindings
 
@@ -21,7 +22,7 @@ class MemoryRecording:
         self,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
-        app_url: Optional[str] = None,
+        app_url: str | None = None,
         timeout_ms: int = DEFAULT_TIMEOUT,
     ) -> str:
         """
@@ -95,7 +96,7 @@ class MemoryRecording:
         self,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
-        app_url: Optional[str] = None,
+        app_url: str | None = None,
         timeout_ms: int = DEFAULT_TIMEOUT,
     ) -> Any:
         """

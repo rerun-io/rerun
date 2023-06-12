@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -49,10 +48,10 @@ class Transform3D:
 class TranslationAndMat3:
     """Representation of a affine transform via a 3x3 translation matrix paired with a translation."""
 
-    translation: Union[npt.ArrayLike, Translation3D, None] = None
+    translation: npt.ArrayLike | Translation3D | None = None
     """3D translation vector, applied after the matrix. Uses (0, 0, 0) if not set."""
 
-    matrix: Union[npt.ArrayLike, None] = None
+    matrix: npt.ArrayLike | None = None
     """The row-major 3x3 matrix for scale, rotation & skew matrix. Uses identity if not set."""
 
 
@@ -60,10 +59,10 @@ class TranslationAndMat3:
 class Rigid3D:
     """Representation of a rigid transform via separate translation & rotation."""
 
-    translation: Union[Translation3D, npt.ArrayLike, None] = None
+    translation: Translation3D | npt.ArrayLike | None = None
     """3D translation vector, applied last."""
 
-    rotation: Union[Quaternion, RotationAxisAngle, None] = None
+    rotation: Quaternion | RotationAxisAngle | None = None
     """3D rotation, represented as a quaternion or axis + angle, applied second."""
 
 
@@ -71,13 +70,13 @@ class Rigid3D:
 class TranslationRotationScale3D:
     """Representation of an affine transform via separate translation, rotation & scale."""
 
-    translation: Union[Translation3D, npt.ArrayLike, None] = None
+    translation: Translation3D | npt.ArrayLike | None = None
     """3D translation vector, applied last."""
 
-    rotation: Union[Quaternion, RotationAxisAngle, None] = None
+    rotation: Quaternion | RotationAxisAngle | None = None
     """3D rotation, represented as a quaternion or axis + angle, applied second."""
 
-    scale: Union[Scale3D, npt.ArrayLike, float, None] = None
+    scale: Scale3D | npt.ArrayLike | float | None = None
     """3D scaling either a 3D vector, scalar or None. Applied first."""
 
 
@@ -92,7 +91,7 @@ class Translation3D:
 class Scale3D:
     """3D scale expressed as either a uniform scale or a vector."""
 
-    scale: Union[npt.ArrayLike, float]
+    scale: npt.ArrayLike | float
 
 
 @dataclass
@@ -107,14 +106,14 @@ class RotationAxisAngle:
     If normalization fails (typically because the vector is length zero), the rotation is silently ignored.
     """
 
-    degrees: Union[float, None] = None
+    degrees: float | None = None
     """3D rotation angle in degrees. Only one of `degrees` or `radians` should be set."""
 
-    radians: Union[float, None] = None
+    radians: float | None = None
     """3D rotation angle in radians. Only one of `degrees` or `radians` should be set."""
 
 
-def optional_translation_to_arrow(translation: Union[npt.ArrayLike, Translation3D, None]) -> pa.UnionArray:
+def optional_translation_to_arrow(translation: npt.ArrayLike | Translation3D | None) -> pa.UnionArray:
     # "unpack" rr.Translation3D first.
     if isinstance(translation, Translation3D):
         translation = translation.translation
@@ -195,7 +194,7 @@ def build_union_array_from_rotation(
 
 
 def build_union_array_from_scale(
-    scale: Union[Scale3D, npt.ArrayLike, float, None], type: pa.DenseUnionType
+    scale: Scale3D | npt.ArrayLike | float | None, type: pa.DenseUnionType
 ) -> pa.UnionArray:
     # "unpack" rr.Scale3D first.
     if isinstance(scale, Scale3D):

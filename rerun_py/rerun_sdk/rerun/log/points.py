@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional, Sequence, Union
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -35,17 +37,17 @@ __all__ = [
 @log_decorator
 def log_point(
     entity_path: str,
-    position: Optional[npt.ArrayLike] = None,
+    position: npt.ArrayLike | None = None,
     *,
-    radius: Optional[float] = None,
-    color: Optional[Color] = None,
-    label: Optional[str] = None,
-    class_id: Optional[int] = None,
-    keypoint_id: Optional[int] = None,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    radius: float | None = None,
+    color: Color | None = None,
+    label: str | None = None,
+    class_id: int | None = None,
+    keypoint_id: int | None = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a 2D or 3D point, with a position and optional color, radii, label, etc.
@@ -103,8 +105,8 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if position is not None:
         if position.size == 2:
@@ -147,18 +149,18 @@ def log_point(
 @log_decorator
 def log_points(
     entity_path: str,
-    positions: Optional[npt.ArrayLike] = None,
+    positions: npt.ArrayLike | None = None,
     *,
-    identifiers: Optional[npt.ArrayLike] = None,
-    colors: Optional[Union[Color, Colors]] = None,
-    radii: Optional[npt.ArrayLike] = None,
-    labels: Optional[Sequence[str]] = None,
+    identifiers: npt.ArrayLike | None = None,
+    colors: Color | Colors | None = None,
+    radii: npt.ArrayLike | None = None,
+    labels: Sequence[str] | None = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log 2D or 3D points, with positions and optional colors, radii, labels, etc.

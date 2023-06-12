@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 """
 Shows how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy.
 
@@ -9,10 +8,11 @@ Run:
 examples/python/raw_mesh/main.py
 ```
 """
+from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -28,7 +28,7 @@ def load_scene(path: Path) -> trimesh.Scene:
 
 # NOTE: The scene hierarchy will look different compared to the Rust example, as this is using the
 # trimesh hierarchy, not the raw glTF hierarchy.
-def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None) -> None:
+def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
     path = path + "/" + node if path else node
 
     parent = scene.graph.transforms.parents.get(node)

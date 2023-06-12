@@ -1,5 +1,4 @@
 """The components package defines Python wrapper types for common registered Rerun components."""
-
 from __future__ import annotations
 
 from typing import Any, Final, Type, cast

@@ -16,7 +16,7 @@ python main.py https://raw.githubusercontent.com/facebookresearch/segment-anythi
 python main.py --device cuda --model vit_h /path/to/my_image.jpg
 ```
 """
-
+from __future__ import annotations
 
 import argparse
 import logging
@@ -74,11 +74,11 @@ def create_sam(model: str, device: str) -> Sam:
     """Load the segment-anything model, fetching the model-file as necessary."""
     model_path = get_downloaded_model_path(model)
 
-    logging.info("PyTorch version: {}".format(torch.__version__))
-    logging.info("Torchvision version: {}".format(torchvision.__version__))
-    logging.info("CUDA is available: {}".format(torch.cuda.is_available()))
+    logging.info(f"PyTorch version: {torch.__version__}")
+    logging.info(f"Torchvision version: {torchvision.__version__}")
+    logging.info(f"CUDA is available: {torch.cuda.is_available()}")
 
-    logging.info("Building sam from: {}".format(model_path))
+    logging.info(f"Building sam from: {model_path}")
     sam = sam_model_registry[model](checkpoint=model_path)
     return sam.to(device=device)
 
@@ -90,7 +90,7 @@ def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> N
     logging.info("Finding masks")
     masks = mask_generator.generate(image)
 
-    logging.info("Found {} masks".format(len(masks)))
+    logging.info(f"Found {len(masks)} masks")
 
     # Log all the masks stacked together as a tensor
     # TODO(jleibs): Tensors with class-ids and annotation-coloring would make this much slicker
@@ -139,7 +139,7 @@ def is_url(path: str) -> bool:
 
 def load_image(image_uri: str) -> Mat:
     """Conditionally download an image from URL or load it from disk."""
-    logging.info("Loading: {}".format(image_uri))
+    logging.info(f"Loading: {image_uri}")
     if is_url(image_uri):
         response = requests.get(image_uri)
         response.raise_for_status()

@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 import os
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final
 
 import cv2
 import requests
@@ -37,7 +39,7 @@ def ensure_downloaded(src_url: str, dst_path: Path) -> None:
                     f.write(chunk)
 
 
-def find_path_if_downloaded(recording_name: str, local_dataset_dir: Path) -> Optional[Path]:
+def find_path_if_downloaded(recording_name: str, local_dataset_dir: Path) -> Path | None:
     local_recording_dir = local_dataset_dir / recording_name
     paths = list(local_recording_dir.glob(f"**/{ANNOTATIONS_FILENAME}"))
     if paths:

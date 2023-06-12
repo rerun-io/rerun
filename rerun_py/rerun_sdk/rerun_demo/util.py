@@ -1,4 +1,5 @@
 """Simpe utilities to be used for Rerun demos."""
+from __future__ import annotations
 
 import numpy as np
 

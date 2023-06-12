@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Use the MediaPipe Pose solution to detect and track a human pose in video."""
+from __future__ import annotations
+
 import argparse
 import logging
 import os
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, Optional
+from typing import Any, Final, Iterator
 
 import cv2 as cv
 import mediapipe as mp
@@ -62,7 +64,7 @@ def read_landmark_positions_2d(
     results: Any,
     image_width: int,
     image_height: int,
-) -> Optional[npt.NDArray[np.float32]]:
+) -> npt.NDArray[np.float32] | None:
     if results.pose_landmarks is None:
         return None
     else:
@@ -72,7 +74,7 @@ def read_landmark_positions_2d(
 
 def read_landmark_positions_3d(
     results: Any,
-) -> Optional[npt.NDArray[np.float32]]:
+) -> npt.NDArray[np.float32] | None:
     if results.pose_landmarks is None:
         return None
     else:

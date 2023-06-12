@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -25,13 +27,13 @@ __all__ = [
 @deprecated(version="0.2.0", reason="Use log_line_strip instead")
 def log_path(
     entity_path: str,
-    positions: Optional[npt.ArrayLike],
+    positions: npt.ArrayLike | None,
     *,
-    stroke_width: Optional[float] = None,
-    color: Optional[Color] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    stroke_width: float | None = None,
+    color: Color | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     log_line_strip(
         entity_path, positions, stroke_width=stroke_width, color=color, ext=ext, timeless=timeless, recording=recording
@@ -41,14 +43,14 @@ def log_path(
 @log_decorator
 def log_line_strip(
     entity_path: str,
-    positions: Optional[npt.ArrayLike],
+    positions: npt.ArrayLike | None,
     *,
-    stroke_width: Optional[float] = None,
-    color: Optional[Color] = None,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    stroke_width: float | None = None,
+    color: Color | None = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     r"""
     Log a line strip through 2D or 3D space.
@@ -92,8 +94,8 @@ def log_line_strip(
     if positions is not None:
         positions = np.require(positions, dtype="float32")
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if positions is not None:
         if positions.shape[1] == 2:
@@ -132,12 +134,12 @@ def log_line_segments(
     entity_path: str,
     positions: npt.ArrayLike,
     *,
-    stroke_width: Optional[float] = None,
-    color: Optional[Color] = None,
-    draw_order: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    stroke_width: float | None = None,
+    color: Color | None = None,
+    draw_order: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     r"""
     Log many 2D or 3D line segments.
@@ -181,8 +183,8 @@ def log_line_segments(
         positions = np.require([], dtype="float32")
     positions = np.require(positions, dtype="float32")
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if positions is not None:
         # If not a multiple of 2, drop the last row

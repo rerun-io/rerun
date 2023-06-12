@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 """
 How to integrate python's native `logging` with the Rerun SDK.
 
@@ -8,7 +7,7 @@ Run:
 ./examples/python/text_logging/main.py
 ```
 """
-
+from __future__ import annotations
 
 import argparse
 import logging

@@ -1,12 +1,15 @@
-import logging
-from typing import Any, Dict, Optional
+from __future__ import annotations
 
-# Fully qualified to avoid circular import
+import logging
+from typing import Any
+
 import rerun.log.extension_components
 from rerun import bindings
 from rerun.components.experimental.text_box import TextBoxArray
 from rerun.components.instance import InstanceArray
 from rerun.log.log_decorator import log_decorator
+
+# Fully qualified to avoid circular import
 
 
 @log_decorator
@@ -14,7 +17,7 @@ def log_text_box(
     entity_path: str,
     text: str,
     *,
-    ext: Optional[Dict[str, Any]] = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -34,8 +37,8 @@ def log_text_box(
         Whether the text-box should be timeless.
     """
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if text:
         instanced["rerun.text_box"] = TextBoxArray.from_bodies([(text,)])

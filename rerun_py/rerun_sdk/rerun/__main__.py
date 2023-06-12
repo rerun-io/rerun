@@ -1,8 +1,9 @@
 """See `python3 -m rerun --help`."""
+from __future__ import annotations
 
 import sys
 
-from rerun import bindings, unregister_shutdown  # type: ignore[attr-defined]
+from rerun import bindings, unregister_shutdown
 
 
 def main() -> None:

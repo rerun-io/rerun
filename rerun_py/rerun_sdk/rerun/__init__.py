@@ -1,10 +1,10 @@
 """The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
+from __future__ import annotations
 
 import atexit
 import logging
 import sys
 from inspect import getmembers, isfunction
-from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
@@ -51,12 +51,12 @@ from rerun.recording_stream import (
     set_global_data_recording,
     set_thread_local_data_recording,
 )
-
-# --- Init RecordingStream class ---
 from rerun.recording_stream import _patch as recording_stream_patch
 from rerun.script_helpers import script_add_args, script_setup, script_teardown
 from rerun.sinks import connect, disconnect, memory_recording, save, serve, spawn
 from rerun.time import reset_time, set_time_nanos, set_time_seconds, set_time_sequence
+
+# --- Init RecordingStream class ---
 
 # Inject all relevant methods into the `RecordingStream` class.
 # We need to do this from here to avoid circular import issues.
@@ -163,7 +163,7 @@ _strict_mode = False
 
 def init(
     application_id: str,
-    recording_id: Optional[str] = None,
+    recording_id: str | None = None,
     spawn: bool = False,
     default_enabled: bool = True,
     strict: bool = False,
@@ -224,7 +224,7 @@ def init(
 
 def new_recording(
     application_id: str,
-    recording_id: Optional[str] = None,
+    recording_id: str | None = None,
     make_default: bool = False,
     make_thread_default: bool = False,
     spawn: bool = False,

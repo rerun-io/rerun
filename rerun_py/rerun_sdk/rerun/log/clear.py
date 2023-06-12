@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from rerun import bindings
 from rerun.recording_stream import RecordingStream
@@ -8,7 +8,7 @@ def log_cleared(
     entity_path: str,
     *,
     recursive: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Indicate that an entity at a given path should no longer be displayed.

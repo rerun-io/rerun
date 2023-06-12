@@ -21,4 +21,6 @@ Note that because this package is shipped with the rerun-sdk pypi package, it
 cannot carry any dependencies beyond those of rerun itself. This generally limits
 demos to only using the standard library and numpy for data generation.
 """
+from __future__ import annotations
+
 __all__ = ["data", "turbo", "util"]
