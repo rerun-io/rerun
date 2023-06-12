@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from rerun import bindings
 
@@ -67,7 +67,7 @@ class RecordingStream:
 
     def __init__(self, inner: bindings.PyRecordingStream) -> None:
         self.inner = inner
-        self._prev: Optional["RecordingStream"] = None
+        self._prev: RecordingStream | None = None
 
     def __enter__(self):  # type: ignore[no-untyped-def]
         self._prev = set_thread_local_data_recording(self)
@@ -77,7 +77,7 @@ class RecordingStream:
         self._prev = set_thread_local_data_recording(self._prev)  # type: ignore[arg-type]
 
     # NOTE: The type is a string because we cannot reference `RecordingStream` yet at this point.
-    def to_native(self: Optional["RecordingStream"]) -> Optional[bindings.PyRecordingStream]:
+    def to_native(self: RecordingStream | None) -> bindings.PyRecordingStream | None:
         return self.inner if self is not None else None
 
     def __del__(self):  # type: ignore[no-untyped-def]
@@ -115,7 +115,7 @@ def _patch(funcs):  # type: ignore[no-untyped-def]
 
 
 def is_enabled(
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> bool:
     """
     Is this Rerun recording enabled.
@@ -131,8 +131,8 @@ def is_enabled(
 
 
 def get_application_id(
-    recording: Optional[RecordingStream] = None,
-) -> Optional[str]:
+    recording: RecordingStream | None = None,
+) -> str | None:
     """
     Get the application ID that this recording is associated with, if any.
 
@@ -154,8 +154,8 @@ def get_application_id(
 
 
 def get_recording_id(
-    recording: Optional[RecordingStream] = None,
-) -> Optional[str]:
+    recording: RecordingStream | None = None,
+) -> str | None:
     """
     Get the recording ID that this recording is logging to, as a UUIDv4, if any.
 
@@ -191,8 +191,8 @@ _patch([is_enabled, get_application_id, get_recording_id])  # type: ignore[no-un
 
 
 def get_data_recording(
-    recording: Optional[RecordingStream] = None,
-) -> Optional[RecordingStream]:
+    recording: RecordingStream | None = None,
+) -> RecordingStream | None:
     """
     Returns the most appropriate recording to log data to, in the current context, if any.
 
@@ -217,7 +217,7 @@ def get_data_recording(
     return RecordingStream(result) if result is not None else None
 
 
-def get_global_data_recording() -> Optional[RecordingStream]:
+def get_global_data_recording() -> RecordingStream | None:
     """
     Returns the currently active global recording, if any.
 
@@ -230,7 +230,7 @@ def get_global_data_recording() -> Optional[RecordingStream]:
     return RecordingStream(result) if result is not None else None
 
 
-def set_global_data_recording(recording: RecordingStream) -> Optional[RecordingStream]:
+def set_global_data_recording(recording: RecordingStream) -> RecordingStream | None:
     """
     Replaces the currently active global recording with the specified one.
 
@@ -243,7 +243,7 @@ def set_global_data_recording(recording: RecordingStream) -> Optional[RecordingS
     return RecordingStream(result) if result is not None else None
 
 
-def get_thread_local_data_recording() -> Optional[RecordingStream]:
+def get_thread_local_data_recording() -> RecordingStream | None:
     """
     Returns the currently active thread-local recording, if any.
 
@@ -256,7 +256,7 @@ def get_thread_local_data_recording() -> Optional[RecordingStream]:
     return RecordingStream(result) if result is not None else None
 
 
-def set_thread_local_data_recording(recording: RecordingStream) -> Optional[RecordingStream]:
+def set_thread_local_data_recording(recording: RecordingStream) -> RecordingStream | None:
     """
     Replaces the currently active thread-local recording with the specified one.
 

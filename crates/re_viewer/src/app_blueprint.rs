@@ -1,4 +1,4 @@
-use re_data_store::{query_timeless_single, StoreDb};
+use re_data_store::StoreDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
@@ -95,14 +95,13 @@ impl<'a> AppBlueprint<'a> {
 
             let component = PanelState { expanded };
 
-            let mut row = DataRow::from_cells1(
+            let row = DataRow::from_cells1_sized(
                 RowId::random(),
                 entity_path,
                 timepoint,
                 1,
                 [component].as_slice(),
             );
-            row.compute_all_size_bytes();
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 blueprint_db.store_id().clone(),
@@ -113,6 +112,8 @@ impl<'a> AppBlueprint<'a> {
 }
 
 fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) -> Option<bool> {
-    query_timeless_single::<PanelState>(&blueprint_db.entity_db.data_store, path)
+    blueprint_db
+        .store()
+        .query_timeless_component::<PanelState>(path)
         .map(|p| p.expanded)
 }

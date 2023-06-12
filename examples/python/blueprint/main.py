@@ -1,4 +1,5 @@
 """Example of using the blueprint APIs to configure Rerun."""
+from __future__ import annotations
 
 import argparse
 

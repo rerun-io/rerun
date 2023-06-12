@@ -19,6 +19,7 @@ If you get this error:
 Then run `python3 -m pip install cryptography==38.0.4`
 (https://levelup.gitconnected.com/fix-attributeerror-module-lib-has-no-attribute-openssl-521a35d83769)
 """
+from __future__ import annotations
 
 import argparse
 import hashlib
@@ -46,7 +47,7 @@ def main() -> None:
     hash = content_hash(args.path)
     object_name = f"{hash}_{os.path.basename(args.path)}"
 
-    gcs = storage.Client()
+    gcs = storage.Client("rerun-open")
     bucket = gcs.bucket("rerun-static-img")
     destination = bucket.blob(object_name)
     destination.content_type, destination.content_encoding = mimetypes.guess_type(args.path)

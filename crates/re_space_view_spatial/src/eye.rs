@@ -1,6 +1,6 @@
 use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
-use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
+use macaw::{vec3, BoundingBox, IsoTransform, Mat4, Quat, Vec3};
 
 use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
@@ -300,7 +300,12 @@ impl OrbitEye {
 
     /// Returns `true` if interaction occurred.
     /// I.e. the camera changed via user input.
-    pub fn update(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
+    pub fn update(
+        &mut self,
+        response: &egui::Response,
+        drag_threshold: f32,
+        scene_bbox: &BoundingBox,
+    ) -> bool {
         let mut did_interact = false;
 
         if response.drag_delta().length() > drag_threshold {
@@ -355,10 +360,18 @@ impl OrbitEye {
         if zoom_factor != 1.0 {
             let new_radius = self.orbit_radius / zoom_factor;
 
-            // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
-            // Max value is chosen with some generous margin of an observed crash due to infinity.
-            if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
-                self.orbit_radius = new_radius;
+            let very_close = scene_bbox.size().length() / 100.0;
+            if very_close.is_finite() && new_radius < very_close && 1.0 < zoom_factor {
+                // The user may be scrolling to move the camera closer, but are not realizing
+                // the radius is now tiny.
+                // Switch to instead dolly the camera forward:
+                self.orbit_center += self.fwd() * very_close * zoom_factor.ln();
+            } else {
+                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
+                // Max value is chosen with some generous margin of an observed crash due to infinity.
+                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
+                    self.orbit_radius = new_radius;
+                }
             }
         }
 

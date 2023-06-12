@@ -4,13 +4,14 @@ Example using an example depth dataset from NYU.
 
 https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
 """
+from __future__ import annotations
 
 import argparse
 import os
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Final, Tuple
+from typing import Final
 
 import cv2
 import numpy as np
@@ -32,7 +33,7 @@ def parse_timestamp(filename: str) -> datetime:
     return datetime.fromtimestamp(float(time))
 
 
-def camera_for_image(h: float, w: float) -> Tuple[float, float, float]:
+def camera_for_image(h: float, w: float) -> tuple[float, float, float]:
     """Returns a tuple of (u_center, v_center, focal_length) for a camera image."""
     return (w / 2, h / 2, 0.7 * w)
 

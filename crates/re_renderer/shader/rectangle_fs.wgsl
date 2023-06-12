@@ -14,77 +14,84 @@ fn tex_filter(pixel_coord: Vec2) -> u32 {
     }
 }
 
-fn decode_color(rgba_arg: Vec4) -> Vec4 {
-    var rgba = rgba_arg;
+fn normalize_range(sampled_value: Vec4) -> Vec4 {
+    let range = rect_info.range_min_max;
+    return (sampled_value - range.x) / (range.y - range.x);
+}
 
-    // Convert to linear space:
+fn decode_color(sampled_value: Vec4) -> Vec4 {
+    // Normalize the value first, otherwise premultiplying alpha and linear space conversion won't make sense.
+    var rgba = normalize_range(sampled_value);
+
+    // Convert to linear space
     if rect_info.decode_srgb != 0u {
-        rgba = linear_from_srgba(rgba);
+        if all(0.0 <= rgba.rgb) && all(rgba.rgb <= 1.0) {
+            rgba = linear_from_srgba(rgba);
+        } else {
+            rgba = ERROR_RGBA; // out of range
+        }
     }
 
-    // Premultiply alpha:
-    rgba = vec4(rgba.xyz * rgba.a, rgba.a);
+    // Premultiply alpha.
+    if rect_info.multiply_rgb_with_alpha != 0u {
+        rgba = vec4(rgba.xyz * rgba.a, rgba.a);
+    }
 
     return rgba;
+}
+
+fn filter_bilinear(coord: Vec2, v00: Vec4, v01: Vec4, v10: Vec4, v11: Vec4) -> Vec4 {
+    let top = mix(v00, v10, fract(coord.x - 0.5));
+    let bottom = mix(v01, v11, fract(coord.x - 0.5));
+    return mix(top, bottom, fract(coord.y - 0.5));
 }
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sample the main texture:
-    var sampled_value: Vec4;
+    var normalized_value: Vec4;
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         let coord = in.texcoord * Vec2(textureDimensions(texture_float).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
-            sampled_value = decode_color(textureLoad(texture_float, IVec2(coord), 0));
+            normalized_value = decode_color(textureLoad(texture_float, IVec2(coord), 0));
         } else {
             // bilinear
             let v00 = decode_color(textureLoad(texture_float, IVec2(coord + vec2(-0.5, -0.5)), 0));
             let v01 = decode_color(textureLoad(texture_float, IVec2(coord + vec2(-0.5,  0.5)), 0));
             let v10 = decode_color(textureLoad(texture_float, IVec2(coord + vec2( 0.5, -0.5)), 0));
             let v11 = decode_color(textureLoad(texture_float, IVec2(coord + vec2( 0.5,  0.5)), 0));
-            let top = mix(v00, v10, fract(coord.x - 0.5));
-            let bottom = mix(v01, v11, fract(coord.x - 0.5));
-            sampled_value = mix(top, bottom, fract(coord.y - 0.5));
+            normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
         }
     } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
         let coord = in.texcoord * Vec2(textureDimensions(texture_sint).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
-            sampled_value = Vec4(textureLoad(texture_sint, IVec2(coord), 0));
+            normalized_value = decode_color(Vec4(textureLoad(texture_sint, IVec2(coord), 0)));
         } else {
             // bilinear
-            let v00 = Vec4(textureLoad(texture_sint, IVec2(coord + vec2(-0.5, -0.5)), 0));
-            let v01 = Vec4(textureLoad(texture_sint, IVec2(coord + vec2(-0.5,  0.5)), 0));
-            let v10 = Vec4(textureLoad(texture_sint, IVec2(coord + vec2( 0.5, -0.5)), 0));
-            let v11 = Vec4(textureLoad(texture_sint, IVec2(coord + vec2( 0.5,  0.5)), 0));
-            let top = mix(v00, v10, fract(coord.x - 0.5));
-            let bottom = mix(v01, v11, fract(coord.x - 0.5));
-            sampled_value = mix(top, bottom, fract(coord.y - 0.5));
+            let v00 = decode_color(Vec4(textureLoad(texture_sint, IVec2(coord + vec2(-0.5, -0.5)), 0)));
+            let v01 = decode_color(Vec4(textureLoad(texture_sint, IVec2(coord + vec2(-0.5,  0.5)), 0)));
+            let v10 = decode_color(Vec4(textureLoad(texture_sint, IVec2(coord + vec2( 0.5, -0.5)), 0)));
+            let v11 = decode_color(Vec4(textureLoad(texture_sint, IVec2(coord + vec2( 0.5,  0.5)), 0)));
+            normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
         }
     } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
-        // TODO(emilk): support premultiplying alpha on this path. Requires knowing the alpha range (255, 65535, …).
         let coord = in.texcoord * Vec2(textureDimensions(texture_uint).xy);
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
-            sampled_value = Vec4(textureLoad(texture_uint, IVec2(coord), 0));
+            normalized_value = decode_color(Vec4(textureLoad(texture_uint, IVec2(coord), 0)));
         } else {
             // bilinear
-            let v00 = Vec4(textureLoad(texture_uint, IVec2(coord + vec2(-0.5, -0.5)), 0));
-            let v01 = Vec4(textureLoad(texture_uint, IVec2(coord + vec2(-0.5,  0.5)), 0));
-            let v10 = Vec4(textureLoad(texture_uint, IVec2(coord + vec2( 0.5, -0.5)), 0));
-            let v11 = Vec4(textureLoad(texture_uint, IVec2(coord + vec2( 0.5,  0.5)), 0));
-            let top = mix(v00, v10, fract(coord.x - 0.5));
-            let bottom = mix(v01, v11, fract(coord.x - 0.5));
-            sampled_value = mix(top, bottom, fract(coord.y - 0.5));
+            let v00 = decode_color(Vec4(textureLoad(texture_uint, IVec2(coord + vec2(-0.5, -0.5)), 0)));
+            let v01 = decode_color(Vec4(textureLoad(texture_uint, IVec2(coord + vec2(-0.5,  0.5)), 0)));
+            let v10 = decode_color(Vec4(textureLoad(texture_uint, IVec2(coord + vec2( 0.5, -0.5)), 0)));
+            let v11 = decode_color(Vec4(textureLoad(texture_uint, IVec2(coord + vec2( 0.5,  0.5)), 0)));
+            normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
         }
     } else {
         return ERROR_RGBA; // unknown sample type
     }
-
-    // Normalize the sample:
-    let range = rect_info.range_min_max;
-    var normalized_value: Vec4 = (sampled_value - range.x) / (range.y - range.x);
 
     // Apply gamma:
     normalized_value = vec4(pow(normalized_value.rgb, vec3(rect_info.gamma)), normalized_value.a);

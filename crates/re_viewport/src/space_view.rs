@@ -3,7 +3,8 @@ use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataBlueprintTree, ScreenshotMode};
 use re_viewer_context::{
-    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, ViewerContext,
+    DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
+    ViewerContext,
 };
 
 use crate::{
@@ -19,7 +20,7 @@ use crate::{
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
-    pub class: SpaceViewClassName,
+    class_name: SpaceViewClassName,
 
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
@@ -63,13 +64,22 @@ impl SpaceViewBlueprint {
 
         Self {
             display_name,
-            class: space_view_class,
+            class_name: space_view_class,
             id: SpaceViewId::random(),
             space_origin: space_path.clone(),
             data_blueprint: data_blueprint_tree,
             category,
             entities_determined_by_user: false,
         }
+    }
+
+    pub fn class_name(&self) -> &SpaceViewClassName {
+        &self.class_name
+    }
+
+    pub fn class<'a>(&self, ctx: &ViewerContext<'a>) -> &'a dyn DynSpaceViewClass {
+        ctx.space_view_class_registry
+            .get_or_log_error(&self.class_name)
     }
 
     pub fn on_frame_start(
@@ -139,18 +149,6 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn selection_ui(
-        &mut self,
-        view_state: &mut dyn SpaceViewState,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-    ) {
-        re_tracing::profile_function!();
-        if let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) {
-            space_view_class.selection_ui(ctx, ui, view_state, &self.space_origin, self.id);
-        }
-    }
-
     pub(crate) fn scene_ui(
         &mut self,
         view_state: &mut dyn SpaceViewState,
@@ -166,11 +164,9 @@ impl SpaceViewBlueprint {
             return;
         }
 
-        let Some(space_view_class) = ctx.space_view_class_registry.get_or_log_error(self.class) else {
-            return;
-        };
+        let class = self.class(ctx);
 
-        space_view_class.prepare_populate(
+        class.prepare_populate(
             ctx,
             view_state,
             &self.data_blueprint.entity_paths().clone(), // Clone to workaround borrow checker.
@@ -185,11 +181,11 @@ impl SpaceViewBlueprint {
             entity_props_map: self.data_blueprint.data_blueprints_projected(),
         };
 
-        let mut scene = space_view_class.new_scene();
+        let mut scene = class.new_scene();
         scene.populate(ctx, &query, view_state, highlights);
 
         ui.scope(|ui| {
-            space_view_class.ui(ctx, ui, view_state, scene, &self.space_origin, self.id);
+            class.ui(ctx, ui, view_state, scene, &self.space_origin, self.id);
         });
     }
 

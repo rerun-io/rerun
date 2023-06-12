@@ -10,6 +10,7 @@ This script accepts one argument:
     --bare_cargo_version Outputs the bare cargo version. This is helpful for setting an environment variable, such as:
     EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)
 """
+from __future__ import annotations
 
 import re
 import subprocess
@@ -62,7 +63,7 @@ def main() -> None:
     if len(sys.argv) != 2:
         raise Exception("Invalid number of arguments")
 
-    with open("Cargo.toml", "r") as f:
+    with open("Cargo.toml") as f:
         cargo_toml = f.read()
 
     cargo_version = get_cargo_version(cargo_toml)

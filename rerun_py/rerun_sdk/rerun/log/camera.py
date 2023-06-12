@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 import numpy.typing as npt
 
@@ -20,7 +20,7 @@ def log_pinhole(
     width: int,
     height: int,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a perspective camera model.

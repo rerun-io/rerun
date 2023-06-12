@@ -76,6 +76,9 @@ impl EntityDb {
     }
 
     // TODO(jleibs): If this shouldn't be public, chain together other setters
+    // TODO(cmc): Updates of secondary datastructures should be the result of subscribing to the
+    // datastore's changelog and reacting to these changes appropriately. We shouldn't be creating
+    // many sources of truth.
     pub fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
         for (&timeline, &time_int) in row.timepoint().iter() {
             self.times_per_timeline.insert(timeline, time_int);
@@ -209,6 +212,16 @@ impl StoreDb {
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
+    }
+
+    #[inline]
+    pub fn store_mut(&mut self) -> &mut re_arrow_store::DataStore {
+        &mut self.entity_db.data_store
+    }
+
+    #[inline]
+    pub fn store(&self) -> &re_arrow_store::DataStore {
+        &self.entity_db.data_store
     }
 
     pub fn store_kind(&self) -> StoreKind {

@@ -1,5 +1,5 @@
 # TODO(jleibs): docstrings
-from typing import List, Optional
+from __future__ import annotations
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
@@ -9,7 +9,7 @@ from rerun.recording_stream import RecordingStream
 def new_blueprint(
     application_id: str,
     *,
-    blueprint_id: Optional[str] = None,
+    blueprint_id: str | None = None,
     make_default: bool = False,
     make_thread_default: bool = False,
     spawn: bool = False,
@@ -88,9 +88,9 @@ def new_blueprint(
 def add_space_view(
     *,
     origin: str,
-    name: Optional[str],
-    entity_paths: Optional[List[str]],
-    blueprint: Optional[RecordingStream] = None,
+    name: str | None,
+    entity_paths: list[str] | None,
+    blueprint: RecordingStream | None = None,
 ) -> None:
     """
     Add a new space view to the blueprint.
@@ -117,11 +117,11 @@ def add_space_view(
 
 def set_panels(
     *,
-    all_expanded: Optional[bool] = None,
-    blueprint_view_expanded: Optional[bool] = None,
-    selection_view_expanded: Optional[bool] = None,
-    timeline_view_expanded: Optional[bool] = None,
-    blueprint: Optional[RecordingStream] = None,
+    all_expanded: bool | None = None,
+    blueprint_view_expanded: bool | None = None,
+    selection_view_expanded: bool | None = None,
+    timeline_view_expanded: bool | None = None,
+    blueprint: RecordingStream | None = None,
 ) -> None:
     """
     Change the visibility of the view panels.
@@ -150,7 +150,7 @@ def set_panels(
 
 def set_auto_space_views(
     enabled: bool,
-    blueprint: Optional[RecordingStream] = None,
+    blueprint: RecordingStream | None = None,
 ) -> None:
     """
     Change whether or not the blueprint automatically adds space views for all entities.

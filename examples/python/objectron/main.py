@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-
 """
 Example of using the Rerun SDK to log the Objectron dataset.
 
 Example: `examples/python/objectron/main.py --recording chair`
 """
+from __future__ import annotations
 
 import argparse
 import logging
@@ -14,7 +14,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, List
+from typing import Iterable, Iterator
 
 import numpy as np
 import numpy.typing as npt
@@ -27,15 +27,7 @@ from download_dataset import (
     LOCAL_DATASET_DIR,
     ensure_recording_available,
 )
-from proto.objectron.proto import (
-    ARCamera,
-    ARFrame,
-    ARPointCloud,
-    FrameAnnotation,
-    Object,
-    ObjectType,
-    Sequence,
-)
+from proto.objectron.proto import ARCamera, ARFrame, ARPointCloud, FrameAnnotation, Object, ObjectType, Sequence
 from scipy.spatial.transform import Rotation as R
 
 
@@ -192,7 +184,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
         )
 
 
-def log_frame_annotations(frame_times: List[float], frame_annotations: List[FrameAnnotation]) -> None:
+def log_frame_annotations(frame_times: list[float], frame_annotations: list[FrameAnnotation]) -> None:
     """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
 
     for frame_ann in frame_annotations:

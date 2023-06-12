@@ -20,43 +20,41 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # type: ignore
+from __future__ import annotations
 
 import contextlib
 import inspect
-from typing import Callable, List, Optional, Union
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Union
 
 import numpy as np
 import PIL
+import rerun as rr  # pip install rerun-sdk
 import torch
 from diffusers.configuration_utils import FrozenDict
-from diffusers.models import AutoencoderKL, UNet2DConditionModel
-from diffusers.pipeline_utils import DiffusionPipeline, ImagePipelineOutput
-from diffusers.schedulers import (
-    DDIMScheduler,
-    DPMSolverMultistepScheduler,
-    EulerAncestralDiscreteScheduler,
-    EulerDiscreteScheduler,
-    LMSDiscreteScheduler,
-    PNDMScheduler,
-)
-from diffusers.utils import (
-    PIL_INTERPOLATION,
-    deprecate,
-    is_accelerate_available,
-    logging,
-    randn_tensor,
-)
+from diffusers.models import AutoencoderKL
+from diffusers.models import UNet2DConditionModel
+from diffusers.pipeline_utils import DiffusionPipeline
+from diffusers.pipeline_utils import ImagePipelineOutput
+from diffusers.schedulers import DDIMScheduler
+from diffusers.schedulers import DPMSolverMultistepScheduler
+from diffusers.schedulers import EulerAncestralDiscreteScheduler
+from diffusers.schedulers import EulerDiscreteScheduler
+from diffusers.schedulers import LMSDiscreteScheduler
+from diffusers.schedulers import PNDMScheduler
+from diffusers.utils import deprecate
+from diffusers.utils import is_accelerate_available
+from diffusers.utils import logging
+from diffusers.utils import PIL_INTERPOLATION
+from diffusers.utils import randn_tensor
 from packaging import version
-from transformers import (
-    CLIPTextModel,
-    CLIPTokenizer,
-    DPTFeatureExtractor,
-    DPTForDepthEstimation,
-)
-
-import rerun as rr  # pip install rerun-sdk
+from transformers import CLIPTextModel
+from transformers import CLIPTokenizer
+from transformers import DPTFeatureExtractor
+from transformers import DPTForDepthEstimation
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 logger.addHandler(rr.log.text.LoggingHandler("logs"))
@@ -111,14 +109,14 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         text_encoder: CLIPTextModel,
         tokenizer: CLIPTokenizer,
         unet: UNet2DConditionModel,
-        scheduler: Union[
-            DDIMScheduler,
-            PNDMScheduler,
-            LMSDiscreteScheduler,
-            EulerDiscreteScheduler,
-            EulerAncestralDiscreteScheduler,
-            DPMSolverMultistepScheduler,
-        ],
+        scheduler: (
+            DDIMScheduler
+            | PNDMScheduler
+            | LMSDiscreteScheduler
+            | EulerDiscreteScheduler
+            | EulerAncestralDiscreteScheduler
+            | DPMSolverMultistepScheduler
+        ),
         depth_estimator: DPTForDepthEstimation,
         feature_extractor: DPTFeatureExtractor,
     ):
@@ -249,7 +247,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
 
         # get unconditional embeddings for classifier free guidance
         if do_classifier_free_guidance:
-            uncond_tokens: List[str]
+            uncond_tokens: list[str]
             if negative_prompt is None:
                 uncond_tokens = [""] * batch_size
             elif type(prompt) is not type(negative_prompt):
@@ -461,20 +459,20 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
     @torch.no_grad()
     def __call__(
         self,
-        prompt: Union[str, List[str]],
-        image: Union[torch.FloatTensor, PIL.Image.Image],
-        depth_map: Optional[torch.FloatTensor] = None,
+        prompt: str | list[str],
+        image: torch.FloatTensor | PIL.Image.Image,
+        depth_map: torch.FloatTensor | None = None,
         strength: float = 0.8,
-        num_inference_steps: Optional[int] = 50,
-        guidance_scale: Optional[float] = 7.5,
-        negative_prompt: Optional[Union[str, List[str]]] = None,
-        num_images_per_prompt: Optional[int] = 1,
-        eta: Optional[float] = 0.0,
-        generator: Optional[torch.Generator] = None,
-        output_type: Optional[str] = "pil",
+        num_inference_steps: int | None = 50,
+        guidance_scale: float | None = 7.5,
+        negative_prompt: str | list[str] | None = None,
+        num_images_per_prompt: int | None = 1,
+        eta: float | None = 0.0,
+        generator: torch.Generator | None = None,
+        output_type: str | None = "pil",
         return_dict: bool = True,
-        callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
-        callback_steps: Optional[int] = 1,
+        callback: Callable[[int, int, torch.FloatTensor], None] | None = None,
+        callback_steps: int | None = 1,
     ):
         r"""
         Function invoked when calling the pipeline for generation.

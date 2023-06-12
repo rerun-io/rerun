@@ -29,37 +29,26 @@ pub mod external {
 // TODO(andreas): This should be part of re_data_ui::item_ui.
 pub mod item_ui {
     use re_data_ui::item_ui;
-    use re_viewer_context::{Item, SpaceViewId, ViewerContext};
+    use re_viewer_context::{Item, ViewerContext};
 
-    use crate::{space_view::SpaceViewBlueprint, view_category::ViewCategory};
+    use crate::space_view::SpaceViewBlueprint;
 
     pub fn space_view_button(
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space_view: &SpaceViewBlueprint,
     ) -> egui::Response {
-        space_view_button_to(
-            ctx,
-            ui,
-            space_view.display_name.clone(),
-            space_view.id,
-            space_view.category,
-        )
-    }
-
-    pub fn space_view_button_to(
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        text: impl Into<egui::WidgetText>,
-        space_view_id: SpaceViewId,
-        space_view_category: ViewCategory,
-    ) -> egui::Response {
-        let item = Item::SpaceView(space_view_id);
+        let item = Item::SpaceView(space_view.id);
         let is_selected = ctx.selection().contains(&item);
 
         let response = ctx
             .re_ui
-            .selectable_label_with_icon(ui, space_view_category.icon(), text, is_selected)
+            .selectable_label_with_icon(
+                ui,
+                space_view.class(ctx).icon(),
+                space_view.display_name.clone(),
+                is_selected,
+            )
             .on_hover_text("Space View");
         item_ui::cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
     }

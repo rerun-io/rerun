@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
@@ -9,7 +10,7 @@ from rerun.recording_stream import RecordingStream
 # --- Sinks ---
 
 
-def connect(addr: Optional[str] = None, recording: Optional[RecordingStream] = None) -> None:
+def connect(addr: str | None = None, recording: RecordingStream | None = None) -> None:
     """
     Connect to a remote Rerun Viewer on the given ip:port.
 
@@ -34,7 +35,7 @@ def connect(addr: Optional[str] = None, recording: Optional[RecordingStream] = N
 _connect = connect  # we need this because Python scoping is horrible
 
 
-def save(path: str, recording: Optional[RecordingStream] = None) -> None:
+def save(path: str, recording: RecordingStream | None = None) -> None:
     """
     Stream all log-data to a file.
 
@@ -57,7 +58,7 @@ def save(path: str, recording: Optional[RecordingStream] = None) -> None:
     bindings.save(path=path, recording=recording)
 
 
-def disconnect(recording: Optional[RecordingStream] = None) -> None:
+def disconnect(recording: RecordingStream | None = None) -> None:
     """
     Closes all TCP connections, servers, and files.
 
@@ -77,7 +78,7 @@ def disconnect(recording: Optional[RecordingStream] = None) -> None:
     bindings.disconnect(recording=recording)
 
 
-def memory_recording(recording: Optional[RecordingStream] = None) -> MemoryRecording:
+def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:
     """
     Streams all log-data to a memory buffer.
 
@@ -103,9 +104,9 @@ def memory_recording(recording: Optional[RecordingStream] = None) -> MemoryRecor
 
 def serve(
     open_browser: bool = True,
-    web_port: Optional[int] = None,
-    ws_port: Optional[int] = None,
-    recording: Optional[RecordingStream] = None,
+    web_port: int | None = None,
+    ws_port: int | None = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
@@ -134,7 +135,7 @@ def serve(
     bindings.serve(open_browser, web_port, ws_port, recording=recording)
 
 
-def spawn(port: int = 9876, connect: bool = True, recording: Optional[RecordingStream] = None) -> None:
+def spawn(port: int = 9876, connect: bool = True, recording: RecordingStream | None = None) -> None:
     """
     Spawn a Rerun Viewer, listening on the given port.
 

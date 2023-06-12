@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import io
 import os
-from typing import Optional, cast
+from typing import cast
 from urllib.parse import urlparse
 
 import numpy as np
@@ -25,7 +27,7 @@ def load_urdf_from_msg(msg: String) -> URDF:
     return URDF.load(f, filename_handler=ament_locate_package)
 
 
-def log_scene(scene: trimesh.Scene, node: str, path: Optional[str] = None, timeless: bool = False) -> None:
+def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, timeless: bool = False) -> None:
     """Log a trimesh scene to rerun."""
     path = path + "/" + node if path else node
 
