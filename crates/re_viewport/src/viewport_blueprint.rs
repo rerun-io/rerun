@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use arrow2_convert::field::ArrowField;
-use re_data_store::{query_timeless_single, StoreDb};
+use re_data_store::StoreDb;
 use re_log_types::{
     Component, DataCell, DataRow, EntityPath, RowId, SerializableComponent, TimePoint,
 };
@@ -106,20 +106,19 @@ impl<'a> ViewportBlueprint<'a> {
 // ----------------------------------------------------------------------------
 
 // TODO(jleibs): Move this helper to a better location
-fn push_one_component<C: SerializableComponent>(
+fn add_delta_from_single_component<C: SerializableComponent>(
     deltas: &mut Vec<DataRow>,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
     component: C,
 ) {
-    let mut row = DataRow::from_cells1(
+    let row = DataRow::from_cells1_sized(
         RowId::random(),
         entity_path.clone(),
         timepoint.clone(),
         1,
         [component].as_slice(),
     );
-    row.compute_all_size_bytes();
 
     deltas.push(row);
 }
@@ -130,7 +129,9 @@ fn load_space_view(
     path: &EntityPath,
     blueprint_db: &re_data_store::StoreDb,
 ) -> Option<SpaceViewBlueprint> {
-    query_timeless_single::<SpaceViewComponent>(&blueprint_db.entity_db.data_store, path)
+    blueprint_db
+        .store()
+        .query_timeless_component::<SpaceViewComponent>(path)
         .map(|c| c.space_view)
 }
 
@@ -138,36 +139,32 @@ fn load_viewport(
     blueprint_db: &re_data_store::StoreDb,
     space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> Viewport {
-    let auto_space_views = query_timeless_single::<AutoSpaceViews>(
-        &blueprint_db.entity_db.data_store,
-        &VIEWPORT_PATH.into(),
-    )
-    .unwrap_or_else(|| {
-        // Only enable auto-space-views if this is the app-default blueprint
-        AutoSpaceViews(
-            blueprint_db
-                .store_info()
-                .map_or(false, |ri| ri.is_app_default_blueprint()),
-        )
-    });
+    let auto_space_views = blueprint_db
+        .store()
+        .query_timeless_component::<AutoSpaceViews>(&VIEWPORT_PATH.into())
+        .unwrap_or_else(|| {
+            // Only enable auto-space-views if this is the app-default blueprint
+            AutoSpaceViews(
+                blueprint_db
+                    .store_info()
+                    .map_or(false, |ri| ri.is_app_default_blueprint()),
+            )
+        });
 
-    let space_view_visibility = query_timeless_single::<SpaceViewVisibility>(
-        &blueprint_db.entity_db.data_store,
-        &VIEWPORT_PATH.into(),
-    )
-    .unwrap_or_default();
+    let space_view_visibility = blueprint_db
+        .store()
+        .query_timeless_component::<SpaceViewVisibility>(&VIEWPORT_PATH.into())
+        .unwrap_or_default();
 
-    let space_view_maximized = query_timeless_single::<SpaceViewMaximized>(
-        &blueprint_db.entity_db.data_store,
-        &VIEWPORT_PATH.into(),
-    )
-    .unwrap_or_default();
+    let space_view_maximized = blueprint_db
+        .store()
+        .query_timeless_component::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
+        .unwrap_or_default();
 
-    let viewport_layout: ViewportLayout = query_timeless_single::<ViewportLayout>(
-        &blueprint_db.entity_db.data_store,
-        &VIEWPORT_PATH.into(),
-    )
-    .unwrap_or_default();
+    let viewport_layout: ViewportLayout = blueprint_db
+        .store()
+        .query_timeless_component::<ViewportLayout>(&VIEWPORT_PATH.into())
+        .unwrap_or_default();
 
     let unknown_space_views: HashMap<_, _> = space_views
         .iter()
@@ -220,7 +217,7 @@ fn sync_space_view(
             space_view: space_view.clone(),
         };
 
-        push_one_component(deltas, &entity_path, &timepoint, component);
+        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 }
 
@@ -237,8 +234,7 @@ fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
     let cell =
         DataCell::from_arrow_empty(SpaceViewComponent::name(), SpaceViewComponent::data_type());
 
-    let mut row = DataRow::from_cells1(RowId::random(), entity_path, timepoint, 0, cell);
-    row.compute_all_size_bytes();
+    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell);
 
     deltas.push(row);
 }
@@ -251,17 +247,17 @@ fn sync_viewport(deltas: &mut Vec<DataRow>, viewport: &Viewport, snapshot: &View
 
     if viewport.auto_space_views != snapshot.auto_space_views {
         let component = AutoSpaceViews(viewport.auto_space_views);
-        push_one_component(deltas, &entity_path, &timepoint, component);
+        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 
     if viewport.visible != snapshot.visible {
         let component = SpaceViewVisibility(viewport.visible.clone());
-        push_one_component(deltas, &entity_path, &timepoint, component);
+        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 
     if viewport.maximized != snapshot.maximized {
         let component = SpaceViewMaximized(viewport.maximized);
-        push_one_component(deltas, &entity_path, &timepoint, component);
+        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 
     // Note: we can't just check `viewport.trees != snapshot.trees` because the
@@ -282,13 +278,13 @@ fn sync_viewport(deltas: &mut Vec<DataRow>, viewport: &Viewport, snapshot: &View
             has_been_user_edited: viewport.has_been_user_edited,
         };
 
-        push_one_component(deltas, &entity_path, &timepoint, component);
+        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
 
         // TODO(jleibs): Sort out this causality mess
         // If we are saving a new layout, we also need to save the visibility-set because
         // it gets mutated on load but isn't guaranteed to be mutated on layout-change
         // which means it won't get saved.
         let component = SpaceViewVisibility(viewport.visible.clone());
-        push_one_component(deltas, &entity_path, &timepoint, component);
+        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 }
