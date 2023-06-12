@@ -8,6 +8,7 @@ Example usage:
 * Run all demos: `examples/python/api_demo/main.py`
 * Run specific demo: `examples/python/api_demo/main.py --demo rects`
 """
+from __future__ import annotations
 
 import argparse
 import logging

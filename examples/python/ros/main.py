@@ -9,6 +9,7 @@ see the tracking issue: https://github.com/rerun-io/rerun/issues/1537
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
 """
+from __future__ import annotations
 
 import argparse
 import sys
@@ -162,7 +163,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
                 path, rr.TranslationRotationScale3D([t.x, t.y, t.z], rr.Quaternion([q.x, q.y, q.z, q.w]))
             )
         except TransformException as ex:
-            print("Failed to get transform: {}".format(ex))
+            print(f"Failed to get transform: {ex}")
 
     def cam_info_callback(self, info: CameraInfo) -> None:
         """Log a `CameraInfo` with `log_pinhole`."""

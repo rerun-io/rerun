@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Example of using Rerun to log and visualize the output of COLMAP's sparse reconstruction."""
+from __future__ import annotations
+
 import io
 import os
 import re
 import zipfile
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Final, Optional, Tuple
+from typing import Any, Final
 
 import cv2
 import numpy as np
@@ -22,7 +24,7 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 FILTER_MIN_VISIBLE: Final = 500
 
 
-def scale_camera(camera: Camera, resize: Tuple[int, int]) -> Tuple[Camera, npt.NDArray[np.float_]]:
+def scale_camera(camera: Camera, resize: tuple[int, int]) -> tuple[Camera, npt.NDArray[np.float_]]:
     """Scale the camera intrinsics to match the resized image."""
     assert camera.model == "PINHOLE"
     new_width = resize[0]
@@ -88,9 +90,7 @@ def download_with_progress(url: str) -> io.BytesIO:
     return zip_file
 
 
-def read_and_log_sparse_reconstruction(
-    dataset_path: Path, filter_output: bool, resize: Optional[Tuple[int, int]]
-) -> None:
+def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, resize: tuple[int, int] | None) -> None:
     print("Reading sparse COLMAP reconstruction")
     cameras, images, points3D = read_model(dataset_path / "sparse", ext=".bin")
     print("Building visualization by logging to Rerun")

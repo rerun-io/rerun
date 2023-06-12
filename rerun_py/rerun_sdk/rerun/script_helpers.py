@@ -18,6 +18,8 @@ rr.script_teardown(args)
 ```
 
 """
+from __future__ import annotations
+
 from argparse import ArgumentParser, Namespace
 
 import rerun as rr

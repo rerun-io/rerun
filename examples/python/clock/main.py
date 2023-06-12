@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-
 """
 An example showing usage of `log_arrow`.
 
 An analog clock is built with Rerun Arrow3D primitives.
 """
+from __future__ import annotations
 
 import argparse
 import math
-from typing import Final, Tuple
+from typing import Final
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -23,7 +23,7 @@ WIDTH_H: Final = 0.6
 
 
 def log_clock(steps: int) -> None:
-    def rotate(angle: float, len: float) -> Tuple[float, float, float]:
+    def rotate(angle: float, len: float) -> tuple[float, float, float]:
         return (
             len * math.sin(angle),
             len * math.cos(angle),

@@ -28,7 +28,7 @@ def generate_pip_index(commit: str, upload: bool) -> None:
     wheels_bucket = gcs_client.bucket("rerun-builds")
 
     commit_short = commit[:7]
-    print("Checking commit: {}...".format(commit_short))
+    print(f"Checking commit: {commit_short}...")
 
     found: Dict[str, Any] = {}
 
@@ -36,7 +36,7 @@ def generate_pip_index(commit: str, upload: bool) -> None:
     wheel_blobs = list(wheels_bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
     wheels = [blob.name.split("/")[-1] for blob in wheel_blobs if blob.name.endswith(".whl")]
     if wheels:
-        print("Found wheels for commit: {}: {}".format(commit_short, wheels))
+        print(f"Found wheels for commit: {commit_short}: {wheels}")
         found["wheels"] = wheels
 
     if found:
@@ -54,7 +54,7 @@ def generate_pip_index(commit: str, upload: bool) -> None:
 
     if upload:
         upload_blob = wheels_bucket.blob(f"commit/{commit_short}/wheels/index.html")
-        print("Uploading results to {}".format(upload_blob.name))
+        print(f"Uploading results to {upload_blob.name}")
         upload_blob.upload_from_file(buffer, content_type="text/html")
 
 

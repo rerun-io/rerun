@@ -62,7 +62,7 @@ py-format:
     set -euxo pipefail
     black --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc {{py_folders}}
-    pyupgrade --py37-plus `find rerun_py/rerun/ -name "*.py" -type f`
+    pyupgrade --py38-plus `find {{py_folders}} -name "*.py" -type f`
     ruff --fix --config rerun_py/pyproject.toml  {{py_folders}}
 
 # Check that all the requirements.txt files for all the examples are correct

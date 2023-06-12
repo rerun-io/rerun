@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -22,15 +24,15 @@ __all__ = [
 @log_decorator
 def log_arrow(
     entity_path: str,
-    origin: Optional[npt.ArrayLike],
-    vector: Optional[npt.ArrayLike] = None,
+    origin: npt.ArrayLike | None,
+    vector: npt.ArrayLike | None = None,
     *,
-    color: Optional[Color] = None,
-    label: Optional[str] = None,
-    width_scale: Optional[float] = None,
-    ext: Optional[Dict[str, Any]] = None,
+    color: Color | None = None,
+    label: str | None = None,
+    width_scale: float | None = None,
+    ext: dict[str, Any] | None = None,
     timeless: bool = False,
-    recording: Optional[RecordingStream] = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Log a 3D arrow.
@@ -66,8 +68,8 @@ def log_arrow(
 
     """
 
-    instanced: Dict[str, Any] = {}
-    splats: Dict[str, Any] = {}
+    instanced: dict[str, Any] = {}
+    splats: dict[str, Any] = {}
 
     if origin is not None:
         if vector is None:

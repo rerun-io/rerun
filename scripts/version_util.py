@@ -62,7 +62,7 @@ def main() -> None:
     if len(sys.argv) != 2:
         raise Exception("Invalid number of arguments")
 
-    with open("Cargo.toml", "r") as f:
+    with open("Cargo.toml") as f:
         cargo_toml = f.read()
 
     cargo_version = get_cargo_version(cargo_toml)

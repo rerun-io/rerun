@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
@@ -7,7 +7,7 @@ from rerun.recording_stream import RecordingStream
 # --- Time ---
 
 
-def set_time_sequence(timeline: str, sequence: Optional[int], recording: Optional[RecordingStream] = None) -> None:
+def set_time_sequence(timeline: str, sequence: int | None, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread as an integer sequence.
 
@@ -36,7 +36,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int], recording: Optiona
     bindings.set_time_sequence(timeline, sequence, recording=recording)
 
 
-def set_time_seconds(timeline: str, seconds: Optional[float], recording: Optional[RecordingStream] = None) -> None:
+def set_time_seconds(timeline: str, seconds: float | None, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread in seconds.
 
@@ -73,7 +73,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float], recording: Optiona
     bindings.set_time_seconds(timeline, seconds, recording=recording)
 
 
-def set_time_nanos(timeline: str, nanos: Optional[int], recording: Optional[RecordingStream] = None) -> None:
+def set_time_nanos(timeline: str, nanos: int | None, recording: RecordingStream | None = None) -> None:
     """
     Set the current time for this thread.
 
@@ -111,7 +111,7 @@ def set_time_nanos(timeline: str, nanos: Optional[int], recording: Optional[Reco
     bindings.set_time_nanos(timeline, nanos, recording=recording)
 
 
-def reset_time(recording: Optional[RecordingStream] = None) -> None:
+def reset_time(recording: RecordingStream | None = None) -> None:
     """
     Clear all timeline information on this thread.
 
