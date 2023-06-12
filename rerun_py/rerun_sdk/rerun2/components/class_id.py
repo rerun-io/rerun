@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -62,7 +60,7 @@ class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
         if data is None:
             return ClassIdType().wrap_array(pa.array([], type=ClassIdType().storage_type))
         else:
-            return ClassIdArrayExt._from_similar(
+            return ClassIdArrayExt.from_similar(
                 data,
                 mono=ClassId,
                 mono_aliases=ClassIdLike,

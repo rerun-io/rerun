@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -60,7 +58,7 @@ class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[
         if data is None:
             return InstanceKeyType().wrap_array(pa.array([], type=InstanceKeyType().storage_type))
         else:
-            return InstanceKeyArrayExt._from_similar(
+            return InstanceKeyArrayExt.from_similar(
                 data,
                 mono=InstanceKey,
                 mono_aliases=InstanceKeyLike,
