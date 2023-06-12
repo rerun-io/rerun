@@ -765,7 +765,7 @@ pub enum TensorImageLoadError {
     #[error(transparent)]
     Image(std::sync::Arc<image::ImageError>),
 
-    #[error("Expexted a HxW, HxWx1 or HxWx3 tensor, but got {0:?}")]
+    #[error("Expected a HxW, HxWx1 or HxWx3 tensor, but got {0:?}")]
     UnexpectedJpegShape(Vec<TensorDimension>),
 
     #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
