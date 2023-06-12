@@ -5,8 +5,8 @@
 pub struct Point2D(pub crate::datatypes::Vec2D);
 
 impl crate::Component for Point2D {
-    fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.Point2D")
+    fn name() -> ::std::borrow::Cow<'static, str> {
+        ::std::borrow::Cow::Borrowed("rerun.components.Point2D")
     }
 
     #[allow(clippy::wildcard_imports)]

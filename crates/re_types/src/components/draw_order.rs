@@ -12,8 +12,8 @@
 pub struct DrawOrder(pub f32);
 
 impl crate::Component for DrawOrder {
-    fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.DrawOrder")
+    fn name() -> ::std::borrow::Cow<'static, str> {
+        ::std::borrow::Cow::Borrowed("rerun.components.DrawOrder")
     }
 
     #[allow(clippy::wildcard_imports)]

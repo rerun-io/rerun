@@ -8,8 +8,8 @@
 pub struct Color(pub u32);
 
 impl crate::Component for Color {
-    fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.Color")
+    fn name() -> ::std::borrow::Cow<'static, str> {
+        ::std::borrow::Cow::Borrowed("rerun.components.Color")
     }
 
     #[allow(clippy::wildcard_imports)]
