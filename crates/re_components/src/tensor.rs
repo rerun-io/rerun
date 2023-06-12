@@ -1246,7 +1246,14 @@ impl DecodedTensor {
             });
         }
 
-        assert_eq!(pixels.len() as u64, w * h * depth, "Bug in JPEG decoder");
+        if pixels.len() as u64 != w * h * depth {
+            return Err(zune_jpeg::errors::DecodeErrors::Format(format!(
+                "Bug in zune-jpeg: Expected {w}x{h}x{depth}={} bytes, got {}",
+                w * h * depth,
+                pixels.len()
+            ))
+            .into());
+        }
 
         let tensor = Tensor {
             tensor_id: TensorId::random(),
