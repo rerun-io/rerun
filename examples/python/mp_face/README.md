@@ -1,5 +1,6 @@
 ---
 title: MP Face
+tags: [media-pipe, face-tracking, live, camera]
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/mp_face/main.py
 ---
 

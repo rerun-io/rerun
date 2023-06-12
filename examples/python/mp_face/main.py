@@ -216,6 +216,9 @@ class FaceLandmarkerLogger:
         rr.log_annotation_context("video/landmarker", class_descriptions)
         rr.log_annotation_context("reconstruction", class_descriptions)
 
+        # properly align the 3D face in the viewer
+        rr.log_view_coordinates("reconstruction", xyz="RDF")
+
     def log_frame(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
@@ -248,6 +251,9 @@ class FaceLandmarkerLogger:
                 keypoint_ids=keypoint_ids,
                 class_ids=self._class_ids,
             )
+
+            # better center the 3D face in the viewer
+            rr.log_transform3d(f"reconstruction/faces/{i}", rr.Translation3D(translation=(-0.5, -0.5, 0.0)))
 
             for blendshape in blendshapes:
                 if blendshape.category_name in BLENDSHAPES_CATEGORIES:
