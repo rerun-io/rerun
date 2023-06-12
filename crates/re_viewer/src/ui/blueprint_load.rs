@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 
-use re_data_store::EntityPath;
+use re_data_store::{query_timeless_single, EntityPath};
 use re_viewer_context::SpaceViewId;
 use re_viewport::{
     blueprint_components::{
@@ -64,9 +64,7 @@ impl Blueprint {
 }
 
 fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) -> Option<bool> {
-    blueprint_db
-        .store()
-        .query_timeless_component::<PanelState>(path)
+    query_timeless_single::<PanelState>(&blueprint_db.entity_db.data_store, path)
         .map(|p| p.expanded)
 }
 
@@ -74,9 +72,7 @@ fn load_space_view(
     path: &EntityPath,
     blueprint_db: &re_data_store::StoreDb,
 ) -> Option<SpaceViewBlueprint> {
-    blueprint_db
-        .store()
-        .query_timeless_component::<SpaceViewComponent>(path)
+    query_timeless_single::<SpaceViewComponent>(&blueprint_db.entity_db.data_store, path)
         .map(|c| c.space_view)
 }
 
@@ -84,32 +80,36 @@ fn load_viewport(
     blueprint_db: &re_data_store::StoreDb,
     space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> Viewport {
-    let auto_space_views = blueprint_db
-        .store()
-        .query_timeless_component::<AutoSpaceViews>(&VIEWPORT_PATH.into())
-        .unwrap_or_else(|| {
-            // Only enable auto-space-views if this is the app-default blueprint
-            AutoSpaceViews(
-                blueprint_db
-                    .store_info()
-                    .map_or(false, |ri| ri.is_app_default_blueprint()),
-            )
-        });
+    let auto_space_views = query_timeless_single::<AutoSpaceViews>(
+        &blueprint_db.entity_db.data_store,
+        &VIEWPORT_PATH.into(),
+    )
+    .unwrap_or_else(|| {
+        // Only enable auto-space-views if this is the app-default blueprint
+        AutoSpaceViews(
+            blueprint_db
+                .store_info()
+                .map_or(false, |ri| ri.is_app_default_blueprint()),
+        )
+    });
 
-    let space_view_visibility = blueprint_db
-        .store()
-        .query_timeless_component::<SpaceViewVisibility>(&VIEWPORT_PATH.into())
-        .unwrap_or_default();
+    let space_view_visibility = query_timeless_single::<SpaceViewVisibility>(
+        &blueprint_db.entity_db.data_store,
+        &VIEWPORT_PATH.into(),
+    )
+    .unwrap_or_default();
 
-    let space_view_maximized = blueprint_db
-        .store()
-        .query_timeless_component::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
-        .unwrap_or_default();
+    let space_view_maximized = query_timeless_single::<SpaceViewMaximized>(
+        &blueprint_db.entity_db.data_store,
+        &VIEWPORT_PATH.into(),
+    )
+    .unwrap_or_default();
 
-    let viewport_layout: ViewportLayout = blueprint_db
-        .store()
-        .query_timeless_component::<ViewportLayout>(&VIEWPORT_PATH.into())
-        .unwrap_or_default();
+    let viewport_layout: ViewportLayout = query_timeless_single::<ViewportLayout>(
+        &blueprint_db.entity_db.data_store,
+        &VIEWPORT_PATH.into(),
+    )
+    .unwrap_or_default();
 
     let unknown_space_views: HashMap<_, _> = space_views
         .iter()

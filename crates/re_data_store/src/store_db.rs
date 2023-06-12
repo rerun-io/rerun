@@ -211,16 +211,6 @@ impl StoreDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
-    #[inline]
-    pub fn store_mut(&mut self) -> &mut re_arrow_store::DataStore {
-        &mut self.entity_db.data_store
-    }
-
-    #[inline]
-    pub fn store(&self) -> &re_arrow_store::DataStore {
-        &self.entity_db.data_store
-    }
-
     pub fn store_kind(&self) -> StoreKind {
         self.store_id.kind
     }
