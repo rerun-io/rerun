@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -18,19 +16,14 @@ class ClassId:
 
     id: int
 
-    def __array__(self) -> npt.ArrayLike:
+    def __array__(self):
         return np.asarray(self.id)
 
 
-ClassIdLike = Union[ClassId, int]
+ClassIdLike = Union[ClassId, float]
 
 ClassIdArrayLike = Union[
-    ClassIdLike,
-    Sequence[ClassIdLike],
-    npt.NDArray[np.uint8],
-    npt.NDArray[np.uint16],
-    npt.NDArray[np.uint32],
-    npt.NDArray[np.uint64],
+    ClassIdLike, Sequence[ClassIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
 ]
 
 
@@ -39,7 +32,7 @@ ClassIdArrayLike = Union[
 from rerun2.components.class_id_ext import ClassIdArrayExt  # noqa: E402
 
 
-class ClassIdType(pa.ExtensionType):  # type: ignore[misc]
+class ClassIdType(pa.ExtensionType):
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.ClassId")
 
@@ -63,11 +56,11 @@ pa.register_extension_type(ClassIdType())
 
 class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: ClassIdArrayLike | None) -> pa.Array:
+    def from_similar(data: ClassIdArrayLike | None):
         if data is None:
             return ClassIdType().wrap_array(pa.array([], type=ClassIdType().storage_type))
         else:
-            return ClassIdArrayExt._from_similar(
+            return ClassIdArrayExt.from_similar(
                 data,
                 mono=ClassId,
                 mono_aliases=ClassIdLike,

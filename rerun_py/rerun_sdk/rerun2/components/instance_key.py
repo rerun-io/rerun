@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -18,7 +16,7 @@ class InstanceKey:
 
     value: int
 
-    def __array__(self) -> npt.ArrayLike:
+    def __array__(self):
         return np.asarray(self.value)
 
 
@@ -32,7 +30,7 @@ InstanceKeyArrayLike = Union[InstanceKeyLike, Sequence[InstanceKeyLike], npt.NDA
 from rerun2.components.instance_key_ext import InstanceKeyArrayExt  # noqa: E402
 
 
-class InstanceKeyType(pa.ExtensionType):  # type: ignore[misc]
+class InstanceKeyType(pa.ExtensionType):
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint64(), "rerun.components.InstanceKey")
 
@@ -56,11 +54,11 @@ pa.register_extension_type(InstanceKeyType())
 
 class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: InstanceKeyArrayLike | None) -> pa.Array:
+    def from_similar(data: InstanceKeyArrayLike | None):
         if data is None:
             return InstanceKeyType().wrap_array(pa.array([], type=InstanceKeyType().storage_type))
         else:
-            return InstanceKeyArrayExt._from_similar(
+            return InstanceKeyArrayExt.from_similar(
                 data,
                 mono=InstanceKey,
                 mono_aliases=InstanceKeyLike,

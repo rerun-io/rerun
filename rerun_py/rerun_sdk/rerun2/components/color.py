@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -14,30 +12,24 @@ import pyarrow as pa
 
 @dataclass
 class Color:
-    """
-    An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
-
-    Float colors are assumed to be in 0-1 gamma sRGB space.
-    All other colors are assumed to be in 0-255 gamma sRGB space.
-    If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
-    """
+    """An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha."""
 
     rgba: int
 
-    def __array__(self) -> npt.ArrayLike:
+    def __array__(self):
         return np.asarray(self.rgba)
 
 
 ColorLike = Union[
-    Color, int, npt.NDArray[np.uint8], npt.NDArray[np.uint32], npt.NDArray[np.float32], npt.NDArray[np.float64]
+    Color, Sequence[int], Sequence[float], npt.NDArray[np.uint8], npt.NDArray[np.float32], npt.NDArray[np.float64]
 ]
 
 ColorArrayLike = Union[
     ColorLike,
     Sequence[ColorLike],
     Sequence[int],
+    Sequence[float],
     npt.NDArray[np.uint8],
-    npt.NDArray[np.uint32],
     npt.NDArray[np.float32],
     npt.NDArray[np.float64],
 ]
@@ -48,7 +40,7 @@ ColorArrayLike = Union[
 from rerun2.components.color_ext import ColorArrayExt  # noqa: E402
 
 
-class ColorType(pa.ExtensionType):  # type: ignore[misc]
+class ColorType(pa.ExtensionType):
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint32(), "rerun.components.Color")
 
@@ -72,11 +64,11 @@ pa.register_extension_type(ColorType())
 
 class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: ColorArrayLike | None) -> pa.Array:
+    def from_similar(data: ColorArrayLike | None):
         if data is None:
             return ColorType().wrap_array(pa.array([], type=ColorType().storage_type))
         else:
-            return ColorArrayExt._from_similar(
+            return ColorArrayExt.from_similar(
                 data,
                 mono=Color,
                 mono_aliases=ColorLike,

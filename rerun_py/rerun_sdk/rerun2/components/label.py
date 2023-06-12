@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -16,7 +14,7 @@ class Label:
 
     value: str
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.value
 
 
@@ -33,7 +31,7 @@ LabelArrayLike = Union[
 from rerun2.components.label_ext import LabelArrayExt  # noqa: E402
 
 
-class LabelType(pa.ExtensionType):  # type: ignore[misc]
+class LabelType(pa.ExtensionType):
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.utf8(), "rerun.components.Label")
 
@@ -57,11 +55,11 @@ pa.register_extension_type(LabelType())
 
 class LabelArray(pa.ExtensionArray, LabelArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: LabelArrayLike | None) -> pa.Array:
+    def from_similar(data: LabelArrayLike | None):
         if data is None:
             return LabelType().wrap_array(pa.array([], type=LabelType().storage_type))
         else:
-            return LabelArrayExt._from_similar(
+            return LabelArrayExt.from_similar(
                 data,
                 mono=Label,
                 mono_aliases=LabelLike,

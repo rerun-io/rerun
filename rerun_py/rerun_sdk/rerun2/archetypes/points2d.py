@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Points2D"]
-
-
 from dataclasses import dataclass
 
 from rerun2 import components
@@ -69,7 +66,7 @@ class Points2D:
     Unique identifiers for each individual point in the batch.
     """
 
-    def __str__(self) -> str:
+    def __str__(self):
         s = f"rr.{type(self).__name__}(\n"
 
         from dataclasses import fields
@@ -86,7 +83,7 @@ class Points2D:
 
         return s
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return str(self)
 
     def __init__(
@@ -105,7 +102,6 @@ class Points2D:
         self.points = components.Point2DArray.from_similar(points)
 
         # Optional components
-
         self.radii = components.RadiusArray.from_similar(radii)
         self.colors = components.ColorArray.from_similar(colors)
         self.labels = components.LabelArray.from_similar(labels)

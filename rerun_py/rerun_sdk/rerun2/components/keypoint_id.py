@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -25,7 +23,7 @@ class KeypointId:
 
     id: int
 
-    def __array__(self) -> npt.ArrayLike:
+    def __array__(self):
         return np.asarray(self.id)
 
 
@@ -41,7 +39,7 @@ KeypointIdArrayLike = Union[
 from rerun2.components.keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
 
 
-class KeypointIdType(pa.ExtensionType):  # type: ignore[misc]
+class KeypointIdType(pa.ExtensionType):
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.KeypointId")
 
@@ -65,11 +63,11 @@ pa.register_extension_type(KeypointIdType())
 
 class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: KeypointIdArrayLike | None) -> pa.Array:
+    def from_similar(data: KeypointIdArrayLike | None):
         if data is None:
             return KeypointIdType().wrap_array(pa.array([], type=KeypointIdType().storage_type))
         else:
-            return KeypointIdArrayExt._from_similar(
+            return KeypointIdArrayExt.from_similar(
                 data,
                 mono=KeypointId,
                 mono_aliases=KeypointIdLike,

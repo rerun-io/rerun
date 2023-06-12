@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -18,7 +16,7 @@ class Vec2D:
 
     xy: npt.ArrayLike
 
-    def __array__(self) -> npt.ArrayLike:
+    def __array__(self):
         return np.asarray(self.xy)
 
 
@@ -34,7 +32,7 @@ Vec2DArrayLike = Union[
 from rerun2.datatypes.vec2d_ext import Vec2DArrayExt  # noqa: E402
 
 
-class Vec2DType(pa.ExtensionType):  # type: ignore[misc]
+class Vec2DType(pa.ExtensionType):
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.list_(pa.field("item", pa.float32(), False, {}), 2), "rerun.datatypes.Vec2D")
 
@@ -58,11 +56,11 @@ pa.register_extension_type(Vec2DType())
 
 class Vec2DArray(pa.ExtensionArray, Vec2DArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Vec2DArrayLike | None) -> pa.Array:
+    def from_similar(data: Vec2DArrayLike | None):
         if data is None:
             return Vec2DType().wrap_array(pa.array([], type=Vec2DType().storage_type))
         else:
-            return Vec2DArrayExt._from_similar(
+            return Vec2DArrayExt.from_similar(
                 data,
                 mono=Vec2D,
                 mono_aliases=Vec2DLike,
