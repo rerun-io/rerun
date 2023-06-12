@@ -5,6 +5,10 @@ use crate::StoreDb;
 // ----------------------------------------------------------------------------
 
 /// Store a single value for a given [`re_log_types::Component`].
+///
+/// BEWARE: This does more than just writing component data to the datastore, it actually updates
+/// several other datastructures in the process.
+/// This is _not_ equivalent to [`re_arrow_store::DataStore::insert_component`]!
 pub fn store_one_component<C: SerializableComponent>(
     store_db: &mut StoreDb,
     entity_path: &EntityPath,
