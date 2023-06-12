@@ -24,4 +24,3 @@
 -r stable_diffusion/requirements.txt
 -r text_logging/requirements.txt
 -r tracking_hf_opencv/requirements.txt
-p
