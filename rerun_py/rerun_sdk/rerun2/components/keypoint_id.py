@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -69,7 +67,7 @@ class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[mi
         if data is None:
             return KeypointIdType().wrap_array(pa.array([], type=KeypointIdType().storage_type))
         else:
-            return KeypointIdArrayExt._from_similar(
+            return KeypointIdArrayExt.from_similar(
                 data,
                 mono=KeypointId,
                 mono_aliases=KeypointIdLike,

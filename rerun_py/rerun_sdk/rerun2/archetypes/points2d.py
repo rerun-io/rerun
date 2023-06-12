@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Points2D"]
-
-
 from dataclasses import dataclass
 
 from rerun2 import components
@@ -105,7 +102,6 @@ class Points2D:
         self.points = components.Point2DArray.from_similar(points)
 
         # Optional components
-
         self.radii = components.RadiusArray.from_similar(radii)
         self.colors = components.ColorArray.from_similar(colors)
         self.labels = components.LabelArray.from_similar(labels)

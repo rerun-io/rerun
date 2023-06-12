@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -70,7 +68,7 @@ class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]
         if data is None:
             return ColorType().wrap_array(pa.array([], type=ColorType().storage_type))
         else:
-            return ColorArrayExt._from_similar(
+            return ColorArrayExt.from_similar(
                 data,
                 mono=Color,
                 mono_aliases=ColorLike,

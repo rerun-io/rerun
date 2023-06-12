@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -68,7 +66,7 @@ class DrawOrderArray(pa.ExtensionArray, DrawOrderArrayExt):  # type: ignore[misc
         if data is None:
             return DrawOrderType().wrap_array(pa.array([], type=DrawOrderType().storage_type))
         else:
-            return DrawOrderArrayExt._from_similar(
+            return DrawOrderArrayExt.from_similar(
                 data,
                 mono=DrawOrder,
                 mono_aliases=DrawOrderLike,

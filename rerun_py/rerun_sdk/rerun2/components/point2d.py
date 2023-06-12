@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Tuple, Union
 
@@ -62,7 +60,7 @@ class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]
         if data is None:
             return Point2DType().wrap_array(pa.array([], type=Point2DType().storage_type))
         else:
-            return Point2DArrayExt._from_similar(
+            return Point2DArrayExt.from_similar(
                 data,
                 mono=Point2D,
                 mono_aliases=Point2DLike,

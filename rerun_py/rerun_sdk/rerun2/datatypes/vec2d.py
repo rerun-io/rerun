@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -62,7 +60,7 @@ class Vec2DArray(pa.ExtensionArray, Vec2DArrayExt):  # type: ignore[misc]
         if data is None:
             return Vec2DType().wrap_array(pa.array([], type=Vec2DType().storage_type))
         else:
-            return Vec2DArrayExt._from_similar(
+            return Vec2DArrayExt.from_similar(
                 data,
                 mono=Vec2D,
                 mono_aliases=Vec2DLike,
