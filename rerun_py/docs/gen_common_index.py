@@ -41,6 +41,7 @@ class Section:
     title: str
     module_summary: str | None
     func_list: list[str]
+    class_list: list[str]
 
 
 # This is the list of sections and functions that will be included in the index
@@ -50,16 +51,19 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Initialization",
         module_summary=None,
         func_list=["init", "connect", "disconnect", "spawn", "serve", "memory_recording"],
+        class_list=[],
     ),
     Section(
         title="Viewer Control",
         module_summary=None,
         func_list=["save"],
+        class_list=[],
     ),
     Section(
         title="Time",
         module_summary=None,
         func_list=["set_time_sequence", "set_time_seconds", "set_time_nanos"],
+        class_list=[],
     ),
     Section(
         title="Spatial Primitives",
@@ -77,31 +81,37 @@ SECTION_TABLE: Final[list[Section]] = [
             "log_meshes",
             "log_mesh_file",
         ],
+        class_list=[],
     ),
     Section(
         title="Images",
         module_summary=None,
         func_list=["log_image", "log_image_file", "log_depth_image", "log_segmentation_image"],
+        class_list=[],
     ),
     Section(
         title="Tensors",
         module_summary=None,
         func_list=["log_tensor"],
+        class_list=[],
     ),
     Section(
         title="Annotations",
         module_summary=None,
         func_list=["log_annotation_context"],
+        class_list=["ClassDescription", "AnnotationInfo"],
     ),
     Section(
         title="Extension Components",
         module_summary=None,
         func_list=["log_extension_components"],
+        class_list=[],
     ),
     Section(
         title="Plotting",
         module_summary=None,
         func_list=["log_scalar"],
+        class_list=[],
     ),
     Section(
         title="Transforms",
@@ -114,6 +124,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "log_disconnected_space",
             "log_view_coordinates",
         ],
+        class_list=[],
     ),
     Section(
         title="Text",
@@ -121,11 +132,13 @@ SECTION_TABLE: Final[list[Section]] = [
         # TODO(#1251): Classes aren't supported yet
         # "LogLevel", "LoggingHandler"
         func_list=["log_text_entry"],
+        class_list=["LogLevel", "LoggingHandler"],
     ),
     Section(
         title="Helpers",
         module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
+        class_list=[],
     ),
     Section(
         title="Experimental",
@@ -137,6 +150,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "experimental.set_panels",
             "experimental.set_auto_space_views",
         ],
+        class_list=[],
     ),
 ]
 
@@ -208,14 +222,29 @@ overview of what's possible and how.
                 fd.write("----\n")
             for func_name in section.func_list:
                 fd.write(f"::: rerun.{func_name}\n")
+                fd.write("    options:\n")
+                fd.write("      heading_level: 4\n")
+            for class_name in section.class_list:
+                # fd.write(f"::: rerun.{class_name}\n")
+                fd.write(f"::: rerun.{class_name}\n")
+                fd.write("    options:\n")
+                fd.write("      heading_level: 4\n")
 
         # Write out a table for the section in the index_file
         index_file.write(f"## {section.title}\n")
-        index_file.write("Function | Description\n")
-        index_file.write("-------- | -----------\n")
-        for func_name in section.func_list:
-            func = rerun_pkg[func_name]
-            index_file.write(f"[`rerun.{func_name}()`]({md_name}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
+        if section.func_list:
+            index_file.write("Function | Description\n")
+            index_file.write("-------- | -----------\n")
+            for func_name in section.func_list:
+                func = rerun_pkg[func_name]
+                index_file.write(f"[`rerun.{func_name}()`]({md_name}#rerun.{func_name}) | {func.docstring.lines[0]}\n")
+        if section.class_list:
+            index_file.write("\n")
+            index_file.write("Class | Description\n")
+            index_file.write("-------- | -----------\n")
+            for class_name in section.class_list:
+                cls = rerun_pkg[class_name]
+                index_file.write(f"[`rerun.{class_name}`]({md_name}#rerun.{class_name}) | {cls.docstring.lines[0]}\n")
 
         index_file.write("\n")
 

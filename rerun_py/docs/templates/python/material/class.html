@@ -75,7 +75,9 @@ See: CHANGE comments below
     {% set heading_level = heading_level - 1 %}
   {% endif %}
 
-  <div class="doc doc-contents {% if root %}first{% endif %}">
+  {# CHANGE: disable gating of first for root docstring #}
+  {#<div class="doc doc-contents {% if root %}first{% endif %}">#}
+  <div class="doc doc-contents">
     {% if config.show_bases and class.bases %}
       <p class="doc doc-class-bases">
         Bases: {% for expression in class.bases -%}
