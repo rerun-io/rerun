@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from rerun2 import components
 
@@ -17,12 +16,12 @@ class Points2D:
     All the actual 2D points that make up the point cloud.
     """
 
-    radii: Optional[components.RadiusArray] = None
+    radii: components.RadiusArray | None = None
     """
     Optional radii for the points, effectively turning them into circles.
     """
 
-    colors: Optional[components.ColorArray] = None
+    colors: components.ColorArray | None = None
     """
     Optional colors for the points.
 
@@ -30,12 +29,12 @@ class Points2D:
     As either 0-1 floats or 0-255 integers, with separate alpha.
     """
 
-    labels: Optional[components.LabelArray] = None
+    labels: components.LabelArray | None = None
     """
     Optional text labels for the points.
     """
 
-    draw_order: Optional[components.DrawOrderArray] = None
+    draw_order: components.DrawOrderArray | None = None
     """
     An optional floating point value that specifies the 2D drawing order.
     Objects with higher values are drawn on top of those with lower values.
@@ -43,14 +42,14 @@ class Points2D:
     The default for 2D points is 30.0.
     """
 
-    class_ids: Optional[components.ClassIdArray] = None
+    class_ids: components.ClassIdArray | None = None
     """
     Optional class Ids for the points.
 
     The class ID provides colors and labels if not specified explicitly.
     """
 
-    keypoint_ids: Optional[components.KeypointIdArray] = None
+    keypoint_ids: components.KeypointIdArray | None = None
     """
     Optional keypoint IDs for the points, identifying them within a class.
 
@@ -62,7 +61,7 @@ class Points2D:
     detected skeleton.
     """
 
-    instance_keys: Optional[components.InstanceKeyArray] = None
+    instance_keys: components.InstanceKeyArray | None = None
     """
     Unique identifiers for each individual point in the batch.
     """
@@ -91,13 +90,13 @@ class Points2D:
         self,
         points: components.Point2DArrayLike,
         *,
-        radii: Optional[components.RadiusArrayLike] = None,
-        colors: Optional[components.ColorArrayLike] = None,
-        labels: Optional[components.LabelArrayLike] = None,
-        draw_order: Optional[components.DrawOrderLike] = None,
-        class_ids: Optional[components.ClassIdArrayLike] = None,
-        keypoint_ids: Optional[components.KeypointIdArrayLike] = None,
-        instance_keys: Optional[components.InstanceKeyArrayLike] = None,
+        radii: components.RadiusArrayLike | None = None,
+        colors: components.ColorArrayLike | None = None,
+        labels: components.LabelArrayLike | None = None,
+        draw_order: components.DrawOrderLike | None = None,
+        class_ids: components.ClassIdArrayLike | None = None,
+        keypoint_ids: components.KeypointIdArrayLike | None = None,
+        instance_keys: components.InstanceKeyArrayLike | None = None,
     ) -> None:
         # Required components
         self.points = components.Point2DArray.from_similar(points)

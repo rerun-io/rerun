@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -56,7 +56,7 @@ pa.register_extension_type(Vec2DType())
 
 class Vec2DArray(pa.ExtensionArray, Vec2DArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[Vec2DArrayLike]):
+    def from_similar(data: Vec2DArrayLike | None):
         if data is None:
             return Vec2DType().wrap_array(pa.array([], type=Vec2DType().storage_type))
         else:

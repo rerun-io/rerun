@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -54,7 +54,7 @@ pa.register_extension_type(RadiusType())
 
 class RadiusArray(pa.ExtensionArray, RadiusArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[RadiusArrayLike]):
+    def from_similar(data: RadiusArrayLike | None):
         if data is None:
             return RadiusType().wrap_array(pa.array([], type=RadiusType().storage_type))
         else:

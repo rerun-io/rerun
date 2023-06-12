@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -62,7 +62,7 @@ pa.register_extension_type(DrawOrderType())
 
 class DrawOrderArray(pa.ExtensionArray, DrawOrderArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[DrawOrderArrayLike]):
+    def from_similar(data: DrawOrderArrayLike | None):
         if data is None:
             return DrawOrderType().wrap_array(pa.array([], type=DrawOrderType().storage_type))
         else:
