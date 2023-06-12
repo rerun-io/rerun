@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -56,7 +56,7 @@ pa.register_extension_type(Point2DType())
 
 class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Optional[Point2DArrayLike]):
+    def from_similar(data: Point2DArrayLike | None):
         if data is None:
             return Point2DType().wrap_array(pa.array([], type=Point2DType().storage_type))
         else:
