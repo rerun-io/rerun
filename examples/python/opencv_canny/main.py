@@ -73,8 +73,7 @@ def main() -> None:
     parser.add_argument("--num-frames", type=int, default=None, help="The number of frames to log")
 
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "opencv_canny")
 

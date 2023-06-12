@@ -148,8 +148,7 @@ def main() -> None:
     parser.add_argument("--no-segment", action="store_true", help="Don't run person segmentation.")
     rr.script_add_args(parser)
 
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
     rr.script_setup(args, "mp_pose")
 
     video_path = args.video_path  # type: str

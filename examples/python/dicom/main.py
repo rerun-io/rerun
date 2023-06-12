@@ -75,8 +75,7 @@ def ensure_dataset_downloaded() -> Iterable[Path]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
     rr.script_setup(args, "dicom")
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)
