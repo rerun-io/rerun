@@ -19,6 +19,7 @@ If you get this error:
 Then run `python3 -m pip install cryptography==38.0.4`
 (https://levelup.gitconnected.com/fix-attributeerror-module-lib-has-no-attribute-openssl-521a35d83769)
 """
+from __future__ import annotations
 
 import argparse
 import hashlib

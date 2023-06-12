@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Build `demo.rerun.io`."""
+from __future__ import annotations
 
 import argparse
 import http.server
@@ -10,7 +11,6 @@ import shutil
 import subprocess
 import threading
 from functools import partial
-from typing import List
 
 from jinja2 import Template
 
@@ -22,7 +22,7 @@ class Example:
         title: str,
         description: str,
         commit: str,
-        build_args: List[str],
+        build_args: list[str],
     ):
         self.path = os.path.join("examples/python", name, "main.py")
         self.name = name
@@ -56,7 +56,7 @@ class Example:
             return "script_add_args" in f.read()
 
 
-def copy_static_assets(examples: List[Example]) -> None:
+def copy_static_assets(examples: list[Example]) -> None:
     # copy root
     src = os.path.join(SCRIPT_PATH, "demo_assets/static")
     dst = BASE_PATH
@@ -80,7 +80,7 @@ def build_wasm() -> None:
     subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
 
 
-def copy_wasm(examples: List[Example]) -> None:
+def copy_wasm(examples: list[Example]) -> None:
     files = ["re_viewer_bg.wasm", "re_viewer.js"]
     for example in examples:
         for file in files:
@@ -90,7 +90,7 @@ def copy_wasm(examples: List[Example]) -> None:
             )
 
 
-def collect_examples() -> List[Example]:
+def collect_examples() -> list[Example]:
     commit = os.environ.get("COMMIT_HASH") or "main"
     logging.info(f"Commit hash: {commit}")
     examples = []
@@ -107,14 +107,14 @@ def collect_examples() -> List[Example]:
     return examples
 
 
-def save_examples_rrd(examples: List[Example]) -> None:
+def save_examples_rrd(examples: list[Example]) -> None:
     logging.info("\nSaving examples as .rrd")
 
     for example in examples:
         example.save()
 
 
-def render_examples(examples: List[Example]) -> None:
+def render_examples(examples: list[Example]) -> None:
     logging.info("\nRendering examples")
 
     template_path = os.path.join(SCRIPT_PATH, "demo_assets/templates/example.html")

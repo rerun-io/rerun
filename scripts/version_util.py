@@ -10,6 +10,7 @@ This script accepts one argument:
     --bare_cargo_version Outputs the bare cargo version. This is helpful for setting an environment variable, such as:
     EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)
 """
+from __future__ import annotations
 
 import re
 import subprocess

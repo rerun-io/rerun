@@ -9,11 +9,12 @@ This is expected to be run by the `reusable_pr_summary.yml` GitHub workflow.
 Requires the following packages:
   pip install google-cloud-storage Jinja2 PyGithub # NOLINT
 """
+from __future__ import annotations
 
 import argparse
 import io
 import os
-from typing import Any, Dict
+from typing import Any
 
 from github import Github  # NOLINT
 from google.cloud import storage
@@ -40,7 +41,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
         commit_short = commit[:7]
         print(f"Checking commit: {commit_short}...")
 
-        found: Dict[str, Any] = {}
+        found: dict[str, Any] = {}
 
         # Check if there is a hosted app for the current commit
         app_blob = viewer_bucket.blob(f"commit/{commit_short}/index.html")

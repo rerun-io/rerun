@@ -8,6 +8,7 @@ This is expected to be run by the `reusable_pr_link_docs.yml` GitHub workflow.
 Requires the following packages:
   pip install PyGithub # NOLINT
 """
+from __future__ import annotations
 
 import argparse
 
