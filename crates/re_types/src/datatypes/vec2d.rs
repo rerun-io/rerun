@@ -5,8 +5,8 @@
 pub struct Vec2D(pub [f32; 2]);
 
 impl crate::Datatype for Vec2D {
-    fn name() -> crate::DatatypeName {
-        crate::DatatypeName::Borrowed("rerun.datatypes.Vec2D")
+    fn name() -> ::std::borrow::Cow<'static, str> {
+        ::std::borrow::Cow::Borrowed("rerun.datatypes.Vec2D")
     }
 
     #[allow(clippy::wildcard_imports)]
