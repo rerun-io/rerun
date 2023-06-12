@@ -23,9 +23,13 @@ fn decode_color(sampled_value: Vec4) -> Vec4 {
     // Normalize the value first, otherwise premultiplying alpha and linear space conversion won't make sense.
     var rgba = normalize_range(sampled_value);
 
-    // Convert to linear space. Skip if values are not in the 0..1 range (might be inf).
-    if rect_info.decode_srgb != 0u && all(0.0 <= rgba.rgb) && all(rgba.rgb <= 1.0) {
-        rgba = linear_from_srgba(rgba);
+    // Convert to linear space
+    if rect_info.decode_srgb != 0u {
+        if all(0.0 <= rgba.rgb) && all(rgba.rgb <= 1.0) {
+            rgba = linear_from_srgba(rgba);
+        } else {
+            rgba = ERROR_RGBA; // out of range
+        }
     }
 
     // Premultiply alpha.
