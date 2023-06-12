@@ -326,8 +326,9 @@ fn paint_colormap_gradient(
 
     let colormapped_texture = re_renderer::renderer::ColormappedTexture {
         texture: horizontal_gradient,
-        decode_srgb: false,
         range: [0.0, 1.0],
+        decode_srgb: false,
+        multiply_rgb_with_alpha: false,
         gamma: 1.0,
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(colormap)),
     };

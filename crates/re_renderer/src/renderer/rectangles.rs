@@ -53,14 +53,23 @@ pub enum TextureFilterMin {
 pub struct ColormappedTexture {
     pub texture: GpuTexture2D,
 
+    /// Min/max range of the values in the texture.
+    ///
+    /// Used to normalize the input values (squash them to the 0-1 range).
+    /// The normalization is applied before sRGB gamma decoding and alpha pre-multiplication
+    /// (this transformation is also applied to alpha!).
+    pub range: [f32; 2],
+
     /// Decode 0-1 sRGB gamma values to linear space before filtering?
     ///
     /// Only applies to [`wgpu::TextureFormat::Rgba8Unorm`] and float textures.
     pub decode_srgb: bool,
 
-    /// Min/max range of the values in the texture.
-    /// Used to normalize the input values (squash them to the 0-1 range).
-    pub range: [f32; 2],
+    /// Multiply color channels with the alpha channel before filtering?
+    ///
+    /// Set this to false for textures that don't have an alpha channel or are already pre-multiplied.
+    /// Applied after range normalization and srgb decoding, before filtering.
+    pub multiply_rgb_with_alpha: bool,
 
     /// Raise the normalized values to this power (before any color mapping).
     /// Acts like an inverse brightness.
@@ -102,6 +111,7 @@ impl ColormappedTexture {
             decode_srgb,
             range: [0.0, 1.0],
             gamma: 1.0,
+            multiply_rgb_with_alpha: true,
             color_mapper: None,
         }
     }
@@ -224,7 +234,8 @@ mod gpu_data {
         magnification_filter: u32,
 
         decode_srgb: u32,
-        _row_padding: [u32; 3],
+        multiply_rgb_with_alpha: u32,
+        _row_padding: [u32; 2],
 
         _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 7],
     }
@@ -251,6 +262,7 @@ mod gpu_data {
                 range,
                 gamma,
                 color_mapper,
+                multiply_rgb_with_alpha,
             } = colormapped_texture;
 
             let super::RectangleOptions {
@@ -322,6 +334,7 @@ mod gpu_data {
                 minification_filter,
                 magnification_filter,
                 decode_srgb: *decode_srgb as _,
+                multiply_rgb_with_alpha: *multiply_rgb_with_alpha as _,
                 _row_padding: Default::default(),
                 _end_padding: Default::default(),
             })
