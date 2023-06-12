@@ -40,6 +40,12 @@ pub mod external {
     pub use log;
 }
 
+/// Never log anything less serious than a `ERROR` from these crates.
+const CRATES_AT_ERROR_LEVEL: [&str; 1] = [
+    // Waiting for https://github.com/etemesi254/zune-image/issues/131 to be released
+    "zune_jpeg",
+];
+
 /// Never log anything less serious than a `WARN` from these crates.
 const CRATES_AT_WARN_LEVEL: [&str; 3] = [
     // wgpu crates spam a lot on info level, which is really annoying
@@ -57,6 +63,13 @@ const CRATES_FORCED_TO_INFO: [&str; 4] = [
 
 /// Should we log this message given the filter?
 fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> bool {
+    if CRATES_AT_ERROR_LEVEL
+        .iter()
+        .any(|crate_name| metadata.target().starts_with(crate_name))
+    {
+        return metadata.level() <= log::LevelFilter::Error;
+    }
+
     if CRATES_AT_WARN_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
