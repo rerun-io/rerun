@@ -21,5 +21,6 @@
 -r ros/requirements.txt
 -r segment_anything/requirements.txt
 -r stable_diffusion/requirements.txt
+-r template/requirements.txt
 -r text_logging/requirements.txt
 -r tracking_hf_opencv/requirements.txt
