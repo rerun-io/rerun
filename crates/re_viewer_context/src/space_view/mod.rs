@@ -11,6 +11,7 @@ mod scene_context;
 mod scene_part;
 mod scene_query;
 mod space_view_class;
+mod space_view_class_placeholder;
 mod space_view_class_registry;
 
 pub use dyn_space_view_class::{
