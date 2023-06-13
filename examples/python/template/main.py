@@ -36,7 +36,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "text_logging")
+    rr.script_setup(args, "my_example_name")
 
     setup_logging()
 
