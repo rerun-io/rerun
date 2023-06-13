@@ -93,17 +93,24 @@ fn quote_lib(out_path: impl AsRef<Path>, archetype_names: &[String]) -> PathBuf 
         .unwrap();
 
     let path = out_path.join("__init__.py");
+    let all_names = archetype_names
+        .iter()
+        .map(|name| format!("{name:?}"))
+        .collect::<Vec<_>>()
+        .join(", ");
     let archetype_names = archetype_names.join(", ");
 
     let mut code = String::new();
 
-    // NOTE: noqa F401 (unused import) because while unnecessary these listings are
-    // very useful to look at.
     code += &unindent::unindent(&format!(
         r#"
         # {AUTOGEN_WARNING}
 
-        from .archetypes import {archetype_names} # noqa: F401
+        from __future__ import annotations
+
+        __all__ = [{all_names}]
+
+        from .archetypes import {archetype_names}
         "#
     ));
 
@@ -154,12 +161,19 @@ fn quote_objects(
     for (filepath, objs) in files {
         let names = objs
             .iter()
-            .map(|obj| match obj.kind {
+            .flat_map(|obj| match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
                     let name = &obj.name;
-                    format!("{name}, {name}Like, {name}Array, {name}ArrayLike, {name}Type")
+
+                    vec![
+                        format!("{name}"),
+                        format!("{name}Like"),
+                        format!("{name}Array"),
+                        format!("{name}ArrayLike"),
+                        format!("{name}Type"),
+                    ]
                 }
-                ObjectKind::Archetype => obj.name.clone(),
+                ObjectKind::Archetype => vec![obj.name.clone()],
             })
             .collect::<Vec<_>>();
 
@@ -167,10 +181,10 @@ fn quote_objects(
         // and archetypes separately (and even then it's a bit shady, eh).
         match mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string()) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
-                entry.get_mut().extend(names);
+                entry.get_mut().extend(names.iter().cloned());
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
-                entry.insert(names);
+                entry.insert(names.clone());
             }
         };
 
@@ -181,6 +195,20 @@ fn quote_objects(
 
         let mut code = String::new();
         code.push_str(&format!("# {AUTOGEN_WARNING}\n\n"));
+
+        let names = names
+            .into_iter()
+            .map(|name| format!("{name:?}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        code.push_str(&unindent::unindent(&format!(
+            "
+            from __future__ import annotations
+
+            __all__ = [{names}]
+
+            ",
+        )));
 
         for obj in objs {
             code.push_str(&obj.code);
@@ -197,20 +225,26 @@ fn quote_objects(
 
         let mut code = String::new();
 
-        code.push_str(&format!("# {AUTOGEN_WARNING}\n\n"));
-        code.push_str(&unindent::unindent(
-            "
-            # NOTE:
-            # - we use fully qualified paths to prevent lazy circular imports
-            # - `noqa F401` (unused import) everywhere because, while not strictly necessary,
-            #   these imports are very nice for end users.
+        let all_names = mods
+            .iter()
+            .flat_map(|(_, names)| names.iter().map(|name| format!("{name:?}")))
+            .collect::<Vec<_>>()
+            .join(", ");
 
+        code.push_str(&format!("# {AUTOGEN_WARNING}\n\n"));
+        code.push_str(&unindent::unindent(&format!(
+            "
+            from __future__ import annotations
+
+            __all__ = [{all_names}]
+
+            # NOTE: we use fully qualified paths to prevent lazy circular imports.
             ",
-        ));
+        )));
 
         for (module, names) in &mods {
             let names = names.join(", ");
-            code.push_str(&format!("from .{module} import {names} # noqa: F401\n"));
+            code.push_str(&format!("from .{module} import {names}\n"));
         }
 
         filepaths.push(path.clone());
@@ -442,8 +476,6 @@ fn quote_module_prelude() -> String {
     // NOTE: All the extraneous stuff will be cleaned up courtesy of `ruff`.
     unindent::unindent(
         r#"
-        from __future__ import annotations
-
         import numpy as np
         import numpy.typing as npt
         import pyarrow as pa
