@@ -798,7 +798,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                         if data is None:
                             return {arrow}().wrap_array(pa.array([], type={arrow}().storage_type))
                         else:
-                            return {many}Ext.from_similar(
+                            return {many}Ext._from_similar(
                                 data,
                                 mono={mono},
                                 mono_aliases={mono_aliases},
