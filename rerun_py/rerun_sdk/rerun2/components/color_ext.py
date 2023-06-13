@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-__all__ = ["ColorArrayExt"]
-
 from typing import Any, Sequence
 
 import numpy as np
@@ -11,9 +9,7 @@ from rerun.color_conversion import u8_array_to_rgba
 
 class ColorArrayExt:
     @staticmethod
-    def _from_similar(
-        data: Any | None, *, mono: type, mono_aliases: Any, many: type, many_aliases: Any, arrow: type
-    ) -> pa.Array:
+    def _from_similar(data: Any | None, *, mono: type, mono_aliases: type, many: type, many_aliases: type, arrow: type):
         """
         Normalize flexible colors arrays.
 
@@ -33,10 +29,12 @@ class ColorArrayExt:
             # Rust expects colors in 0-255 uint8
             if array.dtype.type in [np.float32, np.float64]:
                 # Assume gamma-space colors
-                array = u8_array_to_rgba(np.asarray(np.round(np.asarray(data).reshape((-1, 4)) * 255.0), np.uint8))
+                array = np.asarray(data).reshape((-1, 4))
+                array = u8_array_to_rgba(np.require(np.round(array * 255.0), np.uint8))
             elif array.dtype.type == np.uint32:
                 array = np.asarray(data).flatten()
             else:
-                array = u8_array_to_rgba(np.asarray(data, dtype=np.uint8).reshape((-1, 4)))
+                array = np.asarray(data).reshape((-1, 4))
+                array = u8_array_to_rgba(array)
 
         return arrow().wrap_array(pa.array(array, type=arrow().storage_type))

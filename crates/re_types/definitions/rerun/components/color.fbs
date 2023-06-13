@@ -11,12 +11,12 @@ namespace rerun.components;
 
 /// An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 struct Color (
-  "attr.arrow.transparent",
-  "attr.python.aliases": "Sequence[int], Sequence[float], npt.NDArray[np.uint8], npt.NDArray[np.float32], npt.NDArray[np.float64]",
-  "attr.python.array_aliases": "Sequence[int], Sequence[float], npt.NDArray[np.uint8], npt.NDArray[np.float32], npt.NDArray[np.float64]",
-  "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable",
-  "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct",
+  "arrow.attr.transparent",
+  "python.attr.aliases": "int, npt.NDArray[np.uint8], npt.NDArray[np.uint32], npt.NDArray[np.float32], npt.NDArray[np.float64]",
+  "python.attr.array_aliases": "Sequence[int], npt.NDArray[np.uint8], npt.NDArray[np.uint32], npt.NDArray[np.float32], npt.NDArray[np.float64]",
+  "rust.attr.derive": "Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, bytemuck::Pod, bytemuck::Zeroable",
+  "rust.attr.repr": "transparent",
+  "rust.attr.tuple_struct",
   order: 100
 ) {
   rgba: uint;
