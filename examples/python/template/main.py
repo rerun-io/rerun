@@ -4,6 +4,7 @@ Example template.
 
 Run:
 ```sh
+pip install -r examples/python/template/requirements.txt
 ./examples/python/template/main.py
 ```
 """
