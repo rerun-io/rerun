@@ -84,7 +84,7 @@ fn apply_depth_offset(position: Vec4, offset: f32) -> Vec4 {
     // How do we get there? We let large depth offset lead to a smaller divisor (w_proj):
 
     var w_scale_bias = f32eps * offset;
-    if frame.hardware_tier == HARDWARE_TIER_GLES {
+    if frame.device_tier == DEVICE_TIER_GLES {
         // Empirically determined, see section on GLES above.
         w_scale_bias *= 1000.0;
     }

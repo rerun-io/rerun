@@ -181,8 +181,7 @@ def main() -> None:
     parser.add_argument("images", metavar="N", type=str, nargs="*", help="A list of images to process.")
 
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "segment_anything")
     logging.getLogger().addHandler(rr.LoggingHandler("logs"))

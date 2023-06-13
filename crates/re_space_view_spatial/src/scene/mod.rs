@@ -84,7 +84,7 @@ pub fn preferred_navigation_mode(
 
 pub fn load_keypoint_connections(
     ent_context: &SpatialSceneEntityContext<'_>,
-    entity_path: &re_data_store::EntityPath,
+    ent_path: &re_data_store::EntityPath,
     keypoints: Keypoints,
 ) {
     if keypoints.is_empty() {
@@ -95,7 +95,8 @@ pub fn load_keypoint_connections(
     let mut line_builder = ent_context.shared_render_builders.lines();
     let mut line_batch = line_builder
         .batch("keypoint connections")
-        .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
+        .world_from_obj(ent_context.world_from_obj)
+        .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let Some(class_description) = ent_context.annotations.context.class_map.get(&class_id) else {
@@ -111,7 +112,7 @@ pub fn load_keypoint_connections(
             let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
                 re_log::warn_once!(
                     "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                    a, b, entity_path
+                    a, b, ent_path
                 );
                 continue;
             };
