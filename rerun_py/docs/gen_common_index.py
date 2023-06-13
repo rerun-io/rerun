@@ -123,6 +123,11 @@ SECTION_TABLE: Final[list[Section]] = [
         func_list=["log_text_entry"],
     ),
     Section(
+        title="Clearing Entities",
+        module_summary=None,
+        func_list=["log_cleared"],
+    ),
+    Section(
         title="Helpers",
         module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
