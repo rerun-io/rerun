@@ -6,7 +6,7 @@ use anyhow::Context as _;
 use web_time::Instant;
 
 use re_renderer::{
-    config::{supported_backends, HardwareTier, RenderContextConfig},
+    config::{supported_backends, DeviceCaps, RenderContextConfig},
     view_builder::ViewBuilder,
     RenderContext,
 };
@@ -125,8 +125,8 @@ impl<E: Example + 'static> Application<E> {
             .await
             .context("failed to find an appropriate adapter")?;
 
-        let hardware_tier = HardwareTier::from_adapter(&adapter);
-        hardware_tier.check_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
+        let device_caps = DeviceCaps::from_adapter(&adapter);
+        device_caps.check_downlevel_capabilities(&adapter.get_downlevel_capabilities())?;
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -164,7 +164,7 @@ impl<E: Example + 'static> Application<E> {
             queue,
             RenderContextConfig {
                 output_format_color: swapchain_format,
-                hardware_tier,
+                hardware_caps: device_caps,
             },
         );
 

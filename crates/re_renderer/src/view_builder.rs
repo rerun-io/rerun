@@ -442,7 +442,7 @@ impl ViewBuilder {
             auto_size_points: auto_size_points.0,
             auto_size_lines: auto_size_lines.0,
 
-            hardware_tier: (ctx.shared_renderer_data.config.hardware_tier as u32).into(),
+            hardware_tier: (ctx.shared_renderer_data.config.hardware_caps.tier as u32).into(),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,

@@ -398,7 +398,7 @@ impl Renderer for MeshRenderer {
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    shared_data.config.hardware_tier,
+                    &shared_data.config.hardware_caps,
                 ),
                 ..render_pipeline_shaded_desc
             },

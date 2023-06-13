@@ -907,7 +907,7 @@ impl Renderer for LineRenderer {
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    shared_data.config.hardware_tier,
+                    &shared_data.config.hardware_caps,
                 ),
             },
             &pools.pipeline_layouts,
