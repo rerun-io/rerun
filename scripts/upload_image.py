@@ -3,6 +3,9 @@
 """
 Upload an image to Google Cloud.
 
+Installation
+------------
+
 Requires the following packages:
   pip install google-cloud-storage # NOLINT
 
@@ -18,6 +21,11 @@ If you get this error:
 
 Then run `python3 -m pip install cryptography==38.0.4`
 (https://levelup.gitconnected.com/fix-attributeerror-module-lib-has-no-attribute-openssl-521a35d83769)
+
+Usage
+-----
+
+python3 scripts/upload_image.py --help
 """
 
 from __future__ import annotations
@@ -26,10 +34,13 @@ import argparse
 import hashlib
 import logging
 import mimetypes
+import os
+import shutil
 import sys
+import tempfile
 from io import BytesIO
 from pathlib import Path
-from typing import BinaryIO
+
 
 import PIL
 import PIL.Image
@@ -46,22 +57,51 @@ SIZES = [
 
 
 class Uploader:
-    def __init__(self):
+    def __init__(self, pngcrush: bool):
         gcs = storage.Client("rerun-open")
         self.bucket = gcs.bucket("rerun-static-img")
+        self.run_pngcrush = pngcrush
 
     def upload_file(self, path: Path) -> str:
-        path = path.resolve()
-        digest = content_hash(path)
+        """Upload a single file to Google Cloud.
 
+        Parameters
+        ----------
+        path : Path
+            The path to the file to upload.
+        pngcrush : bool
+            Whether to run pngcrush on the file before uploading.
+
+        Returns
+        -------
+        str
+            The name of the uploaded file.
+        """
+
+        image_data = path.read_bytes()
+        digest = data_hash(image_data)
         object_name = f"{digest}_{path.name}"
         content_type, content_encoding = mimetypes.guess_type(path)
-        with open(path, "rb") as f:
-            self.upload_data(f, object_name, content_type, content_encoding)
+
+        self.upload_data(image_data, object_name, content_type, content_encoding)
 
         return object_name
 
     def upload_stack_from_file(self, image_path: Path, name: str | None = None) -> str:
+        """Upload an image stack from a file.
+
+        Parameters
+        ----------
+        image_path : Path
+            The path to the image file.
+        name : str, optional
+            The name of the image stack. If None, the file name is used.
+
+        Returns
+        -------
+        str
+            The `<picture>` tag for the image stack.
+        """
         image = PIL.Image.open(image_path)
         content_type, _ = mimetypes.guess_type(image_path)
 
@@ -74,6 +114,18 @@ class Uploader:
         )
 
     def upload_stack_from_clipboard(self, name: str) -> str:
+        """Upload an image stack from the clipboard.
+
+        Parameters
+        ----------
+        name : str
+            The name of the image stack.
+
+        Returns
+        -------
+        str
+            The `<picture>` tag for the image stack.
+        """
         clipboard = PIL.ImageGrab.grabclipboard()
         if isinstance(clipboard, PIL.Image.Image):
             image = clipboard
@@ -92,7 +144,26 @@ class Uploader:
         file_ext: str = ".png",
         content_type: str = "image/png",
     ) -> str:
-        """Create a multi-resolution stack and upload it."""
+        """Create a multi-resolution stack and upload it.
+
+        Parameters
+        ----------
+        image : PIL.Image.Image
+            The image to upload.
+        name : str
+            The name of the image.
+        output_format : str, optional
+            The output format of the image.
+        file_ext : str, optional
+            The file extension of the image.
+        content_type : str, optional
+            The content type of the image.
+
+        Returns
+        -------
+        str
+            The `<picture>` HTML tag for the image stack.
+        """
 
         logging.info(f"Base image width: {image.width}px")
 
@@ -115,52 +186,79 @@ class Uploader:
         for name, width, image in image_stack:
             with BytesIO() as buffer:
                 image.save(buffer, output_format)
-                buffer.seek(0)
-                digest = content_hash(buffer)
-                buffer.seek(0)
+                image_data = buffer.getvalue()
 
-                object_name = f"{digest}_{name}{file_ext}"
-                logging.info(f"Uploading image: {object_name} (size: {buffer.getbuffer().nbytes} bytes)")
-                self.upload_data(buffer, object_name, content_type, None)
+            digest = data_hash(image_data)
 
-                if width is not None:
-                    html_str += (
-                        f'  <source media="(max-width: {width}px)" srcset="https://static.rerun.io/{object_name}">\n'
-                    )
-                else:
-                    html_str += f'  <img src="https://static.rerun.io/{object_name}" alt="">\n'
+            object_name = f"{digest}_{name}{file_ext}"
+            self.upload_data(image_data, object_name, content_type, None)
+
+            if width is not None:
+                html_str += (
+                    f'  <source media="(max-width: {width}px)" srcset="https://static.rerun.io/{object_name}">\n'
+                )
+            else:
+                html_str += f'  <img src="https://static.rerun.io/{object_name}" alt="">\n'
 
         html_str += "</picture>"
         return html_str
 
-    def upload_data(
-        self, data: BinaryIO, name: str, content_type: str | None = None, content_encoding: str | None = None
-    ):
-        """Low-level upload of data."""
+    def upload_data(self, data: bytes, name: str, content_type: str | None = None, content_encoding: str | None = None):
+        """Low-level upload of data.
 
-        logging.debug(f"Uploading {name} (type: {content_type}, encoding: {content_encoding})")
+        Parameters
+        ----------
+        data : bytes
+            The data to upload.
+        name : str
+            The name of the object.
+        content_type : str, optional
+            The content type of the object.
+        content_encoding : str, optional
+            The content encoding of the object.
+        """
+
+        if self.run_pngcrush and content_type == "image/png":
+            data = run_pngcrush(data)
+
+        logging.info(f"Uploading {name} (size: {len(data)}, type: {content_type}, encoding: {content_encoding})")
         destination = self.bucket.blob(name)
         destination.content_type = content_type
         destination.content_encoding = content_encoding
-        destination.upload_from_file(data)
+
+        stream = BytesIO(data)
+        destination.upload_from_file(stream)
 
 
-def content_hash(data: Path | BinaryIO) -> str:
-    h = hashlib.sha1()
-    b = bytearray(128 * 1024)
-    mv = memoryview(b)
+def run_pngcrush(data: bytes) -> bytes:
+    """Run pngcrush on some data.
 
-    def update(stream: BinaryIO) -> None:
-        while n := stream.readinto(mv):
-            h.update(mv[:n])
+    Parameters
+    ----------
+    data : bytes
+        The PNG data to crush.
 
-    if isinstance(data, Path):
-        with open(data, "rb", buffering=0) as f:
-            update(f)
-    else:
-        update(data)
+    Returns
+    -------
+    bytes
+        The crushed PNG data.
+    """
 
-    return h.hexdigest()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_file = Path(tmpdir) / "input.png"
+        input_file.write_bytes(data)
+
+        output_file = Path(tmpdir) / "output.png"
+        os.system(f"pngcrush -q -warn {input_file} {output_file}")
+        output_data = output_file.read_bytes()
+
+    logging.info(f"pngcrush reduced size from {len(data)} to {len(output_data)} bytes")
+    return output_data
+
+
+def data_hash(data: bytes) -> str:
+    """Compute a sha1 hash digest of some data."""
+    return hashlib.sha1(data).hexdigest()
 
 
 def main() -> None:
@@ -172,6 +270,7 @@ def main() -> None:
         "--single", action="store_true", help="Upload a single image instead of creating a multi-resolution stack."
     )
     parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
+    parser.add_argument("--skip-pngcrush", action="store_true", help="Skip PNGCrush.")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
 
@@ -180,12 +279,15 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.INFO)
 
-    uploader = Uploader()
-
     try:
+        if shutil.which("pngcrush") is None and not args.skip_pngcrush:
+            raise RuntimeError("pngcrush is not installed, consider using --skip-pngcrush")
+
+        uploader = Uploader(not args.skip_pngcrush)
+
         if args.single:
             object_name = uploader.upload_file(args.path)
-            print(f"https://static.rerun.io/{object_name}")
+            print(f"\nhttps://static.rerun.io/{object_name}")
         else:
             if args.path is None:
                 if args.name is None:
