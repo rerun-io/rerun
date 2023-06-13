@@ -5,9 +5,7 @@ use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, Entity
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::TimeType;
 use re_viewer_context::{Item, SpaceViewId, UiVerbosity, ViewerContext};
-use re_viewport::{Viewport, ViewportState};
-
-use crate::ui::Blueprint;
+use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
 
 use super::selection_history_ui::SelectionHistoryUi;
 
@@ -26,7 +24,8 @@ impl SelectionPanel {
         viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        blueprint: &mut Blueprint,
+        blueprint: &mut ViewportBlueprint<'_>,
+        expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
 
@@ -40,41 +39,37 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        panel.show_animated_inside(
-            ui,
-            blueprint.selection_panel_expanded,
-            |ui: &mut egui::Ui| {
-                egui::TopBottomPanel::top("selection_panel_title_bar")
-                    .exact_height(re_ui::ReUi::title_bar_height())
-                    .frame(egui::Frame {
-                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
-                        ..Default::default()
-                    })
-                    .show_inside(ui, |ui| {
-                        if let Some(selection) = self.selection_state_ui.selection_ui(
-                            ctx.re_ui,
-                            ui,
-                            blueprint,
-                            &mut ctx.selection_state_mut().history,
-                        ) {
-                            ctx.selection_state_mut()
-                                .set_selection(selection.iter().cloned());
-                        }
-                    });
+        panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+            egui::TopBottomPanel::top("selection_panel_title_bar")
+                .exact_height(re_ui::ReUi::title_bar_height())
+                .frame(egui::Frame {
+                    inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
+                    ..Default::default()
+                })
+                .show_inside(ui, |ui| {
+                    if let Some(selection) = self.selection_state_ui.selection_ui(
+                        ctx.re_ui,
+                        ui,
+                        blueprint,
+                        &mut ctx.selection_state_mut().history,
+                    ) {
+                        ctx.selection_state_mut()
+                            .set_selection(selection.iter().cloned());
+                    }
+                });
 
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
+            egui::ScrollArea::both()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    egui::Frame {
+                        inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                        ..Default::default()
+                    }
                     .show(ui, |ui| {
-                        egui::Frame {
-                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-                            ..Default::default()
-                        }
-                        .show(ui, |ui| {
-                            self.contents(viewport_state, ctx, ui, blueprint);
-                        });
+                        self.contents(viewport_state, ctx, ui, blueprint);
                     });
-            },
-        );
+                });
+        });
     }
 
     #[allow(clippy::unused_self)]
@@ -83,7 +78,7 @@ impl SelectionPanel {
         viewport_state: &mut ViewportState,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        blueprint: &mut Blueprint,
+        blueprint: &mut ViewportBlueprint<'_>,
     ) {
         re_tracing::profile_function!();
 
@@ -213,7 +208,7 @@ fn blueprint_ui(
     viewport_state: &mut ViewportState,
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    blueprint: &mut Blueprint,
+    blueprint: &mut ViewportBlueprint<'_>,
     item: &Item,
 ) {
     match item {
@@ -311,7 +306,7 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     entity_path: &EntityPath,
-    blueprint: &Blueprint,
+    blueprint: &ViewportBlueprint<'_>,
 ) {
     let space_views_with_path = blueprint
         .viewport

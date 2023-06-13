@@ -10,6 +10,7 @@ mod space_view_heuristics;
 mod space_view_highlights;
 mod view_category;
 mod viewport;
+mod viewport_blueprint;
 
 pub mod blueprint_components;
 
@@ -17,6 +18,7 @@ pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;
 pub use view_category::ViewCategory;
 pub use viewport::{Viewport, ViewportState};
+pub use viewport_blueprint::ViewportBlueprint;
 
 pub mod external {
     pub use re_space_view;
