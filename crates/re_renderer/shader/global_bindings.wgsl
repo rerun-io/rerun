@@ -28,8 +28,8 @@ struct FrameUniformBuffer {
     // Size used for all line radii given with Size::AUTO.
     auto_size_lines: f32,
 
-    /// re_renderer defined hardware tier.
-    hardware_tier: u32,
+    /// re_renderer defined device tier.
+    device_tier: u32,
 };
 
 @group(0) @binding(0)
@@ -41,6 +41,6 @@ var nearest_sampler: sampler;
 @group(0) @binding(2)
 var trilinear_sampler: sampler;
 
-// See config.rs#HardwareTier
-const HARDWARE_TIER_GLES = 0u;
-const HARDWARE_TIER_WEBGPU = 1u;
+// See config.rs#DeviceTier
+const DEVICE_TIER_GLES = 0u;
+const DEVICE_TIER_WEBGPU = 1u;

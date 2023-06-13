@@ -702,7 +702,7 @@ impl Renderer for PointCloudRenderer {
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    shared_data.config.hardware_tier,
+                    &shared_data.config.device_caps,
                 ),
                 ..render_pipeline_desc_color
             },
