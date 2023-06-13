@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["InstanceKey", "InstanceKeyLike", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyType"]
+__all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
 
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
