@@ -26,7 +26,7 @@ pub use annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, MISSIN
 pub use app_options::AppOptions;
 pub use caches::{Cache, Caches};
 pub use command_sender::{
-    command_channel, Command, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+    command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{Item, ItemCollection};
