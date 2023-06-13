@@ -62,11 +62,13 @@ def log_image(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     jpeg_quality:
+        Requires that the opencv-python package is installed.
         If set, encode the image as a JPEG to save storage space.
         Higher quality = larger file size.
         A quality of 95 still saves a lot of space, but is visually very similar.
         JPEG compression works best for photographs.
-        Requires that the opencv-python package is installed.
+        Only RGB images are supported.
+        Note that compressing to JPEG costs a bit of CPU time.
 
     """
 
