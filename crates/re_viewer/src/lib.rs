@@ -131,7 +131,7 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
                 }
             }),
             supported_backends: re_renderer::config::supported_backends(),
-            device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::HardwareTier::from_adapter(adapter).device_descriptor()),
+            device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter(adapter).device_descriptor()),
             ..Default::default()
         }
 }
@@ -150,9 +150,7 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
             render_state.queue.clone(),
             RenderContextConfig {
                 output_format_color: render_state.target_format,
-                hardware_tier: re_renderer::config::HardwareTier::from_adapter(
-                    &render_state.adapter,
-                ),
+                device_caps: re_renderer::config::DeviceCaps::from_adapter(&render_state.adapter),
             },
         ));
     }
