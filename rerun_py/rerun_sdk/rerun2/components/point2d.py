@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["Point2D", "Point2DLike", "Point2DArray", "Point2DArrayLike", "Point2DType"]
+__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
 
 from dataclasses import dataclass
 from typing import Any, Sequence, Tuple, Union

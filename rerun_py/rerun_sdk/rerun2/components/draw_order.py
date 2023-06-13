@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["DrawOrder", "DrawOrderLike", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderType"]
+__all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
 
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
