@@ -40,25 +40,26 @@ fn decode_color(sampled_value: Vec4) -> Vec4 {
     return rgba;
 }
 
-/// Takes a floating point texel coordinate and outputs a neighrest neighbor
-fn to_clamp_to_border_sample(coord: Vec2, texture_dimension: Vec2) -> IVec2 {
+/// Takes a floating point texel coordinate and outputs a integer texel coordinate
+/// on the neighrest neighbor, clamped to the texture edge.
+fn clamp_to_edge_nearest_neighbor(coord: Vec2, texture_dimension: Vec2) -> IVec2 {
     return IVec2(clamp(floor(coord), Vec2(0.0), texture_dimension - Vec2(1.0)));
 }
 
 /// Takes a floating point texel coordinate and outputs the four integer texel coordinates that are used for bilinear filtering.
-/// All four samples are clamped to the texture border.
-fn clamped_bilinear_sample_positions(coord: Vec2, texture_dimension: Vec2) -> array<IVec2, 4> {
-    let v00 = to_clamp_to_border_sample(coord + vec2(-0.5, -0.5), texture_dimension);
-    let v01 = to_clamp_to_border_sample(coord + vec2(-0.5,  0.5), texture_dimension);
-    let v10 = to_clamp_to_border_sample(coord + vec2( 0.5, -0.5), texture_dimension);
-    let v11 = to_clamp_to_border_sample(coord + vec2( 0.5,  0.5), texture_dimension);
+/// All four samples are clamped to the texture edge.
+fn clamp_to_edge_bilinear_samples(coord: Vec2, texture_dimension: Vec2) -> array<IVec2, 4> {
+    let v00 = clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimension);
+    let v01 = clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimension);
+    let v10 = clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimension);
+    let v11 = clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimension);
     return array<IVec2, 4>(IVec2(v00), IVec2(v01), IVec2(v10), IVec2(v11));
 }
 
 fn filter_bilinear(coord: Vec2, v00: Vec4, v01: Vec4, v10: Vec4, v11: Vec4) -> Vec4 {
-    let top = mix(v00, v10, fract(coord.x - 0.5 + 10.0));
-    let bottom = mix(v01, v11, fract(coord.x - 0.5 + 10.0));
-    return mix(top, bottom, fract(coord.y - 0.5 + 10.0));
+    let top = mix(v00, v10, fract(coord.x - 0.5));
+    let bottom = mix(v01, v11, fract(coord.x - 0.5));
+    return mix(top, bottom, fract(coord.y - 0.5));
 }
 
 @fragment
@@ -71,10 +72,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
             normalized_value = decode_color(textureLoad(texture_float,
-                to_clamp_to_border_sample(coord, texture_dimensions), 0));
+                clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0));
         } else {
             // bilinear
-            let sample_positions = clamped_bilinear_sample_positions(coord, Vec2(textureDimensions(texture_float).xy));
+            let sample_positions = clamp_to_edge_bilinear_samples(coord, Vec2(textureDimensions(texture_float).xy));
             let v00 = decode_color(textureLoad(texture_float, sample_positions[0], 0));
             let v01 = decode_color(textureLoad(texture_float, sample_positions[1], 0));
             let v10 = decode_color(textureLoad(texture_float, sample_positions[2], 0));
@@ -87,10 +88,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
             normalized_value = decode_color(Vec4(textureLoad(texture_sint,
-                to_clamp_to_border_sample(coord, texture_dimensions), 0)));
+                clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0)));
         } else {
             // bilinear
-            let sample_positions = clamped_bilinear_sample_positions(coord, Vec2(textureDimensions(texture_float).xy));
+            let sample_positions = clamp_to_edge_bilinear_samples(coord, Vec2(textureDimensions(texture_float).xy));
             let v00 = decode_color(Vec4(textureLoad(texture_sint, sample_positions[0], 0)));
             let v01 = decode_color(Vec4(textureLoad(texture_sint, sample_positions[1], 0)));
             let v10 = decode_color(Vec4(textureLoad(texture_sint, sample_positions[2], 0)));
@@ -103,10 +104,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
             normalized_value = decode_color(Vec4(textureLoad(texture_uint,
-                to_clamp_to_border_sample(coord, texture_dimensions), 0)));
+                clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0)));
         } else {
             // bilinear
-            let sample_positions = clamped_bilinear_sample_positions(coord, Vec2(textureDimensions(texture_float).xy));
+            let sample_positions = clamp_to_edge_bilinear_samples(coord, Vec2(textureDimensions(texture_float).xy));
             let v00 = decode_color(Vec4(textureLoad(texture_uint, sample_positions[0], 0)));
             let v01 = decode_color(Vec4(textureLoad(texture_uint, sample_positions[1], 0)));
             let v10 = decode_color(Vec4(textureLoad(texture_uint, sample_positions[2], 0)));
