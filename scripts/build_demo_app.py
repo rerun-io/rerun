@@ -194,14 +194,14 @@ SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 # When adding examples, add their requirements to `requirements-web-demo.txt`
 EXAMPLES = {
     "arkitscenes": {
-        "title": "ARKitScenes",
+        "title": "ARKit Scenes",
         "description": """
         TODO
         """,
         "build_args": [],
     },
     "colmap": {
-        "title": "COLMAP",
+        "title": "Structure From Motion",
         "description": """
         An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.
 
@@ -216,7 +216,7 @@ EXAMPLES = {
         "build_args": ["--dataset=colmap_fiat", "--resize=800x600"],
     },
     "dicom": {
-        "title": "Dicom",
+        "title": "Dicom MRI",
         "description": """
         Example using a <a href="https://en.wikipedia.org/wiki/DICOM" target="_blank">DICOM</a> MRI scan.
         This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
@@ -224,21 +224,21 @@ EXAMPLES = {
         "build_args": [],
     },
     "mp_pose": {
-        "title": "mp_pose",
+        "title": "Human Pose Tracking",
         "description": """
         TODO
         """,
         "build_args": [],
     },
     "plots": {
-        "title": "plots",
+        "title": "Plots",
         "description": """
         TODO
         """,
         "build_args": [],
     },
     "tracking_hf_opencv": {
-        "title": "tracking_hf_opencv",
+        "title": "Object Tracking and Segmentation",
         "description": """
         TODO
         """,
