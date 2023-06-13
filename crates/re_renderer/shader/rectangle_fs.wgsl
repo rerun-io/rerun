@@ -75,7 +75,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
                 clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0));
         } else {
             // bilinear
-            let sample_positions = clamp_to_edge_bilinear_samples(coord, Vec2(textureDimensions(texture_float).xy));
+            let sample_positions = clamp_to_edge_bilinear_samples(coord, texture_dimensions);
             let v00 = decode_color(textureLoad(texture_float, sample_positions[0], 0));
             let v01 = decode_color(textureLoad(texture_float, sample_positions[1], 0));
             let v10 = decode_color(textureLoad(texture_float, sample_positions[2], 0));
@@ -91,7 +91,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
                 clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0)));
         } else {
             // bilinear
-            let sample_positions = clamp_to_edge_bilinear_samples(coord, Vec2(textureDimensions(texture_float).xy));
+            let sample_positions = clamp_to_edge_bilinear_samples(coord, texture_dimensions);
             let v00 = decode_color(Vec4(textureLoad(texture_sint, sample_positions[0], 0)));
             let v01 = decode_color(Vec4(textureLoad(texture_sint, sample_positions[1], 0)));
             let v10 = decode_color(Vec4(textureLoad(texture_sint, sample_positions[2], 0)));
@@ -107,7 +107,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
                 clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0)));
         } else {
             // bilinear
-            let sample_positions = clamp_to_edge_bilinear_samples(coord, Vec2(textureDimensions(texture_float).xy));
+            let sample_positions = clamp_to_edge_bilinear_samples(coord, texture_dimensions);
             let v00 = decode_color(Vec4(textureLoad(texture_uint, sample_positions[0], 0)));
             let v01 = decode_color(Vec4(textureLoad(texture_uint, sample_positions[1], 0)));
             let v10 = decode_color(Vec4(textureLoad(texture_uint, sample_positions[2], 0)));
