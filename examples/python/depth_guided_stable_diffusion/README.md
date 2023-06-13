@@ -1,6 +1,6 @@
 ---
 title: Depth Guided Stable Diffusion
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/stable_diffusion/main.py
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/depth_guided_stable_diffusion/main.py
 tags: 2D, depth, huggingface, stable-diffusion, tensor, text
 ---
 
@@ -11,6 +11,6 @@ A more elaborate example running Depth Guided Stable Diffusion 2.0.
 For more info see [here](https://github.com/Stability-AI/stablediffusion).
 
 ```bash
-pip install -r examples/python/stable_diffusion/requirements.txt
-python examples/python/stable_diffusion/main.py
+pip install -r examples/python/depth_guided_stable_diffusion/requirements.txt
+python examples/python/depth_guided_stable_diffusion/main.py
 ```

@@ -1,6 +1,6 @@
 ---
 title: Live Camera Edge Detection
-python: https://github.com/rerun-io/rerun/blob/latest/examples/python/opencv_canny/main.py
+python: https://github.com/rerun-io/rerun/blob/latest/examples/python/live_camera_edge_detection/main.py
 tags: 2D, canny, live, opencv
 ---
 
@@ -17,5 +17,5 @@ rerun --memory-limit 4GB
 
 And then connect using:
 ```
-python examples/python/opencv_canny/main.py --connect
+python examples/python/live_camera_edge_detection/main.py --connect
 ```

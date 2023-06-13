@@ -1,6 +1,6 @@
 ---
 title: Human Pose Tracking
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/mp_pose/main.py
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/human_pose_tracking/main.py
 tags: mediapipe, keypoint-detection, 2D, 3D
 ---
 
@@ -9,6 +9,6 @@ tags: mediapipe, keypoint-detection, 2D, 3D
 Use the [MediaPipe](https://google.github.io/mediapipe/) Pose solution to detect and track a human pose in video.
 
 ```bash
-pip install -r examples/python/mp_pose/requirements.txt
-python examples/python/mp_pose/main.py
+pip install -r examples/python/human_pose_tracking/requirements.txt
+python examples/python/human_pose_tracking/main.py
 ```

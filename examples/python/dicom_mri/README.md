@@ -1,6 +1,6 @@
 ---
 title: Dicom MRI
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/dicom/main.py
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/dicom_mri/main.py
 tags: tensor, mri, dicom
 ---
 
@@ -9,6 +9,6 @@ tags: tensor, mri, dicom
 Example using a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
 
 ```bash
-pip install -r examples/python/dicom/requirements.txt
-python examples/python/dicom/main.py
+pip install -r examples/python/dicom_mri/requirements.txt
+python examples/python/dicom_mri/main.py
 ```

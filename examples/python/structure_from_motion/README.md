@@ -1,6 +1,6 @@
 ---
 title: Structure from Motion
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/colmap/main.py
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/structure_from_motion/main.py
 tags: 2D, 3D, colmap, pinhole-camera, time-series
 ---
 
@@ -14,6 +14,6 @@ In this example a short video clip has been processed offline by the COLMAP pipe
 
 
 ```bash
-pip install -r examples/python/colmap/requirements.txt
-python examples/python/colmap/main.py
+pip install -r examples/python/structure_from_motion/requirements.txt
+python examples/python/structure_from_motion/main.py
 ```

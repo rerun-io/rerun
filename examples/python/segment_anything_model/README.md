@@ -1,6 +1,6 @@
 ---
 title: Segment Anything Model
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/segment_anything/main.py
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/segment_anything_model/main.py
 tags: 2D, sam, segmentation
 ---
 
@@ -11,6 +11,6 @@ Example of using Rerun to log and visualize the output of Meta AI's Segment Anyt
 For more info see [here](https://segment-anything.com/).
 
 ```bash
-pip install -r examples/python/segment_anything/requirements.txt
-python examples/python/segment_anything/main.py
+pip install -r examples/python/segment_anything_model/requirements.txt
+python examples/python/segment_anything_model/main.py
 ```
