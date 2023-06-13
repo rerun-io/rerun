@@ -4,12 +4,17 @@
 # Check out build.rs to see how it's computed.
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 2d611d0d686a6314da94b1797472e7690413465d16a611aae3560a847668d53d
 ||||||| parent of 5d0acef1a (fixing typo in re_types_builder doc)
 ||||||| parent of 1177724fc (regen post rebase)
 =======
 <<<<<<< HEAD
 >>>>>>> 1177724fc (regen post rebase)
+||||||| parent of 05ae674ef (tests and extensions for components.ClassId)
+=======
+<<<<<<< HEAD
+>>>>>>> 05ae674ef (tests and extensions for components.ClassId)
 400c988b3f50d5081c883356351d7e6506b47a96409777441d05e5efa5e00239
 <<<<<<< HEAD
 =======
@@ -33,4 +38,13 @@ a7f3c6f6e29d897104debea55952dca83bc273d4f45654f97102e9e22b9f3741
 =======
 3537a9f15a0ad721739c6e8a2acdf69664970a788761f6d6d7f3d5734090569b
 >>>>>>> 5e6f3f0cb (regen post rebase)
+<<<<<<< HEAD
 >>>>>>> 1177724fc (regen post rebase)
+||||||| parent of 05ae674ef (tests and extensions for components.ClassId)
+=======
+||||||| parent of 810148af0 (tests and extensions for components.ClassId)
+3537a9f15a0ad721739c6e8a2acdf69664970a788761f6d6d7f3d5734090569b
+=======
+9e8a5d753d77ccd044b75302ff9c0e72a49de37d33f079cd2eff714bd1646c48
+>>>>>>> 810148af0 (tests and extensions for components.ClassId)
+>>>>>>> 05ae674ef (tests and extensions for components.ClassId)

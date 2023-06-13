@@ -22,10 +22,15 @@ class ClassId:
         return np.asarray(self.id)
 
 
-ClassIdLike = Union[ClassId, float]
+ClassIdLike = Union[ClassId, int]
 
 ClassIdArrayLike = Union[
-    ClassIdLike, Sequence[ClassIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
+    ClassIdLike,
+    Sequence[ClassIdLike],
+    npt.NDArray[np.uint8],
+    npt.NDArray[np.uint16],
+    npt.NDArray[np.uint32],
+    npt.NDArray[np.uint64],
 ]
 
 
