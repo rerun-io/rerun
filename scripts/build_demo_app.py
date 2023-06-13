@@ -105,8 +105,10 @@ def collect_examples() -> list[Example]:
             commit=commit,
             build_args=EXAMPLES[name]["build_args"],
         )
-        if example.supports_save():
-            examples.append(example)
+        assert example.supports_save(), f'Example "{name}" does not support saving'
+        examples.append(example)
+
+
     return examples
 
 
@@ -167,6 +169,7 @@ def main() -> None:
 
     shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
     examples = collect_examples()
+    assert len(examples) > 0, "No examples found"
     save_examples_rrd(examples)
     render_examples(examples)
     copy_static_assets(examples)
@@ -217,20 +220,6 @@ EXAMPLES = {
         "description": """
         Example using a <a href="https://en.wikipedia.org/wiki/DICOM" target="_blank">DICOM</a> MRI scan.
         This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
-        """,
-        "build_args": [],
-    },
-    "dna": {
-        "title": "dna",
-        "description": """
-        TODO
-        """,
-        "build_args": [],
-    },
-    "minimal": {
-        "title": "minimal",
-        "description": """
-        TODO
         """,
         "build_args": [],
     },
