@@ -135,6 +135,12 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["LogLevel", "LoggingHandler"],
     ),
     Section(
+        title="Clearing Entities",
+        module_summary=None,
+        func_list=["log_cleared"],
+        class_list=[],
+    ),
+    Section(
         title="Helpers",
         module_summary="script_helpers",
         func_list=["script_add_args", "script_setup", "script_teardown"],
