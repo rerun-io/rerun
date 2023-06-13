@@ -37,19 +37,22 @@ class Example:
         in_path = os.path.abspath(self.path)
         out_dir = f"{BASE_PATH}/examples/{self.name}"
 
-        logging.info(f"Running {in_path}, outputting to {out_dir}")
         os.makedirs(out_dir, exist_ok=True)
+        rrd_path = os.path.join(out_dir, "data.rrd")
+        logging.info(f"Running {self.name}, outputting to {rrd_path}")
 
         args = [
             "python3",
             in_path,
-            f"--save={out_dir}/data.rrd",
+            f"--save={rrd_path}",
         ]
 
         subprocess.run(
             args + self.build_args,
             check=True,
         )
+
+        print(f"{rrd_path}: {os.path.getsize(rrd_path) / 1e6:.1f} MB")
 
     def supports_save(self) -> bool:
         with open(self.path) as f:
@@ -108,14 +111,16 @@ def collect_examples() -> list[Example]:
 
 
 def save_examples_rrd(examples: list[Example]) -> None:
-    logging.info("\nSaving examples as .rrd")
+    logging.info("\nSaving examples as .rrd…")
 
+    print("")
     for example in examples:
         example.save()
+        print("")
 
 
 def render_examples(examples: list[Example]) -> None:
-    logging.info("\nRendering examples")
+    logging.info("Rendering examples")
 
     template_path = os.path.join(SCRIPT_PATH, "demo_assets/templates/example.html")
     with open(template_path) as f:
