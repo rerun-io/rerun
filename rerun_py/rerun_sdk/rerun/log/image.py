@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+from PIL import Image
 
 from rerun import bindings
 from rerun.log.error_utils import _send_warning
@@ -62,7 +64,6 @@ def log_image(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     jpeg_quality:
-        Requires that the opencv-python package is installed.
         If set, encode the image as a JPEG to save storage space.
         Higher quality = larger file size.
         A quality of 95 still saves a lot of space, but is visually very similar.
@@ -102,10 +103,12 @@ def log_image(
 
     if jpeg_quality is not None:
         try:
-            import cv2
+            pil_image = Image.fromarray(image)
+            output = BytesIO()
+            pil_image.save(output, format="JPEG", quality=jpeg_quality)
+            jpeg_bytes = output.getvalue()
+            output.close()
 
-            bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            _, jpeg_bytes = cv2.imencode(".jpg", bgr, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
             # TODO(draw_order)
             log_image_file(
                 entity_path=entity_path, img_bytes=jpeg_bytes, img_format=ImageFormat.JPEG, timeless=timeless
