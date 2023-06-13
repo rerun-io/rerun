@@ -12,6 +12,8 @@ from rerun_sdk.rerun2 import components as rrc
 
 # TODO(cmc): roundtrips (serialize in python, deserialize in rust)
 
+U64_MAX_MINUS_1 = 2**64-2
+U64_MAX = 2**64-1
 
 def test_points2d() -> None:
     points_arrays = [
@@ -104,6 +106,15 @@ def test_points2d() -> None:
         np.array([2, 3], dtype=np.uint64),
     ]
 
+    instance_key_arrays = [
+        # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: int
+        [U64_MAX_MINUS_1, U64_MAX],
+        # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: InstanceKey
+        [rrc.InstanceKey(U64_MAX_MINUS_1), rrc.InstanceKey(U64_MAX)],
+        # InstanceKeyArrayLike: np.NDArray[np.uint64]
+        np.array([U64_MAX_MINUS_1, U64_MAX], dtype=np.uint64),
+    ]
+
     all_permuted_arrays = list(
         itertools.product(  # type: ignore[call-overload]
             *[
@@ -113,11 +124,12 @@ def test_points2d() -> None:
                 draw_orders,
                 class_id_arrays,
                 keypoint_id_arrays,
+                instance_key_arrays,
             ]
         )
     )
 
-    for points, radii, labels, draw_order, class_ids, keypoint_ids in all_permuted_arrays:
+    for points, radii, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_permuted_arrays:
         print(
             f"rr.Points2D(\n"
             f"    {points}\n"
@@ -126,6 +138,7 @@ def test_points2d() -> None:
             f"    draw_order={draw_order}\n"
             f"    class_ids={class_ids}\n"
             f"    keypoint_ids={keypoint_ids}\n"
+            f"    instance_keys={instance_keys}\n"
             f")"
         )
         arch = rr.Points2D(
@@ -135,6 +148,7 @@ def test_points2d() -> None:
             draw_order=draw_order,
             class_ids=class_ids,
             keypoint_ids=keypoint_ids,
+            instance_keys=instance_keys,
         )
         print(f"{arch}\n")
 
@@ -144,6 +158,7 @@ def test_points2d() -> None:
         assert arch.draw_order == rrc.DrawOrderArray.from_similar([300] if draw_order is not None else [])
         assert arch.class_ids == rrc.ClassIdArray.from_similar([126, 127] if class_ids is not None else [])
         assert arch.keypoint_ids == rrc.KeypointIdArray.from_similar([2, 3] if keypoint_ids is not None else [])
+        assert arch.instance_keys == rrc.InstanceKeyArray.from_similar([U64_MAX_MINUS_1, U64_MAX] if instance_keys is not None else [])
 
 
 if __name__ == "__main__":
