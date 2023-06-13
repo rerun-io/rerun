@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["Vec2D", "Vec2DLike", "Vec2DArray", "Vec2DArrayLike", "Vec2DType"]
+__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
 
 from dataclasses import dataclass
 from typing import Any, Sequence, Union

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["ClassId", "ClassIdLike", "ClassIdArray", "ClassIdArrayLike", "ClassIdType"]
+__all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
 
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
