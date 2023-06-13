@@ -7,6 +7,7 @@ import numpy.typing as npt
 
 from rerun import bindings
 from rerun.log.error_utils import _send_warning
+from rerun.log.file import ImageFormat, log_image_file
 from rerun.log.log_decorator import log_decorator
 from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 from rerun.recording_stream import RecordingStream
@@ -27,6 +28,7 @@ def log_image(
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
+    jpeg_quality: int | None = None,
 ) -> None:
     """
     Log a gray or color image.
@@ -59,6 +61,11 @@ def log_image(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    jpeg_quality:
+        If set, encode the image as a JPEG to save storage space.
+        Higher quality = larger file size.
+        A quality of 75 is pretty common.
+        Requires that the opencv-python package is installed.
 
     """
 
@@ -89,6 +96,19 @@ def log_image(
     # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions
     if interpretable_as_image and num_non_empty_dims != len(shape):
         image = np.squeeze(image)
+
+    if jpeg_quality is not None:
+        try:
+            import cv2
+
+            _, jpeg_bytes = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
+            # TODO(draw_order)
+            log_image_file(
+                entity_path=entity_path, img_bytes=jpeg_bytes, img_format=ImageFormat.JPEG, timeless=timeless
+            )
+            return
+        except ImportError:
+            _send_warning("Ignoring jpeg_quality because opencv-python is not installed", 1, recording=recording)
 
     _log_tensor(entity_path, image, draw_order=draw_order, ext=ext, timeless=timeless, recording=recording)
 
