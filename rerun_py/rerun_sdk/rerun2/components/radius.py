@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["Radius", "RadiusLike", "RadiusArray", "RadiusArrayLike", "RadiusType"]
+
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -58,7 +60,7 @@ class RadiusArray(pa.ExtensionArray, RadiusArrayExt):  # type: ignore[misc]
         if data is None:
             return RadiusType().wrap_array(pa.array([], type=RadiusType().storage_type))
         else:
-            return RadiusArrayExt.from_similar(
+            return RadiusArrayExt._from_similar(
                 data,
                 mono=Radius,
                 mono_aliases=RadiusLike,
