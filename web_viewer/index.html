@@ -205,8 +205,12 @@
                 </p>`;
 
             const status_element = document.getElementById('status');
-            function progress({ loaded, total }) {
-                status_element.innerHTML = Math.round(loaded / total * 100) + '%';
+            function progress({ loaded, total_bytes }) {
+                if (total_bytes != null) {
+                    status_element.innerHTML = Math.round(loaded / total_bytes * 100) + '%';
+                } else {
+                    status_element.innerHTML = (loaded / (1024 * 1024)).toFixed(1) + 'MiB'
+                }
             }
 
             var timeoutId = setTimeout(function () {
@@ -216,8 +220,23 @@
 
             async function wasm_with_progress() {
                 const response = await fetch('./re_viewer_bg.wasm');
-                const contentLength = response.headers.get('content-length');
-                const total = parseInt(contentLength, 10);
+                // Use the uncompressed size
+                var content_length;
+                var content_multiplier = 1;
+                // If the content is gzip encoded, try to get the uncompressed size.
+                if (response.headers.get('content-encoding') == 'gzip') {
+                    content_length = response.headers.get('x-goog-meta-uncompressed-size');
+
+                    // If the uncompressed size wasn't found 3 seems to be a very good approximation
+                    if (content_length == null) {
+                        content_length = response.headers.get('content-length');
+                        content_multiplier = 3;
+                    }
+                } else {
+                    content_length = response.headers.get('content-length');
+                }
+
+                const total_bytes = parseInt(content_length, 10) * content_multiplier;
                 let loaded = 0;
 
                 const res = new Response(new ReadableStream({
@@ -227,7 +246,7 @@
                             const { done, value } = await reader.read();
                             if (done) break;
                             loaded += value.byteLength;
-                            progress({ loaded, total })
+                            progress({ loaded, total_bytes })
                             controller.enqueue(value);
                         }
                         controller.close();
