@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["Radius", "RadiusLike", "RadiusArray", "RadiusArrayLike", "RadiusType"]
+__all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType"]
 
 from dataclasses import dataclass
 from typing import Any, Sequence, Union

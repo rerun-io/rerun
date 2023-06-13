@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["Vec2D", "Vec2DLike", "Vec2DArray", "Vec2DArrayLike", "Vec2DType"]
+__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
 
 # NOTE: we use fully qualified paths to prevent lazy circular imports.
 from rerun2.datatypes.vec2d import Vec2D, Vec2DArray, Vec2DArrayLike, Vec2DLike, Vec2DType

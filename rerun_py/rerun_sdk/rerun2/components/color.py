@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["Color", "ColorLike", "ColorArray", "ColorArrayLike", "ColorType"]
+__all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
