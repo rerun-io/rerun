@@ -28,7 +28,7 @@ def setup_logging() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
+        description="Describe your example here!"
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
