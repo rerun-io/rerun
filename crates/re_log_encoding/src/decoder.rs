@@ -2,6 +2,8 @@
 
 pub mod stream;
 
+use std::io::Read;
+
 use re_log_types::LogMsg;
 
 use crate::{Compression, EncodingOptions, Serializer};
@@ -75,12 +77,29 @@ impl<R: std::io::Read> Decompressor<R> {
         }
     }
 
-    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), DecodeError> {
+    /// Gets a mutable reference to the underlying reader in this decompressor
+    fn get_mut(&mut self) -> &mut R {
+        match self {
+            Decompressor::Uncompressed(read) => read,
+            Decompressor::Lz4(lz4) => lz4.get_mut(),
+        }
+    }
+
+    /* pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), DecodeError> {
         use std::io::Read as _;
 
         match self {
             Decompressor::Uncompressed(read) => read.read_exact(buf).map_err(DecodeError::Read),
             Decompressor::Lz4(lz4) => lz4.read_exact(buf).map_err(DecodeError::Lz4),
+        }
+    } */
+}
+
+impl<R: std::io::Read> Read for Decompressor<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            Decompressor::Uncompressed(read) => read.read(buf),
+            Decompressor::Lz4(lz4) => lz4.read(buf),
         }
     }
 }
@@ -92,37 +111,50 @@ pub struct Decoder<R: std::io::Read> {
     buffer: Vec<u8>,
 }
 
+const STREAM_HEADER_SIZE: usize = 12;
+const MESSAGE_HEADER_SIZE: usize = 8;
+
+pub fn read_options(bytes: &[u8; STREAM_HEADER_SIZE]) -> Result<EncodingOptions, DecodeError> {
+    let mut read = std::io::Cursor::new(bytes);
+
+    {
+        let mut magic = [0_u8; 4];
+        read.read_exact(&mut magic).map_err(DecodeError::Read)?;
+        if &magic == b"RRF0" {
+            return Err(DecodeError::OldRrdVersion);
+        } else if &magic != crate::RRD_HEADER {
+            return Err(DecodeError::NotAnRrd);
+        }
+    }
+
+    {
+        let mut version_bytes = [0_u8; 4];
+        read.read_exact(&mut version_bytes)
+            .map_err(DecodeError::Read)?;
+        warn_on_version_mismatch(version_bytes);
+    }
+
+    let options = {
+        let mut options_bytes = [0_u8; 4];
+        read.read_exact(&mut options_bytes)
+            .map_err(DecodeError::Read)?;
+        EncodingOptions::from_bytes(options_bytes)?
+    };
+
+    match options.serializer {
+        Serializer::MsgPack => {}
+    }
+
+    Ok(options)
+}
+
 impl<R: std::io::Read> Decoder<R> {
     pub fn new(mut read: R) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
-        {
-            let mut header = [0_u8; 4];
-            read.read_exact(&mut header).map_err(DecodeError::Read)?;
-            if &header == b"RRF0" {
-                return Err(DecodeError::OldRrdVersion);
-            } else if &header != crate::RRD_HEADER {
-                return Err(DecodeError::NotAnRrd);
-            }
-        }
-
-        {
-            let mut version_bytes = [0_u8; 4];
-            read.read_exact(&mut version_bytes)
-                .map_err(DecodeError::Read)?;
-            warn_on_version_mismatch(version_bytes);
-        }
-
-        let options = {
-            let mut options_bytes = [0_u8; 4];
-            read.read_exact(&mut options_bytes)
-                .map_err(DecodeError::Read)?;
-            EncodingOptions::from_bytes(options_bytes)?
-        };
-
-        match options.serializer {
-            Serializer::MsgPack => {}
-        }
+        let mut data = [0_u8; STREAM_HEADER_SIZE];
+        read.read_exact(&mut data).map_err(DecodeError::Read)?;
+        let options = read_options(&data)?;
 
         Ok(Self {
             decompressor: Decompressor::new(options.compression, read),
@@ -137,7 +169,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
     fn next(&mut self) -> Option<Self::Item> {
         re_tracing::profile_function!();
 
-        let mut len = [0_u8; 8];
+        let mut len = [0_u8; MESSAGE_HEADER_SIZE];
         self.decompressor.read_exact(&mut len).ok()?;
         let len = u64::from_le_bytes(len) as usize;
 
@@ -146,7 +178,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         {
             re_tracing::profile_scope!("lz4");
             if let Err(err) = self.decompressor.read_exact(&mut self.buffer) {
-                return Some(Err(err));
+                return Some(Err(DecodeError::Read(err)));
             }
         }
 

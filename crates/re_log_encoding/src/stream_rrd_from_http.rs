@@ -43,28 +43,52 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     // TODO(emilk): stream the http request, progressively decoding the .rrd file.
-    ehttp::streaming::fetch(ehttp::Request::get(&url), move |part| match part {
-        Ok(part) => match part {
-            ehttp::streaming::Part::Response(response) => {
-                if response.ok {
-                    re_log::debug!("Decoding .rrd file from {url:?}…");
-                    ehttp::streaming::Control::Continue
-                } else {
-                    let err = format!(
-                        "Failed to fetch .rrd file from {url}: {} {}",
-                        response.status, response.status_text
-                    );
-                    on_msg(HttpMessage::Failure(err.into()));
-                    ehttp::streaming::Control::Break
+    ehttp::streaming::fetch(ehttp::Request::get(&url), move |part| {
+        let mut decoder = StreamDecoder::new();
+        match part {
+            Ok(part) => match part {
+                ehttp::streaming::Part::Response(response) => {
+                    if response.ok {
+                        re_log::debug!("Decoding .rrd file from {url:?}…");
+                        ehttp::streaming::Control::Continue
+                    } else {
+                        let err = format!(
+                            "Failed to fetch .rrd file from {url}: {} {}",
+                            response.status, response.status_text
+                        );
+                        on_msg(HttpMessage::Failure(err.into()));
+                        ehttp::streaming::Control::Break
+                    }
                 }
+                ehttp::streaming::Part::Chunk(chunk) => {
+                    println!("{chunk:?}");
+                    decoder.push_chunk(chunk);
+                    loop {
+                        match decoder.try_read() {
+                            Ok(message) => {
+                                if let Some(message) = message {
+                                    on_msg(HttpMessage::LogMsg(message));
+                                } else {
+                                    break;
+                                }
+                            }
+                            Err(err) => {
+                                on_msg(HttpMessage::Failure(
+                                    format!("Failed to fetch .rrd file from {url}: {err}").into(),
+                                ));
+                                return ehttp::streaming::Control::Break;
+                            }
+                        }
+                    }
+                    ehttp::streaming::Control::Continue
+                }
+            },
+            Err(err) => {
+                on_msg(HttpMessage::Failure(
+                    format!("Failed to fetch .rrd file from {url}: {err}").into(),
+                ));
+                ehttp::streaming::Control::Break
             }
-            ehttp::streaming::Part::Chunk(_) => todo!(),
-        },
-        Err(err) => {
-            on_msg(HttpMessage::Failure(
-                format!("Failed to fetch .rrd file from {url}: {err}").into(),
-            ));
-            ehttp::streaming::Control::Break
         }
     });
     /* ehttp::fetch(ehttp::Request::get(&url), move |result| match result {
@@ -217,3 +241,5 @@ mod web_decode {
 
 #[cfg(target_arch = "wasm32")]
 use web_decode::decode_rrd;
+
+use crate::decoder::stream::StreamDecoder;
