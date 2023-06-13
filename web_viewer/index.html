@@ -207,7 +207,7 @@
             const status_element = document.getElementById('status');
             function progress({ loaded, total_bytes }) {
                 if (total_bytes != null) {
-                    status_element.innerHTML = Math.round(loaded / total_bytes * 100) + '%';
+                    status_element.innerHTML = Math.round(Math.min(loaded / total_bytes * 100, 100)) + '%';
                 } else {
                     status_element.innerHTML = (loaded / (1024 * 1024)).toFixed(1) + 'MiB'
                 }
