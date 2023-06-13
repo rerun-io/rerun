@@ -85,7 +85,7 @@ class Detector:
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv2.resize(rgb, scaled_size)
-        rr.log_image("image_scaled/rgb", rgb_scaled, jpeg_quality=95)
+        rr.log_image("image_scaled/rgb", rgb_scaled, jpeg_quality=85)
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)
