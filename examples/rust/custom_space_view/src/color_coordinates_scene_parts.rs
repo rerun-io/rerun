@@ -1,7 +1,6 @@
 use re_viewer::external::{
     egui, re_components,
-    re_data_store::InstancePathHash,
-    re_log_types::Component as _,
+    re_log_types::{Component as _, EntityPath, InstanceKey},
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
@@ -34,7 +33,7 @@ impl ScenePartCollection<ColorCoordinatesSpaceView> for ColorCoordinatesScenePar
 /// Our scene(-parts) consist of single part which holds a list of egui-colors and their instance ids.
 #[derive(Default)]
 pub struct InstanceColors {
-    pub colors: Vec<(InstancePathHash, egui::Color32)>,
+    pub colors: Vec<(EntityPath, Vec<(InstanceKey, egui::Color32)>)>,
 }
 
 impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
@@ -69,20 +68,19 @@ impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
                 &[re_components::ColorRGBA::name()],
             ) {
                 if let Ok(primary_iterator) = ent_view.iter_primary() {
-                    self.colors.extend(
+                    self.colors.push((
+                        ent_path.clone(),
                         ent_view
                             .iter_instance_keys()
                             .zip(primary_iterator)
                             .filter_map(|(instance_key, color)| {
                                 color.map(|color| {
                                     let [r, g, b, _] = color.to_array();
-                                    (
-                                        InstancePathHash::instance(ent_path, instance_key),
-                                        egui::Color32::from_rgb(r, g, b),
-                                    )
+                                    (instance_key, egui::Color32::from_rgb(r, g, b))
                                 })
-                            }),
-                    );
+                            })
+                            .collect(),
+                    ));
                 }
             }
         }

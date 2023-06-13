@@ -1,10 +1,12 @@
 use re_viewer::external::{
     egui,
+    re_data_store::InstancePath,
+    re_data_ui::{item_ui, DataUi},
     re_log_types::EntityPath,
     re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-        SpaceViewState, TypedScene, ViewerContext,
+        SpaceViewState, TypedScene, UiVerbosity, ViewerContext,
     },
 };
 
@@ -173,36 +175,37 @@ fn color_space_ui(
     const N: u32 = 6 * 6;
 
     let (rect, response) = ui.allocate_exact_size(ui.available_size(), egui::Sense::click());
+    if !ui.is_rect_visible(rect) {
+        return response;
+    }
 
-    if ui.is_rect_visible(rect) {
-        // Background space.
-        let mut mesh = egui::Mesh::default();
-        for xi in 0..=N {
-            for yi in 0..=N {
-                let xt = xi as f32 / (N as f32);
-                let yt = yi as f32 / (N as f32);
-                let color = color_at(xt, yt);
-                let x = egui::lerp(rect.left()..=rect.right(), xt);
-                let y = egui::lerp(rect.bottom()..=rect.top(), yt);
-                mesh.colored_vertex(egui::pos2(x, y), color);
+    // Background space.
+    let mut mesh = egui::Mesh::default();
+    for xi in 0..=N {
+        for yi in 0..=N {
+            let xt = xi as f32 / (N as f32);
+            let yt = yi as f32 / (N as f32);
+            let color = color_at(xt, yt);
+            let x = egui::lerp(rect.left()..=rect.right(), xt);
+            let y = egui::lerp(rect.bottom()..=rect.top(), yt);
+            mesh.colored_vertex(egui::pos2(x, y), color);
 
-                if xi < N && yi < N {
-                    let x_offset = 1;
-                    let y_offset = N + 1;
-                    let tl = yi * y_offset + xi;
-                    mesh.add_triangle(tl, tl + x_offset, tl + y_offset);
-                    mesh.add_triangle(tl + x_offset, tl + y_offset, tl + y_offset + x_offset);
-                }
+            if xi < N && yi < N {
+                let x_offset = 1;
+                let y_offset = N + 1;
+                let tl = yi * y_offset + xi;
+                mesh.add_triangle(tl, tl + x_offset, tl + y_offset);
+                mesh.add_triangle(tl + x_offset, tl + y_offset, tl + y_offset + x_offset);
             }
         }
-        ui.painter().add(egui::Shape::mesh(mesh));
+    }
+    ui.painter().add(egui::Shape::mesh(mesh));
 
-        // Circles for the colors in the scene.
-        for (i, (instance, color)) in scene.parts.colors.colors.iter().enumerate() {
-            let highlight = scene
-                .highlights
-                .entity_highlight(instance.entity_path_hash)
-                .index_highlight(instance.instance_key);
+    // Circles for the colors in the scene.
+    for (ent_path, colors) in &scene.parts.colors.colors {
+        let ent_highlight = scene.highlights.entity_highlight(ent_path.hash());
+        for (instance_key, color) in colors {
+            let highlight = ent_highlight.index_highlight(*instance_key);
 
             let (x, y) = position_at(*color);
             let center = egui::pos2(
@@ -225,22 +228,21 @@ fn color_space_ui(
 
             let interact = ui.interact(
                 egui::Rect::from_center_size(center, egui::Vec2::splat(radius * 2.0)),
-                ui.id().with(("circle", i)),
+                ui.id().with(("circle", instance_key, ent_path.hash())),
                 egui::Sense::click(),
             );
 
-            // Update the global selection state if the user interacts with this instance.
-            if interact.hovered() {
-                if let Some(instance) = instance.resolve(&ctx.store_db.entity_db) {
-                    let item = Item::InstancePath(Some(space_view_id), instance);
-
-                    if interact.clicked() {
-                        ctx.selection_state_mut()
-                            .set_selection(std::iter::once(item.clone()));
-                    }
-                    ctx.selection_state_mut().set_hovered(std::iter::once(item));
-                }
-            }
+            // Update the global selection state if the user interacts with a point and show hover ui for the entire keypoint.
+            let instance = InstancePath::instance(ent_path.clone(), *instance_key);
+            let interact = interact.on_hover_ui_at_pointer(|ui| {
+                item_ui::instance_path_button(ctx, ui, Some(space_view_id), &instance);
+                instance.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+            });
+            item_ui::select_hovered_on_click(
+                &interact,
+                ctx.selection_state_mut(),
+                &[Item::InstancePath(Some(space_view_id), instance)],
+            );
         }
     }
 
