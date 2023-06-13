@@ -103,6 +103,7 @@ def log_image(
     if jpeg_quality is not None:
         try:
             import cv2
+
             bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             _, jpeg_bytes = cv2.imencode(".jpg", bgr, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
             # TODO(draw_order)
