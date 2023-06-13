@@ -165,6 +165,7 @@ def main() -> None:
     if not args.skip_wasm_build:
         build_wasm()
 
+    shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
     examples = collect_examples()
     save_examples_rrd(examples)
     render_examples(examples)
