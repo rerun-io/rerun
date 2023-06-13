@@ -20,22 +20,22 @@ def test_points2d() -> None:
         ],
         # Point2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float32]
         [
-            np.array([1, 2]),
-            np.array([3, 4]),
+            np.array([1, 2], dtype=np.float32),
+            np.array([3, 4], dtype=np.float32),
         ],
         # Point2DArrayLike: Sequence[Point2DLike]: Tuple[float, float]
         [[1, 2], [3, 4]],
         # Point2DArrayLike: Sequence[Point2DLike]: Sequence[float]
         [1, 2, 3, 4],
         # Point2DArrayLike: npt.NDArray[np.float32]
-        np.array([[1, 2], [3, 4]]),
+        np.array([[1, 2], [3, 4]], dtype=np.float32),
         # Point2DArrayLike: Sequence[Point2DLike]
         [
             rrc.Point2D([1, 2]),
             rrc.Point2D([3, 4]),
         ],
         # Point2DArrayLike: npt.NDArray[np.float32]
-        np.array([1, 2, 3, 4]),
+        np.array([1, 2, 3, 4], dtype=np.float32),
     ]
 
     radii_arrays = [
@@ -48,7 +48,7 @@ def test_points2d() -> None:
             rrc.Radius(43),
         ],
         # RadiusArrayLike: npt.NDArray[np.float32]
-        np.array([42, 43]),
+        np.array([42, 43], dtype=np.float32),
     ]
 
     # TODO: color
@@ -72,6 +72,21 @@ def test_points2d() -> None:
         rrc.DrawOrder(300),
     ]
 
+    class_id_arrays = [
+        # ClassIdArrayLike: Sequence[ClassIdLike]: int
+        [126, 127],
+        # ClassIdArrayLike: Sequence[ClassIdLike]: ClassId
+        [rrc.ClassId(126), rrc.ClassId(127)],
+        # ClassIdArrayLike: np.NDArray[np.uint8]
+        np.array([126, 127], dtype=np.uint8),
+        # ClassIdArrayLike: np.NDArray[np.uint16]
+        np.array([126, 127], dtype=np.uint16),
+        # ClassIdArrayLike: np.NDArray[np.uint32]
+        np.array([126, 127], dtype=np.uint32),
+        # ClassIdArrayLike: np.NDArray[np.uint64]
+        np.array([126, 127], dtype=np.uint64),
+    ]
+
     all_permuted_arrays = list(
         itertools.product( # type: ignore[call-overload]
             *[
@@ -79,26 +94,29 @@ def test_points2d() -> None:
                 radii_arrays,
                 labels_arrays,
                 draw_orders,
+                class_id_arrays,
             ]
         )
     )
 
-    for points, radii, labels, draw_order in all_permuted_arrays:
+    for points, radii, labels, draw_order, class_ids in all_permuted_arrays:
         print(
             f"rr.Points2D(\n"
             f"    {points}\n"
             f"    radii={radii}\n"
             f"    labels={labels}\n"
             f"    draw_order={draw_order}\n"
+            f"    class_ids={class_ids}\n"
             f")"
         )
-        arch = rr.Points2D(points, radii=radii, labels=labels, draw_order=draw_order)
+        arch = rr.Points2D(points, radii=radii, labels=labels, draw_order=draw_order, class_ids=class_ids)
         print(f"{arch}\n")
 
         assert arch.points == rrc.Point2DArray.from_similar([[1.0, 2.0], [3.0, 4.0]])
         assert arch.radii == rrc.RadiusArray.from_similar([42, 43] if radii is not None else [])
         assert arch.labels == rrc.LabelArray.from_similar(["hello", "friend"] if labels is not None else [])
         assert arch.draw_order == rrc.DrawOrderArray.from_similar([300] if draw_order is not None else [])
+        assert arch.class_ids == rrc.ClassIdArray.from_similar([126, 127] if class_ids is not None else [])
 
 
 if __name__ == "__main__":
