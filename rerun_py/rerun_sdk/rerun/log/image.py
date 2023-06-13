@@ -64,7 +64,8 @@ def log_image(
     jpeg_quality:
         If set, encode the image as a JPEG to save storage space.
         Higher quality = larger file size.
-        A quality of 75 is pretty common.
+        A quality of 95 still saves a lot of space, but is visually very similar.
+        JPEG compression works best for photographs.
         Requires that the opencv-python package is installed.
 
     """
@@ -100,8 +101,8 @@ def log_image(
     if jpeg_quality is not None:
         try:
             import cv2
-
-            _, jpeg_bytes = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
+            bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            _, jpeg_bytes = cv2.imencode(".jpg", bgr, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
             # TODO(draw_order)
             log_image_file(
                 entity_path=entity_path, img_bytes=jpeg_bytes, img_format=ImageFormat.JPEG, timeless=timeless
