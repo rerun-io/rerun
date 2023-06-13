@@ -26,8 +26,9 @@ pub enum DeviceTier {
 /// Capabilities of a given device.
 ///
 /// Generally, this is a higher level interpretation of [`wgpu::Limits`].
-/// We're trying to keep the fields in this struct to a minimum and associate
-/// as many as possible capabilities with the hardware tier.
+///
+/// We're trying to keep the number of fields in this struct to a minimum and associate
+/// as many as possible capabilities with the device tier.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeviceCaps {
     pub tier: DeviceTier,
@@ -39,7 +40,7 @@ pub struct DeviceCaps {
 }
 
 impl DeviceCaps {
-    /// Whether the current hardware tier supports sampling from textures with a sample count higher than 1.
+    /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
     pub fn support_sampling_msaa_texture(&self) -> bool {
         match self.tier {
             DeviceTier::Gles => false,
@@ -47,7 +48,7 @@ impl DeviceCaps {
         }
     }
 
-    /// Whether the current hardware tier supports sampling from textures with a sample count higher than 1.
+    /// Whether the current device tier supports sampling from textures with a sample count higher than 1.
     pub fn support_depth_readback(&self) -> bool {
         match self.tier {
             DeviceTier::Gles => false,
@@ -75,7 +76,7 @@ impl DeviceCaps {
         }
     }
 
-    /// Wgpu limits required by the given hardware tier.
+    /// Wgpu limits required by the given device tier.
     pub fn limits(&self) -> wgpu::Limits {
         wgpu::Limits {
             max_texture_dimension_2d: self.max_texture_dimension2d,
@@ -83,12 +84,12 @@ impl DeviceCaps {
         }
     }
 
-    /// Required features for the given hardware tier.
+    /// Required features for the given device tier.
     pub fn features(&self) -> wgpu::Features {
         wgpu::Features::empty()
     }
 
-    /// Device descriptor compatible with the given hardware tier.
+    /// Device descriptor compatible with the given device tier.
     pub fn device_descriptor(&self) -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: Some("re_renderer device"),
@@ -110,7 +111,7 @@ impl DeviceCaps {
         }
     }
 
-    /// Checks if passed downlevel capabilities support the given hardware tier.
+    /// Checks if passed downlevel capabilities support the given device tier.
     pub fn check_downlevel_capabilities(
         &self,
         downlevel_capabilities: &wgpu::DownlevelCapabilities,
