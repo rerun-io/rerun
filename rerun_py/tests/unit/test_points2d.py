@@ -64,30 +64,41 @@ def test_points2d() -> None:
         ],
     ]
 
+    draw_orders = [
+        None,
+        # DrawOrderLike: float
+        300,
+        # DrawOrderLike: DrawOrder
+        rrc.DrawOrder(300),
+    ]
+
     all_permuted_arrays = list(
         itertools.product( # type: ignore[call-overload]
             *[
                 points_arrays,
                 radii_arrays,
                 labels_arrays,
+                draw_orders,
             ]
         )
     )
 
-    for points, radii, labels in all_permuted_arrays:
+    for points, radii, labels, draw_order in all_permuted_arrays:
         print(
             f"rr.Points2D(\n"
             f"    {points}\n"
             f"    radii={radii}\n"
             f"    labels={labels}\n"
+            f"    draw_order={draw_order}\n"
             f")"
         )
-        arch = rr.Points2D(points, radii=radii, labels=labels)
+        arch = rr.Points2D(points, radii=radii, labels=labels, draw_order=draw_order)
         print(f"{arch}\n")
 
         assert arch.points == rrc.Point2DArray.from_similar([[1.0, 2.0], [3.0, 4.0]])
         assert arch.radii == rrc.RadiusArray.from_similar([42, 43] if radii is not None else [])
         assert arch.labels == rrc.LabelArray.from_similar(["hello", "friend"] if labels is not None else [])
+        assert arch.draw_order == rrc.DrawOrderArray.from_similar([300] if draw_order is not None else [])
 
 
 if __name__ == "__main__":
