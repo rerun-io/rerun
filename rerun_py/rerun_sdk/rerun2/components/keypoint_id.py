@@ -41,7 +41,7 @@ KeypointIdArrayLike = Union[
 from rerun2.components.keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
 
 
-class KeypointIdType(pa.ExtensionType):
+class KeypointIdType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.KeypointId")
 

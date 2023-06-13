@@ -4,6 +4,7 @@ from typing import Any, Sequence
 
 import numpy as np
 import pyarrow as pa
+
 from rerun.color_conversion import u8_array_to_rgba
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 __all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
 
 from dataclasses import dataclass
-from typing import Any, Sequence, Union
+from typing import Any, Sequence, Union, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -40,7 +40,7 @@ DrawOrderArrayLike = Union[DrawOrderLike, Sequence[DrawOrderLike], npt.NDArray[n
 from rerun2.components.draw_order_ext import DrawOrderArrayExt  # noqa: E402
 
 
-class DrawOrderType(pa.ExtensionType):
+class DrawOrderType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.DrawOrder")
 

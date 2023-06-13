@@ -32,7 +32,7 @@ RadiusArrayLike = Union[RadiusLike, Sequence[RadiusLike], npt.NDArray[np.float32
 from rerun2.components.radius_ext import RadiusArrayExt  # noqa: E402
 
 
-class RadiusType(pa.ExtensionType):
+class RadiusType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.Radius")
 
