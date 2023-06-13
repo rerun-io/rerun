@@ -380,7 +380,7 @@ def main() -> None:
     logging.getLogger().addHandler(logging.StreamHandler())
     logging.getLogger().setLevel("DEBUG")
 
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Example applying simple object detection and tracking on a video.")
     parser.add_argument(
         "--video",
         type=str,
