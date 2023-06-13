@@ -61,7 +61,6 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                     }
                 }
                 ehttp::streaming::Part::Chunk(chunk) => {
-                    println!("{chunk:?}");
                     decoder.push_chunk(chunk);
                     loop {
                         match decoder.try_read() {
