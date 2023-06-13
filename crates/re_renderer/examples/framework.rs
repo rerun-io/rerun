@@ -164,7 +164,7 @@ impl<E: Example + 'static> Application<E> {
             queue,
             RenderContextConfig {
                 output_format_color: swapchain_format,
-                hardware_caps: device_caps,
+                device_caps,
             },
         );
 

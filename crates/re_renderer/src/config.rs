@@ -144,7 +144,7 @@ pub struct RenderContextConfig {
     pub output_format_color: wgpu::TextureFormat,
 
     /// Hardware capabilities of the device.
-    pub hardware_caps: DeviceCaps,
+    pub device_caps: DeviceCaps,
 }
 
 /// Backends that are officially supported by `re_renderer`.

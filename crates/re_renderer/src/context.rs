@@ -118,35 +118,35 @@ impl RenderContext {
 
         // Validate capabilities of the device.
         assert!(
-            config.hardware_caps.limits().check_limits(&device.limits()),
+            config.device_caps.limits().check_limits(&device.limits()),
             "The given device doesn't support the required limits for the given hardware caps {:?}.
             Required:
             {:?}
             Actual:
             {:?}",
-            config.hardware_caps,
-            config.hardware_caps.limits(),
+            config.device_caps,
+            config.device_caps.limits(),
             device.limits(),
         );
         assert!(
-            device.features().contains(config.hardware_caps.features()),
+            device.features().contains(config.device_caps.features()),
             "The given device doesn't support the required features for the given hardware caps {:?}.
             Required:
             {:?}
             Actual:
             {:?}",
-            config.hardware_caps,
-            config.hardware_caps.features(),
+            config.device_caps,
+            config.device_caps.features(),
             device.features(),
         );
-        assert!(adapter.get_downlevel_capabilities().flags.contains(config.hardware_caps.required_downlevel_capabilities().flags),
+        assert!(adapter.get_downlevel_capabilities().flags.contains(config.device_caps.required_downlevel_capabilities().flags),
             "The given device doesn't support the required downlevel capabilities for the given hardware caps {:?}.
             Required:
             {:?}
             Actual:
             {:?}",
-            config.hardware_caps,
-            config.hardware_caps.required_downlevel_capabilities(),
+            config.device_caps,
+            config.device_caps.required_downlevel_capabilities(),
             adapter.get_downlevel_capabilities(),
         );
 
@@ -249,7 +249,7 @@ impl RenderContext {
         //
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
         if cfg!(target_arch = "wasm32")
-            && self.shared_renderer_data.config.hardware_caps.tier == DeviceTier::Gles
+            && self.shared_renderer_data.config.device_caps.tier == DeviceTier::Gles
         {
             self.device.poll(wgpu::Maintain::Wait);
             return;

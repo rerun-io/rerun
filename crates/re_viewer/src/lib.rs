@@ -150,7 +150,7 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
             render_state.queue.clone(),
             RenderContextConfig {
                 output_format_color: render_state.target_format,
-                hardware_caps: re_renderer::config::DeviceCaps::from_adapter(&render_state.adapter),
+                device_caps: re_renderer::config::DeviceCaps::from_adapter(&render_state.adapter),
             },
         ));
     }

@@ -206,7 +206,7 @@ impl PickingLayerProcessor {
         let direct_depth_readback = ctx
             .shared_renderer_data
             .config
-            .hardware_caps
+            .device_caps
             .support_depth_readback();
 
         let picking_depth_target = ctx.gpu_resources.textures.alloc(
