@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ["Vec2DArrayExt"]
+
 from typing import Any, Sequence
 
 import numpy as np

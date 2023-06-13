@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ["Point2DArrayExt"]
+
 from typing import Any, Sequence
 
 import numpy as np
