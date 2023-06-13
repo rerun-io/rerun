@@ -256,8 +256,7 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "car")
     log_car_data()
