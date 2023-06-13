@@ -373,10 +373,6 @@ def setup_looging() -> None:
     rerun_handler = rr.log.text.LoggingHandler("logs")
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(1)
-    logger.addHandler(stream_handler)
-    logger.setLevel(-1)
 
 
 def main() -> None:
