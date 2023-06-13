@@ -33,7 +33,7 @@ LabelArrayLike = Union[
 from rerun2.components.label_ext import LabelArrayExt  # noqa: E402
 
 
-class LabelType(pa.ExtensionType):
+class LabelType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.utf8(), "rerun.components.Label")
 

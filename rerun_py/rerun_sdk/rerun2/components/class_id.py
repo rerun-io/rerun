@@ -39,7 +39,7 @@ ClassIdArrayLike = Union[
 from rerun2.components.class_id_ext import ClassIdArrayExt  # noqa: E402
 
 
-class ClassIdType(pa.ExtensionType):
+class ClassIdType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.ClassId")
 

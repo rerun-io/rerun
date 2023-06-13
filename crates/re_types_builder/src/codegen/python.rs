@@ -771,7 +771,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 from .{pkg}_ext import {many}Ext # noqa: E402
 
-                class {arrow}(pa.ExtensionType):
+                class {arrow}(pa.ExtensionType): # type: ignore[misc]
                     def __init__(self: type[pa.ExtensionType]) -> None:
                         pa.ExtensionType.__init__(
                             self, {datatype}, "{fqname}"

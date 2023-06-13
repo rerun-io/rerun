@@ -42,7 +42,7 @@ ColorArrayLike = Union[
 from rerun2.components.color_ext import ColorArrayExt  # noqa: E402
 
 
-class ColorType(pa.ExtensionType):
+class ColorType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint32(), "rerun.components.Color")
 

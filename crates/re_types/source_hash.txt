@@ -6,6 +6,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 2d611d0d686a6314da94b1797472e7690413465d16a611aae3560a847668d53d
 ||||||| parent of 5d0acef1a (fixing typo in re_types_builder doc)
 ||||||| parent of 1177724fc (regen post rebase)
@@ -20,6 +21,10 @@
 =======
 <<<<<<< HEAD
 >>>>>>> d4eaa96d2 (tests and extensions for components.Color)
+||||||| parent of 2dccfce77 (ignore weird inheritance lint -- whatever)
+=======
+<<<<<<< HEAD
+>>>>>>> 2dccfce77 (ignore weird inheritance lint -- whatever)
 400c988b3f50d5081c883356351d7e6506b47a96409777441d05e5efa5e00239
 <<<<<<< HEAD
 =======
@@ -61,4 +66,13 @@ a7f3c6f6e29d897104debea55952dca83bc273d4f45654f97102e9e22b9f3741
 =======
 359893dcaa82cbfbd23f1084a2a8e34bb306f1bd6b21d3d0f0b5c04be232f763
 >>>>>>> fb85bae28 (tests and extensions for components.Color)
+<<<<<<< HEAD
 >>>>>>> d4eaa96d2 (tests and extensions for components.Color)
+||||||| parent of 2dccfce77 (ignore weird inheritance lint -- whatever)
+=======
+||||||| parent of b90647911 (ignore weird inheritance lint -- whatever)
+359893dcaa82cbfbd23f1084a2a8e34bb306f1bd6b21d3d0f0b5c04be232f763
+=======
+4ae0169c023baf6a9f00ef2e3d23ca1886ec324f7a7f7c10071095b4e5976e38
+>>>>>>> b90647911 (ignore weird inheritance lint -- whatever)
+>>>>>>> 2dccfce77 (ignore weird inheritance lint -- whatever)

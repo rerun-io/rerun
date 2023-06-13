@@ -32,7 +32,7 @@ InstanceKeyArrayLike = Union[InstanceKeyLike, Sequence[InstanceKeyLike], npt.NDA
 from rerun2.components.instance_key_ext import InstanceKeyArrayExt  # noqa: E402
 
 
-class InstanceKeyType(pa.ExtensionType):
+class InstanceKeyType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.uint64(), "rerun.components.InstanceKey")
 
