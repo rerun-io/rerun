@@ -306,7 +306,8 @@ pub fn view_3d(
     let orbit_eye = state
         .state_3d
         .update_eye(&response, &state.scene_bbox_accum, space_cameras);
-    let did_interact_with_eye = orbit_eye.update(&response, orbit_eye_drag_threshold);
+    let did_interact_with_eye =
+        orbit_eye.update(&response, orbit_eye_drag_threshold, &state.scene_bbox_accum);
 
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();

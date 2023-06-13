@@ -155,8 +155,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "nyud")
     recording_path = ensure_recording_downloaded(args.recording)
