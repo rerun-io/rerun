@@ -41,7 +41,6 @@ import tempfile
 from io import BytesIO
 from pathlib import Path
 
-
 import PIL
 import PIL.Image
 import PIL.ImageGrab
@@ -63,7 +62,8 @@ class Uploader:
         self.run_pngcrush = pngcrush
 
     def upload_file(self, path: Path) -> str:
-        """Upload a single file to Google Cloud.
+        """
+        Upload a single file to Google Cloud.
 
         Parameters
         ----------
@@ -88,7 +88,8 @@ class Uploader:
         return object_name
 
     def upload_stack_from_file(self, image_path: Path, name: str | None = None) -> str:
-        """Upload an image stack from a file.
+        """
+        Upload an image stack from a file.
 
         Parameters
         ----------
@@ -114,7 +115,8 @@ class Uploader:
         )
 
     def upload_stack_from_clipboard(self, name: str) -> str:
-        """Upload an image stack from the clipboard.
+        """
+        Upload an image stack from the clipboard.
 
         Parameters
         ----------
@@ -144,7 +146,8 @@ class Uploader:
         file_ext: str = ".png",
         content_type: str = "image/png",
     ) -> str:
-        """Create a multi-resolution stack and upload it.
+        """
+        Create a multi-resolution stack and upload it.
 
         Parameters
         ----------
@@ -204,7 +207,8 @@ class Uploader:
         return html_str
 
     def upload_data(self, data: bytes, name: str, content_type: str | None = None, content_encoding: str | None = None):
-        """Low-level upload of data.
+        """
+        Low-level upload of data.
 
         Parameters
         ----------
@@ -231,7 +235,8 @@ class Uploader:
 
 
 def run_pngcrush(data: bytes) -> bytes:
-    """Run pngcrush on some data.
+    """
+    Run pngcrush on some data.
 
     Parameters
     ----------
