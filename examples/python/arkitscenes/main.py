@@ -57,7 +57,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
     # Generate a color per object that can be reused across both 3D obb and their 2D projections
     # TODO(pablovela5620): Once #1581 or #1728 is resolved this can be removed
     color_positions = np.linspace(0, 1, num_objects)
-    colormap = plt.cm.get_cmap("viridis")
+    colormap = plt.colormaps["viridis"]
     colors = [colormap(pos) for pos in color_positions]
 
     for i, label_info in enumerate(annotation["data"]):
