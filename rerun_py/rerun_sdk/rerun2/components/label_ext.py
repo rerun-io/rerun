@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+__all__ = ["LabelArrayExt"]
+
+from typing import Any, Sequence, Type
 
 import pyarrow as pa
 
 
 class LabelArrayExt:
     @staticmethod
-    def _from_similar(data: Any | None, *, mono: type, mono_aliases: type, many: type, many_aliases: type, arrow: type):
+    def _from_similar(data: Any | None, *, mono: type, mono_aliases: Type, many: type, many_aliases: Type, arrow: type):
         if isinstance(data, Sequence):
             array = [str(datum) for datum in data]
         else:

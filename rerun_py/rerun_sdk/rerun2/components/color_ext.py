@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+__all__ = ["ColorArrayExt"]
+
+from typing import Any, Sequence, Type
 
 import numpy as np
 import pyarrow as pa
@@ -10,7 +12,7 @@ from rerun.color_conversion import u8_array_to_rgba
 
 class ColorArrayExt:
     @staticmethod
-    def _from_similar(data: Any | None, *, mono: type, mono_aliases: type, many: type, many_aliases: type, arrow: type):
+    def _from_similar(data: Any | None, *, mono: type, mono_aliases: Type, many: type, many_aliases: Type, arrow: type):
         """
         Normalize flexible colors arrays.
 
