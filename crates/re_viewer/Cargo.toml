@@ -83,10 +83,7 @@ eframe = { workspace = true, default-features = false, features = [
 ] }
 egui.workspace = true
 egui-wgpu.workspace = true
-image = { workspace = true, default-features = false, features = [
-  "jpeg",
-  "png",
-] }
+image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
 poll-promise = "0.2"
 rfd.workspace = true

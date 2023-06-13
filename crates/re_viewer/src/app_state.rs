@@ -7,9 +7,9 @@ use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
-use re_viewport::ViewportState;
+use re_viewport::{SpaceInfoCollection, ViewportBlueprint, ViewportState};
 
-use crate::{store_hub::StoreHub, ui::Blueprint};
+use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -70,7 +70,7 @@ impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
-        blueprint: &mut Blueprint,
+        app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &mut re_renderer::RenderContext,
         store_db: &StoreDb,
@@ -83,6 +83,8 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
+        let mut blueprint = ViewportBlueprint::from_db(store_context.blueprint);
+
         let Self {
             app_options,
             cache,
@@ -91,6 +93,15 @@ impl AppState {
             time_panel,
             viewport_state,
         } = self;
+
+        recording_config_entry(
+            recording_configs,
+            store_db.store_id().clone(),
+            rx.source(),
+            store_db,
+        )
+        .selection_state
+        .on_frame_start(|item| blueprint.is_item_valid(item));
 
         let rec_cfg = recording_config_entry(
             recording_configs,
@@ -112,8 +123,14 @@ impl AppState {
             command_sender,
         };
 
-        time_panel.show_panel(&mut ctx, ui, blueprint.time_panel_expanded);
-        selection_panel.show_panel(viewport_state, &mut ctx, ui, blueprint);
+        time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
+        selection_panel.show_panel(
+            viewport_state,
+            &mut ctx,
+            ui,
+            &mut blueprint,
+            app_blueprint.selection_panel_expanded,
+        );
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -124,8 +141,38 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| {
-                blueprint.blueprint_panel_and_viewport(viewport_state, &mut ctx, ui);
+                re_tracing::profile_function!();
+
+                let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
+
+                blueprint.viewport.on_frame_start(&mut ctx, &spaces_info);
+
+                blueprint_panel_ui(
+                    &mut blueprint,
+                    &mut ctx,
+                    ui,
+                    &spaces_info,
+                    app_blueprint.blueprint_panel_expanded,
+                );
+
+                let viewport_frame = egui::Frame {
+                    fill: ui.style().visuals.panel_fill,
+                    ..Default::default()
+                };
+
+                egui::CentralPanel::default()
+                    .frame(viewport_frame)
+                    .show_inside(ui, |ui| {
+                        blueprint.viewport.viewport_ui(viewport_state, ui, &mut ctx);
+                    });
+
+                // If the viewport was user-edited, then disable auto space views
+                if blueprint.viewport.has_been_user_edited {
+                    blueprint.viewport.auto_space_views = false;
+                }
             });
+
+        blueprint.sync_changes(command_sender);
 
         {
             // We move the time at the very end of the frame,
@@ -149,15 +196,6 @@ impl AppState {
 
     pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
         self.recording_configs.get_mut(rec_id)
-    }
-
-    pub fn recording_config_entry(
-        &mut self,
-        id: StoreId,
-        data_source: &'_ re_smart_channel::SmartChannelSource,
-        store_db: &'_ StoreDb,
-    ) -> &mut RecordingConfig {
-        recording_config_entry(&mut self.recording_configs, id, data_source, store_db)
     }
 
     pub fn cleanup(&mut self, store_hub: &StoreHub) {

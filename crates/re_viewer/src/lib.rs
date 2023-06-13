@@ -4,6 +4,7 @@
 //! including all 2D and 3D visualization code.
 
 mod app;
+mod app_blueprint;
 mod app_state;
 mod background_tasks;
 pub mod blueprint_components;

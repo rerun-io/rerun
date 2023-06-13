@@ -47,7 +47,7 @@ def main() -> None:
     hash = content_hash(args.path)
     object_name = f"{hash}_{os.path.basename(args.path)}"
 
-    gcs = storage.Client()
+    gcs = storage.Client("rerun-open")
     bucket = gcs.bucket("rerun-static-img")
     destination = bucket.blob(object_name)
     destination.content_type, destination.content_encoding = mimetypes.guess_type(args.path)

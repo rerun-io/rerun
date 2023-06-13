@@ -7,6 +7,11 @@
 fn log_filter() -> String {
     let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
 
+    for crate_name in crate::CRATES_AT_ERROR_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=error");
+        }
+    }
     for crate_name in crate::CRATES_AT_WARN_LEVEL {
         if !rust_log.contains(&format!("{crate_name}=")) {
             rust_log += &format!(",{crate_name}=warn");
