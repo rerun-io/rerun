@@ -6,6 +6,7 @@ The example from our Getting Started page.
 """
 from __future__ import annotations
 
+import sys
 from math import tau
 
 import numpy as np
@@ -13,8 +14,8 @@ import rerun as rr  # pip install rerun-sdk
 from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp, interleave
 
-_, unknown = __import__("argparse").ArgumentParser().parse_known_args()
-[__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+# sanity-check since all other example scripts take arguments:
+assert len(sys.argv) == 1, f"{sys.argv[0]} does not take any arguments"
 
 rr.init("DNA Abacus")
 

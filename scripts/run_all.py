@@ -12,6 +12,11 @@ from glob import glob
 from types import TracebackType
 from typing import Any
 
+EXTRA_ARGS = {
+    "examples/python/clock": ["--steps=200"],  # Make it faster
+    "examples/python/opencv_canny": ["--num-frames=30"],  # Make sure it finishes
+}
+
 
 def start_process(args: list[str], cwd: str, wait: bool) -> Any:
     process = subprocess.Popen(
@@ -30,7 +35,11 @@ def start_process(args: list[str], cwd: str, wait: bool) -> Any:
 
 
 def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True, save: str | None = None) -> Any:
-    args = ["python3", "main.py", "--num-frames=30", "--steps=200"]
+    args = ["python3", "main.py"]
+
+    if path in EXTRA_ARGS:
+        args += EXTRA_ARGS[path]
+
     if save is not None:
         args += [f"--save={save}"]
     if viewer_port is not None:

@@ -26,8 +26,7 @@ def task(title: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Test multi-process logging to the same Rerun server")
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    parser.parse_args()
 
     rr.init("multiprocessing")
     rr.spawn(connect=False)  # this is the viewer that each process will connect to
