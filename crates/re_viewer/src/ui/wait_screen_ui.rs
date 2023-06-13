@@ -42,7 +42,7 @@ pub fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
                 );
             }
             re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
-                waiting_ui(ui, "Loading...", &url);
+                waiting_ui(ui, "Loading...", url);
             }
             re_smart_channel::SmartChannelSource::RrdWebEventListener => {
                 waiting_ui(ui, "Ready", "Waiting for logging data…");
