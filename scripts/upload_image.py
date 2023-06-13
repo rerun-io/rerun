@@ -26,12 +26,14 @@ import argparse
 import hashlib
 import logging
 import mimetypes
+import sys
 from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO
 
 import PIL
 import PIL.Image
+import PIL.ImageGrab
 from google.cloud import storage
 from PIL.Image import Image, Resampling
 
@@ -59,13 +61,38 @@ class Uploader:
 
         return object_name
 
-    def upload_stack(self, image_path: Path) -> str:
-        """Create a multi-resolution stack and upload it."""
-
+    def upload_stack_from_file(self, image_path: Path, name: str | None = None) -> str:
         image = PIL.Image.open(image_path)
-        image_format = image.format
-        file_ext = image_path.suffix
         content_type, _ = mimetypes.guess_type(image_path)
+
+        return self.upload_stack(
+            image,
+            name=name if name is not None else image_path.stem,
+            output_format=image.format,
+            file_ext=image_path.suffix,
+            content_type=content_type,
+        )
+
+    def upload_stack_from_clipboard(self, name: str) -> str:
+        clipboard = PIL.ImageGrab.grabclipboard()
+        if isinstance(clipboard, PIL.Image.Image):
+            image = clipboard
+            return self.upload_stack(
+                image,
+                name=name,
+            )
+        else:
+            raise RuntimeError("No image found on clipboard")
+
+    def upload_stack(
+        self,
+        image: Image,
+        name: str,
+        output_format: str = "PNG",
+        file_ext: str = ".png",
+        content_type: str = "image/png",
+    ) -> str:
+        """Create a multi-resolution stack and upload it."""
 
         logging.info(f"Base image width: {image.width}px")
 
@@ -78,16 +105,16 @@ class Uploader:
                     size=(width, int(width * image.height / image.width)), resample=Resampling.LANCZOS
                 )
 
-                image_stack.append((f"{image_path.stem}_{width}w", width, new_image))
+                image_stack.append((f"{name}_{width}w", width, new_image))
 
-        image_stack.append((f"{image_path.stem}_full", None, image))
+        image_stack.append((f"{name}_full", None, image))
 
         html_str = "<picture>\n"
 
         # upload images
         for name, width, image in image_stack:
             with BytesIO() as buffer:
-                image.save(buffer, image_format)
+                image.save(buffer, output_format)
                 buffer.seek(0)
                 digest = content_hash(buffer)
                 buffer.seek(0)
@@ -98,7 +125,7 @@ class Uploader:
 
                 if width is not None:
                     html_str += (
-                        f'  <source media="(min-width: {width}px)" srcset="https://static.rerun.io/{object_name}">\n'
+                        f'  <source media="(max-width: {width}px)" srcset="https://static.rerun.io/{object_name}">\n'
                     )
                 else:
                     html_str += f'  <img src="https://static.rerun.io/{object_name}" alt="">\n'
@@ -123,8 +150,8 @@ def content_hash(data: Path | BinaryIO) -> str:
     b = bytearray(128 * 1024)
     mv = memoryview(b)
 
-    def update(f: BinaryIO) -> None:
-        while n := f.readinto(mv):
+    def update(stream: BinaryIO) -> None:
+        while n := stream.readinto(mv):
             h.update(mv[:n])
 
     if isinstance(data, Path):
@@ -138,10 +165,13 @@ def content_hash(data: Path | BinaryIO) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Upload an image.")
-    parser.add_argument("path", type=Path, help="Path to the image.")
+    parser.add_argument(
+        "path", type=Path, nargs="?", help="File path to the image. If not provided, use the clipboard's content."
+    )
     parser.add_argument(
         "--single", action="store_true", help="Upload a single image instead of creating a multi-resolution stack."
     )
+    parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
 
@@ -152,12 +182,21 @@ def main() -> None:
 
     uploader = Uploader()
 
-    if args.single:
-        object_name = uploader.upload_file(args.path)
-        print(f"https://static.rerun.io/{object_name}")
-    else:
-        html_str = uploader.upload_stack(args.path)
-        print("\n" + html_str)
+    try:
+        if args.single:
+            object_name = uploader.upload_file(args.path)
+            print(f"https://static.rerun.io/{object_name}")
+        else:
+            if args.path is None:
+                if args.name is None:
+                    raise RuntimeError("Name is required when uploading from clipboard")
+                else:
+                    html_str = uploader.upload_stack_from_clipboard(args.name)
+            else:
+                html_str = uploader.upload_stack_from_file(args.path, args.name)
+            print("\n" + html_str)
+    except RuntimeError as e:
+        print(f"Error: {e.args[0]}", file=sys.stderr)
 
 
 if __name__ == "__main__":
