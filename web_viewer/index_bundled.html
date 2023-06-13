@@ -75,7 +75,8 @@
 
         /* Rerun styling for normal text. */
         p {
-            color: #cad8de; /*Grey-775*/
+            /*Gray-775*/
+            color: #cad8de;
             letter-spacing: -0.15px;
             font-family: 'Inter', sans-serif;
             font-weight: 500;
@@ -84,20 +85,25 @@
 
         /* Rerun styling for strong text. Matches `TextStyle::Heading`. */
         .strong {
-            color: #ffffff; /*Grey-775*/
-            font-size: 16px; /* Match current rerun header value */
+            /*Gray-775*/
+            color: #ffffff;
+            /* Match current rerun header value */
+            font-size: 16px;
         }
 
         /* Rerun styling for subdued text.*/
         .subdued {
-            color: #7d8c92; /*Grey-550*/
-            font-size: 12px;  /* Larger subdued size to match current rerun font */
+            /*Gray-550*/
+            color: #7d8c92;
+            /* Larger subdued size to match current rerun font */
+            font-size: 12px;
             letter-spacing: -0.12px;
         }
 
         pre {
-            color: #7d8c92; /*Grey-550*/
-            font-size: 10px;  
+            /*Gray-550*/
+            color: #7d8c92;
+            font-size: 10px;
             letter-spacing: -0.12px;
         }
 
@@ -197,11 +203,11 @@
                 </p>`;
 
             const status_element = document.getElementById('status');
-            function progress({loaded, total}) {
-                status_element.innerHTML = Math.round(loaded/total*100)+'%';
+            function progress({ loaded, total }) {
+                status_element.innerHTML = Math.round(loaded / total * 100) + '%';
             }
 
-            var timeoutId = setTimeout(function() {
+            var timeoutId = setTimeout(function () {
                 document.getElementById("center_text").classList.remove("hidden");
                 document.getElementById("center_text").classList.add("visible");
             }, 1500);
@@ -214,15 +220,15 @@
 
                 const res = new Response(new ReadableStream({
                     async start(controller) {
-                    const reader = response.body.getReader();
-                    for (;;) {
-                        const {done, value} = await reader.read();
-                        if (done) break;
-                        loaded += value.byteLength;
-                        progress({loaded, total})
-                        controller.enqueue(value);
-                    }
-                    controller.close();
+                        const reader = response.body.getReader();
+                        for (; ;) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            loaded += value.byteLength;
+                            progress({ loaded, total })
+                            controller.enqueue(value);
+                        }
+                        controller.close();
                     },
                 }));
                 const wasm = await res.blob();
