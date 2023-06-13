@@ -8,6 +8,8 @@ import numpy as np
 from rerun_sdk import rerun2 as rr
 from rerun_sdk.rerun2 import components as rrc
 
+# TODO(cmc): roundtrips (serialize in python, deserialize in rust)
+
 
 def test_points2d() -> None:
     points_arrays = [
@@ -49,27 +51,43 @@ def test_points2d() -> None:
         np.array([42, 43]),
     ]
 
+    # TODO: color
+
+    labels_arrays = [
+        None,
+        # LabelArrayLike: Sequence[LabelLike]: str
+        ["hello", "friend"],
+        # LabelArrayLike: Sequence[LabelLike]: Label
+        [
+            rrc.Label("hello"),
+            rrc.Label("friend"),
+        ],
+    ]
+
     all_permuted_arrays = list(
         itertools.product( # type: ignore[call-overload]
             *[
                 points_arrays,
                 radii_arrays,
+                labels_arrays,
             ]
         )
     )
 
-    for points, radii in all_permuted_arrays:
+    for points, radii, labels in all_permuted_arrays:
         print(
             f"rr.Points2D(\n"
             f"    {points}\n"
             f"    radii={radii}\n"
+            f"    labels={labels}\n"
             f")"
         )
-        arch = rr.Points2D(points, radii=radii)
+        arch = rr.Points2D(points, radii=radii, labels=labels)
+        print(f"{arch}\n")
 
         assert arch.points == rrc.Point2DArray.from_similar([[1.0, 2.0], [3.0, 4.0]])
         assert arch.radii == rrc.RadiusArray.from_similar([42, 43] if radii is not None else [])
-        print(f"{arch}\n")
+        assert arch.labels == rrc.LabelArray.from_similar(["hello", "friend"] if labels is not None else [])
 
 
 if __name__ == "__main__":
