@@ -113,12 +113,13 @@ class FaceDetectorLogger:
         )
         self._detector = vision.FaceDetector.create_from_options(self._options)
 
+        # With this annotation, the viewer will connect the keypoints with some lines to improve visibility.
         rr.log_annotation_context(
             "video/detector",
             rr.ClassDescription(keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]),
         )
 
-    def log_frame(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
+    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
 
@@ -137,7 +138,7 @@ class FaceDetectorLogger:
             rr.log_rect(f"video/detector/faces/{i}/bbox", [bbox.origin_x, bbox.origin_y, bbox.width, bbox.height])
             rr.log_extension_components(f"video/detector/faces/{i}/bbox", {"index": index, "score": score})
 
-            # log keypoints
+            # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.
             pts = [
                 (math.floor(keypoint.x * width), math.floor(keypoint.y * height)) for keypoint in detection.keypoints
             ]
@@ -217,9 +218,9 @@ class FaceLandmarkerLogger:
         rr.log_annotation_context("reconstruction", class_descriptions)
 
         # properly align the 3D face in the viewer
-        rr.log_view_coordinates("reconstruction", xyz="RDF")
+        rr.log_view_coordinates("reconstruction", xyz="RDF", timeless=True)
 
-    def log_frame(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
+    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
 
@@ -235,6 +236,7 @@ class FaceLandmarkerLogger:
         for i, (landmark, blendshapes) in enumerate(
             zip(detection_result.face_landmarks, detection_result.face_blendshapes)
         ):
+            # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.
             pts = [(math.floor(lm.x * width), math.floor(lm.y * height)) for lm in landmark]
             keypoint_ids = list(range(len(landmark)))
             rr.log_points(
@@ -252,9 +254,6 @@ class FaceLandmarkerLogger:
                 class_ids=self._class_ids,
             )
 
-            # better center the 3D face in the viewer
-            rr.log_transform3d(f"reconstruction/faces/{i}", rr.Translation3D(translation=(-0.5, -0.5, 0.0)))
-
             for blendshape in blendshapes:
                 if blendshape.category_name in BLENDSHAPES_CATEGORIES:
                     rr.log_scalar(f"blendshapes/{i}/{blendshape.category_name}", blendshape.score)
@@ -267,10 +266,16 @@ class FaceLandmarkerLogger:
 def download_file(url: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     logging.info("Downloading %s to %s", url, path)
-    response = requests.get(url)
-    response.raise_for_status()
-    with open(path, "wb") as f:
-        f.write(response.content)
+    response = requests.get(url, stream=True)
+    with tqdm.tqdm.wrapattr(
+        open(path, "wb"),
+        "write",
+        miniters=1,
+        total=int(response.headers.get("content-length", 0)),
+        desc=f"Downloading {path.name}",
+    ) as f:
+        for chunk in response.iter_content(chunk_size=4096):
+            f.write(chunk)
 
 
 def resize_image(image: npt.NDArray[np.uint8], max_dim: int | None) -> npt.NDArray[np.uint8]:
@@ -310,11 +315,15 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
     try:
         it: Iterable[int] = itertools.count() if max_frame_count is None else range(max_frame_count)
 
-        for frame_idx in tqdm.tqdm(it):
+        for frame_idx in tqdm.tqdm(it, desc="Processing frames"):
             # Capture frame-by-frame
             ret, frame = cap.read()
             if not ret:
                 break
+
+            # OpenCV sometimes returns a blank frame, so we skip it
+            if np.all(frame == 0):
+                continue
 
             frame = resize_image(frame, max_dim)
 
@@ -330,8 +339,8 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
             # log data
             rr.set_time_sequence("frame_nr", frame_idx)
             rr.set_time_nanos("frame_time", frame_time_nano)
-            detector.log_frame(frame, frame_time_nano)
-            landmarker.log_frame(frame, frame_time_nano)
+            detector.detect_and_log(frame, frame_time_nano)
+            landmarker.detect_and_log(frame, frame_time_nano)
             rr.log_image("video/image", frame)
 
     except KeyboardInterrupt:
@@ -349,8 +358,8 @@ def run_from_sample_image(path: Path, max_dim: int | None, num_faces: int) -> No
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     logger = FaceDetectorLogger(video_mode=False)
     landmarker = FaceLandmarkerLogger(video_mode=False, num_faces=num_faces)
-    logger.log_frame(image, 0)
-    landmarker.log_frame(image, 0)
+    logger.detect_and_log(image, 0)
+    landmarker.detect_and_log(image, 0)
     rr.log_image("video/image", image)
 
 
