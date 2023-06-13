@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["Label", "LabelLike", "LabelArray", "LabelArrayLike", "LabelType"]
+
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
@@ -59,7 +61,7 @@ class LabelArray(pa.ExtensionArray, LabelArrayExt):  # type: ignore[misc]
         if data is None:
             return LabelType().wrap_array(pa.array([], type=LabelType().storage_type))
         else:
-            return LabelArrayExt.from_similar(
+            return LabelArrayExt._from_similar(
                 data,
                 mono=Label,
                 mono_aliases=LabelLike,
