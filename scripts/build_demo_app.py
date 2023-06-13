@@ -190,25 +190,10 @@ BASE_PATH = "web_demo"
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 # When adding examples, add their requirements to `requirements-web-demo.txt`
 EXAMPLES = {
-    "api_demo": {
-        "title": "API Demo",
+    "arkitscenes": {
+        "title": "ARKitScenes",
         "description": """
-        This is a swiss-army-knife example showing the usage of most of the Rerun SDK APIs.
-        The data logged is static and meaningless.
-        """,
-        "build_args": [],
-    },
-    "car": {
-        "title": "Car",
-        "description": """
-        A very simple 2D car is drawn using OpenCV, and a depth image is simulated and logged as a point cloud.
-        """,
-        "build_args": [],
-    },
-    "clock": {
-        "title": "Clock",
-        "description": """
-        An example visualizing an analog clock with hour, minute and seconds hands using Rerun Arrow3D primitives.
+        TODO
         """,
         "build_args": [],
     },
@@ -225,7 +210,7 @@ EXAMPLES = {
         and we use Rerun to visualize the individual camera frames, estimated camera poses,
         and resulting point clouds over time.
         """,
-        "build_args": ["--resize=800x600"],
+        "build_args": ["--dataset=colmap_fiat", "--resize=800x600"],
     },
     "dicom": {
         "title": "Dicom",
@@ -235,29 +220,38 @@ EXAMPLES = {
         """,
         "build_args": [],
     },
+    "dna": {
+        "title": "dna",
+        "description": """
+        TODO
+        """,
+        "build_args": [],
+    },
+    "minimal": {
+        "title": "minimal",
+        "description": """
+        TODO
+        """,
+        "build_args": [],
+    },
+    "mp_pose": {
+        "title": "mp_pose",
+        "description": """
+        TODO
+        """,
+        "build_args": [],
+    },
     "plots": {
-        "title": "Plots",
+        "title": "plots",
         "description": """
-        This example demonstrates how to log simple plots with the Rerun SDK.
-        Charts can be created from 1-dimensional tensors, or from time-varying scalars.
+        TODO
         """,
         "build_args": [],
     },
-    "raw_mesh": {
-        "title": "Raw Mesh",
+    "tracking_hf_opencv": {
+        "title": "tracking_hf_opencv",
         "description": """
-        This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups")
-        and their transform hierarchy. Simple material properties are supported.
-        """,
-        "build_args": [],
-    },
-    "text_logging": {
-        "title": "Text Logging",
-        "description": """
-        This example demonstrates how to integrate python's native `logging` with the Rerun SDK.
-
-        Rerun is able to act as a Python logging handler, and can show all your Python log messages
-        in the viewer next to your other data.
+        TODO
         """,
         "build_args": [],
     },
