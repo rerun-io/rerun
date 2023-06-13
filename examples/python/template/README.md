@@ -10,5 +10,6 @@ rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/template/src/m
 This is an example example. It is not a real example. You can duplicate the directory and use it as a starting point for writing a real example.
 
 ```bash
-python examples/python/template/main.py
+pip install -r examples/python/template/requirements.txt
+examples/python/template/main.py
 ```
