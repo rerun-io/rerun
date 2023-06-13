@@ -12,8 +12,9 @@ from rerun_sdk.rerun2 import components as rrc
 
 # TODO(cmc): roundtrips (serialize in python, deserialize in rust)
 
-U64_MAX_MINUS_1 = 2**64-2
-U64_MAX = 2**64-1
+U64_MAX_MINUS_1 = 2**64 - 2
+U64_MAX = 2**64 - 1
+
 
 def test_points2d() -> None:
     points_arrays = [
@@ -115,18 +116,14 @@ def test_points2d() -> None:
         np.array([U64_MAX_MINUS_1, U64_MAX], dtype=np.uint64),
     ]
 
-    all_permuted_arrays = list(
-        itertools.product(  # type: ignore[call-overload]
-            *[
-                points_arrays,
-                radii_arrays,
-                labels_arrays,
-                draw_orders,
-                class_id_arrays,
-                keypoint_id_arrays,
-                instance_key_arrays,
-            ]
-        )
+    all_permuted_arrays = itertools.zip_longest(  # type: ignore[call-overload]
+        points_arrays,
+        radii_arrays,
+        labels_arrays,
+        draw_orders,
+        class_id_arrays,
+        keypoint_id_arrays,
+        instance_key_arrays,
     )
 
     for points, radii, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_permuted_arrays:
@@ -158,7 +155,9 @@ def test_points2d() -> None:
         assert arch.draw_order == rrc.DrawOrderArray.from_similar([300] if draw_order is not None else [])
         assert arch.class_ids == rrc.ClassIdArray.from_similar([126, 127] if class_ids is not None else [])
         assert arch.keypoint_ids == rrc.KeypointIdArray.from_similar([2, 3] if keypoint_ids is not None else [])
-        assert arch.instance_keys == rrc.InstanceKeyArray.from_similar([U64_MAX_MINUS_1, U64_MAX] if instance_keys is not None else [])
+        assert arch.instance_keys == rrc.InstanceKeyArray.from_similar(
+            [U64_MAX_MINUS_1, U64_MAX] if instance_keys is not None else []
+        )
 
 
 if __name__ == "__main__":
