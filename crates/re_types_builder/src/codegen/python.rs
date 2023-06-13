@@ -93,11 +93,7 @@ fn quote_lib(out_path: impl AsRef<Path>, archetype_names: &[String]) -> PathBuf 
         .unwrap();
 
     let path = out_path.join("__init__.py");
-    let all_names = archetype_names
-        .iter()
-        .map(|name| format!("{name:?}"))
-        .collect::<Vec<_>>()
-        .join(", ");
+    let manifest = quote_manifest(archetype_names);
     let archetype_names = archetype_names.join(", ");
 
     let mut code = String::new();
@@ -108,7 +104,7 @@ fn quote_lib(out_path: impl AsRef<Path>, archetype_names: &[String]) -> PathBuf 
 
         from __future__ import annotations
 
-        __all__ = [{all_names}]
+        __all__ = [{manifest}]
 
         from .archetypes import {archetype_names}
         "#
@@ -196,16 +192,12 @@ fn quote_objects(
         let mut code = String::new();
         code.push_str(&format!("# {AUTOGEN_WARNING}\n\n"));
 
-        let names = names
-            .into_iter()
-            .map(|name| format!("{name:?}"))
-            .collect::<Vec<_>>()
-            .join(", ");
+        let manifest = quote_manifest(names);
         code.push_str(&unindent::unindent(&format!(
             "
             from __future__ import annotations
 
-            __all__ = [{names}]
+            __all__ = [{manifest}]
 
             ",
         )));
@@ -225,18 +217,14 @@ fn quote_objects(
 
         let mut code = String::new();
 
-        let all_names = mods
-            .iter()
-            .flat_map(|(_, names)| names.iter().map(|name| format!("{name:?}")))
-            .collect::<Vec<_>>()
-            .join(", ");
+        let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
 
         code.push_str(&format!("# {AUTOGEN_WARNING}\n\n"));
         code.push_str(&unindent::unindent(&format!(
             "
             from __future__ import annotations
 
-            __all__ = [{all_names}]
+            __all__ = [{manifest}]
 
             # NOTE: we use fully qualified paths to prevent lazy circular imports.
             ",
@@ -471,6 +459,16 @@ impl QuotedObject {
 }
 
 // --- Code generators ---
+
+fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
+    let mut quoted_names: Vec<_> = names
+        .into_iter()
+        .map(|name| format!("{:?}", name.as_ref()))
+        .collect();
+    quoted_names.sort();
+
+    quoted_names.join(", ")
+}
 
 fn quote_module_prelude() -> String {
     // NOTE: All the extraneous stuff will be cleaned up courtesy of `ruff`.
