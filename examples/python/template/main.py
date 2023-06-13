@@ -27,7 +27,7 @@ def setup_logging() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Describe your example here!")
+    parser = argparse.ArgumentParser(description="Example of using the Rerun visualizer")
     rr.script_add_args(parser)
     args = parser.parse_args()
 
