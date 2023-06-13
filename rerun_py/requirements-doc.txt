@@ -3,7 +3,7 @@ mkdocs-gen-files
 mkdocs-literate-nav
 mkdocs-material
 mkdocs-material-extensions
-https://github.com/rerun-io/mkdocs-redirects/archive/v1.3.1.zip # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409b
+git+https://github.com/rerun-io/mkdocs-redirects.git@v1.3.1 # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409b
 mkdocstrings
 mkdocstrings-python
 mike
