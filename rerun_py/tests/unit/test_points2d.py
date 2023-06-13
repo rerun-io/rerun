@@ -4,11 +4,11 @@ import itertools
 
 import numpy as np
 
-# import rerun2 as rr
-# from rerun2 import components as rrc
+import rerun2 as rr
+from rerun2 import components as rrc
 # NOTE: uncomment these to get a better auto-completion experience...
-from rerun_sdk import rerun2 as rr
-from rerun_sdk.rerun2 import components as rrc
+# from rerun_sdk import rerun2 as rr
+# from rerun_sdk.rerun2 import components as rrc
 
 # TODO(cmc): roundtrips (serialize in python, deserialize in rust)
 
