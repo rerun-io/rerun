@@ -17,11 +17,8 @@ import rerun as rr  # pip install rerun-sdk
 
 
 def setup_logging() -> None:
-    # That's really all there is to it: attach a Rerun logging handler to one
-    # or more loggers of your choosing and your logs will be forwarded.
-    #
-    # In this case we attach our handler directly to the root logger, which
-    # will catch events from all loggers going forward (propagation is on by
+    # Forward all text logs to Rerun by attaching a handler directly to the root logger,
+    # which will catch events from all loggers going forward (propagation is on by
     # default).
     #
     # For more info: https://docs.python.org/3/howto/logging.html#handlers
