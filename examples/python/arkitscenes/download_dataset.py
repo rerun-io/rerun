@@ -117,7 +117,7 @@ def download_file(url: str, file_name: str, dst: Path) -> bool:
             return False
         os.rename(filepath + ".tmp", filepath)
     else:
-        print(f"WARNING: skipping download of existing file: {filepath}")
+        pass # skipping download of existing file
     return True
 
 
@@ -274,7 +274,7 @@ def download_data(
             if not file_name.endswith(".zip") or not os.path.isdir(dst_path[: -len(".zip")]):
                 download_file(url, dst_path, dst_dir)
             else:
-                print(f"WARNING: skipping download of existing zip file: {dst_path}")
+                pass # skipping download of existing zip file
             if file_name.endswith(".zip") and os.path.isfile(dst_path):
                 unzip_file(file_name, dst_dir, keep_zip)
 
