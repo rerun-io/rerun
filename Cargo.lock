@@ -4510,6 +4510,7 @@ dependencies = [
  "macaw",
  "re_build_tools",
  "re_types_builder",
+ "similar-asserts",
  "xshell",
 ]
 

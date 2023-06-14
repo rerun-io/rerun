@@ -7,7 +7,7 @@
 /// Within an entity draw order is governed by the order of the components.
 ///
 /// Draw order for entities with the same draw order is generally undefined.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 

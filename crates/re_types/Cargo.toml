@@ -49,6 +49,7 @@ macaw = { workspace = true, optional = true }
 # External
 glam.workspace = true
 itertools.workspace = true
+similar-asserts = "1.4.2"
 
 
 [build-dependencies]
