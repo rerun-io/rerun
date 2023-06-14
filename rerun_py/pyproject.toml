@@ -14,7 +14,7 @@ classifiers = [
 dependencies = [
   "deprecated",
   "numpy>=1.23",
-  "pillow>=0.9.0,<0.10", # Used for JPEG encoding
+  "pillow>=9.5.0,<10", # Used for JPEG encoding
   "pyarrow==10.0.1",
 ]
 description = "The Rerun Logging SDK"
