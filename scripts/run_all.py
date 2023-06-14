@@ -73,12 +73,12 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/api_demo",
             "examples/python/car",
             "examples/python/clock",
-            "examples/python/structure_from_motion",
-            "examples/python/signed_distance_field",
             "examples/python/dicom_mri",
-            "examples/python/rgbd",
             "examples/python/plots",
             "examples/python/raw_mesh",
+            "examples/python/rgbd",
+            "examples/python/signed_distance_field",
+            "examples/python/structure_from_motion",
             "examples/python/text_logging",
         ]
     else:

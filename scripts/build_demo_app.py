@@ -240,7 +240,7 @@ EXAMPLES = {
         "build_args": [],
     },
     "detect_and_track_objects": {
-        "title": "Object Tracking and Segmentation",
+        "title": "Detect and Track Objects",
         "description": """
         Applying simple object detection and segmentation on a video using the Huggingface `transformers` library.
         Tracking across frames is performed using
