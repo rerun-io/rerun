@@ -33,12 +33,10 @@ class ColorArrayExt:
             # Rust expects colors in 0-255 uint8
             if array.dtype.type in [np.float32, np.float64]:
                 # Assume gamma-space colors
-                array = np.asarray(data).reshape((-1, 4))
-                array = u8_array_to_rgba(np.asarray(np.round(array * 255.0), np.uint8))
+                array = u8_array_to_rgba(np.asarray(np.round(np.asarray(data).reshape((-1, 4)) * 255.0), np.uint8))
             elif array.dtype.type == np.uint32:
                 array = np.asarray(data).flatten()
             else:
-                array = np.asarray(data, dtype=np.uint8).reshape((-1, 4))
-                array = u8_array_to_rgba(array)
+                array = u8_array_to_rgba(np.asarray(data, dtype=np.uint8).reshape((-1, 4)))
 
         return arrow().wrap_array(pa.array(array, type=arrow().storage_type))
