@@ -8,19 +8,13 @@ use std::{
 };
 
 use crate::{
-    codegen::{
-        AUTOGEN_WARNING, RERUN_ATTR_COMPONENT_OPTIONAL, RERUN_ATTR_COMPONENT_RECOMMENDED,
-        RERUN_ATTR_COMPONENT_REQUIRED,
-    },
+    codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type,
+    Type, RERUN_ATTR_COMPONENT_OPTIONAL, RERUN_ATTR_COMPONENT_RECOMMENDED,
+    RERUN_ATTR_COMPONENT_REQUIRED, RUST_ATTR_DERIVE, RUST_ATTR_REPR, RUST_ATTR_TUPLE_STRUCT,
 };
 
 // ---
-
-pub const ATTR_DERIVE: &str = "rust.attr.derive";
-pub const ATTR_REPR: &str = "rust.attr.repr";
-pub const ATTR_TUPLE_STRUCT: &str = "rust.attr.tuple_struct";
 
 pub struct RustCodeGenerator {
     crate_path: PathBuf,
@@ -92,15 +86,7 @@ fn quote_objects(
         };
 
         let filepath = out_path.join(obj.filepath.file_name().unwrap());
-
-        match files.entry(filepath.clone()) {
-            std::collections::hash_map::Entry::Occupied(mut entry) => {
-                entry.get_mut().push(obj);
-            }
-            std::collections::hash_map::Entry::Vacant(entry) => {
-                entry.insert(vec![obj]);
-            }
-        };
+        files.entry(filepath.clone()).or_default().push(obj);
     }
 
     // (module_name, [object_name])
@@ -111,14 +97,9 @@ fn quote_objects(
         // NOTE: Isolating the file stem only works because we're handling datatypes, components
         // and archetypes separately (and even then it's a bit shady, eh).
         let names = objs.iter().map(|obj| obj.name.clone()).collect::<Vec<_>>();
-        match mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string()) {
-            std::collections::hash_map::Entry::Occupied(mut entry) => {
-                entry.get_mut().extend(names);
-            }
-            std::collections::hash_map::Entry::Vacant(entry) => {
-                entry.insert(names);
-            }
-        };
+        mods.entry(filepath.file_stem().unwrap().to_string_lossy().to_string())
+            .or_default()
+            .extend(names);
 
         filepaths.push(filepath.clone());
         let mut file = std::fs::File::create(&filepath)
@@ -126,11 +107,10 @@ fn quote_objects(
             .unwrap();
 
         let mut code = String::new();
-        code.push_str(&format!("// {AUTOGEN_WARNING}\n\n"));
+        code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
 
         for obj in objs {
-            code.push_str(&obj.code);
-            code.push('\n');
+            code.push_text(&obj.code, 1, 0);
         }
         file.write_all(code.as_bytes())
             .with_context(|| format!("{filepath:?}"))
@@ -143,17 +123,17 @@ fn quote_objects(
 
         let mut code = String::new();
 
-        code.push_str(&format!("// {AUTOGEN_WARNING}\n\n"));
+        code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
 
         for module in mods.keys() {
-            code.push_str(&format!("mod {module};\n"));
+            code.push_text(format!("mod {module};"), 1, 0);
 
             // Detect if someone manually created an extension file, and automatically
             // import it if so.
             let mut ext_path = out_path.join(format!("{module}_ext"));
             ext_path.set_extension("rs");
             if ext_path.exists() {
-                code.push_str(&format!("mod {module}_ext;\n"));
+                code.push_text(format!("mod {module}_ext;"), 1, 0);
             }
         }
 
@@ -161,7 +141,7 @@ fn quote_objects(
 
         for (module, names) in &mods {
             let names = names.join(", ");
-            code.push_str(&format!("pub use self::{module}::{{{names}}};\n"));
+            code.push_text(format!("pub use self::{module}::{{{names}}};"), 1, 0);
         }
 
         filepaths.push(path.clone());
@@ -200,23 +180,21 @@ impl QuotedObject {
 
         let mut code = String::new();
 
-        code.push_str(&quote_doc_from_docs(docs));
+        code.push_text(&quote_doc_from_docs(docs), 0, 0);
 
         if let Some(clause) = quote_derive_clause_from_obj(obj) {
-            code.push_str(&clause);
-            code.push('\n');
+            code.push_text(&clause, 1, 0);
         }
         if let Some(clause) = quote_repr_clause_from_obj(obj) {
-            code.push_str(&clause);
-            code.push('\n');
+            code.push_text(&clause, 1, 0);
         }
 
         let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
         if is_tuple_struct {
-            code.push_str(&format!("pub struct {name}("));
+            code.push_text(&format!("pub struct {name}("), 0, 0);
         } else {
-            code.push_str(&format!("pub struct {name} {{\n"));
+            code.push_text(&format!("pub struct {name} {{"), 1, 0);
         }
 
         for field in fields {
@@ -233,7 +211,7 @@ impl QuotedObject {
                 deprecated: _,
             } = field;
 
-            code.push_str(&quote_doc_from_docs(docs));
+            code.push_text(&quote_doc_from_docs(docs), 0, 0);
 
             let (typ, _) = quote_field_type_from_field(field, false);
             let typ = if *required {
@@ -243,9 +221,9 @@ impl QuotedObject {
             };
 
             if is_tuple_struct {
-                code.push_str(&format!("pub {typ}"));
+                code.push_text(&format!("pub {typ}"), 0, 0);
             } else {
-                code.push_str(&format!("pub {name}: {typ},\n\n"));
+                code.push_text(&format!("pub {name}: {typ},"), 2, 0);
             }
         }
 
@@ -255,11 +233,10 @@ impl QuotedObject {
             code += "}\n\n";
         }
 
-        code.push_str(&quote_trait_impls_from_obj(arrow_registry, obj));
-        code.push('\n');
+        code.push_text(&quote_trait_impls_from_obj(arrow_registry, obj), 1, 0);
 
         if kind == &ObjectKind::Archetype {
-            code.push_str(&quote_builder_from_obj(obj));
+            code.push_text(&quote_builder_from_obj(obj), 0, 0);
         }
 
         let mut filepath = PathBuf::from(filepath);
@@ -289,18 +266,16 @@ impl QuotedObject {
 
         let mut code = String::new();
 
-        code.push_str(&quote_doc_from_docs(docs));
+        code.push_text(&quote_doc_from_docs(docs), 0, 0);
 
         if let Some(clause) = quote_derive_clause_from_obj(obj) {
-            code.push_str(&clause);
-            code.push('\n');
+            code.push_text(&clause, 1, 0);
         }
         if let Some(clause) = quote_repr_clause_from_obj(obj) {
-            code.push_str(&clause);
-            code.push('\n');
+            code.push_text(&clause, 1, 0);
         }
 
-        code.push_str(&format!("pub enum {name} {{\n"));
+        code.push_text(&format!("pub enum {name} {{"), 1, 0);
 
         for field in fields {
             let ObjectField {
@@ -315,17 +290,16 @@ impl QuotedObject {
                 deprecated: _,
             } = field;
 
-            code.push_str(&quote_doc_from_docs(docs));
+            code.push_text(&quote_doc_from_docs(docs), 0, 0);
 
             let (typ, _) = quote_field_type_from_field(field, false);
 
-            code.push_str(&format!("{name}({typ}),\n\n"));
+            code.push_text(&format!("{name}({typ}),"), 2, 0);
         }
 
         code += "}\n\n";
 
-        code.push_str(&quote_trait_impls_from_obj(arrow_registry, obj));
-        code.push('\n');
+        code.push_text(&quote_trait_impls_from_obj(arrow_registry, obj), 1, 0);
 
         let mut filepath = PathBuf::from(filepath);
         filepath.set_extension("rs");
@@ -353,6 +327,10 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
 }
 
 /// Returns type name as string and whether it was force unwrapped.
+///
+/// Specifying `unwrap = true` will unwrap the final type before returning it, e.g. `Vec<String>`
+/// becomes just `String`.
+/// The returned boolean indicates whether there was anything to unwrap at all.
 fn quote_field_type_from_field(field: &ObjectField, unwrap: bool) -> (String, bool) {
     let mut unwrapped = false;
     let typ = &field.typ;
@@ -414,19 +392,19 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 }
 
 fn quote_derive_clause_from_obj(obj: &Object) -> Option<String> {
-    obj.try_get_attr::<String>(ATTR_DERIVE)
+    obj.try_get_attr::<String>(RUST_ATTR_DERIVE)
         .map(|what| format!("#[derive({what})]"))
 }
 
 fn quote_repr_clause_from_obj(obj: &Object) -> Option<String> {
-    obj.try_get_attr::<String>(ATTR_REPR)
+    obj.try_get_attr::<String>(RUST_ATTR_REPR)
         .map(|what| format!("#[repr({what})]"))
 }
 
 fn is_tuple_struct_from_obj(obj: &Object) -> bool {
     obj.is_struct()
         && obj.fields.len() == 1
-        && obj.try_get_attr::<String>(ATTR_TUPLE_STRUCT).is_some()
+        && obj.try_get_attr::<String>(RUST_ATTR_TUPLE_STRUCT).is_some()
 }
 
 fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> String {
@@ -571,7 +549,7 @@ fn quote_builder_from_obj(obj: &Object) -> String {
 
     let mut code = String::new();
 
-    code.push_str(&format!("impl {name} {{\n"));
+    code.push_text(&format!("impl {name} {{"), 1, 0);
     {
         // --- impl new() ---
 
@@ -591,7 +569,7 @@ fn quote_builder_from_obj(obj: &Object) -> String {
             })
             .collect::<Vec<_>>()
             .join(", ");
-        code.push_str(&format!("pub fn new({new_params}) -> Self {{\n"));
+        code.push_text(&format!("pub fn new({new_params}) -> Self {{"), 1, 0);
         {
             code += "Self {\n";
             {
@@ -599,16 +577,20 @@ fn quote_builder_from_obj(obj: &Object) -> String {
                     let (_, unwrapped) = quote_field_type_from_field(field, true);
                     if unwrapped {
                         // This was originally a vec/array!
-                        code.push_str(&format!(
-                            "{}: {}.into_iter().map(Into::into).collect(),\n",
-                            field.name, field.name
-                        ));
+                        code.push_text(
+                            &format!(
+                                "{}: {}.into_iter().map(Into::into).collect(),",
+                                field.name, field.name
+                            ),
+                            1,
+                            0,
+                        );
                     } else {
-                        code.push_str(&format!("{}: {}.into(),\n", field.name, field.name));
+                        code.push_text(&format!("{}: {}.into(),", field.name, field.name), 1, 0);
                     }
                 }
                 for field in &optional {
-                    code.push_str(&format!("{}: None,\n", field.name));
+                    code.push_text(&format!("{}: None,", field.name), 1, 0);
                 }
             }
             code += "}\n";
@@ -623,21 +605,27 @@ fn quote_builder_from_obj(obj: &Object) -> String {
 
             if unwrapped {
                 // This was originally a vec/array!
-                code.push_str(&format!(
-                    "pub fn with_{name}(mut self, {name}: impl IntoIterator<Item = impl Into<{typ}>>) -> Self {{\n",
-                ));
+                code.push_text(&format!(
+                    "pub fn with_{name}(mut self, {name}: impl IntoIterator<Item = impl Into<{typ}>>) -> Self {{",
+                ), 1, 0);
                 {
-                    code.push_str(&format!(
-                        "self.{name} = Some({name}.into_iter().map(Into::into).collect());\n"
-                    ));
+                    code.push_text(
+                        &format!(
+                            "self.{name} = Some({name}.into_iter().map(Into::into).collect());"
+                        ),
+                        1,
+                        0,
+                    );
                     code += "self\n";
                 }
             } else {
-                code.push_str(&format!(
-                    "pub fn with_{name}(mut self, {name}: impl Into<{typ}>) -> Self {{\n",
-                ));
+                code.push_text(
+                    &format!("pub fn with_{name}(mut self, {name}: impl Into<{typ}>) -> Self {{",),
+                    1,
+                    0,
+                );
                 {
-                    code.push_str(&format!("self.{name} = Some({name}.into());\n"));
+                    code.push_text(&format!("self.{name} = Some({name}.into());"), 1, 0);
                     code += "self\n";
                 }
             }
