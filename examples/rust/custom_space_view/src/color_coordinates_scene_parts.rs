@@ -30,10 +30,15 @@ impl ScenePartCollection<ColorCoordinatesSpaceView> for ColorCoordinatesScenePar
     }
 }
 
-/// Our scene(-parts) consist of single part which holds a list of egui-colors and their instance ids.
+/// Our scene(-parts) consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
 pub struct InstanceColors {
-    pub colors: Vec<(EntityPath, Vec<(InstanceKey, egui::Color32)>)>,
+    pub colors: Vec<(EntityPath, Vec<ColorWithInstanceKey>)>,
+}
+
+pub struct ColorWithInstanceKey {
+    pub color: egui::Color32,
+    pub instance_key: InstanceKey,
 }
 
 impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
@@ -76,7 +81,10 @@ impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
                             .filter_map(|(instance_key, color)| {
                                 color.map(|color| {
                                     let [r, g, b, _] = color.to_array();
-                                    (instance_key, egui::Color32::from_rgb(r, g, b))
+                                    ColorWithInstanceKey {
+                                        color: egui::Color32::from_rgb(r, g, b),
+                                        instance_key,
+                                    }
                                 })
                             })
                             .collect(),

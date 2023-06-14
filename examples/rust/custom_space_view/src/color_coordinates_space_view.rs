@@ -10,7 +10,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::color_coordinates_scene_parts::ColorCoordinatesSceneParts;
+use crate::color_coordinates_scene_parts::{ColorCoordinatesSceneParts, ColorWithInstanceKey};
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -204,7 +204,11 @@ fn color_space_ui(
     // Circles for the colors in the scene.
     for (ent_path, colors) in &scene.parts.colors.colors {
         let ent_highlight = scene.highlights.entity_highlight(ent_path.hash());
-        for (instance_key, color) in colors {
+        for ColorWithInstanceKey {
+            instance_key,
+            color,
+        } in colors
+        {
             let highlight = ent_highlight.index_highlight(*instance_key);
 
             let (x, y) = position_at(*color);
@@ -228,7 +232,7 @@ fn color_space_ui(
 
             let interact = ui.interact(
                 egui::Rect::from_center_size(center, egui::Vec2::splat(radius * 2.0)),
-                ui.id().with(("circle", instance_key, ent_path.hash())),
+                ui.id().with(("circle", &ent_path, instance_key)),
                 egui::Sense::click(),
             );
 
