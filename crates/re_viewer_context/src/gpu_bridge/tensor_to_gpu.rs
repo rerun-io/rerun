@@ -201,7 +201,7 @@ fn class_id_tensor_to_gpu(
     Ok(ColormappedTexture {
         texture: main_texture_handle,
         range: [0.0, (colormap_width * colormap_height) as f32],
-        decode_srgb: true,
+        decode_srgb: false, // Setting this to true would affect the class ids, not the color they resolve to.
         multiply_rgb_with_alpha: false, // already premultiplied!
         gamma: 1.0,
         color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
