@@ -104,6 +104,11 @@ def log_image(
 
     if jpeg_quality is not None:
         # TODO(emilk): encode JPEG in background thread instead
+
+        if image.dtype not in ['uint8', 'sint32', 'float32']:
+            # Convert to a format supported by Image.fromarray
+            image = image.astype('float32')
+
         pil_image = Image.fromarray(image)
         output = BytesIO()
         pil_image.save(output, format="JPEG", quality=jpeg_quality)
