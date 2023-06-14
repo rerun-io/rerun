@@ -39,3 +39,22 @@ pub fn quote_doc_from_docs(docs: &Docs, tags: &[&str]) -> Vec<String> {
 
     lines
 }
+
+pub trait StringExt {
+    fn push_text(&mut self, text: impl AsRef<str>, linefeeds: usize, indent: usize) -> &mut Self;
+    fn push_unindented_text(&mut self, text: impl AsRef<str>, linefeeds: usize) -> &mut Self;
+}
+
+impl StringExt for String {
+    fn push_text(&mut self, text: impl AsRef<str>, linefeeds: usize, indent: usize) -> &mut Self {
+        self.push_str(&indent::indent_all_by(indent, text.as_ref()));
+        self.push_str(&vec!["\n"; linefeeds].join(""));
+        self
+    }
+
+    fn push_unindented_text(&mut self, text: impl AsRef<str>, linefeeds: usize) -> &mut Self {
+        self.push_str(&unindent::unindent(text.as_ref()));
+        self.push_str(&vec!["\n"; linefeeds].join(""));
+        self
+    }
+}

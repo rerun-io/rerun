@@ -443,7 +443,7 @@ pub struct ObjectField {
 
     /// Whether the field is required.
     ///
-    /// Always true for `struct` types.
+    /// Always true for IDL definitions using flatbuffers' `struct` type (as opposed to `table`).
     pub required: bool,
 
     /// Whether the field is deprecated.
@@ -642,8 +642,6 @@ impl Type {
                 let union = &enums[field_type.index() as usize];
                 Self::Object(union.name().to_owned())
             }
-            // NOTE: flatbuffers doesn't support directly nesting multiple layers of arrays, they
-            // always have to be wrapped into intermediate layers of structs or tables.
             FbsBaseType::Array => Self::Array {
                 elem_type: ElementType::from_raw_base_type(
                     enums,
@@ -718,8 +716,6 @@ impl ElementType {
                 flatten_scalar_wrappers(obj)
             }
             FbsBaseType::Union => unimplemented!("{inner_type:#?}"), // NOLINT
-            // NOTE: flatbuffers doesn't support directly nesting multiple layers of arrays, they
-            // always have to be wrapped into intermediate layers of structs or tables.
             FbsBaseType::None
             | FbsBaseType::UType
             | FbsBaseType::Array
