@@ -1,8 +1,6 @@
 -r ../examples/python/arkitscenes/requirements.txt
 -r ../examples/python/colmap/requirements.txt
 -r ../examples/python/dicom/requirements.txt
--r ../examples/python/dna/requirements.txt
--r ../examples/python/minimal/requirements.txt
 -r ../examples/python/mp_pose/requirements.txt
 -r ../examples/python/plots/requirements.txt
 -r ../examples/python/tracking_hf_opencv/requirements.txt
