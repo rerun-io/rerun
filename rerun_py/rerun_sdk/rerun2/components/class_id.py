@@ -18,7 +18,7 @@ class ClassId:
 
     id: int
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.id)
 
 
@@ -63,7 +63,7 @@ pa.register_extension_type(ClassIdType())
 
 class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: ClassIdArrayLike | None):
+    def from_similar(data: ClassIdArrayLike | None) -> pa.Array:
         if data is None:
             return ClassIdType().wrap_array(pa.array([], type=ClassIdType().storage_type))
         else:

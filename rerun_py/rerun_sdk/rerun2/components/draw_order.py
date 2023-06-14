@@ -26,7 +26,7 @@ class DrawOrder:
 
     value: float
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.value)
 
 
@@ -64,7 +64,7 @@ pa.register_extension_type(DrawOrderType())
 
 class DrawOrderArray(pa.ExtensionArray, DrawOrderArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: DrawOrderArrayLike | None):
+    def from_similar(data: DrawOrderArrayLike | None) -> pa.Array:
         if data is None:
             return DrawOrderType().wrap_array(pa.array([], type=DrawOrderType().storage_type))
         else:

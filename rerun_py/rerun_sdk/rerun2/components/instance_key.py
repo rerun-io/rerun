@@ -18,7 +18,7 @@ class InstanceKey:
 
     value: int
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.value)
 
 
@@ -56,7 +56,7 @@ pa.register_extension_type(InstanceKeyType())
 
 class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: InstanceKeyArrayLike | None):
+    def from_similar(data: InstanceKeyArrayLike | None) -> pa.Array:
         if data is None:
             return InstanceKeyType().wrap_array(pa.array([], type=InstanceKeyType().storage_type))
         else:

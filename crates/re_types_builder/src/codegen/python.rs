@@ -510,7 +510,7 @@ fn quote_array_method_from_obj(objects: &Objects, obj: &Object) -> String {
     let field_name = &obj.fields[0].name;
     unindent::unindent(&format!(
         "
-        def __array__(self):
+        def __array__(self) -> npt.ArrayLike:
             return np.asarray(self.{field_name})
         ",
     ))
@@ -795,7 +795,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 class {many}(pa.ExtensionArray, {many}Ext):  # type: ignore[misc]
                     @staticmethod
-                    def from_similar(data: {many_aliases} | None):
+                    def from_similar(data: {many_aliases} | None) -> pa.Array:
                         if data is None:
                             return {arrow}().wrap_array(pa.array([], type={arrow}().storage_type))
                         else:
