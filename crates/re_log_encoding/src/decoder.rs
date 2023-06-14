@@ -170,7 +170,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         re_tracing::profile_function!();
 
         let mut len = [0_u8; MESSAGE_HEADER_SIZE];
-        self.decompressor.read_exact(&mut len).ok()?;
+        self.decompressor.get_mut().read_exact(&mut len).ok()?;
         let len = u64::from_le_bytes(len) as usize;
 
         self.buffer.resize(len, 0);

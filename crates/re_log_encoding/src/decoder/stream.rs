@@ -234,7 +234,6 @@ mod tests {
             for _ in 0..n {
                 encoder.append(&fake_log_msg()).unwrap();
             }
-            encoder.finish().unwrap();
         }
         buffer
     }

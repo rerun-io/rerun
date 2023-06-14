@@ -39,7 +39,6 @@ pub fn encode_to_bytes<'a>(
         for msg in msgs {
             encoder.append(msg)?;
         }
-        encoder.finish()?;
     }
     Ok(bytes)
 }
@@ -68,6 +67,10 @@ impl<W: std::io::Write> Lz4Compressor<W> {
         } else {
             Err(EncodeError::AlreadyFinished)
         }
+    }
+
+    pub fn get_mut(&mut self) -> &mut W {
+        self.lz4_encoder.as_mut().unwrap().get_mut()
     }
 
     pub fn finish(&mut self) -> Result<(), EncodeError> {
@@ -115,16 +118,10 @@ impl<W: std::io::Write> Compressor<W> {
                 write.write_all(bytes).map_err(EncodeError::Write)
             }
             Compressor::Lz4(lz4) => {
-                lz4.write(&len)?;
-                lz4.write(bytes)
+                lz4.get_mut().write(&len).map_err(EncodeError::Write)?;
+                lz4.write(bytes)?;
+                lz4.finish()
             }
-        }
-    }
-
-    pub fn finish(&mut self) -> Result<(), EncodeError> {
-        match self {
-            Compressor::Off(_) => Ok(()),
-            Compressor::Lz4(lz4) => lz4.finish(),
         }
     }
 }
@@ -169,10 +166,6 @@ impl<W: std::io::Write> Encoder<W> {
 
         compressor.write(buffer)
     }
-
-    pub fn finish(&mut self) -> Result<(), EncodeError> {
-        self.compressor.finish()
-    }
 }
 
 pub fn encode<'a>(
@@ -184,7 +177,7 @@ pub fn encode<'a>(
     for message in messages {
         encoder.append(message)?;
     }
-    encoder.finish()
+    Ok(())
 }
 
 pub fn encode_owned(
@@ -196,5 +189,5 @@ pub fn encode_owned(
     for message in messages {
         encoder.append(&message)?;
     }
-    encoder.finish()
+    Ok(())
 }

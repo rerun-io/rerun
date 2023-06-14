@@ -143,7 +143,6 @@ impl MemorySinkStorage {
                     encoder.append(message)?;
                 }
             }
-            encoder.finish()?;
         }
 
         Ok(buffer.into_inner())
