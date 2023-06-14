@@ -1,0 +1,61 @@
+[package]
+name = "re_types"
+authors.workspace = true
+description = "The built-in Rerun data types, component types, and archetypes."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+## Enable color conversions.
+ecolor = ["dep:ecolor"]
+
+## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
+glam = ["dep:glam", "dep:macaw"]
+
+
+[dependencies]
+
+# External
+arrow2 = { workspace = true, features = [
+  "io_ipc",
+  "io_print",
+  "compute_concatenate",
+] }
+bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
+document-features = "0.2"
+
+# External (optional)
+ecolor = { workspace = true, optional = true }
+glam = { workspace = true, optional = true }
+macaw = { workspace = true, optional = true }
+
+
+[dev-dependencies]
+
+# External
+glam.workspace = true
+itertools.workspace = true
+
+
+[build-dependencies]
+
+# Rerun
+re_build_tools.workspace = true
+re_types_builder.workspace = true
+
+# External
+xshell = "0.2"
