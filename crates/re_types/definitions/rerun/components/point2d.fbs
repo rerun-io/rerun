@@ -11,15 +11,15 @@ namespace rerun.components;
 
 /// A point in 2D space.
 struct Point2D (
-  "arrow.attr.transparent",
-  "python.attr.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
-  "python.attr.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
-  "rust.attr.tuple_struct",
-  "rust.attr.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
+  "attr.arrow.transparent",
+  "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
+  "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
+  "attr.rust.tuple_struct",
+  "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
   position: rerun.datatypes.Vec2D (
-    "python.attr.transparent",
+    "attr.python.transparent",
     order: 100
   );
 }

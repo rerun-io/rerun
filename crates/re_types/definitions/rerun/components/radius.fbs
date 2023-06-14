@@ -11,11 +11,11 @@ namespace rerun.components;
 
 /// A Radius component.
 struct Radius (
-  "arrow.attr.transparent",
-  "python.attr.aliases": "float",
-  "python.attr.array_aliases": "npt.NDArray[np.float32]",
-  "rust.attr.tuple_struct",
-  "rust.attr.derive": "Debug, Clone, Copy, PartialEq, PartialOrd",
+  "attr.arrow.transparent",
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.NDArray[np.float32]",
+  "attr.rust.tuple_struct",
+  "attr.rust.derive": "Debug, Clone, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
   value: float;
