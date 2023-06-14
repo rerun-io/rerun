@@ -466,7 +466,7 @@ fn quote_str_repr_from_obj(obj: &Object) -> String {
 
     unindent::unindent(
         r#"
-        def __str__(self):
+        def __str__(self) -> str:
             s = f"rr.{type(self).__name__}(\n"
 
             from dataclasses import fields
@@ -482,7 +482,7 @@ fn quote_str_repr_from_obj(obj: &Object) -> String {
 
             return s
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return str(self)
 
         "#,
@@ -535,7 +535,7 @@ fn quote_str_method_from_obj(objects: &Objects, obj: &Object) -> String {
     let field_name = &obj.fields[0].name;
     unindent::unindent(&format!(
         "
-        def __str__(self):
+        def __str__(self) -> str:
             return self.{field_name}
         ",
     ))

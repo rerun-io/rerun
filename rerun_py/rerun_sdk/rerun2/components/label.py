@@ -16,7 +16,7 @@ class Label:
 
     value: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 

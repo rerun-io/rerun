@@ -38,7 +38,7 @@ class ColorArrayExt:
             elif array.dtype.type == np.uint32:
                 array = np.asarray(data).flatten()
             else:
-                array = np.asarray(data).reshape((-1, 4))
+                array = np.asarray(data, dtype=np.uint8).reshape((-1, 4))
                 array = u8_array_to_rgba(array)
 
         return arrow().wrap_array(pa.array(array, type=arrow().storage_type))
