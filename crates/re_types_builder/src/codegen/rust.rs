@@ -10,8 +10,8 @@ use std::{
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, RERUN_ATTR_COMPONENT_OPTIONAL, RERUN_ATTR_COMPONENT_RECOMMENDED,
-    RERUN_ATTR_COMPONENT_REQUIRED, RUST_ATTR_DERIVE, RUST_ATTR_REPR, RUST_ATTR_TUPLE_STRUCT,
+    Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE, ATTR_RUST_REPR, ATTR_RUST_TUPLE_STRUCT,
 };
 
 // ---
@@ -392,19 +392,19 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 }
 
 fn quote_derive_clause_from_obj(obj: &Object) -> Option<String> {
-    obj.try_get_attr::<String>(RUST_ATTR_DERIVE)
+    obj.try_get_attr::<String>(ATTR_RUST_DERIVE)
         .map(|what| format!("#[derive({what})]"))
 }
 
 fn quote_repr_clause_from_obj(obj: &Object) -> Option<String> {
-    obj.try_get_attr::<String>(RUST_ATTR_REPR)
+    obj.try_get_attr::<String>(ATTR_RUST_REPR)
         .map(|what| format!("#[repr({what})]"))
 }
 
 fn is_tuple_struct_from_obj(obj: &Object) -> bool {
     obj.is_struct()
         && obj.fields.len() == 1
-        && obj.try_get_attr::<String>(RUST_ATTR_TUPLE_STRUCT).is_some()
+        && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some()
 }
 
 fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> String {
@@ -471,10 +471,10 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> S
                 (num_components, components)
             }
 
-            let (num_required, required) = compute_components(obj, RERUN_ATTR_COMPONENT_REQUIRED);
+            let (num_required, required) = compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED);
             let (num_recommended, recommended) =
-                compute_components(obj, RERUN_ATTR_COMPONENT_RECOMMENDED);
-            let (num_optional, optional) = compute_components(obj, RERUN_ATTR_COMPONENT_OPTIONAL);
+                compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED);
+            let (num_optional, optional) = compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL);
 
             let num_all = num_required + num_recommended + num_optional;
             let all = [required.as_str(), recommended.as_str(), optional.as_str()]
