@@ -1,9 +1,6 @@
--r ../examples/python/api_demo/requirements.txt
--r ../examples/python/car/requirements.txt
--r ../examples/python/clock/requirements.txt
--r ../examples/python/structure_from_motion/requirements.txt
--r ../examples/python/signed_distance_fields/requirements.txt
+-r ../examples/python/arkit_scenes/requirements.txt
+-r ../examples/python/detect_and_track_objects/requirements.txt
 -r ../examples/python/dicom_mri/requirements.txt
+-r ../examples/python/human_pose_tracking/requirements.txt
 -r ../examples/python/plots/requirements.txt
--r ../examples/python/raw_mesh/requirements.txt
--r ../examples/python/text_logging/requirements.txt
+-r ../examples/python/structure_from_motion/requirements.txt
