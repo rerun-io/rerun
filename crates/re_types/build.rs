@@ -1,5 +1,7 @@
 //! Generates Rust & Python code from flatbuffers definitions.
 
+use std::path::PathBuf;
+
 use xshell::{cmd, Shell};
 
 use re_build_tools::{
@@ -84,6 +86,15 @@ fn main() {
         "./definitions/rerun/archetypes.fbs",
     );
 
+    let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("pyproject.toml")
+        .to_string_lossy()
+        .to_string();
+
     // NOTE: This requires both `black` and `ruff` to be in $PATH, but only for contributors,
     // not end users.
     // Even for contributors, `black` and `ruff` won't be needed unless they edit some of the
@@ -96,7 +107,12 @@ fn main() {
     // the build.
     //
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(sh, "black {PYTHON_OUTPUT_DIR_PATH}").run().ok();
+    cmd!(
+        sh,
+        "black --config {pyproject_path} {PYTHON_OUTPUT_DIR_PATH}"
+    )
+    .run()
+    .ok();
 
     // NOTE: We're purposefully ignoring the error here.
     //
@@ -104,7 +120,12 @@ fn main() {
     // the build.
     //
     // The CI will catch the unformatted files at PR time and complain appropriately anyhow.
-    cmd!(sh, "ruff --fix {PYTHON_OUTPUT_DIR_PATH}").run().ok();
+    cmd!(
+        sh,
+        "ruff --config {pyproject_path} --fix {PYTHON_OUTPUT_DIR_PATH}"
+    )
+    .run()
+    .ok();
 
     write_versioning_hash(SOURCE_HASH_PATH, new_hash);
 }
