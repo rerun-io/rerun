@@ -4,12 +4,7 @@ use anyhow::Context as _;
 use arrow2::datatypes::{DataType, Field, UnionMode};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::{ElementType, Object, Type};
-
-// ---
-
-pub const ARROW_ATTR_TRANSPARENT: &str = "arrow.attr.transparent";
-pub const ARROW_ATTR_SPARSE_UNION: &str = "arrow.attr.sparse_union";
+use crate::{ElementType, Object, Type, ARROW_ATTR_SPARSE_UNION, ARROW_ATTR_TRANSPARENT};
 
 // --- Registry ---
 
@@ -59,7 +54,7 @@ impl ArrowRegistry {
         let num_fields = obj.fields.len();
 
         assert!(
-            !(is_transparent && (!is_struct || num_fields != 1)),
+            !is_transparent || (is_struct && num_fields == 1),
             "cannot have a transparent arrow object with any number of fields but 1: {:?} has {num_fields}",
             obj.fqname,
         );
