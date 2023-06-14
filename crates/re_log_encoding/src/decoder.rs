@@ -120,7 +120,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
         let header = match MessageHeader::decode(&mut self.read) {
             Ok(header) => header,
-            Err(e) => match e {
+            Err(err) => match err {
                 DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                     return None
                 }
@@ -131,22 +131,22 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         match self.compression {
             Compression::Off => {
                 self.uncompressed.resize(header.uncompressed as usize, 0);
-                if let Err(e) = self.read.read_exact(&mut self.uncompressed) {
-                    return Some(Err(DecodeError::Read(e)));
+                if let Err(err) = self.read.read_exact(&mut self.uncompressed) {
+                    return Some(Err(DecodeError::Read(err)));
                 }
             }
             Compression::LZ4 => {
                 self.compressed.resize(header.compressed as usize, 0);
-                if let Err(e) = self.read.read_exact(&mut self.compressed) {
-                    return Some(Err(DecodeError::Read(e)));
+                if let Err(err) = self.read.read_exact(&mut self.compressed) {
+                    return Some(Err(DecodeError::Read(err)));
                 }
                 self.uncompressed.resize(header.uncompressed as usize, 0);
 
                 re_tracing::profile_scope!("lz4");
-                if let Err(e) =
+                if let Err(err) =
                     lz4_flex::block::decompress_into(&self.compressed, &mut self.uncompressed)
                 {
-                    return Some(Err(DecodeError::Lz4(e)));
+                    return Some(Err(DecodeError::Lz4(err)));
                 }
             }
         }

@@ -19,10 +19,13 @@ use super::DecodeError;
 pub struct StreamDecoder {
     /// Compression options
     compression: Compression,
+
     /// Incoming chunks are stored here
     chunks: ChunkBuffer,
+
     /// The uncompressed bytes are stored in this buffer before being read by `rmp_serde`
     uncompressed: Vec<u8>,
+
     /// The stream state
     state: State,
 }
@@ -106,9 +109,11 @@ type Chunk = Cursor<Vec<u8>>;
 struct ChunkBuffer {
     /// Any incoming chunks are queued until they are emptied
     queue: VecDeque<Chunk>,
+
     /// When `try_read` is called and we don't have enough bytes yet,
     /// we store whatever we do have in this buffer
     buffer: Vec<u8>,
+
     /// The cursor points to the end of the used range in `buffer`
     cursor: usize,
 }
@@ -215,8 +220,8 @@ mod tests {
                 Ok(None) => {
                     panic!("failed to read message: message could not be read in full");
                 }
-                Err(e) => {
-                    panic!("failed to read message: {e}");
+                Err(err) => {
+                    panic!("failed to read message: {err}");
                 }
             }
         }};
