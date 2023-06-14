@@ -51,7 +51,9 @@
         .header {
             width: 100%;
             height: 44px;
-            background: #111415;
+            /* background: #111415; */
+            /* Actual value from Rerun Viewer */
+            background: #141414;
 
         }
 
@@ -109,7 +111,7 @@
             letter-spacing: -0.12px;
         }
 
-        a {
+        a .button {
             display: inline-block;
             background: white;
             color: black;
@@ -136,11 +138,11 @@
 </head>
 
 <body>
-    <!-- The Wasm code will resize the canvas dynamically -->
     <div class="header"></div>
     <div class="container">
         <div class="centered hidden" id="center_text"></div>
     </div>
+    <!-- The Wasm code will resize the canvas dynamically -->
     <canvas id="the_canvas_id" class="hidden"></canvas>
 
     <script src="https://fifteen-thirtyeight.rerun.io/script.js" data-site="QKMCQFTQ" defer></script>
@@ -192,7 +194,7 @@
                     Rerun is not yet supported on mobile browsers.
                 </p>
                 <p>
-                    <a href="#" id="try_anyways">Try anyways</a>
+                    <a class="button" href="#" id="try_anyways">Try anyways</a>
                 </p>`);
             document.querySelector('#try_anyways').addEventListener('click', function (event) {
                 event.preventDefault();
