@@ -42,6 +42,8 @@
             top: 0%;
             left: 50%;
             transform: translate(-50%, 0%);
+            /* canvas must be on top when visible */
+            z-index: 1000;
         }
 
 
@@ -136,10 +138,10 @@
 <body>
     <!-- The Wasm code will resize the canvas dynamically -->
     <div class="header"></div>
-    <canvas id="the_canvas_id" class="hidden"></canvas>
     <div class="container">
         <div class="centered hidden" id="center_text"></div>
     </div>
+    <canvas id="the_canvas_id" class="hidden"></canvas>
 
     <script src="https://fifteen-thirtyeight.rerun.io/script.js" data-site="QKMCQFTQ" defer></script>
 
@@ -171,6 +173,16 @@
             center_text_elem.innerHTML = html;
             center_text_elem.classList.remove("visible");
             center_text_elem.classList.add("hidden");
+        }
+        function show_canvas(html) {
+            canvas_elem = document.getElementById("the_canvas_id");
+            canvas_elem.classList.remove("hidden");
+            canvas_elem.classList.add("visible");
+        }
+        function hide_canvas(html) {
+            canvas_elem = document.getElementById("the_canvas_id");
+            canvas_elem.classList.remove("visible");
+            canvas_elem.classList.add("hidden");
         }
 
         // On mobile platforms show a warning, but provide a link to try anyways
@@ -320,8 +332,7 @@
 
             console.debug("App started.");
             hide_center_html();
-            document.getElementById("the_canvas_id").classList.remove("hidden");
-            document.getElementById("the_canvas_id").classList.add("visible");
+            show_canvas();
 
             if (window.location !== window.parent.location) {
                 window.parent.postMessage("READY", "*");
@@ -367,6 +378,7 @@
                 // loading the wasm probably failed.
             }
 
+            hide_canvas();
             show_center_html(`
                 <p>
                     An error occurred during loading:
