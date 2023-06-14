@@ -10,7 +10,7 @@ use std::{
 use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Type, PYTHON_ATTR_ALIASES, PYTHON_ATTR_ARRAY_ALIASES, PYTHON_ATTR_TRANSPARENT,
+    Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_PYTHON_TRANSPARENT,
 };
 
 // ---
@@ -544,9 +544,9 @@ fn quote_str_method_from_obj(objects: &Objects, obj: &Object) -> String {
 fn quote_aliases_from_object(obj: &Object) -> String {
     assert!(obj.kind != ObjectKind::Archetype);
 
-    let aliases = obj.try_get_attr::<String>(PYTHON_ATTR_ALIASES);
+    let aliases = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES);
     let array_aliases = obj
-        .try_get_attr::<String>(PYTHON_ATTR_ARRAY_ALIASES)
+        .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
         .unwrap_or_default();
 
     let name = &obj.name;
@@ -682,7 +682,7 @@ fn quote_field_type_from_field(
             // agnostic) in a python specific quoting function... a static helper at the very least
             // would be nice.
             let is_transparent = field
-                .try_get_attr::<String>(PYTHON_ATTR_TRANSPARENT)
+                .try_get_attr::<String>(ATTR_PYTHON_TRANSPARENT)
                 .is_some();
             if is_transparent {
                 let target = objects.get(fqname);
