@@ -14,7 +14,13 @@ import pyarrow as pa
 
 @dataclass
 class Color:
-    """An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha."""
+    """
+    An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+
+    Float colors are assumed to be in 0-1 gamma sRGB space.
+    All other colors are assumed to be in 0-255 gamma sRGB space.
+    If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
+    """
 
     rgba: int
 
