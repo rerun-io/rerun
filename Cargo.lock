@@ -1495,7 +1495,7 @@ dependencies = [
 [[package]]
 name = "ehttp"
 version = "0.2.0"
-source = "git+https://github.com/jprochazk/ehttp.git#6f8af22c7931441099dc3bb2d330c917afad865f"
+source = "git+https://github.com/jprochazk/ehttp.git#b94663ccd0f272d3962888c7c03bb92277b6e64e"
 dependencies = [
  "futures-util",
  "js-sys",
