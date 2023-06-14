@@ -82,7 +82,7 @@ py-lint:
 
 # Run fast unittests
 py-test:
-    python -m pytest rerun_py/tests/unit/
+    python -m pytest -vv rerun_py/tests/unit/
 
 # Serve the python docs locally
 py-docs-serve:

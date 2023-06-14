@@ -16,7 +16,7 @@ class Label:
 
     value: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 
@@ -33,7 +33,7 @@ LabelArrayLike = Union[
 from rerun2.components.label_ext import LabelArrayExt  # noqa: E402
 
 
-class LabelType(pa.ExtensionType):
+class LabelType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.utf8(), "rerun.components.Label")
 
@@ -57,7 +57,7 @@ pa.register_extension_type(LabelType())
 
 class LabelArray(pa.ExtensionArray, LabelArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: LabelArrayLike | None):
+    def from_similar(data: LabelArrayLike | None) -> pa.Array:
         if data is None:
             return LabelType().wrap_array(pa.array([], type=LabelType().storage_type))
         else:

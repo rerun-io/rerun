@@ -26,7 +26,7 @@ class DrawOrder:
 
     value: float
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.value)
 
 
@@ -40,7 +40,7 @@ DrawOrderArrayLike = Union[DrawOrderLike, Sequence[DrawOrderLike], npt.NDArray[n
 from rerun2.components.draw_order_ext import DrawOrderArrayExt  # noqa: E402
 
 
-class DrawOrderType(pa.ExtensionType):
+class DrawOrderType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.DrawOrder")
 
@@ -64,7 +64,7 @@ pa.register_extension_type(DrawOrderType())
 
 class DrawOrderArray(pa.ExtensionArray, DrawOrderArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: DrawOrderArrayLike | None):
+    def from_similar(data: DrawOrderArrayLike | None) -> pa.Array:
         if data is None:
             return DrawOrderType().wrap_array(pa.array([], type=DrawOrderType().storage_type))
         else:

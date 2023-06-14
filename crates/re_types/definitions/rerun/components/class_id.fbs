@@ -13,8 +13,8 @@ namespace rerun.components;
 /// \rs Used to look up a `crate::components::ClassDescription` within the `crate::components::AnnotationContext`.
 struct ClassId (
   "attr.arrow.transparent",
-  "attr.python.aliases": "float",
-  "attr.python.array_aliases": "npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]",
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32], npt.NDArray[np.uint64]",
   "attr.rust.derive": "Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.tuple_struct",
   order: 100

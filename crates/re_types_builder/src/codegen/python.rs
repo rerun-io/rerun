@@ -466,7 +466,7 @@ fn quote_str_repr_from_obj(obj: &Object) -> String {
 
     unindent::unindent(
         r#"
-        def __str__(self):
+        def __str__(self) -> str:
             s = f"rr.{type(self).__name__}(\n"
 
             from dataclasses import fields
@@ -482,7 +482,7 @@ fn quote_str_repr_from_obj(obj: &Object) -> String {
 
             return s
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return str(self)
 
         "#,
@@ -510,7 +510,7 @@ fn quote_array_method_from_obj(objects: &Objects, obj: &Object) -> String {
     let field_name = &obj.fields[0].name;
     unindent::unindent(&format!(
         "
-        def __array__(self):
+        def __array__(self) -> npt.ArrayLike:
             return np.asarray(self.{field_name})
         ",
     ))
@@ -535,7 +535,7 @@ fn quote_str_method_from_obj(objects: &Objects, obj: &Object) -> String {
     let field_name = &obj.fields[0].name;
     unindent::unindent(&format!(
         "
-        def __str__(self):
+        def __str__(self) -> str:
             return self.{field_name}
         ",
     ))
@@ -771,7 +771,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 from .{pkg}_ext import {many}Ext # noqa: E402
 
-                class {arrow}(pa.ExtensionType):
+                class {arrow}(pa.ExtensionType): # type: ignore[misc]
                     def __init__(self: type[pa.ExtensionType]) -> None:
                         pa.ExtensionType.__init__(
                             self, {datatype}, "{fqname}"
@@ -795,7 +795,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 class {many}(pa.ExtensionArray, {many}Ext):  # type: ignore[misc]
                     @staticmethod
-                    def from_similar(data: {many_aliases} | None):
+                    def from_similar(data: {many_aliases} | None) -> pa.Array:
                         if data is None:
                             return {arrow}().wrap_array(pa.array([], type={arrow}().storage_type))
                         else:

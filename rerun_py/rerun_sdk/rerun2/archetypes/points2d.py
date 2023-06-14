@@ -69,7 +69,7 @@ class Points2D:
     Unique identifiers for each individual point in the batch.
     """
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = f"rr.{type(self).__name__}(\n"
 
         from dataclasses import fields
@@ -86,7 +86,7 @@ class Points2D:
 
         return s
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
     def __init__(

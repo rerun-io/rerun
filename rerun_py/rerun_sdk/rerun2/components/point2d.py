@@ -18,7 +18,7 @@ class Point2D:
 
     position: npt.ArrayLike
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.position)
 
 
@@ -32,7 +32,7 @@ Point2DArrayLike = Union[Point2DLike, Sequence[Point2DLike], npt.NDArray[np.floa
 from rerun2.components.point2d_ext import Point2DArrayExt  # noqa: E402
 
 
-class Point2DType(pa.ExtensionType):
+class Point2DType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(
             self, pa.list_(pa.field("item", pa.float32(), False, {}), 2), "rerun.components.Point2D"
@@ -58,7 +58,7 @@ pa.register_extension_type(Point2DType())
 
 class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Point2DArrayLike | None):
+    def from_similar(data: Point2DArrayLike | None) -> pa.Array:
         if data is None:
             return Point2DType().wrap_array(pa.array([], type=Point2DType().storage_type))
         else:
