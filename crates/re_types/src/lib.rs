@@ -71,30 +71,38 @@
 //! auto-generated class.
 //! The simplest way to get started is to look at any of the existing examples.
 
-use std::borrow::Cow;
+// ---
+
+pub type DatatypeName = ::std::borrow::Cow<'static, str>;
 
 /// A [`Datatype`] describes plain old data.
 pub trait Datatype {
-    fn name() -> Cow<'static, str>;
+    fn name() -> DatatypeName;
 
     fn to_arrow_datatype() -> arrow2::datatypes::DataType;
 }
+
+pub type ComponentName = ::std::borrow::Cow<'static, str>;
 
 pub trait Component {
-    fn name() -> Cow<'static, str>;
+    fn name() -> ComponentName;
 
     fn to_arrow_datatype() -> arrow2::datatypes::DataType;
 }
 
-pub trait Archetype {
-    fn name() -> Cow<'static, str>;
+pub type ArchetypeName = ::std::borrow::Cow<'static, str>;
 
-    fn required_components() -> Vec<Cow<'static, str>>;
-    fn recommended_components() -> Vec<Cow<'static, str>>;
-    fn optional_components() -> Vec<Cow<'static, str>>;
+pub trait Archetype {
+    fn name() -> ArchetypeName;
+
+    fn required_components() -> Vec<ComponentName>;
+    fn recommended_components() -> Vec<ComponentName>;
+    fn optional_components() -> Vec<ComponentName>;
 
     fn to_arrow_datatypes() -> Vec<arrow2::datatypes::DataType>;
 }
+
+// ---
 
 /// Number of decimals shown for all vector display methods.
 pub const DISPLAY_PRECISION: usize = 3;
