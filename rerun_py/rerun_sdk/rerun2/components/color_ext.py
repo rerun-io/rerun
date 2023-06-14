@@ -2,17 +2,16 @@ from __future__ import annotations
 
 __all__ = ["ColorArrayExt"]
 
-from typing import Any, Sequence, Type
+from typing import Any, Sequence
 
 import numpy as np
 import pyarrow as pa
-
 from rerun.color_conversion import u8_array_to_rgba
 
 
 class ColorArrayExt:
     @staticmethod
-    def _from_similar(data: Any | None, *, mono: type, mono_aliases: Type, many: type, many_aliases: Type, arrow: type):
+    def _from_similar(data: Any | None, *, mono: type, mono_aliases: type, many: type, many_aliases: type, arrow: type):
         """
         Normalize flexible colors arrays.
 
@@ -33,7 +32,7 @@ class ColorArrayExt:
             if array.dtype.type in [np.float32, np.float64]:
                 # Assume gamma-space colors
                 array = np.asarray(data).reshape((-1, 4))
-                array = u8_array_to_rgba(np.require(np.round(array * 255.0), np.uint8))
+                array = u8_array_to_rgba(np.asarray(np.round(array * 255.0), np.uint8))
             elif array.dtype.type == np.uint32:
                 array = np.asarray(data).flatten()
             else:

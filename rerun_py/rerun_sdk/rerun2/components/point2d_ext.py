@@ -2,7 +2,7 @@ from __future__ import annotations
 
 __all__ = ["Point2DArrayExt"]
 
-from typing import Any, Sequence, Type
+from typing import Any, Sequence
 
 import numpy as np
 import pyarrow as pa
@@ -10,10 +10,12 @@ import pyarrow as pa
 
 class Point2DArrayExt:
     @staticmethod
-    def _from_similar(data: Any | None, *, mono: type, mono_aliases: Type, many: type, many_aliases: Type, arrow: type):
+    def _from_similar(data: Any | None, *, mono: type, mono_aliases: type, many: type, many_aliases: type, arrow: type):
         if isinstance(data, Sequence) and (len(data) > 0 and isinstance(data[0], mono)):
-            arrays = [np.asarray(datum) for datum in data]
+            points = np.concatenate([np.asarray(datum.position, dtype=np.float32) for datum in data])
         else:
-            arrays = np.require(np.asarray(data), np.float32).reshape((-1, 2)).tolist()
+            points = np.asarray(data, dtype=np.float32)
 
-        return arrow().wrap_array(pa.array(arrays, type=arrow().storage_type))
+        points = points.reshape((-1,))
+
+        return arrow().wrap_array(pa.FixedSizeListArray.from_arrays(points, type=arrow().storage_type))
