@@ -52,7 +52,7 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Stable diffusion.")
     parser.add_argument(
         "--image",
         type=str,

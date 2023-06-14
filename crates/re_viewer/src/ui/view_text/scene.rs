@@ -100,5 +100,10 @@ impl SceneText {
                 }
             }
         }
+
+        {
+            crate::profile_scope!("sort");
+            self.text_entries.sort_by_key(|entry| entry.time);
+        }
     }
 }

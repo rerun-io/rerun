@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Sequence
 
-import cv2 as cv
+import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
@@ -84,7 +84,7 @@ class Detector:
         inputs = self.feature_extractor(images=pil_im_small, return_tensors="pt")
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
-        rgb_scaled = cv.resize(rgb, scaled_size)
+        rgb_scaled = cv2.resize(rgb, scaled_size)
         rr.log_image("image_scaled/rgb", rgb_scaled)
 
         logging.debug("Pass image to detection network")
@@ -160,7 +160,7 @@ class Tracker:
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        self.tracker = cv.TrackerCSRT_create()
+        self.tracker = cv2.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -200,7 +200,7 @@ class Tracker:
     def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        self.tracker = cv.TrackerCSRT_create()
+        self.tracker = cv2.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -319,7 +319,7 @@ def track_objects(video_path: str) -> None:
     detector = Detector(coco_categories=coco_categories)
 
     logging.info("Loading input video: %s", str(video_path))
-    cap = cv.VideoCapture(video_path)
+    cap = cv2.VideoCapture(video_path)
     frame_idx = 0
 
     label_strs = [cat["name"] or str(cat["id"]) for cat in coco_categories]
@@ -332,7 +332,7 @@ def track_objects(video_path: str) -> None:
             logging.info("End of video")
             break
 
-        rgb = cv.cvtColor(bgr, cv.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         rr.log_image("image/rgb", rgb)
 
         if not trackers or frame_idx % 40 == 0:
@@ -372,18 +372,14 @@ def setup_looging() -> None:
     rerun_handler = rr.log.text.LoggingHandler("logs")
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(1)
-    logger.addHandler(stream_handler)
-    logger.setLevel(-1)
 
 
 def main() -> None:
     # Ensure the logging gets written to stderr:
     logging.getLogger().addHandler(logging.StreamHandler())
-    logging.getLogger().setLevel("INFO")
+    logging.getLogger().setLevel("DEBUG")
 
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Example applying simple object detection and tracking on a video.")
     parser.add_argument(
         "--video",
         type=str,
