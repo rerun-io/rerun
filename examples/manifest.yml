@@ -97,40 +97,46 @@ root:
         In some of the examples such as [Stable Diffusion](#stable-diffusion), the algorithm is run on-line,
         and may benefit from a GPU-enabled PyTorch machine.
       children:
-        - name: arkitscenes
-          python: python/arkitscenes
+        - name: arkit_scenes
+          python: python/arkit_scenes
 
-        - name: colmap
-          python: python/colmap
+        - name: structure-from-motion
+          python: python/structure_from_motion
 
-        - name: deep-sdf
-          python: python/deep_sdf
+        - name: signed-distance-fields
+          python: python/signed_distance_fields
 
-        - name: dicom
-          python: python/dicom
+        - name: dicom-mri
+          python: python/dicom_mri
 
-        - name: mp-pose
-          python: python/mp_pose
+        - name: human-pose-tracking
+          python: python/human_pose_tracking
 
-        - name: nyud
-          python: python/nyud
+        - name: live-camera-edge-detection
+          python: python/live_camera_edge_detection
+
+        - name: rgbd
+          python: python/rgbd
 
         - name: objectron
           python: python/objectron
           rust: rust/objectron
 
+        - name: ros-node
+          python: python/ros_node
+
         - name: raw-mesh
           python: python/raw_mesh
           rust: rust/raw_mesh
 
-        - name: segment-anything
-          python: python/segment_anything
+        - name: segment-anything-model
+          python: python/segment_anything_model
 
-        - name: stable-diffusion
-          python: python/stable_diffusion
+        - name: depth-guided-stable-diffusion
+          python: python/depth_guided_stable_diffusion
 
-        - name: tracking-hf-opencv
-          python: python/tracking_hf_opencv
+        - name: detect-and-track-objects
+          python: python/detect_and_track_objects
 
         - name: face-tracking
           python: python/face_tracking

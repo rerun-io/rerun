@@ -1,6 +1,7 @@
 ---
-title: Tracking HF OpenCV
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/tracking_hf_opencv/main.py
+title: Detect and Track Objects
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and_track_objects/main.py
+tags: [2D, huggingface, object-detection, object-tracking, opencv]
 ---
 
 ![tracking_hf_opencv example>](https://static.rerun.io/4995d2ec51249accbd287fdaef5debbfe9645a83_tracking_hf_opencv1.png)
@@ -10,6 +11,6 @@ Another more elaborate example applying simple object detection and segmentation
 For more info see [here](https://huggingface.co/docs/transformers/index)
 
 ```bash
-pip install -r examples/python/tracking_hf_opencv/requirements.txt
-python examples/python/tracking_hf_opencv/main.py
+pip install -r examples/python/detect_and_track_objects/requirements.txt
+python examples/python/detect_and_track_objects/main.py
 ```

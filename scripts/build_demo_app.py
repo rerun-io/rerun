@@ -192,7 +192,7 @@ BASE_PATH = "web_demo"
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 # When adding examples, add their requirements to `requirements-web-demo.txt`
 EXAMPLES = {
-    "arkitscenes": {
+    "arkit_scenes": {
         "title": "ARKit Scenes",
         "description": """
         Visualizes the <a href="https://github.com/apple/ARKitScenes/" target="_blank">ARKitScenes dataset</a>
@@ -201,7 +201,7 @@ EXAMPLES = {
         """,
         "build_args": [],
     },
-    "colmap": {
+    "structure_from_motion": {
         "title": "Structure From Motion",
         "description": """
         An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.
@@ -216,7 +216,7 @@ EXAMPLES = {
         """,
         "build_args": ["--dataset=colmap_fiat", "--resize=800x600"],
     },
-    "dicom": {
+    "dicom_mri": {
         "title": "Dicom MRI",
         "description": """
         Example using a <a href="https://en.wikipedia.org/wiki/DICOM" target="_blank">DICOM</a> MRI scan.
@@ -224,7 +224,7 @@ EXAMPLES = {
         """,
         "build_args": [],
     },
-    "mp_pose": {
+    "human_pose_tracking": {
         "title": "Human Pose Tracking",
         "description": """
         Use the <a href="https://google.github.io/mediapipe/" target="_blank">MediaPipe</a> Pose
@@ -239,8 +239,8 @@ EXAMPLES = {
         """,
         "build_args": [],
     },
-    "tracking_hf_opencv": {
-        "title": "Object Tracking and Segmentation",
+    "detect_and_track_objects": {
+        "title": "Detect and Track Objects",
         "description": """
         Applying simple object detection and segmentation on a video using the Huggingface `transformers` library.
         Tracking across frames is performed using

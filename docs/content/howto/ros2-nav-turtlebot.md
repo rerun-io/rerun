@@ -17,7 +17,7 @@ covering how to use ROS 2 itself.  If you are a Rerun user that is curious about
 please consult the [ROS 2 Documentation](https://docs.ros.org/en/humble/index.html) instead.
 
 All of the code for this guide can be found on GitHub in
-[rerun/examples/python/ros](https://github.com/rerun-io/rerun/blob/main/examples/python/ros/).
+[rerun/examples/python/ros_node](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/).
 
 ![Rerun 3D view of ROS 2 turtlebot3 navigation demo](https://static.rerun.io/e51d3e26478661d11b339de5fdfed4f95d07c53c_ros1_preview.png)
 
@@ -56,10 +56,10 @@ you should do so now:
 git clone git@github.com:rerun-io/rerun.git
 cd rerun
 ```
-The example code can be found in the folder: `examples/python/ros`.
+The example code can be found in the folder: `examples/python/ros_node`.
 
 In addition to the ROS dependencies, the Rerun node makes use of some dependencies specified in
-[`requirements.txt`](https://github.com/rerun-io/rerun/blob/main/examples/python/ros/requirements.txt).
+[`requirements.txt`](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/requirements.txt).
 
 Rerun recommends using `venv` (or the equivalent) to create an environment for installing these
 dependencies.  Note that *after* setting up your virtualenv you will need to activate your ROS2
@@ -67,7 +67,7 @@ environment.
 ```bash
 $ python3 -m venv venv
 $ source venv/bin/active
-(venv) $ pip install -r examples/python/ros/requirements.txt
+(venv) $ pip install -r examples/python/ros_node/requirements.txt
 (venv) $ source /opt/ros/humble/setup.bash
 ```
 
@@ -75,7 +75,7 @@ $ source venv/bin/active
 
 With the previous dependencies installed, and gazebo running, you should now be able to launch the Rerun ROS example:
 ```bash
-(venv) $ python3 examples/python/ros/main.py
+(venv) $ python3 examples/python/ros_node/main.py
 ```
 
 You should see a window similar to:
@@ -103,7 +103,7 @@ If you are familiar with the turtlebot nav example and rviz, this view will like
 
 ## Code Explanation
 
-It may be helpful to open [rerun/examples/python/ros/main.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros/main.py)
+It may be helpful to open [rerun/examples/python/ros_node/main.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/main.py)
 to follow along.
 
 Outside of TF, the node is mostly stateless. At a very high level, for each ROS message we are interested in, we create a
@@ -337,7 +337,7 @@ def scan_callback(self, scan: LaserScan) -> None:
 
 ### URDF to `log_mesh`
 The URDF conversion is actually the most complex operation in this example. As such the functionality
-is split out into a separate [rerun/examples/python/ros/rerun_urdf.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros/rerun_urdf.py)
+is split out into a separate [rerun/examples/python/ros_node/rerun_urdf.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/rerun_urdf.py)
 helper.
 
 Loading the URDF from the `/robot_description` topic is relatively straightforward since we use
