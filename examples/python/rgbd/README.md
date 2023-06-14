@@ -1,7 +1,7 @@
 ---
 title: RGBD
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/rgbd/main.py
-tags: 2D, 3D, depth, nyud, pinhole-camera
+tags: [2D, 3D, depth, nyud, pinhole-camera]
 ---
 
 ![nyud example>](https://static.rerun.io/dc312393543c6ade698a402c5fe4dc8c588cf029_nyud1.png)

@@ -1,7 +1,7 @@
 ---
 title: Live Camera Edge Detection
 python: https://github.com/rerun-io/rerun/blob/latest/examples/python/live_camera_edge_detection/main.py
-tags: 2D, canny, live, opencv
+tags: [2D, canny, live, opencv]
 ---
 
 Very simple example of capturing from a live camera.

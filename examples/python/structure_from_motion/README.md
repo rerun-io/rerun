@@ -1,7 +1,7 @@
 ---
 title: Structure from Motion
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/structure_from_motion/main.py
-tags: 2D, 3D, colmap, pinhole-camera, time-series
+tags: [2D, 3D, colmap, pinhole-camera, time-series]
 ---
 
 ![colmap example>](https://static.rerun.io/ab7edab1aabe2c80faab3f901512c7841279c488_colmap1.png)

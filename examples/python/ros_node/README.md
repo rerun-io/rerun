@@ -1,7 +1,7 @@
 ---
 title: ROS Node
 python: https://github.com/rerun-io/rerun/blob/latest/examples/python/ros_node/main.py
-tags: 2D, 3D, mesh, pinhole-camera, ros, time-series
+tags: [2D, 3D, mesh, pinhole-camera, ros, time-series]
 ---
 
 # Overview

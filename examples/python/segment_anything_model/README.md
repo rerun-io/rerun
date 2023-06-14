@@ -1,7 +1,7 @@
 ---
 title: Segment Anything Model
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/segment_anything_model/main.py
-tags: 2D, sam, segmentation
+tags: [2D, sam, segmentation]
 ---
 
 ![segment_anything example>](https://static.rerun.io/d9c302c9a053940e3b485dc3efb2ae8130561099_segment_anything1.png)

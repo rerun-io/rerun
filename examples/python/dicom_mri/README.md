@@ -1,7 +1,7 @@
 ---
 title: Dicom MRI
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/dicom_mri/main.py
-tags: tensor, mri, dicom
+tags: [tensor, mri, dicom]
 ---
 
 ![dicom example>](https://static.rerun.io/86b90a1e2eeb1c6a43fc64b32c7e8b81183063fb_dicom1.png)

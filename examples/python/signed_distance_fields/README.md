@@ -1,7 +1,7 @@
 ---
 title: Signed Distance Fields
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/signed_distance_fields/main.py
-tags:  3D, mesh, tensor
+tags:  [3D, mesh, tensor]
 ---
 
 ![deep_sdf example>](https://static.rerun.io/b56f2cb92fecf99da7c60d396dc1e981d7a50c85_deep_sdf1.png)
