@@ -323,10 +323,10 @@ impl QuotedObject {
         if obj.kind == ObjectKind::Archetype {
             code.push_text(quote_builder_from_obj(objects, obj), 1, 4);
         } else {
-            code.push_text(quote_aliases_from_object(obj), 1, 4);
+            code.push_text(quote_aliases_from_object(obj), 1, 0);
         }
 
-        code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 4);
+        code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 0);
 
         let mut filepath = PathBuf::from(filepath);
         filepath.set_extension("py");
@@ -402,8 +402,9 @@ impl QuotedObject {
         code.push_text(quote_str_repr_from_obj(obj), 1, 4);
         code.push_text(quote_array_method_from_obj(objects, obj), 1, 4);
         code.push_text(quote_str_method_from_obj(objects, obj), 1, 4);
-        code.push_text(quote_aliases_from_object(obj), 1, 4);
-        code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 4);
+
+        code.push_text(quote_aliases_from_object(obj), 1, 0);
+        code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 0);
 
         let mut filepath = PathBuf::from(filepath);
         filepath.set_extension("py");
