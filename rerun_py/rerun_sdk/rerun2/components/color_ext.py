@@ -11,7 +11,7 @@ from rerun.color_conversion import u8_array_to_rgba
 
 class ColorArrayExt:
     @staticmethod
-    def _from_similar(data: Any | None, *, mono: type, mono_aliases: type, many: type, many_aliases: type, arrow: type):
+    def _from_similar(data: Any | None, *, mono: type, mono_aliases: Any, many: type, many_aliases: Any, arrow: type):
         """
         Normalize flexible colors arrays.
 
