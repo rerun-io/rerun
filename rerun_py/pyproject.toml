@@ -86,6 +86,9 @@ select = [
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
 
+[tool.ruff.isort]
+required-imports = ["from __future__ import annotations"]
+
 [tool.maturin]
 # We use a python package from inside the rerun_sdk folder to avoid conflicting
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Sequence
 
-import cv2 as cv
+import cv2
 import numpy as np
 import numpy.typing as npt
 import requests
@@ -84,9 +84,8 @@ class Detector:
         inputs = self.feature_extractor(images=pil_im_small, return_tensors="pt")
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
-        rgb_scaled = cv.resize(rgb, scaled_size)
-        rr.log_image("image/scaled/rgb", rgb_scaled)
-        rr.log_disconnected_space("image/scaled")  # Note: Haven't implemented 2D transforms yet.
+        rgb_scaled = cv2.resize(rgb, scaled_size)
+        rr.log_image("image_scaled/rgb", rgb_scaled)
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)
@@ -99,7 +98,7 @@ class Detector:
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
-        rr.log_segmentation_image("image/scaled/segmentation", mask)
+        rr.log_segmentation_image("image_scaled/segmentation", mask)
 
         boxes = detections["boxes"].detach().cpu().numpy()
         class_ids = detections["labels"].detach().cpu().numpy()
@@ -130,7 +129,7 @@ class Detector:
         thing_boxes = boxes[things_np, :]
         thing_class_ids = class_ids_np[things_np]
         rr.log_rects(
-            "image/scaled/detections/things",
+            "image_scaled/detections/things",
             thing_boxes,
             rect_format=rr.log.rects.RectFormat.XYXY,
             class_ids=thing_class_ids,
@@ -139,7 +138,7 @@ class Detector:
         background_boxes = boxes[~things_np, :]
         background_class_ids = class_ids[~things_np]
         rr.log_rects(
-            "image/scaled/detections/background",
+            "image_scaled/detections/background",
             background_boxes,
             rect_format=rr.log.rects.RectFormat.XYXY,
             class_ids=background_class_ids,
@@ -161,7 +160,7 @@ class Tracker:
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        self.tracker = cv.TrackerCSRT_create()
+        self.tracker = cv2.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -201,7 +200,7 @@ class Tracker:
     def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        self.tracker = cv.TrackerCSRT_create()
+        self.tracker = cv2.TrackerCSRT_create()
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -320,7 +319,7 @@ def track_objects(video_path: str) -> None:
     detector = Detector(coco_categories=coco_categories)
 
     logging.info("Loading input video: %s", str(video_path))
-    cap = cv.VideoCapture(video_path)
+    cap = cv2.VideoCapture(video_path)
     frame_idx = 0
 
     label_strs = [cat["name"] or str(cat["id"]) for cat in coco_categories]
@@ -333,7 +332,7 @@ def track_objects(video_path: str) -> None:
             logging.info("End of video")
             break
 
-        rgb = cv.cvtColor(bgr, cv.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         rr.log_image("image/rgb", rgb)
 
         if not trackers or frame_idx % 40 == 0:
@@ -373,18 +372,14 @@ def setup_looging() -> None:
     rerun_handler = rr.log.text.LoggingHandler("logs")
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(1)
-    logger.addHandler(stream_handler)
-    logger.setLevel(-1)
 
 
 def main() -> None:
     # Ensure the logging gets written to stderr:
     logging.getLogger().addHandler(logging.StreamHandler())
-    logging.getLogger().setLevel("INFO")
+    logging.getLogger().setLevel("DEBUG")
 
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Example applying simple object detection and tracking on a video.")
     parser.add_argument(
         "--video",
         type=str,
@@ -395,8 +390,7 @@ def main() -> None:
     parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "tracking_hf_opencv")
 

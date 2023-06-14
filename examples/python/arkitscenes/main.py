@@ -57,7 +57,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
     # Generate a color per object that can be reused across both 3D obb and their 2D projections
     # TODO(pablovela5620): Once #1581 or #1728 is resolved this can be removed
     color_positions = np.linspace(0, 1, num_objects)
-    colormap = plt.cm.get_cmap("viridis")
+    colormap = plt.colormaps["viridis"]
     colors = [colormap(pos) for pos in color_positions]
 
     for i, label_info in enumerate(annotation["data"]):
@@ -439,8 +439,7 @@ def main() -> None:
         help="Include the high resolution camera and depth images",
     )
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "arkitscenes")
     recording_path = ensure_recording_available(args.video_id, args.include_highres)

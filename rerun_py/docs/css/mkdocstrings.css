@@ -39,7 +39,7 @@ body {
   color: inherit;
 }
 
-.md-typeset p + h1 {
+.md-typeset p+h1 {
   margin-top: 2rem;
 }
 
@@ -50,4 +50,8 @@ header {
 code {
   --md-code-bg-color: #e3e3e3;
   font-family: "JetBrains Mono", monospace;
+}
+
+.md-typeset a {
+  --md-typeset-a-color: #526cfe;
 }

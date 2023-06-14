@@ -37,7 +37,7 @@ demo = ["re_sdk?/demo"]
 ## Only relevant if feature `sdk` is enabled.
 glam = ["re_sdk?/glam"]
 
-## Integration with the [`image`](https://crates.io/crates/image/) crate.
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
 image = ["re_sdk?/image"]
 
 ## Support spawning a native viewer.

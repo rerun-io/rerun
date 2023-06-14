@@ -26,7 +26,7 @@ def log_bar_chart() -> None:
     mean = 0
     std = 1
     variance = np.square(std)
-    x = np.arange(-5, 5, 0.01)
+    x = np.arange(-5, 5, 0.1)
     y = np.exp(-np.square(x - mean) / 2 * variance) / (np.sqrt(2 * np.pi * variance))
     rr.log_tensor("bar_chart", y)
 
@@ -84,8 +84,7 @@ def main() -> None:
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
     )
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "plot")
 

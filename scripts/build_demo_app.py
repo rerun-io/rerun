@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Build `demo.rerun.io`."""
+from __future__ import annotations
 
 import argparse
 import http.server
@@ -10,7 +11,6 @@ import shutil
 import subprocess
 import threading
 from functools import partial
-from typing import List
 
 from jinja2 import Template
 
@@ -22,7 +22,7 @@ class Example:
         title: str,
         description: str,
         commit: str,
-        build_args: List[str],
+        build_args: list[str],
     ):
         self.path = os.path.join("examples/python", name, "main.py")
         self.name = name
@@ -39,15 +39,15 @@ class Example:
 
         logging.info(f"Running {in_path}, outputting to {out_dir}")
         os.makedirs(out_dir, exist_ok=True)
+
+        args = [
+            "python3",
+            in_path,
+            f"--save={out_dir}/data.rrd",
+        ]
+
         subprocess.run(
-            [
-                "python3",
-                in_path,
-                "--num-frames=30",
-                "--steps=200",
-                f"--save={out_dir}/data.rrd",
-            ]
-            + self.build_args,
+            args + self.build_args,
             check=True,
         )
 
@@ -56,7 +56,7 @@ class Example:
             return "script_add_args" in f.read()
 
 
-def copy_static_assets(examples: List[Example]) -> None:
+def copy_static_assets(examples: list[Example]) -> None:
     # copy root
     src = os.path.join(SCRIPT_PATH, "demo_assets/static")
     dst = BASE_PATH
@@ -80,7 +80,7 @@ def build_wasm() -> None:
     subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
 
 
-def copy_wasm(examples: List[Example]) -> None:
+def copy_wasm(examples: list[Example]) -> None:
     files = ["re_viewer_bg.wasm", "re_viewer.js"]
     for example in examples:
         for file in files:
@@ -90,7 +90,7 @@ def copy_wasm(examples: List[Example]) -> None:
             )
 
 
-def collect_examples() -> List[Example]:
+def collect_examples() -> list[Example]:
     commit = os.environ.get("COMMIT_HASH") or "main"
     logging.info(f"Commit hash: {commit}")
     examples = []
@@ -100,21 +100,21 @@ def collect_examples() -> List[Example]:
             title=EXAMPLES[name]["title"],
             description=EXAMPLES[name]["description"],
             commit=commit,
-            build_args=EXAMPLES[name]["build_args"].split(" "),
+            build_args=EXAMPLES[name]["build_args"],
         )
         if example.supports_save():
             examples.append(example)
     return examples
 
 
-def save_examples_rrd(examples: List[Example]) -> None:
+def save_examples_rrd(examples: list[Example]) -> None:
     logging.info("\nSaving examples as .rrd")
 
     for example in examples:
         example.save()
 
 
-def render_examples(examples: List[Example]) -> None:
+def render_examples(examples: list[Example]) -> None:
     logging.info("\nRendering examples")
 
     template_path = os.path.join(SCRIPT_PATH, "demo_assets/templates/example.html")
@@ -155,9 +155,7 @@ def main() -> None:
     )
     parser.add_argument("--skip-wasm-build", action="store_true", help="Skip the web viewer Wasm build")
 
-    args, unknown = parser.parse_known_args()
-    for arg in unknown:
-        logging.warning(f"unknown arg: {arg}")
+    args = parser.parse_args()
 
     if not args.skip_wasm_build:
         build_wasm()
@@ -192,21 +190,21 @@ EXAMPLES = {
         This is a swiss-army-knife example showing the usage of most of the Rerun SDK APIs.
         The data logged is static and meaningless.
         """,
-        "build_args": "",
+        "build_args": [],
     },
     "car": {
         "title": "Car",
         "description": """
         A very simple 2D car is drawn using OpenCV, and a depth image is simulated and logged as a point cloud.
         """,
-        "build_args": "",
+        "build_args": [],
     },
     "clock": {
         "title": "Clock",
         "description": """
         An example visualizing an analog clock with hour, minute and seconds hands using Rerun Arrow3D primitives.
         """,
-        "build_args": "",
+        "build_args": [],
     },
     "colmap": {
         "title": "COLMAP",
@@ -221,7 +219,7 @@ EXAMPLES = {
         and we use Rerun to visualize the individual camera frames, estimated camera poses,
         and resulting point clouds over time.
         """,
-        "build_args": "--resize=800x600",
+        "build_args": ["--resize=800x600"],
     },
     "dicom": {
         "title": "Dicom",
@@ -229,7 +227,7 @@ EXAMPLES = {
         Example using a <a href="https://en.wikipedia.org/wiki/DICOM" target="_blank">DICOM</a> MRI scan.
         This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
         """,
-        "build_args": "",
+        "build_args": [],
     },
     "plots": {
         "title": "Plots",
@@ -237,7 +235,7 @@ EXAMPLES = {
         This example demonstrates how to log simple plots with the Rerun SDK.
         Charts can be created from 1-dimensional tensors, or from time-varying scalars.
         """,
-        "build_args": "",
+        "build_args": [],
     },
     "raw_mesh": {
         "title": "Raw Mesh",
@@ -245,7 +243,7 @@ EXAMPLES = {
         This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups")
         and their transform hierarchy. Simple material properties are supported.
         """,
-        "build_args": "",
+        "build_args": [],
     },
     "text_logging": {
         "title": "Text Logging",
@@ -255,7 +253,7 @@ EXAMPLES = {
         Rerun is able to act as a Python logging handler, and can show all your Python log messages
         in the viewer next to your other data.
         """,
-        "build_args": "",
+        "build_args": [],
     },
 }
 

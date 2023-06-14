@@ -52,7 +52,7 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Stable diffusion.")
     parser.add_argument(
         "--image",
         type=str,
@@ -110,8 +110,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
     )
 
     rr.script_add_args(parser)
-    args, unknown = parser.parse_known_args()
-    [__import__("logging").warning(f"unknown arg: {arg}") for arg in unknown]
+    args = parser.parse_args()
 
     rr.script_setup(args, "Depth Guided Stable Diffusion")
 

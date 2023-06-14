@@ -53,6 +53,9 @@ struct UniformBuffer {
 
     /// Boolean: decode 0-1 sRGB gamma to linear space before filtering?
     decode_srgb: u32,
+
+    /// Boolean: multiply RGB with alpha before filtering
+    multiply_rgb_with_alpha: u32,
 };
 
 @group(1) @binding(0)

@@ -75,7 +75,10 @@ See: CHANGE comments below
     {% set heading_level = heading_level - 1 %}
   {% endif %}
 
-  <div class="doc doc-contents {% if root %}first{% endif %}">
+  {# CHANGE Relative to Upstream: don't apply the 'first' class since it causes worse CSS formatting for our #}
+  {# generated common API index since we inline bare functions that become root-level rather than modules. #}
+  {#<div class="doc doc-contents {% if root %}first{% endif %}">#}
+  <div class="doc doc-contents">
     {% if config.show_bases and class.bases %}
       <p class="doc doc-class-bases">
         Bases: {% for expression in class.bases -%}

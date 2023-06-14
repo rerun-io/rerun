@@ -45,8 +45,8 @@ pub struct FrameUniformBuffer {
     // Size used for all line radii given with Size::AUTO.
     pub auto_size_lines: f32,
 
-    /// re_renderer defined hardware tier.
-    pub hardware_tier: wgpu_buffer_types::U32RowPadded,
+    /// re_renderer defined device tier.
+    pub device_tier: wgpu_buffer_types::U32RowPadded,
 }
 
 pub(crate) struct GlobalBindings {

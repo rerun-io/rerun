@@ -27,7 +27,7 @@ demo = []
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["re_components/glam"]
 
-## Integration with the [`image`](https://crates.io/crates/image/) crate.
+## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support..
 image = ["re_components/image"]
 
 

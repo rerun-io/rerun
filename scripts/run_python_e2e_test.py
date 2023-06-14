@@ -10,17 +10,17 @@ This is an end-to-end test for testing:
 * TCP connection
 * Data store ingestion
 """
+from __future__ import annotations
 
 import argparse
 import os
 import subprocess
 import sys
 import time
-from typing import List
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Runs end-to-end tests of select python example.")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
     parser.add_argument("--no-pip-reqs", action="store_true", help="Skip installing pip requirements")
 
@@ -80,7 +80,7 @@ def main() -> None:
     print("All tests passed successfully!")
 
 
-def run_example(example: str, args: List[str]) -> None:
+def run_example(example: str, args: list[str]) -> None:
     port = 9752
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
