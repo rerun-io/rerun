@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+from PIL import Image
 
 from rerun import bindings
 from rerun.log.error_utils import _send_warning
+from rerun.log.file import ImageFormat, log_image_file
 from rerun.log.log_decorator import log_decorator
 from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 from rerun.recording_stream import RecordingStream
@@ -27,6 +30,7 @@ def log_image(
     ext: dict[str, Any] | None = None,
     timeless: bool = False,
     recording: RecordingStream | None = None,
+    jpeg_quality: int | None = None,
 ) -> None:
     """
     Log a gray or color image.
@@ -59,6 +63,14 @@ def log_image(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    jpeg_quality:
+        If set, encode the image as a JPEG to save storage space.
+        Higher quality = larger file size.
+        A quality of 95 still saves a lot of space, but is visually very similar.
+        JPEG compression works best for photographs.
+        Only RGB images are supported.
+        Note that compressing to JPEG costs a bit of CPU time, both when logging
+        and later when viewing them.
 
     """
 
@@ -89,6 +101,23 @@ def log_image(
     # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions
     if interpretable_as_image and num_non_empty_dims != len(shape):
         image = np.squeeze(image)
+
+    if jpeg_quality is not None:
+        # TODO(emilk): encode JPEG in background thread instead
+
+        if image.dtype not in ["uint8", "sint32", "float32"]:
+            # Convert to a format supported by Image.fromarray
+            image = image.astype("float32")
+
+        pil_image = Image.fromarray(image)
+        output = BytesIO()
+        pil_image.save(output, format="JPEG", quality=jpeg_quality)
+        jpeg_bytes = output.getvalue()
+        output.close()
+
+        # TODO(emilk): pass draw_order too
+        log_image_file(entity_path=entity_path, img_bytes=jpeg_bytes, img_format=ImageFormat.JPEG, timeless=timeless)
+        return
 
     _log_tensor(entity_path, image, draw_order=draw_order, ext=ext, timeless=timeless, recording=recording)
 
