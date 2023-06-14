@@ -85,8 +85,7 @@ class Detector:
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv.resize(rgb, scaled_size)
-        rr.log_image("image/scaled/rgb", rgb_scaled, jpeg_quality=95)
-        rr.log_disconnected_space("image/scaled")  # Note: Haven't implemented 2D transforms yet.
+        rr.log_image("image_scaled/rgb", rgb_scaled, jpeg_quality=95)
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)
@@ -99,7 +98,7 @@ class Detector:
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
-        rr.log_segmentation_image("image/scaled/segmentation", mask)
+        rr.log_segmentation_image("image_scaled/segmentation", mask)
 
         boxes = detections["boxes"].detach().cpu().numpy()
         class_ids = detections["labels"].detach().cpu().numpy()
@@ -130,7 +129,7 @@ class Detector:
         thing_boxes = boxes[things_np, :]
         thing_class_ids = class_ids_np[things_np]
         rr.log_rects(
-            "image/scaled/detections/things",
+            "image_scaled/detections/things",
             thing_boxes,
             rect_format=rr.log.rects.RectFormat.XYXY,
             class_ids=thing_class_ids,
@@ -139,7 +138,7 @@ class Detector:
         background_boxes = boxes[~things_np, :]
         background_class_ids = class_ids[~things_np]
         rr.log_rects(
-            "image/scaled/detections/background",
+            "image_scaled/detections/background",
             background_boxes,
             rect_format=rr.log.rects.RectFormat.XYXY,
             class_ids=background_class_ids,
