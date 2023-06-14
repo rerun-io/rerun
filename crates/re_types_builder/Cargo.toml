@@ -1,0 +1,38 @@
+[package]
+name = "re_types_builder"
+authors.workspace = true
+description = "Generates code for Rerun's SDKs from flatbuffers definitions."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+
+# External
+anyhow.workspace = true
+arrow2.workspace = true
+convert_case = "0.6"
+flatbuffers = "23.0"
+indent = "0.1"
+unindent.workspace = true
+xshell = "0.2"
+
+
+[build-dependencies]
+
+# Rerun
+re_build_tools.workspace = true
+
+# External
+xshell = "0.2"

@@ -27,6 +27,7 @@
         "bindgroup",
         "colormap",
         "emath",
+        "flatbuffers",
         "framebuffer",
         "hoverable",
         "ilog",

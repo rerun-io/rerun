@@ -1,0 +1,3 @@
+include "./archetypes/points2d.fbs";
+
+namespace rerun.archetypes;

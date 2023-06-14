@@ -55,7 +55,7 @@ fn tensor_ui(
     verbosity: UiVerbosity,
     entity_path: &re_data_store::EntityPath,
     annotations: &Annotations,
-    _encoded_tensor: &Tensor,
+    original_tensor: &Tensor,
     tensor: &DecodedTensor,
 ) {
     // See if we can convert the tensor to a GPU texture.
@@ -100,18 +100,25 @@ fn tensor_ui(
                 }
 
                 ui.label(format!(
-                    "{} x {}",
+                    "{} x {}{}",
                     tensor.dtype(),
-                    format_tensor_shape_single_line(tensor.shape())
+                    format_tensor_shape_single_line(tensor.shape()),
+                    if original_tensor.data.is_compressed_image() {
+                        " (compressed)"
+                    } else {
+                        ""
+                    }
                 ))
-                .on_hover_ui(|ui| tensor_summary_ui(ctx.re_ui, ui, tensor, &tensor_stats));
+                .on_hover_ui(|ui| {
+                    tensor_summary_ui(ctx.re_ui, ui, original_tensor, tensor, &tensor_stats);
+                });
             });
         }
 
         UiVerbosity::All | UiVerbosity::Reduced => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
-                tensor_summary_ui(ctx.re_ui, ui, tensor, &tensor_stats);
+                tensor_summary_ui(ctx.re_ui, ui, original_tensor, tensor, &tensor_stats);
 
                 if let Some(texture) = &texture_result {
                     let max_size = ui
@@ -145,9 +152,9 @@ fn tensor_ui(
 
                     // TODO(emilk): support copying and saving images on web
                     #[cfg(not(target_arch = "wasm32"))]
-                    if _encoded_tensor.data.is_compressed_image() || tensor.could_be_dynamic_image()
+                    if original_tensor.data.is_compressed_image() || tensor.could_be_dynamic_image()
                     {
-                        copy_and_save_image_ui(ui, tensor, _encoded_tensor);
+                        copy_and_save_image_ui(ui, tensor, original_tensor);
                     }
 
                     if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
@@ -204,16 +211,17 @@ fn show_image_at_max_size(
 pub fn tensor_summary_ui_grid_contents(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    tensor: &Tensor,
+    original_tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) {
     let Tensor {
         tensor_id: _,
         shape,
-        data,
+        data: _,
         meaning,
         meter,
-    } = tensor;
+    } = tensor.inner();
 
     re_ui
         .grid_left_hand_label(ui, "Data type")
@@ -256,7 +264,7 @@ pub fn tensor_summary_ui_grid_contents(
         ui.end_row();
     }
 
-    match data {
+    match &original_tensor.data {
         re_components::TensorData::U8(_)
         | re_components::TensorData::U16(_)
         | re_components::TensorData::U32(_)
@@ -309,13 +317,14 @@ pub fn tensor_summary_ui_grid_contents(
 pub fn tensor_summary_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    tensor: &Tensor,
+    original_tensor: &Tensor,
+    tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) {
     egui::Grid::new("tensor_summary_ui")
         .num_columns(2)
         .show(ui, |ui| {
-            tensor_summary_ui_grid_contents(re_ui, ui, tensor, tensor_stats);
+            tensor_summary_ui_grid_contents(re_ui, ui, original_tensor, tensor, tensor_stats);
         });
 }
 

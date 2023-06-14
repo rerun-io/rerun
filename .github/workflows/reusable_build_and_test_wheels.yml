@@ -243,7 +243,7 @@ jobs:
         # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
         shell: bash
         run: |
-          pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+          pip install deprecated numpy>=1.23 pillow>=9.5.0 pyarrow==10.0.1 pytest==7.1.2
 
       - name: Install built wheel
         if: needs.set-config.outputs.RUN_TESTS == 'true'
@@ -280,7 +280,7 @@ jobs:
         with:
           path: examples/python/colmap/dataset/
           # TODO(jleibs): Derive this key from the invocation below
-          key: colmap-dataset-colmap-fiat-v0
+          key: colmap-dataset-colmap-fiat-v1
 
       - name: Generate Embedded RRD file
         if: needs.set-config.outputs.RUN_TESTS == 'true'
@@ -288,8 +288,8 @@ jobs:
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
           mkdir rrd
-          pip install -r examples/python/colmap/requirements.txt
-          python3 examples/python/colmap/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+          pip install -r examples/python/structure_from_motion/requirements.txt
+          python3 examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
 
       # All platforms are currently creating the same rrd file, upload one of them
       - name: Save RRD artifact

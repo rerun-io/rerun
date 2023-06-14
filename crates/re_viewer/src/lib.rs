@@ -28,6 +28,7 @@ pub use remote_viewer_app::RemoteViewerApp;
 pub use store_hub::StoreBundle;
 
 pub mod external {
+    pub use re_data_ui;
     pub use {eframe, egui};
     pub use {
         re_arrow_store, re_arrow_store::external::arrow2, re_components, re_data_store, re_log,
