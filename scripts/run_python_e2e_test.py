@@ -20,7 +20,7 @@ import time
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs Objectron data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Runs end-to-end tests of select python example.")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
     parser.add_argument("--no-pip-reqs", action="store_true", help="Skip installing pip requirements")
 
