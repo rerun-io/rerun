@@ -101,20 +101,20 @@ pub use self::objects::{
 
 // --- Attributes ---
 
-pub const ARROW_ATTR_TRANSPARENT: &str = "arrow.attr.transparent";
-pub const ARROW_ATTR_SPARSE_UNION: &str = "arrow.attr.sparse_union";
+pub const ATTR_ARROW_TRANSPARENT: &str = "attr.arrow.transparent";
+pub const ATTR_ARROW_SPARSE_UNION: &str = "attr.arrow.sparse_union";
 
-pub const RERUN_ATTR_COMPONENT_REQUIRED: &str = "rerun.attr.component_required";
-pub const RERUN_ATTR_COMPONENT_RECOMMENDED: &str = "rerun.attr.component_recommended";
-pub const RERUN_ATTR_COMPONENT_OPTIONAL: &str = "rerun.attr.component_optional";
+pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
+pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recommended";
+pub const ATTR_RERUN_COMPONENT_OPTIONAL: &str = "attr.rerun.component_optional";
 
-pub const PYTHON_ATTR_TRANSPARENT: &str = "python.attr.transparent";
-pub const PYTHON_ATTR_ALIASES: &str = "python.attr.aliases";
-pub const PYTHON_ATTR_ARRAY_ALIASES: &str = "python.attr.array_aliases";
+pub const ATTR_PYTHON_TRANSPARENT: &str = "attr.python.transparent";
+pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
+pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
 
-pub const RUST_ATTR_DERIVE: &str = "rust.attr.derive";
-pub const RUST_ATTR_REPR: &str = "rust.attr.repr";
-pub const RUST_ATTR_TUPLE_STRUCT: &str = "rust.attr.tuple_struct";
+pub const ATTR_RUST_DERIVE: &str = "attr.rust.derive";
+pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
+pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 
 // --- Entrypoints ---
 
