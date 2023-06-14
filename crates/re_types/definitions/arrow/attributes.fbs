@@ -6,7 +6,7 @@ namespace arrow;
 /// matter that only impacts (de)serialization.
 ///
 /// Only applies to unions.
-attribute "arrow.attr.sparse_union";
+attribute "attr.arrow.sparse_union";
 
 /// Marks a single-field object as transparent, affecting its Arrow datatype.
 ///
@@ -14,4 +14,4 @@ attribute "arrow.attr.sparse_union";
 /// matter that only impacts (de)serialization.
 ///
 /// This is generally most useful for getting rid of extraneous `struct` layers.
-attribute "arrow.attr.transparent";
+attribute "attr.arrow.transparent";

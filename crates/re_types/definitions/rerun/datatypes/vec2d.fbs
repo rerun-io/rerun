@@ -8,9 +8,9 @@ namespace rerun.datatypes;
 
 /// A vector in 2D space.
 struct Vec2D (
-  "arrow.attr.transparent",
-  "rust.attr.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
-  "rust.attr.tuple_struct",
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
+  "attr.rust.tuple_struct",
   order: 100
 ) {
   xy: [float: 2];
