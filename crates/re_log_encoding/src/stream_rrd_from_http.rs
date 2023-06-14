@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use re_error::ResultExt as _;
@@ -42,73 +43,53 @@ pub type HttpMessageCallback = dyn Fn(HttpMessage) + Send + Sync;
 pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
-    // TODO(emilk): stream the http request, progressively decoding the .rrd file.
     ehttp::streaming::fetch(ehttp::Request::get(&url), move |part| {
         let mut decoder = StreamDecoder::new();
         match part {
             Ok(part) => match part {
-                ehttp::streaming::Part::Response(response) => {
-                    if response.ok {
+                ehttp::streaming::Part::Response(ehttp::PartialResponse {
+                    ok,
+                    status,
+                    status_text,
+                    ..
+                }) => {
+                    if ok {
                         re_log::debug!("Decoding .rrd file from {url:?}…");
-                        ehttp::streaming::Control::Continue
+                        ControlFlow::Continue(())
                     } else {
-                        let err = format!(
-                            "Failed to fetch .rrd file from {url}: {} {}",
-                            response.status, response.status_text
-                        );
-                        on_msg(HttpMessage::Failure(err.into()));
-                        ehttp::streaming::Control::Break
+                        on_msg(HttpMessage::Failure(
+                            format!("Failed to fetch .rrd file from {url}: {status} {status_text}")
+                                .into(),
+                        ));
+                        ControlFlow::Break(())
                     }
                 }
                 ehttp::streaming::Part::Chunk(chunk) => {
                     decoder.push_chunk(chunk);
                     loop {
                         match decoder.try_read() {
-                            Ok(message) => {
-                                if let Some(message) = message {
-                                    on_msg(HttpMessage::LogMsg(message));
-                                } else {
-                                    break;
-                                }
-                            }
+                            Ok(message) => match message {
+                                Some(message) => on_msg(HttpMessage::LogMsg(message)),
+                                None => return ControlFlow::Continue(()),
+                            },
                             Err(err) => {
                                 on_msg(HttpMessage::Failure(
                                     format!("Failed to fetch .rrd file from {url}: {err}").into(),
                                 ));
-                                return ehttp::streaming::Control::Break;
+                                return ControlFlow::Break(());
                             }
                         }
                     }
-                    ehttp::streaming::Control::Continue
                 }
             },
             Err(err) => {
                 on_msg(HttpMessage::Failure(
                     format!("Failed to fetch .rrd file from {url}: {err}").into(),
                 ));
-                ehttp::streaming::Control::Break
+                ControlFlow::Break(())
             }
         }
     });
-    /* ehttp::fetch(ehttp::Request::get(&url), move |result| match result {
-        Ok(response) => {
-            if response.ok {
-                re_log::debug!("Decoding .rrd file from {url:?}…");
-                decode_rrd(response.bytes, on_msg);
-            } else {
-                let err = format!(
-                    "Failed to fetch .rrd file from {url}: {} {}",
-                    response.status, response.status_text
-                );
-                on_msg(HttpMessage::Failure(err.into()));
-            }
-        }
-        Err(err) => {
-            on_msg(HttpMessage::Failure(
-                format!("Failed to fetch .rrd file from {url}: {err}").into(),
-            ));
-        }
-    }); */
 }
 
 #[cfg(target_arch = "wasm32")]
