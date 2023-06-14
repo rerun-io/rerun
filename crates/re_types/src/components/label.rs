@@ -6,8 +6,8 @@
 pub struct Label(pub String);
 
 impl crate::Component for Label {
-    fn name() -> ::std::borrow::Cow<'static, str> {
-        ::std::borrow::Cow::Borrowed("rerun.components.Label")
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.components.Label")
     }
 
     #[allow(clippy::wildcard_imports)]

@@ -9,8 +9,8 @@
 pub struct KeypointId(pub u16);
 
 impl crate::Component for KeypointId {
-    fn name() -> ::std::borrow::Cow<'static, str> {
-        ::std::borrow::Cow::Borrowed("rerun.components.KeypointId")
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.components.KeypointId")
     }
 
     #[allow(clippy::wildcard_imports)]

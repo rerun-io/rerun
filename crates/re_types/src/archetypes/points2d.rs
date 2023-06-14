@@ -41,48 +41,48 @@ pub struct Points2D {
 }
 
 impl Points2D {
-    pub const REQUIRED_COMPONENTS: [::std::borrow::Cow<'static, str>; 1] =
-        [::std::borrow::Cow::Borrowed("rerun.components.Point2D")];
+    pub const REQUIRED_COMPONENTS: [crate::ComponentName; 1] =
+        [crate::ComponentName::Borrowed("rerun.components.Point2D")];
 
-    pub const RECOMMENDED_COMPONENTS: [::std::borrow::Cow<'static, str>; 2] = [
-        ::std::borrow::Cow::Borrowed("rerun.components.Radius"),
-        ::std::borrow::Cow::Borrowed("rerun.components.Color"),
+    pub const RECOMMENDED_COMPONENTS: [crate::ComponentName; 2] = [
+        crate::ComponentName::Borrowed("rerun.components.Radius"),
+        crate::ComponentName::Borrowed("rerun.components.Color"),
     ];
 
-    pub const OPTIONAL_COMPONENTS: [::std::borrow::Cow<'static, str>; 5] = [
-        ::std::borrow::Cow::Borrowed("rerun.components.Label"),
-        ::std::borrow::Cow::Borrowed("rerun.components.DrawOrder"),
-        ::std::borrow::Cow::Borrowed("rerun.components.ClassId"),
-        ::std::borrow::Cow::Borrowed("rerun.components.KeypointId"),
-        ::std::borrow::Cow::Borrowed("rerun.components.InstanceKey"),
+    pub const OPTIONAL_COMPONENTS: [crate::ComponentName; 5] = [
+        crate::ComponentName::Borrowed("rerun.components.Label"),
+        crate::ComponentName::Borrowed("rerun.components.DrawOrder"),
+        crate::ComponentName::Borrowed("rerun.components.ClassId"),
+        crate::ComponentName::Borrowed("rerun.components.KeypointId"),
+        crate::ComponentName::Borrowed("rerun.components.InstanceKey"),
     ];
 
-    pub const ALL_COMPONENTS: [::std::borrow::Cow<'static, str>; 8] = [
-        ::std::borrow::Cow::Borrowed("rerun.components.Point2D"),
-        ::std::borrow::Cow::Borrowed("rerun.components.Radius"),
-        ::std::borrow::Cow::Borrowed("rerun.components.Color"),
-        ::std::borrow::Cow::Borrowed("rerun.components.Label"),
-        ::std::borrow::Cow::Borrowed("rerun.components.DrawOrder"),
-        ::std::borrow::Cow::Borrowed("rerun.components.ClassId"),
-        ::std::borrow::Cow::Borrowed("rerun.components.KeypointId"),
-        ::std::borrow::Cow::Borrowed("rerun.components.InstanceKey"),
+    pub const ALL_COMPONENTS: [crate::ComponentName; 8] = [
+        crate::ComponentName::Borrowed("rerun.components.Point2D"),
+        crate::ComponentName::Borrowed("rerun.components.Radius"),
+        crate::ComponentName::Borrowed("rerun.components.Color"),
+        crate::ComponentName::Borrowed("rerun.components.Label"),
+        crate::ComponentName::Borrowed("rerun.components.DrawOrder"),
+        crate::ComponentName::Borrowed("rerun.components.ClassId"),
+        crate::ComponentName::Borrowed("rerun.components.KeypointId"),
+        crate::ComponentName::Borrowed("rerun.components.InstanceKey"),
     ];
 }
 
 impl crate::Archetype for Points2D {
-    fn name() -> ::std::borrow::Cow<'static, str> {
-        ::std::borrow::Cow::Borrowed("rerun.archetypes.Points2D")
+    fn name() -> crate::ArchetypeName {
+        crate::ArchetypeName::Borrowed("rerun.archetypes.Points2D")
     }
 
-    fn required_components() -> Vec<::std::borrow::Cow<'static, str>> {
+    fn required_components() -> Vec<crate::ComponentName> {
         Self::REQUIRED_COMPONENTS.to_vec()
     }
 
-    fn recommended_components() -> Vec<::std::borrow::Cow<'static, str>> {
+    fn recommended_components() -> Vec<crate::ComponentName> {
         Self::RECOMMENDED_COMPONENTS.to_vec()
     }
 
-    fn optional_components() -> Vec<::std::borrow::Cow<'static, str>> {
+    fn optional_components() -> Vec<crate::ComponentName> {
         Self::OPTIONAL_COMPONENTS.to_vec()
     }
 
