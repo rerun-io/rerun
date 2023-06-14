@@ -1,6 +1,6 @@
 ---
-title: Human Face Tracking
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/human_face_tracking/main.py
+title: Face Tracking
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/face_tracking/main.py
 tags: [media-pipe, face-tracking, live, camera, 2d, 3d]
 ---
 
@@ -9,8 +9,8 @@ tags: [media-pipe, face-tracking, live, camera, 2d, 3d]
 Use the [MediaPipe](https://google.github.io/mediapipe/) Face Detector and Landmarker solutions to detect and track a human face in image, videos, and camera stream.
 
 ```bash
-pip install -r examples/python/mp_face/requirements.txt
-python examples/python/mp_face/main.py
+pip install -r examples/python/face_tracking/requirements.txt
+python examples/python/face_tracking/main.py
 ```
 
 ## Usage
@@ -18,7 +18,7 @@ python examples/python/mp_face/main.py
 CLI usage help is available using the `--help` option:
 
 ```
-$ python examples/python/mp_face/main.py --help
+$ python examples/python/face_tracking/main.py --help
 usage: main.py [-h] [--demo-image] [--image IMAGE] [--video VIDEO] [--camera CAMERA] [--max-frame MAX_FRAME] [--max-dim MAX_DIM] [--num-faces NUM_FACES] [--headless] [--connect] [--serve] [--addr ADDR] [--save SAVE]
 
 Uses the MediaPipe Face Detection to track a human pose in video.
