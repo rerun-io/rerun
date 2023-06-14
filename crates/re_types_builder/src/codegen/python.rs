@@ -583,8 +583,6 @@ fn quote_aliases_from_object(obj: &Object) -> String {
         0,
     );
 
-    dbg!(&code);
-
     code
 }
 
