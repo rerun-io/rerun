@@ -28,47 +28,52 @@ class KeypointId:
     def __array__(self):
         return np.asarray(self.id)
 
-    KeypointIdLike = Union[KeypointId, float]
 
-    KeypointIdArrayLike = Union[
-        KeypointIdLike, Sequence[KeypointIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
-    ]
+KeypointIdLike = Union[KeypointId, float]
 
-    # --- Arrow support ---
+KeypointIdArrayLike = Union[
+    KeypointIdLike, Sequence[KeypointIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
+]
 
-    from rerun2.components.keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
 
-    class KeypointIdType(pa.ExtensionType):
-        def __init__(self: type[pa.ExtensionType]) -> None:
-            pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.KeypointId")
+# --- Arrow support ---
 
-        def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-            # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-            return b""
+from rerun2.components.keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
 
-        @classmethod
-        def __arrow_ext_deserialize__(
-            cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-        ) -> type[pa.ExtensionType]:
-            # return an instance of this subclass given the serialized metadata.
-            return KeypointIdType()
 
-        def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-            return KeypointIdArray
+class KeypointIdType(pa.ExtensionType):
+    def __init__(self: type[pa.ExtensionType]) -> None:
+        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.KeypointId")
 
-    pa.register_extension_type(KeypointIdType())
+    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
+        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
+        return b""
 
-    class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[misc]
-        @staticmethod
-        def from_similar(data: KeypointIdArrayLike | None):
-            if data is None:
-                return KeypointIdType().wrap_array(pa.array([], type=KeypointIdType().storage_type))
-            else:
-                return KeypointIdArrayExt._from_similar(
-                    data,
-                    mono=KeypointId,
-                    mono_aliases=KeypointIdLike,
-                    many=KeypointIdArray,
-                    many_aliases=KeypointIdArrayLike,
-                    arrow=KeypointIdType,
-                )
+    @classmethod
+    def __arrow_ext_deserialize__(
+        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
+    ) -> type[pa.ExtensionType]:
+        # return an instance of this subclass given the serialized metadata.
+        return KeypointIdType()
+
+    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
+        return KeypointIdArray
+
+
+pa.register_extension_type(KeypointIdType())
+
+
+class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[misc]
+    @staticmethod
+    def from_similar(data: KeypointIdArrayLike | None):
+        if data is None:
+            return KeypointIdType().wrap_array(pa.array([], type=KeypointIdType().storage_type))
+        else:
+            return KeypointIdArrayExt._from_similar(
+                data,
+                mono=KeypointId,
+                mono_aliases=KeypointIdLike,
+                many=KeypointIdArray,
+                many_aliases=KeypointIdArrayLike,
+                arrow=KeypointIdType,
+            )

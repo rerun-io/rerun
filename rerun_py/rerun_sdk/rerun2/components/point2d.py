@@ -21,47 +21,52 @@ class Point2D:
     def __array__(self):
         return np.asarray(self.position)
 
-    Point2DLike = Union[Point2D, npt.NDArray[np.float32], Sequence[float], Tuple[float, float]]
 
-    Point2DArrayLike = Union[Point2DLike, Sequence[Point2DLike], npt.NDArray[np.float32], Sequence[float]]
+Point2DLike = Union[Point2D, npt.NDArray[np.float32], Sequence[float], Tuple[float, float]]
 
-    # --- Arrow support ---
+Point2DArrayLike = Union[Point2DLike, Sequence[Point2DLike], npt.NDArray[np.float32], Sequence[float]]
 
-    from rerun2.components.point2d_ext import Point2DArrayExt  # noqa: E402
 
-    class Point2DType(pa.ExtensionType):
-        def __init__(self: type[pa.ExtensionType]) -> None:
-            pa.ExtensionType.__init__(
-                self, pa.list_(pa.field("item", pa.float32(), False, {}), 2), "rerun.components.Point2D"
+# --- Arrow support ---
+
+from rerun2.components.point2d_ext import Point2DArrayExt  # noqa: E402
+
+
+class Point2DType(pa.ExtensionType):
+    def __init__(self: type[pa.ExtensionType]) -> None:
+        pa.ExtensionType.__init__(
+            self, pa.list_(pa.field("item", pa.float32(), False, {}), 2), "rerun.components.Point2D"
+        )
+
+    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
+        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
+        return b""
+
+    @classmethod
+    def __arrow_ext_deserialize__(
+        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
+    ) -> type[pa.ExtensionType]:
+        # return an instance of this subclass given the serialized metadata.
+        return Point2DType()
+
+    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
+        return Point2DArray
+
+
+pa.register_extension_type(Point2DType())
+
+
+class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]
+    @staticmethod
+    def from_similar(data: Point2DArrayLike | None):
+        if data is None:
+            return Point2DType().wrap_array(pa.array([], type=Point2DType().storage_type))
+        else:
+            return Point2DArrayExt._from_similar(
+                data,
+                mono=Point2D,
+                mono_aliases=Point2DLike,
+                many=Point2DArray,
+                many_aliases=Point2DArrayLike,
+                arrow=Point2DType,
             )
-
-        def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-            # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-            return b""
-
-        @classmethod
-        def __arrow_ext_deserialize__(
-            cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-        ) -> type[pa.ExtensionType]:
-            # return an instance of this subclass given the serialized metadata.
-            return Point2DType()
-
-        def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-            return Point2DArray
-
-    pa.register_extension_type(Point2DType())
-
-    class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]
-        @staticmethod
-        def from_similar(data: Point2DArrayLike | None):
-            if data is None:
-                return Point2DType().wrap_array(pa.array([], type=Point2DType().storage_type))
-            else:
-                return Point2DArrayExt._from_similar(
-                    data,
-                    mono=Point2D,
-                    mono_aliases=Point2DLike,
-                    many=Point2DArray,
-                    many_aliases=Point2DArrayLike,
-                    arrow=Point2DType,
-                )
