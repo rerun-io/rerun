@@ -4,7 +4,7 @@ use anyhow::Context as _;
 use arrow2::datatypes::{DataType, Field, UnionMode};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::{ElementType, Object, Type, ARROW_ATTR_SPARSE_UNION, ARROW_ATTR_TRANSPARENT};
+use crate::{ElementType, Object, Type, ATTR_ARROW_SPARSE_UNION, ATTR_ARROW_TRANSPARENT};
 
 // --- Registry ---
 
@@ -50,7 +50,7 @@ impl ArrowRegistry {
 
     fn arrow_datatype_from_object(&self, obj: &Object) -> LazyDatatype {
         let is_struct = obj.is_struct();
-        let is_transparent = obj.try_get_attr::<String>(ARROW_ATTR_TRANSPARENT).is_some();
+        let is_transparent = obj.try_get_attr::<String>(ATTR_ARROW_TRANSPARENT).is_some();
         let num_fields = obj.fields.len();
 
         assert!(
@@ -79,7 +79,7 @@ impl ArrowRegistry {
             )
         } else {
             let is_sparse = obj
-                .try_get_attr::<String>(ARROW_ATTR_SPARSE_UNION)
+                .try_get_attr::<String>(ATTR_ARROW_SPARSE_UNION)
                 .is_some();
             LazyDatatype::Extension(
                 obj.fqname.clone(),
