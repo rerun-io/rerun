@@ -108,7 +108,6 @@ def collect_examples() -> list[Example]:
         assert example.supports_save(), f'Example "{name}" does not support saving'
         examples.append(example)
 
-
     return examples
 
 
@@ -196,7 +195,9 @@ EXAMPLES = {
     "arkitscenes": {
         "title": "ARKit Scenes",
         "description": """
-        TODO
+        Visualizes the <a href="https://github.com/apple/ARKitScenes/" target="_blank">ARKitScenes dataset</a>
+        using the Rerun SDK.
+        The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.
         """,
         "build_args": [],
     },
@@ -226,21 +227,24 @@ EXAMPLES = {
     "mp_pose": {
         "title": "Human Pose Tracking",
         "description": """
-        TODO
+        Use the <a href="https://google.github.io/mediapipe/" target="_blank">MediaPipe</a> Pose
+        solution to detect and track a human pose in video.
         """,
         "build_args": [],
     },
     "plots": {
         "title": "Plots",
         "description": """
-        TODO
+        Simple example of plots and charts.
         """,
         "build_args": [],
     },
     "tracking_hf_opencv": {
         "title": "Object Tracking and Segmentation",
         "description": """
-        TODO
+        Applying simple object detection and segmentation on a video using the Huggingface `transformers` library.
+        Tracking across frames is performed using
+        <a href="https://arxiv.org/pdf/1611.08461.pdf" target="_blank">CSRT</a> from OpenCV.
         """,
         "build_args": [],
     },
