@@ -3,8 +3,7 @@
 use xshell::{cmd, Shell};
 
 use re_build_tools::{
-    compute_file_hash, is_tracked_env_var_set, read_versioning_hash, rerun_if_changed,
-    rerun_if_changed_or_doesnt_exist, write_versioning_hash,
+    compute_file_hash, is_tracked_env_var_set, read_versioning_hash, write_versioning_hash,
 };
 
 // ---
@@ -33,9 +32,14 @@ fn main() {
         return;
     }
 
-    rerun_if_changed_or_doesnt_exist(SOURCE_HASH_PATH);
-    rerun_if_changed(FBS_REFLECTION_DEFINITION_PATH);
-
+    // We're building an actual build graph here, and Cargo has no idea about it.
+    //
+    // Worse: some nodes in our build graph actually output artifacts into the src/ directory,
+    // which Cargo always interprets as "need to rebuild everything ASAP", leading to an infinite
+    // feedback loop.
+    //
+    // For these reasons, we manually compute and track signature hashes for the graph nodes we
+    // depend on, and make sure to exit early if everything's already up to date.
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
     let new_hash = compute_file_hash(FBS_REFLECTION_DEFINITION_PATH);
 

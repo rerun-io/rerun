@@ -1,3 +1,6 @@
+// Copied verbatim from the official flatbuffers source tree:
+// https://github.com/google/flatbuffers/blob/63b7b25289447313ab6e79191fa1733748dca0da/reflection/reflection.fbs
+
 // This schema defines objects that represent a parsed schema, like
 // the binary version of a .fbs file.
 // This could be used to operate on unknown FlatBuffers at runtime.
