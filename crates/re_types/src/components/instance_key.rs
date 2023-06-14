@@ -5,8 +5,8 @@
 pub struct InstanceKey(pub u64);
 
 impl crate::Component for InstanceKey {
-    fn name() -> ::std::borrow::Cow<'static, str> {
-        ::std::borrow::Cow::Borrowed("rerun.components.InstanceKey")
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.components.InstanceKey")
     }
 
     #[allow(clippy::wildcard_imports)]

@@ -426,8 +426,8 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> S
             format!(
                 r#"
                 impl crate::Datatype for {name} {{
-                    fn name() -> ::std::borrow::Cow<'static, str> {{
-                        ::std::borrow::Cow::Borrowed({fqname:?})
+                    fn name() -> crate::DatatypeName {{
+                        crate::DatatypeName::Borrowed({fqname:?})
                     }}
 
                     #[allow(clippy::wildcard_imports)]
@@ -444,8 +444,8 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> S
             format!(
                 r#"
                 impl crate::Component for {name} {{
-                    fn name() -> ::std::borrow::Cow<'static, str> {{
-                        ::std::borrow::Cow::Borrowed({fqname:?})
+                    fn name() -> crate::ComponentName {{
+                        crate::ComponentName::Borrowed({fqname:?})
                     }}
 
                     #[allow(clippy::wildcard_imports)]
@@ -464,7 +464,7 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> S
                 let num_components = components.len();
                 let components = components
                     .into_iter()
-                    .map(|fqname| format!("::std::borrow::Cow::Borrowed({fqname:?})"))
+                    .map(|fqname| format!("crate::ComponentName::Borrowed({fqname:?})"))
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -484,29 +484,29 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> S
             format!(
                 r#"
                 impl {name} {{
-                    pub const REQUIRED_COMPONENTS: [::std::borrow::Cow<'static, str>; {num_required}] = [{required}];
+                    pub const REQUIRED_COMPONENTS: [crate::ComponentName; {num_required}] = [{required}];
 
-                    pub const RECOMMENDED_COMPONENTS: [::std::borrow::Cow<'static, str>; {num_recommended}] = [{recommended}];
+                    pub const RECOMMENDED_COMPONENTS: [crate::ComponentName; {num_recommended}] = [{recommended}];
 
-                    pub const OPTIONAL_COMPONENTS: [::std::borrow::Cow<'static, str>; {num_optional}] = [{optional}];
+                    pub const OPTIONAL_COMPONENTS: [crate::ComponentName; {num_optional}] = [{optional}];
 
-                    pub const ALL_COMPONENTS: [::std::borrow::Cow<'static, str>; {num_all}] = [{all}];
+                    pub const ALL_COMPONENTS: [crate::ComponentName; {num_all}] = [{all}];
                 }}
 
                 impl crate::Archetype for {name} {{
-                    fn name() -> ::std::borrow::Cow<'static, str> {{
-                        ::std::borrow::Cow::Borrowed({fqname:?})
+                    fn name() -> crate::ArchetypeName {{
+                        crate::ArchetypeName::Borrowed({fqname:?})
                     }}
 
-                    fn required_components() -> Vec<::std::borrow::Cow<'static, str>> {{
+                    fn required_components() -> Vec<crate::ComponentName> {{
                         Self::REQUIRED_COMPONENTS.to_vec()
                     }}
 
-                    fn recommended_components() -> Vec<::std::borrow::Cow<'static, str>> {{
+                    fn recommended_components() -> Vec<crate::ComponentName> {{
                         Self::RECOMMENDED_COMPONENTS.to_vec()
                     }}
 
-                    fn optional_components() -> Vec<::std::borrow::Cow<'static, str>> {{
+                    fn optional_components() -> Vec<crate::ComponentName> {{
                         Self::OPTIONAL_COMPONENTS.to_vec()
                     }}
 

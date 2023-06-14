@@ -5,8 +5,8 @@
 pub struct Radius(pub f32);
 
 impl crate::Component for Radius {
-    fn name() -> ::std::borrow::Cow<'static, str> {
-        ::std::borrow::Cow::Borrowed("rerun.components.Radius")
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.components.Radius")
     }
 
     #[allow(clippy::wildcard_imports)]
