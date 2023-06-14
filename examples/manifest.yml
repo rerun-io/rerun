@@ -138,3 +138,6 @@ root:
         - name: detect-and-track-objects
           python: python/detect_and_track_objects
 
+        - name: face-tracking
+          python: python/face_tracking
+
