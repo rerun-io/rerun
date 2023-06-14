@@ -158,9 +158,10 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         )
 
         if resize:
-            img = cv2.imread(str(image_file))
-            img = cv2.resize(img, resize)
-            rr.log_image("camera/image", img, jpeg_quality=75)
+            bgr = cv2.imread(str(image_file))
+            bgr = cv2.resize(bgr, resize)
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            rr.log_image("camera/image", rgb, jpeg_quality=75)
         else:
             rr.log_image_file("camera/image", img_path=dataset_path / "images" / image.name)
 
