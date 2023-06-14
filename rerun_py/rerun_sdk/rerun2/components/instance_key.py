@@ -21,45 +21,50 @@ class InstanceKey:
     def __array__(self):
         return np.asarray(self.value)
 
-    InstanceKeyLike = Union[InstanceKey, int]
 
-    InstanceKeyArrayLike = Union[InstanceKeyLike, Sequence[InstanceKeyLike], npt.NDArray[np.uint64]]
+InstanceKeyLike = Union[InstanceKey, int]
 
-    # --- Arrow support ---
+InstanceKeyArrayLike = Union[InstanceKeyLike, Sequence[InstanceKeyLike], npt.NDArray[np.uint64]]
 
-    from rerun2.components.instance_key_ext import InstanceKeyArrayExt  # noqa: E402
 
-    class InstanceKeyType(pa.ExtensionType):
-        def __init__(self: type[pa.ExtensionType]) -> None:
-            pa.ExtensionType.__init__(self, pa.uint64(), "rerun.components.InstanceKey")
+# --- Arrow support ---
 
-        def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-            # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-            return b""
+from rerun2.components.instance_key_ext import InstanceKeyArrayExt  # noqa: E402
 
-        @classmethod
-        def __arrow_ext_deserialize__(
-            cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-        ) -> type[pa.ExtensionType]:
-            # return an instance of this subclass given the serialized metadata.
-            return InstanceKeyType()
 
-        def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-            return InstanceKeyArray
+class InstanceKeyType(pa.ExtensionType):
+    def __init__(self: type[pa.ExtensionType]) -> None:
+        pa.ExtensionType.__init__(self, pa.uint64(), "rerun.components.InstanceKey")
 
-    pa.register_extension_type(InstanceKeyType())
+    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
+        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
+        return b""
 
-    class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]
-        @staticmethod
-        def from_similar(data: InstanceKeyArrayLike | None):
-            if data is None:
-                return InstanceKeyType().wrap_array(pa.array([], type=InstanceKeyType().storage_type))
-            else:
-                return InstanceKeyArrayExt._from_similar(
-                    data,
-                    mono=InstanceKey,
-                    mono_aliases=InstanceKeyLike,
-                    many=InstanceKeyArray,
-                    many_aliases=InstanceKeyArrayLike,
-                    arrow=InstanceKeyType,
-                )
+    @classmethod
+    def __arrow_ext_deserialize__(
+        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
+    ) -> type[pa.ExtensionType]:
+        # return an instance of this subclass given the serialized metadata.
+        return InstanceKeyType()
+
+    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
+        return InstanceKeyArray
+
+
+pa.register_extension_type(InstanceKeyType())
+
+
+class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]
+    @staticmethod
+    def from_similar(data: InstanceKeyArrayLike | None):
+        if data is None:
+            return InstanceKeyType().wrap_array(pa.array([], type=InstanceKeyType().storage_type))
+        else:
+            return InstanceKeyArrayExt._from_similar(
+                data,
+                mono=InstanceKey,
+                mono_aliases=InstanceKeyLike,
+                many=InstanceKeyArray,
+                many_aliases=InstanceKeyArrayLike,
+                arrow=InstanceKeyType,
+            )

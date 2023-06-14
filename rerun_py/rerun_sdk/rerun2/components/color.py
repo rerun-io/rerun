@@ -21,55 +21,60 @@ class Color:
     def __array__(self):
         return np.asarray(self.rgba)
 
-    ColorLike = Union[
-        Color, Sequence[int], Sequence[float], npt.NDArray[np.uint8], npt.NDArray[np.float32], npt.NDArray[np.float64]
-    ]
 
-    ColorArrayLike = Union[
-        ColorLike,
-        Sequence[ColorLike],
-        Sequence[int],
-        Sequence[float],
-        npt.NDArray[np.uint8],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float64],
-    ]
+ColorLike = Union[
+    Color, Sequence[int], Sequence[float], npt.NDArray[np.uint8], npt.NDArray[np.float32], npt.NDArray[np.float64]
+]
 
-    # --- Arrow support ---
+ColorArrayLike = Union[
+    ColorLike,
+    Sequence[ColorLike],
+    Sequence[int],
+    Sequence[float],
+    npt.NDArray[np.uint8],
+    npt.NDArray[np.float32],
+    npt.NDArray[np.float64],
+]
 
-    from rerun2.components.color_ext import ColorArrayExt  # noqa: E402
 
-    class ColorType(pa.ExtensionType):
-        def __init__(self: type[pa.ExtensionType]) -> None:
-            pa.ExtensionType.__init__(self, pa.uint32(), "rerun.components.Color")
+# --- Arrow support ---
 
-        def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-            # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-            return b""
+from rerun2.components.color_ext import ColorArrayExt  # noqa: E402
 
-        @classmethod
-        def __arrow_ext_deserialize__(
-            cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-        ) -> type[pa.ExtensionType]:
-            # return an instance of this subclass given the serialized metadata.
-            return ColorType()
 
-        def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-            return ColorArray
+class ColorType(pa.ExtensionType):
+    def __init__(self: type[pa.ExtensionType]) -> None:
+        pa.ExtensionType.__init__(self, pa.uint32(), "rerun.components.Color")
 
-    pa.register_extension_type(ColorType())
+    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
+        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
+        return b""
 
-    class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]
-        @staticmethod
-        def from_similar(data: ColorArrayLike | None):
-            if data is None:
-                return ColorType().wrap_array(pa.array([], type=ColorType().storage_type))
-            else:
-                return ColorArrayExt._from_similar(
-                    data,
-                    mono=Color,
-                    mono_aliases=ColorLike,
-                    many=ColorArray,
-                    many_aliases=ColorArrayLike,
-                    arrow=ColorType,
-                )
+    @classmethod
+    def __arrow_ext_deserialize__(
+        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
+    ) -> type[pa.ExtensionType]:
+        # return an instance of this subclass given the serialized metadata.
+        return ColorType()
+
+    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
+        return ColorArray
+
+
+pa.register_extension_type(ColorType())
+
+
+class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]
+    @staticmethod
+    def from_similar(data: ColorArrayLike | None):
+        if data is None:
+            return ColorType().wrap_array(pa.array([], type=ColorType().storage_type))
+        else:
+            return ColorArrayExt._from_similar(
+                data,
+                mono=Color,
+                mono_aliases=ColorLike,
+                many=ColorArray,
+                many_aliases=ColorArrayLike,
+                arrow=ColorType,
+            )
