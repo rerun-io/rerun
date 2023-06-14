@@ -5,70 +5,87 @@ use std::io::Read;
 use re_log_types::LogMsg;
 
 use crate::decoder::read_options;
-use crate::decoder::STREAM_HEADER_SIZE;
+use crate::Compression;
+use crate::FileHeader;
+use crate::MessageHeader;
 
 use super::DecodeError;
-use super::Decompressor;
-use super::MESSAGE_HEADER_SIZE;
 
+/// The stream decoder is a state machine which ingests byte chunks
+/// and outputs messages once it has enough data to deserialize one.
+///
+/// Chunks are given to the stream via `StreamDecoder::push_chunk`,
+/// and messages are read back via `StreamDecoder::try_read`.
 pub struct StreamDecoder {
-    decompressor: Decompressor<Chunk>,
-    buffer: ChunkBuffer,
+    /// Compression options
+    compression: Compression,
+    /// Incoming chunks are stored here
+    chunks: ChunkBuffer,
+    /// The uncompressed bytes are stored in this buffer before being read by `rmp_serde`
+    uncompressed: Vec<u8>,
+    /// The stream state
     state: State,
 }
 
-#[allow(clippy::large_enum_variant)]
+#[derive(Clone, Copy)]
 enum State {
-    Header,
-    MessageLength,
-    MessageContent(u64),
+    StreamHeader,
+    MessageHeader,
+    Message(MessageHeader),
 }
 
 impl StreamDecoder {
     pub fn new() -> Self {
         Self {
-            decompressor: Decompressor::Uncompressed(Chunk::new(Vec::new())),
-            buffer: ChunkBuffer::new(),
-            state: State::Header,
+            compression: Compression::Off,
+            chunks: ChunkBuffer::new(),
+            uncompressed: Vec::with_capacity(1024),
+            state: State::StreamHeader,
         }
     }
 
     pub fn push_chunk(&mut self, chunk: Vec<u8>) {
-        self.buffer.push(chunk);
+        self.chunks.push(chunk);
     }
 
     pub fn try_read(&mut self) -> Result<Option<LogMsg>, DecodeError> {
         match self.state {
-            State::Header => {
-                if let Some(header) = self.buffer.try_read(STREAM_HEADER_SIZE)? {
+            State::StreamHeader => {
+                if let Some(header) = self.chunks.try_read(FileHeader::SIZE)? {
                     // header contains version and compression options
-                    let options = read_options(header)?;
-                    self.decompressor =
-                        Decompressor::new(options.compression, Chunk::new(Vec::new()));
+                    self.compression = read_options(header)?.compression;
 
                     // we might have data left in the current chunk,
                     // immediately try to read length of the next message
-                    self.state = State::MessageLength;
+                    self.state = State::MessageHeader;
                     return self.try_read();
                 }
             }
-            State::MessageLength => {
-                if let Some(len) = self.buffer.try_read(MESSAGE_HEADER_SIZE)? {
-                    self.state = State::MessageContent(u64_from_le_slice(len));
+            State::MessageHeader => {
+                if let Some(mut len) = self.chunks.try_read(MessageHeader::SIZE)? {
+                    let header = MessageHeader::decode(&mut len)?;
+                    self.state = State::Message(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
                     return self.try_read();
                 }
             }
-            State::MessageContent(len) => {
-                if self.buffer.try_read(len as usize)?.is_some() {
-                    *self.decompressor.get_mut() =
-                        Cursor::new(std::mem::take(&mut self.buffer.buffer));
-                    let message = rmp_serde::from_read(&mut self.decompressor)
-                        .map_err(DecodeError::MsgPack)?;
-                    self.buffer.buffer = std::mem::take(self.decompressor.get_mut().get_mut());
+            State::Message(header) => {
+                if let Some(bytes) = self.chunks.try_read(header.compressed as usize)? {
+                    let bytes = match self.compression {
+                        Compression::Off => bytes,
+                        Compression::LZ4 => {
+                            self.uncompressed.resize(header.uncompressed as usize, 0);
+                            lz4_flex::block::decompress_into(bytes, &mut self.uncompressed)
+                                .map_err(DecodeError::Lz4)?;
+                            &self.uncompressed
+                        }
+                    };
 
-                    self.state = State::MessageLength;
+                    // read the message from the uncompressed bytes
+                    let message = rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
+
+                    self.state = State::MessageHeader;
                     return Ok(Some(message));
                 }
             }
@@ -76,12 +93,6 @@ impl StreamDecoder {
 
         Ok(None)
     }
-}
-
-fn u64_from_le_slice(bytes: &[u8]) -> u64 {
-    u64::from_le_bytes([
-        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-    ])
 }
 
 impl Default for StreamDecoder {
@@ -93,8 +104,12 @@ impl Default for StreamDecoder {
 type Chunk = Cursor<Vec<u8>>;
 
 struct ChunkBuffer {
+    /// Any incoming chunks are queued until they are emptied
     queue: VecDeque<Chunk>,
+    /// When `try_read` is called and we don't have enough bytes yet,
+    /// we store whatever we do have in this buffer
     buffer: Vec<u8>,
+    /// The cursor points to the end of the used range in `buffer`
     cursor: usize,
 }
 
@@ -111,17 +126,25 @@ impl ChunkBuffer {
         self.queue.push_back(Chunk::new(chunk));
     }
 
+    /// Attempt to read `n` bytes out of the queued chunks.
+    ///
+    /// Returns `Ok(None)` if there is not enough data to return a slice of `n` bytes.
     fn try_read(&mut self, n: usize) -> Result<Option<&[u8]>, DecodeError> {
+        // resize the buffer if the target has changed
         if self.buffer.len() != n {
             self.buffer.resize(n, 0);
             self.cursor = 0;
         }
 
+        // try to read some bytes from the front of the queue,
+        // until either:
+        // - we've read enough to return a slice of `n` bytes
+        // - we run out of chunks to read
+        // while also discarding any empty chunks
         while self.cursor != n {
             if let Some(chunk) = self.queue.front_mut() {
-                self.cursor += chunk
-                    .read(&mut self.buffer[self.cursor..])
-                    .map_err(DecodeError::Read)?;
+                let remainder = &mut self.buffer[self.cursor..];
+                self.cursor += chunk.read(remainder).map_err(DecodeError::Read)?;
                 if is_chunk_empty(chunk) {
                     self.queue.pop_front();
                 }
@@ -172,10 +195,10 @@ mod tests {
         })
     }
 
-    fn test_data(n: usize) -> Vec<u8> {
+    fn test_data(options: EncodingOptions, n: usize) -> Vec<u8> {
         let mut buffer = Vec::new();
         {
-            let mut encoder = Encoder::new(EncodingOptions::UNCOMPRESSED, &mut buffer).unwrap();
+            let mut encoder = Encoder::new(options, &mut buffer).unwrap();
             for _ in 0..n {
                 encoder.append(&fake_log_msg()).unwrap();
             }
@@ -200,8 +223,8 @@ mod tests {
     }
 
     #[test]
-    fn stream_whole_chunks() {
-        let data = test_data(16);
+    fn stream_whole_chunks_uncompressed() {
+        let data = test_data(EncodingOptions::UNCOMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
         decoder.push_chunk(data);
@@ -212,8 +235,34 @@ mod tests {
     }
 
     #[test]
-    fn stream_byte_chunks() {
-        let data = test_data(16);
+    fn stream_byte_chunks_uncompressed() {
+        let data = test_data(EncodingOptions::UNCOMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new();
+        for chunk in data.chunks(1) {
+            decoder.push_chunk(chunk.to_vec());
+        }
+
+        for _ in 0..16 {
+            assert_message_ok!(decoder.try_read());
+        }
+    }
+
+    #[test]
+    fn stream_whole_chunks_compressed() {
+        let data = test_data(EncodingOptions::COMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new();
+        decoder.push_chunk(data);
+
+        for _ in 0..16 {
+            assert_message_ok!(decoder.try_read());
+        }
+    }
+
+    #[test]
+    fn stream_byte_chunks_compressed() {
+        let data = test_data(EncodingOptions::COMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
         for chunk in data.chunks(1) {

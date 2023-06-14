@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
@@ -43,9 +44,9 @@ pub type HttpMessageCallback = dyn Fn(HttpMessage) + Send + Sync;
 pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
-    ehttp::streaming::fetch(ehttp::Request::get(&url), move |part| {
-        let mut decoder = StreamDecoder::new();
-        match part {
+    ehttp::streaming::fetch(ehttp::Request::get(&url), {
+        let decoder = RefCell::new(StreamDecoder::new());
+        move |part| match part {
             Ok(part) => match part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {
                     ok,
@@ -65,9 +66,14 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                     }
                 }
                 ehttp::streaming::Part::Chunk(chunk) => {
-                    decoder.push_chunk(chunk);
+                    if chunk.is_empty() {
+                        on_msg(HttpMessage::Success);
+                        return ControlFlow::Break(());
+                    }
+
+                    decoder.borrow_mut().push_chunk(chunk);
                     loop {
-                        match decoder.try_read() {
+                        match decoder.borrow_mut().try_read() {
                             Ok(message) => match message {
                                 Some(message) => on_msg(HttpMessage::LogMsg(message)),
                                 None => return ControlFlow::Continue(()),
@@ -91,6 +97,31 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
         }
     });
 }
+
+/* #[cfg(not(target_arch = "wasm32"))]
+#[allow(clippy::needless_pass_by_value)] // must match wasm version
+fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
+    match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
+        Ok(decoder) => {
+            for msg in decoder {
+                match msg {
+                    Ok(msg) => {
+                        on_msg(HttpMessage::LogMsg(msg));
+                    }
+                    Err(err) => {
+                        re_log::warn_once!("Failed to decode message: {err}");
+                    }
+                }
+            }
+            on_msg(HttpMessage::Success);
+        }
+        Err(err) => {
+            on_msg(HttpMessage::Failure(
+                format!("Failed to decode .rrd: {err}").into(),
+            ));
+        }
+    }
+} */
 
 #[cfg(target_arch = "wasm32")]
 mod web_event_listener {
@@ -130,31 +161,6 @@ mod web_event_listener {
 
 #[cfg(target_arch = "wasm32")]
 pub use web_event_listener::stream_rrd_from_event_listener;
-
-#[cfg(not(target_arch = "wasm32"))]
-#[allow(clippy::needless_pass_by_value)] // must match wasm version
-fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
-    match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
-        Ok(decoder) => {
-            for msg in decoder {
-                match msg {
-                    Ok(msg) => {
-                        on_msg(HttpMessage::LogMsg(msg));
-                    }
-                    Err(err) => {
-                        re_log::warn_once!("Failed to decode message: {err}");
-                    }
-                }
-            }
-            on_msg(HttpMessage::Success);
-        }
-        Err(err) => {
-            on_msg(HttpMessage::Failure(
-                format!("Failed to decode .rrd: {err}").into(),
-            ));
-        }
-    }
-}
 
 #[cfg(target_arch = "wasm32")]
 mod web_decode {
