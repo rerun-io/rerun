@@ -21,47 +21,52 @@ class ClassId:
     def __array__(self):
         return np.asarray(self.id)
 
-    ClassIdLike = Union[ClassId, float]
 
-    ClassIdArrayLike = Union[
-        ClassIdLike, Sequence[ClassIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
-    ]
+ClassIdLike = Union[ClassId, float]
 
-    # --- Arrow support ---
+ClassIdArrayLike = Union[
+    ClassIdLike, Sequence[ClassIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
+]
 
-    from rerun2.components.class_id_ext import ClassIdArrayExt  # noqa: E402
 
-    class ClassIdType(pa.ExtensionType):
-        def __init__(self: type[pa.ExtensionType]) -> None:
-            pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.ClassId")
+# --- Arrow support ---
 
-        def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-            # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-            return b""
+from rerun2.components.class_id_ext import ClassIdArrayExt  # noqa: E402
 
-        @classmethod
-        def __arrow_ext_deserialize__(
-            cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-        ) -> type[pa.ExtensionType]:
-            # return an instance of this subclass given the serialized metadata.
-            return ClassIdType()
 
-        def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-            return ClassIdArray
+class ClassIdType(pa.ExtensionType):
+    def __init__(self: type[pa.ExtensionType]) -> None:
+        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.ClassId")
 
-    pa.register_extension_type(ClassIdType())
+    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
+        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
+        return b""
 
-    class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
-        @staticmethod
-        def from_similar(data: ClassIdArrayLike | None):
-            if data is None:
-                return ClassIdType().wrap_array(pa.array([], type=ClassIdType().storage_type))
-            else:
-                return ClassIdArrayExt._from_similar(
-                    data,
-                    mono=ClassId,
-                    mono_aliases=ClassIdLike,
-                    many=ClassIdArray,
-                    many_aliases=ClassIdArrayLike,
-                    arrow=ClassIdType,
-                )
+    @classmethod
+    def __arrow_ext_deserialize__(
+        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
+    ) -> type[pa.ExtensionType]:
+        # return an instance of this subclass given the serialized metadata.
+        return ClassIdType()
+
+    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
+        return ClassIdArray
+
+
+pa.register_extension_type(ClassIdType())
+
+
+class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
+    @staticmethod
+    def from_similar(data: ClassIdArrayLike | None):
+        if data is None:
+            return ClassIdType().wrap_array(pa.array([], type=ClassIdType().storage_type))
+        else:
+            return ClassIdArrayExt._from_similar(
+                data,
+                mono=ClassId,
+                mono_aliases=ClassIdLike,
+                many=ClassIdArray,
+                many_aliases=ClassIdArrayLike,
+                arrow=ClassIdType,
+            )
