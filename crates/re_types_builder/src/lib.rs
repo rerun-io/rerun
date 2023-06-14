@@ -99,11 +99,30 @@ pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, Objects, Type,
 };
 
+// --- Attributes ---
+
+pub const ARROW_ATTR_TRANSPARENT: &str = "arrow.attr.transparent";
+pub const ARROW_ATTR_SPARSE_UNION: &str = "arrow.attr.sparse_union";
+
+pub const RERUN_ATTR_COMPONENT_REQUIRED: &str = "rerun.attr.component_required";
+pub const RERUN_ATTR_COMPONENT_RECOMMENDED: &str = "rerun.attr.component_recommended";
+pub const RERUN_ATTR_COMPONENT_OPTIONAL: &str = "rerun.attr.component_optional";
+
+pub const PYTHON_ATTR_TRANSPARENT: &str = "python.attr.transparent";
+pub const PYTHON_ATTR_ALIASES: &str = "python.attr.aliases";
+pub const PYTHON_ATTR_ARRAY_ALIASES: &str = "python.attr.array_aliases";
+
+pub const RUST_ATTR_DERIVE: &str = "rust.attr.derive";
+pub const RUST_ATTR_REPR: &str = "rust.attr.repr";
+pub const RUST_ATTR_TUPLE_STRUCT: &str = "rust.attr.tuple_struct";
+
 // --- Entrypoints ---
 
 use std::path::{Path, PathBuf};
 
 /// Compiles binary reflection dumps from flatbuffers definitions.
+///
+/// Requires `flatc` available in $PATH.
 ///
 /// Panics on error.
 ///
@@ -141,27 +160,14 @@ pub fn compile_binary_schemas(
     .unwrap();
 }
 
-/// Generates Rust code from a set of flatbuffers definitions.
-///
-/// Panics on error.
-///
-/// - `include_dir_path`: path to the root directory of the fbs definition tree.
-/// - `output_crate_path`: path to the root of the output crate.
-/// - `entrypoint_path`: path to the root file of the fbs definition tree.
-///
-/// E.g.:
-/// ```no_run
-/// re_types_builder::generate_rust_code(
-///     "./definitions",
-///     ".",
-///     "./definitions/rerun/archetypes.fbs",
-/// );
-/// ```
-pub fn generate_rust_code(
+/// Handles the first 3 language-agnostic passes of the codegen pipeline:
+/// 1. Generate binary reflection dumps for our definitions.
+/// 2. Run the semantic pass
+/// 3. Compute the Arrow registry
+fn generate_lang_agnostic(
     include_dir_path: impl AsRef<Path>,
-    output_crate_path: impl AsRef<Path>,
     entrypoint_path: impl AsRef<Path>,
-) {
+) -> (Objects, ArrowRegistry) {
     use xshell::Shell;
 
     let sh = Shell::new().unwrap();
@@ -188,6 +194,33 @@ pub fn generate_rust_code(
     for obj in objects.ordered_objects(None) {
         arrow_registry.register(obj);
     }
+
+    (objects, arrow_registry)
+}
+
+/// Generates Rust code from a set of flatbuffers definitions.
+///
+/// Panics on error.
+///
+/// - `include_dir_path`: path to the root directory of the fbs definition tree.
+/// - `output_crate_path`: path to the root of the output crate.
+/// - `entrypoint_path`: path to the root file of the fbs definition tree.
+///
+/// E.g.:
+/// ```no_run
+/// re_types_builder::generate_rust_code(
+///     "./definitions",
+///     ".",
+///     "./definitions/rerun/archetypes.fbs",
+/// );
+/// ```
+pub fn generate_rust_code(
+    include_dir_path: impl AsRef<Path>,
+    output_crate_path: impl AsRef<Path>,
+    entrypoint_path: impl AsRef<Path>,
+) {
+    // passes 1 through 3: bfbs, semantic, arrow registry
+    let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
     // generate rust code
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
@@ -215,32 +248,8 @@ pub fn generate_python_code(
     output_pkg_path: impl AsRef<Path>,
     entrypoint_path: impl AsRef<Path>,
 ) {
-    use xshell::Shell;
-
-    let sh = Shell::new().unwrap();
-    let tmp = sh.create_temp_dir().unwrap();
-
-    let entrypoint_path = entrypoint_path.as_ref();
-    let entrypoint_filename = entrypoint_path.file_name().unwrap();
-
-    // generate bfbs definitions
-    compile_binary_schemas(include_dir_path, tmp.path(), entrypoint_path);
-
-    let mut binary_entrypoint_path = PathBuf::from(entrypoint_filename);
-    binary_entrypoint_path.set_extension("bfbs");
-
-    // semantic pass: high level objects from low-level reflection data
-    let objects = Objects::from_buf(
-        sh.read_binary_file(tmp.path().join(binary_entrypoint_path))
-            .unwrap()
-            .as_slice(),
-    );
-
-    // create and fill out arrow registry
-    let mut arrow_registry = ArrowRegistry::default();
-    for obj in objects.ordered_objects(None) {
-        arrow_registry.register(obj);
-    }
+    // passes 1 through 3: bfbs, semantic, arrow registry
+    let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
     // generate python code
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
