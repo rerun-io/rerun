@@ -114,7 +114,7 @@ pub struct Decoder<R: std::io::Read> {
 const STREAM_HEADER_SIZE: usize = 12;
 const MESSAGE_HEADER_SIZE: usize = 8;
 
-pub fn read_options(bytes: &[u8; STREAM_HEADER_SIZE]) -> Result<EncodingOptions, DecodeError> {
+pub fn read_options(bytes: &[u8]) -> Result<EncodingOptions, DecodeError> {
     let mut read = std::io::Cursor::new(bytes);
 
     {
