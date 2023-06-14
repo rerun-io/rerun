@@ -72,7 +72,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "opencv_canny")
+    rr.script_setup(args, "live_camera_edge_detection")
 
     print(args.connect)
 

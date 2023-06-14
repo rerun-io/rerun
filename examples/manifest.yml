@@ -97,8 +97,8 @@ root:
         In some of the examples such as [Stable Diffusion](#stable-diffusion), the algorithm is run on-line,
         and may benefit from a GPU-enabled PyTorch machine.
       children:
-        - name: arkitscenes
-          python: python/arkitscenes
+        - name: arkit_scenes
+          python: python/arkit_scenes
 
         - name: structure-from-motion
           python: python/structure_from_motion

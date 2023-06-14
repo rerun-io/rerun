@@ -1,5 +1,5 @@
 -r api_demo/requirements.txt
--r arkitscenes/requirements.txt
+-r arkit_scenes/requirements.txt
 -r blueprint/requirements.txt
 -r car/requirements.txt
 -r clock/requirements.txt
