@@ -132,3 +132,6 @@ root:
         - name: tracking-hf-opencv
           python: python/tracking_hf_opencv
 
+        - name: face-tracking
+          python: python/face_tracking
+
