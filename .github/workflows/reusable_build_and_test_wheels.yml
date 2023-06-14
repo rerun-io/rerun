@@ -243,7 +243,7 @@ jobs:
         # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
         shell: bash
         run: |
-          pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+          pip install deprecated numpy>=1.23 pillow>=9.5.0,<10 pyarrow==10.0.1 pytest==7.1.2
 
       - name: Install built wheel
         if: needs.set-config.outputs.RUN_TESTS == 'true'
