@@ -69,7 +69,8 @@ def log_image(
         A quality of 95 still saves a lot of space, but is visually very similar.
         JPEG compression works best for photographs.
         Only RGB images are supported.
-        Note that compressing to JPEG costs a bit of CPU time.
+        Note that compressing to JPEG costs a bit of CPU time, both when logging
+        and later when viewing them.
 
     """
 
@@ -102,20 +103,16 @@ def log_image(
         image = np.squeeze(image)
 
     if jpeg_quality is not None:
-        try:
-            pil_image = Image.fromarray(image)
-            output = BytesIO()
-            pil_image.save(output, format="JPEG", quality=jpeg_quality)
-            jpeg_bytes = output.getvalue()
-            output.close()
+        # TODO(emilk): encode JPEG in background thread instead
+        pil_image = Image.fromarray(image)
+        output = BytesIO()
+        pil_image.save(output, format="JPEG", quality=jpeg_quality)
+        jpeg_bytes = output.getvalue()
+        output.close()
 
-            # TODO(draw_order)
-            log_image_file(
-                entity_path=entity_path, img_bytes=jpeg_bytes, img_format=ImageFormat.JPEG, timeless=timeless
-            )
-            return
-        except ImportError:
-            _send_warning("Ignoring jpeg_quality because opencv-python is not installed", 1, recording=recording)
+        # TODO(emilk): pass draw_order too
+        log_image_file(entity_path=entity_path, img_bytes=jpeg_bytes, img_format=ImageFormat.JPEG, timeless=timeless)
+        return
 
     _log_tensor(entity_path, image, draw_order=draw_order, ext=ext, timeless=timeless, recording=recording)
 
