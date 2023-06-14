@@ -57,7 +57,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
     # Generate a color per object that can be reused across both 3D obb and their 2D projections
     # TODO(pablovela5620): Once #1581 or #1728 is resolved this can be removed
     color_positions = np.linspace(0, 1, num_objects)
-    colormap = plt.cm.get_cmap("viridis")
+    colormap = plt.colormaps["viridis"]
     colors = [colormap(pos) for pos in color_positions]
 
     for i, label_info in enumerate(annotation["data"]):
@@ -396,7 +396,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 colors_list,
             )
 
-            rr.log_image(f"{lowres_posed_entity_id}/rgb", rgb)
+            rr.log_image(f"{lowres_posed_entity_id}/rgb", rgb, jpeg_quality=95)
             rr.log_depth_image(f"{lowres_posed_entity_id}/depth", depth, meter=1000)
 
         # log the high res camera
@@ -420,7 +420,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
             highres_depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_timestamp}.png", cv2.IMREAD_ANYDEPTH)
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
-            rr.log_image(f"{highres_entity_id}/rgb", highres_rgb)
+            rr.log_image(f"{highres_entity_id}/rgb", highres_rgb, jpeg_quality=75)
             rr.log_depth_image(f"{highres_entity_id}/depth", highres_depth, meter=1000)
 
 

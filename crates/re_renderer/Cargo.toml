@@ -92,7 +92,7 @@ winit = "0.28.1"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
 # For tests:
-unindent = "0.1"
+unindent.workspace = true
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

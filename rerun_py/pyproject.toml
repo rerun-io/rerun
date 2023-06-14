@@ -11,7 +11,13 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Visualization",
 ]
-dependencies = ["deprecated", "numpy>=1.23", "pyarrow==10.0.1"]
+dependencies = [
+  # Must match list in `.github/workflows/reusable_build_and_test_wheels.yml`
+  "deprecated",
+  "numpy>=1.23",
+  "pillow>=9.5.0,<10", # Used for JPEG encoding
+  "pyarrow==10.0.1",
+]
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
@@ -96,4 +102,8 @@ required-imports = ["from __future__ import annotations"]
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
 include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
 locked = true
-python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
+python-packages = [
+  "rerun_sdk/rerun",
+  "rerun_sdk/rerun2",
+  "rerun_sdk/rerun_demo",
+]

@@ -13,6 +13,7 @@ extend-exclude = [
 [default.extend-words]
 lod = "lod" # level-of-detail
 teh = "teh" # part of @teh-cmc
+ND = "ND"   # np.NDArray
 
 # American English:
 grey = "gray"

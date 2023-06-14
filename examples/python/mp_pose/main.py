@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, Iterator
 
-import cv2 as cv
+import cv2
 import mediapipe as mp
 import numpy as np
 import numpy.typing as npt
@@ -42,10 +42,10 @@ def track_pose(video_path: str, segment: bool) -> None:
 
     with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
         for bgr_frame in video_source.stream_bgr():
-            rgb = cv.cvtColor(bgr_frame.data, cv.COLOR_BGR2RGB)
+            rgb = cv2.cvtColor(bgr_frame.data, cv2.COLOR_BGR2RGB)
             rr.set_time_seconds("time", bgr_frame.time)
             rr.set_time_sequence("frame_idx", bgr_frame.idx)
-            rr.log_image("video/rgb", rgb)
+            rr.log_image("video/rgb", rgb, jpeg_quality=75)
 
             results = pose.process(rgb)
             h, w, _ = rgb.shape
@@ -91,7 +91,7 @@ class VideoFrame:
 
 class VideoSource:
     def __init__(self, path: str):
-        self.capture = cv.VideoCapture(path)
+        self.capture = cv2.VideoCapture(path)
 
         if not self.capture.isOpened():
             logging.error("Couldn't open video at %s", path)
@@ -101,9 +101,9 @@ class VideoSource:
 
     def stream_bgr(self) -> Iterator[VideoFrame]:
         while self.capture.isOpened():
-            idx = int(self.capture.get(cv.CAP_PROP_POS_FRAMES))
+            idx = int(self.capture.get(cv2.CAP_PROP_POS_FRAMES))
             is_open, bgr = self.capture.read()
-            time_ms = self.capture.get(cv.CAP_PROP_POS_MSEC)
+            time_ms = self.capture.get(cv2.CAP_PROP_POS_MSEC)
 
             if not is_open:
                 break
