@@ -24,7 +24,7 @@ class Color:
 
     rgba: int
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.rgba)
 
 
@@ -72,7 +72,7 @@ pa.register_extension_type(ColorType())
 
 class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: ColorArrayLike | None):
+    def from_similar(data: ColorArrayLike | None) -> pa.Array:
         if data is None:
             return ColorType().wrap_array(pa.array([], type=ColorType().storage_type))
         else:

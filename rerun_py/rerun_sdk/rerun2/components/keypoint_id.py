@@ -25,7 +25,7 @@ class KeypointId:
 
     id: int
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.id)
 
 
@@ -65,7 +65,7 @@ pa.register_extension_type(KeypointIdType())
 
 class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: KeypointIdArrayLike | None):
+    def from_similar(data: KeypointIdArrayLike | None) -> pa.Array:
         if data is None:
             return KeypointIdType().wrap_array(pa.array([], type=KeypointIdType().storage_type))
         else:

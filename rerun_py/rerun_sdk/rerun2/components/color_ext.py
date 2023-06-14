@@ -6,12 +6,15 @@ from typing import Any, Sequence
 
 import numpy as np
 import pyarrow as pa
+
 from rerun.color_conversion import u8_array_to_rgba
 
 
 class ColorArrayExt:
     @staticmethod
-    def _from_similar(data: Any | None, *, mono: type, mono_aliases: Any, many: type, many_aliases: Any, arrow: type):
+    def _from_similar(
+        data: Any | None, *, mono: type, mono_aliases: Any, many: type, many_aliases: Any, arrow: type
+    ) -> pa.Array:
         """
         Normalize flexible colors arrays.
 

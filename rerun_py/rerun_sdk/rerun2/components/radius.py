@@ -18,7 +18,7 @@ class Radius:
 
     value: float
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.value)
 
 
@@ -56,7 +56,7 @@ pa.register_extension_type(RadiusType())
 
 class RadiusArray(pa.ExtensionArray, RadiusArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: RadiusArrayLike | None):
+    def from_similar(data: RadiusArrayLike | None) -> pa.Array:
         if data is None:
             return RadiusType().wrap_array(pa.array([], type=RadiusType().storage_type))
         else:

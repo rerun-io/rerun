@@ -18,7 +18,7 @@ class Vec2D:
 
     xy: npt.ArrayLike
 
-    def __array__(self):
+    def __array__(self) -> npt.ArrayLike:
         return np.asarray(self.xy)
 
 
@@ -58,7 +58,7 @@ pa.register_extension_type(Vec2DType())
 
 class Vec2DArray(pa.ExtensionArray, Vec2DArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: Vec2DArrayLike | None):
+    def from_similar(data: Vec2DArrayLike | None) -> pa.Array:
         if data is None:
             return Vec2DType().wrap_array(pa.array([], type=Vec2DType().storage_type))
         else:

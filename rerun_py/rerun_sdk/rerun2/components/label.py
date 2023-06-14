@@ -57,7 +57,7 @@ pa.register_extension_type(LabelType())
 
 class LabelArray(pa.ExtensionArray, LabelArrayExt):  # type: ignore[misc]
     @staticmethod
-    def from_similar(data: LabelArrayLike | None):
+    def from_similar(data: LabelArrayLike | None) -> pa.Array:
         if data is None:
             return LabelType().wrap_array(pa.array([], type=LabelType().storage_type))
         else:
