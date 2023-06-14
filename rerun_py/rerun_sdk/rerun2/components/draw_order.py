@@ -5,7 +5,7 @@ from __future__ import annotations
 __all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
 
 from dataclasses import dataclass
-from typing import Any, Sequence, Union, Type
+from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
