@@ -3917,7 +3917,10 @@ dependencies = [
  "anyhow",
  "cargo_metadata",
  "glob",
+ "sha2",
  "time",
+ "unindent",
+ "walkdir",
 ]
 
 [[package]]
