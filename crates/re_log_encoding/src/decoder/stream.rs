@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::io;
 use std::io::Cursor;
 use std::io::Read;
 
@@ -13,138 +12,76 @@ use super::Decompressor;
 use super::MESSAGE_HEADER_SIZE;
 
 pub struct StreamDecoder {
-    state: Option<StreamState>,
+    decompressor: Decompressor<Chunk>,
+    buffer: ChunkBuffer,
+    state: State,
 }
 
 #[allow(clippy::large_enum_variant)]
-enum StreamState {
-    Header(Header),
-    Message(Message),
-}
-
-struct Header {
-    chunks: ChunkBuffer,
-    buffer: [u8; STREAM_HEADER_SIZE],
-    cursor: usize,
-}
-
-struct Message {
-    decompressor: Decompressor<ChunkBuffer>,
-    buffer: Vec<u8>,
-    cursor: usize,
-    state: DataState,
-}
-
-enum DataState {
-    Length { buffer: [u8; 8], cursor: usize },
-    Content,
-}
-
-impl DataState {
-    fn empty_header() -> Self {
-        Self::Length {
-            buffer: [0_u8; 8],
-            cursor: 0,
-        }
-    }
+enum State {
+    Header,
+    MessageLength,
+    MessageContent(u64),
 }
 
 impl StreamDecoder {
     pub fn new() -> Self {
         Self {
-            state: Some(StreamState::Header(Header {
-                chunks: ChunkBuffer::new(),
-                buffer: [0_u8; STREAM_HEADER_SIZE],
-                cursor: 0,
-            })),
+            decompressor: Decompressor::Uncompressed(Chunk::new(Vec::new())),
+            buffer: ChunkBuffer::new(),
+            state: State::Header,
         }
     }
 
     pub fn push_chunk(&mut self, chunk: Vec<u8>) {
-        match self.state.as_mut().take().unwrap() {
-            StreamState::Header(inner) => inner.chunks.push(chunk),
-            StreamState::Message(inner) => inner.decompressor.get_mut().push(chunk),
-        }
+        self.buffer.push(chunk);
     }
 
     pub fn try_read(&mut self) -> Result<Option<LogMsg>, DecodeError> {
-        match self.state.take().unwrap() {
-            StreamState::Header(mut inner) => {
-                // we need at least 12 bytes to initialize the reader
-                inner.cursor += inner
-                    .chunks
-                    .read(&mut inner.buffer[inner.cursor..])
-                    .map_err(DecodeError::Read)?;
-                if STREAM_HEADER_SIZE - inner.cursor == 0 {
-                    // we have enough data to initialize the decoder
-                    let options = read_options(&inner.buffer)?;
+        match self.state {
+            State::Header => {
+                if let Some(header) = self.buffer.try_read(STREAM_HEADER_SIZE)? {
+                    // header contains version and compression options
+                    let options = read_options(header)?;
+                    self.decompressor =
+                        Decompressor::new(options.compression, Chunk::new(Vec::new()));
 
-                    self.state = Some(StreamState::Message(Message {
-                        decompressor: Decompressor::new(options.compression, inner.chunks),
-                        cursor: 0,
-                        buffer: Vec::with_capacity(1024),
-                        state: DataState::empty_header(),
-                    }));
-
-                    // immediately try to read a message
-                    self.try_read()
-                } else {
-                    // not done yet
-                    self.state = Some(StreamState::Header(inner));
-                    Ok(None)
+                    // we might have data left in the current chunk,
+                    // immediately try to read length of the next message
+                    self.state = State::MessageLength;
+                    return self.try_read();
                 }
             }
-            StreamState::Message(mut inner) => match &mut inner.state {
-                DataState::Length { buffer, cursor } => {
-                    *cursor += inner
-                        .decompressor
-                        .read(&mut buffer[*cursor..])
-                        .map_err(DecodeError::Read)?;
-                    if MESSAGE_HEADER_SIZE - *cursor == 0 {
-                        // we know how large the incoming message is
-                        let len = u64::from_le_bytes(*buffer) as usize;
-                        inner.buffer.resize(len, 0);
-                        self.state = Some(StreamState::Message(Message {
-                            decompressor: inner.decompressor,
-                            buffer: inner.buffer,
-                            cursor: 0,
-                            state: DataState::Content,
-                        }));
-
-                        // immediately try to read a message
-                        self.try_read()
-                    } else {
-                        // not done yet
-                        self.state = Some(StreamState::Message(inner));
-                        Ok(None)
-                    }
+            State::MessageLength => {
+                if let Some(len) = self.buffer.try_read(MESSAGE_HEADER_SIZE)? {
+                    self.state = State::MessageContent(u64_from_le_slice(len));
+                    // we might have data left in the current chunk,
+                    // immediately try to read the message content
+                    return self.try_read();
                 }
-                DataState::Content => {
-                    let expected_message_size = inner.buffer.len();
-                    inner.cursor += inner
-                        .decompressor
-                        .read(&mut inner.buffer[inner.cursor..])
-                        .map_err(DecodeError::Read)?;
-                    if expected_message_size - inner.cursor == 0 {
-                        // we can read a full message
-                        let message = rmp_serde::decode::from_read(&inner.buffer[..])?;
-                        self.state = Some(StreamState::Message(Message {
-                            decompressor: inner.decompressor,
-                            cursor: 0,
-                            buffer: inner.buffer,
-                            state: DataState::empty_header(),
-                        }));
+            }
+            State::MessageContent(len) => {
+                if self.buffer.try_read(len as usize)?.is_some() {
+                    *self.decompressor.get_mut() =
+                        Cursor::new(std::mem::take(&mut self.buffer.buffer));
+                    let message = rmp_serde::from_read(&mut self.decompressor)
+                        .map_err(DecodeError::MsgPack)?;
+                    self.buffer.buffer = std::mem::take(self.decompressor.get_mut().get_mut());
 
-                        Ok(Some(message))
-                    } else {
-                        // not done yet
-                        self.state = Some(StreamState::Message(inner));
-                        Ok(None)
-                    }
+                    self.state = State::MessageLength;
+                    return Ok(Some(message));
                 }
-            },
+            }
         }
+
+        Ok(None)
     }
+}
+
+fn u64_from_le_slice(bytes: &[u8]) -> u64 {
+    u64::from_le_bytes([
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+    ])
 }
 
 impl Default for StreamDecoder {
@@ -157,31 +94,34 @@ type Chunk = Cursor<Vec<u8>>;
 
 struct ChunkBuffer {
     queue: VecDeque<Chunk>,
+    buffer: Vec<u8>,
+    cursor: usize,
 }
 
 impl ChunkBuffer {
     fn new() -> Self {
         Self {
             queue: VecDeque::with_capacity(16),
+            buffer: Vec::with_capacity(1024),
+            cursor: 0,
         }
     }
 
     fn push(&mut self, chunk: Vec<u8>) {
         self.queue.push_back(Chunk::new(chunk));
     }
-}
 
-fn is_chunk_empty(chunk: &Chunk) -> bool {
-    chunk.position() >= chunk.get_ref().len() as u64
-}
+    fn try_read(&mut self, n: usize) -> Result<Option<&[u8]>, DecodeError> {
+        if self.buffer.len() != n {
+            self.buffer.resize(n, 0);
+            self.cursor = 0;
+        }
 
-impl Read for ChunkBuffer {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut cursor = 0;
-        while cursor != buf.len() {
+        while self.cursor != n {
             if let Some(chunk) = self.queue.front_mut() {
-                cursor += chunk.read(&mut buf[cursor..])?;
-                // pop the chunk if it is now empty
+                self.cursor += chunk
+                    .read(&mut self.buffer[self.cursor..])
+                    .map_err(DecodeError::Read)?;
                 if is_chunk_empty(chunk) {
                     self.queue.pop_front();
                 }
@@ -189,8 +129,17 @@ impl Read for ChunkBuffer {
                 break;
             }
         }
-        Ok(cursor)
+
+        if self.cursor == n {
+            Ok(Some(&self.buffer[..]))
+        } else {
+            Ok(None)
+        }
     }
+}
+
+fn is_chunk_empty(chunk: &Chunk) -> bool {
+    chunk.position() >= chunk.get_ref().len() as u64
 }
 
 #[cfg(test)]
@@ -223,10 +172,6 @@ mod tests {
         })
     }
 
-    fn to_debug_string(message: &LogMsg) -> String {
-        format!("{message:?}")
-    }
-
     fn test_data(n: usize) -> Vec<u8> {
         let mut buffer = Vec::new();
         {
@@ -242,7 +187,7 @@ mod tests {
         ($message:expr) => {{
             match $message {
                 Ok(Some(message)) => {
-                    assert_eq!(to_debug_string(&fake_log_msg()), to_debug_string(&message),)
+                    assert_eq!(&fake_log_msg(), &message)
                 }
                 Ok(None) => {
                     panic!("failed to read message: message could not be read in full");
