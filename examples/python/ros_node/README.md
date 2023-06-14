@@ -1,3 +1,9 @@
+---
+title: ROS Node
+python: https://github.com/rerun-io/rerun/blob/latest/examples/python/ros_node/main.py
+tags: [2D, 3D, mesh, pinhole-camera, ros, time-series]
+---
+
 # Overview
 
 A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls.
@@ -11,7 +17,7 @@ in addition to the packages from requirements.txt.
 # Dependencies
 
 This example was developed and tested on top of [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
-and the the [turtlebot3 navigation example](https://navigation.ros.org/getting_started/index.html).
+and the [turtlebot3 navigation example](https://navigation.ros.org/getting_started/index.html).
 
 Installing ROS is outside the scope of this example, but you will need the equivalent of the following packages:
 ```
@@ -41,7 +47,7 @@ As described in the nav demo, use the rviz window to initialize the pose estimat
 
 You can now connect to the running ROS system by running:
 ```
-python3 examples/python/ros/main.py
+python3 examples/python/ros_node/main.py
 ```
 
 

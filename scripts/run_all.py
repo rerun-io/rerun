@@ -14,7 +14,7 @@ from typing import Any
 
 EXTRA_ARGS = {
     "examples/python/clock": ["--steps=200"],  # Make it faster
-    "examples/python/opencv_canny": ["--num-frames=30"],  # Make sure it finishes
+    "examples/python/live_camera_edge_detection": ["--num-frames=30"],  # Make sure it finishes
 }
 
 
@@ -73,16 +73,16 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/api_demo",
             "examples/python/car",
             "examples/python/clock",
-            "examples/python/colmap",
-            "examples/python/deep_sdf",
-            "examples/python/dicom",
-            "examples/python/nyud",
+            "examples/python/dicom_mri",
             "examples/python/plots",
             "examples/python/raw_mesh",
+            "examples/python/rgbd",
+            "examples/python/signed_distance_field",
+            "examples/python/structure_from_motion",
             "examples/python/text_logging",
         ]
     else:
-        slow_list = ["examples/python/ros/main.py"]
+        slow_list = ["examples/python/ros_node/main.py"]
 
         return [
             os.path.dirname(main_path) for main_path in glob("examples/python/**/main.py") if main_path not in slow_list

@@ -393,7 +393,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "tracking_hf_opencv")
+    rr.script_setup(args, "detect_and_track_objects")
 
     setup_looging()
 
