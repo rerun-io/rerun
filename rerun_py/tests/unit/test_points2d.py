@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-from typing import Any, Sequence
 
 import numpy as np
 import rerun2 as rr
@@ -18,7 +17,7 @@ U64_MAX = 2**64 - 1
 
 
 def test_points2d() -> None:
-    points_arrays = [
+    points_arrays: list[rrc.Point2DArrayLike] = [
         [],
         np.array([]),
         # Point2DArrayLike: Sequence[Point2DLike]: Point2D
@@ -46,7 +45,7 @@ def test_points2d() -> None:
         np.array([1, 2, 3, 4], dtype=np.float32),
     ]
 
-    radii_arrays = [
+    radii_arrays: list[rrc.RadiusArrayLike | None] = [
         None,
         [],
         np.array([]),
@@ -61,7 +60,7 @@ def test_points2d() -> None:
         np.array([42, 43], dtype=np.float32),
     ]
 
-    colors_arrays = [
+    colors_arrays: list[rrc.ColorArrayLike | None] = [
         None,
         [],
         np.array([]),
@@ -159,7 +158,7 @@ def test_points2d() -> None:
         ),
     ]
 
-    labels_arrays = [
+    labels_arrays: list[rrc.LabelArrayLike | None] = [
         None,
         [],
         # LabelArrayLike: Sequence[LabelLike]: str
@@ -171,7 +170,7 @@ def test_points2d() -> None:
         ],
     ]
 
-    draw_orders = [
+    draw_orders: list[rrc.DrawOrderLike | None] = [
         None,
         # DrawOrderLike: float
         300,
@@ -237,6 +236,7 @@ def test_points2d() -> None:
 
     for points, radii, colors, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_arrays:
         points = points if points is not None else points_arrays[-1]
+
         print(
             f"rr.Points2D(\n"
             f"    {points}\n"
@@ -250,14 +250,14 @@ def test_points2d() -> None:
             f")"
         )
         arch = rr.Points2D(
-            points,
-            radii=radii,
-            colors=colors,
-            labels=labels,
-            draw_order=draw_order,
-            class_ids=class_ids,
-            keypoint_ids=keypoint_ids,
-            instance_keys=instance_keys,
+            points,  # type: ignore[arg-type]
+            radii=radii,  # type: ignore[arg-type]
+            colors=colors,  # type: ignore[arg-type]
+            labels=labels,  # type: ignore[arg-type]
+            draw_order=draw_order,  # type: ignore[arg-type]
+            class_ids=class_ids,  # type: ignore[arg-type]
+            keypoint_ids=keypoint_ids,  # type: ignore[arg-type]
+            instance_keys=instance_keys,  # type: ignore[arg-type]
         )
         print(f"{arch}\n")
 
@@ -273,8 +273,8 @@ def test_points2d() -> None:
         )
 
 
-def non_empty(v: Sequence[Any] | None) -> bool:
-    return v is not None and len(v) > 0
+def non_empty(v: object) -> bool:
+    return v is not None and len(v) > 0  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":
