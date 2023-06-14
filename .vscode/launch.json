@@ -14,8 +14,7 @@
                     "-p=re_log_encoding",
                     "--no-run",
                     "--lib",
-                    "--all-features",
-                    "stream_byte_chunks"
+                    "--all-features"
                 ],
                 "filter": {
                     "kind": "lib"
