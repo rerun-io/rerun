@@ -3,13 +3,13 @@ namespace rust.attributes;
 /// Apply to a struct or table object to generate a tuple struct.
 ///
 /// The type definition of the target object must have exactly a single field.
-attribute "rust.attr.tuple_struct";
+attribute "attr.rust.tuple_struct";
 
 /// Apply to any object to generate a #derive clause.
 ///
 /// The value of the attribute will be trimmed out but otherwise left as-is.
-/// E.g. "rust.attr.derive": "Debug, Clone, Copy"`.
-attribute "rust.attr.derive";
+/// E.g. "attr.rust.derive": "Debug, Clone, Copy"`.
+attribute "attr.rust.derive";
 
 /// Apply to any object to generate a #repr clause with the specified value.
-attribute "rust.attr.repr";
+attribute "attr.rust.repr";
