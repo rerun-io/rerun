@@ -1,7 +1,7 @@
 -e git+https://github.com/facebookresearch/segment-anything.git#egg=segment-anything
 numpy
 opencv-python
-requests
+requests>=2.31,<3
 rerun-sdk
 torch
 torchvision
