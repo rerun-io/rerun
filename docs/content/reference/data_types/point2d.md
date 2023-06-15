@@ -2,8 +2,15 @@
 title: Point2D
 order: 7
 ---
+`Point2d` represents a singular point in two-dimensional space with optional color, radii, and label. `Point2d` entities will be drawn as part of the 2D Spatial SpaceView.
+
+It is compatible with `AnnotationContext` (TODO: link). `class_id` can be used to provide colors and labels from the
+annotation context, and `keypoint_id` can be used to make connected edges between points. See examples in the `AnnotationContext` documentation.
+
+`draw_order` can be used to control how the `Point2d` entities are drawn relative to other objects within the scene. Higher values are drawn on top of lower values.
+
 * Primary component: `point2d`
-* Secondary components: `colorrgba`, `radius`, `label`, `classid`, `keypointid`, `draw_order`
+* Secondary components: `colorrgba`, `radius`, `label`, `class_id`, `keypoint_id`, `draw_order`
 * Python APIs:
   * [log_point](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_point),
   * [log_points](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_points)
