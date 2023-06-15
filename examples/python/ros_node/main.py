@@ -160,7 +160,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
             t = tf.transform.translation
             q = tf.transform.rotation
             rr.log_transform3d(
-                path, rr.TranslationRotationScale3D([t.x, t.y, t.z], rr.Quaternion([q.x, q.y, q.z, q.w]))
+                path, rr.TranslationRotationScale3D([t.x, t.y, t.z], rr.Quaternion(xyzw=[q.x, q.y, q.z, q.w]))
             )
         except TransformException as ex:
             print(f"Failed to get transform: {ex}")
