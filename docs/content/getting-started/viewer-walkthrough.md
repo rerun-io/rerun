@@ -46,7 +46,7 @@ like.*
 
 In your terminal you should see an output along the lines of:
 ```
-2023-02-13T05:16:06.835424Z  INFO rerun::run: Loading "/home/rerun/venv/lib/python3.10/site-packages/rerun_sdk/rerun_demo/structure_from_motion_fiat.rrd"…
+2023-02-13T05:16:06.835424Z  INFO rerun::run: Loading "/home/rerun/venv/lib/python3.10/site-packages/rerun_sdk/rerun_demo/colmap_fiat.rrd"…
 ```
 
 And a window that looks like this will appear:

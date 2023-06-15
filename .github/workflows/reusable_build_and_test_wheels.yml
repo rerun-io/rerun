@@ -289,7 +289,7 @@ jobs:
         run: |
           mkdir rrd
           pip install -r examples/python/structure_from_motion/requirements.txt
-          python3 examples/python/structure_from_motion/main.py --dataset structure_from_motion_fiat --resize 800x600 --save rrd/structure_from_motion_fiat.rrd
+          python3 examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
 
       # All platforms are currently creating the same rrd file, upload one of them
       - name: Save RRD artifact

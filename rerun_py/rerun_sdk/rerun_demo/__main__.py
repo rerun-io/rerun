@@ -45,7 +45,7 @@ def run_structure_from_motion(args):
     # We don't need to call shutdown in this case. Rust should be handling everything
     unregister_shutdown()
 
-    rrd_file = pathlib.Path(__file__).parent.joinpath("structure_from_motion_fiat.rrd").resolve()
+    rrd_file = pathlib.Path(__file__).parent.joinpath("colmap_fiat.rrd").resolve()
     if not rrd_file.exists():
         print(f"No demo file found at {rrd_file}. Package was built without demo support", file=sys.stderr)
         exit(1)

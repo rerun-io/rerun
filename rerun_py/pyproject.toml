@@ -102,7 +102,7 @@ required-imports = ["from __future__ import annotations"]
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
 include = [
   "rerun_sdk.pth",
-  "rerun_sdk/rerun_demo/structure_from_motion_fiat.rrd",
+  "rerun_sdk/rerun_demo/colmap_fiat.rrd",
 ]
 locked = true
 python-packages = [
