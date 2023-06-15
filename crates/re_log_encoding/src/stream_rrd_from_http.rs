@@ -71,6 +71,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                         return ControlFlow::Break(());
                     }
 
+                    re_tracing::profile_scope!("decoding_rrd_stream");
                     decoder.borrow_mut().push_chunk(chunk);
                     loop {
                         match decoder.borrow_mut().try_read() {
