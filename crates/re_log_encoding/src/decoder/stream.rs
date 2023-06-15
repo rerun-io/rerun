@@ -369,10 +369,11 @@ mod tests {
         let mut chunks = data.chunks(16).peekable();
         while chunks.peek().is_some() {
             for _ in 0..3 {
-                if chunks.peek().is_none() {
+                if let Some(chunk) = chunks.next() {
+                    decoder.push_chunk(chunk.to_vec());
+                } else {
                     break;
                 }
-                decoder.push_chunk(chunks.next().unwrap().to_vec());
             }
 
             if let Some(message) = decoder.try_read().unwrap() {
