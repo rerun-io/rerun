@@ -6,6 +6,7 @@ use re_log_types::LogMsg;
 
 use crate::FileHeader;
 use crate::MessageHeader;
+use crate::OLD_RRD_HEADERS;
 use crate::{Compression, EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
@@ -73,7 +74,7 @@ pub fn read_options(bytes: &[u8]) -> Result<EncodingOptions, DecodeError> {
         options,
     } = FileHeader::decode(&mut read)?;
 
-    if &magic == b"RRF0" {
+    if OLD_RRD_HEADERS.contains(&magic) {
         return Err(DecodeError::OldRrdVersion);
     } else if &magic != crate::RRD_HEADER {
         return Err(DecodeError::NotAnRrd);

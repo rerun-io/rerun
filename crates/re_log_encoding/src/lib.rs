@@ -22,7 +22,8 @@ pub use file_sink::{FileSink, FileSinkError};
 // ----------------------------------------------------------------------------
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-const RRD_HEADER: &[u8; 4] = b"RRF1";
+const RRD_HEADER: &[u8; 4] = b"RRF2";
+const OLD_RRD_HEADERS: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
 
 // ----------------------------------------------------------------------------
 
