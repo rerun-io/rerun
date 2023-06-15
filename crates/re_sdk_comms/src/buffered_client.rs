@@ -64,7 +64,7 @@ impl Client {
         let (send_quit_tx, send_quit_rx) = crossbeam::channel::unbounded();
         let (drop_quit_tx, drop_quit_rx) = crossbeam::channel::unbounded();
 
-        // We don't compress the stream becausew e assume the SDK
+        // We don't compress the stream because we assume the SDK
         // and server are on the same machine and compression
         // can be expensive, see https://github.com/rerun-io/rerun/issues/2216
         let encoding_options = re_log_encoding::EncodingOptions::UNCOMPRESSED;
