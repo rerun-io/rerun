@@ -99,31 +99,6 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     });
 }
 
-/* #[cfg(not(target_arch = "wasm32"))]
-#[allow(clippy::needless_pass_by_value)] // must match wasm version
-fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
-    match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
-        Ok(decoder) => {
-            for msg in decoder {
-                match msg {
-                    Ok(msg) => {
-                        on_msg(HttpMessage::LogMsg(msg));
-                    }
-                    Err(err) => {
-                        re_log::warn_once!("Failed to decode message: {err}");
-                    }
-                }
-            }
-            on_msg(HttpMessage::Success);
-        }
-        Err(err) => {
-            on_msg(HttpMessage::Failure(
-                format!("Failed to decode .rrd: {err}").into(),
-            ));
-        }
-    }
-} */
-
 #[cfg(target_arch = "wasm32")]
 mod web_event_listener {
     use super::HttpMessageCallback;
