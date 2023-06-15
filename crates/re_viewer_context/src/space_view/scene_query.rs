@@ -7,7 +7,9 @@ pub struct SceneQuery<'s> {
     pub space_origin: &'s EntityPath,
 
     /// All queried entities.
-    pub entity_paths: &'s IntSet<EntityPath>,
+    ///
+    /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
+    entity_paths: &'s IntSet<EntityPath>,
 
     /// The timeline we're on.
     pub timeline: Timeline,
@@ -21,6 +23,22 @@ pub struct SceneQuery<'s> {
 }
 
 impl<'s> SceneQuery<'s> {
+    pub fn new(
+        space_origin: &'s EntityPath,
+        entity_paths: &'s IntSet<EntityPath>,
+        timeline: Timeline,
+        latest_at: TimeInt,
+        entity_props_map: &'s EntityPropertyMap,
+    ) -> Self {
+        Self {
+            space_origin,
+            entity_paths,
+            timeline,
+            latest_at,
+            entity_props_map,
+        }
+    }
+
     /// Iter over all of the currently visible [`EntityPath`]s in the [`SceneQuery`].
     ///
     /// Also includes the corresponding [`EntityProperties`].
