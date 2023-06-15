@@ -3,7 +3,8 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.0...v0.6.0) - 3D in 2D ands SDK batching
+
+## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.6.0) - 3D in 2D and SDK batching - 2023-05-26
 
 ### Overview & Highlights
 
@@ -216,7 +217,8 @@ This Release fixes a few small bugs on top of the v0.5.0 release.
 * Don't use console.error [#1984](https://github.com/rerun-io/rerun/pull/1984)
 * Fix failure to save files when split table contains no data [#2007](https://github.com/rerun-io/rerun/pull/2007)
 
-## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore!
+
+## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore! - 2023-04-20
 
 ### Overview & Highlights
 
@@ -387,10 +389,10 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - `just rs-run-all` [b14087b40bd805c95f030a4c7d3fb7a0482e13f4](https://github.com/rerun-io/rerun/commit/b14087b40bd805c95f030a4c7d3fb7a0482e13f4)
 - `just py-run-all-{native|web|rrd}` [#1927](https://github.com/rerun-io/rerun/pull/1927)
 
-## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements
+
+## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements - 2023-03-28
 
 https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
-
 
 ### Overview & Highlights
 * Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
@@ -562,12 +564,12 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Lint fixes [9901e7c6735356b1970ddabc926bc5378d82e057](https://github.com/rerun-io/rerun/commit/9901e7c6735356b1970ddabc926bc5378d82e057)
 
 
-## [0.3.1](https://github.com/rerun-io/rerun/compare/v0.3.0...v0.3.1) - Remove potentially sensitive analytics
+## [0.3.1](https://github.com/rerun-io/rerun/compare/v0.3.0...v0.3.1) - Remove potentially sensitive analytics - 2023-03-13
 
 Remove potentially sensitive analytics, including path to rerun source code on panics, and rerun branch name when building from source [#1563](https://github.com/rerun-io/rerun/pull/1563)
 
 
-## [0.3.0](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0)
+## [0.3.0](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0) - 2023-03-07
 ### Overview & Highlights
 
 After a successful launch a couple of weeks ago, we're back with our second release!
@@ -726,5 +728,5 @@ Meanwhile, we did a bunch of improvements to our manual. If you had trouble runn
 
 [Full Changelog](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0)
 
-## 0.2.0
+## 0.2.0 - 2023-02-14
 First public release!
