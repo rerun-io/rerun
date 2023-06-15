@@ -30,10 +30,37 @@ pub struct StreamDecoder {
     state: State,
 }
 
+///
+/// ```text,ignore
+/// StreamHeader
+///      |
+///      v
+/// MessageHeader
+/// ^           |
+/// |           |
+/// ---Message<--
+/// ```
 #[derive(Clone, Copy)]
 enum State {
+    /// The beginning of the stream.
+    ///
+    /// The stream header contains the magic bytes (e.g. `RRF2`),
+    /// the encoded version, and the encoding options.
+    ///
+    /// After the stream header is read once, the state machine
+    /// will only ever switch between `MessageHeader` and `Message`
     StreamHeader,
+    /// The beginning of a message.
+    ///
+    /// The message header contains the number of bytes in the
+    /// compressed message, and the number of bytes in the
+    /// uncompressed message.
     MessageHeader,
+    /// The message content.
+    ///
+    /// We need to know the full length of the message before attempting
+    /// to read it, otherwise the call to `decompress_into` or the
+    /// MessagePack deserialization may block or even fail.
     Message(MessageHeader),
 }
 

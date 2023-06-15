@@ -92,8 +92,8 @@ pub fn read_options(bytes: &[u8]) -> Result<EncodingOptions, DecodeError> {
 pub struct Decoder<R: std::io::Read> {
     compression: Compression,
     read: R,
-    uncompressed: Vec<u8>,
-    compressed: Vec<u8>,
+    uncompressed: Vec<u8>, // scratch space
+    compressed: Vec<u8>,   // scratch space
 }
 
 impl<R: std::io::Read> Decoder<R> {
