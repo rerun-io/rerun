@@ -142,8 +142,8 @@ struct ChunkBuffer {
     /// so that we can return a contiguous slice from `try_read`.
     buffer: Vec<u8>,
 
-    /// The cursor points to the end of the used range in `buffer`
-    cursor: usize,
+    /// How many bytes of valid data are currently in `self.buffer`.
+    buffer_fill: usize,
 }
 
 impl ChunkBuffer {
@@ -151,7 +151,7 @@ impl ChunkBuffer {
         Self {
             queue: VecDeque::with_capacity(16),
             buffer: Vec::with_capacity(1024),
-            cursor: 0,
+            buffer_fill: 0,
         }
     }
 
@@ -169,7 +169,7 @@ impl ChunkBuffer {
         // resize the buffer if the target has changed
         if self.buffer.len() != n {
             self.buffer.resize(n, 0);
-            self.cursor = 0;
+            self.buffer_fill = 0;
         }
 
         // try to read some bytes from the front of the queue,
@@ -177,10 +177,10 @@ impl ChunkBuffer {
         // - we've read enough to return a slice of `n` bytes
         // - we run out of chunks to read
         // while also discarding any empty chunks
-        while self.cursor != n {
+        while self.buffer_fill != n {
             if let Some(chunk) = self.queue.front_mut() {
-                let remainder = &mut self.buffer[self.cursor..];
-                self.cursor += chunk.read(remainder).map_err(DecodeError::Read)?;
+                let remainder = &mut self.buffer[self.buffer_fill..];
+                self.buffer_fill += chunk.read(remainder).map_err(DecodeError::Read)?;
                 if is_chunk_empty(chunk) {
                     self.queue.pop_front();
                 }
@@ -189,7 +189,7 @@ impl ChunkBuffer {
             }
         }
 
-        if self.cursor == n {
+        if self.buffer_fill == n {
             Ok(Some(&self.buffer[..]))
         } else {
             Ok(None)
