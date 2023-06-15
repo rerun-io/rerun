@@ -158,6 +158,9 @@ impl ChunkBuffer {
     }
 
     fn push(&mut self, chunk: Vec<u8>) {
+        if chunk.is_empty() {
+            return;
+        }
         self.queue.push_back(Chunk::new(chunk));
     }
 
