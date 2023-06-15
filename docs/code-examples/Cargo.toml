@@ -1,0 +1,14 @@
+[package]
+name = "code_examples"
+version = "0.7.0-alpha.0"
+edition = "2021"
+rust-version = "1.69"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[[bin]]
+name='point2d_simple'
+path='point2d_simple.rs'
+
+[dependencies]
+rerun = { path = "../../crates/rerun", features = ["native_viewer"] }
