@@ -632,11 +632,11 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
 fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
     ui.centered_and_justified(|ui| {
-        fn ready_and_waiting(ui: &mut egui::Ui, txt: &str) {
+        fn waiting_ui(ui: &mut egui::Ui, heading_txt: &str, msg_txt: &str) {
             let style = ui.style();
             let mut layout_job = egui::text::LayoutJob::default();
             layout_job.append(
-                "Ready",
+                heading_txt,
                 0.0,
                 egui::TextFormat::simple(
                     egui::TextStyle::Heading.resolve(style),
@@ -644,7 +644,7 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
                 ),
             );
             layout_job.append(
-                &format!("\n\n{txt}"),
+                &format!("\n\n{msg_txt}"),
                 0.0,
                 egui::TextFormat::simple(
                     egui::TextStyle::Body.resolve(style),
@@ -657,28 +657,36 @@ fn wait_screen_ui(ui: &mut egui::Ui, rx: &Receiver<LogMsg>) {
 
         match rx.source() {
             re_smart_channel::Source::Files { paths } => {
-                ui.strong(format!(
-                    "Loading {}…",
-                    paths
-                        .iter()
-                        .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
-                ));
+                waiting_ui(
+                    ui,
+                    "Loading…",
+                    &format!(
+                        "{}",
+                        paths
+                            .iter()
+                            .format_with(", ", |path, f| f(&format_args!("{}", path.display())))
+                    ),
+                );
             }
             re_smart_channel::Source::RrdHttpStream { url } => {
-                ui.strong(format!("Loading {url}…"));
+                waiting_ui(ui, "Loading…", url);
             }
             re_smart_channel::Source::RrdWebEventListener => {
-                ready_and_waiting(ui, "Waiting for logging data…");
+                waiting_ui(ui, "Ready", "Waiting for logging data…");
             }
             re_smart_channel::Source::Sdk => {
-                ready_and_waiting(ui, "Waiting for logging data from SDK");
+                waiting_ui(ui, "Ready", "Waiting for logging data from SDK");
             }
             re_smart_channel::Source::WsClient { ws_server_url } => {
                 // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
-                ready_and_waiting(ui, &format!("Waiting for data from {ws_server_url}"));
+                waiting_ui(
+                    ui,
+                    "Ready",
+                    &format!("Waiting for data from {ws_server_url}"),
+                );
             }
             re_smart_channel::Source::TcpServer { port } => {
-                ready_and_waiting(ui, &format!("Listening on port {port}"));
+                waiting_ui(ui, "Ready", &format!("Listening on port {port}"));
             }
         };
     });

@@ -8,6 +8,9 @@
 
 <head>
     <link rel="icon" href="favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;500&display=swap" rel="stylesheet">
     <title>Rerun Viewer</title>
     <style>
         html {
@@ -16,18 +19,9 @@
         }
 
         body {
-            /* Light mode background color for what is not covered by the egui canvas,
-            or where the egui canvas is translucent. */
-            background: #909090;
+            background: #0d1011;
         }
 
-        @media (prefers-color-scheme: dark) {
-            body {
-                /* Dark mode background color for what is not covered by the egui canvas,
-                or where the egui canvas is translucent. */
-                background: #404040;
-            }
-        }
 
         /* Allow canvas to fill entire web page: */
         html,
@@ -48,8 +42,30 @@
             top: 0%;
             left: 50%;
             transform: translate(-50%, 0%);
+            /* canvas must be on top when visible */
+            z-index: 1000;
         }
 
+
+        /* Match the Rerun header bar. */
+        .header {
+            width: 100%;
+            height: 44px;
+            /* background: #111415; */
+            /* Actual value from Rerun Viewer */
+            background: #141414;
+
+        }
+
+        /* Create a container filling the remaining space. */
+        .container {
+            position: absolute;
+            height: calc(100vh - 44px);
+            width: 100vw;
+
+        }
+
+        /* Centered div inside the container. */
         .centered {
             margin-right: auto;
             margin-left: auto;
@@ -58,13 +74,44 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #f0f0f0;
-            font-size: 24px;
-            font-family: Ubuntu-Light, Helvetica, sans-serif;
             text-align: center;
         }
 
-        a {
+        /* Rerun styling for normal text. */
+        p {
+            /*Gray-775*/
+            color: #cad8de;
+            letter-spacing: -0.15px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            line-height: 14px;
+        }
+
+        /* Rerun styling for strong text. Matches `TextStyle::Heading`. */
+        .strong {
+            /*Gray-775*/
+            color: #ffffff;
+            /* Match current rerun header value */
+            font-size: 16px;
+        }
+
+        /* Rerun styling for subdued text.*/
+        .subdued {
+            /*Gray-550*/
+            color: #7d8c92;
+            /* Larger subdued size to match current rerun font */
+            font-size: 12px;
+            letter-spacing: -0.12px;
+        }
+
+        pre {
+            /*Gray-550*/
+            color: #7d8c92;
+            font-size: 10px;
+            letter-spacing: -0.12px;
+        }
+
+        a .button {
             display: inline-block;
             background: white;
             color: black;
@@ -74,55 +121,29 @@
             font-weight: 500;
         }
 
-        /* ---------------------------------------------- */
-        /* Loading animation from https://loading.io/css/ */
-        .lds-dual-ring {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
+        /* Transition to hidden */
+        .hidden {
+            opacity: 0;
+            transition: opacity 0.2s ease-out;
+            visibility: hidden;
         }
 
-        .lds-dual-ring:after {
-            content: " ";
-            display: block;
-            width: 24px;
-            height: 24px;
-            margin: 0px;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            border-color: #fff transparent #fff transparent;
-            animation: lds-dual-ring 1.2s linear infinite;
-        }
-
-        @keyframes lds-dual-ring {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+        /* Transition to visible */
+        .visible {
+            opacity: 100;
+            transition: opacity 0.2s ease-in;
+            visibility: visible;
         }
     </style>
 </head>
 
 <body>
+    <div class="header"></div>
+    <div class="container">
+        <div class="centered hidden" id="center_text"></div>
+    </div>
     <!-- The Wasm code will resize the canvas dynamically -->
-    <canvas id="the_canvas_id"></canvas>
-    <div class="centered" id="mobile_text" style="visibility:hidden">
-        <p style="font-size:16px">
-            Rerun is not yet supported on mobile browsers.
-        </p>
-        <p style="font-size:16px">
-            <a href="#" id="try_anyways">Try anyways</a>
-        </p>
-    </div>
-    <div class="centered" id="center_text">
-        <p style="font-size:16px">
-            Loading…
-        </p>
-        <div class="lds-dual-ring"></div>
-    </div>
+    <canvas id="the_canvas_id" class="hidden"></canvas>
 
     <script src="https://fifteen-thirtyeight.rerun.io/script.js" data-site="QKMCQFTQ" defer></script>
 
@@ -143,14 +164,40 @@
     <script src="re_viewer.js"></script>
 
     <script>
+        function show_center_html(html) {
+            center_text_elem = document.getElementById("center_text");
+            center_text_elem.innerHTML = html;
+            center_text_elem.classList.remove("hidden");
+            center_text_elem.classList.add("visible");
+        }
+        function hide_center_html(html) {
+            center_text_elem = document.getElementById("center_text");
+            center_text_elem.innerHTML = html;
+            center_text_elem.classList.remove("visible");
+            center_text_elem.classList.add("hidden");
+        }
+        function show_canvas(html) {
+            canvas_elem = document.getElementById("the_canvas_id");
+            canvas_elem.classList.remove("hidden");
+            canvas_elem.classList.add("visible");
+        }
+        function hide_canvas(html) {
+            canvas_elem = document.getElementById("the_canvas_id");
+            canvas_elem.classList.remove("visible");
+            canvas_elem.classList.add("hidden");
+        }
+
         // On mobile platforms show a warning, but provide a link to try anyways
         if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-            document.querySelector('#center_text').style.visibility = 'hidden';
-            document.querySelector('#mobile_text').style.visibility = 'visible';
+            show_center_html(`
+                <p>
+                    Rerun is not yet supported on mobile browsers.
+                </p>
+                <p>
+                    <a class="button" href="#" id="try_anyways">Try anyways</a>
+                </p>`);
             document.querySelector('#try_anyways').addEventListener('click', function (event) {
                 event.preventDefault();
-                document.querySelector('#center_text').style.visibility = 'visible';
-                document.querySelector('#mobile_text').style.visibility = 'hidden';
                 load_wasm();
             });
         } else {
@@ -163,9 +210,73 @@
             // initialization and return to us a promise when it's done.
 
             console.debug("loading wasm…");
-            wasm_bindgen("./re_viewer_bg.wasm")
-                .then(on_wasm_loaded)
-                .catch(on_wasm_error);
+
+            document.getElementById("center_text").innerHTML = `
+                <p class="strong">
+                    Loading Application Bundle...
+                </p>
+                <p class="subdued" id="status">
+                </p>`;
+
+            const status_element = document.getElementById('status');
+            function progress({ loaded, total_bytes }) {
+                if (total_bytes != null) {
+                    status_element.innerHTML = Math.round(Math.min(loaded / total_bytes * 100, 100)) + '%';
+                } else {
+                    status_element.innerHTML = (loaded / (1024 * 1024)).toFixed(1) + 'MiB'
+                }
+            }
+
+            var timeoutId = setTimeout(function () {
+                document.getElementById("center_text").classList.remove("hidden");
+                document.getElementById("center_text").classList.add("visible");
+            }, 1500);
+
+            async function wasm_with_progress() {
+                const response = await fetch('./re_viewer_bg.wasm');
+                // Use the uncompressed size
+                var content_length;
+                var content_multiplier = 1;
+                // If the content is gzip encoded, try to get the uncompressed size.
+                if (response.headers.get('content-encoding') == 'gzip') {
+                    content_length = response.headers.get('x-goog-meta-uncompressed-size');
+
+                    // If the uncompressed size wasn't found 3 seems to be a very good approximation
+                    if (content_length == null) {
+                        content_length = response.headers.get('content-length');
+                        content_multiplier = 3;
+                    }
+                } else {
+                    content_length = response.headers.get('content-length');
+                }
+
+                const total_bytes = parseInt(content_length, 10) * content_multiplier;
+                let loaded = 0;
+
+                const res = new Response(new ReadableStream({
+                    async start(controller) {
+                        const reader = response.body.getReader();
+                        for (; ;) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            loaded += value.byteLength;
+                            progress({ loaded, total_bytes })
+                            controller.enqueue(value);
+                        }
+                        controller.close();
+                    },
+                }));
+                const wasm = await res.blob();
+
+                // Don't fade in the progress bar if we haven't hit it already.
+                clearTimeout(timeoutId);
+
+                wasm_bindgen(URL.createObjectURL(wasm))
+                    .then(on_wasm_loaded)
+                    .catch(on_wasm_error);
+            }
+
+            wasm_with_progress();
         }
 
 
@@ -173,14 +284,14 @@
             // WebGPU version is currently only supported on browsers with WebGPU support, there is no dynamic fallback to WebGL.
             if (wasm_bindgen.is_webgpu_build() && typeof navigator.gpu === 'undefined') {
                 console.debug("`navigator.gpu` is undefined. This indicates lack of WebGPU support.");
-                document.getElementById("center_text").innerHTML = `
-                <p>
-                    Missing WebGPU support.
-                </p>
-                <p style="font-size:18px">
-                    This version of Rerun requires WebGPU support which is not available in your browser.
-                    Either try a different browser or use the WebGL version of Rerun.
-                </p>`;
+                show_center_html(`
+                    <p class="strong">
+                        Missing WebGPU support.
+                    </p>
+                    <p class="subdued">
+                        This version of Rerun requires WebGPU support which is not available in your browser.
+                        Either try a different browser or use the WebGL version of Rerun.
+                    </p>`);
                 return;
             }
 
@@ -193,19 +304,18 @@
                     console.error("Rerun has crashed");
 
                     document.getElementById("the_canvas_id").remove();
-                    document.getElementById("center_text").innerHTML = `
-                        <p>
+
+                    show_center_html(`
+                        <p class="strong">
                             Rerun has crashed.
                         </p>
-                        <p style="font-size:10px" align="left">
-                            ${handle.panic_message()}
-                        </p>
-                        <p style="font-size:14px">
+                        <pre align="left">${handle.panic_message()}</pre>
+                        <p>
                             See the console for details.
                         </p>
-                        <p style="font-size:14px">
+                        <p>
                             Reload the page to try again.
-                        </p>`;
+                        </p>`);
                 } else {
                     let delay_ms = 1000;
                     setTimeout(check_for_panic, delay_ms);
@@ -223,7 +333,8 @@
             // setTimeout(() => { handle.destroy(); handle.free()) }, 2000)
 
             console.debug("App started.");
-            document.getElementById("center_text").innerHTML = '';
+            hide_center_html();
+            show_canvas();
 
             if (window.location !== window.parent.location) {
                 window.parent.postMessage("READY", "*");
@@ -269,7 +380,8 @@
                 // loading the wasm probably failed.
             }
 
-            document.getElementById("center_text").innerHTML = `
+            hide_canvas();
+            show_center_html(`
                 <p>
                     An error occurred during loading:
                 </p>
@@ -278,7 +390,7 @@
                 </p>
                 <p style="font-size:14px">
                         Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
-                </p>`;
+                </p>`);
         }
     </script>
 </body>
