@@ -67,6 +67,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                 }
                 ehttp::streaming::Part::Chunk(chunk) => {
                     if chunk.is_empty() {
+                        re_log::debug!("Finished decoding .rrd file from {url:?}…");
                         on_msg(HttpMessage::Success);
                         return ControlFlow::Break(());
                     }
