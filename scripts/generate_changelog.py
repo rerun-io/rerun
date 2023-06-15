@@ -127,6 +127,8 @@ def main() -> None:
         )
     )
 
+    chronological = []
+
     # Sections:
     analytics = []
     enhancement = []
@@ -155,8 +157,10 @@ def main() -> None:
             summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
             if summary in previous_changelog:
                 print(f"Ignoring dup: {summary}")
-            else:
-                misc.append(summary)
+                continue
+
+            chronological.append(summary)
+            misc.append(summary)
         else:
             title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
             labels = pr_info.labels if pr_info else []
@@ -166,6 +170,8 @@ def main() -> None:
             if summary in previous_changelog:
                 print(f"Ignoring dup: {summary}")
                 continue
+
+            chronological.append(f"{summary} {hexsha}")
 
             if INCLUDE_LABELS and 0 < len(labels):
                 summary += f" ({', '.join(labels)})"
@@ -221,6 +227,7 @@ def main() -> None:
                     misc.append(summary)
 
     print()
+
     # Most interesting first:
     print_section("🐍 Python SDK", python)
     print_section("🦀 Rust SDK", rust)
@@ -238,6 +245,9 @@ def main() -> None:
     print_section("🧑‍💻 Dev-experience", dev_experience)
     print_section("🗣 Refactors", refactor)
     print_section("🤷‍♂️ Other", misc)
+
+    print()
+    print_section("Chronological changes (don't include these)", chronological)
 
 
 if __name__ == "__main__":
