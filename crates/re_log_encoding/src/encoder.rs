@@ -80,8 +80,8 @@ impl<W: std::io::Write> Encoder<W> {
         match self.compression {
             Compression::Off => {
                 MessageHeader {
-                    uncompressed: self.uncompressed.len() as u32,
-                    compressed: self.uncompressed.len() as u32,
+                    uncompressed_len: self.uncompressed.len() as u32,
+                    compressed_len: self.uncompressed.len() as u32,
                 }
                 .encode(&mut self.write)?;
                 self.write
@@ -95,8 +95,8 @@ impl<W: std::io::Write> Encoder<W> {
                     lz4_flex::block::compress_into(&self.uncompressed, &mut self.compressed)
                         .map_err(EncodeError::Lz4)?;
                 MessageHeader {
-                    uncompressed: self.uncompressed.len() as u32,
-                    compressed: compressed_len as u32,
+                    uncompressed_len: self.uncompressed.len() as u32,
+                    compressed_len: compressed_len as u32,
                 }
                 .encode(&mut self.write)?;
                 self.write

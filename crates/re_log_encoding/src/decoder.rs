@@ -131,17 +131,19 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
         match self.compression {
             Compression::Off => {
-                self.uncompressed.resize(header.uncompressed as usize, 0);
+                self.uncompressed
+                    .resize(header.uncompressed_len as usize, 0);
                 if let Err(err) = self.read.read_exact(&mut self.uncompressed) {
                     return Some(Err(DecodeError::Read(err)));
                 }
             }
             Compression::LZ4 => {
-                self.compressed.resize(header.compressed as usize, 0);
+                self.compressed.resize(header.compressed_len as usize, 0);
                 if let Err(err) = self.read.read_exact(&mut self.compressed) {
                     return Some(Err(DecodeError::Read(err)));
                 }
-                self.uncompressed.resize(header.uncompressed as usize, 0);
+                self.uncompressed
+                    .resize(header.uncompressed_len as usize, 0);
 
                 re_tracing::profile_scope!("lz4");
                 if let Err(err) =

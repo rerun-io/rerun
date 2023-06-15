@@ -74,11 +74,12 @@ impl StreamDecoder {
                 }
             }
             State::Message(header) => {
-                if let Some(bytes) = self.chunks.try_read(header.compressed as usize)? {
+                if let Some(bytes) = self.chunks.try_read(header.compressed_len as usize)? {
                     let bytes = match self.compression {
                         Compression::Off => bytes,
                         Compression::LZ4 => {
-                            self.uncompressed.resize(header.uncompressed as usize, 0);
+                            self.uncompressed
+                                .resize(header.uncompressed_len as usize, 0);
                             lz4_flex::block::decompress_into(bytes, &mut self.uncompressed)
                                 .map_err(DecodeError::Lz4)?;
                             &self.uncompressed

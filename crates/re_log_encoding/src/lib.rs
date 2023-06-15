@@ -147,8 +147,9 @@ impl FileHeader {
 
 #[derive(Clone, Copy)]
 pub(crate) struct MessageHeader {
-    pub compressed: u32,
-    pub uncompressed: u32,
+    /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams
+    pub compressed_len: u32,
+    pub uncompressed_len: u32,
 }
 
 impl MessageHeader {
@@ -158,10 +159,10 @@ impl MessageHeader {
     #[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
     pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
         write
-            .write_all(&self.compressed.to_le_bytes())
+            .write_all(&self.compressed_len.to_le_bytes())
             .map_err(encoder::EncodeError::Write)?;
         write
-            .write_all(&self.uncompressed.to_le_bytes())
+            .write_all(&self.uncompressed_len.to_le_bytes())
             .map_err(encoder::EncodeError::Write)?;
         Ok(())
     }
@@ -174,8 +175,8 @@ impl MessageHeader {
         let compressed = u32_from_le_slice(&buffer[0..4]);
         let uncompressed = u32_from_le_slice(&buffer[4..]);
         Ok(Self {
-            compressed,
-            uncompressed,
+            compressed_len: compressed,
+            uncompressed_len: uncompressed,
         })
     }
 }
