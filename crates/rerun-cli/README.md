@@ -31,5 +31,5 @@ Run `rerun --help` for more.
 
 ### Running a web viewer
 ```sh
-rerun --web-viewer ../nyud.rrd
+rerun --web-viewer path/to/file.rrd
 ```

@@ -59,5 +59,5 @@ Run `rerun --help` for more.
 The web viewer is an experimental feature, but you can try it out with:
 
 ```sh
-rerun --web-viewer ../nyud.rrd
+rerun --web-viewer path/to/file.rrd
 ```
