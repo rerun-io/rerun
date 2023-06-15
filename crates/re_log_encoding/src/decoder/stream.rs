@@ -81,7 +81,7 @@ impl StreamDecoder {
     pub fn try_read(&mut self) -> Result<Option<LogMsg>, DecodeError> {
         match self.state {
             State::StreamHeader => {
-                if let Some(header) = self.chunks.try_read(FileHeader::SIZE)? {
+                if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
                     // header contains version and compression options
                     self.compression = read_options(header)?.compression;
 
@@ -92,7 +92,7 @@ impl StreamDecoder {
                 }
             }
             State::MessageHeader => {
-                if let Some(mut len) = self.chunks.try_read(MessageHeader::SIZE)? {
+                if let Some(mut len) = self.chunks.try_read(MessageHeader::SIZE) {
                     let header = MessageHeader::decode(&mut len)?;
                     self.state = State::Message(header);
                     // we might have data left in the current chunk,
@@ -101,7 +101,7 @@ impl StreamDecoder {
                 }
             }
             State::Message(header) => {
-                if let Some(bytes) = self.chunks.try_read(header.compressed_len as usize)? {
+                if let Some(bytes) = self.chunks.try_read(header.compressed_len as usize) {
                     let bytes = match self.compression {
                         Compression::Off => bytes,
                         Compression::LZ4 => {
@@ -161,11 +161,11 @@ impl ChunkBuffer {
 
     /// Attempt to read exactly `n` bytes out of the queued chunks.
     ///
-    /// Returns `Ok(None)` if there is not enough data to return a slice of `n` bytes.
+    /// Returns `None` if there is not enough data to return a slice of `n` bytes.
     ///
-    /// NOTE: `try_read` *must* be called with the same `n` until it returns something
-    /// other than `Ok(None)`, otherwise this will discard any buffered data.
-    fn try_read(&mut self, n: usize) -> Result<Option<&[u8]>, DecodeError> {
+    /// NOTE: `try_read` *must* be called with the same `n` until it returns `Some`,
+    /// otherwise this will discard any previously buffered data.
+    fn try_read(&mut self, n: usize) -> Option<&[u8]> {
         // resize the buffer if the target has changed
         if self.buffer.len() != n {
             self.buffer.resize(n, 0);
@@ -180,7 +180,7 @@ impl ChunkBuffer {
         while self.buffer_fill != n {
             if let Some(chunk) = self.queue.front_mut() {
                 let remainder = &mut self.buffer[self.buffer_fill..];
-                self.buffer_fill += chunk.read(remainder).map_err(DecodeError::Read)?;
+                self.buffer_fill += chunk.read(remainder).expect("failed to read from chunk");
                 if is_chunk_empty(chunk) {
                     self.queue.pop_front();
                 }
@@ -190,9 +190,9 @@ impl ChunkBuffer {
         }
 
         if self.buffer_fill == n {
-            Ok(Some(&self.buffer[..]))
+            Some(&self.buffer[..])
         } else {
-            Ok(None)
+            None
         }
     }
 }
