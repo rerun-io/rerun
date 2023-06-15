@@ -36,7 +36,7 @@ pub enum DecodeError {
     #[error("Not an .rrd file")]
     NotAnRrd,
 
-    #[error("Found an .rrd file from a Rerun version from 0.6.0 or earlier")]
+    #[error("Found an .rrd file from an old, incompatible Rerun version")]
     OldRrdVersion,
 
     #[error("Failed to decode the options: {0}")]
