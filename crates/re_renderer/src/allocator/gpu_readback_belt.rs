@@ -272,7 +272,10 @@ impl GpuReadbackBelt {
                 // Allocation might be bigger than a chunk!
                 let buffer_size = self.chunk_size.max(size_in_bytes);
                 // Happens relatively rarely, this is a noteworthy event!
-                re_log::debug!("Allocating new GpuReadbackBelt chunk of size {buffer_size}");
+                re_log::debug!(
+                    "Allocating new GpuReadbackBelt chunk of size {:.1} MiB",
+                    buffer_size as f32 / (1024.0 * 1024.0)
+                );
                 let buffer = buffer_pool.alloc(
                     device,
                     &BufferDesc {

@@ -17,7 +17,6 @@
 
 ### In Detail
 
-
 #### 🐍 Python SDK
 - ⚠️ BREAKING: You must now call `rr.init` if you want logging to work.
 - ⚠️ BREAKING: `set_enabled` has been removed.
@@ -87,6 +86,7 @@
 - Optimize GLTF/GLB texture loading in debug builds [#2096](https://github.com/rerun-io/rerun/pull/2096)
 - Premultiply the alpha on the GPU [#2190](https://github.com/rerun-io/rerun/pull/2190)
 - Switch compression algorithm from zstd to lz4 [#2112](https://github.com/rerun-io/rerun/pull/2112)
+- Support RRD streams with and without compression. Turn off for SDK comms [#2219](https://github.com/rerun-io/rerun/pull/2219)
 
 #### 🧑‍🏫 Examples
 - Join threads at end of multi-threading example [#1934](https://github.com/rerun-io/rerun/pull/1934)
@@ -100,7 +100,6 @@
 - Fix glb mesh data set downloads [#2100](https://github.com/rerun-io/rerun/pull/2100)
 - Add more examples to https://app.rerun.io/ [#2062](https://github.com/rerun-io/rerun/pull/2062)
 
-
 #### 🖼 UI Improvements
 - Update egui to latest and wgpu to 0.16 [#1958](https://github.com/rerun-io/rerun/pull/1958)
 - Add keyboard shortcut for "Follow", and stop following on "Restart" [#1986](https://github.com/rerun-io/rerun/pull/1986) (thanks [@h3mosphere](https://github.com/h3mosphere)!)
@@ -110,7 +109,6 @@
 - Allow horizontal scrolling in blueprint panel [#2114](https://github.com/rerun-io/rerun/pull/2114)
 - Nicer (& fixed up) help texts for space views [#2070](https://github.com/rerun-io/rerun/pull/2070)
 - Allow dragging time cursor in plots [#2115](https://github.com/rerun-io/rerun/pull/2115)
-
 
 #### 🕸️ Web
 - Set the GC limit to 2.5GB on web [#1944](https://github.com/rerun-io/rerun/pull/1944)
@@ -140,8 +138,6 @@
 #### ✨ Other Enhancement
 - Update minimum supported Rust version to `1.69.0` [#1935](https://github.com/rerun-io/rerun/pull/1935)
 - Allow users to select the bind address (ip) to use with `--bind` [#2159](https://github.com/rerun-io/rerun/pull/2159)
-
-
 
 #### 🧑‍💻 Dev-experience
 - Suggest users open an issue on crash, and other fixes [#1993](https://github.com/rerun-io/rerun/pull/1993)
@@ -355,8 +351,6 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Datastore revamp 6: sunset `LogMsg` storage + save store to disk [#1795](https://github.com/rerun-io/rerun/pull/1795)
 - Datastore revamp 7: garbage collection [#1801](https://github.com/rerun-io/rerun/pull/1801)
 - Incremental metadata registry stats [#1833](https://github.com/rerun-io/rerun/pull/1833)
-
-#### ✨ Other Enhancement
 
 #### 🗣 Merged RFCs
 - RFC: datastore state of the union & end-to-end batching  [#1610](https://github.com/rerun-io/rerun/pull/1610)
