@@ -5,19 +5,20 @@ order: 4
 
 ## Overview
 
-Any visualization that assigns an identifier ("Class ID") to an instance or entity can profit from using annotations.
-By using an Annotation Context, you can associated labels and colors to a given class.
+Any visualization that assigns an identifier ("Class ID") to an instance or entity can profit from using Annotations.
+By using an Annotation Context, you can associate labels and colors with a given class and then re-use
+that class across entities.
 
 This is particularly useful for visualizing the output classifications algorithms
 (as demonstrated by the [Detect and Track Objects](https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and_track_objects) example),
-but can be used more generally for any kind of categorization within a scene.
+but can be used more generally for any kind of reoccurring categorization within a Rerun recording.
 
 ![classids](https://static.rerun.io/5508e3fd5b2fdc020eda0bd545ccb97d26a01303_classids.png)
 
 
 ### Keypoints & Keypoint Connections
 
-Rerun allows you to define keypoints within a class.
+Rerun allows you to define keypoints *within* a class.
 Each keypoint can define its own properties (colors, labels, etc.) that overwrite its parent class.
 
 A typical example for keypoints would be the joints of a skeleton within a pose detection:
@@ -33,7 +34,7 @@ Keypoints are currently only applicable to 2D and 3D points.
 ![keypoints](https://static.rerun.io/a8be4dff9cf1d2793d5a5f0d5c4bb058d1430ea8_keypoints.png)
 
 
-### How to log an Annotation Context
+### Logging an Annotation Context
 
 Annotation Context is typically logged as [timeless](./timelines#timeless-data) data, but can change over time if needed.
 
@@ -48,7 +49,7 @@ Annotation contexts are logged with:
 code-example: annotation-context
 
 
-## Which Entities are affected 
+## Affected Entities
 
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
 the nearest ancestor that in the [entity path hierarchy](./entity-path#path-hierarchy-functions) that has an Annotation Context defined.
