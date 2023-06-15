@@ -57,7 +57,8 @@ SIZES = [
 
 
 def image_from_clipboard() -> Image:
-    """Get image from the clipboard.
+    """
+    Get image from the clipboard.
 
     On Mac, `PIL.ImageGrab.grabclipboard()` compresses to JPG. This function uses the same code but uses PNG instead.
     """
@@ -290,7 +291,7 @@ def run_pngcrush(data: bytes) -> bytes:
     input_len = len(data)
     output_len = len(output_data)
     if output_len > input_len:
-        logging.info(f"pngcrush failed to reduce file size")
+        logging.info("pngcrush failed to reduce file size")
         return data
     else:
         logging.info(
