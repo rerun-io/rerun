@@ -1494,8 +1494,9 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.2.0"
-source = "git+https://github.com/emilk/ehttp.git?rev=884e25a0835ab4cbea53180cb61660100866f28a#884e25a0835ab4cbea53180cb61660100866f28a"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31e4525e883dd283d12b755ab3ad71d7c8dea2ee8e8a062b9f4c4f84637ed681"
 dependencies = [
  "document-features",
  "futures-util",

@@ -37,9 +37,7 @@ re_smart_channel.workspace = true
 re_tracing.workspace = true
 
 # External:
-ehttp = { git = "https://github.com/emilk/ehttp.git", features = [
-  "streaming",
-], rev = "884e25a0835ab4cbea53180cb61660100866f28a" }
+ehttp = { version = "0.3", features = ["streaming"] }
 parking_lot.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
