@@ -236,22 +236,24 @@ mod tests {
         })
     }
 
-    fn test_data(options: EncodingOptions, n: usize) -> Vec<u8> {
+    fn test_data(options: EncodingOptions, n: usize) -> (Vec<LogMsg>, Vec<u8>) {
+        let messages: Vec<_> = (0..n).map(|_| fake_log_msg()).collect();
+
         let mut buffer = Vec::new();
-        {
-            let mut encoder = Encoder::new(options, &mut buffer).unwrap();
-            for _ in 0..n {
-                encoder.append(&fake_log_msg()).unwrap();
-            }
+        let mut encoder = Encoder::new(options, &mut buffer).unwrap();
+        for message in &messages {
+            encoder.append(message).unwrap();
         }
-        buffer
+
+        (messages, buffer)
     }
 
     macro_rules! assert_message_ok {
         ($message:expr) => {{
             match $message {
                 Ok(Some(message)) => {
-                    assert_eq!(&fake_log_msg(), &message)
+                    assert_eq!(&fake_log_msg(), &message);
+                    message
                 }
                 Ok(None) => {
                     panic!("failed to read message: message could not be read in full");
@@ -263,63 +265,192 @@ mod tests {
         }};
     }
 
+    macro_rules! assert_message_incomplete {
+        ($message:expr) => {{
+            match $message {
+                Ok(None) => {}
+                Ok(Some(message)) => {
+                    panic!("expected message to be incomplete, instead received: {message:?}");
+                }
+                Err(err) => {
+                    panic!("failed to read message: {err}");
+                }
+            }
+        }};
+    }
+
     #[test]
     fn stream_whole_chunks_uncompressed() {
-        let data = test_data(EncodingOptions::UNCOMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::UNCOMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
+
+        assert_message_incomplete!(decoder.try_read());
+
         decoder.push_chunk(data);
 
-        for _ in 0..16 {
-            assert_message_ok!(decoder.try_read());
-        }
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
     }
 
     #[test]
     fn stream_byte_chunks_uncompressed() {
-        let data = test_data(EncodingOptions::UNCOMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::UNCOMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
+
+        assert_message_incomplete!(decoder.try_read());
+
         for chunk in data.chunks(1) {
             decoder.push_chunk(chunk.to_vec());
         }
 
-        for _ in 0..16 {
-            assert_message_ok!(decoder.try_read());
-        }
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
     }
 
     #[test]
     fn stream_whole_chunks_compressed() {
-        let data = test_data(EncodingOptions::COMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
+
+        assert_message_incomplete!(decoder.try_read());
+
         decoder.push_chunk(data);
 
-        for _ in 0..16 {
-            assert_message_ok!(decoder.try_read());
-        }
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
     }
 
     #[test]
     fn stream_byte_chunks_compressed() {
-        let data = test_data(EncodingOptions::COMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
+
+        assert_message_incomplete!(decoder.try_read());
+
         for chunk in data.chunks(1) {
             decoder.push_chunk(chunk.to_vec());
         }
 
-        for _ in 0..16 {
-            assert_message_ok!(decoder.try_read());
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn stream_3x16_chunks() {
+        let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new();
+        let mut decoded_messages = vec![];
+
+        // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
+        // until there are no more chunks
+        let mut chunks = data.chunks(16).peekable();
+        while chunks.peek().is_some() {
+            for _ in 0..3 {
+                if chunks.peek().is_none() {
+                    break;
+                }
+                decoder.push_chunk(chunks.next().unwrap().to_vec());
+            }
+
+            if let Some(message) = decoder.try_read().unwrap() {
+                decoded_messages.push(message);
+            }
         }
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn stream_irregular_chunks() {
+        // this attemps to stress-test `try_read` with chunks of various sizes
+
+        let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
+        let mut data = Cursor::new(data);
+
+        let mut decoder = StreamDecoder::new();
+        let mut decoded_messages = vec![];
+
+        // read chunks 2xN bytes at a time, where `N` comes from a regular pattern
+        // this is slightly closer to using random numbers while still being
+        // fully deterministic
+
+        let pattern = [0, 3, 4, 70, 31];
+        let mut pattern_index = 0;
+        let mut temp = [0_u8; 71];
+
+        while data.position() < data.get_ref().len() as u64 {
+            for _ in 0..2 {
+                let n = data.read(&mut temp[..pattern[pattern_index]]).unwrap();
+                pattern_index = (pattern_index + 1) % pattern.len();
+                decoder.push_chunk(temp[..n].to_vec());
+            }
+
+            if let Some(message) = decoder.try_read().unwrap() {
+                decoded_messages.push(message);
+            }
+        }
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn chunk_buffer_read_single_chunk() {
+        // reading smaller `n` from multiple larger chunks
+
+        let mut buffer = ChunkBuffer::new();
+
+        let data = &[0, 1, 2, 3, 4];
+        assert_eq!(None, buffer.try_read(1));
+        buffer.push(data.to_vec());
+        assert_eq!(Some(&data[..3]), buffer.try_read(3));
+        assert_eq!(Some(&data[3..]), buffer.try_read(2));
+        assert_eq!(None, buffer.try_read(1));
+    }
+
+    #[test]
+    fn chunk_buffer_read_multi_chunk() {
+        // reading a large `n` from multiple smaller chunks
+
+        let mut buffer = ChunkBuffer::new();
+
+        let chunks: &[&[u8]] = &[&[0, 1, 2], &[3, 4]];
+
+        assert_eq!(None, buffer.try_read(1));
+        buffer.push(chunks[0].to_vec());
+        assert_eq!(None, buffer.try_read(5));
+        buffer.push(chunks[1].to_vec());
+        assert_eq!(Some(&[0, 1, 2, 3, 4][..]), buffer.try_read(5));
+        assert_eq!(None, buffer.try_read(1));
     }
 
     #[test]
     fn chunk_buffer_read_same_n() {
+        // reading the same `n` multiple times should not return the same bytes
+
         let mut buffer = ChunkBuffer::new();
 
         let data = &[0, 1, 2, 3];
+        buffer.push(data.to_vec());
+        assert_eq!(data, buffer.try_read(4).unwrap());
+        assert_eq!(None, buffer.try_read(4));
+        let data = &[4, 5, 6, 7];
         buffer.push(data.to_vec());
         assert_eq!(data, buffer.try_read(4).unwrap());
         assert_eq!(None, buffer.try_read(4));
