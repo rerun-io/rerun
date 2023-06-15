@@ -106,7 +106,7 @@ def print_section(title: str, items: list[str]) -> None:
         print(f"#### {title}")
         for line in items:
             print(f"- {line}")
-    print()
+        print()
 
 
 def main() -> None:
