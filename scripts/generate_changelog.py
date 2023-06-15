@@ -131,16 +131,17 @@ def main() -> None:
 
     # Sections:
     analytics = []
-    enhancement = []
     bugs = []
+    dependencies = []
     dev_experience = []
     docs = []
+    enhancement = []
     examples = []
     misc = []
     performance = []
     python = []
-    renderer = []
     refactor = []
+    renderer = []
     rfc = []
     rust = []
     ui = []
@@ -222,6 +223,8 @@ def main() -> None:
                     dev_experience.append(summary)
                 elif "💬 discussion" in labels:
                     rfc.append(summary)
+                elif "dependencies" in labels:
+                    dependencies.append(summary)
                 elif not added:
                     misc.append(summary)
 
@@ -243,6 +246,7 @@ def main() -> None:
     print_section("🗣 Merged RFCs", rfc)
     print_section("🧑‍💻 Dev-experience", dev_experience)
     print_section("🗣 Refactors", refactor)
+    print_section("📦 Dependencies", dependencies)
     print_section("🤷‍♂️ Other", misc)
 
     print()
