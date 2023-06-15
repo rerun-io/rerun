@@ -62,6 +62,6 @@ By default, Rerun will automatically assign colors to each class id, but by defi
 you can explicitly determine the color of each class.
 
 * Python: [`log_segmentation_image`](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_segmentation_image)
-* Rust: Log a [`Tensor`](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html) with [`TensorDataMeaning::ClassId`](https://docs.rs/rerun/latest/rerun/components/enum.TensorDataMeaning.html#variant.ClassIpython ./)
+* Rust: Log a [`Tensor`](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html) with [`TensorDataMeaning::ClassId`](https://docs.rs/rerun/latest/rerun/components/enum.TensorDataMeaning.html#variant.ClassId)
 
 ![segmentation image](https://static.rerun.io/7c47738b791a7faaad8f0221a78c027300d407fc_segmentation_image.png)
