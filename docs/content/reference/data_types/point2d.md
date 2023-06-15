@@ -10,7 +10,7 @@ order: 7
 * Rust API:
   * [Point2D](https://docs.rs/rerun/latest/rerun/components/struct.Point2D.html)
 
-### Simple Example
+## Simple Example
 code-example: point2d_simple
 
 <picture>
@@ -20,7 +20,7 @@ code-example: point2d_simple
   <img src="https://static.rerun.io/136a4322c6c679435b40d59b71ad715dd6a67634_point2d_py_simple_full.png" alt="">
 </picture>
 
-### Complex Example
+## Complex Example
 code-example: point2d_random
 
 <picture>
