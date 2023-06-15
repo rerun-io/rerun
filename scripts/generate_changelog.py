@@ -22,7 +22,7 @@ REPO = "rerun"
 COMMIT_RANGE = "latest..HEAD"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
-    "abey79"
+    "abey79",
     "emilk",
     "jleibs",
     "jprochazk",
