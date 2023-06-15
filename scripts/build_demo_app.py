@@ -78,6 +78,21 @@ def copy_static_assets(examples: list[Example]) -> None:
         )
 
 
+def build_python_sdk() -> None:
+    print("Building Python SDK…")
+    returncode = subprocess.Popen(
+        [
+            "maturin",
+            "develop",
+            "--manifest-path",
+            "rerun_py/Cargo.toml",
+            '--extras="tests"',
+            "--quiet",
+        ],
+    ).wait()
+    assert returncode == 0, f"process exited with error code {returncode}"
+
+
 def build_wasm() -> None:
     logging.info("")
     subprocess.run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
@@ -159,11 +174,13 @@ def main() -> None:
         action="store_true",
         help="Serve the app on this port after building [default: 8080]",
     )
-    parser.add_argument("--skip-wasm-build", action="store_true", help="Skip the web viewer Wasm build")
+
+    parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK and web viewer Wasm.")
 
     args = parser.parse_args()
 
-    if not args.skip_wasm_build:
+    if not args.skip_build:
+        build_python_sdk()
         build_wasm()
 
     shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
