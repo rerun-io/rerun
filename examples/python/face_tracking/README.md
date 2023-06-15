@@ -2,6 +2,7 @@
 title: Face Tracking
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/face_tracking/main.py
 tags: [media-pipe, face-tracking, live, camera, 2d, 3d]
+thumbnail: https://static.rerun.io/9f4ecc9d8447375cbad0af17fe2faf8ad2761025_mp_face_480w.png
 ---
 
 <picture>
