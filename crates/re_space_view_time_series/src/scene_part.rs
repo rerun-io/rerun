@@ -99,9 +99,7 @@ impl SceneTimeSeries {
 
         let store = &ctx.store_db.entity_db.data_store;
 
-        for entity_path in query.entity_paths {
-            let ent_path = entity_path;
-
+        for (ent_path, _ent_props) in query.iter_entities() {
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
             let annotation_info = annotations.class_description(None).annotation_info();
@@ -167,7 +165,7 @@ impl SceneTimeSeries {
                 (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
                     .then(|| label.clone())
             };
-            let line_label = same_label(&points).unwrap_or_else(|| entity_path.to_string());
+            let line_label = same_label(&points).unwrap_or_else(|| ent_path.to_string());
 
             self.add_line_segments(&line_label, points);
         }
