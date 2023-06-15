@@ -12,7 +12,7 @@ This is particularly useful for visualizing the output classifications algorithm
 (as demonstrated by the [Detect and Track Objects](https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and_track_objects) example),
 but can be used more generally for any kind of categorization within a scene.
 
-TODO: screenshot
+![classids](https://static.rerun.io/5508e3fd5b2fdc020eda0bd545ccb97d26a01303_classids.png)
 
 
 ### Keypoints & Keypoint Connections
@@ -30,7 +30,7 @@ Just as with labels & colors this allows you to use the same connection informat
 
 Keypoints are currently only applicable to 2D and 3D points.
 
-TODO: screenshot
+![keypoints](https://static.rerun.io/a8be4dff9cf1d2793d5a5f0d5c4bb058d1430ea8_keypoints.png)
 
 
 ### How to log an Annotation Context
@@ -61,4 +61,6 @@ By default, Rerun will automatically assign colors to each class id, but by defi
 you can explicitly determine the color of each class.
 
 * Python: [`log_segmentation_image`](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_segmentation_image)
-* Rust: Log a [`Tensor`](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html) with [`TensorDataMeaning::ClassId`](https://docs.rs/rerun/latest/rerun/components/enum.TensorDataMeaning.html#variant.ClassId)
+* Rust: Log a [`Tensor`](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html) with [`TensorDataMeaning::ClassId`](https://docs.rs/rerun/latest/rerun/components/enum.TensorDataMeaning.html#variant.ClassIpython ./)
+
+![segmentation image](https://static.rerun.io/7c47738b791a7faaad8f0221a78c027300d407fc_segmentation_image.png)
