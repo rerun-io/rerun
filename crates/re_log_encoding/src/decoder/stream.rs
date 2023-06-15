@@ -138,8 +138,8 @@ struct ChunkBuffer {
     /// Any incoming chunks are queued until they are emptied
     queue: VecDeque<Chunk>,
 
-    /// When `try_read` is called and we don't have enough bytes yet,
-    /// we store whatever we do have in this buffer
+    /// This buffer is used as scratch space for any read bytes,
+    /// so that we can return a contiguous slice from `try_read`.
     buffer: Vec<u8>,
 
     /// The cursor points to the end of the used range in `buffer`
@@ -162,6 +162,9 @@ impl ChunkBuffer {
     /// Attempt to read exactly `n` bytes out of the queued chunks.
     ///
     /// Returns `Ok(None)` if there is not enough data to return a slice of `n` bytes.
+    ///
+    /// NOTE: `try_read` *must* be called with the same `n` until it returns something
+    /// other than `Ok(None)`, otherwise this will discard any buffered data.
     fn try_read(&mut self, n: usize) -> Result<Option<&[u8]>, DecodeError> {
         // resize the buffer if the target has changed
         if self.buffer.len() != n {
