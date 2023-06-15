@@ -61,11 +61,7 @@ impl FileSink {
                         return;
                     }
                 }
-                if let Err(err) = encoder.finish() {
-                    re_log::error!("Failed to save log stream to {path:?}: {err}");
-                } else {
-                    re_log::debug!("Log stream saved to {path:?}");
-                }
+                re_log::debug!("Log stream saved to {path:?}");
             })
             .map_err(FileSinkError::SpawnThread)?;
 

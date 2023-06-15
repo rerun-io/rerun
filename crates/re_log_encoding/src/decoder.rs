@@ -1,7 +1,12 @@
 //! Decoding [`LogMsg`]:es from `.rrd` files/streams.
 
+pub mod stream;
+
 use re_log_types::LogMsg;
 
+use crate::FileHeader;
+use crate::MessageHeader;
+use crate::OLD_RRD_HEADERS;
 use crate::{Compression, EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
@@ -31,7 +36,7 @@ pub enum DecodeError {
     #[error("Not an .rrd file")]
     NotAnRrd,
 
-    #[error("Found an .rrd file from a Rerun version from 0.5.1 or earlier")]
+    #[error("Found an .rrd file from an old, incompatible Rerun version")]
     OldRrdVersion,
 
     #[error("Failed to decode the options: {0}")]
@@ -41,7 +46,7 @@ pub enum DecodeError {
     Read(std::io::Error),
 
     #[error("lz4 error: {0}")]
-    Lz4(std::io::Error),
+    Lz4(lz4_flex::block::DecompressError),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::decode::Error),
@@ -60,71 +65,50 @@ pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
 
 // ----------------------------------------------------------------------------
 
-enum Decompressor<R: std::io::Read> {
-    Uncompressed(R),
-    Lz4(lz4_flex::frame::FrameDecoder<R>),
-}
+pub fn read_options(bytes: &[u8]) -> Result<EncodingOptions, DecodeError> {
+    let mut read = std::io::Cursor::new(bytes);
 
-impl<R: std::io::Read> Decompressor<R> {
-    fn new(compression: Compression, read: R) -> Self {
-        match compression {
-            Compression::Off => Self::Uncompressed(read),
-            Compression::LZ4 => Self::Lz4(lz4_flex::frame::FrameDecoder::new(read)),
-        }
+    let FileHeader {
+        magic,
+        version,
+        options,
+    } = FileHeader::decode(&mut read)?;
+
+    if OLD_RRD_HEADERS.contains(&magic) {
+        return Err(DecodeError::OldRrdVersion);
+    } else if &magic != crate::RRD_HEADER {
+        return Err(DecodeError::NotAnRrd);
     }
 
-    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<(), DecodeError> {
-        use std::io::Read as _;
+    warn_on_version_mismatch(version);
 
-        match self {
-            Decompressor::Uncompressed(read) => read.read_exact(buf).map_err(DecodeError::Read),
-            Decompressor::Lz4(lz4) => lz4.read_exact(buf).map_err(DecodeError::Lz4),
-        }
+    match options.serializer {
+        Serializer::MsgPack => {}
     }
-}
 
-// ----------------------------------------------------------------------------
+    Ok(options)
+}
 
 pub struct Decoder<R: std::io::Read> {
-    decompressor: Decompressor<R>,
-    buffer: Vec<u8>,
+    compression: Compression,
+    read: R,
+    uncompressed: Vec<u8>, // scratch space
+    compressed: Vec<u8>,   // scratch space
 }
 
 impl<R: std::io::Read> Decoder<R> {
     pub fn new(mut read: R) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
-        {
-            let mut header = [0_u8; 4];
-            read.read_exact(&mut header).map_err(DecodeError::Read)?;
-            if &header == b"RRF0" {
-                return Err(DecodeError::OldRrdVersion);
-            } else if &header != crate::RRD_HEADER {
-                return Err(DecodeError::NotAnRrd);
-            }
-        }
-
-        {
-            let mut version_bytes = [0_u8; 4];
-            read.read_exact(&mut version_bytes)
-                .map_err(DecodeError::Read)?;
-            warn_on_version_mismatch(version_bytes);
-        }
-
-        let options = {
-            let mut options_bytes = [0_u8; 4];
-            read.read_exact(&mut options_bytes)
-                .map_err(DecodeError::Read)?;
-            EncodingOptions::from_bytes(options_bytes)?
-        };
-
-        match options.serializer {
-            Serializer::MsgPack => {}
-        }
+        let mut data = [0_u8; FileHeader::SIZE];
+        read.read_exact(&mut data).map_err(DecodeError::Read)?;
+        let compression = read_options(&data)?.compression;
 
         Ok(Self {
-            decompressor: Decompressor::new(options.compression, read),
-            buffer: vec![],
+            compression,
+            read,
+            uncompressed: vec![],
+            compressed: vec![],
         })
     }
 }
@@ -135,21 +119,43 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
     fn next(&mut self) -> Option<Self::Item> {
         re_tracing::profile_function!();
 
-        let mut len = [0_u8; 8];
-        self.decompressor.read_exact(&mut len).ok()?;
-        let len = u64::from_le_bytes(len) as usize;
+        let header = match MessageHeader::decode(&mut self.read) {
+            Ok(header) => header,
+            Err(err) => match err {
+                DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    return None
+                }
+                other => return Some(Err(other)),
+            },
+        };
 
-        self.buffer.resize(len, 0);
+        match self.compression {
+            Compression::Off => {
+                self.uncompressed
+                    .resize(header.uncompressed_len as usize, 0);
+                if let Err(err) = self.read.read_exact(&mut self.uncompressed) {
+                    return Some(Err(DecodeError::Read(err)));
+                }
+            }
+            Compression::LZ4 => {
+                self.compressed.resize(header.compressed_len as usize, 0);
+                if let Err(err) = self.read.read_exact(&mut self.compressed) {
+                    return Some(Err(DecodeError::Read(err)));
+                }
+                self.uncompressed
+                    .resize(header.uncompressed_len as usize, 0);
 
-        {
-            re_tracing::profile_scope!("lz4");
-            if let Err(err) = self.decompressor.read_exact(&mut self.buffer) {
-                return Some(Err(err));
+                re_tracing::profile_scope!("lz4");
+                if let Err(err) =
+                    lz4_flex::block::decompress_into(&self.compressed, &mut self.uncompressed)
+                {
+                    return Some(Err(DecodeError::Lz4(err)));
+                }
             }
         }
 
         re_tracing::profile_scope!("MsgPack deser");
-        match rmp_serde::from_read(&mut self.buffer.as_slice()) {
+        match rmp_serde::from_slice(&self.uncompressed) {
             Ok(msg) => Some(Ok(msg)),
             Err(err) => Some(Err(err.into())),
         }

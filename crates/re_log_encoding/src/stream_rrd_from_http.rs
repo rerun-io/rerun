@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use re_error::ResultExt as _;
@@ -42,24 +44,58 @@ pub type HttpMessageCallback = dyn Fn(HttpMessage) + Send + Sync;
 pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
-    // TODO(emilk): stream the http request, progressively decoding the .rrd file.
-    ehttp::fetch(ehttp::Request::get(&url), move |result| match result {
-        Ok(response) => {
-            if response.ok {
-                re_log::debug!("Decoding .rrd file from {url:?}…");
-                decode_rrd(response.bytes, on_msg);
-            } else {
-                let err = format!(
-                    "Failed to fetch .rrd file from {url}: {} {}",
-                    response.status, response.status_text
-                );
-                on_msg(HttpMessage::Failure(err.into()));
+    ehttp::streaming::fetch(ehttp::Request::get(&url), {
+        let decoder = RefCell::new(StreamDecoder::new());
+        move |part| match part {
+            Ok(part) => match part {
+                ehttp::streaming::Part::Response(ehttp::PartialResponse {
+                    ok,
+                    status,
+                    status_text,
+                    ..
+                }) => {
+                    if ok {
+                        re_log::debug!("Decoding .rrd file from {url:?}…");
+                        ControlFlow::Continue(())
+                    } else {
+                        on_msg(HttpMessage::Failure(
+                            format!("Failed to fetch .rrd file from {url}: {status} {status_text}")
+                                .into(),
+                        ));
+                        ControlFlow::Break(())
+                    }
+                }
+                ehttp::streaming::Part::Chunk(chunk) => {
+                    if chunk.is_empty() {
+                        re_log::debug!("Finished decoding .rrd file from {url:?}…");
+                        on_msg(HttpMessage::Success);
+                        return ControlFlow::Break(());
+                    }
+
+                    re_tracing::profile_scope!("decoding_rrd_stream");
+                    decoder.borrow_mut().push_chunk(chunk);
+                    loop {
+                        match decoder.borrow_mut().try_read() {
+                            Ok(message) => match message {
+                                Some(message) => on_msg(HttpMessage::LogMsg(message)),
+                                None => return ControlFlow::Continue(()),
+                            },
+                            Err(err) => {
+                                on_msg(HttpMessage::Failure(
+                                    format!("Failed to fetch .rrd file from {url}: {err}").into(),
+                                ));
+                                return ControlFlow::Break(());
+                            }
+                        }
+                    }
+                }
+            },
+            Err(err) => {
+                on_msg(HttpMessage::Failure(
+                    format!("Failed to fetch .rrd file from {url}: {err}").into(),
+                ));
+                ControlFlow::Break(())
             }
-        }
-        Err(err) => {
-            on_msg(HttpMessage::Failure(
-                format!("Failed to fetch .rrd file from {url}: {err}").into(),
-            ));
         }
     });
 }
@@ -102,31 +138,6 @@ mod web_event_listener {
 
 #[cfg(target_arch = "wasm32")]
 pub use web_event_listener::stream_rrd_from_event_listener;
-
-#[cfg(not(target_arch = "wasm32"))]
-#[allow(clippy::needless_pass_by_value)] // must match wasm version
-fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
-    match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
-        Ok(decoder) => {
-            for msg in decoder {
-                match msg {
-                    Ok(msg) => {
-                        on_msg(HttpMessage::LogMsg(msg));
-                    }
-                    Err(err) => {
-                        re_log::warn_once!("Failed to decode message: {err}");
-                    }
-                }
-            }
-            on_msg(HttpMessage::Success);
-        }
-        Err(err) => {
-            on_msg(HttpMessage::Failure(
-                format!("Failed to decode .rrd: {err}").into(),
-            ));
-        }
-    }
-}
 
 #[cfg(target_arch = "wasm32")]
 mod web_decode {
@@ -193,3 +204,5 @@ mod web_decode {
 
 #[cfg(target_arch = "wasm32")]
 use web_decode::decode_rrd;
+
+use crate::decoder::stream::StreamDecoder;

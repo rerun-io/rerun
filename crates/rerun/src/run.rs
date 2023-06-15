@@ -862,8 +862,6 @@ fn stream_to_rrd(
         }
     }
 
-    encoder.finish()?;
-
     re_log::info!("File saved to {path:?}");
 
     Ok(())
