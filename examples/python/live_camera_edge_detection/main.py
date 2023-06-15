@@ -13,7 +13,7 @@ rerun --memory-limit 4GB
 
 And then connect using:
 ```
-python examples/python/opencv_canny/main.py --connect
+python examples/python/live_camera_edge_detection/main.py --connect
 ```
 
 """
@@ -89,7 +89,7 @@ rerun --memory-limit 4GB
 
 And then connect using:
 ```
-python examples/python/opencv_canny/main.py --connect
+python examples/python/live_camera_edge_detection/main.py --connect
 ```
 ################################################################################
         """
