@@ -22,6 +22,7 @@ REPO = "rerun"
 COMMIT_RANGE = "latest..HEAD"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
+    "abey79",
     "emilk",
     "jleibs",
     "jprochazk",
@@ -109,6 +110,9 @@ def print_section(title: str, items: list[str]) -> None:
 
 
 def main() -> None:
+    # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
+    previous_changelog = open("CHANGELOG.md").read()
+
     repo = Repo(".")
     commits = list(repo.iter_commits(COMMIT_RANGE))
     commits.reverse()  # Most recent last
@@ -122,6 +126,8 @@ def main() -> None:
             desc="Fetch PR info commits",
         )
     )
+
+    chronological = []
 
     # Sections:
     analytics = []
@@ -149,12 +155,23 @@ def main() -> None:
         if pr_number is None:
             # Someone committed straight to main:
             summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
+            if summary in previous_changelog:
+                print(f"Ignoring dup: {summary}")
+                continue
+
+            chronological.append(summary)
             misc.append(summary)
         else:
             title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
             labels = pr_info.labels if pr_info else []
 
             summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
+
+            if summary in previous_changelog:
+                print(f"Ignoring dup: {summary}")
+                continue
+
+            chronological.append(f"{summary} {hexsha}")
 
             if INCLUDE_LABELS and 0 < len(labels):
                 summary += f" ({', '.join(labels)})"
@@ -210,6 +227,7 @@ def main() -> None:
                     misc.append(summary)
 
     print()
+
     # Most interesting first:
     print_section("🐍 Python SDK", python)
     print_section("🦀 Rust SDK", rust)
@@ -227,6 +245,9 @@ def main() -> None:
     print_section("🧑‍💻 Dev-experience", dev_experience)
     print_section("🗣 Refactors", refactor)
     print_section("🤷‍♂️ Other", misc)
+
+    print()
+    print_section("Chronological changes (don't include these)", chronological)
 
 
 if __name__ == "__main__":
