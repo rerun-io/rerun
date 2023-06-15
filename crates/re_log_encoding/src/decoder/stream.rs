@@ -190,6 +190,11 @@ impl ChunkBuffer {
         }
 
         if self.buffer_fill == n {
+            // ensure that a successful call to `try_read(N)`
+            // followed by another call to `try_read(N)` with the same `N`
+            // won't erroneously return the same bytes
+            self.buffer_fill = 0;
+
             Some(&self.buffer[..])
         } else {
             None
@@ -308,5 +313,15 @@ mod tests {
         for _ in 0..16 {
             assert_message_ok!(decoder.try_read());
         }
+    }
+
+    #[test]
+    fn chunk_buffer_read_same_n() {
+        let mut buffer = ChunkBuffer::new();
+
+        let data = &[0, 1, 2, 3];
+        buffer.push(data.to_vec());
+        assert_eq!(data, buffer.try_read(4).unwrap());
+        assert_eq!(None, buffer.try_read(4));
     }
 }
