@@ -159,7 +159,7 @@ impl ChunkBuffer {
         self.queue.push_back(Chunk::new(chunk));
     }
 
-    /// Attempt to read `n` bytes out of the queued chunks.
+    /// Attempt to read exactly `n` bytes out of the queued chunks.
     ///
     /// Returns `Ok(None)` if there is not enough data to return a slice of `n` bytes.
     fn try_read(&mut self, n: usize) -> Result<Option<&[u8]>, DecodeError> {
