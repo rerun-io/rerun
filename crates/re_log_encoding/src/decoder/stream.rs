@@ -381,7 +381,7 @@ mod tests {
 
     #[test]
     fn stream_irregular_chunks() {
-        // this attemps to stress-test `try_read` with chunks of various sizes
+        // this attempts to stress-test `try_read` with chunks of various sizes
 
         let (input, data) = test_data(EncodingOptions::COMPRESSED, 16);
         let mut data = Cursor::new(data);
