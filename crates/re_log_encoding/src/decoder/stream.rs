@@ -170,6 +170,10 @@ impl ChunkBuffer {
     fn try_read(&mut self, n: usize) -> Option<&[u8]> {
         // resize the buffer if the target has changed
         if self.buffer.len() != n {
+            assert_eq!(
+                self.buffer_fill, 0,
+                "`try_read` called with different `n` for incomplete read"
+            );
             self.buffer.resize(n, 0);
             self.buffer_fill = 0;
         }
