@@ -7,6 +7,8 @@ pub struct SceneQuery<'s> {
     pub space_origin: &'s EntityPath,
 
     /// All queried entities.
+    ///
+    /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
     pub entity_paths: &'s IntSet<EntityPath>,
 
     /// The timeline we're on.
