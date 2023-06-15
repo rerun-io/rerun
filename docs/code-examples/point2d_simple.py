@@ -8,4 +8,4 @@ rr.init("points", spawn=True)
 rr.log_points("simple", positions=[[0, 0], [1, 1]])
 
 # Log an extra rect to set the view bounds
-rr.log_rect("bounds", [0, 0, 4, 4], rect_format=rr.RectFormat.XCYCWH)
+rr.log_rect("bounds", [0, 0, 4, 3], rect_format=rr.RectFormat.XCYCWH)
