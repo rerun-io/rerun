@@ -214,7 +214,7 @@ EXAMPLES = {
         and we use Rerun to visualize the individual camera frames, estimated camera poses,
         and resulting point clouds over time.
         """,
-        "build_args": ["--dataset=colmap_fiat", "--resize=800x600"],
+        "build_args": ["--dataset=structure_from_motion_fiat", "--resize=800x600"],
     },
     "dicom_mri": {
         "title": "Dicom MRI",

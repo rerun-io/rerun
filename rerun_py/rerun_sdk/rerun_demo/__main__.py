@@ -26,7 +26,7 @@ def run_cube(args: argparse.Namespace):
     rr.script_teardown(args)
 
 
-def run_colmap(args):
+def run_structure_from_motion(args):
     from rerun import bindings, unregister_shutdown  # type: ignore[attr-defined]
 
     serve_opts = []
@@ -45,7 +45,7 @@ def run_colmap(args):
     # We don't need to call shutdown in this case. Rust should be handling everything
     unregister_shutdown()
 
-    rrd_file = pathlib.Path(__file__).parent.joinpath("colmap_fiat.rrd").resolve()
+    rrd_file = pathlib.Path(__file__).parent.joinpath("structure_from_motion_fiat.rrd").resolve()
     if not rrd_file.exists():
         print(f"No demo file found at {rrd_file}. Package was built without demo support", file=sys.stderr)
         exit(1)
@@ -67,7 +67,7 @@ def main() -> None:
     )
 
     group.add_argument(
-        "--colmap",
+        "--structure-from-motion",
         action="store_true",
         help="Run the COLMAP data demo",
     )
@@ -76,14 +76,14 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if not any([args.cube, args.colmap]):
+    if not any([args.cube, args.structure_from_motion]):
         args.cube = True
 
     if args.cube:
         run_cube(args)
 
-    elif args.colmap:
-        run_colmap(args)
+    elif args.structure_from_motion:
+        run_structure_from_motion(args)
 
 
 if __name__ == "__main__":

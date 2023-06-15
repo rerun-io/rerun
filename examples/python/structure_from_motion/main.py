@@ -175,7 +175,7 @@ def main() -> None:
         "--dataset",
         action="store",
         default="colmap_rusty_car",
-        choices=["colmap_rusty_car", "colmap_fiat"],
+        choices=["colmap_rusty_car", "structure_from_motion_fiat"],
         help="Which dataset to download",
     )
     parser.add_argument("--resize", action="store", help="Target resolution to resize images")

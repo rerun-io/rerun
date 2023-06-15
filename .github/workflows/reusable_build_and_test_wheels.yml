@@ -278,9 +278,9 @@ jobs:
         id: dataset
         uses: actions/cache@v3
         with:
-          path: examples/python/colmap/dataset/
+          path: examples/python/structure_from_motion/dataset/
           # TODO(jleibs): Derive this key from the invocation below
-          key: colmap-dataset-colmap-fiat-v1
+          key: structure-from-motion-dataset-structure-from-motion-fiat-v1
 
       - name: Generate Embedded RRD file
         if: needs.set-config.outputs.RUN_TESTS == 'true'
@@ -289,7 +289,7 @@ jobs:
         run: |
           mkdir rrd
           pip install -r examples/python/structure_from_motion/requirements.txt
-          python3 examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+          python3 examples/python/structure_from_motion/main.py --dataset structure_from_motion_fiat --resize 800x600 --save rrd/structure_from_motion_fiat.rrd
 
       # All platforms are currently creating the same rrd file, upload one of them
       - name: Save RRD artifact

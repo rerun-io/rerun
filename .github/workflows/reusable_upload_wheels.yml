@@ -78,7 +78,7 @@ jobs:
         # If you change the line below you should almost definitely change the `key:` line
         # in 'Cache RRD dataset'reusable_build_and_test.yml
         run: |
-          cp rrd/colmap_fiat.rrd unpack-dist/${{ steps.get_folder_name.outputs.PKG_FOLDER }}/rerun_sdk/rerun_demo/colmap_fiat.rrd
+          cp rrd/structure_from_motion_fiat.rrd unpack-dist/${{ steps.get_folder_name.outputs.PKG_FOLDER }}/rerun_sdk/rerun_demo/structure_from_motion_fiat.rrd
 
       - name: Repack the wheel
         shell: bash

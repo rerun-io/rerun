@@ -37,7 +37,7 @@ If you have already followed the Python Quickstart you may have used `rerun_demo
 
 This time, we will pass an additional flag:
 ```bash
-$ python -m rerun_demo --colmap
+$ python -m rerun_demo --structure-from-motion
 ```
 
 *Note: If this is your first time launching Rerun you will see a notification about the Rerun anonymous data usage
@@ -46,7 +46,7 @@ like.*
 
 In your terminal you should see an output along the lines of:
 ```
-2023-02-13T05:16:06.835424Z  INFO rerun::run: Loading "/home/rerun/venv/lib/python3.10/site-packages/rerun_sdk/rerun_demo/colmap.rrd"…
+2023-02-13T05:16:06.835424Z  INFO rerun::run: Loading "/home/rerun/venv/lib/python3.10/site-packages/rerun_sdk/rerun_demo/structure_from_motion_fiat.rrd"…
 ```
 
 And a window that looks like this will appear:

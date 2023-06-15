@@ -253,7 +253,7 @@
             // exa: 'https://app.rerun.io/version/v4.0.0/index.html' -> '/data/version/v4.0.0/'
             let data_path = '/data/' + window.location.pathname.replace(/index\.html$/, '') + '/';
 
-            const rrd_file = url_params.get('file') || 'colmap_fiat.rrd';
+            const rrd_file = url_params.get('file') || 'structure_from_motion_fiat.rrd';
 
             // Normalize the extra slashes from the url
             return (data_path + rrd_file).replace(/\/{2,}/g, '/');
