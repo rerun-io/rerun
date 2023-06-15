@@ -106,7 +106,7 @@ def print_section(title: str, items: list[str]) -> None:
         print(f"#### {title}")
         for line in items:
             print(f"- {line}")
-    print()
+        print()
 
 
 def main() -> None:
@@ -131,16 +131,17 @@ def main() -> None:
 
     # Sections:
     analytics = []
-    enhancement = []
     bugs = []
+    dependencies = []
     dev_experience = []
     docs = []
+    enhancement = []
     examples = []
     misc = []
     performance = []
     python = []
-    renderer = []
     refactor = []
+    renderer = []
     rfc = []
     rust = []
     ui = []
@@ -198,13 +199,12 @@ def main() -> None:
                 added = True
 
             if not added:
-                # Put the remaining PRs under just one section:
-                if "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels:
+                if "examples" in labels:
+                    examples.append(summary)
+                elif "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels:
                     bugs.append(summary)
                 elif "📉 performance" in labels:
                     performance.append(summary)
-                elif "examples" in labels:
-                    examples.append(summary)
                 elif "📖 documentation" in labels:
                     docs.append(summary)
                 elif "ui" in labels:
@@ -223,6 +223,8 @@ def main() -> None:
                     dev_experience.append(summary)
                 elif "💬 discussion" in labels:
                     rfc.append(summary)
+                elif "dependencies" in labels:
+                    dependencies.append(summary)
                 elif not added:
                     misc.append(summary)
 
@@ -244,6 +246,7 @@ def main() -> None:
     print_section("🗣 Merged RFCs", rfc)
     print_section("🧑‍💻 Dev-experience", dev_experience)
     print_section("🗣 Refactors", refactor)
+    print_section("📦 Dependencies", dependencies)
     print_section("🤷‍♂️ Other", misc)
 
     print()

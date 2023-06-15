@@ -36,6 +36,7 @@ import logging
 import mimetypes
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from io import BytesIO
@@ -55,6 +56,37 @@ SIZES = [
 ]
 
 
+def image_from_clipboard() -> Image:
+    """
+    Get image from the clipboard.
+
+    On Mac, `PIL.ImageGrab.grabclipboard()` compresses to JPG. This function uses the same code but uses PNG instead.
+    """
+    if sys.platform == "darwin":
+        fh, filepath = tempfile.mkstemp(".png")
+        os.close(fh)
+        commands = [
+            'set theFile to (open for access POSIX file "' + filepath + '" with write permission)',
+            "try",
+            "    write (the clipboard as «class PNGf») to theFile",
+            "end try",
+            "close access theFile",
+        ]
+        script = ["osascript"]
+        for command in commands:
+            script += ["-e", command]
+        subprocess.call(script)
+
+        im = None
+        if os.stat(filepath).st_size != 0:
+            im = PIL.Image.open(filepath)
+            im.load()
+        os.unlink(filepath)
+        return im
+    else:
+        return PIL.ImageGrab.grabclipboard()
+
+
 class Uploader:
     def __init__(self, pngcrush: bool):
         gcs = storage.Client("rerun-open")
@@ -69,8 +101,6 @@ class Uploader:
         ----------
         path : Path
             The path to the file to upload.
-        pngcrush : bool
-            Whether to run pngcrush on the file before uploading.
 
         Returns
         -------
@@ -128,7 +158,8 @@ class Uploader:
         str
             The `<picture>` tag for the image stack.
         """
-        clipboard = PIL.ImageGrab.grabclipboard()
+
+        clipboard = image_from_clipboard()
         if isinstance(clipboard, PIL.Image.Image):
             image = clipboard
             return self.upload_stack(
@@ -188,7 +219,7 @@ class Uploader:
         # upload images
         for name, width, image in image_stack:
             with BytesIO() as buffer:
-                image.save(buffer, output_format)
+                image.save(buffer, output_format, optimize=True, quality=80, compress_level=9)
                 image_data = buffer.getvalue()
 
             digest = data_hash(image_data)
@@ -254,11 +285,20 @@ def run_pngcrush(data: bytes) -> bytes:
         input_file.write_bytes(data)
 
         output_file = Path(tmpdir) / "output.png"
-        os.system(f"pngcrush -q -warn {input_file} {output_file}")
+        os.system(f"pngcrush -q -warn -rem allb -reduce {input_file} {output_file}")
         output_data = output_file.read_bytes()
 
-    logging.info(f"pngcrush reduced size from {len(data)} to {len(output_data)} bytes")
-    return output_data
+    input_len = len(data)
+    output_len = len(output_data)
+    if output_len > input_len:
+        logging.info("pngcrush failed to reduce file size")
+        return data
+    else:
+        logging.info(
+            f"pngcrush reduced size from {input_len} to {output_len} bytes "
+            f"({(input_len - output_len) *100/ input_len:.2f}%)"
+        )
+        return output_data
 
 
 def data_hash(data: bytes) -> str:

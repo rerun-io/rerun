@@ -135,12 +135,8 @@ impl AnnotationMap {
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
-        for entity_path in scene_query
-            .entity_paths
-            .iter()
-            .filter(|entity_path| scene_query.entity_props_map.get(entity_path).visible)
-        {
-            let mut next_parent = Some(entity_path.clone());
+        for (ent_path, _) in scene_query.iter_entities() {
+            let mut next_parent = Some(ent_path.clone());
             while let Some(parent) = next_parent {
                 // If we've visited this parent before it's safe to break early.
                 // All of it's parents have have also been visited.

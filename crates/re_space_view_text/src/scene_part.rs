@@ -46,15 +46,7 @@ impl ScenePart<TextSpaceView> for SceneText {
     ) -> Vec<re_renderer::QueueableDrawData> {
         let store = &ctx.store_db.entity_db.data_store;
 
-        for entity_path in query.entity_paths {
-            let ent_path = entity_path;
-
-            // Early filtering: if we're not showing it the view, there isn't much point
-            // in querying it to begin with... at least for now.
-            if !state.filters.is_entity_path_visible(ent_path) {
-                continue;
-            }
-
+        for (ent_path, _) in query.iter_entities() {
             let query = re_arrow_store::RangeQuery::new(
                 query.timeline,
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),
@@ -84,7 +76,7 @@ impl ScenePart<TextSpaceView> for SceneText {
                         if is_visible {
                             self.text_entries.push(TextEntry {
                                 row_id: ent_view.row_id(),
-                                entity_path: entity_path.clone(),
+                                entity_path: ent_path.clone(),
                                 time: time.map(|time| time.as_i64()),
                                 color: color.map(|c| c.to_array()),
                                 level,
