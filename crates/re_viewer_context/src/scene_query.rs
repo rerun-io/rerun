@@ -3,13 +3,32 @@ use nohash_hasher::IntSet;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Timeline};
 
 pub struct SceneQuery<'s> {
-    pub entity_paths: &'s IntSet<EntityPath>,
+    /// All queried entities.
+    ///
+    /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
+    entity_paths: &'s IntSet<EntityPath>,
+
+    /// The timeline we're on.
     pub timeline: Timeline,
     pub latest_at: TimeInt,
     pub entity_props_map: &'s EntityPropertyMap,
 }
 
 impl<'s> SceneQuery<'s> {
+    pub fn new(
+        entity_paths: &'s IntSet<EntityPath>,
+        timeline: Timeline,
+        latest_at: TimeInt,
+        entity_props_map: &'s EntityPropertyMap,
+    ) -> Self {
+        Self {
+            entity_paths,
+            timeline,
+            latest_at,
+            entity_props_map,
+        }
+    }
+
     /// Iter over all of the currently visible [`EntityPath`]s in the [`SceneQuery`].
     ///
     /// Also includes the corresponding [`EntityProperties`].

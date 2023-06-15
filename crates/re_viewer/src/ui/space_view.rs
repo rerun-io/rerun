@@ -194,12 +194,12 @@ impl SpaceView {
             return;
         }
 
-        let query = re_viewer_context::SceneQuery {
-            entity_paths: self.data_blueprint.entity_paths(),
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+        let query = re_viewer_context::SceneQuery::new(
+            self.data_blueprint.entity_paths(),
+            *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            entity_props_map: self.data_blueprint.data_blueprints_projected(),
-        };
+            self.data_blueprint.data_blueprints_projected(),
+        );
 
         match self.category {
             ViewCategory::Text => {

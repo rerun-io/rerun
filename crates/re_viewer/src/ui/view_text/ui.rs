@@ -143,13 +143,6 @@ impl Default for ViewTextFilters {
 }
 
 impl ViewTextFilters {
-    pub fn is_entity_path_visible(&self, entity_path: &EntityPath) -> bool {
-        self.row_entity_paths
-            .get(entity_path)
-            .copied()
-            .unwrap_or(true)
-    }
-
     pub fn is_log_level_visible(&self, level: &str) -> bool {
         self.row_log_levels.get(level).copied().unwrap_or(true)
     }
