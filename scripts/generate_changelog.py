@@ -198,13 +198,12 @@ def main() -> None:
                 added = True
 
             if not added:
-                # Put the remaining PRs under just one section:
-                if "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels:
+                if "examples" in labels:
+                    examples.append(summary)
+                elif "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels:
                     bugs.append(summary)
                 elif "📉 performance" in labels:
                     performance.append(summary)
-                elif "examples" in labels:
-                    examples.append(summary)
                 elif "📖 documentation" in labels:
                     docs.append(summary)
                 elif "ui" in labels:
