@@ -21,7 +21,14 @@ The best way to get started is by reading [the source code of the `extend_viewer
 
 ## Custom Space Views classes
 
-![The Rerun Viewer, extended with a custom Space View that is shown three times, each time showing points on a colored plane](https://static.rerun.io/9c04c0140552ff9ddd526f98381765382a71e86c_custom_space_view.jpeg)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/0ddce48924e92e4509c4caea3266d414ad76d961_custom_space_view_480w.jpeg">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/07fc2ec0fb45bd282cd942021bec82a8bf22929d_custom_space_view_768w.jpeg">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/2411b2c296230079e33bf075020510f10ccf086f_custom_space_view_1024w.jpeg">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/44ad47af559fbdd45aab5a663992f31e80876793_custom_space_view_1200w.jpeg">
+  <img src="https://static.rerun.io/dc8cfa50e309ba2e2cd2b7647391cd74b7a0477f_custom_space_view_full.jpeg" alt="The Rerun Viewer, extended with a custom Space View that is shown three times, each time showing points on a colored plane">
+</picture>
+
 
 Above screenshot shows the [`custom_space_view`](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_space_view) example.
 This example demonstrates how to add a fully custom Space View class to Rerun on startup.

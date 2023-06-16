@@ -19,7 +19,13 @@ please consult the [ROS 2 Documentation](https://docs.ros.org/en/humble/index.ht
 All of the code for this guide can be found on GitHub in
 [rerun/examples/python/ros_node](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/).
 
-![Rerun 3D view of ROS 2 turtlebot3 navigation demo](https://static.rerun.io/e51d3e26478661d11b339de5fdfed4f95d07c53c_ros1_preview.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/67b71229d4891875ccb2ad572f27d39189c777d1_ros1_preview_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/150376fc397ef97b8cc2a2f47b3037ade347dca8_ros1_preview_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/3f2d8247a448685da5f5c40b102677c3d52332a4_ros1_preview_1024w.png">
+  <img src="https://static.rerun.io/1a7818ed5bc11f6e9af6ac099df55fd7ee92953d_ros1_preview_full.png" alt="Rerun 3D view of ROS 2 turtlebot3 navigation demo">
+</picture>
+
 
 ## Prerequisites
 
@@ -79,7 +85,15 @@ With the previous dependencies installed, and gazebo running, you should now be 
 ```
 
 You should see a window similar to:
-![Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo](https://static.rerun.io/c648219a13c044f5ca95aa2cb0e1f6729e6f37ac_ros2_launched.png)
+
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/503e1d77933852b686b2c8410bff77ba7b3e303a_ros2_launched_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/3c8c0d61cf8fb7861e6f637d8047bcc04b8596fb_ros2_launched_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/e1687fad31ec38cc83beef8ae87cc4c4b6780b45_ros2_launched_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/247d9761473c244d9087785c43d8a3b31abd922c_ros2_launched_1200w.png">
+  <img src="https://static.rerun.io/1a2c23c43ad171e7dc9f594487ec037204742cce_ros2_launched_full.png" alt="Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo">
+</picture>
+
 
 Use rviz to send a new navigation goal and confirm that rerun updates with new data as turtlebot drives around
 the environment.
