@@ -14,7 +14,13 @@ be comfortable with the following topics:
 
 Here is a preview of the dataset that we will be working with:
 
-![Preview](https://static.rerun.io/187c2379476cfb91f23b58dc9253688ef357c029_viewer_walkthrough0_preview.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/74a37346b0a1f47a8dc6d57d2dbc01ee6afb3960_viewer_walkthrough0_preview_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/1d645a8fd2eb8f874bbbad3be084c96fe0c9bd39_viewer_walkthrough0_preview_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/6708f38efc707557d4ce15b5e67dddd7782d5051_viewer_walkthrough0_preview_1024w.png">
+  <img src="https://static.rerun.io/d63e6774d94ff403d51355bacdfee9a3e7751dcf_viewer_walkthrough0_preview_full.png" alt="viewer walkthrough dataset preview screenshot">
+</picture>
+
 
 The demo uses the output of the [COLMAP](https://colmap.github.io/) structure-from-motion pipeline on a small dataset.
 Familiarity with structure-from-motion algorithms is not a prerequisite for following the guide. All you need to know is
@@ -51,7 +57,14 @@ In your terminal you should see an output along the lines of:
 
 And a window that looks like this will appear:
 
-![First Launch](https://static.rerun.io/11b19a8c38f49f1b4fd22cf8b67b427b28794ec7_viewer_walkthrough1_first_launch.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/e3ed0032e35937f22ab473a63f9a44dbe9fcc519_viewer_walkthrough1_first_launch_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/3b0bff307be3711c4bcf1fa1e54a1808ddccafe6_viewer_walkthrough1_first_launch_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bcf6a979f66df8d5435b958ee3286b80604b161e_viewer_walkthrough1_first_launch_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/4d7d0e9933abb124253ae9455933ba40fcb72fb4_viewer_walkthrough1_first_launch_1200w.png">
+  <img src="https://static.rerun.io/793d828d867a8d341cd3ec35bc553f2d65fba549_viewer_walkthrough1_first_launch_full.png" alt="viewer walkthrough first launch screenshot">
+</picture>
+
 
 Depending on your display size, the panels may have a different arrangements. This does not yet look like the initial
 preview, but the remainder of this guide will walk you through how to configure the Viewer to meet your needs.
@@ -71,7 +84,13 @@ There are 4 main parts to this window:
 Each of the 3 side panels has a corresponding button in the upper right corner. Try clicking each of these to hide and
 show the corresponding panel.
 
-![Toggle Panel](https://static.rerun.io/817453aa3cb68881589a69a72f9250508902c958_viewer_walkthrough2_toggle_panel.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/65b3a60d28105aaabb1675e37f998f6fe4bd3f5a_viewer_walkthrough2_toggle_panel_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/6f71431a2946fa7ae0f5033b90ca23c664cc4856_viewer_walkthrough2_toggle_panel_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/b6a5ec42e21a88a55d1131501a4fd53b860290e9_viewer_walkthrough2_toggle_panel_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/5d3a114ba9b8695fa5897e6600a9ea58d57665fe_viewer_walkthrough2_toggle_panel_1200w.png">
+  <img src="https://static.rerun.io/26cba988d81f960832801bcda2c7d233c2b34401_viewer_walkthrough2_toggle_panel_full.png" alt="viewer walkthrough toggle panel screenshots">
+</picture>
 
 For now, leave the panels visible since we will use them through the remainder of this guide.
 
@@ -79,7 +98,14 @@ It is also possible to re-arrange the individual space views. Try grabbing any o
 dragging it to different locations in the Viewport. You can also resize individual views by grabbing the edge of the
 view.
 
-![Rearrange Views](https://static.rerun.io/b8de42db0aca90270e57a844f1c6aba653142280_viewer_walkthrough3_rearrange.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/27a97272519fc3f4185cb43d0ba80fbef5a5408e_viewer_walkthrough3_rearrangeOD_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/1c868e97537c1625c6bec0051bf7b7d184f79ebc_viewer_walkthrough3_rearrangeOD_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bc7ee5a9a1a4a95f6ef8b1f29fb4ad73605833c5_viewer_walkthrough3_rearrangeOD_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/62e5c42de6c545b9b85582a6bb91a4feb8dccf99_viewer_walkthrough3_rearrangeOD_1200w.png">
+  <img src="https://static.rerun.io/ed7299b15ae5795d023d196a821e667a1a50591a_viewer_walkthrough3_rearrangeOD_full.png" alt="viewer walkthrough rearrange panels screenshot">
+</picture>
+
 
 Feel free to move the views around until you are happy with the layout.
 
@@ -98,7 +124,14 @@ You can find out more about these entities by hovering over them in the differen
 context popup with additional information. You can also click on entities to select them and see more details in the
 [Selection panel](../reference/viewer/selection.md).
 
-![Hover Data](https://static.rerun.io/6e297585d86b89e2bb00534045288277c8e686ac_viewer_walkthrough4_hover.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/f99a8f63f0b653dfac91476a60b3482edf8e638f_viewer_walkthrough4_hover_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/9567d3d33e8e6743de3f08c65fd3a285607bd082_viewer_walkthrough4_hover_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/f6a667b741dd05bed739a3e6838e33653af2e65c_viewer_walkthrough4_hover_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/90d296b819bf5f355853a01bfc7686265fd96905_viewer_walkthrough4_hover_1200w.png">
+  <img src="https://static.rerun.io/a22d892b0f00474aac948a3fce751a8cf559072d_viewer_walkthrough4_hover_full.png" alt="viewer walkthrough hover screenshot">
+</picture>
+
 
 Try each of the following:
  * Hover over the image to see a zoomed-in preview
@@ -116,7 +149,14 @@ also zoom using ctrl+scrollwheel or pinch gestures on a trackpad. Most views can
 double-clicking somewhere in the view. Every view has a "?" icon in the upper right hand corner. You can always mouse
 over this icon to find out more information about the specific view.
 
-![Adjust Scene Views](https://static.rerun.io/ffe2bb1db70357e68887eee2cf6fd80ce0145ca2_viewer_walkthrough5_nav.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/b87329150e8096e585956da2eebabe26219ca14f_viewer_walkthrough5_nav_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ecb03b4fda5b0c55f06ab7252aacd3dbc7d883f6_viewer_walkthrough5_nav_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/86344228e1470c13888980f8441d774eb8d32315_viewer_walkthrough5_nav_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/33e87380305028a30b87f1303b588a8ee02a6f74_viewer_walkthrough5_nav_1200w.png">
+  <img src="https://static.rerun.io/7847244e2657a5555d90f4dd804e2650e4fde527_viewer_walkthrough5_nav_full.png" alt="viewer walkthrough rotate zoom and pan screenshot">
+</picture>
+
 
 Try each of the following:
  * Drag the camera image and zoom in on one of the stickers
@@ -135,7 +175,14 @@ To change the position on the timeline, simply grab the time indicator and pull 
 interested in seeing.  The space views will adjust accordingly. You can also use the play/pause/step/loop controls to
 playback the Rerun data as you might with a video file.
 
-![Adjust Time Slider](https://static.rerun.io/0fca0f1df6377028505699dac40e4a03738b4e44_viewer_walkthrough6_timeline.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/856f760b910a74a7ca0984b8ab06b3d2f67c5bcb_viewer_walkthrough6_timeline_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/2fa88a9a48ce575ec573fa71882137e8313e1454_viewer_walkthrough6_timeline_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/89772c671cf1bf3743b4d665122849968013ef95_viewer_walkthrough6_timeline_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/b196787f097b1ef4ba953a0487c1a1c48227c794_viewer_walkthrough6_timeline_1200w.png">
+  <img src="https://static.rerun.io/9816d7becf19399735bef1f17f1d4bb928c278f7_viewer_walkthrough6_timeline_full.png" alt="viewer walkthrough timeline screenshot">
+</picture>
+
 
 Try out the following:
   * Use the arrow buttons (or arrow keys on your keyboard) to step forward and backwards by a single frame
@@ -151,7 +198,14 @@ it's possible to also view the data in the specific order that it was logged.  C
 and switch it to "log_time." If you zoom in on the timeline (using ctrl+scrollwheel), you can see that these events were
 all logged at slightly different times.
 
-![Log Time](https://static.rerun.io/47ed33a74a8c9def1ca6c79801cb0fc305b0e0fe_viewer_walkthrough7_log_time.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/38a4a41b5814cbe157cb766440796047a369635f_viewer_walkthrough7_log_time_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/10741579d589ad806bdcdd39b05c51d1e11f501b_viewer_walkthrough7_log_time_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/210d91597ce9cea606ce8abfe3ea9c5ef7df7867_viewer_walkthrough7_log_time_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/e07ae99d7d1f36dbe19fd36facd2f354ac93ae01_viewer_walkthrough7_log_time_1200w.png">
+  <img src="https://static.rerun.io/b6a4ce41f51e338270240e394140bd4d8a68f6bf_viewer_walkthrough7_log_time_full.png" alt="viewer walkthrough change timeline screenshot">
+</picture>
+
 
 Feel free to spend a bit of time looking at the data across the different timelines. When you are done, switch back
 to the "frame" timeline and double-click the timeline panel to reset it to the default range.
@@ -176,7 +230,14 @@ show up in the view. This is making historical points, from farther back in time
 view. Because the points are logged in stationary 3d space, aggregating them here gives us a more complete view of the
 car. Leave the visible history with a value of 50.
 
-![Visible History](https://static.rerun.io/f3d7fd563aad90b506172217b8926ae8fc72d75e_viewer_walkthrough8_history.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/90fd21b61415776eafab8c9df07a5ea5df5186fd_viewer_walkthrough8_history_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/794677a662ba4dd755dadd118f1adf272da462eb_viewer_walkthrough8_history_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/25a6ac53a10461936ae019756ff3c4d53b7628c3_viewer_walkthrough8_history_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/be10b402dedc476ee1ac4d11402de6331b82fd83_viewer_walkthrough8_history_1200w.png">
+  <img src="https://static.rerun.io/9c6a01f4dd2059641d92d121f8f2772203c56cfa_viewer_walkthrough8_history_full.png" alt="viewer walkthrough adjusting visible history screenshot">
+</picture>
+)
 
 ### Modifying the contents of a space view
 Now select the `/ (Spatial)` view itself. We will start by giving this space view a different name. At the very
@@ -190,21 +251,42 @@ You can click on the "+" or "-" buttons to add or remove entities from this view
 completely disappear from the blueprint panel on the left. Entities that are incompatible with the selected view will be
 grayed out. For example, you cannot add a scalar to a spatial scene.
 
-![Add/Remove Entities](https://static.rerun.io/d703c542efad3c2bce2ae1f25019073ac64f5bef_viewer_walkthrough9_add_remove.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/982cd744bcbcdffc5161b84cae0c5b32fc58e819_viewer_walkthrough9_add_remove_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/90616f9dce6f28b18d4c4ee1d5750d43666a9748_viewer_walkthrough9_add_remove_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/a8669d788115df5671da92d814fa96951c569916_viewer_walkthrough9_add_remove_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/73bf1e30fe6878866fa1bc5e7652b30902f53506_viewer_walkthrough9_add_remove_1200w.png">
+  <img src="https://static.rerun.io/e22b231be49391998d6e6ef005b2dad0a85d2adf_viewer_walkthrough9_add_remove_full.png" alt="viewer walkthrough modifying contents of a space view screenshot">
+</picture>
+
 
 ## Creating new views
 New views can be created using the "+" button at the top of the Blueprint panel. When you click this button you will
 need to choose a root for your new space. This is the space that will act as your origin within the
 [transform system](../concepts/spaces-and-transforms.md).
 
-![Create a view](https://static.rerun.io/228a596464fd660dccba8d8259db8bdd02834c8d_viewer_walkthrough10_create.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/1bcf92925fceb39810a90110b26a1b26e2f6f5dc_viewer_walkthrough10_create_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/f621f5caf31bd0b7648b38bf10d8b3713c6ae043_viewer_walkthrough10_create_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/4267a02133317e071dabd92551567a84dc0136eb_viewer_walkthrough10_create_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/3b4788a2acd3823649589a8a4a52d915d12daed0_viewer_walkthrough10_create_1200w.png">
+  <img src="https://static.rerun.io/d89060f824af6b3f188e9187b8b5b9b1d7f75646_viewer_walkthrough10_create_full.png" alt="viewer walkthrough creating new view screenshot">
+</picture>
+
 
 After creating this new view, your view layout might be feeling a little cluttered. You can quickly hide views you're
 not using from the blueprint panel by hovering over the view and then clicking the icon that looks like an eye. Go ahead
 and hide the `image` and `avg_reproj_err` views, and collapse the expanded timeline panel using the button in the upper
 right corner. Note that even with the timeline collapsed you still have access to timeline controls, including a slider.
 
-![Toggle Vis](https://static.rerun.io/7eef1bd238ab85e8b4fc664da5bd0253eed46d2d_viewer_walkthrough11_toggle_vis.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/526e5dba02d3786045ff2b1d6dc20ade23325e4e_viewer_walkthrough11_toggle_vis_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/aa778e93172344fc1f340815564fa28ee33dcc54_viewer_walkthrough11_toggle_vis_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dcc33a360cf506b0b8dd61fe4f24c9030a0d0467_viewer_walkthrough11_toggle_vis_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/105b90940ff92ad296ef2d5dd74af9ca1256f4a6_viewer_walkthrough11_toggle_vis_1200w.png">
+  <img src="https://static.rerun.io/28d2720b63fbb2f3d3def0f37962f1ace3674085_viewer_walkthrough11_toggle_vis_full.png" alt="viewer walkthrough toggle visibility screenshot">
+</picture>
+
 
 ### Reusing what you've learned
 Finally, use what we covered in the previous section to change the contents of this view. Select the new `camera` view,
@@ -213,7 +295,14 @@ have visible history turned on -- that's because the blueprint is part of the vi
 Select the points within this view by clicking on them in the blueprint or the view itself, and then give them visible
 history as well. When you are done, your view should look like this:
 
-![Camera View](https://static.rerun.io/5fe3481a9696ba9c821818e26b0634011f4fffba_viewer_walkthrough12_cameraview.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/2bb43fcc8e3853d56ceb76f2db653d4c86331d5b_viewer_walkthrough12_cameraview_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/fd2a3990227a119cdc0adca137bd47f732ceaf7d_viewer_walkthrough12_cameraview_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/d6da109e6e4d6c71da6c6d18c18685713b3df917_viewer_walkthrough12_cameraview_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/0548051977569faf44ec3487b8c6285d4ca761f3_viewer_walkthrough12_cameraview_1200w.png">
+  <img src="https://static.rerun.io/3813b97238a2e3a8f5503ac3a408a8c9d0f5dadb_viewer_walkthrough12_cameraview_full.png" alt="viewer walkthrough camera view screenshot">
+</picture>
+
 
 Now move the slider back and forth and see what happens. Even though they are both views of the same camera and point
 entities, they behave quite differently. On the top the camera moves relative to the car, while on the bottom the car

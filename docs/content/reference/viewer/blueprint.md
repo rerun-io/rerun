@@ -11,7 +11,10 @@ This view shows the Blueprint for the active recording.
 Everything visible in the [Viewport](viewport.md) has a representation here,
 making it an easy way to select a Space View and the [Entities](../../concepts/entity-component.md) it shows.
 
-![blueprint view](https://static.rerun.io/6a2b37e56be8a98ddd3ddbeb67aaecb8e0b0e7d0_blueprint-view.png)
+<picture>
+  <img src="https://static.rerun.io/79c57ffce8e90fdf867b48f35c4088673f133445_blueprint-view_full.png" alt="screenshot of the blueprint view">
+</picture>
+
 
 Controls
 --------
