@@ -9,7 +9,7 @@ Any visualization that assigns an identifier ("Class ID") to an instance or enti
 By using an Annotation Context, you can associate labels and colors with a given class and then re-use
 that class across entities.
 
-<!-- TODO(andreas): Example link should point to `latest` but at the time of writing the samples just got renamed -->
+<!-- Example link should point to `latest` but at the time of writing the samples just got renamed -->
 This is particularly useful for visualizing the output of classifications algorithms
 (as demonstrated by the [Detect and Track Objects](https://github.com/rerun-io/rerun/tree/main/examples/python/detect_and_track_objects) example),
 but can be used more generally for any kind of reoccurring categorization within a Rerun recording.
