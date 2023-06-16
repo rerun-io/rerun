@@ -8,14 +8,18 @@ It is compatible with `AnnotationContext` (TODO: link). `class_id` can be used t
 annotation context, and `keypoint_id` can be used to make connected edges between points. See examples in the `AnnotationContext` documentation.
 
 `draw_order` can be used to control how the `Point2d` entities are drawn relative to other objects within the scene. Higher values are drawn on top of lower values.
+___
+Primary component: `point2d`
 
-* Primary component: `point2d`
-* Secondary components: `colorrgba`, `radius`, `label`, `class_id`, `keypoint_id`, `draw_order`
-* Python APIs:
-  * [log_point](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_point),
-  * [log_points](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_points)
-* Rust API:
-  * [Point2D](https://docs.rs/rerun/latest/rerun/components/struct.Point2D.html)
+Secondary components: `colorrgba`, `radius`, `label`, `class_id`, `keypoint_id`, `draw_order`
+___
+Python APIs:
+* [log_point](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_point),
+* [log_points](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_points)
+___
+Rust API:
+* [Point2D](https://docs.rs/rerun/latest/rerun/components/struct.Point2D.html)
+___
 
 ## Simple Example
 
@@ -29,7 +33,7 @@ code-example: point2d_simple
   <img style="width: 75%"  src="https://static.rerun.io/f0d2794efda38ec4c3c0337f1ee7c34b01e587f0_point2d_simple_full.png" alt="">
 </picture>
 
-## Complex Example
+## Full Example
 
 code-example: point2d_random
 
