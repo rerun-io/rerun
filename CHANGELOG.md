@@ -3,6 +3,104 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.7.0](https://github.com/rerun-io/rerun/compare/v0.6.0...v0.7.0) - improved transforms, better color mapping, bug & doc fixes - 2023-06-16
+
+[Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
+
+* Python: `pip install rerun-sdk`
+* Rust: `cargo add rerun` and `cargo install rerun-cli` 
+* Online demo: <https://app.rerun.io/version/0.7.0/index.html>
+
+### Overview & Highlights
+
+While we're working on significant updates around interfaces and customizability,
+here's a smaller release packed with useful improvements 🎉
+
+* Much more powerful transformation logging
+  * any affine transforms works now!
+  * supports many more formats and shows them in the viewer as-is
+* Better color mapping range detection for images and tensors
+* Many small improvements to samples & documentation
+
+### In detail
+
+#### 🐍 Python SDK
+- Improved 3D transform ingestion & affine transform support [#2102](https://github.com/rerun-io/rerun/pull/2102)
+- Normalize Python typing syntax to 3.8+ [#2361](https://github.com/rerun-io/rerun/pull/2361)
+- Enforce `from __future__ import annotations` in Python files [#2377](https://github.com/rerun-io/rerun/pull/2377)
+- Add `jpeg_quality` parameter to `log_image` [#2418](https://github.com/rerun-io/rerun/pull/2418)
+
+#### 🦀 Rust SDK
+- Improved 3D transform ingestion & affine transform support [#2102](https://github.com/rerun-io/rerun/pull/2102)
+- `impl Copy for Arrow3D`. [#2239](https://github.com/rerun-io/rerun/pull/2239) (thanks [@kpreid](https://github.com/kpreid)!)
+
+#### 🪳 Bug Fixes
+- Stable image order, fixing flickering [#2191](https://github.com/rerun-io/rerun/pull/2191)
+- Fix double clicking objects no longer focusing the camera on them [#2227](https://github.com/rerun-io/rerun/pull/2227)
+- Fix off-by-half pixel error in textured rectangle shader [#2294](https://github.com/rerun-io/rerun/pull/2294)
+- Update wgpu-hal to 0.16.1 to fix mobile Safari [#2296](https://github.com/rerun-io/rerun/pull/2296)
+- Fix some browsers failing due to 8k texture requirement, pick always highest available now [#2409](https://github.com/rerun-io/rerun/pull/2409)
+- Fix visibility toggles for time series not working [#2444](https://github.com/rerun-io/rerun/pull/2444)
+
+#### 🌁 Viewer Improvements
+- Time panel now always talks about "events" instead of "messages" [#2247](https://github.com/rerun-io/rerun/pull/2247)
+- Automatically determine image/tensor color mapping & need for sRGB decoding [#2342](https://github.com/rerun-io/rerun/pull/2342)
+
+#### 🚀 Performance Improvements
+- Optimization: avoid a memory allocation when padding RGB u8 to RGBA [#2345](https://github.com/rerun-io/rerun/pull/2345)
+
+#### 🧑‍🏫 Examples
+- Example of how to embed the Rerun Viewer inside your own GUI (+ ergonomic improvements) [#2250](https://github.com/rerun-io/rerun/pull/2250)
+- Objectron Rust example: install `protoc` for the user [#2280](https://github.com/rerun-io/rerun/pull/2280)
+- Remove weird-looking argument parsing in examples [#2398](https://github.com/rerun-io/rerun/pull/2398)
+- Fix `tracking_hf example`: put scaled thing under its own root entity [#2419](https://github.com/rerun-io/rerun/pull/2419)
+- Clean up our examples [#2424](https://github.com/rerun-io/rerun/pull/2424)
+- New face detection example based on MediaPipe [#2360](https://github.com/rerun-io/rerun/pull/2360)
+- Update web examples [#2420](https://github.com/rerun-io/rerun/pull/2420)
+- Update titles and tags for examples with real data [#2416](https://github.com/rerun-io/rerun/pull/2416)
+
+#### 📚 Docs
+- Merge `rerun-docs` repository into this monorepo [#2284](https://github.com/rerun-io/rerun/pull/2284)
+- Add manifest + readmes to examples [#2309](https://github.com/rerun-io/rerun/pull/2309)
+- Fix and clean up BUILD.md [#2319](https://github.com/rerun-io/rerun/pull/2319)
+- Link to `/examples` in PR description [#2320](https://github.com/rerun-io/rerun/pull/2320)
+- Make examples setup a separate page [#2323](https://github.com/rerun-io/rerun/pull/2323)
+- Add `site_url` to `mkdocs.yml` [#2326](https://github.com/rerun-io/rerun/pull/2326)
+- Add `log_cleared` to the common index [#2400](https://github.com/rerun-io/rerun/pull/2400)
+- Use forked `mkdocs-redirects` [#2404](https://github.com/rerun-io/rerun/pull/2404)
+- Add support for classes to generated python common API index [#2401](https://github.com/rerun-io/rerun/pull/2401)
+- Added support for creating multi-resolution stacks with upload_image.py [#2411](https://github.com/rerun-io/rerun/pull/2411)
+- Document annotation context in manual [#2453](https://github.com/rerun-io/rerun/pull/2453)
+
+#### 🕸️ Web
+- Update `wasm-bindgen` to 0.2.87 [#2406](https://github.com/rerun-io/rerun/pull/2406)
+- When loading on web, match style and show a progress indicator while wasm is loading [#2421](https://github.com/rerun-io/rerun/pull/2421)
+
+#### 📈 Analytics
+- Add crash retriever script [#2168](https://github.com/rerun-io/rerun/pull/2168)
+
+#### 🧑‍💻 Dev-experience
+- Image uploader script [#2164](https://github.com/rerun-io/rerun/pull/2164)
+- Replace `wasm-bindgen-cli` with library `wasm-bindgen-cli-support` [#2257](https://github.com/rerun-io/rerun/pull/2257)
+- Fix manual release/dispatch workflows [#2230](https://github.com/rerun-io/rerun/pull/2230)
+- Add instructions on how to fix weird `gsutil` crash [#2278](https://github.com/rerun-io/rerun/pull/2278)
+- Link to preview of latest commit in PR body [#2287](https://github.com/rerun-io/rerun/pull/2287)
+- CI: Retry `linkinator` [#2299](https://github.com/rerun-io/rerun/pull/2299)
+- Remove long dead code python unit test [#2356](https://github.com/rerun-io/rerun/pull/2356)
+- Added gcloud project name to `upload_image.py` [#2381](https://github.com/rerun-io/rerun/pull/2381)
+- Fix typo in `run_all.py` [#2441](https://github.com/rerun-io/rerun/pull/2441)
+- Small changelog improvements [#2442](https://github.com/rerun-io/rerun/pull/2442)
+- Minor fixes/improvements of `upload_image.py` [#2449](https://github.com/rerun-io/rerun/pull/2449)
+- Improve changelog generator [#2447](https://github.com/rerun-io/rerun/pull/2447)
+
+#### 🗣 Refactors
+- Centralize freestanding store helpers [#2153](https://github.com/rerun-io/rerun/pull/2153)
+
+#### 📦 Dependencies
+- Update `xml-rs` v0.8.13 -> v0.8.14 [#2425](https://github.com/rerun-io/rerun/pull/2425)
+- Update pip package `requests` to 2.31 with bug fix [#2426](https://github.com/rerun-io/rerun/pull/2426)
+
+
 ## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.6.0) - 3D in 2D and SDK batching - 2023-05-26
 
 ### Overview & Highlights
