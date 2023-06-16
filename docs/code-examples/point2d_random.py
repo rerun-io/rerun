@@ -1,6 +1,4 @@
 """Log some random points with color and radii."""
-from __future__ import annotations
-
 import rerun as rr
 from numpy.random import default_rng
 
