@@ -5,7 +5,7 @@ Example template.
 Run:
 ```sh
 pip install -r examples/python/template/requirements.txt
-./examples/python/template/main.py
+python examples/python/template/main.py
 ```
 """
 from __future__ import annotations
