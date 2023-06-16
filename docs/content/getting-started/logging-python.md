@@ -53,7 +53,16 @@ Now you can run your application just as you would any other python script:
 ```
 
 And with that, we're ready to start sending out data:
-![logging data - waiting for data](https://static.rerun.io/4f83e588d7ca4ba6d09390d6d445f63bb4a73b4e_logging_data2_waiting.png)
+
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/b509f0c8ba4a46ed8ffd68bea4ade384525a41a1_logging_data2_waiting_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/89b4674ee51f3f5365bad2347bc3f7319ff8de0f_logging_data2_waiting_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/349e38deb9307100471b66becd6fab5d09dae80f_logging_data2_waiting_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/4820da379135db095f0d160550245114e6257400_logging_data2_waiting_1200w.png">
+  <img src="https://static.rerun.io/a45b879f74828ff22d0767c7892bffb17a0ac25f_logging_data2_waiting_full.png" alt="screenshot of the waiting screen">
+</picture>
+
+
 
 By default, the SDK will start a viewer in another process and automatically pipe the data through.
 There are other means of sending data to a viewer as we'll see at the end of this section, but for now this default will work great as we experiment.
@@ -92,7 +101,14 @@ rr.log_points("dna/structure/right", points2, colors=colors2, radii=0.08)
 Run your script once again and you should now see this scene in the viewer.
 Note that if the viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../concepts/apps-and-recordings.md).
 
-![logging data - first points](https://static.rerun.io/46140c891a60026b3ef9fb0c34fcf63e23199ec7_logging_data3_first_points.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/5305cec597b9957036291198402d5afbbcce218e_logging_data3_first_points_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/5fa88ed6192920f6162b7080928aa538ae2025dd_logging_data3_first_points_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/9a87ed7e20b72902c6506a87fda3d62f716eed88_logging_data3_first_points_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/b32a40031e47a4aa3b1669bef53048765c1b7b10_logging_data3_first_points_1200w.png">
+  <img src="https://static.rerun.io/0e0fada083d59cf14ad20ed0ee50ef88a9550d82_logging_data3_first_points_full.png" alt="screenshot after logging the first points">
+</picture>
+
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
 _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
@@ -152,7 +168,14 @@ rr.log_points("dna/structure/scaffolding/beads", beads, radii=0.06, colors=np.re
 Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/latest/package/rerun_demo/util/#rerun_demo.util.bounce_lerp),
 there is nothing new here: it's all about building out `numpy` arrays and feeding them to the Rerun API.
 
-![logging data - beads](https://static.rerun.io/60c3c762448f68da3f5fdd7927a6e65e11f5385f_logging_data5_beads.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/5ad83403acc560dac2bd85211419482c60019783_logging_data5_beads_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/cdec3af724a3ceff147c1c6fd6cc9dbc51a2204d_logging_data5_beads_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cb272220c85e3376c75fd6da7f18462b920e172a_logging_data5_beads_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/de68973ad6420112eba8b91217d9f4713d5d9a02_logging_data5_beads_1200w.png">
+  <img src="https://static.rerun.io/7825d736cb8b7dab27f27aa7611c4bac24f23433_logging_data5_beads_full.png" alt="screenshot after logging beads">
+</picture>
+
 
 ## Animating the beads
 
@@ -162,7 +185,14 @@ Up until this point, we've completely set aside one of the core concepts of Reru
 
 Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyways by memorizing when each log call occurred.
 
-![logging data - timeline closeup](https://static.rerun.io/f6dbc83f555597e2bfe946e8228301da82ad4611_logging_data6_timeline.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/720e5ba4d1881f88e1f0dd3342c52f3b472b70c6_logging_data6_timeline_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/96bdee91b139b19023524bc6954798005a24f298_logging_data6_timeline_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/c824ea981c457ee11c03b10645245b51e75de428_logging_data6_timeline_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/d8dcfc5d19865d0c50f43d377fbbcad027d44bf3_logging_data6_timeline_1200w.png">
+  <img src="https://static.rerun.io/37fbc6fcbe8e89b2267057e3eae2e56b8d9ddf42_logging_data6_timeline_full.png" alt="screenshot of the beads with the timeline">
+</picture>
+
 
 Unfortunately, the logging time isn't particularly helpful to us in this case: we can't have our beads animate depending on the logging time, else they would move at different speeds depending on the performance of the logging process!
 For that, we need to introduce our own custom timeline that uses a deterministic clock which we control.
@@ -189,7 +219,14 @@ A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/latest/common/ti
 
 ⚠️  If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
 
-![logging data - wat](https://static.rerun.io/a396c8aae1cbd717a3f35472594f789e4829b1ae_logging_data7_wat.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/af29a2c3ed2c7a829cd91c2ad11d38f4418b9b23_logging_data7_wat_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/a46e9b2e7cc03366712fc0d3e3bc5bcb1efb406c_logging_data7_wat_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/398fb5f7164b6ccf010e4af8b5c761818bf015a1_logging_data7_wat_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/263d82b50e184ecb4d83350a1ef8b89b5a4d7b5f_logging_data7_wat_1200w.png">
+  <img src="https://static.rerun.io/74239084e9e45d2a0187b5e5e944063e3c8df5fa_logging_data7_wat_full.png" alt="screenshot of the surprising situation">
+</picture>
+
 
 Enter...
 
@@ -202,7 +239,14 @@ rr.spawn()
 rr.set_time_seconds("stable_time", 0)
 ```
 
-![logging data - latest at](https://static.rerun.io/0182b4795ca2fed2f2097cfa5f5271115dee0aaf_logging_data8_latest_at.png)
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/6c6918d4e1c33dc321d15e8746753ed2b1ca2037_logging_data8_latest_at_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/73755db0243987f750f620c34d2b5f67e47c6ab4_logging_data8_latest_at_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/72d2625d37ed6b149a4f5c016768d300c36a9bee_logging_data8_latest_at_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/a9559392295bc0bfc75da81badae2ae053f707e7_logging_data8_latest_at_1200w.png">
+  <img src="https://static.rerun.io/0a7c2f339aaff03c3ccf82d5686f3af2c19a00a7_logging_data8_latest_at_full.png" alt="screenshot after using latest at">
+</picture>
+
 
 This fix actually introduces yet another very important concept in Rerun: "latest at" semantics.
 Notice how entities `"dna/structure/left"` & `"dna/structure/right"` have only ever been logged at time zero, and yet they are still visible when querying times far beyond that point.
@@ -225,12 +269,9 @@ from scipy.spatial.transform import Rotation
 for i in range(400):
     time = i * 0.01
     rr.set_time_seconds("stable_time", time)
-    rr.log_rigid3(
+    rr.log_transform3d(
         "dna/structure",
-        parent_from_child=(
-            [0, 0, 0],
-            Rotation.from_euler("z", time / 4.0 * tau).as_quat(),
-        ),
+        rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau),
     )
 ```
 

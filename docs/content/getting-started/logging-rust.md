@@ -22,7 +22,7 @@ We assume you have a working Rust environment and have started a new project wit
 For this example in particular, we're going to need all of these:
 ```toml
 [dependencies]
-rerun = "0.5.0"
+rerun = "0.7.0"
 itertools = "0.10"
 rand = "0.8"
 ```
@@ -34,12 +34,11 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    components::{ColorRGBA, LineStrip3D, Point3D, Quaternion,
-                 Radius, Rigid3, Transform, Vec3D},
+    components::{ColorRGBA, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
     time::{Time, TimeType, Timeline},
-    MsgSender, MsgSenderError, RecordingStream,
+    transform, MsgSender,
 };
 ```
 
@@ -77,7 +76,7 @@ Check out the reference to learn more about how Rerun deals with [applications a
 ## Logging our first points
 
 The core structure of our DNA looking shape can easily be described using two point clouds shaped like spirals.
-Add the following to your `run` callback:
+Add the following to your `main` function:
 ```rust
 const NUM_POINTS: usize = 100;
 
@@ -150,7 +149,7 @@ let scaffolding = all_points
 MsgSender::new("dna/structure/scaffolding")
     .with_component(&scaffolding)?
     .with_splat(ColorRGBA::from([128, 128, 128, 255]))?
-    .send(&mut recording)?;
+    .send(&recording)?;
 ```
 
 Which only leaves the beads:
@@ -272,13 +271,10 @@ for i in 0..400 {
     // ...everything else...
     MsgSender::new("dna/structure")
         .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
-        .with_component(&[Transform::Rigid3(Rigid3 {
-            rotation: Quaternion::from(glam::Quat::from_axis_angle(
-                glam::Vec3::Z,
-                time / 4.0 * TAU,
-            )),
-            ..Default::default()
-        })])?
+        .with_component(&[Transform3D::new(transform::RotationAxisAngle::new(
+            glam::Vec3::Z,
+            rerun::transform::Angle::Radians(time / 4.0 * TAU),
+        ))])?
         .send(&recording)?;
 }
 ```

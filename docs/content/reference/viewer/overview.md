@@ -33,7 +33,13 @@ Command Palette
 ----------------------------
 The command palette is a powerful tool to reach arbitrary actions from anywhere via a simple text search.
 You reach it with `cmd/ctrl + P` or via the menu.
-![screenshot of the command palette](https://static.rerun.io/e0da898a5efe0d5d648a4b4ae632fa40ef5d72bf_command-palette.png)
+
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/7c73b6a15921f060e0469edbba64f1e15e5b8682_command-palette_480w.png">
+  <img src="https://static.rerun.io/1f9bd02ee38abc69cef538a7213d7e28a42080ad_command-palette_full.png" alt="screenshot of the command palette">
+</picture>
+
+
 Once it's open just start typing to filter and press `Enter` to execute the selected action or cancel with `Esc`.
 
 [TODO(#1132)](https://github.com/rerun-io/rerun/issues/1132): The command palette is too limited right now.
@@ -41,7 +47,12 @@ Once it's open just start typing to filter and press `Enter` to execute the sele
 Help icons
 ----------
 Most views have an info icon at the top right corner.
-![help icon](https://static.rerun.io/dc13919f6219c389a5cb6f4ebc4cc8633fa9e256_help-icon.png)
+
+<picture>
+  <img src="https://static.rerun.io/40f6fd35a750ae2723a2352f1064971d1cb4f1dd_help-icon_full.png" alt="help icon">
+</picture>
+
+
 On hover it displays additional information on how to use a view.
 
 Event Log
