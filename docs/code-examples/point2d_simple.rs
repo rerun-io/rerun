@@ -1,4 +1,4 @@
-/// Log some very simple points.
+//! Log some very simple points.
 use rerun::{
     components::{Point2D, Rect2D, Vec4D},
     MsgSender, RecordingStreamBuilder,
