@@ -4,8 +4,9 @@ order: 7
 ---
 `Point2d` represents a singular point in two-dimensional space with optional color, radii, and label. `Point2d` entities will be drawn as part of the 2D Spatial SpaceView.
 
-It is compatible with `AnnotationContext` (TODO: link). `class_id` can be used to provide colors and labels from the
-annotation context, and `keypoint_id` can be used to make connected edges between points. See examples in the `AnnotationContext` documentation.
+It is compatible with [`AnnotationContext](../../concepts/annotation-context.md). `class_id` can be used to provide
+colors and labels from the annotation context, and `keypoint_id` can be used to make connected edges between points. See
+examples in the `AnnotationContext` documentation.
 
 `draw_order` can be used to control how the `Point2d` entities are drawn relative to other objects within the scene. Higher values are drawn on top of lower values.
 
