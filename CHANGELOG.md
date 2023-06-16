@@ -3,7 +3,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.0...v0.6.0) - 3D in 2D and SDK batching
+## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.6.0) - 3D in 2D and SDK batching - 2023-05-26
 
 ### Overview & Highlights
 
@@ -15,7 +15,6 @@
 - SDK log calls are now batched on the wire, saving CPU time and bandwidth
 
 ### In Detail
-
 
 #### 🐍 Python SDK
 - ⚠️ BREAKING: You must now call `rr.init` if you want logging to work.
@@ -86,6 +85,7 @@
 - Optimize GLTF/GLB texture loading in debug builds [#2096](https://github.com/rerun-io/rerun/pull/2096)
 - Premultiply the alpha on the GPU [#2190](https://github.com/rerun-io/rerun/pull/2190)
 - Switch compression algorithm from zstd to lz4 [#2112](https://github.com/rerun-io/rerun/pull/2112)
+- Support RRD streams with and without compression. Turn off for SDK comms [#2219](https://github.com/rerun-io/rerun/pull/2219)
 
 #### 🧑‍🏫 Examples
 - Join threads at end of multi-threading example [#1934](https://github.com/rerun-io/rerun/pull/1934)
@@ -99,7 +99,6 @@
 - Fix glb mesh data set downloads [#2100](https://github.com/rerun-io/rerun/pull/2100)
 - Add more examples to https://app.rerun.io/ [#2062](https://github.com/rerun-io/rerun/pull/2062)
 
-
 #### 🖼 UI Improvements
 - Update egui to latest and wgpu to 0.16 [#1958](https://github.com/rerun-io/rerun/pull/1958)
 - Add keyboard shortcut for "Follow", and stop following on "Restart" [#1986](https://github.com/rerun-io/rerun/pull/1986) (thanks [@h3mosphere](https://github.com/h3mosphere)!)
@@ -109,7 +108,6 @@
 - Allow horizontal scrolling in blueprint panel [#2114](https://github.com/rerun-io/rerun/pull/2114)
 - Nicer (& fixed up) help texts for space views [#2070](https://github.com/rerun-io/rerun/pull/2070)
 - Allow dragging time cursor in plots [#2115](https://github.com/rerun-io/rerun/pull/2115)
-
 
 #### 🕸️ Web
 - Set the GC limit to 2.5GB on web [#1944](https://github.com/rerun-io/rerun/pull/1944)
@@ -139,8 +137,6 @@
 #### ✨ Other Enhancement
 - Update minimum supported Rust version to `1.69.0` [#1935](https://github.com/rerun-io/rerun/pull/1935)
 - Allow users to select the bind address (ip) to use with `--bind` [#2159](https://github.com/rerun-io/rerun/pull/2159)
-
-
 
 #### 🧑‍💻 Dev-experience
 - Suggest users open an issue on crash, and other fixes [#1993](https://github.com/rerun-io/rerun/pull/1993)
@@ -216,7 +212,8 @@ This Release fixes a few small bugs on top of the v0.5.0 release.
 * Don't use console.error [#1984](https://github.com/rerun-io/rerun/pull/1984)
 * Fix failure to save files when split table contains no data [#2007](https://github.com/rerun-io/rerun/pull/2007)
 
-## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore!
+
+## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore! - 2023-04-20
 
 ### Overview & Highlights
 
@@ -354,8 +351,6 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Datastore revamp 7: garbage collection [#1801](https://github.com/rerun-io/rerun/pull/1801)
 - Incremental metadata registry stats [#1833](https://github.com/rerun-io/rerun/pull/1833)
 
-#### ✨ Other Enhancement
-
 #### 🗣 Merged RFCs
 - RFC: datastore state of the union & end-to-end batching  [#1610](https://github.com/rerun-io/rerun/pull/1610)
 
@@ -387,10 +382,10 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - `just rs-run-all` [b14087b40bd805c95f030a4c7d3fb7a0482e13f4](https://github.com/rerun-io/rerun/commit/b14087b40bd805c95f030a4c7d3fb7a0482e13f4)
 - `just py-run-all-{native|web|rrd}` [#1927](https://github.com/rerun-io/rerun/pull/1927)
 
-## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements
+
+## [0.4.0](https://github.com/rerun-io/rerun/compare/v0.3.1...v0.4.0) - Outlines, web viewer and performance improvements - 2023-03-28
 
 https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
-
 
 ### Overview & Highlights
 * Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
@@ -562,12 +557,12 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Lint fixes [9901e7c6735356b1970ddabc926bc5378d82e057](https://github.com/rerun-io/rerun/commit/9901e7c6735356b1970ddabc926bc5378d82e057)
 
 
-## [0.3.1](https://github.com/rerun-io/rerun/compare/v0.3.0...v0.3.1) - Remove potentially sensitive analytics
+## [0.3.1](https://github.com/rerun-io/rerun/compare/v0.3.0...v0.3.1) - Remove potentially sensitive analytics - 2023-03-13
 
 Remove potentially sensitive analytics, including path to rerun source code on panics, and rerun branch name when building from source [#1563](https://github.com/rerun-io/rerun/pull/1563)
 
 
-## [0.3.0](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0)
+## [0.3.0](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0) - 2023-03-07
 ### Overview & Highlights
 
 After a successful launch a couple of weeks ago, we're back with our second release!
@@ -726,5 +721,5 @@ Meanwhile, we did a bunch of improvements to our manual. If you had trouble runn
 
 [Full Changelog](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0)
 
-## 0.2.0
+## 0.2.0 - 2023-02-14
 First public release!

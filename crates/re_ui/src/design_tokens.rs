@@ -63,6 +63,12 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
             egui_style.text_styles.get_mut(&text_style).unwrap().size = font_size;
         }
 
+        egui_style
+            .text_styles
+            .get_mut(&egui::TextStyle::Heading)
+            .unwrap()
+            .size = 16.0;
+
         // We want labels and buttons to have the same height.
         // Intuitively, we would just assign font_size to
         // the interact_size, but in practice text height does not match

@@ -1,0 +1,8 @@
+include "./components/class_id.fbs";
+include "./components/color.fbs";
+include "./components/draw_order.fbs";
+include "./components/instance_key.fbs";
+include "./components/keypoint_id.fbs";
+include "./components/label.fbs";
+include "./components/point2d.fbs";
+include "./components/radius.fbs";

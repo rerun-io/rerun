@@ -1,9 +1,9 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
-use std::io::Write as _;
-
 use re_log_types::LogMsg;
 
+use crate::FileHeader;
+use crate::MessageHeader;
 use crate::{Compression, EncodingOptions};
 
 // ----------------------------------------------------------------------------
@@ -15,10 +15,7 @@ pub enum EncodeError {
     Write(std::io::Error),
 
     #[error("lz4 error: {0}")]
-    Lz4Write(std::io::Error),
-
-    #[error("lz4 error: {0}")]
-    Lz4Finish(lz4_flex::frame::Error),
+    Lz4(lz4_flex::block::CompressError),
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::encode::Error),
@@ -39,139 +36,76 @@ pub fn encode_to_bytes<'a>(
         for msg in msgs {
             encoder.append(msg)?;
         }
-        encoder.finish()?;
     }
     Ok(bytes)
 }
 
 // ----------------------------------------------------------------------------
 
-struct Lz4Compressor<W: std::io::Write> {
-    /// `None` if finished.
-    lz4_encoder: Option<lz4_flex::frame::FrameEncoder<W>>,
-}
-
-impl<W: std::io::Write> Lz4Compressor<W> {
-    pub fn new(write: W) -> Self {
-        Self {
-            lz4_encoder: Some(lz4_flex::frame::FrameEncoder::new(write)),
-        }
-    }
-
-    pub fn write(&mut self, bytes: &[u8]) -> Result<(), EncodeError> {
-        if let Some(lz4_encoder) = &mut self.lz4_encoder {
-            lz4_encoder
-                .write_all(bytes)
-                .map_err(EncodeError::Lz4Write)?;
-
-            Ok(())
-        } else {
-            Err(EncodeError::AlreadyFinished)
-        }
-    }
-
-    pub fn finish(&mut self) -> Result<(), EncodeError> {
-        if let Some(lz4_encoder) = self.lz4_encoder.take() {
-            lz4_encoder.finish().map_err(EncodeError::Lz4Finish)?;
-            Ok(())
-        } else {
-            re_log::warn!("Encoder::finish called twice");
-            Ok(())
-        }
-    }
-}
-
-impl<W: std::io::Write> Drop for Lz4Compressor<W> {
-    fn drop(&mut self) {
-        if self.lz4_encoder.is_some() {
-            re_log::warn!("Encoder dropped without calling finish()!");
-            if let Err(err) = self.finish() {
-                re_log::error!("Failed to finish encoding: {err}");
-            }
-        }
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-enum Compressor<W: std::io::Write> {
-    Off(W),
-    Lz4(Lz4Compressor<W>),
-}
-
-impl<W: std::io::Write> Compressor<W> {
-    pub fn new(compression: Compression, write: W) -> Self {
-        match compression {
-            Compression::Off => Self::Off(write),
-            Compression::LZ4 => Self::Lz4(Lz4Compressor::new(write)),
-        }
-    }
-
-    pub fn write(&mut self, bytes: &[u8]) -> Result<(), EncodeError> {
-        let len = (bytes.len() as u64).to_le_bytes();
-
-        match self {
-            Compressor::Off(write) => {
-                write.write_all(&len).map_err(EncodeError::Write)?;
-                write.write_all(bytes).map_err(EncodeError::Write)
-            }
-            Compressor::Lz4(lz4) => {
-                lz4.write(&len)?;
-                lz4.write(bytes)
-            }
-        }
-    }
-
-    pub fn finish(&mut self) -> Result<(), EncodeError> {
-        match self {
-            Compressor::Off(_) => Ok(()),
-            Compressor::Lz4(lz4) => lz4.finish(),
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
 pub struct Encoder<W: std::io::Write> {
-    compressor: Compressor<W>,
-    buffer: Vec<u8>,
+    compression: Compression,
+    write: W,
+    uncompressed: Vec<u8>,
+    compressed: Vec<u8>,
 }
 
 impl<W: std::io::Write> Encoder<W> {
     pub fn new(options: EncodingOptions, mut write: W) -> Result<Self, EncodeError> {
         let rerun_version = re_build_info::CrateVersion::parse(env!("CARGO_PKG_VERSION"));
 
-        write
-            .write_all(crate::RRD_HEADER)
-            .map_err(EncodeError::Write)?;
-        write
-            .write_all(&rerun_version.to_bytes())
-            .map_err(EncodeError::Write)?;
-        write
-            .write_all(&options.to_bytes())
-            .map_err(EncodeError::Write)?;
+        FileHeader {
+            magic: *crate::RRD_HEADER,
+            version: rerun_version.to_bytes(),
+            options,
+        }
+        .encode(&mut write)?;
 
         match options.serializer {
             crate::Serializer::MsgPack => {}
         }
 
         Ok(Self {
-            compressor: Compressor::new(options.compression, write),
-            buffer: vec![],
+            compression: options.compression,
+            write,
+            uncompressed: vec![],
+            compressed: vec![],
         })
     }
 
     pub fn append(&mut self, message: &LogMsg) -> Result<(), EncodeError> {
-        let Self { compressor, buffer } = self;
+        self.uncompressed.clear();
+        rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
 
-        buffer.clear();
-        rmp_serde::encode::write_named(buffer, message)?;
+        match self.compression {
+            Compression::Off => {
+                MessageHeader {
+                    uncompressed_len: self.uncompressed.len() as u32,
+                    compressed_len: self.uncompressed.len() as u32,
+                }
+                .encode(&mut self.write)?;
+                self.write
+                    .write_all(&self.uncompressed)
+                    .map_err(EncodeError::Write)?;
+            }
+            Compression::LZ4 => {
+                let max_len = lz4_flex::block::get_maximum_output_size(self.uncompressed.len());
+                self.compressed.resize(max_len, 0);
+                let compressed_len =
+                    lz4_flex::block::compress_into(&self.uncompressed, &mut self.compressed)
+                        .map_err(EncodeError::Lz4)?;
+                MessageHeader {
+                    uncompressed_len: self.uncompressed.len() as u32,
+                    compressed_len: compressed_len as u32,
+                }
+                .encode(&mut self.write)?;
+                self.write
+                    .write_all(&self.compressed[..compressed_len])
+                    .map_err(EncodeError::Write)?;
+            }
+        }
 
-        compressor.write(buffer)
-    }
-
-    pub fn finish(&mut self) -> Result<(), EncodeError> {
-        self.compressor.finish()
+        Ok(())
     }
 }
 
@@ -184,7 +118,7 @@ pub fn encode<'a>(
     for message in messages {
         encoder.append(message)?;
     }
-    encoder.finish()
+    Ok(())
 }
 
 pub fn encode_owned(
@@ -196,5 +130,5 @@ pub fn encode_owned(
     for message in messages {
         encoder.append(&message)?;
     }
-    encoder.finish()
+    Ok(())
 }

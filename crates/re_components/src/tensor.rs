@@ -1192,11 +1192,6 @@ impl DecodedTensor {
             | TensorData::F64(_) => Ok(Self(maybe_encoded_tensor)),
 
             TensorData::JPEG(jpeg_bytes) => {
-                re_log::debug!(
-                    "Decoding JPEG image of shape {:?}",
-                    maybe_encoded_tensor.shape()
-                );
-
                 let [h, w, c] = maybe_encoded_tensor
                     .image_height_width_channels()
                     .ok_or_else(|| {

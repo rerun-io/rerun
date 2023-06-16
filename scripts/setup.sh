@@ -31,6 +31,20 @@ elif [ -x "$(command -v dnf)" ];   then
         pkg-config
 fi
 
+packagesNeeded='flatbuffers'
+if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
+elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
+elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded
+elif [ -x "$(command -v dnf)" ];     then sudo dnf install $packagesNeeded
+elif [ -x "$(command -v zypper)" ];  then sudo zypper install $packagesNeeded
+elif [ -x "$(command -v apk)" ];     then sudo apk add --no-cache $packagesNeeded
+elif [ -x "$(command -v winget)" ];  then sudo winget add --no-cache $packagesNeeded
+elif [ -x "$(command -v pacman)" ];  then sudo pacman -S $packagesNeeded
+else
+    echo "FAILED TO INSTALL PACKAGE: Package manager not found. You must manually install: $packagesNeeded">&2;
+    exit 1
+fi
+
 # Needed to compile and check the code:
 rustup install 1.69.0
 ./scripts/setup_web.sh

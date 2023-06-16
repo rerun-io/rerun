@@ -988,6 +988,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "convert_case"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1485,14 +1494,17 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80b69a6f9168b96c0ae04763bec27a8b06b34343c334dd2703a4ec21f0f5e110"
+checksum = "31e4525e883dd283d12b755ab3ad71d7c8dea2ee8e8a062b9f4c4f84637ed681"
 dependencies = [
+ "document-features",
+ "futures-util",
  "js-sys",
  "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
 ]
 
@@ -1737,6 +1749,16 @@ name = "fixedbitset"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
+
+[[package]]
+name = "flatbuffers"
+version = "23.5.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dac53e22462d78c16d64a1cd22371b54cc3fe94aa15e7886a2fa6e5d1ab8640"
+dependencies = [
+ "bitflags 1.3.2",
+ "rustc_version",
+]
 
 [[package]]
 name = "flate2"
@@ -3917,7 +3939,10 @@ dependencies = [
  "anyhow",
  "cargo_metadata",
  "glob",
+ "sha2",
  "time",
+ "unindent",
+ "walkdir",
 ]
 
 [[package]]
@@ -4473,6 +4498,37 @@ dependencies = [
  "once_cell",
  "serde",
  "web-time",
+]
+
+[[package]]
+name = "re_types"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "arrow2",
+ "bytemuck",
+ "document-features",
+ "ecolor",
+ "glam",
+ "itertools",
+ "macaw",
+ "re_build_tools",
+ "re_types_builder",
+ "similar-asserts",
+ "xshell",
+]
+
+[[package]]
+name = "re_types_builder"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "anyhow",
+ "arrow2",
+ "convert_case",
+ "flatbuffers",
+ "indent",
+ "re_build_tools",
+ "unindent",
+ "xshell",
 ]
 
 [[package]]
@@ -6065,6 +6121,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-streams"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4609d447824375f43e1ffbc051b50ad8f4b3ae8219680c94452ea05eb240ac7"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "wasm-timer"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6617,9 +6686,24 @@ dependencies = [
 
 [[package]]
 name = "xml-rs"
-version = "0.8.13"
+version = "0.8.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d8f380ae16a37b30e6a2cf67040608071384b1450c189e61bea3ff57cde922d"
+checksum = "52839dc911083a8ef63efa4d039d1f58b5e409f923e44c80828f206f66e5541c"
+
+[[package]]
+name = "xshell"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "962c039b3a7b16cf4e9a4248397c6585c07547412e7d6a6e035389a802dcfe90"
+dependencies = [
+ "xshell-macros",
+]
+
+[[package]]
+name = "xshell-macros"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1dbabb1cbd15a1d6d12d9ed6b35cc6777d4af87ab3ba155ea37215f20beab80c"
 
 [[package]]
 name = "xxhash-rust"

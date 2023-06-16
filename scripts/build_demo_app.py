@@ -37,19 +37,22 @@ class Example:
         in_path = os.path.abspath(self.path)
         out_dir = f"{BASE_PATH}/examples/{self.name}"
 
-        logging.info(f"Running {in_path}, outputting to {out_dir}")
         os.makedirs(out_dir, exist_ok=True)
+        rrd_path = os.path.join(out_dir, "data.rrd")
+        logging.info(f"Running {self.name}, outputting to {rrd_path}")
 
         args = [
             "python3",
             in_path,
-            f"--save={out_dir}/data.rrd",
+            f"--save={rrd_path}",
         ]
 
         subprocess.run(
             args + self.build_args,
             check=True,
         )
+
+        print(f"{rrd_path}: {os.path.getsize(rrd_path) / 1e6:.1f} MB")
 
     def supports_save(self) -> bool:
         with open(self.path) as f:
@@ -73,6 +76,21 @@ def copy_static_assets(examples: list[Example]) -> None:
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns("index.html"),
         )
+
+
+def build_python_sdk() -> None:
+    print("Building Python SDK…")
+    returncode = subprocess.Popen(
+        [
+            "maturin",
+            "develop",
+            "--manifest-path",
+            "rerun_py/Cargo.toml",
+            '--extras="tests"',
+            "--quiet",
+        ],
+    ).wait()
+    assert returncode == 0, f"process exited with error code {returncode}"
 
 
 def build_wasm() -> None:
@@ -102,20 +120,23 @@ def collect_examples() -> list[Example]:
             commit=commit,
             build_args=EXAMPLES[name]["build_args"],
         )
-        if example.supports_save():
-            examples.append(example)
+        assert example.supports_save(), f'Example "{name}" does not support saving'
+        examples.append(example)
+
     return examples
 
 
 def save_examples_rrd(examples: list[Example]) -> None:
-    logging.info("\nSaving examples as .rrd")
+    logging.info("\nSaving examples as .rrd…")
 
+    print("")
     for example in examples:
         example.save()
+        print("")
 
 
 def render_examples(examples: list[Example]) -> None:
-    logging.info("\nRendering examples")
+    logging.info("Rendering examples")
 
     template_path = os.path.join(SCRIPT_PATH, "demo_assets/templates/example.html")
     with open(template_path) as f:
@@ -153,14 +174,18 @@ def main() -> None:
         action="store_true",
         help="Serve the app on this port after building [default: 8080]",
     )
-    parser.add_argument("--skip-wasm-build", action="store_true", help="Skip the web viewer Wasm build")
+
+    parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK and web viewer Wasm.")
 
     args = parser.parse_args()
 
-    if not args.skip_wasm_build:
+    if not args.skip_build:
+        build_python_sdk()
         build_wasm()
 
+    shutil.rmtree(f"{BASE_PATH}/examples", ignore_errors=True)
     examples = collect_examples()
+    assert len(examples) > 0, "No examples found"
     save_examples_rrd(examples)
     render_examples(examples)
     copy_static_assets(examples)
@@ -184,30 +209,17 @@ BASE_PATH = "web_demo"
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 # When adding examples, add their requirements to `requirements-web-demo.txt`
 EXAMPLES = {
-    "api_demo": {
-        "title": "API Demo",
+    "arkit_scenes": {
+        "title": "ARKit Scenes",
         "description": """
-        This is a swiss-army-knife example showing the usage of most of the Rerun SDK APIs.
-        The data logged is static and meaningless.
+        Visualizes the <a href="https://github.com/apple/ARKitScenes/" target="_blank">ARKitScenes dataset</a>
+        using the Rerun SDK.
+        The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.
         """,
         "build_args": [],
     },
-    "car": {
-        "title": "Car",
-        "description": """
-        A very simple 2D car is drawn using OpenCV, and a depth image is simulated and logged as a point cloud.
-        """,
-        "build_args": [],
-    },
-    "clock": {
-        "title": "Clock",
-        "description": """
-        An example visualizing an analog clock with hour, minute and seconds hands using Rerun Arrow3D primitives.
-        """,
-        "build_args": [],
-    },
-    "colmap": {
-        "title": "COLMAP",
+    "structure_from_motion": {
+        "title": "Structure From Motion",
         "description": """
         An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.
 
@@ -219,39 +231,37 @@ EXAMPLES = {
         and we use Rerun to visualize the individual camera frames, estimated camera poses,
         and resulting point clouds over time.
         """,
-        "build_args": ["--resize=800x600"],
+        "build_args": ["--dataset=colmap_fiat", "--resize=800x600"],
     },
-    "dicom": {
-        "title": "Dicom",
+    "dicom_mri": {
+        "title": "Dicom MRI",
         "description": """
         Example using a <a href="https://en.wikipedia.org/wiki/DICOM" target="_blank">DICOM</a> MRI scan.
         This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
         """,
         "build_args": [],
     },
+    "human_pose_tracking": {
+        "title": "Human Pose Tracking",
+        "description": """
+        Use the <a href="https://google.github.io/mediapipe/" target="_blank">MediaPipe</a> Pose
+        solution to detect and track a human pose in video.
+        """,
+        "build_args": [],
+    },
     "plots": {
         "title": "Plots",
         "description": """
-        This example demonstrates how to log simple plots with the Rerun SDK.
-        Charts can be created from 1-dimensional tensors, or from time-varying scalars.
+        Simple example of plots and charts.
         """,
         "build_args": [],
     },
-    "raw_mesh": {
-        "title": "Raw Mesh",
+    "detect_and_track_objects": {
+        "title": "Detect and Track Objects",
         "description": """
-        This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups")
-        and their transform hierarchy. Simple material properties are supported.
-        """,
-        "build_args": [],
-    },
-    "text_logging": {
-        "title": "Text Logging",
-        "description": """
-        This example demonstrates how to integrate python's native `logging` with the Rerun SDK.
-
-        Rerun is able to act as a Python logging handler, and can show all your Python log messages
-        in the viewer next to your other data.
+        Applying simple object detection and segmentation on a video using the Huggingface `transformers` library.
+        Tracking across frames is performed using
+        <a href="https://arxiv.org/pdf/1611.08461.pdf" target="_blank">CSRT</a> from OpenCV.
         """,
         "build_args": [],
     },

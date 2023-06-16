@@ -22,7 +22,8 @@ pub use file_sink::{FileSink, FileSinkError};
 // ----------------------------------------------------------------------------
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-const RRD_HEADER: &[u8; 4] = b"RRF1";
+const RRD_HEADER: &[u8; 4] = b"RRF2";
+const OLD_RRD_HEADERS: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
 
 // ----------------------------------------------------------------------------
 
@@ -101,4 +102,85 @@ pub enum OptionsError {
 
     #[error("Unknown serializer: {0}")]
     UnknownSerializer(u8),
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct FileHeader {
+    pub magic: [u8; 4],
+    pub version: [u8; 4],
+    pub options: EncodingOptions,
+}
+
+impl FileHeader {
+    pub const SIZE: usize = 12;
+
+    #[cfg(feature = "encoder")]
+    #[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
+    pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
+        write
+            .write_all(&self.magic)
+            .map_err(encoder::EncodeError::Write)?;
+        write
+            .write_all(&self.version)
+            .map_err(encoder::EncodeError::Write)?;
+        write
+            .write_all(&self.options.to_bytes())
+            .map_err(encoder::EncodeError::Write)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "decoder")]
+    pub fn decode(read: &mut impl std::io::Read) -> Result<Self, decoder::DecodeError> {
+        let mut buffer = [0_u8; Self::SIZE];
+        read.read_exact(&mut buffer)
+            .map_err(decoder::DecodeError::Read)?;
+        let magic = buffer[0..4].try_into().unwrap();
+        let version = buffer[4..8].try_into().unwrap();
+        let options = EncodingOptions::from_bytes(buffer[8..].try_into().unwrap())?;
+        Ok(Self {
+            magic,
+            version,
+            options,
+        })
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct MessageHeader {
+    /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams
+    pub compressed_len: u32,
+    pub uncompressed_len: u32,
+}
+
+impl MessageHeader {
+    pub const SIZE: usize = 8;
+
+    #[cfg(feature = "encoder")]
+    #[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
+    pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
+        write
+            .write_all(&self.compressed_len.to_le_bytes())
+            .map_err(encoder::EncodeError::Write)?;
+        write
+            .write_all(&self.uncompressed_len.to_le_bytes())
+            .map_err(encoder::EncodeError::Write)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "decoder")]
+    pub fn decode(read: &mut impl std::io::Read) -> Result<Self, decoder::DecodeError> {
+        let mut buffer = [0_u8; Self::SIZE];
+        read.read_exact(&mut buffer)
+            .map_err(decoder::DecodeError::Read)?;
+        let compressed = u32_from_le_slice(&buffer[0..4]);
+        let uncompressed = u32_from_le_slice(&buffer[4..]);
+        Ok(Self {
+            compressed_len: compressed,
+            uncompressed_len: uncompressed,
+        })
+    }
+}
+
+pub(crate) fn u32_from_le_slice(bytes: &[u8]) -> u32 {
+    u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
 }

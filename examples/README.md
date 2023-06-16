@@ -31,7 +31,8 @@ The important part is that each example has a `README.md` file. This file contai
 ```
 ---
 title: Text Logging
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/tracking_hf_opencv/main.py
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and_track_objects/main.py
+tags: [2D, huggingface, object-detection, object-tracking, opencv]
 ---
 
 ...

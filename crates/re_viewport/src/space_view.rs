@@ -173,13 +173,13 @@ impl SpaceViewBlueprint {
             self.data_blueprint.data_blueprints_individual(),
         );
 
-        let query = re_viewer_context::SceneQuery {
-            space_origin: &self.space_origin,
-            entity_paths: self.data_blueprint.entity_paths(),
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+        let query = re_viewer_context::SceneQuery::new(
+            &self.space_origin,
+            self.data_blueprint.entity_paths(),
+            *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            entity_props_map: self.data_blueprint.data_blueprints_projected(),
-        };
+            self.data_blueprint.data_blueprints_projected(),
+        );
 
         let mut scene = class.new_scene();
         scene.populate(ctx, &query, view_state, highlights);
