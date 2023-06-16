@@ -3,7 +3,7 @@ rr.log_annotation_context(
     "masks",  # Applies to all entities below "masks".
     [
         rr.AnnotationInfo(id=0, label="Background"),
-        rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
+        rr.AnnotationInfo(id=1, label="Person", color=(255, 0, 0)),
     ],
 )
 

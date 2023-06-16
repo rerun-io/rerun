@@ -5,15 +5,16 @@ order: 4
 
 ## Overview
 
-Any visualization that assigns an identifier ("Class ID") to an instance or entity can profit from using Annotations.
+Any visualization that assigns an identifier ("Class ID") to an instance or entity can benefit from using Annotations.
 By using an Annotation Context, you can associate labels and colors with a given class and then re-use
 that class across entities.
 
-This is particularly useful for visualizing the output classifications algorithms
-(as demonstrated by the [Detect and Track Objects](https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and_track_objects) example),
+<!-- TODO(andreas): Example link should point to `latest` but at the time of writing the samples just got renamed -->
+This is particularly useful for visualizing the output of classifications algorithms
+(as demonstrated by the [Detect and Track Objects](https://github.com/rerun-io/rerun/tree/main/examples/python/detect_and_track_objects) example),
 but can be used more generally for any kind of reoccurring categorization within a Rerun recording.
 
-![classids](https://static.rerun.io/5508e3fd5b2fdc020eda0bd545ccb97d26a01303_classids.png)
+![class_ids](https://static.rerun.io/5508e3fd5b2fdc020eda0bd545ccb97d26a01303_classids.png)
 
 
 ### Keypoints & Keypoint Connections
@@ -21,10 +22,10 @@ but can be used more generally for any kind of reoccurring categorization within
 Rerun allows you to define keypoints *within* a class.
 Each keypoint can define its own properties (colors, labels, etc.) that overwrite its parent class.
 
-A typical example for keypoints would be the joints of a skeleton within a pose detection:
+A typical example usage of keypoints is annotating the joints of a skeleton within a pose detection:
 In that case, the entire detected pose/skeleton is assigned a Class ID and each joint within gets a Keypoint ID.
 
-To help you more with this (and similar) usecase(s), you can define connections between keypoints
+To help you more with this (and similar) use-case(s), you can also define connections between keypoints
 as part of your annotation class description:
 The viewer will draw the connecting lines for all connected keypoints whenever that class is used.
 Just as with labels & colors this allows you to use the same connection information on any instance that class in your scene.
@@ -36,7 +37,7 @@ Keypoints are currently only applicable to 2D and 3D points.
 
 ### Logging an Annotation Context
 
-Annotation Context is typically logged as [timeless](./timelines#timeless-data) data, but can change over time if needed.
+Annotation Context is typically logged as [timeless](timelines.md#timeless-data) data, but can change over time if needed.
 
 The Annotation Context is defined as a list of Class Descriptions that define how classes are styled
 (as well as optional keypoint style & connection).
@@ -52,7 +53,7 @@ code-example: annotation-context
 ## Affected Entities
 
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
-the nearest ancestor that in the [entity path hierarchy](./entity-path#path-hierarchy-functions) that has an Annotation Context defined.
+the nearest ancestor that in the [entity path hierarchy](entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.
 
 
 ## Segmentation images

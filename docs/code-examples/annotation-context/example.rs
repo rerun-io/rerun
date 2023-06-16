@@ -14,8 +14,8 @@ MsgSender::new("masks") // Applies to all entities below "masks".
             ClassDescription {
                 info: AnnotationInfo {
                     id: 0,
-                    label: Some(Label("Background".into())),
-                    color: Some(ColorRGBA(0x000000)),
+                    label: Some(Label("Person".into())),
+                    color: Some(ColorRGBA(0xFF000000)),
                 },
                 ..Default::default()
             },
