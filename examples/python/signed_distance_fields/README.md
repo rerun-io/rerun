@@ -19,3 +19,5 @@ Generate Signed Distance Fields for arbitrary meshes using both traditional meth
 pip install -r examples/python/signed_distance_fields/requirements.txt
 python examples/python/signed_distance_fields/main.py
 ```
+
+_Known issue_: On macOS, this example may present artefacts in the SDF and/or fail.
