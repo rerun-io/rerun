@@ -45,12 +45,16 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
+import urllib.request
 from io import BytesIO
 from pathlib import Path
 
 import PIL
 import PIL.Image
 import PIL.ImageGrab
+import requests
+import tqdm
 from google.cloud import storage
 from PIL.Image import Image, Resampling
 
@@ -312,39 +316,23 @@ def data_hash(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
-DESCRIPTION = """Upload an image to static.rerun.io.
+def download_file(url: str, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    logging.info("Downloading %s to %s", url, path)
+    response = requests.get(url, stream=True)
+    with tqdm.tqdm.wrapattr(
+        open(path, "wb"),
+        "write",
+        miniters=1,
+        total=int(response.headers.get("content-length", 0)),
+        desc=f"Downloading {path.name}",
+    ) as f:
+        for chunk in response.iter_content(chunk_size=4096):
+            f.write(chunk)
 
-Example screenshots
--------------------
 
-To make example screenshots, follow these steps:
-1. Run the example.
-2. Resize the Rerun window to an approximate 16:9 aspect ratio and a width of ~1500px.
-3. Groom the blueprints and panel visibility to your liking.
-4. Take a screenshot using the command palette.
-5. Run: just upload --name <name_of_example>
-6. Copy the output HTML tag and paste it into the README.md file.
-"""
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument(
-        "path", type=Path, nargs="?", help="File path to the image. If not provided, use the clipboard's content."
-    )
-    parser.add_argument(
-        "--single", action="store_true", help="Upload a single image instead of creating a multi-resolution stack."
-    )
-    parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
-    parser.add_argument("--skip-pngcrush", action="store_true", help="Skip PNGCrush.")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
-    args = parser.parse_args()
-
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
+def run(args) -> None:
+    """Run the script based on the provided args."""
     try:
         if shutil.which("pngcrush") is None and not args.skip_pngcrush:
             raise RuntimeError("pngcrush is not installed, consider using --skip-pngcrush")
@@ -365,6 +353,62 @@ def main() -> None:
             print("\n" + html_str)
     except RuntimeError as e:
         print(f"Error: {e.args[0]}", file=sys.stderr)
+
+
+DESCRIPTION = """Upload an image to static.rerun.io.
+
+Example screenshots
+-------------------
+
+To make example screenshots, follow these steps:
+1. Run the example.
+2. Resize the Rerun window to an approximate 16:9 aspect ratio and a width of ~1500px.
+3. Groom the blueprints and panel visibility to your liking.
+4. Take a screenshot using the command palette.
+5. Run: just upload --name <name_of_example>
+6. Copy the output HTML tag and paste it into the README.md file.
+
+Other uses
+----------
+
+Download an image, optimize it and create a multi-resolution stack:
+
+    just upload --name <name_of_stack> https://example.com/path/to/image.png
+"""
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument(
+        "path", type=str, nargs="?", help="Image file URL or path. If not provided, use the clipboard's content."
+    )
+    parser.add_argument(
+        "--single", action="store_true", help="Upload a single image instead of creating a multi-resolution stack."
+    )
+    parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
+    parser.add_argument("--skip-pngcrush", action="store_true", help="Skip PNGCrush.")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
+    args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    # The entire block is wrapped around tmp_dir such that it exists for the entire run.
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        # check if path as a URL and download it.
+        if args.path is not None:
+            res = urllib.parse.urlparse(args.path)
+            if res.scheme and res.netloc:
+                file_name = os.path.basename(res.path)
+                local_path = Path(tmp_dir) / file_name
+                download_file(args.path, local_path)
+                args.path = Path(local_path)
+            else:
+                args.path = Path(args.path)
+
+        run(args)
 
 
 if __name__ == "__main__":
