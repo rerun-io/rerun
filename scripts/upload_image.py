@@ -25,7 +25,13 @@ Then run `python3 -m pip install cryptography==38.0.4`
 Usage
 -----
 
-python3 scripts/upload_image.py --help
+Use the script:
+
+    python3 scripts/upload_image.py --help
+
+or the just command:
+
+    just upload --help
 """
 
 from __future__ import annotations
@@ -306,8 +312,23 @@ def data_hash(data: bytes) -> str:
     return hashlib.sha1(data).hexdigest()
 
 
+DESCRIPTION = """Upload an image to static.rerun.io.
+
+Example screenshots
+-------------------
+
+To make example screenshots, follow these steps:
+1. Run the example.
+2. Resize the Rerun window to an approximate 16:9 aspect ratio and a width of ~1500px.
+3. Groom the blueprints and panel visibility to your liking.
+4. Take a screenshot using the command palette.
+5. Run: just upload --name <name_of_example>
+6. Copy the output HTML tag and paste it into the README.md file.
+"""
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Upload an image.")
+    parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument(
         "path", type=Path, nargs="?", help="File path to the image. If not provided, use the clipboard's content."
     )
