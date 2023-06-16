@@ -5435,6 +5435,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "template"
+version = "0.7.0-alpha.0"
+dependencies = [
+ "rerun",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
