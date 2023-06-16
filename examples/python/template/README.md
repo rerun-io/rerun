@@ -6,16 +6,13 @@ rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/template/src/m
 ---
 
 <!--
-1. Run the example
-2. Resize the viewer to something above 1024x1024
-3. Take a screenshot via the command palette
-4. `just upload --name <example_screenshot_name>`
-5. Paste the resulting HTML snippet in place of this comment
+Place a screenshot in place of this comment
+Use `just upload --help` for instructions
 -->
 
 This is an example example. It is not a real example. You can duplicate the directory and use it as a starting point for writing a real example.
 
 ```bash
 pip install -r examples/python/template/requirements.txt
-examples/python/template/main.py
+python examples/python/template/main.py
 ```
