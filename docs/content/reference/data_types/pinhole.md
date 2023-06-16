@@ -1,6 +1,6 @@
 ---
-title: Transform
-order: 9
+title: Pinhole
+order: 10
 ---
 ## Components and APIs
 Primary component: `transform`
