@@ -1,6 +1,6 @@
 ---
 title: SDK Logging Controls
-order: 0
+order: 5
 ---
 
 ## Controlling logging globally

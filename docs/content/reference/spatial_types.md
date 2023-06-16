@@ -1,4 +1,4 @@
 ---
 title: Spatial Types
-order: 1
+order: 3
 ---

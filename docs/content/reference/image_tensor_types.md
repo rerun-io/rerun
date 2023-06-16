@@ -1,4 +1,4 @@
 ---
 title: Image & Tensor Types
-order: 2
+order: 4
 ---
