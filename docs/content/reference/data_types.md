@@ -11,7 +11,7 @@ individual components.  For more information on the relationship between **arche
 the concept page on [Entities and Components](../concepts/entity-component.md).
 
 In [Python](https://ref.rerun.io) every **archetype** is typically backed by one or more function calls. In
-contrast, the [Rust API](https://docs.rs/rerun/) works by builting up entities of a given archetype explicitly by
+contrast, the [Rust API](https://docs.rs/rerun/) works by building up entities of a given archetype explicitly by
 assembling the required components.
 
 ## Spatial **Archetypes**
@@ -38,6 +38,6 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 * [Tensor](data_types/tensor.md)
 
 ## Other **Archetypes**
-* [Scalar](data_types/scalar.md): a single scalar / metric value. Can be viewed in the `Timeseries` space view.
+* [Scalar](data_types/scalar.md): a single scalar / metric value. Can be viewed in the `TimeSeries` space view.
 * [TextEntry](data_types/text_entry.md): captures text data. Can be viewed in the `Text` space view.
 * [AnnotationContext](annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
