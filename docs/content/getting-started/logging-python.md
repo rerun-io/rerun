@@ -225,12 +225,9 @@ from scipy.spatial.transform import Rotation
 for i in range(400):
     time = i * 0.01
     rr.set_time_seconds("stable_time", time)
-    rr.log_rigid3(
+    rr.log_transform3d(
         "dna/structure",
-        parent_from_child=(
-            [0, 0, 0],
-            Rotation.from_euler("z", time / 4.0 * tau).as_quat(),
-        ),
+        rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau),
     )
 ```
 
