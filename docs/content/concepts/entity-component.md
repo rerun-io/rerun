@@ -32,9 +32,9 @@ Primitives do not have any significance to the data model itself, but are import
 how data should be displayed.
 
 The assorted logging APIs all simply set different combinations of components on some specified entity, and the
-corresponding space views look for entities with these components in the data store.  
+corresponding space views look for entities with these components in the data store.
 For more information on the different primitives and how they relate to components see the
-[Primitives reference](../reference/primitives.md).
+[Data Types](../reference/data_types.md) reference.
 
 ### Extension Components
 Your entity could have any number of other components as well. This isn't a problem. Any components that
@@ -51,7 +51,7 @@ code-example: extension-components
 ### Empty Entities
 An Entity, without Components, is nothing more than an identity (represented by its Entity
 Path). It contains no data, and has no type. When you log a piece of data, all that you are doing is setting the values
-of one or more *Components* associated with that *Entity*. 
+of one or more *Components* associated with that *Entity*.
 
 ## ECS Systems
 In most ECS architectures, there is a third concept we haven't touched on: Systems are processes which operate on the
