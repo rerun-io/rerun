@@ -367,7 +367,9 @@
             const rrd_file = url_params.get('file') || 'colmap_fiat.rrd';
 
             // Normalize the extra slashes from the url
-            return (data_path + rrd_file).replace(/\/{2,}/g, '/');
+            const normalized = (data_path + rrd_file).replace(/\/{2,}/g, '/');
+            window.location.search = `?url=${normalized}`;
+            return normalized;
         }
 
         function on_wasm_error(error) {
