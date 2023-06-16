@@ -7,8 +7,8 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [[bin]]
-name='point2d_simple'
-path='point2d_simple.rs'
+name = 'point2d_simple'
+path = 'point2d_simple.rs'
 
 [dependencies]
 rerun = { path = "../../crates/rerun", features = ["native_viewer"] }
