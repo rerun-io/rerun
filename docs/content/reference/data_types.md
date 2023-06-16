@@ -23,37 +23,17 @@ generally support spatial transformations.
 * [Line2D](data_types/line2d.md)
 * [Line3D](data_types/line3d.md)
 * [Mesh](data_types/mesh.md)
-* [Points2D](data_types/point2d.md)
-* [Points3D](data_types/point3d.md)
+* [Point2D](data_types/point2d.md)
+* [Point3D](data_types/point3d.md)
 
-## Tensors & Images
+## Image & Tensor **Archetypes**
+* [Image](data_types/image.md)
+* [DepthImage](data_types/depth_image.md)
+* [SegmentationImage](data_types/segmentation_image.md)
+* [Tensor](data_types/tensor.md)
 
-* Python:
-[log_tensor](https://ref.rerun.io/docs/python/latest/common/tensors/#rerun.log_tensor),
-[log_image](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_image**),
-[log_image_file](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_image_file**),
-[log_depth_image](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_depth_image**),
-[log_segmentation_image](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_segmentation_image**)
-* Rust (primary): [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html)
-* Primary component: `tensor`
-* Secondary components: `colorrgba`, `draw_order`
+## Plot **Archetypes**
+* [Scalar](data_types/scalar.md)
 
-`colorrgba` is currently only supported for images,
-i.e. tensors with 2 dimensions and an optional 3rd that can be interpreted as color channels.
-Furthermore, only the spatial Space View is able to use the color component.
-
-## Plots
-
-### Scalar
-* Python: [log_scalar](https://ref.rerun.io/docs/python/latest/common/plotting/#rerun.log_scalar)
-* Rust (primary): [Scalar](https://docs.rs/rerun/latest/rerun/components/struct.Scalar.html)
-* Primary component: `scalar`
-* Secondary components: `scalar_plot_props`, `colorrgba`, `radius`, `label`
-
-## Text
-
-### Text Entry
-* Python: [log_text_entry](https://ref.rerun.io/docs/python/latest/common/text/#rerun.log_text_entry)
-* Rust (primary): [TextEntry](https://docs.rs/rerun/latest/rerun/components/struct.TextEntry.html)
-* Primary component: `text_entry`
-* Secondary components: `colorrgba`
+## Text **Archetypes**
+* [TextEntry](data_types/text_entry.md)
