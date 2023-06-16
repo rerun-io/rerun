@@ -4,7 +4,7 @@ order: 2
 ---
 
 Rerun comes with built-in support for a number of different types that can be logged via the Python and Rust Logging
-APIs and then visualized in the [Viewer](../viewer.md).
+APIs and then visualized in the [Viewer](viewer.md).
 
 The top-level types are called **archetypes** to differentiate them from the lower-level **data types** that make up the
 individual components.  For more information on the relationship between **archetypes** and **components**, check out
@@ -18,10 +18,10 @@ assembling the required components.
 The spatial archetypes represent 2d and 3d spatial data. These types have some notion of a coordinate system and
 generally support spatial transformations. All of these types can be visualized by the `Spatial` space view.
 * [Arrow3D](data_types/arrow3d.md)
-* [Rectangle2D](data_types/rectangle3d.md)
+* [Rect2D](data_types/rect2d.md)
 * [Box3D](data_types/box3d.md)
-* [Line2D](data_types/line2d.md)
-* [Line3D](data_types/line3d.md)
+* [Linestrip2D](data_types/linestrip2d.md)
+* [Linestrip3D](data_types/linestrip3d.md)
 * [Mesh](data_types/mesh.md)
 * [Point2D](data_types/point2d.md)
 * [Point3D](data_types/point3d.md)
@@ -40,4 +40,4 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 ## Other **Archetypes**
 * [Scalar](data_types/scalar.md): a single scalar / metric value. Can be viewed in the `TimeSeries` space view.
 * [TextEntry](data_types/text_entry.md): captures text data. Can be viewed in the `Text` space view.
-* [AnnotationContext](annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
+* [AnnotationContext](data_types/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.

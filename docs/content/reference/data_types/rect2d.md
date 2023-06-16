@@ -1,5 +1,5 @@
 ---
-title: Rectangle2D
+title: Rect2D
 order: 2
 ---
 ## Components and APIs
