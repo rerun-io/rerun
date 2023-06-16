@@ -22,13 +22,13 @@ which components the Viewer can interpret together as documented below.
 * Python: [log_rect](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_rect),
 [log_rects](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_rects)
 * Rust (primary): [Rect2D](https://docs.rs/rerun/latest/rerun/components/enum.Rect2D.html)
-* Primary component: `rect2d`, 
+* Primary component: `rect2d`,
 * Secondary components: `colorrgba`, `radius`, `label`, `classid`, `draw_order`
 
 ### Box 3D
 * Python: [log_obb](https://ref.rerun.io/docs/python/latest/common/spatial_primitives/#rerun.log_obb)
 * Rust (primary): [Box3D](https://docs.rs/rerun/latest/rerun/components/struct.Box3D.html)
-* Primary component: `box3d`, 
+* Primary component: `box3d`,
 * Secondary components: `vec3d`, `quaternion`, `colorrgba`, `radius`, `label`, `classid`
 
 ### Line 2D
@@ -69,7 +69,7 @@ which components the Viewer can interpret together as documented below.
 ### Transform
 * Python: [log_rigid3](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_rigid3),
 [log_pinhole](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_pinhole)
-* Rust (primary): [Transform](https://docs.rs/rerun/latest/rerun/components/enum.Transform.html)
+* Rust (primary): [Transform3D](https://docs.rs/rerun/latest/rerun/components/struct.Transform3D.html)
 * Primary component: `transform`
 
 ## Tensors & Images
