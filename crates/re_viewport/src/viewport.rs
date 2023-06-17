@@ -85,10 +85,12 @@ impl Viewport {
 
         *has_been_user_edited = true;
 
-        // TODO: remove it from `tree`
-
         if *maximized == Some(*space_view_id) {
             *maximized = None;
+        }
+
+        if let Some(tile_id) = tree.tiles.find_pane(space_view_id) {
+            tree.tiles.remove(tile_id);
         }
 
         space_views.remove(space_view_id)
