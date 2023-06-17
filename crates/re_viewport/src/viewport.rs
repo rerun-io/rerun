@@ -25,9 +25,6 @@ use crate::{
 
 // ----------------------------------------------------------------------------
 
-/// What views are visible?
-pub type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
-
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -37,15 +34,8 @@ pub struct Viewport {
     /// Not a hashmap in order to preserve the order of the space views.
     pub space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 
-    /// Which views are visible.
-    pub visible: VisibilitySet,
-
     /// The layouts of all the space views.
-    ///
-    /// One for each combination of what views are visible.
-    /// So if a user toggles the visibility of one SpaceView, we
-    /// switch which layout we are using. This is somewhat hacky.
-    pub trees: HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>,
+    pub tree: egui_tiles::Tree<SpaceViewId>,
 
     /// Show one tab as maximized?
     pub maximized: Option<SpaceViewId>,
@@ -87,8 +77,7 @@ impl Viewport {
     pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceViewBlueprint> {
         let Self {
             space_views,
-            visible,
-            trees,
+            tree,
             maximized,
             has_been_user_edited,
             auto_space_views: _,
@@ -96,13 +85,12 @@ impl Viewport {
 
         *has_been_user_edited = true;
 
-        trees.retain(|vis_set, _| !vis_set.contains(space_view_id));
+        // TODO: remove it from `tree`
 
         if *maximized == Some(*space_view_id) {
             *maximized = None;
         }
 
-        visible.remove(space_view_id);
         space_views.remove(space_view_id)
     }
 
@@ -113,20 +101,8 @@ impl Viewport {
         egui::ScrollArea::both()
             .auto_shrink([true, false])
             .show(ui, |ui| {
-                let space_view_ids = self
-                    .space_views
-                    .keys()
-                    .sorted_by_key(|space_view_id| {
-                        (
-                            &self.space_views[space_view_id].space_origin,
-                            *space_view_id,
-                        )
-                    })
-                    .copied()
-                    .collect_vec();
-
-                for space_view_id in &space_view_ids {
-                    self.space_view_entry_ui(ctx, ui, space_view_id);
+                if let Some(root) = self.tree.root() {
+                    self.tile_ui(ctx, ui, root);
                 }
             });
     }
@@ -137,10 +113,87 @@ impl Viewport {
         2 <= num_children && num_children <= 3
     }
 
+    fn tile_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+    ) {
+        // Temporarily remove the tile so we don't get borrow checker fights:
+        let Some(tile) = self.tree.tiles.remove(tile_id) else { return; };
+
+        match &tile {
+            egui_tiles::Tile::Container(container) => {
+                self.container_tree_ui(ctx, ui, tile_id, container);
+            }
+            egui_tiles::Tile::Pane(space_view_id) => {
+                // A space view
+                self.space_view_entry_ui(ctx, ui, tile_id, space_view_id);
+            }
+        }
+
+        self.tree.tiles.insert(tile_id, tile);
+    }
+
+    fn container_tree_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+        container: &egui_tiles::Container,
+    ) {
+        if container.children().len() == 1 {
+            // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood:
+            self.tile_ui(ctx, ui, container.children()[0]);
+            return;
+        }
+
+        let mut visibility_changed = false;
+        let mut removed_space_view = false;
+        let mut visible = self.tree.is_visible(tile_id);
+
+        let default_open = true;
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            egui::Id::new((tile_id, "tree")),
+            default_open,
+        )
+        .show_header(ui, |ui| {
+            blueprint_row_with_buttons(
+                ctx.re_ui,
+                ui,
+                true,
+                visible,
+                |ui| {
+                    ui.label(format!("{:?}", container.kind())) // TODO
+                },
+                |re_ui, ui| {
+                    visibility_changed =
+                        visibility_button_ui(re_ui, ui, true, &mut visible).changed();
+                    removed_space_view = re_ui
+                        .small_icon_button(ui, &re_ui::icons::REMOVE)
+                        .on_hover_text("Remove Space View from the viewport.")
+                        .clicked();
+                },
+            );
+        })
+        .body(|ui| {
+            for &child in container.children() {
+                self.tile_ui(ctx, ui, child);
+            }
+        });
+
+        if visibility_changed {
+            self.has_been_user_edited = true;
+            self.tree.set_visible(tile_id, visible);
+        }
+    }
+
     fn space_view_entry_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
     ) {
         let Some(space_view) = self.space_views.get_mut(space_view_id) else {
@@ -151,7 +204,7 @@ impl Viewport {
 
         let mut visibility_changed = false;
         let mut removed_space_view = false;
-        let mut is_space_view_visible = self.visible.contains(space_view_id);
+        let mut visible = self.tree.is_visible(tile_id);
 
         let root_group = space_view.data_blueprint.root_group();
         let default_open = Self::default_open_for_group(root_group);
@@ -166,19 +219,17 @@ impl Viewport {
                 ctx.re_ui,
                 ui,
                 true,
-                is_space_view_visible,
+                visible,
                 |ui| {
                     let response = crate::item_ui::space_view_button(ctx, ui, space_view);
                     if response.clicked() {
-                        if let Some(tree) = self.trees.get_mut(&self.visible) {
-                            focus_tab(tree, space_view_id);
-                        }
+                        focus_tab(&mut self.tree, space_view_id);
                     }
                     response
                 },
                 |re_ui, ui| {
                     visibility_changed =
-                        visibility_button_ui(re_ui, ui, true, &mut is_space_view_visible).changed();
+                        visibility_button_ui(re_ui, ui, true, &mut visible).changed();
                     removed_space_view = re_ui
                         .small_icon_button(ui, &re_ui::icons::REMOVE)
                         .on_hover_text("Remove Space View from the viewport.")
@@ -192,7 +243,7 @@ impl Viewport {
                 ui,
                 space_view.data_blueprint.root_handle(),
                 space_view,
-                self.visible.contains(space_view_id),
+                visible,
             );
         });
 
@@ -202,11 +253,7 @@ impl Viewport {
 
         if visibility_changed {
             self.has_been_user_edited = true;
-            if is_space_view_visible {
-                self.visible.insert(*space_view_id);
-            } else {
-                self.visible.remove(space_view_id);
-            }
+            self.tree.set_visible(tile_id, visible);
         }
     }
 
@@ -367,8 +414,7 @@ impl Viewport {
         space_view.display_name = unique_name;
 
         self.space_views.insert(id, space_view);
-        self.visible.insert(id);
-        self.trees.clear(); // Reset them
+        self.tree = Default::default(); // Reset it. TODO: insert it in a smart way instead?
         id
     }
 
@@ -443,25 +489,24 @@ impl Viewport {
             }
         }
 
-        let visible_space_views = if let Some(space_view_id) = self.maximized {
-            std::iter::once(space_view_id).collect()
-        } else {
-            self.visible.clone()
-        };
+        let mut maximized_tree;
 
-        // Lazily create a layout tree based on which SpaceViews should be visible:
-        let tree = self
-            .trees
-            .entry(visible_space_views.clone())
-            .or_insert_with(|| {
-                super::auto_layout::tree_from_space_views(
+        let tree = if let Some(space_view_id) = self.maximized {
+            let mut tiles = egui_tiles::Tiles::default();
+            let root = tiles.insert_pane(space_view_id);
+            maximized_tree = egui_tiles::Tree::new(root, tiles);
+            &mut maximized_tree
+        } else {
+            if self.tree.root().is_none() {
+                self.tree = super::auto_layout::tree_from_space_views(
                     ctx,
                     ui.available_size(),
-                    &visible_space_views,
                     &self.space_views,
                     &state.space_view_states,
-                )
-            });
+                );
+            }
+            &mut self.tree
+        };
 
         ui.scope(|ui| {
             let mut tab_viewer = TabViewer {
