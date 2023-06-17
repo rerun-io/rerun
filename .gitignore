@@ -23,3 +23,5 @@ screenshot*.png
 
 # Web demo app build
 web_demo
+
+.nox/
