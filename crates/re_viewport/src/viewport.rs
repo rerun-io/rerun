@@ -755,7 +755,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             space_view.class_name(),
         );
 
-        let num_space_views = tiles.tiles.values().filter(|tile| tile.is_pane()).count();
+        let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
 
         ui.add_space(8.0); // margin within the frame
 

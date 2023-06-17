@@ -1487,8 +1487,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f501eb342a1d53e11842687f360bb9ba5c7971ba443057ac252add5dd2b3d3d"
+source = "git+https://github.com/rerun-io/egui_tiles.git?branch=emilk/invisible-tiles#aa228b1498b68ba44ff2059e4a6e1c6756509381"
 dependencies = [
  "egui",
  "getrandom",
