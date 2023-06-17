@@ -237,7 +237,6 @@ car. Leave the visible history with a value of 50.
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/be10b402dedc476ee1ac4d11402de6331b82fd83_viewer_walkthrough8_history_1200w.png">
   <img src="https://static.rerun.io/9c6a01f4dd2059641d92d121f8f2772203c56cfa_viewer_walkthrough8_history_full.png" alt="viewer walkthrough adjusting visible history screenshot">
 </picture>
-)
 
 ### Modifying the contents of a space view
 Now select the `/ (Spatial)` view itself. We will start by giving this space view a different name. At the very
