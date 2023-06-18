@@ -79,6 +79,7 @@
         "lerp",
         "linestrip",
         "linspace",
+        "loggable",
         "meshgrid",
         "numpy",
         "Objectron",
