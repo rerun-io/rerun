@@ -255,8 +255,6 @@ img.icon {
   padding: 6px;
 
   user-select: none;
-
-  width: 92px;
 }
 
 .dropdown-body.visible {
@@ -270,6 +268,8 @@ img.icon {
   font-size: 13px;
   display: flex;
   justify-content: space-between;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .dropdown-entry:hover {
