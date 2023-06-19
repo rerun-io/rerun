@@ -42,8 +42,9 @@ def log_image(
      - uint8, uint16, uint32, uint64: color components should be in 0-`max_uint` sRGB gamma space, except for alpha
        which should be in 0-`max_uint` linear space.
      - float16, float32, float64: all color components should be in 0-1 linear space.
-     - int8, int16, int32, int64: signed integers are cast into their unsigned counterpart without clipping (why will
-       typically induce artefacts).
+     - int8, int16, int32, int64: if all pixels are positive, they are interpreted as their unsigned counterparts.
+       Otherwise, the image is normalized before display (the pixel with the lowest value is black and the pixel with
+       the highest value is white).
 
     Parameters
     ----------
