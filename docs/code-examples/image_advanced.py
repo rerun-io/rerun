@@ -1,12 +1,12 @@
 """Log an image."""
 
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
-import numpy as np
-from PIL import Image, ImageDraw
 import cv2
+import numpy as np
 import rerun as rr
+from PIL import Image, ImageDraw
 
 # Save a transparent PNG to a temporary file.
 _, file_path = tempfile.mkstemp(suffix=".png")

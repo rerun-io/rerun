@@ -1,11 +1,8 @@
 """Create and log a depth image."""
-import random
 
 import numpy as np
-from PIL import Image
-from PIL import ImageDraw
-
 import rerun as rr
+from PIL import Image, ImageDraw
 
 # Create a depth image with Pillow
 width, height = 300, 200

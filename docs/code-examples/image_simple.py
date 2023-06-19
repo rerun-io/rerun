@@ -1,8 +1,8 @@
 """Create and log an image."""
 
 import numpy as np
-from PIL import Image, ImageDraw
 import rerun as rr
+from PIL import Image, ImageDraw
 
 # Create an image with Pillow
 image = Image.new("RGB", (300, 200), color=(255, 0, 0))

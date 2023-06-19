@@ -1,10 +1,8 @@
 """Create and log a segmentation image."""
 
 import numpy as np
-from PIL import Image
-from PIL import ImageDraw
-
 import rerun as rr
+from PIL import Image, ImageDraw
 
 # Create a segmentation image with Pillow
 width, height = 300, 200
