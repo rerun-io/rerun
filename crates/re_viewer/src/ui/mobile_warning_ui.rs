@@ -12,9 +12,10 @@ pub fn mobile_warning_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
 
         egui::TopBottomPanel::bottom("warning_panel")
             .resizable(false)
+            .exact_height(30.0)
             .frame(frame)
             .show_inside(ui, |ui| {
-                ui.centered_and_justified(|ui| {
+                ui.vertical_centered(|ui| {
                     let text =
                         re_ui.warning_text("Mobile OSes are not yet supported. Click for details.");
                     ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1672");
