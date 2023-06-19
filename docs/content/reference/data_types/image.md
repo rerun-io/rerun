@@ -35,6 +35,8 @@ code-example: image-simple
   <img src="https://static.rerun.io/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4_image_simple_full.png" alt="">
 </picture>
 
+## Advanced Example
+
 code-example: image-advanced
 
 <picture>
