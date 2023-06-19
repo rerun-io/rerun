@@ -1,6 +1,6 @@
 """Create and log an image."""
 
-import numpy
+import numpy as np
 from PIL import Image, ImageDraw
 import rerun as rr
 
@@ -13,4 +13,4 @@ rr.init("images", spawn=True)
 
 # Pillow image have built-in support for Numpy conversion and use an
 # RGB(A) ordering that is compatible with Rerun.
-rr.log_image("simple", numpy.array(image))
+rr.log_image("simple", np.array(image))
