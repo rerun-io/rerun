@@ -39,11 +39,11 @@ def log_image(
 
     Supported dtypes
     ----------------
-     - uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
-    space.
-     - uint16: color components should be in 0-65535 sRGB gamma space, except for alpha which should be in 0-65535
-    linear space.
-     - float32, float64: all color components should be in 0-1 linear space.
+     - uint8, uint16, uint32, uint64: color components should be in 0-`max_uint` sRGB gamma space, except for alpha
+       which should be in 0-`max_uint` linear space.
+     - float16, float32, float64: all color components should be in 0-1 linear space.
+     - int8, int16, int32, int64: signed integers are cast into their unsigned counterpart without clipping (why will
+       typically induce artefacts).
 
     Parameters
     ----------
@@ -140,7 +140,7 @@ def log_depth_image(
 
     Supported dtypes
     ----------------
-    uint8, uint16, float32, float64
+    uint16, float32, float64
 
     Parameters
     ----------
