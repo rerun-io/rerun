@@ -73,7 +73,6 @@ p {
   color: #cad8de;
   letter-spacing: -0.15px;
   font-weight: 500;
-  line-height: 14px;
 }
 
 /* Rerun styling for strong text. Matches `TextStyle::Heading`. */
