@@ -11,6 +11,7 @@ rr.log_annotation_context(
     ],
 )
 
+# Log a batch of 2 rectangles with different `class_ids`
 rr.log_rects("detections", [[-2, -2, 3, 3], [0, 0, 2, 2]], class_ids=[1, 2], rect_format=rr.RectFormat.XYWH)
 
 # Log an extra rect to set the view bounds
