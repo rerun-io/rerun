@@ -1,4 +1,4 @@
-"""Create and log a tensor."""
+"""Create and log a depth image."""
 import random
 
 import numpy as np
