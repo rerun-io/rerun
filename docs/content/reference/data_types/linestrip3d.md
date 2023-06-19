@@ -35,7 +35,7 @@ code-example: line_strip3d_simple
   <img style="width: 75%;" src="https://static.rerun.io/13036c0e71f78d3cec37d5724f97b47c4cf3c429_line_strip3d_simple_full.png" alt="">
 </picture>
 
-code-example: line_segment3d_simple
+code-example: line_segments3d_simple
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/83b63186b05794227010dc1d083161add5ec7f0b_line_segment3d_simple_480w.png">

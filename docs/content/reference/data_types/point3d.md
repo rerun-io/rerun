@@ -17,7 +17,7 @@ Python APIs: [log_point](https://ref.rerun.io/docs/python/latest/common/spatial_
 
 Rust API: [Point3D](https://docs.rs/rerun/latest/rerun/components/struct.Point3D.html)
 
-### Simple Example
+## Simple Example
 code-example: point3d_simple
 
 <picture>

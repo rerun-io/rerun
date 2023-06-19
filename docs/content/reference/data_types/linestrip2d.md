@@ -29,6 +29,7 @@ Rust API: [LineStrip2D](https://docs.rs/rerun/latest/rerun/components/struct.Lin
 ## Simple Examples
 
 code-example: line_strip2d_simple
+
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/53513e074a1d01388ac6ac9664ff9d452813870d_line_strip2d_simple_480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/669c61837dc3464090945f6ade96f0205006e202_line_strip2d_simple_768w.png">
