@@ -21,9 +21,10 @@ Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.h
 code-example: depth-image-simple
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/8dc31747abadd7e07ba9baabc66a9356236b203d_depth_image_simple_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/43cb845d37fb43b3342a37802535b562512768dc_depth_image_simple_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/4e8e822f0ccc7f87e6f7f1e290068c827f8e9a07_depth_image_simple_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/8360413f0c01450cd260a3306c1cd2c95ed46744_depth_image_simple_1200w.png">
-  <img src="https://static.rerun.io/e22f6b0fa18146faf5bdff44cd93f215a9888a40_depth_image_simple_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/5ed6b5ce014c0fbbc70dc4241c117b10610e1ce7_depth_image_simple_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/8786f135fc56814d968002249cec00f74b93947c_depth_image_simple_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/fd5130f688b8dcb8b4d7a39cae373b94e72f0dd6_depth_image_simple_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/a978c1f8dbb3d7d86f0895f649999f779a02c12e_depth_image_simple_1200w.png">
+  <img src="https://static.rerun.io/f78674bdae0eb25786c6173307693c5338f38b87_depth_image_simple_full.png" alt="">
 </picture>
+

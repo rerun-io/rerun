@@ -7,10 +7,10 @@ rr.log_annotation_context(
     "/",
     rr.ClassDescription(
         keypoint_annotations=[
-            (0, "zero", (255, 0, 0)),
-            (1, "one", (0, 255, 0)),
-            (2, "two", (0, 0, 255)),
-            (3, "three", (255, 255, 0)),
+            rr.AnnotationInfo(0, "zero", (255, 0, 0)),
+            rr.AnnotationInfo(1, "one", (0, 255, 0)),
+            rr.AnnotationInfo(2, "two", (0, 0, 255)),
+            rr.AnnotationInfo(3, "three", (255, 255, 0)),
         ],
         keypoint_connections=[(0, 2), (1, 2), (2, 3)],
     ),

@@ -13,8 +13,8 @@ image[100:180, 130:280] = 2
 rr.log_annotation_context(
     "segmentation",
     [
-        (1, "red", (255, 0, 0)),
-        (2, "green", (0, 255, 0)),
+        rr.ClassDescription(info=rr.AnnotationInfo(1, "red", (255, 0, 0))),
+        rr.ClassDescription(info=rr.AnnotationInfo(2, "green", (0, 255, 0))),
     ],
 )
 

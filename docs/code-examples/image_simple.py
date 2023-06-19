@@ -2,15 +2,12 @@
 
 import numpy as np
 import rerun as rr
-from PIL import Image, ImageDraw
 
 # Create an image with Pillow
-image = Image.new("RGB", (300, 200), color=(255, 0, 0))
-draw = ImageDraw.Draw(image)
-draw.rounded_rectangle((50, 50, 150, 150), fill=(0, 255, 0), radius=20)
+image = np.zeros((200, 300, 3), dtype=np.uint8)
+image[:, :, 0] = 255
+image[50:150, 50:150] = (0, 255, 0)
 
 rr.init("images", spawn=True)
 
-# Pillow image have built-in support for Numpy conversion and use an
-# RGB(A) ordering that is compatible with Rerun.
 rr.log_image("simple", np.array(image))

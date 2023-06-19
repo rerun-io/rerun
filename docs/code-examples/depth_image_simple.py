@@ -2,14 +2,12 @@
 
 import numpy as np
 import rerun as rr
-from PIL import Image, ImageDraw
 
 # Create a depth image with Pillow
-width, height = 300, 200
-image = Image.new("L", (width, height), color=255)
-draw = ImageDraw.Draw(image)
-draw.rectangle((50, 50, 150, 150), fill=100)
-draw.ellipse((100, 130, 280, 180), fill=180)
+image = 65535 * np.ones((200, 300), dtype=np.uint16)
+image[50:150, 50:150] = 20000
+image[130:180, 100:280] = 45000
+
 
 rr.init("depth_image", spawn=True)
 
@@ -19,15 +17,14 @@ rr.log_pinhole(
     "world/camera",
     child_from_parent=np.array(
         (
-            (focal_length, 0, width / 2),
-            (0, focal_length, height / 2),
+            (focal_length, 0, image.shape[1] / 2),
+            (0, focal_length, image.shape[0] / 2),
             (0, 0, 1),
         ),
-        dtype=np.float32,
     ),
-    width=width,
-    height=height,
+    width=image.shape[1],
+    height=image.shape[0],
 )
 
 # Log the tensor, assigning names to each dimension
-rr.log_depth_image("world/camera/depth", np.array(image).astype(np.int16), meter=100.0)
+rr.log_depth_image("world/camera/depth", image, meter=10000.0)
