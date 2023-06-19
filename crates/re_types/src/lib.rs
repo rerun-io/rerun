@@ -73,6 +73,16 @@
 
 // ---
 
+// TODO: gonna have to think about arrow tables formatting at some point... unless we always go
+// through datacells & co in which case we're good
+
+// TODO: whether to_arrow can fail is debatable I guess... from_arrow on the other hand can and
+// will fail all the time...
+// Maybe we just provide try_ helpers for both of those and call it a day?
+// TODO: scatter err handling everywhere in the generated code
+
+use std::borrow::Cow;
+
 pub type DatatypeName = ::std::borrow::Cow<'static, str>;
 
 /// A [`Datatype`] describes plain old data.
@@ -80,6 +90,18 @@ pub trait Datatype {
     fn name() -> DatatypeName;
 
     fn to_arrow_datatype() -> arrow2::datatypes::DataType;
+
+    // TODO: takes in a bunch of values for the given DataType, and turns it into a cell
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a;
+
+    // TODO: takes in a DataCell and turns it into a bunch of values for the given DataType
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized;
 }
 
 pub type ComponentName = ::std::borrow::Cow<'static, str>;
@@ -88,9 +110,25 @@ pub trait Component {
     fn name() -> ComponentName;
 
     fn to_arrow_datatype() -> arrow2::datatypes::DataType;
+
+    // TODO: takes in a bunch of values for the given Component, and turns it into a cell
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a;
+
+    // TODO: takes in a DataCell and turns it into a bunch of values for the given Component
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized;
 }
 
 pub type ArchetypeName = ::std::borrow::Cow<'static, str>;
+
+// TODO: keep in mind: an archetype is a row, where each cell is an array of values for a single
+// component.
+// Should we straight up use DataRows etc in those APIs?
 
 pub trait Archetype {
     fn name() -> ArchetypeName;
@@ -100,7 +138,38 @@ pub trait Archetype {
     fn optional_components() -> Vec<ComponentName>;
 
     fn to_arrow_datatypes() -> Vec<arrow2::datatypes::DataType>;
+    // TODO: turns the archetype into a datarow
+    // TODO: datarow is not possible at includes time information that we don't quite have at this
+    // point
+    fn to_arrow(&self) -> ::re_log_types::DataCellVec;
+    // TODO: takes in a datarow, turns it back into an archetype
+    // fn from_arrow(cells: &[&::re_log_types::DataCell]) -> Self
+    // where
+    //     Self: Sized;
 }
+
+// TODO: doc/explanations + doc-examples
+
+pub fn to_arrow<'a, C: Component + Clone + ?Sized + 'a>(
+    data: impl IntoIterator<Item = impl Into<Cow<'a, C>>>,
+) -> ::re_log_types::DataCell {
+    C::to_arrow(data)
+}
+
+pub fn to_arrow_opt<'a, C: Component + Clone + ?Sized + 'a>(
+    data: Option<impl IntoIterator<Item = impl Into<Cow<'a, C>>>>,
+) -> Option<::re_log_types::DataCell> {
+    data.map(C::to_arrow)
+}
+
+// TODO: ?
+// pub fn from_arrow(
+//     schema: &arrow2::datatypes::Schema,
+//     data: arrow2::chunk::Chunk<Box<dyn arrow2::array::Array>>,
+// ) {
+//     dbg!(schema);
+//     dbg!(data);
+// }
 
 // ---
 

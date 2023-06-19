@@ -5,6 +5,18 @@
 #[repr(transparent)]
 pub struct Label(pub String);
 
+impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
+    fn from(value: Label) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Label> for ::std::borrow::Cow<'a, Label> {
+    fn from(value: &'a Label) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for Label {
     fn name() -> crate::ComponentName {
         crate::ComponentName::Borrowed("rerun.components.Label")
@@ -13,6 +25,54 @@ impl crate::Component for Label {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Utf8
+        DataType::Extension(
+            "rerun.components.Label".to_owned(),
+            Box::new(DataType::Utf8),
+            None,
+        )
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TOOD: need attr_rerun_legacy_name?
+        ::re_log_types::DataCell::from_arrow("rerun.components.Label".into(), {
+            let data0: Vec<_> = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: ::std::borrow::Cow<'a, Self> = datum.into();
+                    let Self(data0) = datum.into_owned();
+                    data0
+                })
+                .collect();
+            {
+                let data: Vec<_> = data0.into_iter().map(|datum| Some(datum)).collect();
+                Utf8Array::<i32>::from(data).boxed()
+            }
+        })
+    }
+
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        cell.as_arrow_ref()
+            .as_any()
+            // TODO: this one can certainly fail though
+            .downcast_ref::<Utf8Array<i32>>()
+            .unwrap()
+            .values_iter()
+            // TODO: there is no good reason to alloc+copy, just use a raw buf<u8>
+            .map(ToString::to_string)
+            .map(|datum| Self(datum))
+            .collect()
     }
 }

@@ -29,6 +29,9 @@ glam = ["dep:glam", "dep:macaw"]
 
 [dependencies]
 
+# Rerun
+re_log_types.workspace = true
+
 # External
 arrow2 = { workspace = true, features = [
   "io_ipc",
@@ -37,6 +40,7 @@ arrow2 = { workspace = true, features = [
 ] }
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"
+itertools.workspace = true
 
 # External (optional)
 ecolor = { workspace = true, optional = true }

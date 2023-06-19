@@ -86,11 +86,46 @@ impl crate::Archetype for Points2D {
         Self::OPTIONAL_COMPONENTS.to_vec()
     }
 
+    // TODO: hashmaps
+
     #[allow(clippy::unimplemented)]
-    fn to_arrow_datatypes() -> Vec<arrow2::datatypes::DataType> {
-        // TODO(#2368): dump the arrow registry into the generated code
-        unimplemented!("query the registry for all fqnames"); // NOLINT
+    fn to_arrow_datatypes() -> Vec<::arrow2::datatypes::DataType> {
+        use crate::Component as _;
+        vec![
+            crate::components::Point2D::to_arrow_datatype(),
+            crate::components::Radius::to_arrow_datatype(),
+            crate::components::Color::to_arrow_datatype(),
+            crate::components::Label::to_arrow_datatype(),
+            crate::components::DrawOrder::to_arrow_datatype(),
+            crate::components::ClassId::to_arrow_datatype(),
+            crate::components::KeypointId::to_arrow_datatype(),
+            crate::components::InstanceKey::to_arrow_datatype(),
+        ]
     }
+
+    fn to_arrow(&self) -> ::re_log_types::DataCellVec {
+        [
+            Some(crate::to_arrow::<crate::components::Point2D>(
+                self.points.iter().map(::std::borrow::Cow::Borrowed),
+            )),
+            crate::to_arrow_opt::<crate::components::Radius>(self.radii.as_ref()),
+            crate::to_arrow_opt::<crate::components::Color>(self.colors.as_ref()),
+            crate::to_arrow_opt::<crate::components::Label>(self.labels.as_ref()),
+            crate::to_arrow_opt::<crate::components::DrawOrder>(
+                self.draw_order.as_ref().map(|data| [data]),
+            ),
+            crate::to_arrow_opt::<crate::components::ClassId>(self.class_ids.as_ref()),
+            crate::to_arrow_opt::<crate::components::KeypointId>(self.keypoint_ids.as_ref()),
+            crate::to_arrow_opt::<crate::components::InstanceKey>(self.instance_keys.as_ref()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    // fn from_arrow(cells: &[&::re_log_types::DataCell]) -> Self
+    // where
+    //     Self: Sized;
 }
 
 impl Points2D {

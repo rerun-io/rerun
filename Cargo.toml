@@ -1,12 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/*",
-  "examples/rust/*",
-  "docs/code-examples",
-  "rerun_py",
-  "run_wasm",
-  "tests/rust/*",
+    "crates/re_build_tools",
+    "crates/re_types_builder",
+    "crates/re_types",
+  # "crates/*",
+  # "examples/rust/*",
+  # "docs/code-examples",
+  # "rerun_py",
+  # "run_wasm",
+  # "tests/rust/*",
 ]
 
 [workspace.package]

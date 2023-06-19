@@ -4,6 +4,20 @@
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Vec2D(pub [f32; 2]);
 
+// TODO: explanations
+
+impl<'a> From<Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
+    fn from(value: Vec2D) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Vec2D> for ::std::borrow::Cow<'a, Vec2D> {
+    fn from(value: &'a Vec2D) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Datatype for Vec2D {
     fn name() -> crate::DatatypeName {
         crate::DatatypeName::Borrowed("rerun.datatypes.Vec2D")
@@ -12,14 +26,84 @@ impl crate::Datatype for Vec2D {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            Box::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
-            2,
+        DataType::Extension(
+            "rerun.datatypes.Vec2D".to_owned(),
+            Box::new(DataType::FixedSizeList(
+                Box::new(Field {
+                    name: "item".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: false,
+                    metadata: [].into(),
+                }),
+                2,
+            )),
+            None,
         )
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TOOD: need attr_rerun_legacy_name?
+        ::re_log_types::DataCell::from_arrow("rerun.datatypes.Vec2D".into(), {
+            let data0: Vec<_> = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: ::std::borrow::Cow<'a, Self> = datum.into();
+                    let Self(data0) = datum.into_owned();
+                    data0
+                })
+                .collect();
+            {
+                let data: Vec<_> = data0.into_iter().flat_map(|datum| datum).collect();
+                FixedSizeListArray::new(
+                    DataType::FixedSizeList(
+                        Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        }),
+                        2,
+                    ),
+                    Float32Array::from_vec(data).boxed(),
+                    None,
+                )
+                .boxed()
+            }
+        })
+    }
+
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        {
+            // NOTE: unwrapping cannot fail, we've just checked the type!
+            let data = cell
+                .as_arrow_ref()
+                .as_any()
+                .downcast_ref::<FixedSizeListArray>()
+                .unwrap();
+            let data = data
+                .values()
+                .as_any()
+                // TODO: this one can certainly fail though
+                .downcast_ref::<PrimitiveArray<f32>>()
+                .unwrap()
+                .values();
+
+            data.chunks_exact(2).map(|chunk| [chunk[0], chunk[1]])
+        }
+        .map(|datum| Self(datum))
+        .collect()
     }
 }

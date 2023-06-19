@@ -9,17 +9,35 @@ namespace rerun.components;
 
 // ---
 
+// TODO: move attr.python.transparent to object level too
+// TODO: transparency removes a struct layer, NOTHING ELSE!
+
+// TODO: maybe it's time to temporarily switch back to a struct array, since we need to backport
+// into the existing SDK
+// TODO: that would also mean we need to add a feature to override the component name, maybe?
+
+// /// A point in 2D space.
+// struct Point2D (
+//   "attr.arrow.transparent",
+//   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
+//   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
+//   "attr.rust.tuple_struct",
+//   "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
+//   order: 100
+// ) {
+//   position: rerun.datatypes.Vec2D (
+//     "attr.python.transparent",
+//     order: 100
+//   );
+// }
+
 /// A point in 2D space.
 struct Point2D (
-  "attr.arrow.transparent",
   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
-  "attr.rust.tuple_struct",
   "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
-  position: rerun.datatypes.Vec2D (
-    "attr.python.transparent",
-    order: 100
-  );
+  x: float (order: 100);
+  y: float (order: 200);
 }

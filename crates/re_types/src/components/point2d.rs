@@ -2,7 +2,23 @@
 
 /// A point in 2D space.
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Point2D(pub crate::datatypes::Vec2D);
+pub struct Point2D {
+    pub x: f32,
+
+    pub y: f32,
+}
+
+impl<'a> From<Point2D> for ::std::borrow::Cow<'a, Point2D> {
+    fn from(value: Point2D) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
+    fn from(value: &'a Point2D) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
 
 impl crate::Component for Point2D {
     fn name() -> crate::ComponentName {
@@ -12,14 +28,113 @@ impl crate::Component for Point2D {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            Box::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
-            2,
+        DataType::Extension(
+            "rerun.components.Point2D".to_owned(),
+            Box::new(DataType::Struct(vec![
+                Field {
+                    name: "x".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "y".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+            ])),
+            None,
         )
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TOOD: need attr_rerun_legacy_name?
+        ::re_log_types::DataCell::from_arrow("rerun.components.Point2D".into(), {
+            // TODO: deconstruct the thing
+            let (x, y): (Vec<_>, Vec<_>) = ::itertools::multiunzip(data.into_iter().map(|datum| {
+                let datum: ::std::borrow::Cow<'a, Self> = datum.into();
+                let Self { x, y } = datum.into_owned();
+                (x, y)
+            }));
+            StructArray::new(
+                DataType::Struct(vec![
+                    Field {
+                        name: "x".to_owned(),
+                        data_type: DataType::Float32,
+                        is_nullable: false,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "y".to_owned(),
+                        data_type: DataType::Float32,
+                        is_nullable: false,
+                        metadata: [].into(),
+                    },
+                ]),
+                vec![
+                    {
+                        // let data: Vec<f32> =
+                        //     x.into_iter().map(|datum| datum).collect();
+                        PrimitiveArray::<f32>::from_vec(x).boxed()
+                    },
+                    {
+                        // let data: Vec<f32> =
+                        //     y.into_iter().map(|datum| datum).collect();
+                        PrimitiveArray::<f32>::from_vec(y).boxed()
+                    },
+                ],
+                None,
+            )
+            .boxed()
+        })
+    }
+
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TODO: unwrapping is in fact _not_ safe: nothing is ever safe when
+        // deserializing anyhow.
+        let array = cell
+            .as_arrow_ref()
+            .as_any()
+            .downcast_ref::<::arrow2::array::StructArray>()
+            .unwrap();
+
+        let x = cell
+            .as_arrow_ref()
+            .as_any()
+            // TODO: this one can certainly fail though
+            .downcast_ref::<PrimitiveArray<f32>>()
+            .unwrap()
+            .values_iter()
+            .copied();
+        let y = cell
+            .as_arrow_ref()
+            .as_any()
+            // TODO: this one can certainly fail though
+            .downcast_ref::<PrimitiveArray<f32>>()
+            .unwrap()
+            .values_iter()
+            .copied();
+
+        #[allow(clippy::clone_on_copy)]
+        ::itertools::izip!(x, y)
+            .map(|(x, y)| Self {
+                x: x.clone(),
+                y: y.clone(),
+            })
+            .collect()
     }
 }

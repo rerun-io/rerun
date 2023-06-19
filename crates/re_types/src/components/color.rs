@@ -7,6 +7,18 @@
 #[repr(transparent)]
 pub struct Color(pub u32);
 
+impl<'a> From<Color> for ::std::borrow::Cow<'a, Color> {
+    fn from(value: Color) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
+    fn from(value: &'a Color) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for Color {
     fn name() -> crate::ComponentName {
         crate::ComponentName::Borrowed("rerun.components.Color")
@@ -15,6 +27,54 @@ impl crate::Component for Color {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt32
+        DataType::Extension(
+            "rerun.components.Color".to_owned(),
+            Box::new(DataType::UInt32),
+            None,
+        )
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TOOD: need attr_rerun_legacy_name?
+        ::re_log_types::DataCell::from_arrow("rerun.components.Color".into(), {
+            let data0: Vec<_> = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: ::std::borrow::Cow<'a, Self> = datum.into();
+                    let Self(data0) = datum.into_owned();
+                    data0
+                })
+                .collect();
+            {
+                // let data: Vec<u32> =
+                //     data0.into_iter().map(|datum| datum).collect();
+                PrimitiveArray::<u32>::from_vec(data0).boxed()
+            }
+        })
+    }
+
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        cell.as_arrow_ref()
+            .as_any()
+            // TODO: this one can certainly fail though
+            .downcast_ref::<PrimitiveArray<u32>>()
+            .unwrap()
+            .values_iter()
+            .copied()
+            .map(|datum| Self(datum))
+            .collect()
     }
 }

@@ -11,6 +11,18 @@
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 
+impl<'a> From<DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
+    fn from(value: DrawOrder) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
+    fn from(value: &'a DrawOrder) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for DrawOrder {
     fn name() -> crate::ComponentName {
         crate::ComponentName::Borrowed("rerun.components.DrawOrder")
@@ -19,6 +31,54 @@ impl crate::Component for DrawOrder {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Float32
+        DataType::Extension(
+            "rerun.components.DrawOrder".to_owned(),
+            Box::new(DataType::Float32),
+            None,
+        )
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TOOD: need attr_rerun_legacy_name?
+        ::re_log_types::DataCell::from_arrow("rerun.components.DrawOrder".into(), {
+            let data0: Vec<_> = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: ::std::borrow::Cow<'a, Self> = datum.into();
+                    let Self(data0) = datum.into_owned();
+                    data0
+                })
+                .collect();
+            {
+                // let data: Vec<f32> =
+                //     data0.into_iter().map(|datum| datum).collect();
+                PrimitiveArray::<f32>::from_vec(data0).boxed()
+            }
+        })
+    }
+
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        cell.as_arrow_ref()
+            .as_any()
+            // TODO: this one can certainly fail though
+            .downcast_ref::<PrimitiveArray<f32>>()
+            .unwrap()
+            .values_iter()
+            .copied()
+            .map(|datum| Self(datum))
+            .collect()
     }
 }

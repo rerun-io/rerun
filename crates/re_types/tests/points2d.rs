@@ -1,8 +1,11 @@
-use re_types::{archetypes::Points2D, components};
+use std::borrow::Cow;
+
+use re_types::{archetypes::Points2D, components, datatypes, Archetype as _, Datatype};
 
 #[test]
 fn roundtrip() {
     // TODO(cmc): (de)serialization roundtrips
+    // TODO(cmc): (de)serialization benchmarks
 
     let arch = Points2D::new([(1.0, 2.0), (3.0, 4.0)])
         .with_radii([42.0, 43.0])
@@ -46,4 +49,26 @@ fn roundtrip() {
     };
 
     similar_asserts::assert_eq!(expected, arch);
+
+    // TODO: literally none of the datatypes in there can be anything but Extension
+    dbg!(Points2D::to_arrow_datatypes());
+
+    dbg!(arch.to_arrow());
+
+    // TODO: roundtrip!
 }
+
+#[test]
+fn small_steps() {
+    type T = datatypes::Vec2D;
+
+    let data = [T::new(1.0, 2.0), T::new(3.0, 4.0)];
+
+    dbg!(T::to_arrow_datatype());
+    let cell = dbg!(T::to_arrow(data));
+
+    dbg!(T::from_arrow(&cell));
+}
+
+#[test]
+fn smaller_steps() {}

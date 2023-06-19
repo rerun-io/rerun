@@ -16,10 +16,8 @@ import pyarrow as pa
 class Point2D:
     """A point in 2D space."""
 
-    position: npt.ArrayLike
-
-    def __array__(self) -> npt.ArrayLike:
-        return np.asarray(self.position)
+    x: float
+    y: float
 
 
 Point2DLike = Union[Point2D, npt.NDArray[np.float32], Sequence[float], Tuple[float, float]]
@@ -35,7 +33,9 @@ from rerun2.components.point2d_ext import Point2DArrayExt  # noqa: E402
 class Point2DType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), False, {}), 2), "rerun.components.Point2D"
+            self,
+            pa.struct([pa.field("x", pa.float32(), False, {}), pa.field("y", pa.float32(), False, {})]),
+            "rerun.components.Point2D",
         )
 
     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:

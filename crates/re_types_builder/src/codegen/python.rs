@@ -43,7 +43,7 @@ impl CodeGenerator for PythonCodeGenerator {
                 datatypes_path,
                 arrow_registry,
                 objs,
-                &objs.ordered_datatypes(),
+                &objs.ordered_objects(ObjectKind::Datatype.into()),
             )
             .0,
         );
@@ -57,7 +57,7 @@ impl CodeGenerator for PythonCodeGenerator {
                 components_path,
                 arrow_registry,
                 objs,
-                &objs.ordered_components(),
+                &objs.ordered_objects(ObjectKind::Component.into()),
             )
             .0,
         );
@@ -70,7 +70,7 @@ impl CodeGenerator for PythonCodeGenerator {
             archetypes_path,
             arrow_registry,
             objs,
-            &objs.ordered_archetypes(),
+            &objs.ordered_objects(ObjectKind::Archetype.into()),
         );
         filepaths.extend(paths);
 
@@ -258,6 +258,7 @@ impl QuotedObject {
             attrs: _,
             fields,
             specifics: _,
+            datatype: _,
         } = obj;
 
         let mut code = String::new();
@@ -296,6 +297,7 @@ impl QuotedObject {
                 attrs: _,
                 required: _,
                 deprecated: _,
+                datatype: _,
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
@@ -352,6 +354,7 @@ impl QuotedObject {
             attrs: _,
             fields,
             specifics: _,
+            datatype: _,
         } = obj;
 
         let mut code = String::new();
@@ -390,6 +393,7 @@ impl QuotedObject {
                 attrs: _,
                 required: _,
                 deprecated: _,
+                datatype: _,
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);

@@ -8,6 +8,18 @@
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
 
+impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
+    fn from(value: KeypointId) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
+    fn from(value: &'a KeypointId) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for KeypointId {
     fn name() -> crate::ComponentName {
         crate::ComponentName::Borrowed("rerun.components.KeypointId")
@@ -16,6 +28,54 @@ impl crate::Component for KeypointId {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt16
+        DataType::Extension(
+            "rerun.components.KeypointId".to_owned(),
+            Box::new(DataType::UInt16),
+            None,
+        )
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TOOD: need attr_rerun_legacy_name?
+        ::re_log_types::DataCell::from_arrow("rerun.components.KeypointId".into(), {
+            let data0: Vec<_> = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: ::std::borrow::Cow<'a, Self> = datum.into();
+                    let Self(data0) = datum.into_owned();
+                    data0
+                })
+                .collect();
+            {
+                // let data: Vec<u16> =
+                //     data0.into_iter().map(|datum| datum).collect();
+                PrimitiveArray::<u16>::from_vec(data0).boxed()
+            }
+        })
+    }
+
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        cell.as_arrow_ref()
+            .as_any()
+            // TODO: this one can certainly fail though
+            .downcast_ref::<PrimitiveArray<u16>>()
+            .unwrap()
+            .values_iter()
+            .copied()
+            .map(|datum| Self(datum))
+            .collect()
     }
 }

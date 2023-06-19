@@ -4,6 +4,18 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InstanceKey(pub u64);
 
+impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
+    fn from(value: InstanceKey) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
+    fn from(value: &'a InstanceKey) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for InstanceKey {
     fn name() -> crate::ComponentName {
         crate::ComponentName::Borrowed("rerun.components.InstanceKey")
@@ -12,6 +24,54 @@ impl crate::Component for InstanceKey {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt64
+        DataType::Extension(
+            "rerun.components.InstanceKey".to_owned(),
+            Box::new(DataType::UInt64),
+            None,
+        )
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+    ) -> ::re_log_types::DataCell
+    where
+        Self: Clone + 'a,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        // TOOD: need attr_rerun_legacy_name?
+        ::re_log_types::DataCell::from_arrow("rerun.components.InstanceKey".into(), {
+            let data0: Vec<_> = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: ::std::borrow::Cow<'a, Self> = datum.into();
+                    let Self(data0) = datum.into_owned();
+                    data0
+                })
+                .collect();
+            {
+                // let data: Vec<u64> =
+                //     data0.into_iter().map(|datum| datum).collect();
+                PrimitiveArray::<u64>::from_vec(data0).boxed()
+            }
+        })
+    }
+
+    fn from_arrow(cell: &::re_log_types::DataCell) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        use ::arrow2::array::*;
+        use ::arrow2::datatypes::*;
+        cell.as_arrow_ref()
+            .as_any()
+            // TODO: this one can certainly fail though
+            .downcast_ref::<PrimitiveArray<u64>>()
+            .unwrap()
+            .values_iter()
+            .copied()
+            .map(|datum| Self(datum))
+            .collect()
     }
 }
