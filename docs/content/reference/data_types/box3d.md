@@ -4,7 +4,7 @@ order: 3
 ---
 `Box3D` represents an oriented bounding box in three-dimensional space. The `box3d` component is defined by the
 half-widths of the three box dimensions. By default the box will be centered at the origin and aligned with the axes.
-The box can be positioned by providing the `vec3d` position, or a `quaternion` orientation.
+The box can be positioned within it's local [space](../../concepts/spaces-and-transforms.md) by providing the `vec3d` position, or a `quaternion` orientation.
 
 It is compatible with [`AnnotationContext`](../../concepts/annotation-context.md). `class_id` can be used to provide
 colors and labels from the annotation context. See examples in the
