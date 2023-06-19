@@ -1,4 +1,4 @@
-"""Log a text entries."""
+"""Log some text entries."""
 import logging
 
 import rerun as rr
