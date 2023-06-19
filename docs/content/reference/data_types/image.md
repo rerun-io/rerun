@@ -3,16 +3,44 @@ title: Image
 order: 20
 ---
 
+`Image` represents a 2D raster image with various pixel format. They are a special case of 2D [Tensor](tensor.md) with an optional 3rd dimension when multiple color channels are used. Image with 1 (grayscale), 3 (RGB), or 4 (RGBA) channels are supported. Color channel maybe represented by any of the common scalar datatypes: 
+
+- `uint8`, `uint16`, `uint32`, `uint65`: color channels in 0-`max_uint` sRGB gamma space, alpha in 0-`max_int` linear space
+- `float16`, `float32`, `float65`: color channels in the 0.0-1.0 sRGB gamma space, alpha in 0.0-1.0 linear space
+- `int8`, `int16`, `int32`, `int64`: signed integers are cast into their unsigned counterpart without clipping
+
+
 ## Components and APIs
-## Components and APIs
+
 Primary component: `tensor`
 
 Secondary components: `colorrgba`, `draw_order`
+
+Note: `colorrgba` is currently only supported for images (i.e. 2D tensor with optional 3rd dimension). Furthermore, only the spatial Space View is able to use the color component.
+
 
 Python APIs: [log_image](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_image**), [log_image_file](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_image_file**),
 
 Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.html)
 
-`colorrgba` is currently only supported for images,
-i.e. tensors with 2 dimensions and an optional 3rd that can be interpreted as color channels.
-Furthermore, only the spatial Space View is able to use the color component.
+## Simple Example
+
+code-example: image-simple
+
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/88ae5842e1a06d4d89e7ad47503b78aeca8685dc_image_simple_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/88aa99cd167330eb420a608d85419dd43875510c_image_simple_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/289000eab3cd8016661b6d86acaa8d45efc025fe_image_simple_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/fdb508c89481b5200b129db669095c0736426f6a_image_simple_1200w.png">
+  <img src="https://static.rerun.io/7efababe50c165089359cc014ca350334dd87216_image_simple_full.png" alt="">
+</picture>
+
+code-example: image-advanced
+
+<picture>
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ccaeba024ee48b211d5bed9c4ee311530a1170ae_image_advanced_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/e71c397c545ecb6e2c1afef1e69aaf1b53ab241c_image_advanced_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/a9da6c281c77902e1eb10d74df81c15ad9f33c07_image_advanced_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/459241f37112c4a14057f8cfbc43b5eae48b0bd5_image_advanced_1200w.png">
+  <img src="https://static.rerun.io/aeee879303ccf36f9665646ab46242f188005752_image_advanced_full.png" alt="">
+</picture>
