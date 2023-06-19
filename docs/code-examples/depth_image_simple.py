@@ -3,7 +3,7 @@
 import numpy as np
 import rerun as rr
 
-# Create a depth image with Pillow
+# Create a dummy depth image
 image = 65535 * np.ones((200, 300), dtype=np.uint16)
 image[50:150, 50:150] = 20000
 image[130:180, 100:280] = 45000
