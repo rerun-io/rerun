@@ -59,6 +59,7 @@
         "Trimesh",
         "srcset",
         "XYWY",
+        "XYWH",
         "YXHW",
         "XYXY",
         "YXYX",
