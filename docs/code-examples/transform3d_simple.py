@@ -1,4 +1,4 @@
-"""Log a translation between two arrows."""
+"""Log different transforms between three arrows."""
 import rerun as rr
 
 rr.init("transform", spawn=True)
