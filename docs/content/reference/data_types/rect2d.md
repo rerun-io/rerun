@@ -4,12 +4,12 @@ order: 2
 ---
 `Rect2D` represents a rectangle in two-dimensional space. The `rect2d` component is always defined by a 4-element list,
 with one of several representations:
-* XYWW = `[x, y, w, h]`, with x,y = left,top.
+* XYWH = `[x, y, w, h]`, with x,y = left,top.
 * YXHW = `[y, x, h, w]`, with x,y = left,top.
 * XYXY = `[x0, y0, x1, y1]`, with x0,y0 = left,top and x1,y1 = right,bottom
 * YXYX = `[y0, x0, y1, x1]`, with x0,y0 = left,top and x1,y1 = right,bottom
 * XCYCWH = `[x_center, y_center, width, height]`
-* XCYCW2Hw = `[x_center, y_center, width/2, height/2]`
+* XCYCW2H2 = `[x_center, y_center, width/2, height/2]`
 
 
 It is compatible with [`AnnotationContext`](../../concepts/annotation-context.md). `class_id` can be used to provide
