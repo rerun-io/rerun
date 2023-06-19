@@ -3,10 +3,11 @@ title: AnnotationContext
 order: 50
 ---
 
-Annotation Context are metadata providing information to the Rerun viewer on how to interpret and display other entities. Currently, two types of annotations are supported:
+Annotation Context are metadata providing information to the Rerun viewer on how to interpret and display other entities. Currently, three types of annotations are supported:
 
-- Labels and/or colors for [segmentation images](segmentation_image.md) classes. These are mapped to the pixel value of the segmentation image.
-- Labels, colors, and/or connections for [Point2D](point2d.md) and [Point3D](point3d.md) entities. These are mapped to the point entities via their `keypoint_id` component.
+- Labels and/or colors for [Rect2D](rect2d.md) and [Box3D](box3d.md) entities. These are mapped to the rectangle and box entites via their `class_id` components.
+- Labels and/or colors for [segmentation images](segmentation_image.md). These are mapped to the images' pixel values, which are interpreted as `class_id`s.
+- Labels, colors, and/or connections for [Point2D](point2d.md) and [Point3D](point3d.md) entities. These are mapped to the point entities via their `class_id` and `keypoint_id` components.
 
 See the [Annotation Context](../../concepts/annotation-context.md) concept page for more information. 
 
