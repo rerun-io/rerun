@@ -57,7 +57,13 @@
         "xyzw",
         "jleibs",
         "Trimesh",
-        "srcset"
+        "srcset",
+        "XYWH",
+        "YXHW",
+        "XYXY",
+        "YXYX",
+        "XCYCWH",
+        "XCYCW2H2"
     ],
     "words": [
         "nyud",
@@ -78,6 +84,7 @@
         "keypoints",
         "lerp",
         "linestrip",
+        "linestrips",
         "linspace",
         "loggable",
         "meshgrid",
