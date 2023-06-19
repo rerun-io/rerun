@@ -24,9 +24,9 @@ Rust API: [Box3D](https://docs.rs/rerun/latest/rerun/components/struct.Box3D.htm
 code-example: box3d_simple
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/f35cad24a53c62ddfff69b00ea93c5a728a7a1f7_box3d_simple_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/04d1eea2f304d804ff6340c329a38350bf87736f_box3d_simple_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/b7b2665bd4c973c795bafcb08a761574b06a164c_box3d_simple_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/365d39481497fa6eaad384ede680c012aea16d30_box3d_simple_1200w.png">
-  <img src="https://static.rerun.io/4f45f6dc88bdaeb624ff1963fb858bc248c0efec_box3d_simple_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/1342a41030eaddbe43439951076723298218e922_box3d_simple_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/05ed697e151dcb53a8a17dfac1bec2023e096083_box3d_simple_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/f47370115cb45b1085f87824d00ab38f95960732_box3d_simple_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/d8df3a0a665b4f5b034883684d73d767fcde6eef_box3d_simple_1200w.png">
+  <img src="https://static.rerun.io/d6a3f38d2e3360fbacac52bb43e44762635be9c8_box3d_simple_full.png" alt="">
 </picture>

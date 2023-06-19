@@ -21,11 +21,11 @@ Rust API: [Point3D](https://docs.rs/rerun/latest/rerun/components/struct.Point3D
 code-example: point3d_simple
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/f82ec6e1ba1fa95fe7425bf1ef74657fada8fd6e_point3d_simple_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/2a9c68cc1367122352d0f40e763621fbfc329c2e_point3d_simple_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/8f07e8d2f7f06d0d44b6cc5f317838dbab537be3_point3d_simple_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/0e0cb320f93107f160b5fe0bd8d0fb107e4d18f7_point3d_simple_1200w.png">
-  <img style="width: 75%;" src="https://static.rerun.io/8b6cd38dbc7cb06a1be1ccae52f10333db88ecd9_point3d_simple_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/03df4bf186a8a348443183f20bbcf81aa6466e85_point3d_simple_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/56461e6835eebdbe1f9f3cc12025ccc017dd85ee_point3d_simple_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/eea941cf7d29cd7a41bc8aaeebec4a358b623081_point3d_simple_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/94689c15c391b9ab7e8fbfefd695bf46a63f45a5_point3d_simple_1200w.png">
+  <img src="https://static.rerun.io/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933_point3d_simple_full.png" alt="">
 </picture>
 
 ## Full Example
@@ -33,9 +33,9 @@ code-example: point3d_simple
 code-example: point3d_random
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/b613ced38a3a6c0d8c9eda92853790383a85fc1b_point3d_random_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/9f38d658433ed672668e2130b5b61f7f3a340868_point3d_random_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/a53495732a85d2589ef78457aa3f7733af168044_point3d_random_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/b6c6c4f7bb6eee40b3e8be5bd41aff84ade519f5_point3d_random_1200w.png">
-  <img style="width: 75%;" src="https://static.rerun.io/87744fc98ed6f59460692ac1f719a202119fdc37_point3d_random_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/c86336081c2a3209a831abfd8d873c970839a212_point3d_random_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/3099783f049ce15d512aa701c16286fb0a8ef6af_point3d_random_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/9f69a53273ac85e7c7e8841fca36301356a6293a_point3d_random_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/609d4a8d4a545f1bdcfe432c9403a6deac00d4a9_point3d_random_1200w.png">
+  <img src="https://static.rerun.io/7e94e1806d2c381943748abbb3bedb68d564de24_point3d_random_full.png" alt="">
 </picture>
