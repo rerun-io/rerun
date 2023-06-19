@@ -25,6 +25,7 @@ arrow2.workspace = true
 convert_case = "0.6"
 flatbuffers = "23.0"
 indent = "0.1"
+quote = "1.0"
 unindent.workspace = true
 xshell = "0.2"
 

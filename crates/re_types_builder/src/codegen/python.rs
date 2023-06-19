@@ -28,7 +28,7 @@ impl PythonCodeGenerator {
 }
 
 impl CodeGenerator for PythonCodeGenerator {
-    fn quote(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
+    fn generate(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
         let mut filepaths = Vec::new();
 
         let datatypes_path = self.pkg_path.join("datatypes");

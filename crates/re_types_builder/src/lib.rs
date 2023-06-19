@@ -224,7 +224,7 @@ pub fn generate_rust_code(
 
     // generate rust code
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let _filepaths = gen.quote(&objects, &arrow_registry);
+    let _filepaths = gen.generate(&objects, &arrow_registry);
 }
 
 /// Generates Python code from a set of flatbuffers definitions.
@@ -253,5 +253,5 @@ pub fn generate_python_code(
 
     // generate python code
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
-    let _filepaths = gen.quote(&objects, &arrow_registry);
+    let _filepaths = gen.generate(&objects, &arrow_registry);
 }

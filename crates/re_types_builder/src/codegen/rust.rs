@@ -29,7 +29,7 @@ impl RustCodeGenerator {
 }
 
 impl CodeGenerator for RustCodeGenerator {
-    fn quote(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
+    fn generate(&mut self, objects: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
         let mut filepaths = Vec::new();
 
         let datatypes_path = self.crate_path.join("src/datatypes");

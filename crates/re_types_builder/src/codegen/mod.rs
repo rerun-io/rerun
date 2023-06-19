@@ -3,7 +3,7 @@ pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].
     ///
     /// Returns the paths of all generated files.
-    fn quote(
+    fn generate(
         &mut self,
         objs: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,

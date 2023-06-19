@@ -4537,6 +4537,7 @@ dependencies = [
  "convert_case",
  "flatbuffers",
  "indent",
+ "quote",
  "re_build_tools",
  "unindent",
  "xshell",
