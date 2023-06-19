@@ -22,9 +22,9 @@ Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.h
 code-example: tensor-simple
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/f3e69a1a861e6af7d11409fce169454aa76cc06f_tensor_simple_480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/3ee39b8696891ba432314fc321e0b44577c31824_tensor_simple_768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/f16f08f575d07ae271e468c1fbbc099f417dd5a0_tensor_simple_1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/5a43df8591832cd7ef999be2571f1c6c7581cb92_tensor_simple_1200w.png">
-  <img src="https://static.rerun.io/1d4b4fe421da91ae6f96493fbadb8e75dbb47bf3_tensor_simple_full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/8e8d7f4137c598de8158effa4b82c5ef4d93ee23_tensor_simple_480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/1a8fe9f89e523b0060a2f6adea08385e1d8bef21_tensor_simple_768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/d1bb2d7dc290f54aecafec5f767308123ed18242_tensor_simple_1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/baa09cc431692ad8f0cab21b9184c6dbf4a62ff5_tensor_simple_1200w.png">
+  <img src="https://static.rerun.io/1aead2554496737e9267a5ab5220dbc89da851ee_tensor_simple_full.png" alt="">
 </picture>

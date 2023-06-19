@@ -1,10 +1,12 @@
 """Create and log a tensor."""
 
-import numpy as np
 import rerun as rr
+from numpy.random import default_rng
+
+rng = default_rng(12345)
 
 # Create a 4-dimensional tensor
-tensor = np.random.uniform(0.0, 1.0, (8, 6, 3, 5))
+tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))
 
 rr.init("tensors", spawn=True)
 
