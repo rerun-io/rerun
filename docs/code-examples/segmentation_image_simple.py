@@ -3,7 +3,6 @@
 import numpy as np
 import rerun as rr
 
-
 # Create a segmentation image
 image = np.zeros((200, 300), dtype=np.uint8)
 image[50:100, 50:120] = 1

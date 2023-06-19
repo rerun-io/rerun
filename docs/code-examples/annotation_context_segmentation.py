@@ -1,6 +1,5 @@
-import rerun as rr
 import numpy as np
-
+import rerun as rr
 
 rr.init("annotation_context_segmentation", spawn=True)
 
