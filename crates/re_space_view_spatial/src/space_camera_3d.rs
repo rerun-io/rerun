@@ -1,4 +1,4 @@
-use glam::{Affine3A, Mat3, Quat, Vec2, Vec3};
+use glam::{Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
 use re_components::{Pinhole, ViewCoordinates};
