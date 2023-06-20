@@ -59,8 +59,14 @@ impl ArrowRegistry {
             obj.fqname,
         );
 
-        if is_transparent {
-            self.arrow_datatype_from_type(&obj.fields[0].typ)
+        let datatype = if is_transparent {
+            LazyDatatype::Extension(
+                obj.fqname.clone(),
+                Box::new(
+                    self.arrow_datatype_from_type(obj.fields[0].typ.clone(), &mut obj.fields[0]),
+                ),
+                None,
+            )
         } else if is_struct {
             LazyDatatype::Extension(
                 obj.fqname.clone(),
