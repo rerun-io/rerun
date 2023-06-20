@@ -255,6 +255,7 @@ impl QuotedObject {
             attrs: _,
             fields,
             specifics: _,
+            datatype: _,
         } = obj;
 
         let mut code = String::new();
@@ -293,6 +294,7 @@ impl QuotedObject {
                 attrs: _,
                 required: _,
                 deprecated: _,
+                datatype: _,
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);
@@ -349,6 +351,7 @@ impl QuotedObject {
             attrs: _,
             fields,
             specifics: _,
+            datatype: _,
         } = obj;
 
         let mut code = String::new();
@@ -387,6 +390,7 @@ impl QuotedObject {
                 attrs: _,
                 required: _,
                 deprecated: _,
+                datatype: _,
             } = field;
 
             let (typ, _) = quote_field_type_from_field(objects, field, false);

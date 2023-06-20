@@ -244,6 +244,12 @@ pub struct Object {
 
     /// Properties that only apply to either structs or unions.
     pub specifics: ObjectSpecifics,
+
+    /// The Arrow datatype of this `Object`, or `None` if the object is Arrow-transparent.
+    ///
+    /// This is lazily computed when the parent object gets registered into the Arrow registry and
+    /// will be `None` until then.
+    pub datatype: Option<crate::LazyDatatype>,
 }
 
 impl Object {
@@ -293,6 +299,7 @@ impl Object {
             attrs,
             fields,
             specifics: ObjectSpecifics::Struct {},
+            datatype: None,
         }
     }
 
@@ -352,6 +359,7 @@ impl Object {
             attrs,
             fields,
             specifics: ObjectSpecifics::Union { utype },
+            datatype: None,
         }
     }
 
@@ -447,6 +455,12 @@ pub struct ObjectField {
     // TODO(#2366): do something with this
     // TODO(#2367): implement custom attr to specify deprecation reason
     pub deprecated: bool,
+
+    /// The Arrow datatype of this `ObjectField`.
+    ///
+    /// This is lazily computed when the parent object gets registered into the Arrow registry and
+    /// will be `None` until then.
+    pub datatype: Option<crate::LazyDatatype>,
 }
 
 impl ObjectField {
@@ -487,6 +501,7 @@ impl ObjectField {
             attrs,
             required,
             deprecated,
+            datatype: None,
         }
     }
 
@@ -534,6 +549,7 @@ impl ObjectField {
             attrs,
             required,
             deprecated,
+            datatype: None,
         }
     }
 
