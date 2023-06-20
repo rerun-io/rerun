@@ -21,7 +21,7 @@ Rust API: [AnnotationContext](https://docs.rs/rerun/latest/rerun/components/stru
 
 ## Rectangles example
 
-code-example: annotation-context-rects
+code-example: annotation_context_rects
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/9bb6f96009ac9b4991ba5b6ceeb954a9204bf656_annotation_context_rects_480w.png">
@@ -34,7 +34,7 @@ code-example: annotation-context-rects
 
 ## Segmentation example
 
-code-example: annotation-context-segmentation
+code-example: annotation_context_segmentation
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/97d397dd0cb5d094e2227aef22785f45bcae4a18_annotation_context_segmentation_480w.png">
@@ -47,7 +47,7 @@ code-example: annotation-context-segmentation
 
 ## Connections example
 
-code-example: annotation-context-connections
+code-example: annotation_context_connections
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/7fc503e76810264da70fc18806eadf987ebd703e_annotation_context_connections_480w.png">
