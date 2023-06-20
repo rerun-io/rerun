@@ -9,7 +9,7 @@ Rerun helps developers debug and understand their systems
 by quickly visualizing internal state and data.
 
 It's primarily focused on visualizing 2D and 3D computer vision and robotics data over time,
-but is under active development to expand support for more use-cases and datatypes.
+but is under active development to expand support for more use-cases and data types.
 
 To get a sense of what you can do with Rerun right now,
 check out the [example gallery](/examples)
@@ -20,7 +20,7 @@ or try out some [live demos](https://demo.rerun.io/) directly in your browser.
 - Jump right in with [Python](getting-started/python.md) or [Rust](getting-started/rust.md).
 - Follow up with a [walkthrough of the viewer](getting-started/viewer-walkthrough.md) and a tutorial on logging data with [Python](getting-started/logging-python.md) or [Rust](getting-started/logging-rust.md).
 - Dive deeper in the [Concepts](concepts) section.
-- The [Reference](reference) covers datatypes, configuration and API details.
+- The [Reference](reference) covers data types, configuration and API details.
     - Including simple examples of how to use each of the [loggable data types](reference/data_types)
 
 ## How does it work?
