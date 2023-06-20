@@ -14,6 +14,10 @@ impl crate::Component for ClassId {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt16
+        DataType::Extension(
+            "rerun.components.ClassId".to_owned(),
+            Box::new(DataType::UInt16),
+            None,
+        )
     }
 }

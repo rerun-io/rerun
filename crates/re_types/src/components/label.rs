@@ -13,6 +13,10 @@ impl crate::Component for Label {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Utf8
+        DataType::Extension(
+            "rerun.components.Label".to_owned(),
+            Box::new(DataType::Utf8),
+            None,
+        )
     }
 }

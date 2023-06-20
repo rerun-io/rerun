@@ -12,14 +12,18 @@ impl crate::Datatype for Vec2D {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            Box::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
-            2usize,
+        DataType::Extension(
+            "rerun.datatypes.Vec2D".to_owned(),
+            Box::new(DataType::FixedSizeList(
+                Box::new(Field {
+                    name: "item".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: false,
+                    metadata: [].into(),
+                }),
+                2usize,
+            )),
+            None,
         )
     }
 }
