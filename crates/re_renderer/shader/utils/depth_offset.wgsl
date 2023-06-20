@@ -86,7 +86,8 @@ fn apply_depth_offset(position: Vec4, offset: f32) -> Vec4 {
     var w_scale_bias = f32eps * offset;
     if frame.device_tier == DEVICE_TIER_GLES {
         // Empirically determined, see section on GLES above.
-        w_scale_bias *= 1000.0;
+        // 1000.0 is way too high, 512.0 mostly works, 64.0 is better: https://github.com/rerun-io/rerun/issues/2483
+        w_scale_bias *= 64.0;
     }
     let w_scale = 1.0 - w_scale_bias;
 
