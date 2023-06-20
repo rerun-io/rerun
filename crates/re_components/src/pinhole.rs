@@ -110,6 +110,25 @@ impl Pinhole {
     pub fn aspect_ratio(&self) -> Option<f32> {
         self.resolution.map(|r| r[0] / r[1])
     }
+
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn offset(&self) -> glam::Vec2 {
+        let [x, y, _] = self.image_from_cam[2].0;
+        glam::vec2(x, y)
+    }
+
+    /// Given pixel coordinates and a world-space depth,
+    /// return a position in the camera space.
+    ///
+    /// The returned z is the same as the input z (depth).
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn unproject(&self, pixel: glam::Vec3) -> glam::Vec3 {
+        ((pixel.truncate() - self.offset()) * pixel.z
+            / glam::Vec2::from(self.focal_length_in_pixels()))
+        .extend(pixel.z)
+    }
 }
 
 #[test]

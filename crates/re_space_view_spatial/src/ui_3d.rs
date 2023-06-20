@@ -571,15 +571,23 @@ fn show_projections_from_2d_space(
     match ctx.selection_state().hovered_space() {
         HoveredSpace::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
-                if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
+                if let Some(pinhole) = cam.pinhole {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
                     // If we don't have a z value, we only render the thick one.
-                    let thick_ray_length = if pos.z.is_finite() && pos.z > 0.0 {
+                    let depth = if 0.0 < pos.z && pos.z.is_finite() {
                         pos.z
                     } else {
                         cam.picture_plane_distance
                     };
 
+                    let stop_in_cam = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
+                    let stop_in_world = cam.world_from_cam().transform_point3(stop_in_cam);
+
+                    let origin = cam.position();
+                    let ray =
+                        macaw::Ray3::from_origin_dir(origin, (stop_in_world - origin).normalize());
+
+                    let thick_ray_length = (stop_in_world - origin).length();
                     add_picking_ray(line_builder, ray, scene_bbox_accum, thick_ray_length);
                 }
             }

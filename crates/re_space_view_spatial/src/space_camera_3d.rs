@@ -81,12 +81,13 @@ impl SpaceCamera3D {
 
     /// Unproject a 2D image coordinate as a ray in 3D space
     pub fn unproject_as_ray(&self, pos2d: Vec2) -> Option<Ray3> {
-        self.world_from_image().map(|world_from_pixel| {
-            let origin = self.position();
-            let stop = world_from_pixel.transform_point3(pos2d.extend(1.0));
-            let dir = (stop - origin).normalize();
-            Ray3::from_origin_dir(origin, dir)
-        })
+        let pinhole = self.pinhole?;
+
+        let depth = 1.0; // whatever will do
+        let stop_in_camera = pinhole.unproject(pos2d.extend(depth));
+        let stop = self.world_from_camera.transform_point3(stop_in_camera);
+        let origin = self.position();
+        Some(Ray3::from_origin_dir(origin, (stop - origin).normalize()))
     }
 }
 
