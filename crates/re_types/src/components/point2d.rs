@@ -2,7 +2,10 @@
 
 #[doc = "A point in 2D space."]
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Point2D(pub crate::datatypes::Vec2D);
+pub struct Point2D {
+    pub x: f32,
+    pub y: f32,
+}
 
 impl crate::Component for Point2D {
     fn name() -> crate::ComponentName {
@@ -12,14 +15,23 @@ impl crate::Component for Point2D {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            Box::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
-            2usize,
+        DataType::Extension(
+            "rerun.components.Point2D".to_owned(),
+            Box::new(DataType::Struct(vec![
+                Field {
+                    name: "x".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "y".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: true,
+                    metadata: [].into(),
+                },
+            ])),
+            None,
         )
     }
 }
