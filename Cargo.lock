@@ -4537,8 +4537,11 @@ dependencies = [
  "convert_case",
  "flatbuffers",
  "indent",
+ "itertools",
+ "proc-macro2",
  "quote",
  "re_build_tools",
+ "syn 2.0.16",
  "unindent",
  "xshell",
 ]

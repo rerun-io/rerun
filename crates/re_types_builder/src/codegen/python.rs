@@ -442,7 +442,7 @@ fn quote_module_prelude() -> String {
 }
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
-    let lines = crate::codegen::quote_doc_from_docs(docs, &["py", "python"]);
+    let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
 
     if lines.is_empty() {
         return String::new();

@@ -18,7 +18,7 @@ pub const AUTOGEN_WARNING: &str =
 // ---
 
 mod common;
-use self::common::{quote_doc_from_docs, StringExt};
+use self::common::{get_documentation, StringExt};
 
 mod python;
 mod rust;
