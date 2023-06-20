@@ -111,20 +111,13 @@ impl Pinhole {
         self.resolution.map(|r| r[0] / r[1])
     }
 
-    #[cfg(feature = "glam")]
-    #[inline]
-    pub fn offset(&self) -> glam::Vec2 {
-        let [x, y, _] = self.image_from_cam[2].0;
-        glam::vec2(x, y)
-    }
-
     /// Project camera-space coordinates into pixel coordinates,
     /// returning the same z/depth.
     #[cfg(feature = "glam")]
     #[inline]
     pub fn project(&self, pixel: glam::Vec3) -> glam::Vec3 {
         ((pixel.truncate() * glam::Vec2::from(self.focal_length_in_pixels())) / pixel.z
-            + self.offset())
+            + self.principal_point())
         .extend(pixel.z)
     }
 
@@ -135,7 +128,7 @@ impl Pinhole {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn unproject(&self, pixel: glam::Vec3) -> glam::Vec3 {
-        ((pixel.truncate() - self.offset()) * pixel.z
+        ((pixel.truncate() - self.principal_point()) * pixel.z
             / glam::Vec2::from(self.focal_length_in_pixels()))
         .extend(pixel.z)
     }
