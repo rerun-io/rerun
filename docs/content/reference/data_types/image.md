@@ -9,15 +9,13 @@ order: 20
 - `float16`, `float32`, `float64`: color channels in the 0.0-1.0 sRGB gamma space, alpha in 0.0-1.0 linear space
 - `int8`, `int16`, `int32`, `int64`: signed integers are cast into their unsigned counterpart without clipping
 
+The `colorrgba` component for the image applies a multiplicative tint.
 
 ## Components and APIs
 
 Primary component: `tensor`
 
 Secondary components: `colorrgba`, `draw_order`
-
-Note: `colorrgba` is currently only supported for images (i.e. 2D tensor with optional 3rd dimension). Furthermore, only the spatial Space View is able to use the color component.
-
 
 Python APIs: [log_image](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_image**), [log_image_file](https://ref.rerun.io/docs/python/latest/common/images/#rerun.log_image_file**),
 
