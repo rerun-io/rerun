@@ -3,7 +3,7 @@ title: Image
 order: 20
 ---
 
-`Image` represents a 2D raster image with various pixel format. They are a special case of 2D [Tensor](tensor.md) with an optional 3rd dimension when multiple color channels are used. Image with 1 (grayscale), 3 (RGB), or 4 (RGBA) channels are supported. Color channel maybe represented by any of the common scalar datatypes: 
+`Image` represents a 2D raster image with various pixel format. They are a special case of 2D [Tensor](tensor.md) with an optional 3rd dimension when multiple color channels are used. Image with 1 (grayscale), 3 (RGB), or 4 (RGBA) channels are supported. Color channel maybe represented by any of the common scalar datatypes:
 
 - `uint8`, `uint16`, `uint32`, `uint64`: color channels in 0-`max_uint` sRGB gamma space, alpha in 0-`max_int` linear space
 - `float16`, `float32`, `float64`: color channels in the 0.0-1.0 sRGB gamma space, alpha in 0.0-1.0 linear space
@@ -25,7 +25,7 @@ Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.h
 
 ## Simple Example
 
-code-example: image-simple
+code-example: image_simple
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/39c48e5a87eeb62641c544e2604c99029192a297_image_simple_480w.png">
@@ -37,7 +37,7 @@ code-example: image-simple
 
 ## Advanced Example
 
-code-example: image-advanced
+code-example: image_advanced
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/ccaeba024ee48b211d5bed9c4ee311530a1170ae_image_advanced_480w.png">

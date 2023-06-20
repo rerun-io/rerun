@@ -18,7 +18,7 @@ Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.h
 
 ## Simple example
 
-code-example: depth-image-simple
+code-example: depth_image_simple
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/5ed6b5ce014c0fbbc70dc4241c117b10610e1ce7_depth_image_simple_480w.png">

@@ -18,7 +18,7 @@ Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.h
 
 ## Simple example
 
-code-example: segmentation-image-simple
+code-example: segmentation_image_simple
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/eb1c4dfd9d8900b7bb649b29806426024dc327f9_segmentation_image_simple_480w.png">

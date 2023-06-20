@@ -20,7 +20,7 @@ Rust API: [Tensor](https://docs.rs/rerun/latest/rerun/components/struct.Tensor.h
 
 ## Simple Example
 
-code-example: tensor-simple
+code-example: tensor_simple
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/8e8d7f4137c598de8158effa4b82c5ef4d93ee23_tensor_simple_480w.png">
@@ -32,7 +32,7 @@ code-example: tensor-simple
 
 ## 1-D Tensor Example
 
-code-example: tensor-one-dim
+code-example: tensor_one_dim
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/5beafb5eeac8f7799a699441478fb48b97e6a90b_tensor_one_dim_480w.png">
