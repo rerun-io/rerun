@@ -21,7 +21,7 @@ or try out some [live demos](https://demo.rerun.io/) directly in your browser.
 - Follow up with a [walkthrough of the viewer](getting-started/viewer-walkthrough.md) and a tutorial on logging data with [Python](getting-started/logging-python.md) or [Rust](getting-started/logging-rust.md).
 - Dive deeper in the [Concepts](concepts) section.
 - The [Reference](reference) covers data types, configuration and API details.
-    - Including simple examples of how to use each of the [loggable data types](reference/data_types)
+    - Including simple examples of how to use each of the [loggable data types](reference/data_types.md)
 
 ## How does it work?
 It's quite simple:
@@ -30,7 +30,7 @@ It's quite simple:
 2. The data you log gets sent to our viewer that automatically visualizes it live.
 3. You can then use the UI to interactively explore the data and customize layout and visualization options.
 4. Save recordings to file for later replay.
-5. You can also [extend Rerun in Rust](howto/extend-ui) to meet your specific needs.
+5. You can also [extend Rerun in Rust](howto/extend-ui.md) to meet your specific needs.
 
 Under the hood Rerun:
 
