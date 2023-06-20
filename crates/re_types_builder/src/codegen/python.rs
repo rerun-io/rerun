@@ -41,7 +41,7 @@ impl CodeGenerator for PythonCodeGenerator {
                 datatypes_path,
                 arrow_registry,
                 objs,
-                &objs.ordered_datatypes(),
+                &objs.ordered_objects(ObjectKind::Datatype.into()),
             )
             .0,
         );
@@ -55,7 +55,7 @@ impl CodeGenerator for PythonCodeGenerator {
                 components_path,
                 arrow_registry,
                 objs,
-                &objs.ordered_components(),
+                &objs.ordered_objects(ObjectKind::Component.into()),
             )
             .0,
         );
@@ -68,7 +68,7 @@ impl CodeGenerator for PythonCodeGenerator {
             archetypes_path,
             arrow_registry,
             objs,
-            &objs.ordered_archetypes(),
+            &objs.ordered_objects(ObjectKind::Archetype.into()),
         );
         filepaths.extend(paths);
 

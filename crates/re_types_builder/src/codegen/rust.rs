@@ -42,7 +42,7 @@ impl CodeGenerator for RustCodeGenerator {
         filepaths.extend(create_files(
             datatypes_path,
             arrow_registry,
-            &objects.ordered_datatypes(),
+            &objects.ordered_objects(ObjectKind::Datatype.into()),
         ));
 
         let components_path = self.crate_path.join("src/components");
@@ -52,7 +52,7 @@ impl CodeGenerator for RustCodeGenerator {
         filepaths.extend(create_files(
             components_path,
             arrow_registry,
-            &objects.ordered_components(),
+            &objects.ordered_objects(ObjectKind::Component.into()),
         ));
 
         let archetypes_path = self.crate_path.join("src/archetypes");
@@ -62,7 +62,7 @@ impl CodeGenerator for RustCodeGenerator {
         filepaths.extend(create_files(
             archetypes_path,
             arrow_registry,
-            &objects.ordered_archetypes(),
+            &objects.ordered_objects(ObjectKind::Archetype.into()),
         ));
 
         filepaths
