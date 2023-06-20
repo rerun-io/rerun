@@ -32,7 +32,7 @@ code-example: line_strip3d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/097f3c5086790e36e0b8a7f34a44e9eeac5227d2_line_strip3d_simple_768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ec76e1078e443fd4e71b751f84fe19f5b014272b_line_strip3d_simple_1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/66b12e078e3a08d7a61f3f91f7ad847cbb4933dd_line_strip3d_simple_1200w.png">
-  <img style="width: 75%;" src="https://static.rerun.io/13036c0e71f78d3cec37d5724f97b47c4cf3c429_line_strip3d_simple_full.png" alt="">
+  <img src="https://static.rerun.io/13036c0e71f78d3cec37d5724f97b47c4cf3c429_line_strip3d_simple_full.png" alt="">
 </picture>
 
 code-example: line_segments3d_simple
@@ -42,5 +42,5 @@ code-example: line_segments3d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/cb005f7b4e629e9b88a91835edfa066101f94f65_line_segment3d_simple_768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/140ddb2aa68b3e1a623cd1997df808e255a2136c_line_segment3d_simple_1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/aeed681be95d6c974446f89a6fa26b7d3077adce_line_segment3d_simple_1200w.png">
-  <img style="width: 75%;" src="https://static.rerun.io/aa800b2a6e6a7b8e32e762b42861bae36f5014bb_line_segment3d_simple_full.png" alt="">
+  <img src="https://static.rerun.io/aa800b2a6e6a7b8e32e762b42861bae36f5014bb_line_segment3d_simple_full.png" alt="">
 </picture>

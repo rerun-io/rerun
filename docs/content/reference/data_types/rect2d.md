@@ -36,5 +36,5 @@ code-example: rect2d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/5f7135b0ea74ae93380fe74428abb2f2da638a7a_rect2d_simple_768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/842be4a57ac5fd89e07e98cc31243a475a3f17c8_rect2d_simple_1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/c61c9e843a7d1c92f15001d6cdc8cba17c6b13a8_rect2d_simple_1200w.png">
-  <img style="width: 75%;" src="https://static.rerun.io/8c06df0ca7e336f76a9ae933017e00493516d13b_rect2d_simple_full.png" alt="">
+  <img src="https://static.rerun.io/8c06df0ca7e336f76a9ae933017e00493516d13b_rect2d_simple_full.png" alt="">
 </picture>

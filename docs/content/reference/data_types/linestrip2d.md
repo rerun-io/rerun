@@ -35,7 +35,7 @@ code-example: line_strip2d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/669c61837dc3464090945f6ade96f0205006e202_line_strip2d_simple_768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/81cf822ebaa5faff8d129f2705872621835acc95_line_strip2d_simple_1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/e549c9d69a19754803c648b665be5afbff9b7cad_line_strip2d_simple_1200w.png">
-  <img style="width: 75%;" src="https://static.rerun.io/c4e6ce937544e66b497450fd64ac3ac2f244f0e1_line_strip2d_simple_full.png" alt="">
+  <img src="https://static.rerun.io/c4e6ce937544e66b497450fd64ac3ac2f244f0e1_line_strip2d_simple_full.png" alt="">
 </picture>
 
 code-example: line_segments2d_simple
@@ -45,5 +45,5 @@ code-example: line_segments2d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/7b0a8e60b0d6f005618c0ac09113ce84a08fb778_line_segment2d_simple_768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/3ee262f61cb74aaffd7fd0b506754ee11cab3c12_line_segment2d_simple_1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/196e0f2fe2222526e9eba87fa39440ada08e273d_line_segment2d_simple_1200w.png">
-  <img style="width: 75%;" src="https://static.rerun.io/53df596662dd9ffaaea5d09d091ef95220346c83_line_segment2d_simple_full.png" alt="">
+  <img src="https://static.rerun.io/53df596662dd9ffaaea5d09d091ef95220346c83_line_segment2d_simple_full.png" alt="">
 </picture>
