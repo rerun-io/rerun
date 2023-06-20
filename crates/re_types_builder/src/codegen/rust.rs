@@ -189,6 +189,7 @@ impl QuotedObject {
             attrs: _,
             fields,
             specifics: _,
+            datatype: _,
         } = obj;
 
         let name = format_ident!("{name}");
@@ -247,6 +248,7 @@ impl QuotedObject {
             attrs: _,
             fields,
             specifics: _,
+            datatype: _,
         } = obj;
 
         let name = format_ident!("{name}");
@@ -266,6 +268,7 @@ impl QuotedObject {
                 attrs: _,
                 required: _,
                 deprecated: _,
+                datatype: _,
             } = obj_field;
 
             let name = format_ident!("{name}");
@@ -323,6 +326,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
             required,
             // TODO(#2366): support for deprecation notices
             deprecated: _,
+            datatype: _,
         } = obj_field;
 
         let quoted_docs = quote_doc_from_docs(docs);
@@ -460,6 +464,7 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> T
         attrs: _,
         fields: _,
         specifics: _,
+        datatype: _,
     } = obj;
 
     let name = format_ident!("{name}");
@@ -564,6 +569,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         attrs: _,
         fields,
         specifics: _,
+        datatype: _,
     } = obj;
 
     let name = format_ident!("{name}");
