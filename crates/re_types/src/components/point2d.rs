@@ -21,13 +21,13 @@ impl crate::Component for Point2D {
                 Field {
                     name: "x".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 },
                 Field {
                     name: "y".to_owned(),
                     data_type: DataType::Float32,
-                    is_nullable: true,
+                    is_nullable: false,
                     metadata: [].into(),
                 },
             ])),
