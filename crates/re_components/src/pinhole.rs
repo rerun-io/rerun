@@ -118,6 +118,16 @@ impl Pinhole {
         glam::vec2(x, y)
     }
 
+    /// Project camera-space coordinates into pixel coordinates,
+    /// returning the same z/depth.
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn project(&self, pixel: glam::Vec3) -> glam::Vec3 {
+        ((pixel.truncate() * glam::Vec2::from(self.focal_length_in_pixels())) / pixel.z
+            + self.offset())
+        .extend(pixel.z)
+    }
+
     /// Given pixel coordinates and a world-space depth,
     /// return a position in the camera space.
     ///
