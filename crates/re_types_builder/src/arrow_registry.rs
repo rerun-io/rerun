@@ -71,6 +71,7 @@ impl ArrowRegistry {
                             name: field.name.clone(),
                             datatype: self.arrow_datatype_from_type(&field.typ),
                             is_nullable: field.required,
+                            is_nullable: !field.required,
                             metadata: Default::default(),
                         })
                         .collect(),
