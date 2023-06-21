@@ -398,7 +398,7 @@ impl Viewport {
     }
 
     pub fn add_space_view(&mut self, mut space_view: SpaceViewBlueprint) -> SpaceViewId {
-        let id = space_view.id;
+        let space_view_id = space_view.id;
 
         // Find a unique name for the space view
         let mut candidate_name = space_view.display_name.clone();
@@ -417,9 +417,19 @@ impl Viewport {
 
         space_view.display_name = unique_name;
 
-        self.space_views.insert(id, space_view);
-        self.tree = Default::default(); // Reset it. TODO: insert it in a smart way instead?
-        id
+        self.space_views.insert(space_view_id, space_view);
+
+        if let Some(root_id) = self.tree.root {
+            // Try to insert it in the tree, in the top level:
+            let tile_id = self.tree.tiles.insert_pane(space_view_id);
+            if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get_mut(root_id) {
+                container.add_child(tile_id);
+            } else {
+                self.tree = Default::default(); // we'll just re-initialize later instead
+            }
+        }
+
+        space_view_id
     }
 
     pub fn on_frame_start(
@@ -750,10 +760,11 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
-        let space_view = self
-            .space_views
-            .get_mut(space_view_id)
-            .expect("Should have been populated beforehand");
+        let Some(space_view) = self.space_views.get_mut(space_view_id) else {
+            // TODO: this shouldn't happen unless we have a bug
+            re_log::debug_once!("SpaceViewId missing during egui_tiles");
+            return "internal_error".into();
+        };
 
         let mut text =
             egui::WidgetText::RichText(egui::RichText::new(space_view.display_name.clone()));
@@ -784,6 +795,10 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                     .set_single_selection(Item::SpaceView(*space_view_id));
             }
         }
+    }
+
+    fn retain_pane(&mut self, space_view_id: &SpaceViewId) -> bool {
+        self.space_views.contains_key(space_view_id)
     }
 
     fn top_bar_rtl_ui(
