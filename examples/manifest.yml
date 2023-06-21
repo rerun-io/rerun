@@ -45,9 +45,7 @@ root:
       prelude: |
         The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
         They all require additional data to be downloaded, so an internet connection is needed at least once.
-        The dataset fetching logic is all built into the examples, so no additional steps are needed.
-        In some of the examples such as [Stable Diffusion](#stable-diffusion), the algorithm is run on-line,
-        and may benefit from a GPU-enabled PyTorch machine.
+        Each example downloads it's own data, so no additional steps are needed.
       children:
         - name: arkit_scenes
           python: python/arkit_scenes
