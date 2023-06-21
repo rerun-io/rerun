@@ -151,7 +151,7 @@ impl Viewport {
         }
 
         let mut visibility_changed = false;
-        let mut removed_space_view = false;
+        let mut removed = false;
         let mut visible = self.tree.is_visible(tile_id);
 
         let default_open = true;
@@ -172,9 +172,9 @@ impl Viewport {
                 |re_ui, ui| {
                     visibility_changed =
                         visibility_button_ui(re_ui, ui, true, &mut visible).changed();
-                    removed_space_view = re_ui
+                    removed = re_ui
                         .small_icon_button(ui, &re_ui::icons::REMOVE)
-                        .on_hover_text("Remove Space View from the viewport.")
+                        .on_hover_text("Remove contaner")
                         .clicked();
                 },
             );
@@ -189,6 +189,8 @@ impl Viewport {
             self.has_been_user_edited = true;
             self.tree.set_visible(tile_id, visible);
         }
+
+        // TODO: remove container
     }
 
     fn space_view_entry_ui(
