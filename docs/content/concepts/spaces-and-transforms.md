@@ -36,9 +36,9 @@ share the same Space. However, as soon as you begin to log transforms, you can e
 Consider the following scenario:
 
 ```python
-rr.log_points("world/mapped_keypoints", ...)
-rr.log_points("world/robot/observed_features", ...)
-rr.log_transform3d("world/robot", ...)
+rr.log_points("world/mapped_keypoints", …)
+rr.log_points("world/robot/observed_features", …)
+rr.log_transform3d("world/robot", …)
 ```
 
 There are 4 parent/child entity relationships represented in this hierarchy.
@@ -89,19 +89,19 @@ Say you have a 3D world with two cameras with known extrinsics (pose) and intrin
 
 ```py
 # Log some data to the 3D world:
-rr.log_points("world/points", ...)
+rr.log_points("world/points", …)
 
 # Log first camera:
 rr.log_transform3d("world/camera/#0", rr.TranslationAndMat3(translation=cam0_pose.pos, matrix=cam0_pose.rot))
-rr.log_pinhole("world/camera/#0/image", ...)
+rr.log_pinhole("world/camera/#0/image", …)
 
 # Log second camera:
 rr.log_transform3d("world/camera/#1", rr.TranslationAndMat3(translation=cam1_pose.pos, matrix=cam1_pose.rot))
-rr.log_pinhole("world/camera/#1/image", ...)
+rr.log_pinhole("world/camera/#1/image", …)
 
 # Log some data to the image spaces of the first camera:
-rr.log_image("world/camera/#0/image", ...)
-rr.log_rect("world/camera/#0/image/detection", ...)
+rr.log_image("world/camera/#0/image", …)
+rr.log_rect("world/camera/#0/image/detection", …)
 ```
 
 Rerun will from this understand how the `world` space and the two image spaces (`world/camera/#0/image` and `world/camera/#1/image`) relate to each other, which allows you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space.
