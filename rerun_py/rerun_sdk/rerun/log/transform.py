@@ -297,9 +297,11 @@ def log_rigid3(
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Log a proper rigid 3D transform between this entity and the parent.
+    Log a proper rigid 3D transform between this entity and the parent (_deprecated_).
 
     Set either `parent_from_child` or `child_from_parent` to a tuple of `(translation_xyz, quat_xyzw)`.
+
+    Note: This function is deprecated. Use [`rerun.log_transform3d`][] instead.
 
     Parent-from-child
     -----------------
