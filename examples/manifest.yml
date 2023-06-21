@@ -40,56 +40,8 @@ root:
     set up in a `requirements.txt` next to the example. These are noted in the
     individual example sections below.
   children:
-    - name: setup
-      title: Setup
-      prelude: |
-        Make sure you have the Rerun repository checked out and the latest SDK installed.
-
-        ```bash
-        pip install --upgrade rerun-sdk  # install the latest Rerun SDK
-        git clone git@github.com:rerun-io/rerun.git  # Clone the repository
-        cd rerun
-        git checkout latest  # Check out the commit matching the latest SDK release
-        ```
-        > Note: Make sure your SDK version matches the examples.
-        For example, if your SDK version is `0.3.1`, check out the matching tag
-        in the Rerun repository by running `git checkout v0.3.1`.
-
-    - name: artificial-data
-      title: Examples with Artificial Data
-      prelude: |
-        The following examples serve to illustrate various uses of the Rerun logging SDK.
-        They should not require any additional data downloads, and should run offline.
-      children:
-        - name: minimal
-          python: python/minimal
-          rust: rust/minimal
-
-        - name: api-demo
-          python: python/api_demo
-          rust: rust/api_demo
-
-        - name: car
-          python: python/car
-
-        - name: clock
-          python: python/clock
-          rust: rust/clock
-
-        - name: multiprocessing
-          python: python/multiprocessing
-
-        - name: multithreading
-          python: python/multithreading
-
-        - name: plots
-          python: python/plots
-
-        - name: text-logging
-          python: python/text_logging
-
     - name: real-data
-      title: Examples with Real Data
+      title: Examples with real data
       prelude: |
         The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
         They all require additional data to be downloaded, so an internet connection is needed at least once.
@@ -141,3 +93,50 @@ root:
         - name: face-tracking
           python: python/face_tracking
 
+    - name: artificial-data
+      title: Examples with artificial data
+      prelude: |
+        The following examples serve to illustrate various uses of the Rerun logging SDK.
+        They should not require any additional data downloads, and should run offline.
+      children:
+        - name: minimal
+          python: python/minimal
+          rust: rust/minimal
+
+        - name: api-demo
+          python: python/api_demo
+          rust: rust/api_demo
+
+        - name: car
+          python: python/car
+
+        - name: clock
+          python: python/clock
+          rust: rust/clock
+
+        - name: multiprocessing
+          python: python/multiprocessing
+
+        - name: multithreading
+          python: python/multithreading
+
+        - name: plots
+          python: python/plots
+
+        - name: text-logging
+          python: python/text_logging
+
+    - name: setup
+      title: Setup
+      prelude: |
+        Make sure you have the Rerun repository checked out and the latest SDK installed.
+
+        ```bash
+        pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+        git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+        cd rerun
+        git checkout latest  # Check out the commit matching the latest SDK release
+        ```
+        > Note: Make sure your SDK version matches the examples.
+        For example, if your SDK version is `0.3.1`, check out the matching tag
+        in the Rerun repository by running `git checkout v0.3.1`.
