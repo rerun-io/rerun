@@ -195,7 +195,11 @@ impl Viewport {
             self.tree.set_visible(tile_id, visible);
         }
 
-        // TODO: remove container and all child spaceviews recursively
+        for tile in self.tree.tiles.remove_recursively(tile_id) {
+            if let egui_tiles::Tile::Pane(space_view_id) = tile {
+                self.remove(&space_view_id);
+            }
+        }
     }
 
     fn space_view_entry_ui(
