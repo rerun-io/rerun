@@ -4,6 +4,7 @@ use rerun::transform::{
     Angle, Rotation3D, RotationAxisAngle, Scale3D, TranslationAndMat3, TranslationRotationScale3D,
 };
 use rerun::{MsgSender, RecordingStreamBuilder};
+use std::f32::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec_stream, storage) = RecordingStreamBuilder::new("transform").memory()?;
@@ -33,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             translation: None,
             rotation: Some(Rotation3D::from(RotationAxisAngle::new(
                 Vec3D::new(0.0, 0.0, 1.0),
-                Angle::Radians(3.14 / 4.),
+                Angle::Radians(PI / 4.),
             ))),
             scale: Some(Scale3D::from(2.0)),
         })])?

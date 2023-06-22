@@ -1,5 +1,5 @@
 //! Log a simple colored triangle.
-use rerun::components::{Mesh3D, MeshId, RawMesh3D, Vec4D};
+use rerun::components::{Mesh3D, MeshId, RawMesh3D};
 use rerun::{MsgSender, RecordingStreamBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

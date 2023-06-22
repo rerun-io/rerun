@@ -10,10 +10,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     data.map_inplace(|x| *x = rand::random());
 
     let mut tensor = Tensor::try_from(data.as_standard_layout().view())?;
-    tensor.shape[0].name = Some("width".to_string());
-    tensor.shape[1].name = Some("height".to_string());
-    tensor.shape[2].name = Some("channel".to_string());
-    tensor.shape[3].name = Some("batch".to_string());
+    tensor.shape[0].name = Some("width".to_owned());
+    tensor.shape[1].name = Some("height".to_owned());
+    tensor.shape[2].name = Some("channel".to_owned());
+    tensor.shape[3].name = Some("batch".to_owned());
 
     MsgSender::new("tensor")
         .with_component(&[tensor])?

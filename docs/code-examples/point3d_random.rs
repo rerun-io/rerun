@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             rng.sample(position_distribs),
         ));
         colors.push(ColorRGBA::from_rgb(rng.gen(), rng.gen(), rng.gen()));
-        radii.push(Radius(rng.gen()))
+        radii.push(Radius(rng.gen()));
     }
 
     MsgSender::new("random")
