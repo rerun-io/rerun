@@ -145,8 +145,13 @@ impl Viewport {
         container: &egui_tiles::Container,
     ) {
         if container.children().len() == 1 {
-            // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood:
-            self.tile_ui(ctx, ui, container.children()[0]);
+            // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood.
+            // This means we won't be showing the visibility button of the parent container,
+            // so if the child is made invisible, we should do the same for the parent.
+            let child_id = container.children()[0];
+            let child_is_visible = self.tree.is_visible(child_id);
+            self.tree.set_visible(tile_id, child_is_visible);
+            self.tile_ui(ctx, ui, child_id);
             return;
         }
 
@@ -190,7 +195,7 @@ impl Viewport {
             self.tree.set_visible(tile_id, visible);
         }
 
-        // TODO: remove container
+        // TODO: remove container and all child spaceviews recursively
     }
 
     fn space_view_entry_ui(
