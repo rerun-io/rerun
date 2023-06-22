@@ -98,7 +98,7 @@ root:
       prelude: |
         The following examples serve to illustrate various uses of the Rerun logging SDK.
         They should not require any additional data downloads, and should run offline.
-        If you want the simplest possible examples showing how to use the api's,
+        If you want the simplest possible examples showing how to use each api,
         check out [Loggable Data Types](/docs/reference/data_types.md).
       children:
         - name: minimal
