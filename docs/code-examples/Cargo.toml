@@ -1,14 +1,117 @@
 [package]
 name = "code_examples"
-version = "0.7.0-alpha.0"
-edition = "2021"
-rust-version = "1.69"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 publish = false
+
+
+[[bin]]
+name = 'annotation_context_connections'
+path = 'annotation_context_connections.rs'
+
+[[bin]]
+name = 'annotation_context_rects'
+path = 'annotation_context_rects.rs'
+
+[[bin]]
+name = 'annotation_context_segmentation'
+path = 'annotation_context_segmentation.rs'
+
+[[bin]]
+name = 'arrow3d_simple'
+path = 'arrow3d_simple.rs'
+
+[[bin]]
+name = 'box3d_simple'
+path = 'box3d_simple.rs'
+
+[[bin]]
+name = 'depth_image_3d'
+path = 'depth_image_3d.rs'
+
+[[bin]]
+name = 'depth_image_simple'
+path = 'depth_image_simple.rs'
+
+[[bin]]
+name = 'image_simple'
+path = 'image_simple.rs'
+
+[[bin]]
+name = 'line_segments2d_simple'
+path = 'line_segments2d_simple.rs'
+
+[[bin]]
+name = 'line_segments3d_simple'
+path = 'line_segments3d_simple.rs'
+
+[[bin]]
+name = 'line_strip2d_simple'
+path = 'line_strip2d_simple.rs'
+
+[[bin]]
+name = 'line_strip3d_simple'
+path = 'line_strip3d_simple.rs'
+
+[[bin]]
+name = 'mesh_simple'
+path = 'mesh_simple.rs'
+
+[[bin]]
+name = 'pinhole_simple'
+path = 'pinhole_simple.rs'
 
 [[bin]]
 name = 'point2d_simple'
 path = 'point2d_simple.rs'
 
+[[bin]]
+name = 'point2d_random'
+path = 'point2d_random.rs'
+
+[[bin]]
+name = 'point3d_random'
+path = 'point3d_random.rs'
+
+[[bin]]
+name = 'point3d_simple'
+path = 'point3d_simple.rs'
+
+[[bin]]
+name = 'rect2d_simple'
+path = 'rect2d_simple.rs'
+
+[[bin]]
+name = 'scalar_simple'
+path = 'scalar_simple.rs'
+
+[[bin]]
+name = 'segmentation_image_simple'
+path = 'segmentation_image_simple.rs'
+
+[[bin]]
+name = 'tensor_one_dim'
+path = 'tensor_one_dim.rs'
+
+[[bin]]
+name = 'tensor_simple'
+path = 'tensor_simple.rs'
+
+[[bin]]
+name = 'text_entry_simple'
+path = 'text_entry_simple.rs'
+
+[[bin]]
+name = 'transform3d_simple'
+path = 'transform3d_simple.rs'
+
+
 [dependencies]
+ahash.workspace = true
+ndarray.workspace = true
+rand = "0.8"
+rand_distr = "0.4.3"
 rerun = { path = "../../crates/rerun", features = ["native_viewer"] }
+

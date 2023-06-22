@@ -1,0 +1,25 @@
+//! Create and log a tensor.
+use ndarray::{Array, ShapeBuilder};
+use rerun::components::Tensor;
+use rerun::{MsgSender, RecordingStreamBuilder};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let (rec_stream, storage) = RecordingStreamBuilder::new("tensors").memory()?;
+
+    let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
+    data.map_inplace(|x| *x = rand::random());
+
+    let mut tensor = Tensor::try_from(data.as_standard_layout().view())?;
+    tensor.shape[0].name = Some("width".to_string());
+    tensor.shape[1].name = Some("height".to_string());
+    tensor.shape[2].name = Some("channel".to_string());
+    tensor.shape[3].name = Some("batch".to_string());
+
+    MsgSender::new("tensor")
+        .with_component(&[tensor])?
+        .send(&rec_stream)?;
+
+    rec_stream.flush_blocking();
+    rerun::native_viewer::show(storage.take())?;
+    Ok(())
+}

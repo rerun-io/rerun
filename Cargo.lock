@@ -908,8 +908,12 @@ dependencies = [
 
 [[package]]
 name = "code_examples"
-version = "0.7.0-alpha.0"
+version = "0.8.0-alpha.0"
 dependencies = [
+ "ahash 0.8.3",
+ "ndarray",
+ "rand",
+ "rand_distr",
  "rerun",
 ]
 
