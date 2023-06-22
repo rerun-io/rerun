@@ -46,7 +46,7 @@ root:
         The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
         They all require additional data to be downloaded, so an internet connection is needed at least once.
         Each example downloads it's own data, so no additional steps are needed.
-        If you want the simplest possible examples showing how to use each api,
+        For the simplest possible examples showing how to use each api,
         check out [Loggable Data Types](/docs/reference/data_types.md).
       children:
         - name: arkit_scenes
@@ -98,7 +98,7 @@ root:
       prelude: |
         The following examples serve to illustrate various uses of the Rerun logging SDK.
         They should not require any additional data downloads, and should run offline.
-        If you want the simplest possible examples showing how to use each api,
+        For the simplest possible examples showing how to use each api,
         check out [Loggable Data Types](/docs/reference/data_types.md).
       children:
         - name: minimal
