@@ -683,8 +683,8 @@ pub fn picking(
 
     let picking_rect_size =
         super::scene::PickingContext::UI_INTERACTION_RADIUS * parent_ui.ctx().pixels_per_point();
-    // Make the picking rect bigger than necessary so we can use it to counter act delays.
-    // (by the time the picking rectangle read back, the cursor may have moved on).
+    // Make the picking rect bigger than necessary so we can use it to counter-act delays.
+    // (by the time the picking rectangle is read back, the cursor may have moved on).
     let picking_rect_size = (picking_rect_size * 2.0)
         .ceil()
         .at_least(8.0)
@@ -718,6 +718,11 @@ pub fn picking(
     for hit in &picking_result.hits {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
             else { continue; };
+
+        if response.double_clicked() {
+            // Select entire entity on double-click:
+            instance_path.instance_key = re_log_types::InstanceKey::SPLAT;
+        }
 
         if scene
             .context

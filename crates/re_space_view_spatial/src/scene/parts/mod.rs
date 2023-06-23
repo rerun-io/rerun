@@ -135,17 +135,10 @@ pub fn instance_path_hash_for_picking(
 /// Right now this is a bit hard to do since number of instances depends on the Primary. This is expected to change soon.
 pub fn instance_key_for_picking(
     instance_key: re_log_types::InstanceKey,
-    num_instances: usize,
-    any_part_selected: bool,
+    _num_instances: usize,
+    _any_part_selected: bool,
 ) -> re_log_types::InstanceKey {
-    // If no part of the entity is selected or if there is only one instance, selecting
-    // should select the entire entity, not the specific instance.
-    // (the splat key means that no particular instance is selected but all at once instead)
-    if num_instances == 1 || !any_part_selected {
-        re_log_types::InstanceKey::SPLAT
-    } else {
-        instance_key
-    }
+    instance_key
 }
 
 /// See [`instance_key_for_picking`]
