@@ -449,10 +449,10 @@ fn try_show_zoomed_image_region(
     debug_name: &str,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
+
     let texture =
         gpu_bridge::tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)?;
-
-    let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
 
     const POINTS_PER_TEXEL: f32 = 5.0;
     let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
