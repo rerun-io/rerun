@@ -74,11 +74,7 @@ impl Arrows3DPart {
                             | LineStripFlags::FLAG_CAP_START_ROUND
                             | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
                     )
-                    .picking_instance_id(instance_key_to_picking_id(
-                        instance_key,
-                        ent_view.num_instances(),
-                        ent_context.highlight.any_selection_highlight,
-                    ));
+                    .picking_instance_id(instance_key_to_picking_id(instance_key));
 
                 if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                     segment.outline_mask_ids(*outline_mask_ids);

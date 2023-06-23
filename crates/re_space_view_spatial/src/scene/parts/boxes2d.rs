@@ -47,12 +47,7 @@ impl Boxes2DPart {
              radius: Option<Radius>,
              label: Option<Label>,
              class_id: Option<ClassId>| {
-                let instance_hash = instance_path_hash_for_picking(
-                    ent_path,
-                    instance_key,
-                    ent_view.num_instances(),
-                    ent_context.highlight.any_selection_highlight,
-                );
+                let instance_hash = instance_path_hash_for_picking(ent_path, instance_key);
 
                 let annotation_info = ent_context
                     .annotations
@@ -81,11 +76,7 @@ impl Boxes2DPart {
                     )
                     .color(color)
                     .radius(radius)
-                    .picking_instance_id(instance_key_to_picking_id(
-                        instance_key,
-                        ent_view.num_instances(),
-                        ent_context.highlight.any_selection_highlight,
-                    ));
+                    .picking_instance_id(instance_key_to_picking_id(instance_key));
 
                 if let Some(outline_mask_ids) = ent_context
                     .highlight

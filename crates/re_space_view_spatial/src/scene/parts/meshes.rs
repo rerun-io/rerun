@@ -33,12 +33,7 @@ impl MeshPart {
         let visitor = |instance_key: InstanceKey,
                        mesh: re_components::Mesh3D,
                        _color: Option<ColorRGBA>| {
-            let picking_instance_hash = instance_path_hash_for_picking(
-                ent_path,
-                instance_key,
-                ent_view.num_instances(),
-                ent_context.highlight.any_selection_highlight,
-            );
+            let picking_instance_hash = instance_path_hash_for_picking(ent_path, instance_key);
 
             let outline_mask_ids = ent_context.highlight.index_outline_mask(instance_key);
 

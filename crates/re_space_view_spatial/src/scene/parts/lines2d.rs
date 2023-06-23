@@ -54,11 +54,7 @@ impl Lines2DPart {
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
                 .radius(radius)
-                .picking_instance_id(instance_key_to_picking_id(
-                    instance_key,
-                    ent_view.num_instances(),
-                    ent_context.highlight.any_selection_highlight,
-                ));
+                .picking_instance_id(instance_key_to_picking_id(instance_key));
 
             if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                 lines.outline_mask_ids(*outline_mask_ids);

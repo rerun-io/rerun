@@ -152,13 +152,7 @@ impl CamerasPart {
         ];
 
         let radius = re_renderer::Size::new_points(1.0);
-        let num_instances = 1; // There is only ever one instance of `Transform` per entity.
-        let instance_path_for_picking = instance_path_hash_for_picking(
-            ent_path,
-            instance_key,
-            num_instances,
-            entity_highlight.any_selection_highlight,
-        );
+        let instance_path_for_picking = instance_path_hash_for_picking(ent_path, instance_key);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut line_builder = scene_context.shared_render_builders.lines();

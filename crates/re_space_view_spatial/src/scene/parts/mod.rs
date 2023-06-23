@@ -117,39 +117,15 @@ impl SpatialScenePartCollection {
 pub fn instance_path_hash_for_picking(
     ent_path: &EntityPath,
     instance_key: re_log_types::InstanceKey,
-    num_instances: usize,
-    any_part_selected: bool,
 ) -> InstancePathHash {
-    InstancePathHash::instance(
-        ent_path,
-        instance_key_for_picking(instance_key, num_instances, any_part_selected),
-    )
-}
-
-/// Computes the instance key that should be used for picking (in turn for selecting/hover)
-///
-/// Assumes the entity is interactive.
-///
-/// TODO(andreas): Resolve the hash-for-picking when retrieving the picking result instead of doing it ahead of time here to speed up things.
-///                 (gpu picking would always get the "most fine grained hash" which we could then resolve to groups etc. depending on selection state)
-/// Right now this is a bit hard to do since number of instances depends on the Primary. This is expected to change soon.
-pub fn instance_key_for_picking(
-    instance_key: re_log_types::InstanceKey,
-    _num_instances: usize,
-    _any_part_selected: bool,
-) -> re_log_types::InstanceKey {
-    instance_key
+    InstancePathHash::instance(ent_path, instance_key)
 }
 
 /// See [`instance_key_for_picking`]
 pub fn instance_key_to_picking_id(
     instance_key: re_log_types::InstanceKey,
-    num_instances: usize,
-    any_part_selected: bool,
 ) -> re_renderer::PickingLayerInstanceId {
-    re_renderer::PickingLayerInstanceId(
-        instance_key_for_picking(instance_key, num_instances, any_part_selected).0,
-    )
+    re_renderer::PickingLayerInstanceId(instance_key.0)
 }
 
 /// Process [`ColorRGBA`] components using annotations and default colors.
