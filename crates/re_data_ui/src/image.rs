@@ -462,6 +462,7 @@ fn try_show_zoomed_image_region(
 
     painter.rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
 
+    // Paint the zoomed in region:
     {
         let image_rect_on_screen = egui::Rect::from_min_size(
             zoom_rect.center()
