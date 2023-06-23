@@ -807,7 +807,8 @@ pub fn picking(
                                         egui::vec2(w, h),
                                     );
                                     show_zoomed_image_region_area_outline(
-                                        ui,
+                                        ui.ctx(),
+                                        ui_clip_rect,
                                         &tensor,
                                         [coords[0] as _, coords[1] as _],
                                         space_from_ui.inverse().transform_rect(rect),
