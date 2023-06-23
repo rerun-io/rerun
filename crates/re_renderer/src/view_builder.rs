@@ -17,6 +17,13 @@ use crate::{
     DebugLabel, RectInt, Rgba, Size,
 };
 
+// These are only used if the point sizes are not already set.
+// Rerun always sets explicit sizes, so these are only used for other
+// users of re_renderer (mostly examples).
+// Unit: UI points.
+const AUTO_POINT_RADIUS: f32 = 2.5;
+const AUTO_LINE_RADIUS: f32 = 1.5;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
     #[error("Screenshot was already scheduled.")]
@@ -418,12 +425,12 @@ impl ViewBuilder {
         let projection_from_world = projection_from_view * view_from_world;
 
         let auto_size_points = if config.auto_size_config.point_radius.is_auto() {
-            Size::new_points(2.5)
+            Size::new_points(AUTO_POINT_RADIUS)
         } else {
             config.auto_size_config.point_radius
         };
         let auto_size_lines = if config.auto_size_config.line_radius.is_auto() {
-            Size::new_points(1.5)
+            Size::new_points(AUTO_LINE_RADIUS)
         } else {
             config.auto_size_config.line_radius
         };

@@ -29,6 +29,12 @@ use crate::{
     ui_3d::{view_3d, SpaceSpecs},
 };
 
+/// Default auto point radius in UI points.
+const AUTO_POINT_RADIUS: f32 = 1.5;
+
+/// Default auto line radius in UI points.
+const AUTO_LINE_RADIUS: f32 = 1.5;
+
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum SpatialNavigationMode {
@@ -121,10 +127,10 @@ impl SpatialSpaceViewState {
     pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
-            config.point_radius = re_renderer::Size::new_points(1.5); // default point radius
+            config.point_radius = re_renderer::Size::new_points(AUTO_POINT_RADIUS);
         }
         if config.line_radius.is_auto() {
-            config.line_radius = re_renderer::Size::new_points(1.5); // default line radius
+            config.line_radius = re_renderer::Size::new_points(AUTO_LINE_RADIUS);
         }
         config
     }
