@@ -162,7 +162,7 @@ impl SpatialSpaceViewState {
         let size = self.scene_bbox_accum.size();
         let mut sorted_components = size.to_array();
         sorted_components.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        // Median is more robust against outlier in one direction (as such pretty pour still though)
+        // Median is more robust against outlier in one direction (as such pretty poor still though)
         let median_extent = sorted_components[1];
         // sqrt would make more sense but using a smaller root works better in practice.
         let heuristic1 =
