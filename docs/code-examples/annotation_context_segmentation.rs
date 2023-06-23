@@ -1,4 +1,4 @@
-//! Create and log a segmentation image.
+//! Log a segmentation image with annotations.
 use ndarray::{s, Array, ShapeBuilder};
 use rerun::components::{
     AnnotationContext, AnnotationInfo, ClassDescription, ClassId, ColorRGBA, Label, Tensor,

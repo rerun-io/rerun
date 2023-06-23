@@ -1,3 +1,4 @@
+//! Log rectangles with different colors and labels.
 use rerun::components::{
     AnnotationContext, AnnotationInfo, ClassDescription, ClassId, ColorRGBA, Label, Rect2D, Vec4D,
 };
