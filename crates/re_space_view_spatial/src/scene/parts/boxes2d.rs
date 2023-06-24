@@ -6,10 +6,6 @@ use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use super::{
-    instance_path_hash_for_picking, picking_id_from_instance_key, SpatialScenePartData,
-    SpatialSpaceViewState,
-};
 use crate::{
     scene::{
         contexts::{SpatialSceneContext, SpatialSceneEntityContext},
@@ -18,6 +14,8 @@ use crate::{
     },
     SpatialSpaceView,
 };
+
+use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
 
 #[derive(Default)]
 pub struct Boxes2DPart(SpatialScenePartData);
@@ -47,7 +45,8 @@ impl Boxes2DPart {
              radius: Option<Radius>,
              label: Option<Label>,
              class_id: Option<ClassId>| {
-                let instance_hash = instance_path_hash_for_picking(ent_path, instance_key);
+                let instance_hash =
+                    re_data_store::InstancePathHash::instance(ent_path, instance_key);
 
                 let annotation_info = ent_context
                     .annotations

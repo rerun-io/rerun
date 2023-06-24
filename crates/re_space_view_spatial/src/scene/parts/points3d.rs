@@ -19,9 +19,8 @@ use crate::{
 };
 
 use super::{
-    instance_path_hash_for_picking, picking_id_from_instance_key,
-    process_annotations_and_keypoints, process_colors, process_radii, SpatialScenePartData,
-    SpatialSpaceViewState,
+    picking_id_from_instance_key, process_annotations_and_keypoints, process_colors, process_radii,
+    SpatialScenePartData, SpatialSpaceViewState,
 };
 
 pub struct Points3DPart {
@@ -96,7 +95,7 @@ impl Points3DPart {
                 re_tracing::profile_scope!("instance_hashes");
                 ent_view
                     .iter_instance_keys()
-                    .map(|instance_key| instance_path_hash_for_picking(ent_path, instance_key))
+                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 

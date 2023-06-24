@@ -20,7 +20,7 @@ use ahash::HashMap;
 use std::sync::Arc;
 
 use re_components::{ClassId, ColorRGBA, KeypointId, Radius};
-use re_data_store::{EntityPath, InstancePathHash};
+use re_data_store::EntityPath;
 use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
@@ -107,18 +107,6 @@ impl SpatialScenePartCollection {
         }
         ui_labels
     }
-}
-
-/// Computes the instance hash that should be used for picking (in turn for selecting/hover)
-///
-/// TODO(andreas): Resolve the hash-for-picking when retrieving the picking result instead of doing it ahead of time here to speed up things.
-///                 (gpu picking would always get the "most fine grained hash" which we could then resolve to groups etc. depending on selection state)
-/// Right now this is a bit hard to do since number of instances depends on the Primary. This is expected to change soon.
-pub fn instance_path_hash_for_picking(
-    ent_path: &EntityPath,
-    instance_key: re_log_types::InstanceKey,
-) -> InstancePathHash {
-    InstancePathHash::instance(ent_path, instance_key)
 }
 
 pub fn picking_id_from_instance_key(

@@ -17,10 +17,7 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{
-    instance_path_hash_for_picking, picking_id_from_instance_key, SpatialScenePartData,
-    SpatialSpaceViewState,
-};
+use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
 
 #[derive(Default)]
 pub struct Boxes3DPart(SpatialScenePartData);
@@ -80,7 +77,10 @@ impl Boxes3DPart {
                         ent_context.world_from_obj.transform_point3(tran),
                     ),
                     color,
-                    labeled_instance: instance_path_hash_for_picking(ent_path, instance_key),
+                    labeled_instance: re_data_store::InstancePathHash::instance(
+                        ent_path,
+                        instance_key,
+                    ),
                 });
             }
 
