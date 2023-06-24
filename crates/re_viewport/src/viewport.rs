@@ -171,9 +171,7 @@ impl Viewport {
                 ui,
                 true,
                 visible,
-                |ui| {
-                    ui.label(format!("{:?}", container.kind())) // TODO
-                },
+                |ui| ui.label(format!("{:?}", container.kind())),
                 |re_ui, ui| {
                     visibility_changed =
                         visibility_button_ui(re_ui, ui, true, &mut visible).changed();
@@ -770,7 +768,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
         let Some(space_view) = self.space_views.get_mut(space_view_id) else {
-            // TODO: this shouldn't happen unless we have a bug
+            // this shouldn't happen unless we have a bug
             re_log::debug_once!("SpaceViewId missing during egui_tiles");
             return "internal_error".into();
         };
