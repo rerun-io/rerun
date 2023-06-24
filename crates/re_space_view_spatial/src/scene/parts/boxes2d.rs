@@ -7,7 +7,7 @@ use re_viewer_context::{
 };
 
 use super::{
-    instance_key_to_picking_id, instance_path_hash_for_picking, SpatialScenePartData,
+    instance_path_hash_for_picking, picking_id_from_instance_key, SpatialScenePartData,
     SpatialSpaceViewState,
 };
 use crate::{
@@ -76,7 +76,7 @@ impl Boxes2DPart {
                     )
                     .color(color)
                     .radius(radius)
-                    .picking_instance_id(instance_key_to_picking_id(instance_key));
+                    .picking_instance_id(picking_id_from_instance_key(instance_key));
 
                 if let Some(outline_mask_ids) = ent_context
                     .highlight

@@ -19,8 +19,9 @@ use crate::{
 };
 
 use super::{
-    instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
-    process_colors, process_radii, SpatialScenePartData, SpatialSpaceViewState,
+    instance_path_hash_for_picking, picking_id_from_instance_key,
+    process_annotations_and_keypoints, process_colors, process_radii, SpatialScenePartData,
+    SpatialSpaceViewState,
 };
 
 pub struct Points3DPart {
@@ -125,7 +126,7 @@ impl Points3DPart {
 
             let picking_instance_ids = ent_view
                 .iter_instance_keys()
-                .map(instance_key_to_picking_id);
+                .map(picking_id_from_instance_key);
             let mut point_range_builder = point_batch.add_points(
                 ent_view.num_instances(),
                 point_positions,

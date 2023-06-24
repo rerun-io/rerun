@@ -121,8 +121,7 @@ pub fn instance_path_hash_for_picking(
     InstancePathHash::instance(ent_path, instance_key)
 }
 
-/// See [`instance_key_for_picking`]
-pub fn instance_key_to_picking_id(
+pub fn picking_id_from_instance_key(
     instance_key: re_log_types::InstanceKey,
 ) -> re_renderer::PickingLayerInstanceId {
     re_renderer::PickingLayerInstanceId(instance_key.0)

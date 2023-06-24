@@ -14,7 +14,7 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{instance_key_to_picking_id, SpatialScenePartData, SpatialSpaceViewState};
+use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
 
 #[derive(Default)]
 pub struct Lines2DPart(SpatialScenePartData);
@@ -54,7 +54,7 @@ impl Lines2DPart {
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
                 .radius(radius)
-                .picking_instance_id(instance_key_to_picking_id(instance_key));
+                .picking_instance_id(picking_id_from_instance_key(instance_key));
 
             if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                 lines.outline_mask_ids(*outline_mask_ids);

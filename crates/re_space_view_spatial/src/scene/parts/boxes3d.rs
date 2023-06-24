@@ -18,7 +18,7 @@ use crate::{
 };
 
 use super::{
-    instance_key_to_picking_id, instance_path_hash_for_picking, SpatialScenePartData,
+    instance_path_hash_for_picking, picking_id_from_instance_key, SpatialScenePartData,
     SpatialSpaceViewState,
 };
 
@@ -67,7 +67,7 @@ impl Boxes3DPart {
                 .add_box_outline(transform)
                 .radius(radius)
                 .color(color)
-                .picking_instance_id(instance_key_to_picking_id(instance_key));
+                .picking_instance_id(picking_id_from_instance_key(instance_key));
 
             if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                 box_lines.outline_mask_ids(*outline_mask_ids);
