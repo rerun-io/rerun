@@ -599,11 +599,7 @@ impl RecordingStream {
     ///
     /// This is a convenience wrapper for [`Self::record_msg`].
     #[inline]
-    pub fn record_path_op(
-        &self,
-        timepoint: re_log_types::TimePoint,
-        path_op: re_log_types::PathOp,
-    ) {
+    pub fn record_path_op(&self, path_op: re_log_types::PathOp) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to record_path_op() ignored");
             return;
@@ -613,7 +609,7 @@ impl RecordingStream {
             this.info.store_id.clone(),
             re_log_types::EntityPathOpMsg {
                 row_id: re_log_types::RowId::random(),
-                time_point: timepoint,
+                time_point: self.now(),
                 path_op,
             },
         ));
