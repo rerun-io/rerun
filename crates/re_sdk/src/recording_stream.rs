@@ -621,10 +621,13 @@ impl RecordingStream {
 
     /// Records a single [`DataRow`].
     ///
+    /// If `inject_time` is set to `true`, the row's timestamp data will be overridden using the
+    /// [`RecordingStream`]'s internal clock.
+    ///
     /// Internally, incoming [`DataRow`]s are automatically coalesced into larger [`DataTable`]s to
     /// optimize for transport.
     #[inline]
-    pub fn record_row(&self, mut row: DataRow) {
+    pub fn record_row(&self, mut row: DataRow, inject_time: bool) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to record_row() ignored");
             return;
@@ -635,8 +638,17 @@ impl RecordingStream {
         //
         // NOTE: We're incrementing the current tick still.
         let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        if !row.timepoint().is_timeless() {
-            row.timepoint.insert(Timeline::log_tick(), tick.into());
+        if inject_time {
+            // Get the current time on all timelines, for the current recording, on the current
+            // thread...
+            let mut now = self.now();
+            // ...and then also inject the current recording tick into it.
+            now.insert(Timeline::log_tick(), tick.into());
+
+            // Inject all these times into the row, overriding conflicting times, if any.
+            for (timeline, time) in now {
+                row.timepoint.insert(timeline, time);
+            }
         }
 
         this.batcher.push_row(row);
@@ -956,7 +968,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         let storage = rec_stream.memory();
@@ -1021,7 +1033,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         let storage = rec_stream.memory();
@@ -1101,7 +1113,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         {
@@ -1169,7 +1181,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         let mut msgs = {
