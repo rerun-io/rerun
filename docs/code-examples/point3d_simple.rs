@@ -24,5 +24,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec_stream.flush_blocking();
     rerun::native_viewer::show(storage.take())?;
     Ok(())
-	
 }
