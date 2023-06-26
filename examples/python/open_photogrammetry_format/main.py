@@ -159,6 +159,8 @@ class OPFProject:
                 )
             )
 
+            # TODO(ab): this is probably affected by https://github.com/rerun-io/rerun/issues/2244. The code will be
+            # cleaner (and less buggy) once that is fixed.
             rr.log_pinhole(
                 entity + "/image",
                 child_from_parent=intrinsics,
