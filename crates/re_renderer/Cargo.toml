@@ -86,7 +86,7 @@ wgpu-core.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 log = "0.4"
 pollster = "0.3"
-rand = "0.8"
+rand.workspace = true
 web-time.workspace = true
 winit = "0.28.1"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
