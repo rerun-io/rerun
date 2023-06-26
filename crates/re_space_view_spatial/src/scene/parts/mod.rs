@@ -25,9 +25,9 @@ use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
 
-use crate::{scene::Keypoints, SpatialSpaceView};
+use crate::scene::Keypoints;
 
-use super::UiLabel;
+use super::{SpatialSceneContext, UiLabel};
 
 #[derive(Default)]
 pub struct SpatialScenePartCollection {
@@ -43,8 +43,11 @@ pub struct SpatialScenePartCollection {
     pub images: images::ImagesPart,
 }
 
-impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
-    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart<SpatialSpaceView>> {
+impl ScenePartCollection for SpatialScenePartCollection {
+    type Context = SpatialSceneContext;
+    type ScenePartData = SpatialScenePartData;
+
+    fn vec_mut(&mut self) -> Vec<&mut dyn re_viewer_context::ScenePart<Self>> {
         let Self {
             points2d,
             points3d,
@@ -69,7 +72,7 @@ impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
 }
 
 impl SpatialScenePartCollection {
-    fn vec(&self) -> Vec<&dyn re_viewer_context::ScenePart<SpatialSpaceView>> {
+    fn vec(&self) -> Vec<&dyn re_viewer_context::ScenePart<Self>> {
         let Self {
             points2d,
             points3d,

@@ -22,16 +22,13 @@ use re_viewer_context::{
     TensorStatsCache, ViewerContext,
 };
 
-use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        parts::entity_iterator::process_entity_views,
-        SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-    },
-    SpatialSpaceView,
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
+    SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
-use super::SpatialScenePartData;
+use super::{SpatialScenePartCollection, SpatialScenePartData};
 
 pub struct Image {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -405,7 +402,7 @@ impl ImagesPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for ImagesPart {
+impl ScenePart<SpatialScenePartCollection> for ImagesPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Tensor::name(),

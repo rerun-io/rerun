@@ -25,7 +25,7 @@ pub trait Scene {
 
 /// Implementation of [`Scene`] for a specific [`SpaceViewClass`].
 pub struct TypedScene<C: SpaceViewClass> {
-    pub context: C::Context,
+    pub context: <<C as SpaceViewClass>::SceneParts as ScenePartCollection>::Context,
     pub parts: C::SceneParts,
     pub highlights: SpaceViewHighlights,
 

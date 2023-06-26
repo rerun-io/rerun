@@ -1,9 +1,9 @@
 use re_arrow_store::TimeRange;
 use re_log_types::{Component, ComponentName, InstanceKey};
 use re_query::{range_entity_with_primary, QueryError};
-use re_viewer_context::{AnnotationMap, DefaultColor, ScenePart, SceneQuery, ViewerContext};
-
-use crate::TimeSeriesSpaceView;
+use re_viewer_context::{
+    AnnotationMap, DefaultColor, ScenePart, ScenePartCollection, SceneQuery, ViewerContext,
+};
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
@@ -59,7 +59,20 @@ pub struct SceneTimeSeries {
     pub lines: Vec<PlotSeries>,
 }
 
-impl ScenePart<TimeSeriesSpaceView> for SceneTimeSeries {
+impl ScenePartCollection for SceneTimeSeries {
+    type Context = ();
+    type ScenePartData = ();
+
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<Self>> {
+        vec![self]
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl ScenePart<SceneTimeSeries> for SceneTimeSeries {
     fn archetype(&self) -> re_viewer_context::ArchetypeDefinition {
         vec1::Vec1::try_from(Self::archetype_array()).unwrap() // TODO(wumpf): `archetype` should return a fixed sized array.
     }
@@ -68,7 +81,7 @@ impl ScenePart<TimeSeriesSpaceView> for SceneTimeSeries {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _scene_context: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::Context,
+        _scene_context: &(),
         _highlights: &re_viewer_context::SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();

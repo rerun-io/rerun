@@ -119,9 +119,7 @@ impl PerTensorState {
 
 impl SpaceViewClass for TensorSpaceView {
     type State = ViewTensorState;
-    type Context = ();
     type SceneParts = SceneTensor;
-    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Tensor".into()

@@ -3,11 +3,9 @@ use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{Component as _, InstanceKey};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewClass, SpaceViewHighlights,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewHighlights,
     TensorDecodeCache, ViewerContext,
 };
-
-use crate::TensorSpaceView;
 
 /// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
@@ -15,7 +13,20 @@ pub struct SceneTensor {
     pub tensors: std::collections::BTreeMap<InstancePath, DecodedTensor>,
 }
 
-impl ScenePart<TensorSpaceView> for SceneTensor {
+impl ScenePartCollection for SceneTensor {
+    type Context = ();
+    type ScenePartData = ();
+
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<Self>> {
+        vec![self]
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+impl ScenePart<SceneTensor> for SceneTensor {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Tensor::name()]
     }
@@ -24,7 +35,7 @@ impl ScenePart<TensorSpaceView> for SceneTensor {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _scene_context: &<TensorSpaceView as SpaceViewClass>::Context,
+        _scene_context: &(),
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();

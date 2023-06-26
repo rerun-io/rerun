@@ -6,9 +6,7 @@ pub struct SpaceViewClassPlaceholder;
 
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
-    type Context = ();
     type SceneParts = ();
-    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Unknown Space View Class".into()
@@ -45,8 +43,11 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     }
 }
 
-impl ScenePartCollection<SpaceViewClassPlaceholder> for () {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<SpaceViewClassPlaceholder>> {
+impl ScenePartCollection for () {
+    type Context = ();
+    type ScenePartData = ();
+
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<()>> {
         Vec::new()
     }
 

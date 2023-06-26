@@ -1,9 +1,19 @@
-use crate::{ArchetypeDefinition, SceneQuery, SpaceViewClass, SpaceViewHighlights, ViewerContext};
+use crate::{ArchetypeDefinition, SceneContext, SceneQuery, SpaceViewHighlights, ViewerContext};
 
 /// Scene part collection, consisting of several [`ScenePart`] which may be populated in parallel.
-pub trait ScenePartCollection<C: SpaceViewClass> {
+pub trait ScenePartCollection {
+    /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
+    type Context: SceneContext + Default + 'static;
+
+    /// A piece of data that all scene parts have in common, useful for iterating over them.
+    ///
+    /// This is useful for retrieving data that is common to all scene parts of a [`crate::SpaceViewClass`].
+    /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClass`]
+    /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all scene parts.
+    type ScenePartData;
+
     /// Retrieves a list of all underlying scene context part for parallel population.
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<C>>;
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<Self>>;
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
@@ -12,7 +22,7 @@ pub trait ScenePartCollection<C: SpaceViewClass> {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait ScenePart<C: SpaceViewClass> {
+pub trait ScenePart<ParentCollection: ScenePartCollection> {
     /// The archetype queried by this scene element.
     fn archetype(&self) -> ArchetypeDefinition;
 
@@ -27,7 +37,7 @@ pub trait ScenePart<C: SpaceViewClass> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        scene_context: &C::Context,
+        scene_context: &ParentCollection::Context,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
 
@@ -36,18 +46,7 @@ pub trait ScenePart<C: SpaceViewClass> {
     /// This is useful for retrieving data that is common to all scene parts of a [`crate::SpaceViewClass`].
     /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClass`]
     /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all scene parts.
-    fn data(&self) -> Option<&C::ScenePartData> {
+    fn data(&self) -> Option<&ParentCollection::ScenePartData> {
         None
-    }
-}
-
-/// Trivial implementation of a scene collection that consists only of a single scene part.
-impl<C: SpaceViewClass, T: ScenePart<C> + 'static> ScenePartCollection<C> for T {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<C>> {
-        vec![self]
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 }

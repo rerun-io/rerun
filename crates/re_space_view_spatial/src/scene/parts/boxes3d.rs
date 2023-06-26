@@ -8,16 +8,13 @@ use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        parts::entity_iterator::process_entity_views,
-        UiLabel, UiLabelTarget,
-    },
-    SpatialSpaceView,
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
+    UiLabel, UiLabelTarget,
 };
 
-use super::{picking_id_from_instance_key, SpatialScenePartData};
+use super::{picking_id_from_instance_key, SpatialScenePartCollection, SpatialScenePartData};
 
 #[derive(Default)]
 pub struct Boxes3DPart(SpatialScenePartData);
@@ -98,7 +95,7 @@ impl Boxes3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Boxes3DPart {
+impl ScenePart<SpatialScenePartCollection> for Boxes3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Box3D::name(),

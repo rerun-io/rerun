@@ -4,12 +4,10 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass,
-        SpaceViewHighlights, ViewerContext,
+        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewHighlights,
+        ViewerContext,
     },
 };
-
-use crate::color_coordinates_space_view::ColorCoordinatesSpaceView;
 
 /// The scene for the [`ColorCoordinatesSpaceView`].
 ///
@@ -20,8 +18,11 @@ pub struct ColorCoordinatesSceneParts {
     pub colors: InstanceColors,
 }
 
-impl ScenePartCollection<ColorCoordinatesSpaceView> for ColorCoordinatesSceneParts {
-    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<ColorCoordinatesSpaceView>> {
+impl ScenePartCollection for ColorCoordinatesSceneParts {
+    type Context = (); // Unused for this example.
+    type ScenePartData = (); // Unused for this example.
+
+    fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<Self>> {
         vec![&mut self.colors]
     }
 
@@ -41,7 +42,7 @@ pub struct ColorWithInstanceKey {
     pub instance_key: InstanceKey,
 }
 
-impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
+impl ScenePart<ColorCoordinatesSceneParts> for InstanceColors {
     /// The archetype this scene part is querying from the store.
     ///
     /// TODO(wumpf): In future versions there will be a hard restriction that limits the queries
@@ -55,7 +56,7 @@ impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _scene_context: &<ColorCoordinatesSpaceView as SpaceViewClass>::Context,
+        _scene_context: &(),
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         // For each entity in the space view...

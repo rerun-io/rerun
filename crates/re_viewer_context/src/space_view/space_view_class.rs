@@ -3,8 +3,8 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SceneContext, ScenePartCollection,
-    SpaceViewClassName, SpaceViewId, SpaceViewState, ViewerContext,
+    ArchetypeDefinition, DynSpaceViewClass, Scene, ScenePartCollection, SpaceViewClassName,
+    SpaceViewId, SpaceViewState, ViewerContext,
 };
 
 use super::scene::TypedScene;
@@ -18,18 +18,8 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
 
-    /// Context of the scene, which is passed to all [`crate::ScenePart`]s and ui drawing on population.
-    type Context: SceneContext + Default + 'static;
-
     /// Collection of [`crate::ScenePart`]s that this scene populates.
-    type SceneParts: ScenePartCollection<Self> + Default + 'static;
-
-    /// A piece of data that all scene parts have in common, useful for iterating over them.
-    ///
-    /// This is useful for retrieving data that is common to all scene parts of a [`SpaceViewClass`].
-    /// For example, if most scene parts produce ui elements, a concrete [`SpaceViewClass`]
-    /// can pick those up in its [`SpaceViewClass::ui`] method by iterating over all scene parts.
-    type ScenePartData;
+    type SceneParts: ScenePartCollection + Default + 'static;
 
     /// Name of this space view class.
     ///

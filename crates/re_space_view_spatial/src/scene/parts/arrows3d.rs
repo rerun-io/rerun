@@ -6,18 +6,14 @@ use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use super::{picking_id_from_instance_key, SpatialScenePartData};
-use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        parts::entity_iterator::process_entity_views,
-    },
-    SpatialSpaceView,
+use super::{picking_id_from_instance_key, SpatialScenePartCollection, SpatialScenePartData};
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
 };
 
 #[derive(Default)]
 pub struct Arrows3DPart(SpatialScenePartData);
-
 impl Arrows3DPart {
     fn process_entity_view(
         &mut self,
@@ -89,7 +85,7 @@ impl Arrows3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Arrows3DPart {
+impl ScenePart<SpatialScenePartCollection> for Arrows3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Arrow3D::name(),

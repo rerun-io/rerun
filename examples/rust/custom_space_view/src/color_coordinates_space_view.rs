@@ -66,16 +66,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
     type State = ColorCoordinatesSpaceViewState;
 
-    // Scene context is shared between all scene parts.
-    // For this Space View we don't need any scene context.
-    type Context = ();
-
     // Collection of scene parts that are needed to display a frame.
     type SceneParts = ColorCoordinatesSceneParts;
-
-    // Scene parts can have a common data object that they expose.
-    // For this Space View this is not needed.
-    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         // Name and identifier of this Space View.

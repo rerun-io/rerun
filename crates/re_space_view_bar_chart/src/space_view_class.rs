@@ -13,9 +13,7 @@ pub struct BarChartSpaceView;
 
 impl SpaceViewClass for BarChartSpaceView {
     type State = ();
-    type Context = ();
     type SceneParts = SceneBarChart;
-    type ScenePartData = ();
 
     fn name(&self) -> SpaceViewClassName {
         "Bar Chart".into()

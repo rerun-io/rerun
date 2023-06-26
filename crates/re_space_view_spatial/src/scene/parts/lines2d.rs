@@ -6,15 +6,12 @@ use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        parts::entity_iterator::process_entity_views,
-    },
-    SpatialSpaceView,
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    parts::entity_iterator::process_entity_views,
 };
 
-use super::{picking_id_from_instance_key, SpatialScenePartData};
+use super::{picking_id_from_instance_key, SpatialScenePartCollection, SpatialScenePartData};
 
 #[derive(Default)]
 pub struct Lines2DPart(SpatialScenePartData);
@@ -77,7 +74,7 @@ impl Lines2DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Lines2DPart {
+impl ScenePart<SpatialScenePartCollection> for Lines2DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             LineStrip2D::name(),

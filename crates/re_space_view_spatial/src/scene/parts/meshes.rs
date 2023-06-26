@@ -13,10 +13,9 @@ use crate::{
         contexts::{SpatialSceneContext, SpatialSceneEntityContext},
         parts::entity_iterator::process_entity_views,
     },
-    SpatialSpaceView,
 };
 
-use super::SpatialScenePartData;
+use super::{SpatialScenePartCollection, SpatialScenePartData};
 
 #[derive(Default)]
 pub struct MeshPart(SpatialScenePartData);
@@ -67,7 +66,7 @@ impl MeshPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for MeshPart {
+impl ScenePart<SpatialScenePartCollection> for MeshPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![Mesh3D::name(), InstanceKey::name(), ColorRGBA::name()]
     }

@@ -8,19 +8,16 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::{
-    scene::{
-        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-        load_keypoint_connections,
-        parts::entity_iterator::process_entity_views,
-        UiLabel, UiLabelTarget,
-    },
-    SpatialSpaceView,
+use crate::scene::{
+    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+    load_keypoint_connections,
+    parts::entity_iterator::process_entity_views,
+    UiLabel, UiLabelTarget,
 };
 
 use super::{
     picking_id_from_instance_key, process_annotations_and_keypoints, process_colors, process_radii,
-    SpatialScenePartData,
+    SpatialScenePartCollection, SpatialScenePartData,
 };
 
 pub struct Points3DPart {
@@ -166,7 +163,7 @@ impl Points3DPart {
     }
 }
 
-impl ScenePart<SpatialSpaceView> for Points3DPart {
+impl ScenePart<SpatialScenePartCollection> for Points3DPart {
     fn archetype(&self) -> ArchetypeDefinition {
         vec1::vec1![
             Point3D::name(),
