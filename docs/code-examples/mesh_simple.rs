@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .flatten()
                 .collect(),
         ),
-        vertex_colors: Some([0xff000000, 0x00ff0000, 0x0000ff00].into_iter().collect()),
+        vertex_colors: Some([0xff0000ff, 0x00ff00ff, 0x0000ffff].into_iter().collect()),
         albedo_factor: None,
     };
 
