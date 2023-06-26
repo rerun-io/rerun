@@ -8,11 +8,12 @@ use re_viewer_context::{ArchetypeDefinition, ScenePart, TimeControl};
 use re_viewer_context::{SceneQuery, ViewerContext};
 use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
 
-use super::{instance_path_hash_for_picking, SpatialScenePartData, SpatialSpaceViewState};
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     scene::contexts::SpatialSceneContext, space_camera_3d::SpaceCamera3D, SpatialSpaceView,
 };
+
+use super::{SpatialScenePartData, SpatialSpaceViewState};
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
@@ -152,13 +153,8 @@ impl CamerasPart {
         ];
 
         let radius = re_renderer::Size::new_points(1.0);
-        let num_instances = 1; // There is only ever one instance of `Transform` per entity.
-        let instance_path_for_picking = instance_path_hash_for_picking(
-            ent_path,
-            instance_key,
-            num_instances,
-            entity_highlight.any_selection_highlight,
-        );
+        let instance_path_for_picking =
+            re_data_store::InstancePathHash::instance(ent_path, instance_key);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut line_builder = scene_context.shared_render_builders.lines();

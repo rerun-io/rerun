@@ -17,10 +17,7 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{
-    instance_key_to_picking_id, instance_path_hash_for_picking, SpatialScenePartData,
-    SpatialSpaceViewState,
-};
+use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
 
 #[derive(Default)]
 pub struct Boxes3DPart(SpatialScenePartData);
@@ -67,11 +64,7 @@ impl Boxes3DPart {
                 .add_box_outline(transform)
                 .radius(radius)
                 .color(color)
-                .picking_instance_id(instance_key_to_picking_id(
-                    instance_key,
-                    ent_view.num_instances(),
-                    ent_context.highlight.any_selection_highlight,
-                ));
+                .picking_instance_id(picking_id_from_instance_key(instance_key));
 
             if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                 box_lines.outline_mask_ids(*outline_mask_ids);
@@ -84,11 +77,9 @@ impl Boxes3DPart {
                         ent_context.world_from_obj.transform_point3(tran),
                     ),
                     color,
-                    labeled_instance: instance_path_hash_for_picking(
+                    labeled_instance: re_data_store::InstancePathHash::instance(
                         ent_path,
                         instance_key,
-                        ent_view.num_instances(),
-                        ent_context.highlight.any_selection_highlight,
                     ),
                 });
             }

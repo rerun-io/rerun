@@ -19,17 +19,7 @@ use crate::Component;
 /// assert_eq!(InstanceKey::data_type(), DataType::UInt64);
 /// ```
 #[derive(
-    Copy,
-    Clone,
-    Debug,
-    Hash,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    ArrowField,
-    ArrowSerialize,
-    ArrowDeserialize,
+    Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, ArrowField, ArrowSerialize, ArrowDeserialize,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(transparent)]
@@ -76,6 +66,17 @@ impl InstanceKey {
     /// Retrieves 2d image coordinates (x, y) encoded in an instance key
     pub fn to_2d_image_coordinate(self, image_width: u64) -> [u32; 2] {
         [(self.0 % image_width) as u32, (self.0 / image_width) as u32]
+    }
+}
+
+impl std::fmt::Debug for InstanceKey {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_splat() {
+            "splat".fmt(f)
+        } else {
+            self.0.fmt(f)
+        }
     }
 }
 

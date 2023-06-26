@@ -59,7 +59,6 @@ pub fn highlights_for_space_view(
                                     outlines_masks.entry(entity_path.hash()).or_default();
                                 outline_mask_ids.overall =
                                     selection_mask.with_fallback_to(outline_mask_ids.overall);
-                                outline_mask_ids.any_selection_highlight = true;
                             },
                         );
                     }
@@ -94,7 +93,6 @@ pub fn highlights_for_space_view(
                     let outline_mask_ids = outlines_masks
                         .entry(selected_instance.entity_path.hash())
                         .or_default();
-                    outline_mask_ids.any_selection_highlight = true;
                     let outline_mask_target = if let Some(selected_index) =
                         selected_instance.instance_key.specific_index()
                     {

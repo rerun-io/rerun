@@ -36,7 +36,6 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
 pub struct SpaceViewOutlineMasks {
     pub overall: OutlineMaskPreference,
     pub instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
-    pub any_selection_highlight: bool,
 }
 
 lazy_static! {
