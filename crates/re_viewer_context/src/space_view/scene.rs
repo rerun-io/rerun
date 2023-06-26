@@ -1,6 +1,6 @@
 use crate::{
     SceneContext, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
-    SpaceViewState, ViewerContext,
+    ViewerContext,
 };
 
 /// Every [`crate::SpaceViewClass`] creates and populates a scene to draw a frame and inform the ui about relevant data.
@@ -16,7 +16,6 @@ pub trait Scene {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
     );
 
@@ -54,26 +53,16 @@ impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
         highlights: SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
 
         self.highlights = highlights;
 
-        let Some(state) = space_view_state
-            .as_any()
-            .downcast_ref::<C::State>()
-            else {
-                re_log::error_once!("Unexpected space view state type. Expected {}",
-                                    std::any::type_name::<C::State>());
-                return;
-            };
-
         // TODO(andreas): Both loops are great candidates for parallelization.
         for context in self.context.vec_mut() {
             // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
-            context.populate(ctx, query, state);
+            context.populate(ctx, query);
         }
         self.draw_data = self
             .parts
@@ -81,7 +70,7 @@ impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
             .into_iter()
             .flat_map(|element| {
                 // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
-                element.populate(ctx, query, state, &self.context, &self.highlights)
+                element.populate(ctx, query, &self.context, &self.highlights)
             })
             .collect();
     }

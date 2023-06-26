@@ -29,7 +29,6 @@ impl ScenePart<TextBoxSpaceView> for SceneTextBox {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &<TextBoxSpaceView as SpaceViewClass>::State,
         _scene_context: &<TextBoxSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

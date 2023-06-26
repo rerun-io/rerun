@@ -24,7 +24,6 @@ impl ScenePart<TensorSpaceView> for SceneTensor {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _state: &<TensorSpaceView as SpaceViewClass>::State,
         _scene_context: &<TensorSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

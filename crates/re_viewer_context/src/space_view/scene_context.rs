@@ -1,4 +1,4 @@
-use crate::{ArchetypeDefinition, SceneQuery, SpaceViewState, ViewerContext};
+use crate::{ArchetypeDefinition, SceneQuery, ViewerContext};
 
 /// Scene context, consisting of several [`SceneContextPart`] which may be populated in parallel.
 pub trait SceneContext {
@@ -39,10 +39,5 @@ pub trait SceneContextPart {
     fn archetypes(&self) -> Vec<ArchetypeDefinition>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
-    fn populate(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        space_view_state: &dyn SpaceViewState,
-    );
+    fn populate(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>);
 }

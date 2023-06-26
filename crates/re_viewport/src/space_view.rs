@@ -182,7 +182,7 @@ impl SpaceViewBlueprint {
         );
 
         let mut scene = class.new_scene();
-        scene.populate(ctx, &query, view_state, highlights);
+        scene.populate(ctx, &query, highlights);
 
         ui.scope(|ui| {
             class.ui(ctx, ui, view_state, scene, &self.space_origin, self.id);

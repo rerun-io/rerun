@@ -68,7 +68,6 @@ impl ScenePart<TimeSeriesSpaceView> for SceneTimeSeries {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::State,
         _scene_context: &<TimeSeriesSpaceView as re_viewer_context::SpaceViewClass>::Context,
         _highlights: &re_viewer_context::SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

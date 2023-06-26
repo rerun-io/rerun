@@ -40,7 +40,6 @@ impl ScenePart<TextSpaceView> for SceneText {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        state: &<TextSpaceView as SpaceViewClass>::State,
         _scene_context: &<TextSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
@@ -68,21 +67,14 @@ impl ScenePart<TextSpaceView> for SceneText {
                      color: Option<re_components::ColorRGBA>| {
                         let re_components::TextEntry { body, level } = text_entry;
 
-                        // Early filtering once more, see above.
-                        let is_visible = level
-                            .as_ref()
-                            .map_or(true, |lvl| state.filters.is_log_level_visible(lvl));
-
-                        if is_visible {
-                            self.text_entries.push(TextEntry {
-                                row_id: ent_view.row_id(),
-                                entity_path: ent_path.clone(),
-                                time: time.map(|time| time.as_i64()),
-                                color: color.map(|c| c.to_array()),
-                                level,
-                                body,
-                            });
-                        }
+                        self.text_entries.push(TextEntry {
+                            row_id: ent_view.row_id(),
+                            entity_path: ent_path.clone(),
+                            time: time.map(|time| time.as_i64()),
+                            color: color.map(|c| c.to_array()),
+                            level,
+                            body,
+                        });
                     },
                 ) {
                     Ok(_) | Err(QueryError::PrimaryNotFound) => {}

@@ -27,7 +27,6 @@ pub trait ScenePart<C: SpaceViewClass> {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        space_view_state: &C::State,
         scene_context: &C::Context,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;

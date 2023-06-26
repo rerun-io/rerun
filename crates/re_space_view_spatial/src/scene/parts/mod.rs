@@ -25,7 +25,7 @@ use re_viewer_context::{
     Annotations, DefaultColor, ResolvedAnnotationInfo, ScenePartCollection, SceneQuery,
 };
 
-use crate::{scene::Keypoints, ui::SpatialSpaceViewState, SpatialSpaceView};
+use crate::{scene::Keypoints, SpatialSpaceView};
 
 use super::UiLabel;
 

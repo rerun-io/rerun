@@ -13,7 +13,7 @@ use crate::{
     scene::contexts::SpatialSceneContext, space_camera_3d::SpaceCamera3D, SpatialSpaceView,
 };
 
-use super::{SpatialScenePartData, SpatialSpaceViewState};
+use super::SpatialScenePartData;
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
@@ -189,7 +189,6 @@ impl ScenePart<SpatialSpaceView> for CamerasPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

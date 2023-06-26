@@ -55,7 +55,6 @@ impl ScenePart<ColorCoordinatesSpaceView> for InstanceColors {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &<ColorCoordinatesSpaceView as SpaceViewClass>::State,
         _scene_context: &<ColorCoordinatesSpaceView as SpaceViewClass>::Context,
         _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

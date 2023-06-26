@@ -31,7 +31,7 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{SpatialScenePartData, SpatialSpaceViewState};
+use super::SpatialScenePartData;
 
 pub struct Image {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -419,7 +419,6 @@ impl ScenePart<SpatialSpaceView> for ImagesPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

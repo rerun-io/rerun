@@ -15,7 +15,7 @@ use crate::{
     SpatialSpaceView,
 };
 
-use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
+use super::{picking_id_from_instance_key, SpatialScenePartData};
 
 #[derive(Default)]
 pub struct Boxes2DPart(SpatialScenePartData);
@@ -117,7 +117,6 @@ impl ScenePart<SpatialSpaceView> for Boxes2DPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

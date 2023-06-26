@@ -6,7 +6,7 @@ use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
+use super::{picking_id_from_instance_key, SpatialScenePartData};
 use crate::{
     scene::{
         contexts::{SpatialSceneContext, SpatialSceneEntityContext},
@@ -104,7 +104,6 @@ impl ScenePart<SpatialSpaceView> for Arrows3DPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

@@ -59,7 +59,6 @@ impl SceneContextPart for SharedRenderBuilders {
         &mut self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         _query: &re_viewer_context::SceneQuery<'_>,
-        _space_view_state: &dyn re_viewer_context::SpaceViewState,
     ) {
         self.lines = Some(Mutex::new(
             LineStripSeriesBuilder::new(ctx.render_ctx)

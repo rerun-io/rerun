@@ -110,7 +110,18 @@ impl SpaceViewClass for TextSpaceView {
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
     ) {
-        let scene = &scene.parts;
+        let filtered_text_entries = scene
+            .parts
+            .text_entries
+            .drain(..)
+            .filter(|e| {
+                if let Some(lvl) = e.level.as_ref() {
+                    state.filters.is_log_level_visible(lvl)
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<_>>();
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
@@ -118,7 +129,7 @@ impl SpaceViewClass for TextSpaceView {
         }
         .show(ui, |ui| {
             // Update filters if necessary.
-            state.filters.update(ctx, &scene.text_entries);
+            state.filters.update(ctx, &filtered_text_entries);
 
             let time = ctx
                 .rec_cfg
@@ -132,9 +143,7 @@ impl SpaceViewClass for TextSpaceView {
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
                 re_tracing::profile_scope!("TextEntryState - search scroll time");
-                scene
-                    .text_entries
-                    .partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
+                filtered_text_entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
             });
 
             state.latest_time = time;
@@ -142,7 +151,7 @@ impl SpaceViewClass for TextSpaceView {
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
                     re_tracing::profile_scope!("render table");
-                    table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
+                    table_ui(ctx, ui, state, &filtered_text_entries, scroll_to_row);
                 })
             });
         });

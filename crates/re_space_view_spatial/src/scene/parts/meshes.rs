@@ -6,15 +6,17 @@ use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
-use crate::mesh_cache::MeshCache;
-use crate::scene::{
-    contexts::{SpatialSceneContext, SpatialSceneEntityContext},
-    parts::entity_iterator::process_entity_views,
+use crate::{
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
+    mesh_cache::MeshCache,
+    scene::{
+        contexts::{SpatialSceneContext, SpatialSceneEntityContext},
+        parts::entity_iterator::process_entity_views,
+    },
+    SpatialSpaceView,
 };
-use crate::SpatialSpaceView;
 
-use super::{SpatialScenePartData, SpatialSpaceViewState};
+use super::SpatialScenePartData;
 
 #[derive(Default)]
 pub struct MeshPart(SpatialScenePartData);
@@ -74,7 +76,6 @@ impl ScenePart<SpatialSpaceView> for MeshPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {

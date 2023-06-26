@@ -20,7 +20,7 @@ use crate::{
 
 use super::{
     picking_id_from_instance_key, process_annotations_and_keypoints, process_colors, process_radii,
-    SpatialScenePartData, SpatialSpaceViewState,
+    SpatialScenePartData,
 };
 
 pub struct Points2DPart {
@@ -185,7 +185,6 @@ impl ScenePart<SpatialSpaceView> for Points2DPart {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        _space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialSceneContext,
         highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
