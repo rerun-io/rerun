@@ -15,6 +15,14 @@ from typing import Any
 EXTRA_ARGS = {
     "examples/python/clock": ["--steps=200"],  # Make it faster
     "examples/python/live_camera_edge_detection": ["--num-frames=30"],  # Make sure it finishes
+    "examples/python/face_tracking": ["--max-frame=30"],  # Make sure it finishes
+}
+
+HAS_NO_SAVE_ARG = {
+    "examples/python/multiprocessing",
+    "examples/python/minimal",
+    "examples/python/dna",
+    "examples/python/blueprint",
 }
 
 
@@ -44,6 +52,9 @@ def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True,
         args += [f"--save={save}"]
     if viewer_port is not None:
         args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
+
+    cmd = " ".join(f'"{a}"' if a.find(" ") != -1 else a for a in args)
+    print(f"Running example '{path}' via '{cmd}'")
 
     return start_process(
         args,
@@ -204,8 +215,9 @@ def run_web(examples: list[str], separate: bool) -> None:
 
 def run_save(examples: list[str]) -> None:
     for path in examples:
-        example = run_py_example(path, save="out.rrd")
-        print_example_output(path, example)
+        if path not in HAS_NO_SAVE_ARG:
+            example = run_py_example(path, save="out.rrd")
+            print_example_output(path, example)
 
 
 def run_load(examples: list[str], separate: bool, close: bool) -> None:
