@@ -160,6 +160,7 @@ impl MsgSender {
     /// `MsgSender` automatically keeps track of the logging time, which is recorded when
     /// [`Self::new`] is first called.
     #[inline]
+    #[doc(hidden)]
     pub fn with_timepoint(mut self, timepoint: TimePoint) -> Self {
         for (timeline, time) in timepoint {
             self.timepoint.insert(timeline, time);
@@ -176,6 +177,7 @@ impl MsgSender {
     /// `MsgSender` automatically keeps track of the logging time, which is recorded when
     /// [`Self::new`] is first called.
     #[inline]
+    #[doc(hidden)]
     pub fn with_time(mut self, timeline: Timeline, time: impl Into<TimeInt>) -> Self {
         self.timepoint.insert(timeline, time.into());
         self
