@@ -448,13 +448,13 @@ pub struct ObjectField {
     /// Whether the field is required.
     ///
     /// Always true for IDL definitions using flatbuffers' `struct` type (as opposed to `table`).
-    pub required: bool,
+    pub is_nullable: bool,
 
     /// Whether the field is deprecated.
     //
     // TODO(#2366): do something with this
     // TODO(#2367): implement custom attr to specify deprecation reason
-    pub deprecated: bool,
+    pub is_deprecated: bool,
 
     /// The Arrow datatype of this `ObjectField`.
     ///
@@ -488,8 +488,8 @@ impl ObjectField {
         let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
-        let required = field.required() || obj.is_struct();
-        let deprecated = field.deprecated();
+        let is_nullable = !obj.is_struct() && !field.required();
+        let is_deprecated = field.deprecated();
 
         Self {
             filepath,
@@ -499,8 +499,8 @@ impl ObjectField {
             docs,
             typ,
             attrs,
-            required,
-            deprecated,
+            is_nullable,
+            is_deprecated,
             datatype: None,
         }
     }
@@ -536,8 +536,8 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(val.attributes());
 
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
-        let required = true;
-        let deprecated = false;
+        let is_nullable = false;
+        let is_deprecated = false;
 
         Self {
             filepath,
@@ -547,8 +547,8 @@ impl ObjectField {
             docs,
             typ,
             attrs,
-            required,
-            deprecated,
+            is_nullable,
+            is_deprecated,
             datatype: None,
         }
     }

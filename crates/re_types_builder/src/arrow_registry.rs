@@ -75,10 +75,11 @@ impl ArrowRegistry {
                 Box::new(LazyDatatype::Struct(
                     obj.fields
                         .iter_mut()
-                        .map(|field| LazyField {
-                            name: field.name.clone(),
-                            datatype: self.arrow_datatype_from_type(field.typ.clone(), field),
-                            is_nullable: !field.required,
+                        .map(|obj_field| LazyField {
+                            name: obj_field.name.clone(),
+                            datatype: self
+                                .arrow_datatype_from_type(obj_field.typ.clone(), obj_field),
+                            is_nullable: obj_field.is_nullable,
                             metadata: Default::default(),
                         })
                         .collect(),
