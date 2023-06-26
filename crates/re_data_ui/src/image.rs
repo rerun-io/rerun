@@ -341,6 +341,7 @@ fn show_zoomed_image_region_tooltip(
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
 ) -> egui::Response {
+    let response_rect = response.rect;
     response
         .on_hover_cursor(egui::CursorIcon::Crosshair)
         .on_hover_ui_at_pointer(|ui| {
@@ -354,7 +355,8 @@ fn show_zoomed_image_region_tooltip(
                         (remap_clamp(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize),
                     ];
                     show_zoomed_image_region_area_outline(
-                        parent_ui,
+                        parent_ui.ctx(),
+                        response_rect,
                         tensor,
                         center_texel,
                         image_rect,
@@ -378,7 +380,8 @@ fn show_zoomed_image_region_tooltip(
 const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
-    ui: &mut egui::Ui,
+    egui_ctx: &egui::Context,
+    ui_clip_rect: egui::Rect,
     tensor: &Tensor,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
@@ -401,11 +404,11 @@ pub fn show_zoomed_image_region_area_outline(
     let top = remap(top, 0.0..=height, image_rect.y_range());
     let bottom = remap(bottom, 0.0..=height, image_rect.y_range());
 
-    let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
+    let sample_rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
     // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
-    let painter = ui.ctx().debug_painter();
-    painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
-    painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
+    let painter = egui_ctx.debug_painter().with_clip_rect(ui_clip_rect);
+    painter.rect_stroke(sample_rect, 0.0, (2.0, Color32::BLACK));
+    painter.rect_stroke(sample_rect, 0.0, (1.0, Color32::WHITE));
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
@@ -446,10 +449,10 @@ fn try_show_zoomed_image_region(
     debug_name: &str,
     center_texel: [isize; 2],
 ) -> anyhow::Result<()> {
+    let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
+
     let texture =
         gpu_bridge::tensor_to_gpu(render_ctx, debug_name, tensor, tensor_stats, annotations)?;
-
-    let Some([height, width, _]) = tensor.image_height_width_channels() else { return Ok(()); };
 
     const POINTS_PER_TEXEL: f32 = 5.0;
     let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
@@ -459,6 +462,7 @@ fn try_show_zoomed_image_region(
 
     painter.rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
 
+    // Paint the zoomed in region:
     {
         let image_rect_on_screen = egui::Rect::from_min_size(
             zoom_rect.center()
@@ -477,7 +481,7 @@ fn try_show_zoomed_image_region(
         )?;
     }
 
-    // Show the center text, to indicate which texel we're printing the values of:
+    // Outline the center texel, to indicate which texel we're printing the values of:
     {
         let center_texel_rect =
             egui::Rect::from_center_size(zoom_rect.center(), Vec2::splat(POINTS_PER_TEXEL));

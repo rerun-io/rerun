@@ -1,7 +1,7 @@
 ---
 title: Face Tracking
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/face_tracking/main.py
-tags: [media-pipe, face-tracking, live, camera, 2d, 3d]
+tags: [2d, 3d, camera, face-tracking, live, mediapipe, time-series]
 thumbnail: https://static.rerun.io/9f4ecc9d8447375cbad0af17fe2faf8ad2761025_mp_face_480w.png
 ---
 
@@ -54,4 +54,4 @@ Here is an overview of the options specific to this example:
 - *Running modes*: By default, this example streams images from the default webcam. Another webcam can be used by providing a camera index with the `--camera` option. Alternatively, images can be read from a video file (using `--video PATH`) or a single image file (using `--image PATH`). Also, a demo image with two faces can be automatically downloaded and used with `--demo-image`.
 - *Max face count*: The maximum face detected by MediaPipe Face Landmarker can be set using `--num-faces NUM`. It defaults to 1, in which case the Landmarker applies temporal smoothing. This parameter doesn't affect MediaPipe Face Detector, which always attempts to detect all faces present in the input images.
 - *Image downscaling*: By default, this example logs and runs on the native resolution of the provided images. Input images can be downscaled to a given maximum dimension using `--max-dim DIM`.
-- *Limiting frame count*: When running from a webcam or a video file, this example can be set to stop after a given number of frames using `--max-frame MAX_FRAME`. 
+- *Limiting frame count*: When running from a webcam or a video file, this example can be set to stop after a given number of frames using `--max-frame MAX_FRAME`.

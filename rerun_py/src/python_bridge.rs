@@ -636,14 +636,6 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 
 // --- Time ---
 
-fn time(timeless: bool, rec: &RecordingStream) -> TimePoint {
-    if timeless {
-        TimePoint::timeless()
-    } else {
-        rec.now()
-    }
-}
-
 #[pyfunction]
 fn set_time_sequence(timeline: &str, sequence: Option<i64>, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else { return; };
@@ -731,8 +723,6 @@ fn log_view_coordinates(
         parse_entity_path(entity_path_str)?
     };
 
-    let time_point = time(timeless, &recording);
-
     // We currently log view coordinates from inside the bridge because the code
     // that does matching and validation on different string representations is
     // non-trivial. Implementing this functionality on the python side will take
@@ -742,12 +732,12 @@ fn log_view_coordinates(
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
-        time_point,
+        TimePoint::default(),
         1,
         [coordinates].as_slice(),
     );
 
-    recording.record_row(row);
+    recording.record_row(row, !timeless);
 
     Ok(())
 }
@@ -808,8 +798,6 @@ fn log_annotation_context(
             });
     }
 
-    let time_point = time(timeless, &recording);
-
     // We currently log AnnotationContext from inside the bridge because it's a
     // fairly complex type with a need for a fair amount of data-validation. We
     // already have the serialization implemented in rust so we start with this
@@ -820,12 +808,12 @@ fn log_annotation_context(
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
-        time_point,
+        TimePoint::default(),
         1,
         [annotation_context].as_slice(),
     );
 
-    recording.record_row(row);
+    recording.record_row(row, !timeless);
 
     Ok(())
 }
@@ -864,8 +852,6 @@ fn log_meshes(
             albedo_factors.len(),
         )));
     }
-
-    let time_point = time(timeless, &recording);
 
     let mut meshes = Vec::with_capacity(position_buffers.len());
 
@@ -940,12 +926,12 @@ fn log_meshes(
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
-        time_point,
+        TimePoint::default(),
         meshes.len() as _,
         meshes,
     );
 
-    recording.record_row(row);
+    recording.record_row(row, !timeless);
 
     Ok(())
 }
@@ -1012,8 +998,6 @@ fn log_mesh_file(
         ]
     };
 
-    let time_point = time(timeless, &recording);
-
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
         mesh_id: MeshId::random(),
         format,
@@ -1031,12 +1015,12 @@ fn log_mesh_file(
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
-        time_point,
+        TimePoint::default(),
         1,
         [mesh3d].as_slice(),
     );
 
-    recording.record_row(row);
+    recording.record_row(row, !timeless);
 
     Ok(())
 }
@@ -1080,17 +1064,15 @@ fn log_image_file(
     let tensor = Tensor::from_image_bytes(img_bytes, img_format)
         .map_err(|err| PyTypeError::new_err(err.to_string()))?;
 
-    let time_point = time(timeless, &recording);
-
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
-        time_point,
+        TimePoint::default(),
         1,
         [tensor].as_slice(),
     );
 
-    recording.record_row(row);
+    recording.record_row(row, !timeless);
 
     Ok(())
 }
@@ -1115,9 +1097,8 @@ fn log_cleared(
     let Some(recording) = get_data_recording(recording) else { return Ok(()); };
 
     let entity_path = parse_entity_path(entity_path)?;
-    let timepoint = time(false, &recording);
 
-    recording.record_path_op(timepoint, PathOp::clear(recursive, entity_path));
+    recording.record_path_op(PathOp::clear(recursive, entity_path));
 
     Ok(())
 }
@@ -1146,20 +1127,20 @@ fn set_panel(
 
     // TODO(jleibs): Validation this is a valid blueprint path?
     let entity_path = parse_entity_path(entity_path)?;
-    // TODO(jleibs) timeless? Something else?
-    let timepoint = time(true, &blueprint);
 
     let panel_state = PanelState { expanded };
 
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
-        timepoint,
+        TimePoint::default(),
         1,
         [panel_state].as_slice(),
     );
 
-    blueprint.record_row(row);
+    // TODO(jleibs) timeless? Something else?
+    let timeless = true;
+    blueprint.record_row(row, !timeless);
 
     Ok(())
 }
@@ -1195,40 +1176,38 @@ fn add_space_view(
     )
     .unwrap();
 
-    // TODO(jleibs) timeless? Something else?
-    let timepoint = time(true, &blueprint);
-
     let space_view = SpaceViewComponent { space_view };
 
     let row = DataRow::from_cells1(
         RowId::random(),
         entity_path,
-        timepoint,
+        TimePoint::default(),
         1,
         [space_view].as_slice(),
     );
 
-    blueprint.record_row(row);
+    // TODO(jleibs) timeless? Something else?
+    let timeless = true;
+    blueprint.record_row(row, !timeless);
 }
 
 #[pyfunction]
 fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
     let Some(blueprint) = get_blueprint_recording(blueprint) else { return; };
 
-    // TODO(jleibs) timeless? Something else?
-    let timepoint = time(true, &blueprint);
-
     let enable_auto_space = AutoSpaceViews(enabled);
 
     let row = DataRow::from_cells1(
         RowId::random(),
         VIEWPORT_PATH,
-        timepoint,
+        TimePoint::default(),
         1,
         [enable_auto_space].as_slice(),
     );
 
-    blueprint.record_row(row);
+    // TODO(jleibs) timeless? Something else?
+    let timeless = true;
+    blueprint.record_row(row, !timeless);
 }
 
 #[pyfunction]
@@ -1247,14 +1226,17 @@ fn log_arrow_msg(
     let Some(recording) = get_data_recording(recording) else { return Ok(()); };
 
     let entity_path = parse_entity_path(entity_path)?;
-    let timepoint = time(timeless, &recording);
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // cause a deadlock.
-    let row = crate::arrow::build_data_row_from_components(&entity_path, components, &timepoint)?;
+    let row = crate::arrow::build_data_row_from_components(
+        &entity_path,
+        components,
+        &TimePoint::default(),
+    )?;
 
-    recording.record_row(row);
+    recording.record_row(row, !timeless);
 
     Ok(())
 }

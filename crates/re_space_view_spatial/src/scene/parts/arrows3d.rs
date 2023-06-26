@@ -6,7 +6,7 @@ use re_viewer_context::{
     ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
 };
 
-use super::{instance_key_to_picking_id, SpatialScenePartData, SpatialSpaceViewState};
+use super::{picking_id_from_instance_key, SpatialScenePartData, SpatialSpaceViewState};
 use crate::{
     scene::{
         contexts::{SpatialSceneContext, SpatialSceneEntityContext},
@@ -74,11 +74,7 @@ impl Arrows3DPart {
                             | LineStripFlags::FLAG_CAP_START_ROUND
                             | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
                     )
-                    .picking_instance_id(instance_key_to_picking_id(
-                        instance_key,
-                        ent_view.num_instances(),
-                        ent_context.highlight.any_selection_highlight,
-                    ));
+                    .picking_instance_id(picking_id_from_instance_key(instance_key));
 
                 if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
                     segment.outline_mask_ids(*outline_mask_ids);

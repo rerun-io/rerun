@@ -76,6 +76,14 @@ def run_segmentation() -> None:
     rr.log_text_entry("logs/seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
 
 
+def small_image() -> None:
+    img = [
+        [[255, 0, 0], [0, 255, 0], [0, 0, 255]],
+        [[0, 0, 255], [255, 0, 0], [0, 255, 0]],
+    ]
+    rr.log_image("small_image", img)
+
+
 def run_2d_layering() -> None:
     rr.set_time_seconds("sim_time", 1)
 
@@ -405,6 +413,7 @@ def main() -> None:
         "raw_mesh": raw_mesh,
         "rects": run_rects,
         "segmentation": run_segmentation,
+        "small_image": small_image,
         "text": run_text_logs,
         "transforms_rigid_3d": transforms_rigid_3d,
         "transform_test": transform_test,

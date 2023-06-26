@@ -202,10 +202,10 @@ Rerun has rich support for time: whether you want concurrent or disjoint timelin
 
 Let's add our custom timeline:
 ```rust
-let stable_time = Timeline::new("stable_time", TimeType::Time);
-
 for i in 0..400 {
     let time = i as f32 * 0.01;
+
+    rec_stream.set_time_seconds("stable_time", time as f64);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
     let (beads, colors): (Vec<_>, Vec<_>) = points1
@@ -226,7 +226,6 @@ for i in 0..400 {
         .unzip();
 
     MsgSender::new("dna/structure/scaffolding/beads")
-        .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
         .with_component(&beads)?
         .with_component(&colors)?
         .with_splat(Radius(0.06))?
@@ -234,7 +233,7 @@ for i in 0..400 {
 }
 ```
 
-First we [declare a name and type](https://docs.rs/rerun/latest/rerun/time/struct.Timeline.html#new) for our `Timeline`, then we pass it to [`MsgSender::with_time`](https://docs.rs/rerun/latest/rerun/struct.MsgSender.html#with_time) along with a timestamp for our data.
+First we use [`RecordingStream::set_time_seconds`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_seconds) to declare our own custom `Timeline` and set the current timestamp.
 You can add as many timelines and timestamps as you want when logging data.
 
 ⚠️  If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
@@ -246,9 +245,9 @@ Enter...
 ### Latest At semantics
 
 That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the *default* timeline (called `log_time`).
-To fix this, go back through the previous logging calls we made and add this:
+To fix this, add this at the beginning of the main function:
 ```rust
-.with_time(stable_time, 0)
+rec_stream.set_time_seconds("stable_time", 0f64);
 ```
 
 ![logging data - latest at](https://static.rerun.io/0182b4795ca2fed2f2097cfa5f5271115dee0aaf_logging_data8_latest_at.png)
@@ -270,7 +269,6 @@ Expand the previous loop to also include:
 for i in 0..400 {
     // ...everything else...
     MsgSender::new("dna/structure")
-        .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
         .with_component(&[Transform3D::new(transform::RotationAxisAngle::new(
             glam::Vec3::Z,
             rerun::transform::Angle::Radians(time / 4.0 * TAU),

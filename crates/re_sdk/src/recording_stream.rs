@@ -599,11 +599,7 @@ impl RecordingStream {
     ///
     /// This is a convenience wrapper for [`Self::record_msg`].
     #[inline]
-    pub fn record_path_op(
-        &self,
-        timepoint: re_log_types::TimePoint,
-        path_op: re_log_types::PathOp,
-    ) {
+    pub fn record_path_op(&self, path_op: re_log_types::PathOp) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to record_path_op() ignored");
             return;
@@ -613,7 +609,7 @@ impl RecordingStream {
             this.info.store_id.clone(),
             re_log_types::EntityPathOpMsg {
                 row_id: re_log_types::RowId::random(),
-                time_point: timepoint,
+                time_point: self.now(),
                 path_op,
             },
         ));
@@ -621,10 +617,13 @@ impl RecordingStream {
 
     /// Records a single [`DataRow`].
     ///
+    /// If `inject_time` is set to `true`, the row's timestamp data will be overridden using the
+    /// [`RecordingStream`]'s internal clock.
+    ///
     /// Internally, incoming [`DataRow`]s are automatically coalesced into larger [`DataTable`]s to
     /// optimize for transport.
     #[inline]
-    pub fn record_row(&self, mut row: DataRow) {
+    pub fn record_row(&self, mut row: DataRow, inject_time: bool) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to record_row() ignored");
             return;
@@ -635,8 +634,17 @@ impl RecordingStream {
         //
         // NOTE: We're incrementing the current tick still.
         let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        if !row.timepoint().is_timeless() {
-            row.timepoint.insert(Timeline::log_tick(), tick.into());
+        if inject_time {
+            // Get the current time on all timelines, for the current recording, on the current
+            // thread...
+            let mut now = self.now();
+            // ...and then also inject the current recording tick into it.
+            now.insert(Timeline::log_tick(), tick.into());
+
+            // Inject all these times into the row, overriding conflicting times, if any.
+            for (timeline, time) in now {
+                row.timepoint.insert(timeline, time);
+            }
         }
 
         this.batcher.push_row(row);
@@ -860,7 +868,11 @@ impl RecordingStream {
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
     ///
     /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
-    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: Option<i64>) {
+    pub fn set_time_sequence(
+        &self,
+        timeline: impl Into<TimelineName>,
+        sequence: impl Into<Option<i64>>,
+    ) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
             return;
@@ -869,7 +881,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Sequence),
-            sequence.map(TimeInt::from),
+            sequence.into().map(TimeInt::from),
         );
     }
 
@@ -880,7 +892,7 @@ impl RecordingStream {
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
-    pub fn set_time_seconds(&self, timeline: &str, seconds: Option<f64>) {
+    pub fn set_time_seconds(&self, timeline: &str, seconds: impl Into<Option<f64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
             return;
@@ -889,7 +901,9 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
+            seconds
+                .into()
+                .map(|secs| Time::from_seconds_since_epoch(secs).into()),
         );
     }
 
@@ -900,7 +914,7 @@ impl RecordingStream {
     /// For example: `rec.set_time_seconds("sim_time", sim_time_nanos)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
-    pub fn set_time_nanos(&self, timeline: &str, ns: Option<i64>) {
+    pub fn set_time_nanos(&self, timeline: &str, ns: impl Into<Option<i64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
             return;
@@ -909,7 +923,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
+            ns.into().map(|ns| Time::from_ns_since_epoch(ns).into()),
         );
     }
 
@@ -956,7 +970,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         let storage = rec_stream.memory();
@@ -1021,7 +1035,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         let storage = rec_stream.memory();
@@ -1101,7 +1115,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         {
@@ -1169,7 +1183,7 @@ mod tests {
         let mut table = data_table_example(false);
         table.compute_all_size_bytes();
         for row in table.to_rows() {
-            rec_stream.record_row(row);
+            rec_stream.record_row(row, false);
         }
 
         let mut msgs = {

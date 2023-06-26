@@ -14,6 +14,10 @@ thumbnail: https://static.rerun.io/8b90a80c72b27fad289806b7e5dff0c9ac97e87c_arki
 </picture>
 
 
-Visualizes the [ARKit_Scenes dataset](https://github.com/apple/ARKitScenes/) using the Rerun SDK.
+Visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using the Rerun SDK.
 The dataset contains color+depth images, the reconstructed mesh and labeled bounding boxes around furniture.
 
+```bash
+pip install -r examples/python/arkit_scenes/requirements.txt
+python examples/python/arkit_scenes/main.py
+```

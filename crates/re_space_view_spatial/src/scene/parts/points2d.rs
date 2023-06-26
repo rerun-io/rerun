@@ -19,8 +19,8 @@ use crate::{
 };
 
 use super::{
-    instance_key_to_picking_id, instance_path_hash_for_picking, process_annotations_and_keypoints,
-    process_colors, process_radii, SpatialScenePartData, SpatialSpaceViewState,
+    picking_id_from_instance_key, process_annotations_and_keypoints, process_colors, process_radii,
+    SpatialScenePartData, SpatialSpaceViewState,
 };
 
 pub struct Points2DPart {
@@ -92,14 +92,7 @@ impl Points2DPart {
                 re_tracing::profile_scope!("instance_hashes");
                 ent_view
                     .iter_instance_keys()
-                    .map(|instance_key| {
-                        instance_path_hash_for_picking(
-                            ent_path,
-                            instance_key,
-                            ent_view.num_instances(),
-                            ent_context.highlight.any_selection_highlight,
-                        )
-                    })
+                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
@@ -131,13 +124,9 @@ impl Points2DPart {
                     .filter_map(|pt| pt.map(glam::Vec2::from))
             };
 
-            let picking_instance_ids = ent_view.iter_instance_keys().map(|instance_key| {
-                instance_key_to_picking_id(
-                    instance_key,
-                    ent_view.num_instances(),
-                    ent_context.highlight.any_selection_highlight,
-                )
-            });
+            let picking_instance_ids = ent_view
+                .iter_instance_keys()
+                .map(picking_id_from_instance_key);
 
             let mut point_range_builder = point_batch.add_points_2d(
                 ent_view.num_instances(),
