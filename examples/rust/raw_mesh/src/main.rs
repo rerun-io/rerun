@@ -15,7 +15,6 @@ use bytes::Bytes;
 use rerun::components::{
     ColorRGBA, Mesh3D, MeshId, RawMesh3D, Transform3D, Vec4D, ViewCoordinates,
 };
-use rerun::time::{TimeType, Timeline};
 use rerun::transform::TranslationRotationScale3D;
 use rerun::{
     external::{re_log, re_memory::AccountingAllocator},
@@ -77,9 +76,8 @@ fn log_node(rec_stream: &RecordingStream, node: GltfNode) -> anyhow::Result<()> 
         .map(Mesh3D::from)
         .collect::<Vec<_>>();
 
-    let timeline_keyframe = Timeline::new("keyframe", TimeType::Sequence);
+    rec_stream.set_time_sequence("keyframe", 0.into());
     MsgSender::new(ent_path)
-        .with_time(timeline_keyframe, 0)
         .with_component(&primitives)?
         .with_component(transform.as_ref())?
         .send(rec_stream)?;

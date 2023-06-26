@@ -8,7 +8,6 @@ use rerun::{
     components::{ColorRGBA, LineStrip3D, Point3D, Radius, Transform3D, Vec3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
-    time::{Time, TimeType, Timeline},
     MsgSender, MsgSenderError, RecordingStream,
 };
 
@@ -23,20 +22,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
-    let stable_time = Timeline::new("stable_time", TimeType::Time);
-
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
+    rec_stream.set_time_seconds("stable_time", 0f64.into());
+
     MsgSender::new("dna/structure/left")
-        .with_time(stable_time, 0)
         .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors1.iter().copied().map(ColorRGBA::from).collect_vec())?
         .with_splat(Radius(0.08))?
         .send(rec_stream)?;
 
     MsgSender::new("dna/structure/right")
-        .with_time(stable_time, 0)
         .with_component(&points2.iter().copied().map(Point3D::from).collect_vec())?
         .with_component(&colors2.iter().copied().map(ColorRGBA::from).collect_vec())?
         .with_splat(Radius(0.08))?
@@ -52,7 +49,6 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
         .map(|positions| LineStrip3D(positions.collect_vec()))
         .collect_vec();
     MsgSender::new("dna/structure/scaffolding")
-        .with_time(stable_time, 0)
         .with_component(&scaffolding)?
         .with_splat(ColorRGBA::from([128, 128, 128, 255]))?
         .send(rec_stream)?;
@@ -63,6 +59,8 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
 
     for i in 0..400 {
         let time = i as f32 * 0.01;
+
+        rec_stream.set_time_seconds("stable_time", (time as f64).into());
 
         let times = offsets.iter().map(|offset| time + offset).collect_vec();
         let (beads, colors): (Vec<_>, Vec<_>) = points1
@@ -82,14 +80,12 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
             })
             .unzip();
         MsgSender::new("dna/structure/scaffolding/beads")
-            .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
             .with_component(&beads)?
             .with_component(&colors)?
             .with_splat(Radius(0.06))?
             .send(rec_stream)?;
 
         MsgSender::new("dna/structure")
-            .with_time(stable_time, Time::from_seconds_since_epoch(time as _))
             .with_component(&[Transform3D::new(rerun::transform::RotationAxisAngle::new(
                 glam::Vec3::Z,
                 rerun::transform::Angle::Radians(time / 4.0 * TAU),

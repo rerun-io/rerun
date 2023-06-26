@@ -6,7 +6,6 @@
 //! ```
 
 use rerun::components::{ColorRGBA, Point3D, Radius};
-use rerun::time::{TimeType, Timeline};
 use rerun::{external::re_log, MsgSender, RecordingStream};
 
 use rerun::demo_util::grid;
@@ -25,8 +24,6 @@ struct Args {
 }
 
 fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
-    let timeline_keyframe = Timeline::new("keyframe", TimeType::Sequence);
-
     let points = grid(
         glam::Vec3::splat(-args.radius),
         glam::Vec3::splat(args.radius),
@@ -42,11 +39,11 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     .map(|v| ColorRGBA::from_rgb(v.x as u8, v.y as u8, v.z as u8))
     .collect::<Vec<_>>();
 
+    rec_stream.set_time_sequence("keyframe", 0.into());
     MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?
         .with_splat(Radius(0.5))?
-        .with_time(timeline_keyframe, 0)
         .send(rec_stream)?;
 
     Ok(())
