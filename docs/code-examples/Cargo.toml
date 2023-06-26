@@ -112,5 +112,5 @@ path = "transform3d_simple.rs"
 ahash.workspace = true
 ndarray.workspace = true
 rand.workspace = true
-rand_distr.workspace =true
+rand_distr.workspace = true
 rerun = { path = "../../crates/rerun", features = ["native_viewer"] }
