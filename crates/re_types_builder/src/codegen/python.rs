@@ -292,8 +292,8 @@ impl QuotedObject {
                 docs,
                 typ: _,
                 attrs: _,
-                required: _,
-                deprecated: _,
+                is_nullable,
+                is_deprecated: _,
                 datatype: _,
             } = field;
 
@@ -304,10 +304,10 @@ impl QuotedObject {
             } else {
                 typ
             };
-            let typ = if field.required {
-                typ
-            } else {
+            let typ = if *is_nullable {
                 format!("{typ} | None = None")
+            } else {
+                typ
             };
 
             code.push_text(format!("{name}: {typ}"), 1, 4);
@@ -388,8 +388,8 @@ impl QuotedObject {
                 docs,
                 typ: _,
                 attrs: _,
-                required: _,
-                deprecated: _,
+                is_nullable: _,
+                is_deprecated: _,
                 datatype: _,
             } = field;
 
@@ -827,12 +827,12 @@ fn quote_builder_from_obj(objects: &Objects, obj: &Object) -> String {
     let required = obj
         .fields
         .iter()
-        .filter(|field| field.required)
+        .filter(|field| !field.is_nullable)
         .collect::<Vec<_>>();
     let optional = obj
         .fields
         .iter()
-        .filter(|field| !field.required)
+        .filter(|field| field.is_nullable)
         .collect::<Vec<_>>();
 
     let mut code = String::new();

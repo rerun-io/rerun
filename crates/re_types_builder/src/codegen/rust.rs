@@ -266,8 +266,8 @@ impl QuotedObject {
                 docs,
                 typ: _,
                 attrs: _,
-                required: _,
-                deprecated: _,
+                is_nullable: _,
+                is_deprecated: _,
                 datatype: _,
             } = obj_field;
 
@@ -323,9 +323,9 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
             docs,
             typ: _,
             attrs: _,
-            required,
+            is_nullable,
             // TODO(#2366): support for deprecation notices
-            deprecated: _,
+            is_deprecated: _,
             datatype: _,
         } = obj_field;
 
@@ -333,10 +333,10 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
         let name = format_ident!("{name}");
 
         let (quoted_type, _) = quote_field_type_from_field(obj_field, false);
-        let quoted_type = if *required {
-            quoted_type
-        } else {
+        let quoted_type = if *is_nullable {
             quote!(Option<#quoted_type>)
+        } else {
+            quoted_type
         };
 
         if is_tuple_struct_from_obj(obj) {
@@ -577,11 +577,11 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
     // NOTE: Collecting because we need to iterate them more than once.
     let required = fields
         .iter()
-        .filter(|field| field.required)
+        .filter(|field| !field.is_nullable)
         .collect::<Vec<_>>();
     let optional = fields
         .iter()
-        .filter(|field| !field.required)
+        .filter(|field| field.is_nullable)
         .collect::<Vec<_>>();
 
     // --- impl new() ---
@@ -767,9 +767,17 @@ fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
 // --- Helpers ---
 
 fn is_tuple_struct_from_obj(obj: &Object) -> bool {
-    obj.is_struct()
-        && obj.fields.len() == 1
-        && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some()
+    let is_tuple_struct =
+        obj.is_struct() && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some();
+
+    assert!(
+        !is_tuple_struct || obj.fields.len() == 1,
+        "`{ATTR_RUST_TUPLE_STRUCT}` is only supported for objects with a single field, but {} has {}",
+        obj.fqname,
+        obj.fields.len(),
+    );
+
+    is_tuple_struct
 }
 
 fn iter_archetype_components<'a>(
