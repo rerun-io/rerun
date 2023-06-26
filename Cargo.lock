@@ -1487,7 +1487,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.1.0"
-source = "git+https://github.com/rerun-io/egui_tiles.git?rev=2c07e620dceeab999547ca1053f5ace22c1d14f0#2c07e620dceeab999547ca1053f5ace22c1d14f0"
+source = "git+https://github.com/rerun-io/egui_tiles.git?rev=afcaaa437b1898ba3b0dda430a79c042053d55c7#afcaaa437b1898ba3b0dda430a79c042053d55c7"
 dependencies = [
  "egui",
  "getrandom",

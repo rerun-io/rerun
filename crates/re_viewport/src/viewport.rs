@@ -163,11 +163,10 @@ impl Viewport {
         tile_id: egui_tiles::TileId,
         container: &mut egui_tiles::Container,
     ) -> TreeAction {
-        if container.children().len() == 1 {
+        if let Some(child_id) = container.only_child() {
             // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood.
             // This means we won't be showing the visibility button of the parent container,
             // so if the child is made invisible, we should do the same for the parent.
-            let child_id = container.children()[0];
             let child_is_visible = self.tree.is_visible(child_id);
             self.tree.set_visible(tile_id, child_is_visible);
             return self.tile_ui(ctx, ui, child_id);
