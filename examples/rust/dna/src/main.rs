@@ -25,7 +25,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
-    rec_stream.set_time_seconds("stable_time", 0f64.into());
+    rec_stream.set_time_seconds("stable_time", 0f64);
 
     MsgSender::new("dna/structure/left")
         .with_component(&points1.iter().copied().map(Point3D::from).collect_vec())?
@@ -60,7 +60,7 @@ fn run(rec_stream: &RecordingStream) -> Result<(), MsgSenderError> {
     for i in 0..400 {
         let time = i as f32 * 0.01;
 
-        rec_stream.set_time_seconds("stable_time", (time as f64).into());
+        rec_stream.set_time_seconds("stable_time", time as f64);
 
         let times = offsets.iter().map(|offset| time + offset).collect_vec();
         let (beads, colors): (Vec<_>, Vec<_>) = points1

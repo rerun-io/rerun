@@ -33,7 +33,7 @@ use rerun::{
 // --- Rerun logging ---
 
 fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
-    rec_stream.set_time_seconds("sim_time", 0f64.into());
+    rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("bbox_demo/bbox")
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Transform3D::new(RotationAxisAngle::new(
@@ -45,7 +45,7 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Label("box/t0".to_owned())])?
         .send(rec_stream)?;
 
-    rec_stream.set_time_seconds("sim_time", 1f64.into());
+    rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("bbox_demo/bbox")
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
@@ -62,7 +62,7 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
 fn demo_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     // Hack to establish 2d view bounds
-    rec_stream.set_time_seconds("sim_time", 0f64.into());
+    rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("extension_components")
         .with_component(&[Rect2D::from_xywh(0.0, 0.0, 128.0, 128.0)])?
         .send(rec_stream)?;
@@ -82,7 +82,7 @@ fn demo_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     }
 
     // Single point with our custom component!
-    rec_stream.set_time_seconds("sim_time", 0f64.into());
+    rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("extension_components/point")
         .with_component(&[Point2D::new(64.0, 64.0)])?
         .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
@@ -112,7 +112,7 @@ fn demo_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
         }
     }
 
-    rec_stream.set_time_seconds("sim_time", 1f64.into());
+    rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("extension_components/points")
         .with_component(&[
             Point2D::new(32.0, 32.0),
@@ -140,7 +140,7 @@ fn demo_log_cleared(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         rec_stream.record_path_op(PathOp::clear(recursive, ent_path.into()));
     }
 
-    rec_stream.set_time_seconds("sim_time", 1f64.into());
+    rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("null_demo/rect/0")
         .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
         .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
@@ -152,18 +152,18 @@ fn demo_log_cleared(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Label("Rect2".into())])?
         .send(rec_stream)?;
 
-    rec_stream.set_time_seconds("sim_time", 2f64.into());
+    rec_stream.set_time_seconds("sim_time", 2f64);
     log_cleared(rec_stream, "null_demo/rect/0", false);
 
-    rec_stream.set_time_seconds("sim_time", 3f64.into());
+    rec_stream.set_time_seconds("sim_time", 3f64);
     log_cleared(rec_stream, "null_demo/rect", true);
 
-    rec_stream.set_time_seconds("sim_time", 4f64.into());
+    rec_stream.set_time_seconds("sim_time", 4f64);
     MsgSender::new("null_demo/rect/0")
         .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
         .send(rec_stream)?;
 
-    rec_stream.set_time_seconds("sim_time", 5f64.into());
+    rec_stream.set_time_seconds("sim_time", 5f64);
     MsgSender::new("null_demo/rect/1")
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
         .send(rec_stream)?;
@@ -172,7 +172,7 @@ fn demo_log_cleared(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 }
 
 fn demo_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
-    rec_stream.set_time_seconds("sim_time", 1f64.into());
+    rec_stream.set_time_seconds("sim_time", 1f64);
 
     MsgSender::new("3d_points/single_point_unlabeled")
         .with_component(&[Point3D::new(10.0, 0.0, 0.0)])?
@@ -227,7 +227,7 @@ fn demo_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
 
     // Add an image
-    rec_stream.set_time_seconds("sim_time", 1f64.into());
+    rec_stream.set_time_seconds("sim_time", 1f64);
     let img = Array::<u8, _>::from_elem((1024, 1024, 3, 1).f(), 128);
     MsgSender::new("rects_demo/img")
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
@@ -246,14 +246,14 @@ fn demo_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]))
         .collect::<Vec<_>>();
 
-    rec_stream.set_time_seconds("sim_time", 2f64.into());
+    rec_stream.set_time_seconds("sim_time", 2f64);
     MsgSender::new("rects_demo/rects")
         .with_component(&rects)?
         .with_component(&colors)?
         .send(rec_stream)?;
 
     // Clear the rectangles by logging an empty set
-    rec_stream.set_time_seconds("sim_time", 3f64.into());
+    rec_stream.set_time_seconds("sim_time", 3f64);
     MsgSender::new("rects_demo/rects")
         .with_component(&Vec::<Rect2D>::new())?
         .send(rec_stream)?;
@@ -279,7 +279,7 @@ fn colored_tensor<F: Fn(usize, usize) -> [u8; 3]>(
 fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
 
-    rec_stream.set_time_seconds("sim_time", 1f64.into());
+    rec_stream.set_time_seconds("sim_time", 1f64);
 
     // Add several overlapping images.
     // Large dark gray in the background
@@ -356,7 +356,7 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     segmentation_img.slice_mut(s![80..100, 60..80]).fill(42);
     segmentation_img.slice_mut(s![20..50, 90..110]).fill(99);
 
-    rec_stream.set_time_seconds("sim_time", 1f64.into());
+    rec_stream.set_time_seconds("sim_time", 1f64);
 
     let mut tensor = Tensor::try_from(segmentation_img.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::ClassId;
@@ -403,7 +403,7 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         "no rects, default colored points, a single point has a label",
     )?;
 
-    rec_stream.set_time_seconds("sim_time", 2f64.into());
+    rec_stream.set_time_seconds("sim_time", 2f64);
 
     // Log an initial segmentation map with arbitrary colors
     // TODO(cmc): Gotta provide _MUCH_ better helpers for building out annotations, this is just
@@ -442,7 +442,7 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             bottom right clusters have labels",
     )?;
 
-    rec_stream.set_time_seconds("sim_time", 3f64.into());
+    rec_stream.set_time_seconds("sim_time", 3f64);
 
     // Log an updated segmentation map with specific colors
     MsgSender::new("seg_demo")
@@ -458,7 +458,7 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
     log_info(rec_stream, "points/rects with user specified colors")?;
 
-    rec_stream.set_time_seconds("sim_time", 4f64.into());
+    rec_stream.set_time_seconds("sim_time", 4f64);
 
     // Log with a mixture of set and unset colors / labels
     MsgSender::new("seg_demo")
@@ -484,7 +484,7 @@ fn demo_text_logs(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
-    rec_stream.set_time_seconds("sim_time", 0f64.into());
+    rec_stream.set_time_seconds("sim_time", 0f64);
 
     MsgSender::new("logs")
         .with_component(&[TextEntry::new("Text with explicitly set color", None)])?
@@ -528,7 +528,7 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     log_coordinate_space(rec_stream, "transforms3d/sun/planet")?;
     log_coordinate_space(rec_stream, "transforms3d/sun/planet/moon")?;
 
-    rec_stream.set_time_seconds("sim_time", 0f64.into());
+    rec_stream.set_time_seconds("sim_time", 0f64);
 
     // All are in the center of their own space:
     fn log_point(

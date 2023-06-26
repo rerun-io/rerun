@@ -76,7 +76,7 @@ fn log_node(rec_stream: &RecordingStream, node: GltfNode) -> anyhow::Result<()> 
         .map(Mesh3D::from)
         .collect::<Vec<_>>();
 
-    rec_stream.set_time_sequence("keyframe", 0.into());
+    rec_stream.set_time_sequence("keyframe", 0);
     MsgSender::new(ent_path)
         .with_component(&primitives)?
         .with_component(transform.as_ref())?

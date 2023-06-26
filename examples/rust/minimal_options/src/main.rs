@@ -39,7 +39,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     .map(|v| ColorRGBA::from_rgb(v.x as u8, v.y as u8, v.z as u8))
     .collect::<Vec<_>>();
 
-    rec_stream.set_time_sequence("keyframe", 0.into());
+    rec_stream.set_time_sequence("keyframe", 0);
     MsgSender::new("my_points")
         .with_component(&points)?
         .with_component(&colors)?

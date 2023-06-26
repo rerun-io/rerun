@@ -868,7 +868,11 @@ impl RecordingStream {
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
     ///
     /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
-    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: Option<i64>) {
+    pub fn set_time_sequence(
+        &self,
+        timeline: impl Into<TimelineName>,
+        sequence: impl Into<Option<i64>>,
+    ) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
             return;
@@ -877,7 +881,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Sequence),
-            sequence.map(TimeInt::from),
+            sequence.into().map(TimeInt::from),
         );
     }
 
@@ -888,7 +892,7 @@ impl RecordingStream {
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
-    pub fn set_time_seconds(&self, timeline: &str, seconds: Option<f64>) {
+    pub fn set_time_seconds(&self, timeline: &str, seconds: impl Into<Option<f64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
             return;
@@ -897,7 +901,9 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            seconds.map(|secs| Time::from_seconds_since_epoch(secs).into()),
+            seconds
+                .into()
+                .map(|secs| Time::from_seconds_since_epoch(secs).into()),
         );
     }
 
@@ -908,7 +914,7 @@ impl RecordingStream {
     /// For example: `rec.set_time_seconds("sim_time", sim_time_nanos)`.
     ///
     /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
-    pub fn set_time_nanos(&self, timeline: &str, ns: Option<i64>) {
+    pub fn set_time_nanos(&self, timeline: &str, ns: impl Into<Option<i64>>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
             return;
@@ -917,7 +923,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            ns.map(|ns| Time::from_ns_since_epoch(ns).into()),
+            ns.into().map(|ns| Time::from_ns_since_epoch(ns).into()),
         );
     }
 

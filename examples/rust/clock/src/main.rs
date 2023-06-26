@@ -66,7 +66,7 @@ fn run(rec_stream: &RecordingStream, args: &Args) -> anyhow::Result<()> {
         let point = pos(angle * TAU, length);
         let color = color(angle, blue);
 
-        rec_stream.set_time_seconds("sim_time", (step as f64).into());
+        rec_stream.set_time_seconds("sim_time", step as f64);
 
         MsgSender::new(format!("world/{name}_pt"))
             .with_component(&[point])?
