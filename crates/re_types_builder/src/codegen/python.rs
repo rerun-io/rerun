@@ -922,10 +922,17 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
         DataType::LargeBinary => "pa.large_binary()".to_owned(),
         DataType::Utf8 => "pa.utf8()".to_owned(),
         DataType::LargeUtf8 => "pa.large_utf8()".to_owned(),
+
+        DataType::List(field) => {
+            let field = quote_arrow_field(field);
+            format!("pa.list_({field})")
+        }
+
         DataType::FixedSizeList(field, length) => {
             let field = quote_arrow_field(field);
             format!("pa.list_({field}, {length})")
         }
+
         DataType::Union(fields, _, mode) => {
             let fields = fields
                 .iter()
@@ -937,6 +944,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
                 UnionMode::Sparse => format!(r#"pa.sparse_union([{fields}])"#),
             }
         }
+
         DataType::Struct(fields) => {
             let fields = fields
                 .iter()
@@ -945,7 +953,9 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
                 .join(", ");
             format!("pa.struct([{fields}])")
         }
+
         DataType::Extension(_, datatype, _) => quote_arrow_datatype(datatype),
+
         _ => unimplemented!("{datatype:#?}"), // NOLINT
     }
 }
