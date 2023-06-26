@@ -19,8 +19,13 @@ pub struct ColorCoordinatesSceneParts {
 }
 
 impl ScenePartCollection for ColorCoordinatesSceneParts {
-    type Context = (); // Unused for this example.
-    type ScenePartData = (); // Unused for this example.
+    /// Scene context is shared between all scene parts.
+    /// For this Space View we don't need any scene context.
+    type Context = ();
+
+    /// Scene parts can have a common data object that they expose.
+    /// For this example this is not needed.
+    type ScenePartData = ();
 
     fn vec_mut(&mut self) -> Vec<&mut dyn ScenePart<Self>> {
         vec![&mut self.colors]
