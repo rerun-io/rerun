@@ -15,7 +15,7 @@ cargo install taplo-cli --locked # toml formatter/linter/lsp
 cargo install typos-cli
 
 
-packagesNeeded='pngcrush'
+packagesNeeded='pngcrush pipx'
 if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
 elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
 elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded
@@ -28,5 +28,8 @@ else
     echo "FAILED TO INSTALL PACKAGE: Package manager not found. You must manually install: $packagesNeeded">&2;
     exit 1
 fi
+
+# install nox for python testing automation
+pipx install nox
 
 echo "setup_dev.sh completed!"
