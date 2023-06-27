@@ -59,7 +59,7 @@ from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequenc
 # TODO(ab): remove this guard, here to make it easy to "hide" the next gen API if needed in the short term.
 _ENABLE_NEXT_GEN_API = True
 if _ENABLE_NEXT_GEN_API:
-    from .rerun2.archetypes import *
+    from ._rerun2.archetypes import *
 
 
 def _init_recording_stream() -> None:

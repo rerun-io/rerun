@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 import rerun as rr
-from rerun.rerun2 import components as rrc
+from rerun._rerun2 import components as rrc
 
 # NOTE: uncomment these to get a better auto-completion experience...
 # from rerun_sdk import rerun2 as rr
