@@ -45,7 +45,6 @@ __all__ = [
     "RadiusType",
 ]
 
-# NOTE: we use fully qualified paths to prevent lazy circular imports.
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType

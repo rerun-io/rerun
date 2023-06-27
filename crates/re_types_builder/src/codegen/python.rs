@@ -211,7 +211,6 @@ fn quote_objects(
 
                 __all__ = [{manifest}]
 
-                # NOTE: we use fully qualified paths to prevent lazy circular imports.
                 ",
             ),
             0,
