@@ -9,7 +9,7 @@ use re_viewer::external::{
     },
 };
 
-/// The scene for the [`ColorCoordinatesSpaceView`].
+/// The scene for the [`crate::color_coordinates_space_view::ColorCoordinatesSpaceView`].
 ///
 /// This is a collection of all information needed to display a single frame for this Space View.
 /// The data is queried from the data store here and processed to consumption by the Space View's ui method.

@@ -14,6 +14,7 @@ use crate::scene::{
 
 #[derive(Default)]
 pub struct Arrows3DPart(SpatialScenePartData);
+
 impl Arrows3DPart {
     fn process_entity_view(
         &mut self,
