@@ -2,10 +2,10 @@
 title: Using Rerun with ROS 2
 order: 2
 ogImageUrl: /docs-media/og-howto-ros.jpg
-description: Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun line up fairly well. In this guide, you will learn how to write a simple ROS 2 python node that subscribes to some common ROS topics and logs them to Rerun. 
+description: Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun line up fairly well. In this guide, you will learn how to write a simple ROS 2 python node that subscribes to some common ROS topics and logs them to Rerun.
 ---
 
-Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun 
+Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun
 line up fairly well. In this guide, you will learn how to write a simple ROS 2 python node
 that subscribes to some common ROS topics and logs them to Rerun.
 
@@ -103,17 +103,17 @@ the environment.
 If you are familiar with the turtlebot nav example and rviz, this view will likely be familiar:
 
  * `map/box` is a placeholder for the map. (This will eventually be a map: [#1531](https://github.com/rerun-io/rerun/issues/1531).)
- * `map/robot` is a transform representing the robot pose logged as a [rigid3 transform](../reference/primitives.md#transform).
- * `map/robot/urdf` contains the `URDF` logged as a [mesh3d](../reference/primitives.md#mesh).
- * `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/primitives.md#line-3d). (This will eventually be a
+ * `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../reference/data_types/transform3d.md).
+ * `map/robot/urdf` contains the `URDF` logged as a [mesh](../reference/data_types/mesh.md).
+ * `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/data_types/linestrip3d.md). (This will eventually be a
    native type: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
- * `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole transform](../reference/primitives.md#transform).
- * `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/primitives.md#tensors--images).
- * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d batch](../reference/primitives.md#point-3d).
+ * `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../reference/data_types/pinhole.md) transform.
+ * `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/data_types/image.md).
+ * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/data_types/point3d.md).
  * `map/points` contains a second copy of `PointCloud2` with a different transform.  (This is a workaround until Rerun
    has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
- * `odometry/vel` is a plot of the linear velocity of the robot.
- * `odometry/ang_vel` is a plot of the angular velocity of the robot.
+ * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/data_types/scalar.md).
+ * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/data_types/scalar.md).
 
 ## Code Explanation
 
@@ -121,7 +121,7 @@ It may be helpful to open [rerun/examples/python/ros_node/main.py](https://githu
 to follow along.
 
 Outside of TF, the node is mostly stateless. At a very high level, for each ROS message we are interested in, we create a
-subscriber with a callback that does some form of data transformation and then logs the data to Rerun. 
+subscriber with a callback that does some form of data transformation and then logs the data to Rerun.
 
 For simplicity, this example uses the rosclpy `MultiThreadedExecutor` and `ReentrantCallbackGroup` for each topic. This
 allows each callback thread to do TF lookups without blocking the other incoming messages. More advanced ROS execution
@@ -383,7 +383,7 @@ not respecting the scale hint.  To accommodate this, we manually re-scale the
 camera link.
 
 Once we have correctly re-scaled the camera component, we can send the whole scene to rerun with
-`rerun_urdf.log_scene`. 
+`rerun_urdf.log_scene`.
 ```python
 def urdf_callback(self, urdf_msg: String) -> None:
     """Log a URDF using `log_scene` from `rerun_urdf`."""

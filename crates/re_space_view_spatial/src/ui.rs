@@ -29,6 +29,12 @@ use crate::{
     ui_3d::{view_3d, SpaceSpecs},
 };
 
+/// Default auto point radius in UI points.
+const AUTO_POINT_RADIUS: f32 = 1.5;
+
+/// Default auto line radius in UI points.
+const AUTO_LINE_RADIUS: f32 = 1.5;
+
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum SpatialNavigationMode {
@@ -121,10 +127,10 @@ impl SpatialSpaceViewState {
     pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
-            config.point_radius = re_renderer::Size::new_points(1.5); // default point radius
+            config.point_radius = re_renderer::Size::new_points(AUTO_POINT_RADIUS);
         }
         if config.line_radius.is_auto() {
-            config.line_radius = re_renderer::Size::new_points(1.5); // default line radius
+            config.line_radius = re_renderer::Size::new_points(AUTO_LINE_RADIUS);
         }
         config
     }
@@ -156,7 +162,7 @@ impl SpatialSpaceViewState {
         let size = self.scene_bbox_accum.size();
         let mut sorted_components = size.to_array();
         sorted_components.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        // Median is more robust against outlier in one direction (as such pretty pour still though)
+        // Median is more robust against outlier in one direction (as such pretty poor still though)
         let median_extent = sorted_components[1];
         // sqrt would make more sense but using a smaller root works better in practice.
         let heuristic1 =
@@ -683,8 +689,8 @@ pub fn picking(
 
     let picking_rect_size =
         super::scene::PickingContext::UI_INTERACTION_RADIUS * parent_ui.ctx().pixels_per_point();
-    // Make the picking rect bigger than necessary so we can use it to counter act delays.
-    // (by the time the picking rectangle read back, the cursor may have moved on).
+    // Make the picking rect bigger than necessary so we can use it to counter-act delays.
+    // (by the time the picking rectangle is read back, the cursor may have moved on).
     let picking_rect_size = (picking_rect_size * 2.0)
         .ceil()
         .at_least(8.0)
@@ -718,6 +724,11 @@ pub fn picking(
     for hit in &picking_result.hits {
         let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
             else { continue; };
+
+        if response.double_clicked() {
+            // Select entire entity on double-click:
+            instance_path.instance_key = re_log_types::InstanceKey::SPLAT;
+        }
 
         if scene
             .context
@@ -807,7 +818,8 @@ pub fn picking(
                                         egui::vec2(w, h),
                                     );
                                     show_zoomed_image_region_area_outline(
-                                        ui,
+                                        ui.ctx(),
+                                        ui_clip_rect,
                                         &tensor,
                                         [coords[0] as _, coords[1] as _],
                                         space_from_ui.inverse().transform_rect(rect),

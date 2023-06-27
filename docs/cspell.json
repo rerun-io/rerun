@@ -57,7 +57,13 @@
         "xyzw",
         "jleibs",
         "Trimesh",
-        "srcset"
+        "srcset",
+        "XYWH",
+        "YXHW",
+        "XYXY",
+        "YXYX",
+        "XCYCWH",
+        "XCYCW2H2"
     ],
     "words": [
         "nyud",
@@ -71,6 +77,7 @@
         "egui",
         "emilk",
         "extrinsics",
+        "grayscale",
         "Huggingface",
         "intrinsics",
         "itertools",
@@ -78,7 +85,9 @@
         "keypoints",
         "lerp",
         "linestrip",
+        "linestrips",
         "linspace",
+        "loggable",
         "meshgrid",
         "numpy",
         "Objectron",

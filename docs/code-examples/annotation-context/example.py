@@ -1,3 +1,5 @@
+import rerun as rr
+
 # Annotation context with two classes, using two labeled classes, of which ones defines a color.
 rr.log_annotation_context(
     "masks",  # Applies to all entities below "masks".

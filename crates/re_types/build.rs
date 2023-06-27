@@ -17,7 +17,7 @@ use re_build_tools::{
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
-const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun2";
+const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
 fn main() {
     if std::env::var("CI").is_ok() {
@@ -87,6 +87,8 @@ fn main() {
     );
 
     let pyproject_path = PathBuf::from(PYTHON_OUTPUT_DIR_PATH)
+        .parent()
+        .unwrap()
         .parent()
         .unwrap()
         .parent()

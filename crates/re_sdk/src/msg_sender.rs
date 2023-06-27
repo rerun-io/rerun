@@ -93,7 +93,7 @@ impl MsgSender {
         Self {
             entity_path: ent_path.into(),
 
-            timepoint: [(Timeline::log_time(), Time::now().into())].into(),
+            timepoint: TimePoint::default(),
             timeless: false,
 
             num_instances: None,
@@ -116,7 +116,7 @@ impl MsgSender {
         let ent_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
         let cell = re_components::data_cell_from_file_path(file_path)?;
 
-        let mut timepoint = TimePoint::from([(Timeline::log_time(), Time::now().into())]);
+        let mut timepoint = TimePoint::default();
 
         // This may sounds like a good idea, but that means `rerun *.jpg` will
         // actually act like it is playing a bunch of files over time, perhaps over many years.
@@ -160,6 +160,7 @@ impl MsgSender {
     /// `MsgSender` automatically keeps track of the logging time, which is recorded when
     /// [`Self::new`] is first called.
     #[inline]
+    #[doc(hidden)]
     pub fn with_timepoint(mut self, timepoint: TimePoint) -> Self {
         for (timeline, time) in timepoint {
             self.timepoint.insert(timeline, time);
@@ -176,6 +177,7 @@ impl MsgSender {
     /// `MsgSender` automatically keeps track of the logging time, which is recorded when
     /// [`Self::new`] is first called.
     #[inline]
+    #[doc(hidden)]
     pub fn with_time(mut self, timeline: Timeline, time: impl Into<TimeInt>) -> Self {
         self.timepoint.insert(timeline, time.into());
         self
@@ -294,16 +296,17 @@ impl MsgSender {
             return Ok(()); // silently drop the message
         }
 
+        let timeless = self.timeless;
         let [row_standard, row_splats] = self.into_rows();
 
         if let Some(row_splats) = row_splats {
-            rec_stream.record_row(row_splats);
+            rec_stream.record_row(row_splats, !timeless);
         }
 
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in msg_standard, see(#1215).
         if let Some(row_standard) = row_standard {
-            rec_stream.record_row(row_standard);
+            rec_stream.record_row(row_standard, !timeless);
         }
 
         Ok(())

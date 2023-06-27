@@ -14,4 +14,19 @@ cargo install just # Just a command runner
 cargo install taplo-cli --locked # toml formatter/linter/lsp
 cargo install typos-cli
 
+
+packagesNeeded='pngcrush'
+if [ -x "$(command -v brew)" ];      then brew install $packagesNeeded
+elif [ -x "$(command -v port)" ];    then sudo port install $packagesNeeded
+elif [ -x "$(command -v apt-get)" ]; then sudo apt-get -y install $packagesNeeded
+elif [ -x "$(command -v dnf)" ];     then sudo dnf install $packagesNeeded
+elif [ -x "$(command -v zypper)" ];  then sudo zypper install $packagesNeeded
+elif [ -x "$(command -v apk)" ];     then sudo apk add --no-cache $packagesNeeded
+elif [ -x "$(command -v winget)" ];  then sudo winget add --no-cache $packagesNeeded
+elif [ -x "$(command -v pacman)" ];  then sudo pacman -S $packagesNeeded
+else
+    echo "FAILED TO INSTALL PACKAGE: Package manager not found. You must manually install: $packagesNeeded">&2;
+    exit 1
+fi
+
 echo "setup_dev.sh completed!"

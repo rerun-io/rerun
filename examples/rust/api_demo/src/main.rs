@@ -26,22 +26,15 @@ use rerun::{
         re_log,
         re_log_types::external::{arrow2, arrow2_convert},
     },
-    time::{Time, TimePoint, TimeType, Timeline},
     transform::{Angle, RotationAxisAngle, TranslationRotationScale3D},
     Component, ComponentName, EntityPath, MsgSender, RecordingStream,
 };
 
 // --- Rerun logging ---
 
-fn sim_time(at: f64) -> TimePoint {
-    let timeline_sim_time = Timeline::new("sim_time", TimeType::Time);
-    let time = Time::from_seconds_since_epoch(at);
-    [(timeline_sim_time, time.into())].into()
-}
-
 fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
+    rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("bbox_demo/bbox")
-        .with_timepoint(sim_time(0 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Transform3D::new(RotationAxisAngle::new(
             glam::Vec3::Z,
@@ -52,8 +45,8 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[Label("box/t0".to_owned())])?
         .send(rec_stream)?;
 
+    rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("bbox_demo/bbox")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Box3D::new(1.0, 0.5, 0.25)])?
         .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
             Vec3D::new(1.0, 0.0, 0.0),
@@ -69,8 +62,8 @@ fn demo_bbox(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
 fn demo_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     // Hack to establish 2d view bounds
+    rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("extension_components")
-        .with_timepoint(sim_time(0 as _))
         .with_component(&[Rect2D::from_xywh(0.0, 0.0, 128.0, 128.0)])?
         .send(rec_stream)?;
 
@@ -89,8 +82,8 @@ fn demo_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
     }
 
     // Single point with our custom component!
+    rec_stream.set_time_seconds("sim_time", 0f64);
     MsgSender::new("extension_components/point")
-        .with_timepoint(sim_time(0 as _))
         .with_component(&[Point2D::new(64.0, 64.0)])?
         .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
         .with_component(&[Confidence(0.9)])?
@@ -119,8 +112,8 @@ fn demo_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
         }
     }
 
+    rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("extension_components/points")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[
             Point2D::new(32.0, 32.0),
             Point2D::new(32.0, 96.0),
@@ -142,50 +135,36 @@ fn demo_extension_components(rec_stream: &RecordingStream) -> anyhow::Result<()>
 
 fn demo_log_cleared(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     // TODO(cmc): need abstractions for this
-    fn log_cleared(
-        rec_stream: &RecordingStream,
-        timepoint: &TimePoint,
-        ent_path: impl Into<EntityPath>,
-        recursive: bool,
-    ) {
+    fn log_cleared(rec_stream: &RecordingStream, ent_path: impl Into<EntityPath>, recursive: bool) {
         use rerun::external::re_log_types::PathOp;
-        let tp = timepoint.iter().collect::<Vec<_>>();
-        let timepoint = [
-            (Timeline::log_time(), Time::now().into()),
-            (*tp[0].0, *tp[0].1),
-        ];
-        rec_stream.record_path_op(timepoint.into(), PathOp::clear(recursive, ent_path.into()));
+        rec_stream.record_path_op(PathOp::clear(recursive, ent_path.into()));
     }
 
-    // sim_time = 1
+    rec_stream.set_time_seconds("sim_time", 1f64);
     MsgSender::new("null_demo/rect/0")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
         .with_component(&[ColorRGBA::from_rgb(255, 0, 0)])?
         .with_component(&[Label("Rect1".into())])?
         .send(rec_stream)?;
     MsgSender::new("null_demo/rect/1")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
         .with_component(&[ColorRGBA::from_rgb(0, 255, 0)])?
         .with_component(&[Label("Rect2".into())])?
         .send(rec_stream)?;
 
-    // sim_time = 2
-    log_cleared(rec_stream, &sim_time(2 as _), "null_demo/rect/0", false);
+    rec_stream.set_time_seconds("sim_time", 2f64);
+    log_cleared(rec_stream, "null_demo/rect/0", false);
 
-    // sim_time = 3
-    log_cleared(rec_stream, &sim_time(3 as _), "null_demo/rect", true);
+    rec_stream.set_time_seconds("sim_time", 3f64);
+    log_cleared(rec_stream, "null_demo/rect", true);
 
-    // sim_time = 4
+    rec_stream.set_time_seconds("sim_time", 4f64);
     MsgSender::new("null_demo/rect/0")
-        .with_timepoint(sim_time(4 as _))
         .with_component(&[Rect2D::from_xywh(5.0, 5.0, 4.0, 4.0)])?
         .send(rec_stream)?;
 
-    // sim_time = 5
+    rec_stream.set_time_seconds("sim_time", 5f64);
     MsgSender::new("null_demo/rect/1")
-        .with_timepoint(sim_time(5 as _))
         .with_component(&[Rect2D::from_xywh(10.0, 5.0, 4.0, 4.0)])?
         .send(rec_stream)?;
 
@@ -193,13 +172,13 @@ fn demo_log_cleared(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 }
 
 fn demo_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
+    rec_stream.set_time_seconds("sim_time", 1f64);
+
     MsgSender::new("3d_points/single_point_unlabeled")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point3D::new(10.0, 0.0, 0.0)])?
         .send(rec_stream)?;
 
     MsgSender::new("3d_points/single_point_labeled")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point3D::new(0.0, 0.0, 0.0)])?
         .with_component(&[Label("labeled point".to_owned())])?
         .send(rec_stream)?;
@@ -227,7 +206,6 @@ fn demo_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     let (labels, points, radii, _) =
         create_points(9, |x| x * 5.0, |y| y * 5.0 + 10.0, |z| z * 4.0 - 5.0);
     MsgSender::new("3d_points/spiral_small")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&points)?
         .with_component(&labels)?
         .with_component(&radii)?
@@ -236,7 +214,6 @@ fn demo_3d_points(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     let (labels, points, _, colors) =
         create_points(100, |x| x * 5.0, |y| y * 5.0 - 10.0, |z| z * 0.4 - 5.0);
     MsgSender::new("3d_points/spiral_big")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&points)?
         .with_component(&labels)?
         .with_component(&colors)?
@@ -250,9 +227,9 @@ fn demo_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
 
     // Add an image
+    rec_stream.set_time_seconds("sim_time", 1f64);
     let img = Array::<u8, _>::from_elem((1024, 1024, 3, 1).f(), 128);
     MsgSender::new("rects_demo/img")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .send(rec_stream)?;
 
@@ -268,15 +245,16 @@ fn demo_rects(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .axis_iter(Axis(0))
         .map(|c| ColorRGBA::from_rgb(c[0], c[1], c[2]))
         .collect::<Vec<_>>();
+
+    rec_stream.set_time_seconds("sim_time", 2f64);
     MsgSender::new("rects_demo/rects")
-        .with_timepoint(sim_time(2 as _))
         .with_component(&rects)?
         .with_component(&colors)?
         .send(rec_stream)?;
 
     // Clear the rectangles by logging an empty set
+    rec_stream.set_time_seconds("sim_time", 3f64);
     MsgSender::new("rects_demo/rects")
-        .with_timepoint(sim_time(3 as _))
         .with_component(&Vec::<Rect2D>::new())?
         .send(rec_stream)?;
 
@@ -301,48 +279,42 @@ fn colored_tensor<F: Fn(usize, usize) -> [u8; 3]>(
 fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
 
-    let time = sim_time(1.0);
+    rec_stream.set_time_seconds("sim_time", 1f64);
 
     // Add several overlapping images.
     // Large dark gray in the background
     let img = Array::<u8, _>::from_elem((512, 512, 1).f(), 64);
     MsgSender::new("2d_layering/background")
-        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(0.0)])?
         .send(rec_stream)?;
     // Smaller gradient in the middle
     let img = colored_tensor(256, 256, |x, y| [x as u8, y as u8, 0]);
     MsgSender::new("2d_layering/middle_gradient")
-        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(1.0)])?
         .send(rec_stream)?;
     // Slightly smaller blue in the middle, on the same layer as the previous.
     let img = colored_tensor(192, 192, |_, _| [0, 0, 255]);
     MsgSender::new("2d_layering/middle_blue")
-        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(1.0)])?
         .send(rec_stream)?;
     // Small white on top.
     let img = Array::<u8, _>::from_elem((128, 128, 1).f(), 255);
     MsgSender::new("2d_layering/top")
-        .with_timepoint(time.clone())
         .with_component(&[Tensor::try_from(img.as_standard_layout().view())?])?
         .with_component(&[DrawOrder(2.0)])?
         .send(rec_stream)?;
 
     // Rectangle in between the top and the middle.
     MsgSender::new("2d_layering/rect_between_top_and_middle")
-        .with_timepoint(time.clone())
         .with_component(&[Rect2D::from_xywh(64.0, 64.0, 256.0, 256.0)])?
         .with_component(&[DrawOrder(1.5)])?
         .send(rec_stream)?;
 
     // Lines behind the rectangle.
     MsgSender::new("2d_layering/lines_behind_rect")
-        .with_timepoint(time.clone())
         .with_component(&[LineStrip2D(
             (0..20)
                 .map(|i| Vec2D([(i * 20) as f32, (i % 2 * 100 + 100) as f32]))
@@ -353,7 +325,6 @@ fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
 
     // And some points in front of the rectangle.
     MsgSender::new("2d_layering/points_between_top_and_middle")
-        .with_timepoint(time)
         .with_component(
             &(0..256)
                 .map(|i| Point2D::new(32.0 + (i / 16) as f32 * 16.0, 64.0 + (i % 16) as f32 * 16.0))
@@ -371,13 +342,8 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     // available for this.
     // In either case, this raises the question of tracking time at the SDK level, akin to what the
     // python SDK does.
-    fn log_info(
-        rec_stream: &RecordingStream,
-        timepoint: TimePoint,
-        text: &str,
-    ) -> anyhow::Result<()> {
+    fn log_info(rec_stream: &RecordingStream, text: &str) -> anyhow::Result<()> {
         MsgSender::new("logs/seg_demo_log")
-            .with_timepoint(timepoint)
             .with_component(&[TextEntry::new(text, Some("INFO".into()))])?
             .send(rec_stream)
             .map_err(Into::into)
@@ -390,27 +356,25 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     segmentation_img.slice_mut(s![80..100, 60..80]).fill(42);
     segmentation_img.slice_mut(s![20..50, 90..110]).fill(99);
 
+    rec_stream.set_time_seconds("sim_time", 1f64);
+
     let mut tensor = Tensor::try_from(segmentation_img.as_standard_layout().view())?;
     tensor.meaning = TensorDataMeaning::ClassId;
     MsgSender::new("seg_demo/img")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[tensor])?
         .send(rec_stream)?;
 
     // Log a bunch of classified 2D points
     MsgSender::new("seg_demo/single_point")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point2D::new(64.0, 64.0)])?
         .with_component(&[ClassId(13)])?
         .send(rec_stream)?;
     MsgSender::new("seg_demo/single_point_labeled")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[Point2D::new(90.0, 50.0)])?
         .with_component(&[ClassId(13)])?
         .with_component(&[Label("labeled point".into())])?
         .send(rec_stream)?;
     MsgSender::new("seg_demo/several_points0")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[
             Point2D::new(20.0, 50.0),
             Point2D::new(100.0, 70.0),
@@ -419,7 +383,6 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_splat(ClassId(42))?
         .send(rec_stream)?;
     MsgSender::new("seg_demo/several_points1")
-        .with_timepoint(sim_time(1 as _))
         .with_component(&[
             Point2D::new(40.0, 50.0),
             Point2D::new(120.0, 70.0),
@@ -428,7 +391,6 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .with_component(&[ClassId(13), ClassId(42), ClassId(99)])?
         .send(rec_stream)?;
     MsgSender::new("seg_demo/many points")
-        .with_timepoint(sim_time(1 as _))
         .with_component(
             &(0..25)
                 .map(|i| Point2D::new(100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0))
@@ -438,9 +400,10 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
     log_info(
         rec_stream,
-        sim_time(1 as _),
         "no rects, default colored points, a single point has a label",
     )?;
+
+    rec_stream.set_time_seconds("sim_time", 2f64);
 
     // Log an initial segmentation map with arbitrary colors
     // TODO(cmc): Gotta provide _MUCH_ better helpers for building out annotations, this is just
@@ -463,7 +426,6 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         )
     }
     MsgSender::new("seg_demo")
-        .with_timepoint(sim_time(2 as _))
         .with_component(&[AnnotationContext {
             class_map: [
                 create_class(13, "label1".into(), None),
@@ -476,14 +438,14 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
     log_info(
         rec_stream,
-        sim_time(2 as _),
         "default colored rects, default colored points, all points except the \
             bottom right clusters have labels",
     )?;
 
+    rec_stream.set_time_seconds("sim_time", 3f64);
+
     // Log an updated segmentation map with specific colors
     MsgSender::new("seg_demo")
-        .with_timepoint(sim_time(3 as _))
         .with_component(&[AnnotationContext {
             class_map: [
                 create_class(13, "label1".into(), [255, 0, 0].into()),
@@ -494,15 +456,12 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             .collect(),
         }])?
         .send(rec_stream)?;
-    log_info(
-        rec_stream,
-        sim_time(3 as _),
-        "points/rects with user specified colors",
-    )?;
+    log_info(rec_stream, "points/rects with user specified colors")?;
+
+    rec_stream.set_time_seconds("sim_time", 4f64);
 
     // Log with a mixture of set and unset colors / labels
     MsgSender::new("seg_demo")
-        .with_timepoint(sim_time(4 as _))
         .with_component(&[AnnotationContext {
             class_map: [
                 create_class(13, None, [255, 0, 0].into()),
@@ -515,7 +474,6 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
     log_info(
         rec_stream,
-        sim_time(4 as _),
         "label1 disappears and everything with label3 is now default colored again",
     )?;
 
@@ -526,17 +484,14 @@ fn demo_text_logs(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     // TODO(cmc): the python SDK has some magic that glues the standard logger directly into rerun
     // logs; we're gonna need something similar for rust (e.g. `tracing` backend).
 
+    rec_stream.set_time_seconds("sim_time", 0f64);
+
     MsgSender::new("logs")
-        // TODO(cmc): The original api_demo has a sim_time associated with its logs because of the
-        // stateful nature of time in the python SDK... This tends to show that we really need the
-        // same system for the Rust SDK?
-        .with_timepoint(sim_time(0 as _))
         .with_component(&[TextEntry::new("Text with explicitly set color", None)])?
         .with_component(&[ColorRGBA::from_rgb(255, 215, 0)])?
         .send(rec_stream)?;
 
     MsgSender::new("logs")
-        .with_timepoint(sim_time(0 as _))
         .with_component(&[TextEntry::new(
             "this entry has loglevel TRACE",
             Some("TRACE".into()),
@@ -573,6 +528,8 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     log_coordinate_space(rec_stream, "transforms3d/sun/planet")?;
     log_coordinate_space(rec_stream, "transforms3d/sun/planet/moon")?;
 
+    rec_stream.set_time_seconds("sim_time", 0f64);
+
     // All are in the center of their own space:
     fn log_point(
         rec_stream: &RecordingStream,
@@ -581,7 +538,6 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         color: [u8; 3],
     ) -> anyhow::Result<()> {
         MsgSender::new(ent_path.into())
-            .with_timepoint(sim_time(0 as _))
             .with_component(&[Point3D::ZERO])?
             .with_component(&[Radius(radius)])?
             .with_component(&[ColorRGBA::from_rgb(color[0], color[1], color[2])])?
@@ -614,7 +570,6 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
     .take(200)
     .collect::<Vec<_>>();
     MsgSender::new("transforms3d/sun/planet/dust")
-        .with_timepoint(sim_time(0 as _))
         .with_component(&points)?
         .with_splat(Radius(0.025))?
         .with_splat(ColorRGBA::from_rgb(80, 80, 80))?
@@ -632,19 +587,18 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         )
     };
     MsgSender::new("transforms3d/sun/planet_path")
-        .with_timepoint(sim_time(0 as _))
         .with_component(&[create_path(sun_to_planet_distance)])?
         .send(rec_stream)?;
     MsgSender::new("transforms3d/sun/planet/moon_path")
-        .with_timepoint(sim_time(0 as _))
         .with_component(&[create_path(planet_to_moon_distance)])?
         .send(rec_stream)?;
 
     for i in 0..6 * 120 {
         let time = i as f32 / 120.0;
 
+        rec_stream.set_time_seconds("sim_time", Some(time as f64));
+
         MsgSender::new("transforms3d/sun/planet")
-            .with_timepoint(sim_time(time as _))
             .with_component(&[Transform3D::new(TranslationRotationScale3D::rigid(
                 Vec3D::new(
                     (time * rotation_speed_planet).sin() * sun_to_planet_distance,
@@ -656,7 +610,6 @@ fn demo_transforms_3d(rec_stream: &RecordingStream) -> anyhow::Result<()> {
             .send(rec_stream)?;
 
         MsgSender::new("transforms3d/sun/planet/moon")
-            .with_timepoint(sim_time(time as _))
             .with_component(&[Transform3D::from_parent(Vec3D::new(
                 (time * rotation_speed_moon).cos() * planet_to_moon_distance,
                 (time * rotation_speed_moon).sin() * planet_to_moon_distance,

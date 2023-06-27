@@ -15,9 +15,6 @@ use crate::{
 
 // ---
 
-// NOTE: `rerun2` while we figure out how to integrate back into the main SDK.
-const MODULE_NAME: &str = "rerun2";
-
 pub struct PythonCodeGenerator {
     pkg_path: PathBuf,
 }
@@ -214,7 +211,6 @@ fn quote_objects(
 
                 __all__ = [{manifest}]
 
-                # NOTE: we use fully qualified paths to prevent lazy circular imports.
                 ",
             ),
             0,
@@ -606,13 +602,13 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     fqname.map(|fqname| {
         let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
         if from.starts_with("rerun.datatypes") {
-            format!("from {MODULE_NAME} import datatypes")
+            "from .. import datatypes".to_owned()
         } else if from.starts_with("rerun.components") {
-            format!("from {MODULE_NAME} import components")
+            "from .. import components".to_owned()
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal... which whether it is or
             // isn't for this code generator to say.
-            format!("from {MODULE_NAME} import archetypes")
+            "from .. import archetypes".to_owned()
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {

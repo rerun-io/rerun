@@ -1,6 +1,6 @@
 ---
 title: SDK Micro Batching
-order: 1
+order: 6
 ---
 
 

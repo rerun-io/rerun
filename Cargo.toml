@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "crates/*",
   "examples/rust/*",
+  "docs/code-examples",
   "rerun_py",
   "run_wasm",
   "tests/rust/*",
@@ -99,6 +100,8 @@ polars-core = "0.29"
 polars-lazy = "0.29"
 polars-ops = "0.29"
 puffin = "0.15"
+rand = { version = "0.8", default-features = false }
+rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
 rfd = { version = "0.11.3", default_features = false, features = [
   "xdg-portal",

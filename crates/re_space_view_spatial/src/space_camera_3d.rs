@@ -1,4 +1,4 @@
-use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
+use glam::{Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
 use re_components::{Pinhole, ViewCoordinates};
@@ -52,41 +52,22 @@ impl SpaceCamera3D {
         }
     }
 
-    /// Projects image coordinates into world coordinates
-    pub fn world_from_image(&self) -> Option<Affine3A> {
+    /// Returns x, y, and depth in image/pixel coordinates.
+    pub fn project_onto_2d(&self, point_in_world: Vec3) -> Option<Vec3> {
         let pinhole = self.pinhole?;
-        let world_from_cam = self.world_from_cam();
-        let image_from_cam: Mat3 = pinhole.image_from_cam.into();
-        let cam_from_image = Affine3A::from_mat3(image_from_cam.inverse());
-        Some(world_from_cam * cam_from_image)
-    }
-
-    /// Projects world coordinates onto 2D image coordinates
-    pub fn image_from_world(&self) -> Option<Affine3A> {
-        let pinhole = self.pinhole?;
-        let cam_from_world = self.cam_from_world();
-
-        let image_from_cam = pinhole.image_from_cam.into();
-        let image_from_cam = Affine3A::from_mat3(image_from_cam);
-        Some(image_from_cam * cam_from_world)
-    }
-
-    /// Returns x, y, and depth in image coordinates.
-    pub fn project_onto_2d(&self, pos3d: Vec3) -> Option<Vec3> {
-        self.image_from_world().map(|pixel_from_world| {
-            let point = pixel_from_world.transform_point3(pos3d);
-            vec3(point.x / point.z, point.y / point.z, point.z)
-        })
+        let point_in_cam = self.cam_from_world().transform_point3(point_in_world);
+        let point_in_image = pinhole.project(point_in_cam);
+        Some(point_in_image)
     }
 
     /// Unproject a 2D image coordinate as a ray in 3D space
     pub fn unproject_as_ray(&self, pos2d: Vec2) -> Option<Ray3> {
-        self.world_from_image().map(|world_from_pixel| {
-            let origin = self.position();
-            let stop = world_from_pixel.transform_point3(pos2d.extend(1.0));
-            let dir = (stop - origin).normalize();
-            Ray3::from_origin_dir(origin, dir)
-        })
+        let pinhole = self.pinhole?;
+
+        let depth = 1.0; // whatever will do
+        let stop = pinhole.unproject(pos2d.extend(depth));
+        let ray_in_camera = Ray3::from_origin_dir(Vec3::ZERO, stop);
+        Some(self.world_from_camera * ray_in_camera)
     }
 }
 

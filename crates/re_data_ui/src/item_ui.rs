@@ -254,9 +254,9 @@ pub fn select_hovered_on_click(
 
     if response.clicked() {
         if response.ctx.input(|i| i.modifiers.command) {
-            selection_state.toggle_selection(selection_state.hovered().to_vec());
+            selection_state.toggle_selection(items.to_vec());
         } else {
-            selection_state.set_selection(selection_state.hovered().clone().into_iter());
+            selection_state.set_selection(items.iter().cloned());
         }
     }
 }
