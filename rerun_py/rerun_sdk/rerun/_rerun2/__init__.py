@@ -4,5 +4,4 @@ from __future__ import annotations
 
 __all__ = ["Points2D"]
 
-# NOTE: we use fully qualified paths to prevent lazy circular imports.
-from rerun2.archetypes.points2d import Points2D
+from .archetypes import Points2D

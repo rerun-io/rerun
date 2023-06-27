@@ -29,7 +29,7 @@ RadiusArrayLike = Union[RadiusLike, Sequence[RadiusLike], npt.NDArray[np.float32
 
 # --- Arrow support ---
 
-from rerun2.components.radius_ext import RadiusArrayExt  # noqa: E402
+from .radius_ext import RadiusArrayExt  # noqa: E402
 
 
 class RadiusType(pa.ExtensionType):  # type: ignore[misc]

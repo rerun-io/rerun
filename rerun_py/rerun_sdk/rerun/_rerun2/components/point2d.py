@@ -29,7 +29,7 @@ Point2DArrayLike = Union[Point2DLike, Sequence[Point2DLike], npt.NDArray[np.floa
 
 # --- Arrow support ---
 
-from rerun2.components.point2d_ext import Point2DArrayExt  # noqa: E402
+from .point2d_ext import Point2DArrayExt  # noqa: E402
 
 
 class Point2DType(pa.ExtensionType):  # type: ignore[misc]

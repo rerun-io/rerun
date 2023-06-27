@@ -8,7 +8,7 @@
 //!
 //! - `definitions/` contains IDL definitions for all Rerun types (data, components, archetypes).
 //! - `src/` contains the code generated for Rust.
-//! - `rerun_py/rerun2/` (at the root of this workspace) contains the code generated for Python.
+//! - `rerun_py/rerun/rerun2/` (at the root of this workspace) contains the code generated for Python.
 //!
 //! While most of the code in this crate is auto-generated, some manual extensions are littered
 //! throughout: look for files ending in `_ext.rs` or `_ext.py` (also see the "Extensions" section

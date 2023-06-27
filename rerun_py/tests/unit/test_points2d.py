@@ -3,8 +3,8 @@ from __future__ import annotations
 import itertools
 
 import numpy as np
-import rerun2 as rr
-from rerun2 import components as rrc
+import rerun as rr
+from rerun._rerun2 import components as rrc
 
 # NOTE: uncomment these to get a better auto-completion experience...
 # from rerun_sdk import rerun2 as rr

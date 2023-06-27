@@ -7,7 +7,7 @@ __all__ = ["Points2D"]
 
 from dataclasses import dataclass
 
-from rerun2 import components
+from .. import components
 
 
 @dataclass

@@ -31,7 +31,7 @@ Vec2DArrayLike = Union[
 
 # --- Arrow support ---
 
-from rerun2.datatypes.vec2d_ext import Vec2DArrayExt  # noqa: E402
+from .vec2d_ext import Vec2DArrayExt  # noqa: E402
 
 
 class Vec2DType(pa.ExtensionType):  # type: ignore[misc]
