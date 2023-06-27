@@ -1,3 +1,10 @@
+"""Nox sessions.
+
+This file is used by `nox` to run tests and examples against multiple Python versions.
+
+See: http://nox.thea.codes
+"""
+
 from __future__ import annotations
 
 import nox  # type: ignore

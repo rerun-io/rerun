@@ -29,6 +29,9 @@ else
     exit 1
 fi
 
+# ensure pipx is on the path
+pipx ensurepath
+
 # install nox for python testing automation
 pipx install nox
 
