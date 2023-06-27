@@ -37,11 +37,7 @@ DATASETS = {
     ),
     "rivaz": DatasetSpec("rivaz_demo", "https://s3.amazonaws.com/mics.pix4d.com/example_datasets/rivaz_demo.zip"),
 }
-
-# Path to the example project file.
-PROJECT_DIR = Path("/Users/hhip/Downloads/rivaz_demo")
-EXAMPLE_DIR: Final = Path(__file__).parent
-DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
+DATASET_DIR: Final = Path(__file__).parent / "dataset"
 
 
 def download_file(url: str, path: Path) -> None:
@@ -67,13 +63,33 @@ def unzip_dir(archive: Path, destination: Path) -> None:
 
 
 class OPFProject:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, log_as_frames: bool = True) -> None:
+        """
+        Create a new OPFProject from the given path.
+
+        Parameters
+        ----------
+        path : Path
+            Path to the project file.
+        log_as_frames : bool, optional
+            Whether to log the cameras as individual frames, by default True
+        """
         self.path = path
         self.project = resolve(load(str(path)))
+        self.log_as_frames = log_as_frames
 
     @classmethod
-    def from_dataset(cls, dataset: str) -> "OPFProject":
-        """Download the dataset if necessary and return the project file."""
+    def from_dataset(cls, dataset: str, log_as_frames: bool = True) -> OPFProject:
+        """
+        Download the dataset if necessary and return the project file.
+
+        Parameters
+        ----------
+        dataset : str
+            Name of the dataset to download.
+        log_as_frames : bool, optional
+            Whether to log the cameras as individual frames, by default True
+        """
         spec = DATASETS[dataset]
         if not (DATASET_DIR / spec.dir_name).exists():
             zip_file = DATASET_DIR / f"{dataset}.zip"
@@ -81,14 +97,14 @@ class OPFProject:
                 download_file(DATASETS[dataset].url, zip_file)
             unzip_dir(DATASET_DIR / f"{dataset}.zip", DATASET_DIR)
 
-        return cls(DATASET_DIR / spec.dir_name / "project.opf")
+        return cls(DATASET_DIR / spec.dir_name / "project.opf", log_as_frames=log_as_frames)
 
     def log_point_cloud(self) -> None:
         """Log the project's point cloud."""
         pcl = self.project.point_cloud_objs[0]
         rr.log_points("world/pcl", positions=pcl.nodes[0].position, colors=pcl.nodes[0].color, timeless=True)
 
-    def log_cameras_as_frames(self) -> None:
+    def log_calibrated_cameras(self) -> None:
         """
         Log the project's calibrated cameras as individual frames.
 
@@ -106,8 +122,11 @@ class OPFProject:
             if not str(camera.uri).endswith(".jpg"):
                 continue
 
-            rr.set_time_sequence("image", i)
-            entity = "world/cameras"
+            if self.log_as_frames:
+                rr.set_time_sequence("image", i)
+                entity = "world/cameras"
+            else:
+                entity = f"world/cameras/{i}"
 
             sensor = sensor_map[calib_camera.sensor_id]
             calib_sensor = calib_sensor_map[calib_camera.sensor_id]
@@ -181,6 +200,11 @@ def main() -> None:
         default="olympic",
         help="Run on a demo image automatically downloaded",
     )
+    parser.add_argument(
+        "--no-frames",
+        action="store_true",
+        help="Log all cameras globally instead of as individual frames in the timeline.",
+    )
 
     rr.script_add_args(parser)
 
@@ -189,12 +213,12 @@ def main() -> None:
         logging.warning(f"unknown arg: {arg}")
 
     # load the data set
-    project = OPFProject.from_dataset(args.dataset)
+    project = OPFProject.from_dataset(args.dataset, log_as_frames=not args.no_frames)
 
     # display everything in Rerun
     rr.script_setup(args, "open_photogrammetry_format")
     project.log_point_cloud()
-    project.log_cameras_as_frames()
+    project.log_calibrated_cameras()
     rr.script_teardown(args)
 
 
