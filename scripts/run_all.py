@@ -53,7 +53,7 @@ def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True,
     if viewer_port is not None:
         args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
 
-    cmd = " ".join(f'"{a}"' if a.find(" ") != -1 else a for a in args)
+    cmd = " ".join(f'"{a}"' if " " in a else a for a in args)
     print(f"Running example '{path}' via '{cmd}'")
 
     return start_process(
