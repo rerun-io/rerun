@@ -117,8 +117,8 @@ Given a `SpaceViewClass` `MyClass`:
     each of which are collection of default initialized scene parts and contexts respectively
 * `MyClass::prepare_populate()`
 * `TypedScene<MyClass>::populate()`
-  * for each `SceneContextPart` call `populate` (can be parallized in the future!)
-  * for each `ScenePart` call `populate`, passing in all contexts (can be parallized in the future!)
+  * for each `SceneContextPart` call `populate` (can be parallelized in the future!)
+  * for each `ScenePart` call `populate`, passing in all contexts (can be parallelized in the future!)
 * `SpaceViewClass::ui()`, passing in the now populated `TypedScene<MyClass>` as well as a stored instance of `MyClass::State`
 
 
