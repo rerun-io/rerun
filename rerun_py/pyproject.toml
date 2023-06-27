@@ -111,6 +111,5 @@ include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
 locked = true
 python-packages = [
   "rerun_sdk/rerun",
-  "rerun_sdk/rerun2",
   "rerun_sdk/rerun_demo",
 ]
