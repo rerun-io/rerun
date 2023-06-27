@@ -1,3 +1,4 @@
+use egui::NumExt as _;
 use re_format::format_number;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UICommand;
@@ -71,6 +72,9 @@ fn top_bar_ui(
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     crate::ui::rerun_menu_button_ui(store_context, ui, frame, app);
+
+    ui.add_space(12.0);
+    website_link_ui(ui, app);
 
     if app.app_options().show_metrics {
         ui.separator();
@@ -151,6 +155,35 @@ fn top_bar_ui(
             });
         }
     });
+}
+
+/// Shows clickable website link as an image (text doesn't look as nice)
+fn website_link_ui(ui: &mut egui::Ui, app: &mut App) {
+    let icon_image = app.re_ui().icon_image(&re_ui::icons::RERUN_IO_TEXT);
+
+    let desired_height = ui.max_rect().height();
+    let desired_height = desired_height.at_most(28.0); // figma size 2023-02-03
+
+    let image_size = icon_image.size_vec2() * (desired_height / icon_image.size_vec2().y);
+    let texture_id = icon_image.texture_id(ui.ctx());
+    let response = ui.add(egui::ImageButton::new(texture_id, image_size));
+    let url = "https://rerun.io/";
+    if response.clicked() {
+        let modifiers = ui.ctx().input(|i| i.modifiers);
+        ui.ctx().output_mut(|o| {
+            o.open_url = Some(egui::output::OpenUrl {
+                url: url.to_owned(),
+                new_tab: modifiers.any(),
+            });
+        });
+    } else if response.middle_clicked() {
+        ui.ctx().output_mut(|o| {
+            o.open_url = Some(egui::output::OpenUrl {
+                url: url.to_owned(),
+                new_tab: true,
+            });
+        });
+    }
 }
 
 fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
