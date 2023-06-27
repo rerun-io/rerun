@@ -30,7 +30,7 @@ LabelArrayLike = Union[
 
 # --- Arrow support ---
 
-from rerun2.components.label_ext import LabelArrayExt  # noqa: E402
+from .label_ext import LabelArrayExt  # noqa: E402
 
 
 class LabelType(pa.ExtensionType):  # type: ignore[misc]

@@ -36,7 +36,7 @@ ClassIdArrayLike = Union[
 
 # --- Arrow support ---
 
-from rerun2.components.class_id_ext import ClassIdArrayExt  # noqa: E402
+from .class_id_ext import ClassIdArrayExt  # noqa: E402
 
 
 class ClassIdType(pa.ExtensionType):  # type: ignore[misc]

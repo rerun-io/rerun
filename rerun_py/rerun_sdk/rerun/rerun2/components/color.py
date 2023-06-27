@@ -45,7 +45,7 @@ ColorArrayLike = Union[
 
 # --- Arrow support ---
 
-from rerun2.components.color_ext import ColorArrayExt  # noqa: E402
+from .color_ext import ColorArrayExt  # noqa: E402
 
 
 class ColorType(pa.ExtensionType):  # type: ignore[misc]

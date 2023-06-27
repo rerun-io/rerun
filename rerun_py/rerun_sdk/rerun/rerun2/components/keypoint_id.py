@@ -38,7 +38,7 @@ KeypointIdArrayLike = Union[
 
 # --- Arrow support ---
 
-from rerun2.components.keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
+from .keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
 
 
 class KeypointIdType(pa.ExtensionType):  # type: ignore[misc]

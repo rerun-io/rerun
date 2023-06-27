@@ -29,7 +29,7 @@ InstanceKeyArrayLike = Union[InstanceKeyLike, Sequence[InstanceKeyLike], npt.NDA
 
 # --- Arrow support ---
 
-from rerun2.components.instance_key_ext import InstanceKeyArrayExt  # noqa: E402
+from .instance_key_ext import InstanceKeyArrayExt  # noqa: E402
 
 
 class InstanceKeyType(pa.ExtensionType):  # type: ignore[misc]

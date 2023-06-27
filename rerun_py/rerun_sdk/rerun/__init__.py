@@ -1,46 +1,46 @@
 """The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 from __future__ import annotations
 
-import atexit
-import logging
-import sys
-from inspect import getmembers, isfunction
-
+# NOTE: The imports determine what is public API. Avoid importing globally anything that is not public API. Use
+# (private) function and local import if needed.
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
-from rerun import experimental
-from rerun.components.transform3d import (
+from . import experimental
+from .components.transform3d import (
     Quaternion,
     Rigid3D,
     RotationAxisAngle,
     Scale3D,
+    Transform3D,
+    Transform3DArray,
+    Transform3DType,
     Translation3D,
     TranslationAndMat3,
     TranslationRotationScale3D,
 )
-from rerun.log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
-from rerun.log.arrow import log_arrow
-from rerun.log.bounding_box import log_obb
-from rerun.log.camera import log_pinhole
-from rerun.log.clear import log_cleared
-from rerun.log.extension_components import log_extension_components
-from rerun.log.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
-from rerun.log.image import log_depth_image, log_image, log_segmentation_image
-from rerun.log.lines import log_line_segments, log_line_strip, log_path
-from rerun.log.mesh import log_mesh, log_meshes
-from rerun.log.points import log_point, log_points
-from rerun.log.rects import RectFormat, log_rect, log_rects
-from rerun.log.scalar import log_scalar
-from rerun.log.tensor import log_tensor
-from rerun.log.text import LoggingHandler, LogLevel, log_text_entry
-from rerun.log.transform import (
+from .log.annotation import AnnotationInfo, ClassDescription, log_annotation_context
+from .log.arrow import log_arrow
+from .log.bounding_box import log_obb
+from .log.camera import log_pinhole
+from .log.clear import log_cleared
+from .log.extension_components import log_extension_components
+from .log.file import ImageFormat, MeshFormat, log_image_file, log_mesh_file
+from .log.image import log_depth_image, log_image, log_segmentation_image
+from .log.lines import log_line_segments, log_line_strip, log_path
+from .log.mesh import log_mesh, log_meshes
+from .log.points import log_point, log_points
+from .log.rects import RectFormat, log_rect, log_rects
+from .log.scalar import log_scalar
+from .log.tensor import log_tensor
+from .log.text import LoggingHandler, LogLevel, log_text_entry
+from .log.transform import (
     log_disconnected_space,
     log_rigid3,
     log_transform3d,
     log_unknown_transform,
     log_view_coordinates,
 )
-from rerun.recording_stream import (
+from .recording_stream import (
     RecordingStream,
     get_application_id,
     get_data_recording,
@@ -51,109 +51,37 @@ from rerun.recording_stream import (
     set_global_data_recording,
     set_thread_local_data_recording,
 )
-from rerun.recording_stream import _patch as recording_stream_patch
-from rerun.script_helpers import script_add_args, script_setup, script_teardown
-from rerun.sinks import connect, disconnect, memory_recording, save, serve, spawn
-from rerun.time import reset_time, set_time_nanos, set_time_seconds, set_time_sequence
+from .script_helpers import script_add_args, script_setup, script_teardown
+from .sinks import connect, disconnect, memory_recording, save, serve, spawn
+from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequence
 
-# --- Init RecordingStream class ---
-
-# Inject all relevant methods into the `RecordingStream` class.
-# We need to do this from here to avoid circular import issues.
-recording_stream_patch(
-    [connect, save, disconnect, memory_recording, serve, spawn]
-    + [set_time_sequence, set_time_seconds, set_time_nanos, reset_time]
-    + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
-)  # type: ignore[no-untyped-call]
-
-# ---
-
-__all__ = [
-    # init
-    "init",
-    "new_recording",
-    "rerun_shutdown",
-    # recordings
-    "RecordingStream",
-    "is_enabled",
-    "get_application_id",
-    "get_recording_id",
-    "get_data_recording",
-    "get_global_data_recording",
-    "set_global_data_recording",
-    "get_thread_local_data_recording",
-    "set_thread_local_data_recording",
-    # time
-    "reset_time",
-    "set_time_nanos",
-    "set_time_seconds",
-    "set_time_sequence",
-    # sinks
-    "connect",
-    "disconnect",
-    "memory_recording",
-    "save",
-    "serve",
-    "spawn",
-    # log functions
-    "log_annotation_context",
-    "log_arrow",
-    "log_cleared",
-    "log_depth_image",
-    "log_disconnected_space",
-    "log_extension_components",
-    "log_image_file",
-    "log_image",
-    "log_line_segments",
-    "log_line_strip",
-    "log_mesh_file",
-    "log_mesh",
-    "log_meshes",
-    "log_obb",
-    "log_path",
-    "log_pinhole",
-    "log_point",
-    "log_points",
-    "log_rect",
-    "log_rects",
-    "log_rigid3",
-    "log_scalar",
-    "log_segmentation_image",
-    "log_tensor",
-    "log_text_entry",
-    "log_transform3d",
-    "log_unknown_transform",
-    "log_view_coordinates",
-    # classes
-    "AnnotationInfo",
-    "ClassDescription",
-    "ImageFormat",
-    "LogLevel",
-    "LoggingHandler",
-    "MeshFormat",
-    "RectFormat",
-    # special
-    "bindings",
-    "experimental",
-    # script helpers
-    "script_add_args",
-    "script_setup",
-    "script_teardown",
-    # Transform helpers
-    "Quaternion",
-    "Rigid3D",
-    "RotationAxisAngle",
-    "Scale3D",
-    "Transform3D",
-    "Transform3DArray",
-    "Transform3DType",
-    "Translation3D",
-    "TranslationAndMat3",
-    "TranslationRotationScale3D",
-]
+# Next-gen API imports
+# TODO(ab): remove this guard, here to make it easy to "hide" the next gen API if needed in the short term.
+_ENABLE_NEXT_GEN_API = True
+if _ENABLE_NEXT_GEN_API:
+    from .rerun2.archetypes import *
 
 
-# If `True`, we raise exceptions on use error (wrong parameter types etc).
+def _init_recording_stream() -> None:
+    # Inject all relevant methods into the `RecordingStream` class.
+    # We need to do this from here to avoid circular import issues.
+
+    import sys
+    from inspect import getmembers, isfunction
+
+    from rerun.recording_stream import _patch as recording_stream_patch
+
+    recording_stream_patch(
+        [connect, save, disconnect, memory_recording, serve, spawn]
+        + [set_time_sequence, set_time_seconds, set_time_nanos, reset_time]
+        + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
+    )  # type: ignore[no-untyped-call]
+
+
+_init_recording_stream()
+
+
+# If `True`, we raise exceptions on use error (wrong parameter types, etc.).
 # If `False` we catch all errors and log a warning instead.
 _strict_mode = False
 
@@ -206,11 +134,11 @@ def init(
         you call either `connect`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
-        Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+        Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
     init_logging
         Should we initialize the logging for this application?
     strict
-        If `True`, an exceptions is raised on use error (wrong parameter types etc).
+        If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
         If `False`, errors are logged as warnings instead.
     exp_init_blueprint
         (Experimental) Should we initialize the blueprint for this application?
@@ -219,6 +147,7 @@ def init(
 
     """
 
+    global _strict_mode
     _strict_mode = strict
 
     if init_logging:
@@ -293,7 +222,7 @@ def new_recording(
         you call either `connect`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
-        Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+        Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
 
     Returns
     -------
@@ -362,10 +291,18 @@ def rerun_shutdown() -> None:
     bindings.shutdown()
 
 
-atexit.register(rerun_shutdown)
+def _register_shutdown() -> None:
+    import atexit
+
+    atexit.register(rerun_shutdown)
+
+
+_register_shutdown()
 
 
 def unregister_shutdown() -> None:
+    import atexit
+
     atexit.unregister(rerun_shutdown)
 
 
@@ -386,7 +323,7 @@ def strict_mode() -> bool:
     return _strict_mode
 
 
-def set_strict_mode(strict_mode: bool) -> None:
+def set_strict_mode(mode: bool) -> None:
     """
     Turn strict mode on/off.
 
@@ -396,8 +333,9 @@ def set_strict_mode(strict_mode: bool) -> None:
 
     The default is OFF.
     """
+    global _strict_mode
 
-    _strict_mode = strict_mode
+    _strict_mode = mode
 
 
 def start_web_viewer_server(port: int = 0) -> None:
@@ -409,7 +347,7 @@ def start_web_viewer_server(port: int = 0) -> None:
     data.
 
     This is generally only necessary for application such as running a jupyter notebook
-    in a context where app.rerun.io is unavailable, or does not having the matching
+    in a context where app.rerun.io is unavailable, or does not have the matching
     resources for your build (such as when running from source.)
 
     Parameters
@@ -419,6 +357,8 @@ def start_web_viewer_server(port: int = 0) -> None:
     """
 
     if not bindings.is_enabled():
+        import logging
+
         logging.warning(
             "Rerun is disabled - start_web_viewer_server() call ignored. You must call rerun.init before starting the"
             + " web viewer server."

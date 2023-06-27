@@ -237,7 +237,7 @@ pub fn generate_rust_code(
 ///
 /// E.g.:
 /// ```no_run
-/// re_types_builder::generate_rust_code(
+/// re_types_builder::generate_python_code(
 ///     "./definitions",
 ///     "./rerun_py",
 ///     "./definitions/rerun/archetypes.fbs",

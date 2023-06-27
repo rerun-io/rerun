@@ -37,7 +37,7 @@ DrawOrderArrayLike = Union[DrawOrderLike, Sequence[DrawOrderLike], npt.NDArray[n
 
 # --- Arrow support ---
 
-from rerun2.components.draw_order_ext import DrawOrderArrayExt  # noqa: E402
+from .draw_order_ext import DrawOrderArrayExt  # noqa: E402
 
 
 class DrawOrderType(pa.ExtensionType):  # type: ignore[misc]
