@@ -61,9 +61,11 @@ def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True,
         wait=wait,
     )
 
+
 # stdout and stderr
 def output_from_process(process: Any) -> str:
     return process.communicate()[0].decode("utf-8").rstrip()
+
 
 def get_free_port() -> int:
     with socket.socket() as s:
@@ -102,7 +104,7 @@ def collect_examples(fast: bool) -> list[str]:
 
 
 def print_example_output(path: str, example: Any) -> None:
-    output = example.communicate()[0].decode('utf-8').rstrip()
+    output = example.communicate()[0].decode("utf-8").rstrip()
     print(f"\nExample {path}:\n{output}\n")
 
 
