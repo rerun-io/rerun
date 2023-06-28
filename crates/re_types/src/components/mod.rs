@@ -6,6 +6,7 @@ mod color;
 mod color_ext;
 mod draw_order;
 mod draw_order_ext;
+mod fuzzy;
 mod instance_key;
 mod instance_key_ext;
 mod keypoint_id;
@@ -20,6 +21,10 @@ mod radius_ext;
 pub use self::class_id::ClassId;
 pub use self::color::Color;
 pub use self::draw_order::DrawOrder;
+pub use self::fuzzy::{
+    AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4, AffixFuzzer5, AffixFuzzer6,
+    AffixFuzzer7,
+};
 pub use self::instance_key::InstanceKey;
 pub use self::keypoint_id::KeypointId;
 pub use self::label::Label;
