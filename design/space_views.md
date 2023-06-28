@@ -111,7 +111,7 @@ Similar to `ScenePart` but does not emit drawables. Accessible while scene parts
 This is used e.g. to prepare the transform tree.
 
 #### Scene Lifecycle
-Each frame, each `SpaceViewClass` builds up a scene. The framework defines a fixed lifecycle for all views.
+Each frame, each `SpaceView` instance builds up a scene. The framework defines a fixed lifecycle for all views.
 Given a `SpaceViewClass` `MyClass`:
 * default instantiate a new `TypedScene<MyClass>`
   * this contains an instance of ``MyClass::SceneParts` and `MyClass::SceneParts::Context`,
