@@ -11,7 +11,7 @@ while read -d '' -r file; do
     if [[ -f "$file" ]]; then
         actualsize=$(wc -c <"$file")
         if [ $actualsize -ge $maximum_size ]; then
-            if ! grep -qx "$file" ./scripts/check_large_files_allow_list.txt; then
+            if ! grep -qx "$file" ./scripts/ci/check_large_files_allow_list.txt; then
                 echo "$file is $actualsize byte (max allowed is $maximum_size bytes)"
                 result=1
             fi

@@ -191,7 +191,7 @@ jobs:
         # After patching the pre-release version, run cargo update.
         # This updates the cargo.lock file with the new version numbers and keeps the wheel build from failing
         run: |
-          python3 scripts/version_util.py --patch_prerelease
+          python3 scripts/ci/version_util.py --patch_prerelease
           cargo update -w
 
       - name: Store the expected version
@@ -199,7 +199,7 @@ jobs:
         shell: bash
         id: expected_version
         run: |
-          echo "EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
+          echo "EXPECTED_VERSION=$(python3 scripts/ci/version_util.py --bare_cargo_version)" >> "$GITHUB_OUTPUT"
 
       - name: Check the expected version
         if: ${{ inputs.RELEASE_VERSION != 'prerelease' }}
