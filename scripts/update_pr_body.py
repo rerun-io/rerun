@@ -28,7 +28,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
     parser.add_argument("--github-token", required=True, help="GitHub token")
     parser.add_argument("--github-repository", required=True, help="GitHub repository")
-    parser.add_argument("--pr-number", required=True, type=int, help="PR number")
+    parser.add_argument("--pr-number", required=True, type=str, help="PR number")
     args = parser.parse_args()
 
     gh = Github(args.github_token)  # NOLINT
