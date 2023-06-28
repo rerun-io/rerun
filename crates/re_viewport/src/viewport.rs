@@ -554,6 +554,8 @@ impl Viewport {
                 maximized: &mut self.maximized,
             };
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
+
+            re_tracing::profile_scope!("tree.ui");
             tree.ui(&mut tab_viewer, ui);
         });
     }
