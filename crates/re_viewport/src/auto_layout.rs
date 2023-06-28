@@ -44,8 +44,7 @@ pub(crate) fn tree_from_space_views(
     let root = if space_make_infos.len() == 1 {
         tiles.insert_pane(space_make_infos[0].id)
     } else if space_make_infos.len() == 3 {
-        // Special-case this common case (that doesn't fit nicely in a grid!):
-        // tile_by_category(&mut tiles, &space_make_infos)
+        // Special-case for common case that doesn't fit nicely in a grid
         arrange_three(
             [
                 space_make_infos[0].clone(),
