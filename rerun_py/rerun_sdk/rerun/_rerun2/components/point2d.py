@@ -34,7 +34,7 @@ class Point2DType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct([pa.field("x", pa.float32(), True, {}), pa.field("y", pa.float32(), True, {})]),
+            pa.struct([pa.field("x", pa.float32(), False, {}), pa.field("y", pa.float32(), False, {})]),
             "rerun.point2d",
         )
 
