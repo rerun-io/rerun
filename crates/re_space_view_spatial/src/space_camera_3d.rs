@@ -1,5 +1,5 @@
-use glam::{Quat, Vec2, Vec3};
-use macaw::{IsoTransform, Ray3};
+use glam::{Quat, Vec3};
+use macaw::IsoTransform;
 
 use re_components::{Pinhole, ViewCoordinates};
 use re_log_types::EntityPath;
@@ -58,16 +58,6 @@ impl SpaceCamera3D {
         let point_in_cam = self.cam_from_world().transform_point3(point_in_world);
         let point_in_image = pinhole.project(point_in_cam);
         Some(point_in_image)
-    }
-
-    /// Unproject a 2D image coordinate as a ray in 3D space
-    pub fn unproject_as_ray(&self, pos2d: Vec2) -> Option<Ray3> {
-        let pinhole = self.pinhole?;
-
-        let depth = 1.0; // whatever will do
-        let stop = pinhole.unproject(pos2d.extend(depth));
-        let ray_in_camera = Ray3::from_origin_dir(Vec3::ZERO, stop);
-        Some(self.world_from_camera * ray_in_camera)
     }
 }
 
