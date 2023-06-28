@@ -20,14 +20,6 @@ const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
 fn main() {
-    if std::env::var("CI").is_ok() {
-        // Don't run on CI!
-        //
-        // The code we're generating here is actual source code that gets committed into the
-        // repository.
-        return;
-    }
-
     if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
@@ -62,6 +54,13 @@ fn main() {
             // to do anything at this point.
             return;
         }
+    }
+
+    // Detect desyncs between definitions and generated when running on CI, and
+    // crash the build accordingly.
+    #[allow(clippy::manual_assert)]
+    if std::env::var("CI").is_ok() {
+        panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
     let sh = Shell::new().unwrap();
