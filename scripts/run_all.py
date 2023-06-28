@@ -26,24 +26,27 @@ HAS_NO_SAVE_ARG = {
 }
 
 
-def start_process(args: list[str], *, wait: bool, cwd: str | None = None) -> Any:
+def start_process(args: list[str], *, wait: bool) -> Any:
+    readable_cmd = " ".join(f'"{a}"' if " " in a else a for a in args)
+    print(f"> {readable_cmd}")
+
     process = subprocess.Popen(
         args,
-        cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
     if wait:
         returncode = process.wait()
         if returncode != 0:
-            print(process.communicate()[0].decode("utf-8").rstrip())
+            print(output_from_process(process))
+            print()
             print(f"process exited with error code {returncode}")
             exit(returncode)
     return process
 
 
 def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True, save: str | None = None) -> Any:
-    args = ["python3", "main.py"]
+    args = [os.path.join(path, "main.py")]
 
     if path in EXTRA_ARGS:
         args += EXTRA_ARGS[path]
@@ -53,15 +56,14 @@ def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True,
     if viewer_port is not None:
         args += ["--connect", f"--addr=127.0.0.1:{viewer_port}"]
 
-    cmd = " ".join(f'"{a}"' if " " in a else a for a in args)
-    print(f"Running example '{path}' via '{cmd}'")
-
     return start_process(
         args,
-        cwd=path,
         wait=wait,
     )
 
+# stdout and stderr
+def output_from_process(process: Any) -> str:
+    return process.communicate()[0].decode("utf-8").rstrip()
 
 def get_free_port() -> int:
     with socket.socket() as s:
@@ -100,7 +102,8 @@ def collect_examples(fast: bool) -> list[str]:
 
 
 def print_example_output(path: str, example: Any) -> None:
-    print(f"\nExample {path}:\n{example.communicate()[0].decode('utf-8').rstrip()}")
+    output = example.communicate()[0].decode('utf-8').rstrip()
+    print(f"\nExample {path}:\n{output}\n")
 
 
 class Viewer:
@@ -209,20 +212,24 @@ def run_web(examples: list[str], separate: bool) -> None:
     else:
         with Viewer(close=True, web=True) as viewer:
             for path in examples:
-                example = run_py_example(path, viewer_port=viewer.sdk_port)
-                print_example_output(path, example)
+                process = run_py_example(path, viewer_port=viewer.sdk_port)
+                print(f"{output_from_process(process)}\n")
 
 
 def run_save(examples: list[str]) -> None:
     for path in examples:
         if path not in HAS_NO_SAVE_ARG:
-            example = run_py_example(path, save="out.rrd")
-            print_example_output(path, example)
+            process = run_py_example(path, save="out.rrd")
+            print(f"{output_from_process(process)}\n")
 
 
 def run_saved_example(path: str, wait: bool) -> Any:
     return start_process(
-        ["cargo", "run", "-p", "rerun-cli", "--all-features", "--", os.path.join(path, "out.rrd")],
+        [
+            "cargo",
+            "rerun",
+            os.path.join(path, "out.rrd"),
+        ],
         wait=wait,
     )
 
@@ -245,8 +252,8 @@ def run_load(examples: list[str], separate: bool, close: bool) -> None:
         # run all examples sequentially
         for path in examples:
             # each one must be closed for the next one to start running
-            example = run_saved_example(path, wait=True)
-            print_example_output(path, example)
+            process = run_saved_example(path, wait=True)
+            print(f"{output_from_process(process)}\n")
 
 
 def run_native(examples: list[str], separate: bool, close: bool) -> None:
@@ -269,8 +276,8 @@ def run_native(examples: list[str], separate: bool, close: bool) -> None:
         # run all examples sequentially in a single viewer
         with Viewer(close) as viewer:
             for path in examples:
-                example = run_py_example(path, viewer_port=viewer.sdk_port, wait=True)
-                print_example_output(path, example)
+                process = run_py_example(path, viewer_port=viewer.sdk_port, wait=True)
+                print(f"{output_from_process(process)}\n")
 
 
 def main() -> None:
