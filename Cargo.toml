@@ -144,4 +144,4 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles.git", rev = "0127ad5eeed91beefd03b0ff1733200b32fb9a12" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles.git", rev = "f958d8af7ed27d925bc2ff7862fb1c1c45961b9e" }
