@@ -2,6 +2,34 @@
 
 from __future__ import annotations
 
-__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
+__all__ = [
+    "AffixFuzzer1",
+    "AffixFuzzer1Array",
+    "AffixFuzzer1ArrayLike",
+    "AffixFuzzer1Like",
+    "AffixFuzzer1Type",
+    "AffixFuzzer2",
+    "AffixFuzzer2Array",
+    "AffixFuzzer2ArrayLike",
+    "AffixFuzzer2Like",
+    "AffixFuzzer2Type",
+    "Vec2D",
+    "Vec2DArray",
+    "Vec2DArrayLike",
+    "Vec2DLike",
+    "Vec2DType",
+]
 
+from .fuzzy import (
+    AffixFuzzer1,
+    AffixFuzzer1Array,
+    AffixFuzzer1ArrayLike,
+    AffixFuzzer1Like,
+    AffixFuzzer1Type,
+    AffixFuzzer2,
+    AffixFuzzer2Array,
+    AffixFuzzer2ArrayLike,
+    AffixFuzzer2Like,
+    AffixFuzzer2Type,
+)
 from .vec2d import Vec2D, Vec2DArray, Vec2DArrayLike, Vec2DLike, Vec2DType
