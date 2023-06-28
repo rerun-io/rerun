@@ -28,7 +28,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
     parser.add_argument("--github-token", required=True, help="GitHub token")
     parser.add_argument("--github-repository", required=True, help="GitHub repository")
-    parser.add_argument("--pr-number", required=True, type=str, help="PR number")
+    parser.add_argument("--pr-number", required=True, type=int, help="PR number")
     args = parser.parse_args()
 
     gh = Github(args.github_token)  # NOLINT
@@ -57,7 +57,7 @@ def main() -> None:
 
     # update the pr number
     if "{{ pr-number }}" in body:
-        body = body.replace("{{ pr-number }}", args.pr_number)
+        body = body.replace("{{ pr-number }}", str(args.pr_number))
 
     if body != pr.body:
         pr.edit(body=body)
