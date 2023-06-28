@@ -19,10 +19,10 @@ EXTRA_ARGS = {
 }
 
 HAS_NO_SAVE_ARG = {
-    "examples/python/multiprocessing",
-    "examples/python/minimal",
-    "examples/python/dna",
     "examples/python/blueprint",
+    "examples/python/dna",
+    "examples/python/minimal",
+    "examples/python/multiprocessing",
 }
 
 
@@ -88,10 +88,10 @@ def collect_examples(fast: bool) -> list[str]:
         skip_list = [
             # depth_sensor requires a specific piece of hardware to be attached
             "examples/python/live_depth_sensor/main.py",
-            # ros requires complex system dependencies to be installed
-            "examples/python/ros_node/main.py",
             # objectron currently broken; see https://github.com/rerun-io/rerun/issues/2557
             "examples/python/objectron/main.py",
+            # ros requires complex system dependencies to be installed
+            "examples/python/ros_node/main.py",
         ]
 
         return [
