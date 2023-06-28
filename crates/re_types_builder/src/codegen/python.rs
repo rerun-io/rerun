@@ -11,6 +11,7 @@ use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_PYTHON_TRANSPARENT,
+    ATTR_RERUN_LEGACY_FQNAME,
 };
 
 // ---
@@ -760,6 +761,10 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                 ])
                 .to_case(Case::Snake);
 
+            let legacy_fqname = obj
+                .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
+                .unwrap_or_else(|| fqname.clone());
+
             unindent::unindent(&format!(
                 r#"
 
@@ -770,7 +775,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                 class {arrow}(pa.ExtensionType): # type: ignore[misc]
                     def __init__(self: type[pa.ExtensionType]) -> None:
                         pa.ExtensionType.__init__(
-                            self, {datatype}, "{fqname}"
+                            self, {datatype}, "{legacy_fqname}"
                         )
 
                     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
