@@ -2,7 +2,7 @@
 
 use anyhow::Context as _;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     io::Write,
     path::{Path, PathBuf},
 };
@@ -145,9 +145,9 @@ fn quote_objects(
     for (filepath, objs) in files {
         let names = objs
             .iter()
-            .flat_map(|obj| match obj.kind {
+            .flat_map(|obj| match obj.object.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
-                    let name = &obj.name;
+                    let name = &obj.object.name;
 
                     vec![
                         format!("{name}"),
@@ -157,7 +157,7 @@ fn quote_objects(
                         format!("{name}Type"),
                     ]
                 }
-                ObjectKind::Archetype => vec![obj.name.clone()],
+                ObjectKind::Archetype => vec![obj.object.name.clone()],
             })
             .collect::<Vec<_>>();
 
@@ -181,12 +181,28 @@ fn quote_objects(
                 "
                 from __future__ import annotations
 
+                import numpy as np
+                import numpy.typing as npt
+                import pyarrow as pa
+
+                from dataclasses import dataclass
+                from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
+
                 __all__ = [{manifest}]
 
                 ",
             ),
             0,
         );
+
+        let import_clauses: HashSet<_> = objs
+            .iter()
+            .flat_map(|obj| obj.object.fields.iter())
+            .filter_map(quote_import_clauses_from_field)
+            .collect();
+        for clause in import_clauses {
+            code.push_text(&clause, 1, 0);
+        }
 
         for obj in objs {
             code.push_text(&obj.code, 1, 0);
@@ -235,9 +251,8 @@ fn quote_objects(
 
 #[derive(Debug, Clone)]
 struct QuotedObject {
+    object: Object,
     filepath: PathBuf,
-    name: String,
-    kind: ObjectKind,
     code: String,
 }
 
@@ -260,19 +275,11 @@ impl QuotedObject {
 
         let mut code = String::new();
 
-        code.push_text(&quote_module_prelude(), 0, 0);
-
-        for clause in obj
-            .fields
-            .iter()
-            .filter_map(quote_import_clauses_from_field)
-        {
-            code.push_text(&clause, 1, 0);
-        }
-
         code.push_unindented_text(
             format!(
                 r#"
+
+                ## --- {name} --- ##
 
                 @dataclass
                 class {name}:
@@ -283,7 +290,13 @@ impl QuotedObject {
 
         code.push_text(quote_doc_from_docs(docs), 0, 4);
 
-        for field in fields {
+        // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
+        // complains.
+        let fields_in_order = fields
+            .iter()
+            .filter(|field| !field.is_nullable)
+            .chain(fields.iter().filter(|field| field.is_nullable));
+        for field in fields_in_order {
             let ObjectField {
                 filepath: _,
                 fqname: _,
@@ -331,9 +344,8 @@ impl QuotedObject {
         filepath.set_extension("py");
 
         Self {
+            object: obj.clone(),
             filepath,
-            name: obj.name.clone(),
-            kind: obj.kind,
             code,
         }
     }
@@ -355,16 +367,6 @@ impl QuotedObject {
         } = obj;
 
         let mut code = String::new();
-
-        code.push_text(&quote_module_prelude(), 0, 0);
-
-        for clause in obj
-            .fields
-            .iter()
-            .filter_map(quote_import_clauses_from_field)
-        {
-            code.push_text(&clause, 1, 0);
-        }
 
         code.push_unindented_text(
             format!(
@@ -411,9 +413,8 @@ impl QuotedObject {
         filepath.set_extension("py");
 
         Self {
+            object: obj.clone(),
             filepath,
-            name: obj.name.clone(),
-            kind: obj.kind,
             code,
         }
     }
@@ -429,21 +430,6 @@ fn quote_manifest(names: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     quoted_names.sort();
 
     quoted_names.join(", ")
-}
-
-fn quote_module_prelude() -> String {
-    // NOTE: All the extraneous stuff will be cleaned up courtesy of `ruff`.
-    unindent::unindent(
-        r#"
-        import numpy as np
-        import numpy.typing as npt
-        import pyarrow as pa
-
-        from dataclasses import dataclass
-        from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
-
-        "#,
-    )
 }
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
@@ -675,7 +661,7 @@ fn quote_field_type_from_field(
                     unwrapped = true;
                     typ
                 } else {
-                    format!("List[{typ}]")
+                    format!("list[{typ}]")
                 }
             }
         }
