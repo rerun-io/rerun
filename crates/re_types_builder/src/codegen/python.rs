@@ -28,7 +28,7 @@ impl PythonCodeGenerator {
 }
 
 impl CodeGenerator for PythonCodeGenerator {
-    fn quote(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
+    fn generate(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
         let mut filepaths = Vec::new();
 
         let datatypes_path = self.pkg_path.join("datatypes");
@@ -442,7 +442,7 @@ fn quote_module_prelude() -> String {
 }
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
-    let lines = crate::codegen::quote_doc_from_docs(docs, &["py", "python"]);
+    let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
 
     if lines.is_empty() {
         return String::new();
