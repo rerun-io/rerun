@@ -78,25 +78,156 @@ impl Points2D {
 }
 
 impl crate::Archetype for Points2D {
+    #[inline]
     fn name() -> crate::ArchetypeName {
         crate::ArchetypeName::Borrowed("rerun.archetypes.Points2D")
     }
 
+    #[inline]
     fn required_components() -> Vec<crate::ComponentName> {
         Self::REQUIRED_COMPONENTS.to_vec()
     }
 
+    #[inline]
     fn recommended_components() -> Vec<crate::ComponentName> {
         Self::RECOMMENDED_COMPONENTS.to_vec()
     }
 
+    #[inline]
     fn optional_components() -> Vec<crate::ComponentName> {
         Self::OPTIONAL_COMPONENTS.to_vec()
     }
 
-    #[allow(clippy::todo)]
-    fn to_arrow_datatypes() -> Vec<arrow2::datatypes::DataType> {
-        todo!("query the registry for all fqnames");
+    #[inline]
+    fn try_to_arrow(
+        &self,
+    ) -> crate::SerializationResult<
+        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+    > {
+        use crate::Component as _;
+        Ok([
+            {
+                Some({
+                    let array = <crate::components::Point2D>::try_to_arrow(self.points.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("points", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                self.radii
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::Radius>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("radii", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.colors
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::Color>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("colors", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.labels
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::Label>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("labels", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.draw_order
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::DrawOrder>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("draw_order", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.class_ids
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::ClassId>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("class_ids", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.keypoint_ids
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::KeypointId>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("keypoint_ids", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.instance_keys
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::InstanceKey>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("instance_keys", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+        ]
+        .into_iter()
+        .flatten()
+        .collect())
     }
 }
 
