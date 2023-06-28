@@ -4543,7 +4543,7 @@ dependencies = [
  "convert_case",
  "flatbuffers",
  "indent",
- "itertools",
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
  "re_build_tools",
