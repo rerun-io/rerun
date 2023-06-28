@@ -60,6 +60,41 @@
 //! brings very little value.
 //!
 //! Make sure to test the behavior of its output though: `re_types`!
+//!
+//!
+//! ### Understanding the subtleties of affixes
+//!
+//! So-called "affixes" are effects applied to objects defined with the Rerun IDL and that affect
+//! the way these objects behave and interoperate with each other (so, yes, monads. shhh.).
+//!
+//! There are 3 distinct and very common affixes used when working with Rerun's IDL: transparency,
+//! nullability and plurality.
+//!
+//! Broadly, we can describe these affixes as follows:
+//! - Transparency allows for bypassing a single layer of typing (e.g. to "extract" a field out of
+//!   a struct).
+//! - Nullability specifies whether a piece of data is allowed to be left unspecified at runtime.
+//! - Plurality specifies whether a piece of data is actually a collection of that same type.
+//!
+//! We say "broadly" here because the way these affixes ultimately affect objects in practice will
+//! actually depend on the kind of object that they are applied to, of which there are 3: archetypes,
+//! components and datatypes.
+//!
+//! Not only that, but objects defined in Rerun's IDL are materialized into 3 distinct environments:
+//! IDL definitions, Arrow datatypes and native code (e.g. Rust & Python).
+//!
+//! These environment have vastly different characteristics, quirks, pitfalls and limitations,
+//! which once again lead to these affixes having different, sometimes surprising behavior
+//! depending on the environment we're interested in.
+//! Also keep in mind that Flatbuffers and native code are generally designed around arrays of
+//! structures, while Arrow is all about structures of arrays!
+//!
+//! All in all, these interactions between affixes, object kinds and environments lead to a
+//! combinatorial explosion of edge cases that can be very confusing when it comes to (de)serialization
+//! code, and even API design.
+//!
+//! When in doubt, check out the `rerun.archetypes.AffixFuzzer` IDL definitions, generated code and
+//! test suites for definitive answers.
 
 // TODO(#2365): support for external IDL definitions
 
