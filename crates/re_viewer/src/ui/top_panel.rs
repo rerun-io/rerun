@@ -166,7 +166,9 @@ fn website_link_ui(ui: &mut egui::Ui, app: &mut App) {
 
     let image_size = icon_image.size_vec2() * (desired_height / icon_image.size_vec2().y);
     let texture_id = icon_image.texture_id(ui.ctx());
-    let response = ui.add(egui::ImageButton::new(texture_id, image_size));
+    let response = ui
+        .add(egui::ImageButton::new(texture_id, image_size))
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
     let url = "https://rerun.io/";
     if response.clicked() {
         let modifiers = ui.ctx().input(|i| i.modifiers);
