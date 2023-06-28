@@ -243,6 +243,11 @@ impl SpatialSpaceViewState {
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) {
+        let view_coordinates = ctx
+            .store_db
+            .store()
+            .query_latest_component(space_origin, &ctx.current_query());
+
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = self.auto_size_world_heuristic();
@@ -317,7 +322,7 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
-                        self.state_3d.reset_camera(&self.scene_bbox_accum);
+                        self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
                     }
                     ui.checkbox(&mut self.state_3d.spin, "Spin")
                         .on_hover_text("Spin camera around the orbit center.");
@@ -329,7 +334,7 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
-                    let up_description = if let Some(up) = self.state_3d.view_coordinates.and_then(|v| v.up()) {
+                    let up_description = if let Some(up) = view_coordinates.and_then(|v| v.up()) {
                         format!("Up is {up}")
                     } else {
                         "Up is undetermined".to_owned()
@@ -398,11 +403,8 @@ impl SpatialSpaceViewState {
             .num_3d_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                self.state_3d.view_coordinates =
-                    store.query_latest_component(space_origin, &ctx.current_query());
                 view_3d(ctx, ui, self, space_origin, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {

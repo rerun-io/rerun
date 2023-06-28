@@ -47,9 +47,6 @@ pub struct View3DState {
     pub show_bbox: bool,
 
     last_eye_interact_time: f64,
-
-    /// Filled in at the start of each frame
-    pub(crate) view_coordinates: Option<ViewCoordinates>,
 }
 
 impl Default for View3DState {
@@ -63,7 +60,6 @@ impl Default for View3DState {
             show_axes: false,
             show_bbox: false,
             last_eye_interact_time: f64::NEG_INFINITY,
-            view_coordinates: None,
         }
     }
 }
@@ -73,8 +69,12 @@ fn ease_out(t: f32) -> f32 {
 }
 
 impl View3DState {
-    pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
-        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.view_coordinates));
+    pub fn reset_camera(
+        &mut self,
+        scene_bbox_accum: &BoundingBox,
+        view_coordinates: &Option<ViewCoordinates>,
+    ) {
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, view_coordinates));
         self.tracked_camera = None;
         self.camera_before_tracked_camera = None;
     }
@@ -84,6 +84,7 @@ impl View3DState {
         response: &egui::Response,
         scene_bbox_accum: &BoundingBox,
         space_cameras: &[SpaceCamera3D],
+        view_coordinates: Option<ViewCoordinates>,
     ) -> &mut OrbitEye {
         let tracking_camera = self
             .tracked_camera
@@ -105,7 +106,7 @@ impl View3DState {
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.view_coordinates));
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &view_coordinates));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -273,6 +274,10 @@ pub fn view_3d(
 
     let highlights = &scene.highlights;
     let space_cameras = &scene.parts.cameras.space_cameras;
+    let view_coordinates = ctx
+        .store_db
+        .store()
+        .query_latest_component(space, &ctx.current_query());
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -288,9 +293,12 @@ pub fn view_3d(
         Some(_) => 4.0,
         None => 0.0,
     };
-    let orbit_eye = state
-        .state_3d
-        .update_eye(&response, &state.scene_bbox_accum, space_cameras);
+    let orbit_eye = state.state_3d.update_eye(
+        &response,
+        &state.scene_bbox_accum,
+        space_cameras,
+        view_coordinates,
+    );
     let did_interact_with_eye =
         orbit_eye.update(&response, orbit_eye_drag_threshold, &state.scene_bbox_accum);
 
@@ -408,7 +416,9 @@ pub fn view_3d(
         }
         // Without hovering, resets the camera.
         else {
-            state.state_3d.reset_camera(&state.scene_bbox_accum);
+            state
+                .state_3d
+                .reset_camera(&state.scene_bbox_accum, &view_coordinates);
         }
     }
 
