@@ -30,6 +30,7 @@
                 "args": [
                     "build",
                     "--package=rerun-cli",
+                    "--no-default-features",
                     "--features=native_viewer"
                 ],
                 "filter": {
@@ -49,7 +50,9 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--package=rerun-cli"
+                    "--package=rerun-cli",
+                    "--no-default-features",
+                    "--features=native_viewer"
                 ],
                 "filter": {
                     "name": "rerun",
@@ -68,7 +71,9 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--package=rerun-cli"
+                    "--package=rerun-cli",
+                    "--no-default-features",
+                    "--features=native_viewer"
                 ],
                 "filter": {
                     "name": "rerun",

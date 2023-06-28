@@ -60,7 +60,10 @@ impl DataUi for EntityComponentWithInstances {
                 ui.label(ctx.re_ui.error_text("Error: missing instance key"));
             }
         } else if one_line {
-            ui.label(format!("{num_instances} values"));
+            ui.label(format!(
+                "{} values",
+                re_format::format_large_number(num_instances as _)
+            ));
         } else {
             egui_extras::TableBuilder::new(ui)
                 .resizable(false)

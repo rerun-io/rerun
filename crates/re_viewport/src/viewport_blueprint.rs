@@ -10,8 +10,7 @@ use re_viewer_context::{CommandSender, Item, SpaceViewId, SystemCommand, SystemC
 
 use crate::{
     blueprint_components::{
-        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, SpaceViewVisibility,
-        ViewportLayout, VIEWPORT_PATH,
+        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH,
     },
     SpaceViewBlueprint, Viewport,
 };
@@ -151,11 +150,6 @@ fn load_viewport(
             )
         });
 
-    let space_view_visibility = blueprint_db
-        .store()
-        .query_timeless_component::<SpaceViewVisibility>(&VIEWPORT_PATH.into())
-        .unwrap_or_default();
-
     let space_view_maximized = blueprint_db
         .store()
         .query_timeless_component::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
@@ -179,8 +173,7 @@ fn load_viewport(
 
     let mut viewport = Viewport {
         space_views: known_space_views,
-        visible: space_view_visibility.0,
-        trees: viewport_layout.trees,
+        tree: viewport_layout.tree,
         maximized: space_view_maximized.0,
         has_been_user_edited: viewport_layout.has_been_user_edited,
         auto_space_views: auto_space_views.0,
@@ -250,41 +243,20 @@ fn sync_viewport(deltas: &mut Vec<DataRow>, viewport: &Viewport, snapshot: &View
         add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 
-    if viewport.visible != snapshot.visible {
-        let component = SpaceViewVisibility(viewport.visible.clone());
-        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
-    }
-
     if viewport.maximized != snapshot.maximized {
         let component = SpaceViewMaximized(viewport.maximized);
         add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 
-    // Note: we can't just check `viewport.trees != snapshot.trees` because the
-    // tree contains serde[skip]'d state that won't match in PartialEq.
-    if viewport.trees.len() != snapshot.trees.len()
-        || !viewport.trees.iter().zip(snapshot.trees.iter()).all(
-            |((left_vis, left_tree), (right_vis, right_tree))| {
-                left_vis == right_vis
-                    && left_tree.root == right_tree.root
-                    && left_tree.tiles.tiles == right_tree.tiles.tiles
-            },
-        )
+    if viewport.tree != snapshot.tree
         || viewport.has_been_user_edited != snapshot.has_been_user_edited
     {
         let component = ViewportLayout {
             space_view_keys: viewport.space_views.keys().cloned().collect(),
-            trees: viewport.trees.clone(),
+            tree: viewport.tree.clone(),
             has_been_user_edited: viewport.has_been_user_edited,
         };
 
-        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
-
-        // TODO(jleibs): Sort out this causality mess
-        // If we are saving a new layout, we also need to save the visibility-set because
-        // it gets mutated on load but isn't guaranteed to be mutated on layout-change
-        // which means it won't get saved.
-        let component = SpaceViewVisibility(viewport.visible.clone());
         add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
     }
 }

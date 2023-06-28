@@ -1,11 +1,8 @@
-use ahash::HashMap;
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use re_log_types::{serde_field::SerdeField, Component, ComponentName};
 
 pub use re_viewer_context::SpaceViewId;
-
-use crate::viewport::VisibilitySet;
 
 pub const VIEWPORT_PATH: &str = "viewport";
 
@@ -29,31 +26,6 @@ impl Component for AutoSpaceViews {
     #[inline]
     fn name() -> ComponentName {
         "rerun.blueprint.auto_space_views".into()
-    }
-}
-
-/// The set of currently visible spaces
-///
-/// ## Example
-/// ```
-/// # use re_viewport::blueprint_components::SpaceViewVisibility;
-/// # use arrow2_convert::field::ArrowField;
-/// # use arrow2::datatypes::{DataType, Field};
-/// assert_eq!(
-///     SpaceViewVisibility::data_type(),
-///     DataType::Binary
-/// );
-/// ```
-#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
-#[arrow_field(transparent)]
-pub struct SpaceViewVisibility(
-    #[arrow_field(type = "SerdeField<VisibilitySet>")] pub VisibilitySet,
-);
-
-impl Component for SpaceViewVisibility {
-    #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.space_view_visibility".into()
     }
 }
 
@@ -93,7 +65,7 @@ impl Component for SpaceViewMaximized {
 ///     ViewportLayout::data_type(),
 ///     DataType::Struct(vec![
 ///         Field::new("space_view_keys", DataType::Binary, false),
-///         Field::new("trees", DataType::Binary, false),
+///         Field::new("tree", DataType::Binary, false),
 ///         Field::new("has_been_user_edited", DataType::Boolean, false),
 ///     ])
 /// );
@@ -102,8 +74,10 @@ impl Component for SpaceViewMaximized {
 pub struct ViewportLayout {
     #[arrow_field(type = "SerdeField<std::collections::BTreeSet<SpaceViewId>>")]
     pub space_view_keys: std::collections::BTreeSet<SpaceViewId>,
-    #[arrow_field(type = "SerdeField<HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>>")]
-    pub trees: HashMap<VisibilitySet, egui_tiles::Tree<SpaceViewId>>,
+
+    #[arrow_field(type = "SerdeField<egui_tiles::Tree<SpaceViewId>>")]
+    pub tree: egui_tiles::Tree<SpaceViewId>,
+
     pub has_been_user_edited: bool,
 }
 

@@ -89,7 +89,7 @@ glam = "0.22"
 gltf = "1.1"
 half = "2.0"
 image = { version = "0.24", default-features = false }
-itertools = "0.10"
+itertools = "0.11"
 lazy_static = "1.4"
 macaw = "0.18"
 mimalloc = "0.1.29"
@@ -143,3 +143,5 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles.git", rev = "0127ad5eeed91beefd03b0ff1733200b32fb9a12" }
