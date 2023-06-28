@@ -1,4 +1,4 @@
-name: Reusable PR Link Docs
+name: Update links in PR Body
 
 on:
   workflow_call:
@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pr-link-docs:
-    name: Link to docs preview in PR
+  update-pr-body:
+    name: Update PR body
 
     permissions:
       contents: "read"
