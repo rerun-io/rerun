@@ -191,34 +191,34 @@ def run_viewer_build(web: bool) -> None:
 
 
 def run_web(examples: list[str], separate: bool) -> None:
-    if not separate:
+    if separate:
+        entries: list[tuple[str, Any, Any]] = []
+        # start all examples in parallel
+        for path in examples:
+            # each example gets its own viewer
+            viewer = Viewer(web=True).start()
+            example = run_py_example(path, viewer_port=viewer.sdk_port, wait=False)
+            entries.append((path, viewer, example))
+
+        # wait for examples to finish logging
+        for entry in entries:
+            _, _, example = entry
+            example.wait()
+
+        # give servers/viewers a moment to finish loading data
+        time.sleep(5)
+
+        # shut down servers/viewers
+        for entry in entries:
+            path, viewer, example = entry
+            print_example_output(path, example)
+            viewer.close()
+
+    else:
         with Viewer(close=True, web=True) as viewer:
             for path in examples:
                 example = run_py_example(path, viewer_port=viewer.sdk_port)
                 print_example_output(path, example)
-        return
-
-    entries: list[tuple[str, Any, Any]] = []
-    # start all examples in parallel
-    for path in examples:
-        # each example gets its own viewer
-        viewer = Viewer(web=True).start()
-        example = run_py_example(path, viewer_port=viewer.sdk_port, wait=False)
-        entries.append((path, viewer, example))
-
-    # wait for examples to finish logging
-    for entry in entries:
-        _, _, example = entry
-        example.wait()
-
-    # give servers/viewers a moment to finish loading data
-    time.sleep(5)
-
-    # shut down servers/viewers
-    for entry in entries:
-        path, viewer, example = entry
-        print_example_output(path, example)
-        viewer.close()
 
 
 def run_save(examples: list[str]) -> None:
@@ -229,49 +229,47 @@ def run_save(examples: list[str]) -> None:
 
 
 def run_load(examples: list[str], separate: bool, close: bool) -> None:
-    if not separate:
+    if separate:
+        entries: list[tuple[str, Any]] = []
+        for path in examples:
+            example = run_saved_example(path, wait=False)
+            entries.append((path, example))
+
+        for entry in entries:
+            path, example = entry
+            print_example_output(path, example)
+            if close:
+                example.kill()
+    else:
         # run all examples sequentially
         for path in examples:
             # each one must be closed for the next one to start running
             example = run_saved_example(path)
             print_example_output(path, example)
-        return
-
-    entries: list[tuple[str, Any]] = []
-    for path in examples:
-        example = run_saved_example(path, wait=False)
-        entries.append((path, example))
-
-    for entry in entries:
-        path, example = entry
-        print_example_output(path, example)
-        if close:
-            example.kill()
 
 
 def run_native(examples: list[str], separate: bool, close: bool) -> None:
-    if not separate:
+    if separate:
+        # start all examples in parallel:
+        cleanup: list[tuple[Any, Any]] = []
+        for path in examples:
+            # each example gets its own viewer
+            viewer = Viewer().start()
+            example = run_py_example(path, viewer.sdk_port, False)
+            cleanup.append((viewer, example))
+
+        # wait for all processes to finish, and close the viewers if requested
+        for pair in cleanup:
+            viewer, example = pair
+            print_example_output(path, example)
+            if close:
+                viewer.close()
+    else:
         # run all examples sequentially in a single viewer
         with Viewer(close) as viewer:
             for path in examples:
                 example = run_py_example(path, viewer_port=viewer.sdk_port, wait=True)
                 print_example_output(path, example)
-        return
-
-    cleanup: list[tuple[Any, Any]] = []
-    # start all examples in parallel
-    for path in examples:
-        # each example gets its own viewer
-        viewer = Viewer().start()
-        example = run_py_example(path, viewer.sdk_port, False)
-        cleanup.append((viewer, example))
-
-    # wait for all processes to finish, and close the viewers if requested
-    for pair in cleanup:
-        viewer, example = pair
-        print_example_output(path, example)
-        if close:
-            viewer.close()
 
 
 def main() -> None:
