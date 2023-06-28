@@ -55,8 +55,9 @@ Proposal for future builtin, plus some notes:
   * New "raw" data view
 * Text Log
   * Rename from Text
-* Markdown
+* RichText
   * Replaces text box
+  * Supports markdown etc.
 * Time Series
   * Need to figure out how this is constrained compared to Spatial 2D
 
