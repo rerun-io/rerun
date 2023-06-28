@@ -110,25 +110,437 @@ impl AffixFuzzer1 {
 }
 
 impl crate::Archetype for AffixFuzzer1 {
+    #[inline]
     fn name() -> crate::ArchetypeName {
         crate::ArchetypeName::Borrowed("rerun.testing.archetypes.AffixFuzzer1")
     }
 
+    #[inline]
     fn required_components() -> Vec<crate::ComponentName> {
         Self::REQUIRED_COMPONENTS.to_vec()
     }
 
+    #[inline]
     fn recommended_components() -> Vec<crate::ComponentName> {
         Self::RECOMMENDED_COMPONENTS.to_vec()
     }
 
+    #[inline]
     fn optional_components() -> Vec<crate::ComponentName> {
         Self::OPTIONAL_COMPONENTS.to_vec()
     }
 
-    #[allow(clippy::todo)]
-    fn to_arrow_datatypes() -> Vec<arrow2::datatypes::DataType> {
-        todo!("query the registry for all fqnames");
+    #[inline]
+    fn try_to_arrow(
+        &self,
+    ) -> crate::SerializationResult<
+        Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+    > {
+        use crate::Component as _;
+        Ok([
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer1>::try_to_arrow([&self.fuzz1001]);
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1001", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer2>::try_to_arrow([&self.fuzz1002]);
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1002", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer3>::try_to_arrow([&self.fuzz1003]);
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1003", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer4>::try_to_arrow([&self.fuzz1004]);
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1004", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer5>::try_to_arrow([&self.fuzz1005]);
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1005", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer6>::try_to_arrow([&self.fuzz1006]);
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1006", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer7>::try_to_arrow([&self.fuzz1007]);
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1007", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer1>::try_to_arrow(self.fuzz1101.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1101", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer2>::try_to_arrow(self.fuzz1102.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1102", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer3>::try_to_arrow(self.fuzz1103.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1103", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer4>::try_to_arrow(self.fuzz1104.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1104", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer5>::try_to_arrow(self.fuzz1105.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1105", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer6>::try_to_arrow(self.fuzz1106.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1106", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer7>::try_to_arrow(self.fuzz1107.iter());
+                    array.map(|array| {
+                        let datatype = array.data_type().clone();
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1107", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                self.fuzz2001
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer1>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2001", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2002
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer2>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2002", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2003
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer3>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2003", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2004
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer4>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2004", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2005
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer5>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2005", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2006
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer6>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2006", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2007
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer7>::try_to_arrow([single]);
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2007", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2101
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::AffixFuzzer1>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2101", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2102
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::AffixFuzzer2>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2102", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2103
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::AffixFuzzer3>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2103", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2104
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::AffixFuzzer4>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2104", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2105
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::AffixFuzzer5>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2105", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2106
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::AffixFuzzer6>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2106", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2107
+                    .as_ref()
+                    .map(|many| {
+                        let array = <crate::components::AffixFuzzer7>::try_to_arrow(many.iter());
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2107", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+        ]
+        .into_iter()
+        .flatten()
+        .collect())
     }
 }
 
