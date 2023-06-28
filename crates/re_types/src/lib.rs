@@ -152,6 +152,67 @@ pub trait Datatype {
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a;
+
+    // ---
+
+    /// Given an Arrow array, deserializes it into a collection of [`Datatype`]s.
+    ///
+    /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
+    /// For the non-fallible version, see [`Datatype::try_from_arrow`].
+    #[inline]
+    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        Self::from_arrow_opt(data)
+            .into_iter()
+            .map(Option::unwrap)
+            .collect()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Datatype`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Datatype::to_arrow_datatype`].
+    /// For the non-fallible version, see [`Datatype::from_arrow_opt`].
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        Self::try_from_arrow_opt(data)?
+            .into_iter()
+            .map(|v| {
+                v.ok_or_else(|| DeserializationError::MissingData {
+                    datatype: data.data_type().clone(),
+                })
+            })
+            .collect()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Datatype`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Datatype::to_arrow_datatype`].
+    /// For the fallible version, see [`Datatype::try_from_arrow_opt`].
+    #[inline]
+    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>>
+    where
+        Self: Sized,
+    {
+        Self::try_from_arrow_opt(data).unwrap()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Datatype`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Datatype::to_arrow_datatype`].
+    /// For the non-fallible version, see [`Datatype::from_arrow_opt`].
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized;
 }
 
 /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Point2D`.
@@ -229,6 +290,67 @@ pub trait Component {
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a;
+
+    // ---
+
+    /// Given an Arrow array, deserializes it into a collection of [`Component`]s.
+    ///
+    /// Panics if the data schema doesn't match, or if optional entries were missing at runtime.
+    /// For the non-fallible version, see [`Component::try_from_arrow`].
+    #[inline]
+    fn from_arrow(data: &dyn ::arrow2::array::Array) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        Self::from_arrow_opt(data)
+            .into_iter()
+            .map(Option::unwrap)
+            .collect()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Component`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Component::to_arrow_datatype`].
+    /// For the non-fallible version, see [`Component::from_arrow_opt`].
+    #[inline]
+    fn try_from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        Self::try_from_arrow_opt(data)?
+            .into_iter()
+            .map(|v| {
+                v.ok_or_else(|| DeserializationError::MissingData {
+                    datatype: data.data_type().clone(),
+                })
+            })
+            .collect()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Component`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Component::to_arrow_datatype`].
+    /// For the fallible version, see [`Component::try_from_arrow_opt`].
+    #[inline]
+    fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> Vec<Option<Self>>
+    where
+        Self: Sized,
+    {
+        Self::try_from_arrow_opt(data).unwrap()
+    }
+
+    /// Given an Arrow array, deserializes it into a collection of optional [`Component`]s.
+    ///
+    /// This will _never_ fail for if the Arrow array's datatype matches the one returned by
+    /// [`Component::to_arrow_datatype`].
+    /// For the non-fallible version, see [`Component::from_arrow_opt`].
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized;
 }
 
 /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points2D`.
@@ -272,6 +394,39 @@ pub trait Archetype {
     fn try_to_arrow(
         &self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>;
+
+    // ---
+
+    /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
+    /// into this archetype.
+    ///
+    /// Panics on failure.
+    /// For the fallible version, see [`Archetype::try_from_arrow`].
+    ///
+    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
+    /// logged to stderr.
+    #[inline]
+    fn from_arrow(
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+    ) -> Self
+    where
+        Self: Sized,
+    {
+        Self::try_from_arrow(data).unwrap()
+    }
+
+    /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
+    /// into this archetype.
+    ///
+    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
+    /// logged to stderr.
+    ///
+    /// For the non-fallible version, see [`Archetype::from_arrow`].
+    fn try_from_arrow(
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self>
+    where
+        Self: Sized;
 }
 
 // ---
@@ -288,6 +443,44 @@ pub enum SerializationError {
 }
 
 pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
+
+#[derive(thiserror::Error, Debug)]
+pub enum DeserializationError {
+    #[error("Missing data for {datatype:#?}")]
+    MissingData {
+        datatype: ::arrow2::datatypes::DataType,
+    },
+
+    #[error("Expected {expected:#?} but found {got:#?} instead")]
+    SchemaMismatch {
+        expected: ::arrow2::datatypes::DataType,
+        got: ::arrow2::datatypes::DataType,
+    },
+
+    #[error(
+        "Offsets were ouf of bounds, trying to read from {bounds:?} in an array of size {len}"
+    )]
+    OffsetsMismatch {
+        bounds: (usize, usize),
+        len: usize,
+        datatype: ::arrow2::datatypes::DataType,
+    },
+
+    #[error("Expected array of length {expected} but found a length of {got:#?} instead")]
+    ArrayLengthMismatch {
+        expected: usize,
+        got: usize,
+        datatype: ::arrow2::datatypes::DataType,
+    },
+
+    #[error("Expected single-instanced component but found {got} instances instead")]
+    MonoMismatch {
+        got: usize,
+        datatype: ::arrow2::datatypes::DataType,
+    },
+}
+
+pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
 
 // ---
 

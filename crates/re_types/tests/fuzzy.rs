@@ -72,7 +72,6 @@ fn roundtrip() {
         many_floats_optional: Some(vec![1.0, 10.0]),
         many_strings_required: vec!["1".into(), "10".into()],
         many_strings_optional: None,
-        // TODO(cmc): this one is bugged.
         // many_transparent_optionals: vec![],
     };
     let fuzzy7_2 = re_types::components::AffixFuzzer7 {
@@ -95,7 +94,6 @@ fn roundtrip() {
             "3000".into(),
             "30000".into(),
         ]),
-        // TODO(cmc): this one is bugged.
         // many_transparent_optionals: vec![],
     };
 
@@ -132,5 +130,6 @@ fn roundtrip() {
         eprintln!("{} = {array:#?}", field.name);
     }
 
-    // TODO(cmc): deserialize
+    let deserialized = AffixFuzzer1::from_arrow(serialized);
+    similar_asserts::assert_eq!(arch, deserialized);
 }

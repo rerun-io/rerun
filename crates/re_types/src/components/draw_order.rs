@@ -83,4 +83,32 @@ impl crate::Component for DrawOrder {
             .boxed()
         })
     }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok(data
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap()
+            .into_iter()
+            .map(|v| v.copied())
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: DataType::Extension(
+                        "rerun.components.DrawOrder".to_owned(),
+                        Box::new(DataType::Float32),
+                        None,
+                    ),
+                })
+            })
+            .map(|res| res.map(|v| Some(Self(v))))
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+    }
 }

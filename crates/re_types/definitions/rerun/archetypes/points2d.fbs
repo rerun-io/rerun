@@ -1,6 +1,5 @@
 include "fbs/attributes.fbs";
 
-include "rerun/datatypes.fbs";
 include "rerun/components.fbs";
 
 namespace rerun.archetypes;

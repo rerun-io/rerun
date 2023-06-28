@@ -93,7 +93,7 @@
 //! combinatorial explosion of edge cases that can be very confusing when it comes to (de)serialization
 //! code, and even API design.
 //!
-//! When in doubt, check out the `rerun.testing.archetypes.AffixFuzzer` IDL definitions, generated code and
+//! When in doubt, check out the `rerun.archetypes.AffixFuzzer` IDL definitions, generated code and
 //! test suites for definitive answers.
 
 // TODO(#2365): support for external IDL definitions
