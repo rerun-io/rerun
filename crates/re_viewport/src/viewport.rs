@@ -536,12 +536,7 @@ impl Viewport {
             &mut maximized_tree
         } else {
             if self.tree.root().is_none() {
-                self.tree = super::auto_layout::tree_from_space_views(
-                    ctx,
-                    ui.available_size(),
-                    &self.space_views,
-                    &state.space_view_states,
-                );
+                self.tree = super::auto_layout::tree_from_space_views(&self.space_views);
             }
             &mut self.tree
         };
