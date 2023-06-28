@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-A minimal example of streaming frames live from an intel realsense depth sensor.
+A minimal example of streaming frames live from an Intel RealSense depth sensor.
 
 NOTE: this example currently runs forever and will eventually exhaust your
 system memory. It is advised you run an independent rerun viewer with a memory
@@ -32,12 +32,15 @@ def run_realsense(num_frames: int | None) -> None:
     pipe = rs.pipeline()
     profile = pipe.start()
 
-    # Get and log depth exstrinsics
+    # We don't log the depth exstrinsics. We treat the "realsense" space as being at
+    # the origin of the depth sensor so that "realsense/depth" = Identity
+
+    # Get and log depth intrinsics
     depth_profile = profile.get_stream(rs.stream.depth)
     depth_intr = depth_profile.as_video_stream_profile().get_intrinsics()
 
     rr.log_pinhole(
-        "realsense/camera/depth",
+        "realsense/depth/image",
         child_from_parent=np.array(
             (
                 (depth_intr.fx, 0, depth_intr.ppx),
@@ -53,11 +56,11 @@ def run_realsense(num_frames: int | None) -> None:
     # Get and log color extrinsics
     rgb_profile = profile.get_stream(rs.stream.color)
 
-    depth_extr = depth_profile.get_extrinsics_to(rgb_profile)
+    rgb_from_depth = depth_profile.get_extrinsics_to(rgb_profile)
     rr.log_transform3d(
-        "realsense/camera/ext",
+        "realsense/rgb",
         transform=rr.TranslationAndMat3(
-            translation=depth_extr.translation, matrix=np.reshape(depth_extr.rotation, (3, 3))
+            translation=rgb_from_depth.translation, matrix=np.reshape(rgb_from_depth.rotation, (3, 3))
         ),
         from_parent=True,
         timeless=True,
@@ -67,7 +70,7 @@ def run_realsense(num_frames: int | None) -> None:
     rgb_intr = rgb_profile.as_video_stream_profile().get_intrinsics()
 
     rr.log_pinhole(
-        "realsense/camera/ext/rgb",
+        "realsense/rgb/image",
         child_from_parent=np.array(
             (
                 (rgb_intr.fx, 0, rgb_intr.ppx),
@@ -96,12 +99,12 @@ def run_realsense(num_frames: int | None) -> None:
                 depth_frame = frames.get_depth_frame()
                 depth_units = depth_frame.get_units()
                 depth_image = np.asanyarray(depth_frame.get_data())
-                rr.log_depth_image("realsense/camera/depth", depth_image, meter=1.0 / depth_units)
+                rr.log_depth_image("realsense/depth/image", depth_image, meter=1.0 / depth_units)
 
                 # Log the color frame
                 color_frame = frames.get_color_frame()
                 color_image = np.asanyarray(color_frame.get_data())
-                rr.log_image("realsense/camera/ext/rgb", color_image)
+                rr.log_image("realsense/rgb/image", color_image)
     finally:
         pipe.stop()
 
@@ -114,8 +117,6 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.script_setup(args, "live_depth_sensor")
-
-    print(args.connect)
 
     if not args.connect:
         print(
