@@ -45,7 +45,7 @@ AffixFuzzer1ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer1_ext import AffixFuzzer1ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer1ArrayExt  # noqa: E402
 
 
 class AffixFuzzer1Type(pa.ExtensionType):  # type: ignore[misc]
@@ -120,7 +120,7 @@ AffixFuzzer2ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer2_ext import AffixFuzzer2ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer2ArrayExt  # noqa: E402
 
 
 class AffixFuzzer2Type(pa.ExtensionType):  # type: ignore[misc]

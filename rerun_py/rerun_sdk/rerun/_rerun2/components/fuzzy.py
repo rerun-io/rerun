@@ -65,7 +65,7 @@ AffixFuzzer1ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer1_ext import AffixFuzzer1ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer1ArrayExt  # noqa: E402
 
 
 class AffixFuzzer1Type(pa.ExtensionType):  # type: ignore[misc]
@@ -137,7 +137,7 @@ AffixFuzzer2ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer2_ext import AffixFuzzer2ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer2ArrayExt  # noqa: E402
 
 
 class AffixFuzzer2Type(pa.ExtensionType):  # type: ignore[misc]
@@ -209,7 +209,7 @@ AffixFuzzer3ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer3_ext import AffixFuzzer3ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer3ArrayExt  # noqa: E402
 
 
 class AffixFuzzer3Type(pa.ExtensionType):  # type: ignore[misc]
@@ -296,7 +296,7 @@ AffixFuzzer4ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer4_ext import AffixFuzzer4ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer4ArrayExt  # noqa: E402
 
 
 class AffixFuzzer4Type(pa.ExtensionType):  # type: ignore[misc]
@@ -368,7 +368,7 @@ AffixFuzzer5ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer5_ext import AffixFuzzer5ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer5ArrayExt  # noqa: E402
 
 
 class AffixFuzzer5Type(pa.ExtensionType):  # type: ignore[misc]
@@ -440,7 +440,7 @@ AffixFuzzer6ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer6_ext import AffixFuzzer6ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer6ArrayExt  # noqa: E402
 
 
 class AffixFuzzer6Type(pa.ExtensionType):  # type: ignore[misc]
@@ -533,7 +533,7 @@ AffixFuzzer7ArrayLike = Union[
 
 # --- Arrow support ---
 
-from .affix_fuzzer7_ext import AffixFuzzer7ArrayExt  # noqa: E402
+from .fuzzy_ext import AffixFuzzer7ArrayExt  # noqa: E402
 
 
 class AffixFuzzer7Type(pa.ExtensionType):  # type: ignore[misc]
