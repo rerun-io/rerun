@@ -228,6 +228,8 @@ def run_saved_example(path: str, wait: bool) -> Any:
 
 
 def run_load(examples: list[str], separate: bool, close: bool) -> None:
+    examples = [path for path in examples if path not in HAS_NO_SAVE_ARG]
+
     if separate:
         entries: list[tuple[str, Any]] = []
         for path in examples:
