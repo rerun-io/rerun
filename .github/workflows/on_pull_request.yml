@@ -84,8 +84,8 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
-  link-docs:
-    name: "Link Docs"
+  update-pr-body:
+    name: "Update PR Body"
     uses: ./.github/workflows/reusable_update_pr_body.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
