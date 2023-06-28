@@ -8,7 +8,7 @@ pub struct ClassId(pub u16);
 
 impl crate::Component for ClassId {
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.ClassId")
+        crate::ComponentName::Borrowed("rerun.class_id")
     }
 
     #[allow(clippy::wildcard_imports)]

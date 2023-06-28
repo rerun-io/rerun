@@ -35,7 +35,7 @@ class Point2DType(pa.ExtensionType):  # type: ignore[misc]
         pa.ExtensionType.__init__(
             self,
             pa.struct([pa.field("x", pa.float32(), True, {}), pa.field("y", pa.float32(), True, {})]),
-            "rerun.components.Point2D",
+            "rerun.point2d",
         )
 
     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
@@ -53,7 +53,8 @@ class Point2DType(pa.ExtensionType):  # type: ignore[misc]
         return Point2DArray
 
 
-pa.register_extension_type(Point2DType())
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(Point2DType())
 
 
 class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]

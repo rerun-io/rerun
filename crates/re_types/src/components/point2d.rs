@@ -9,7 +9,7 @@ pub struct Point2D {
 
 impl crate::Component for Point2D {
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.Point2D")
+        crate::ComponentName::Borrowed("rerun.point2d")
     }
 
     #[allow(clippy::wildcard_imports)]

@@ -6,7 +6,7 @@ pub struct Radius(pub f32);
 
 impl crate::Component for Radius {
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.Radius")
+        crate::ComponentName::Borrowed("rerun.radius")
     }
 
     #[allow(clippy::wildcard_imports)]

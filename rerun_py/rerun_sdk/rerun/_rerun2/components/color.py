@@ -50,7 +50,7 @@ from .color_ext import ColorArrayExt  # noqa: E402
 
 class ColorType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
-        pa.ExtensionType.__init__(self, pa.uint32(), "rerun.components.Color")
+        pa.ExtensionType.__init__(self, pa.uint32(), "rerun.colorrgba")
 
     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
         # since we don't have a parameterized type, we don't need extra metadata to be deserialized
@@ -67,7 +67,8 @@ class ColorType(pa.ExtensionType):  # type: ignore[misc]
         return ColorArray
 
 
-pa.register_extension_type(ColorType())
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(ColorType())
 
 
 class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]

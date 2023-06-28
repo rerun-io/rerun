@@ -41,7 +41,7 @@ from .class_id_ext import ClassIdArrayExt  # noqa: E402
 
 class ClassIdType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.ClassId")
+        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.class_id")
 
     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
         # since we don't have a parameterized type, we don't need extra metadata to be deserialized
@@ -58,7 +58,8 @@ class ClassIdType(pa.ExtensionType):  # type: ignore[misc]
         return ClassIdArray
 
 
-pa.register_extension_type(ClassIdType())
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(ClassIdType())
 
 
 class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]

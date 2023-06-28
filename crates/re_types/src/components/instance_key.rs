@@ -6,7 +6,7 @@ pub struct InstanceKey(pub u64);
 
 impl crate::Component for InstanceKey {
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.InstanceKey")
+        crate::ComponentName::Borrowed("rerun.instance_key")
     }
 
     #[allow(clippy::wildcard_imports)]

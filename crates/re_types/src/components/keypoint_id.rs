@@ -10,7 +10,7 @@ pub struct KeypointId(pub u16);
 
 impl crate::Component for KeypointId {
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.KeypointId")
+        crate::ComponentName::Borrowed("rerun.keypoint_id")
     }
 
     #[allow(clippy::wildcard_imports)]

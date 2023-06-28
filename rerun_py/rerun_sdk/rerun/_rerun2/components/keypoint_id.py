@@ -43,7 +43,7 @@ from .keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
 
 class KeypointIdType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.components.KeypointId")
+        pa.ExtensionType.__init__(self, pa.uint16(), "rerun.keypoint_id")
 
     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
         # since we don't have a parameterized type, we don't need extra metadata to be deserialized
@@ -60,7 +60,8 @@ class KeypointIdType(pa.ExtensionType):  # type: ignore[misc]
         return KeypointIdArray
 
 
-pa.register_extension_type(KeypointIdType())
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(KeypointIdType())
 
 
 class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[misc]

@@ -42,7 +42,7 @@ from .draw_order_ext import DrawOrderArrayExt  # noqa: E402
 
 class DrawOrderType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), "rerun.components.DrawOrder")
+        pa.ExtensionType.__init__(self, pa.float32(), "rerun.draw_order")
 
     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
         # since we don't have a parameterized type, we don't need extra metadata to be deserialized
@@ -59,7 +59,8 @@ class DrawOrderType(pa.ExtensionType):  # type: ignore[misc]
         return DrawOrderArray
 
 
-pa.register_extension_type(DrawOrderType())
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(DrawOrderType())
 
 
 class DrawOrderArray(pa.ExtensionArray, DrawOrderArrayExt):  # type: ignore[misc]
