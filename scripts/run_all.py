@@ -26,7 +26,7 @@ HAS_NO_SAVE_ARG = {
 }
 
 
-def start_process(args: list[str], cwd: str, wait: bool) -> Any:
+def start_process(args: list[str], *, wait: bool, cwd: str | None = None) -> Any:
     process = subprocess.Popen(
         args,
         cwd=cwd,
@@ -58,14 +58,6 @@ def run_py_example(path: str, viewer_port: int | None = None, wait: bool = True,
 
     return start_process(
         args,
-        cwd=path,
-        wait=wait,
-    )
-
-
-def run_saved_example(path: str, wait: bool = True) -> Any:
-    return start_process(
-        ["cargo", "run", "-p", "rerun-cli", "--all-features", "--", "out.rrd"],
         cwd=path,
         wait=wait,
     )
@@ -228,6 +220,13 @@ def run_save(examples: list[str]) -> None:
             print_example_output(path, example)
 
 
+def run_saved_example(path: str, wait: bool) -> Any:
+    return start_process(
+        ["cargo", "run", "-p", "rerun-cli", "--all-features", "--", os.path.join(path, "out.rrd")],
+        wait=wait,
+    )
+
+
 def run_load(examples: list[str], separate: bool, close: bool) -> None:
     if separate:
         entries: list[tuple[str, Any]] = []
@@ -244,7 +243,7 @@ def run_load(examples: list[str], separate: bool, close: bool) -> None:
         # run all examples sequentially
         for path in examples:
             # each one must be closed for the next one to start running
-            example = run_saved_example(path)
+            example = run_saved_example(path, wait=True)
             print_example_output(path, example)
 
 
