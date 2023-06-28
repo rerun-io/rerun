@@ -14,7 +14,7 @@ import nox  # type: ignore
 def tests(session: nox.Session) -> None:
     session.install("-r", "rerun_py/requirements-build.txt")
     session.install("./rerun_py")
-    session.run("just", "py-test")
+    session.run("just", "py-test", external=True)
 
 
 @nox.session(python=["3.8", "3.9", "3.10", "3.11"])
