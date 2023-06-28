@@ -18,7 +18,7 @@ pub struct Color(pub u32);
 
 impl crate::Component for Color {
     fn name() -> crate::ComponentName {
-        crate::ComponentName::Borrowed("rerun.components.Color")
+        crate::ComponentName::Borrowed("rerun.colorrgba")
     }
 
     #[allow(clippy::wildcard_imports)]

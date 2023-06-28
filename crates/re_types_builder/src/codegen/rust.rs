@@ -13,7 +13,8 @@ use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE, ATTR_RUST_REPR, ATTR_RUST_TUPLE_STRUCT,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_DERIVE, ATTR_RUST_REPR,
+    ATTR_RUST_TUPLE_STRUCT,
 };
 
 // ---
@@ -475,10 +476,14 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> T
             let datatype = arrow_registry.get(fqname);
             let datatype = ArrowDataTypeTokenizer(&datatype);
 
+            let legacy_fqname = obj
+                .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
+                .unwrap_or_else(|| fqname.clone());
+
             quote! {
                 impl crate::#kind for #name {
                     fn name() -> crate::#kind_name {
-                        crate::#kind_name::Borrowed(#fqname)
+                        crate::#kind_name::Borrowed(#legacy_fqname)
                     }
 
                     #[allow(clippy::wildcard_imports)]
