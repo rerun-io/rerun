@@ -4,6 +4,8 @@ use macaw::IsoTransform;
 use re_components::{Pinhole, ViewCoordinates};
 use re_log_types::EntityPath;
 
+use crate::scene::image_view_coordinates;
+
 /// A logged camera that connects spaces.
 #[derive(Clone, PartialEq)]
 pub struct SpaceCamera3D {
@@ -56,7 +58,14 @@ impl SpaceCamera3D {
     pub fn project_onto_2d(&self, point_in_world: Vec3) -> Option<Vec3> {
         let pinhole = self.pinhole?;
         let point_in_cam = self.cam_from_world().transform_point3(point_in_world);
-        let point_in_image = pinhole.project(point_in_cam);
+
+        // View-coordinates are relevant here because without them we have no notion of what the image plane is.
+        // (it's not a given that e.g. XY is the camera image plane!)
+        // First transform to the "standard RUB" 3D camera and then from there to the image plane coordinate system.
+        let point_in_image_unprojected =
+            image_view_coordinates().from_rub() * self.view_coordinates.to_rub() * point_in_cam;
+
+        let point_in_image = pinhole.project(point_in_image_unprojected);
         Some(point_in_image)
     }
 }
