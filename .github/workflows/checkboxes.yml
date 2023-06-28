@@ -1,6 +1,6 @@
 # Checks that all checkboxes in a PR are checked
 
-name: Pull Request Checkbxoes
+name: Pull Request Checkboxes
 
 on:
   pull_request:
