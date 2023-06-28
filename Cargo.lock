@@ -4521,6 +4521,7 @@ dependencies = [
 name = "re_types"
 version = "0.8.0-alpha.0"
 dependencies = [
+ "anyhow",
  "arrow2",
  "bytemuck",
  "document-features",
@@ -4531,6 +4532,7 @@ dependencies = [
  "re_build_tools",
  "re_types_builder",
  "similar-asserts",
+ "thiserror",
  "xshell",
 ]
 
