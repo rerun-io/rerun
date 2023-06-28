@@ -591,6 +591,7 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     // nasty lazy circular dependencies in weird edge cases...
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
     fqname.map(|fqname| {
+        let fqname = fqname.replace(".testing", "");
         let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
         if from.starts_with("rerun.datatypes") {
             "from .. import datatypes".to_owned()
@@ -707,6 +708,7 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
         ElementType::Float16 | ElementType::Float32 | ElementType::Float64 => "float".to_owned(),
         ElementType::String => "str".to_owned(),
         ElementType::Object(fqname) => {
+            let fqname = fqname.replace(".testing", "");
             let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
             if from.starts_with("rerun.datatypes") {
                 format!("datatypes.{class}")

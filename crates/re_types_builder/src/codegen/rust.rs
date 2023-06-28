@@ -1,6 +1,7 @@
 //! Implements the Rust codegen pass.
 
 use anyhow::Context as _;
+use arrow2::datatypes::DataType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use std::{
@@ -16,6 +17,9 @@ use crate::{
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LEGACY_FQNAME, ATTR_RUST_DERIVE, ATTR_RUST_REPR,
     ATTR_RUST_TUPLE_STRUCT,
 };
+
+// TODO(cmc): it'd be nice to be able to generate vanilla comments (as opposed to doc-comments)
+// once again at some point (`TokenStream` strips them)... nothing too urgent though.
 
 // ---
 
@@ -42,6 +46,7 @@ impl CodeGenerator for RustCodeGenerator {
         filepaths.extend(create_files(
             datatypes_path,
             arrow_registry,
+            objects,
             &objects.ordered_objects(ObjectKind::Datatype.into()),
         ));
 
@@ -52,6 +57,7 @@ impl CodeGenerator for RustCodeGenerator {
         filepaths.extend(create_files(
             components_path,
             arrow_registry,
+            objects,
             &objects.ordered_objects(ObjectKind::Component.into()),
         ));
 
@@ -62,6 +68,7 @@ impl CodeGenerator for RustCodeGenerator {
         filepaths.extend(create_files(
             archetypes_path,
             arrow_registry,
+            objects,
             &objects.ordered_objects(ObjectKind::Archetype.into()),
         ));
 
@@ -74,6 +81,7 @@ impl CodeGenerator for RustCodeGenerator {
 fn create_files(
     out_path: impl AsRef<Path>,
     arrow_registry: &ArrowRegistry,
+    objects: &Objects,
     objs: &[&Object],
 ) -> Vec<PathBuf> {
     let out_path = out_path.as_ref();
@@ -83,9 +91,9 @@ fn create_files(
     let mut files = HashMap::<PathBuf, Vec<QuotedObject>>::new();
     for obj in objs {
         let obj = if obj.is_struct() {
-            QuotedObject::from_struct(arrow_registry, obj)
+            QuotedObject::from_struct(arrow_registry, objects, obj)
         } else {
-            QuotedObject::from_union(arrow_registry, obj)
+            QuotedObject::from_union(arrow_registry, objects, obj)
         };
 
         let filepath = out_path.join(obj.filepath.file_name().unwrap());
@@ -111,6 +119,13 @@ fn create_files(
 
         let mut code = String::new();
         code.push_text(format!("// {AUTOGEN_WARNING}"), 2, 0);
+        code.push_text("#![allow(trivial_numeric_casts)]", 2, 0);
+        code.push_text("#![allow(unused_parens)]", 2, 0);
+        code.push_text("#![allow(clippy::clone_on_copy)]", 2, 0);
+        code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
+        code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
+        code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
+        code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
 
         for obj in objs {
             let tokens_str = obj.tokens.to_string();
@@ -176,7 +191,7 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    fn from_struct(arrow_registry: &ArrowRegistry, obj: &Object) -> Self {
+    fn from_struct(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> Self {
         assert!(obj.is_struct());
 
         let Object {
@@ -209,7 +224,7 @@ impl QuotedObject {
             quote! { pub struct #name { #(#quoted_fields,)* } }
         };
 
-        let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, obj);
+        let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
         let quoted_builder = quote_builder_from_obj(obj);
 
@@ -235,7 +250,7 @@ impl QuotedObject {
         }
     }
 
-    fn from_union(arrow_registry: &ArrowRegistry, obj: &Object) -> Self {
+    fn from_union(arrow_registry: &ArrowRegistry, objects: &Objects, obj: &Object) -> Self {
         assert!(!obj.is_struct());
 
         let Object {
@@ -282,7 +297,7 @@ impl QuotedObject {
             }
         });
 
-        let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, obj);
+        let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
         let tokens = quote! {
             #quoted_doc
@@ -453,7 +468,11 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
     quote!(#quoted)
 }
 
-fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> TokenStream {
+fn quote_trait_impls_from_obj(
+    arrow_registry: &ArrowRegistry,
+    _objects: &Objects,
+    obj: &Object,
+) -> TokenStream {
     let Object {
         filepath: _,
         fqname,
@@ -487,11 +506,13 @@ fn quote_trait_impls_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> T
 
             quote! {
                 impl crate::#kind for #name {
+                    #[inline]
                     fn name() -> crate::#kind_name {
                         crate::#kind_name::Borrowed(#legacy_fqname)
                     }
 
-                    #[allow(clippy::wildcard_imports)]
+                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    #[inline]
                     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
                         use ::arrow2::datatypes::*;
                         #datatype
@@ -662,7 +683,7 @@ struct ArrowDataTypeTokenizer<'a>(&'a ::arrow2::datatypes::DataType);
 
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        use arrow2::datatypes::{DataType, UnionMode};
+        use arrow2::datatypes::UnionMode;
         match self.0 {
             DataType::Null => quote!(DataType::Null),
             DataType::Boolean => quote!(DataType::Boolean),
@@ -681,10 +702,17 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             DataType::LargeBinary => quote!(DataType::LargeBinary),
             DataType::Utf8 => quote!(DataType::Utf8),
             DataType::LargeUtf8 => quote!(DataType::LargeUtf8),
+
+            DataType::List(field) => {
+                let field = ArrowFieldTokenizer(field);
+                quote!(DataType::List(Box::new(#field)))
+            }
+
             DataType::FixedSizeList(field, length) => {
                 let field = ArrowFieldTokenizer(field);
                 quote!(DataType::FixedSizeList(Box::new(#field), #length))
             }
+
             DataType::Union(fields, _, mode) => {
                 let fields = fields.iter().map(ArrowFieldTokenizer);
                 let mode = match mode {
@@ -693,15 +721,18 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 };
                 quote!(DataType::Union(#(#fields,)*, None, #mode))
             }
+
             DataType::Struct(fields) => {
                 let fields = fields.iter().map(ArrowFieldTokenizer);
                 quote!(DataType::Struct(vec![ #(#fields,)* ]))
             }
+
             DataType::Extension(name, datatype, metadata) => {
                 let datatype = ArrowDataTypeTokenizer(datatype);
                 let metadata = OptionTokenizer(metadata.as_ref());
                 quote!(DataType::Extension(#name.to_owned(), Box::new(#datatype), #metadata))
             }
+
             _ => unimplemented!("{:#?}", self.0), // NOLINT
         }
         .to_tokens(tokens);
@@ -759,7 +790,11 @@ impl quote::ToTokens for StrStrMapTokenizer<'_> {
 }
 
 fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
-    let fqname = fqname.as_ref().replace('.', "::").replace("rerun", "crate");
+    let fqname = fqname
+        .as_ref()
+        .replace(".testing", "")
+        .replace('.', "::")
+        .replace("rerun", "crate");
     let expr: syn::TypePath = syn::parse_str(&fqname).unwrap();
     quote!(#expr)
 }
