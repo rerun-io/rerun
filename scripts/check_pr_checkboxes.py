@@ -21,12 +21,16 @@ def main() -> None:
     latest_commit = pr.get_commits().reversed[0]
     print(f"Latest commit: {latest_commit.sha}")
 
-    if "* [ ]" in pr.body or "- [ ]" in pr.body:
+    body_lower = pr.body.lower()
+    if "* [ ]" in body_lower or "- [ ]" in body_lower:
         print("PR contains unchecked checkboxes")
         exit(1)
-    else:
+    elif "* [x]" in body_lower or "- [x]" in body_lower:
         print("All clear")
         exit(0)
+    else:
+        print("Don't delete the PR description")
+        exit(1)
 
 
 if __name__ == "__main__":
