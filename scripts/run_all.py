@@ -169,15 +169,16 @@ def run_sdk_build() -> None:
     assert returncode == 0, f"process exited with error code {returncode}"
 
 
-def run_viewer_build() -> None:
-    print("Building rerun…")
+def run_viewer_build(web: bool) -> None:
+    print("Building Rerun Viewer…")
     returncode = subprocess.Popen(
         [
             "cargo",
             "build",
             "-p",
             "rerun-cli",
-            "--all-features",
+            "--no-default-features",
+            "--features=web_viewer" if web else "--features=native_viewer",
             "--quiet",
         ]
     ).wait()
@@ -289,8 +290,10 @@ def main() -> None:
     examples = collect_examples(args.fast)
 
     if not args.skip_build:
-        run_sdk_build()
-        run_viewer_build()
+        if not args.load:
+            run_sdk_build()
+        if not args.save:
+            run_viewer_build(args.web)
 
     if args.web:
         run_web(examples, separate=args.separate)
