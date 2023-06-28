@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_clone)]
 
-use re_types::archetypes::AffixFuzzer1;
+use re_types::{archetypes::AffixFuzzer1, Archetype as _};
 
 #[test]
 fn roundtrip() {
@@ -124,5 +124,13 @@ fn roundtrip() {
     .with_fuzz2106([fuzzy6.clone(), fuzzy6.clone(), fuzzy6.clone()]);
 
     eprintln!("arch = {arch:#?}");
-    // TODO(cmc): roundtrips
+    let serialized = arch.to_arrow();
+    for (field, array) in &serialized {
+        // NOTE: Keep those around please, very useful when debugging.
+        // eprintln!("field = {field:#?}");
+        // eprintln!("array = {array:#?}");
+        eprintln!("{} = {array:#?}", field.name);
+    }
+
+    // TODO(cmc): deserialize
 }
