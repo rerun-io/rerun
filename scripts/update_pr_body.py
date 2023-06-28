@@ -3,7 +3,7 @@
 """
 Script to generate a link to documentation preview in PRs.
 
-This is expected to be run by the `reusable_pr_link_docs.yml` GitHub workflow.
+This is expected to be run by the `reusable_update_pr_body.yml` GitHub workflow.
 
 Requires the following packages:
   pip install PyGithub # NOLINT
@@ -40,19 +40,27 @@ def main() -> None:
     print(f"Latest commit: {latest_commit.sha}")
     short_sha = latest_commit.sha[:7]
 
+    body = pr.body
+
+    # update preview links
     link = LINK_TEMPLATE.replace("{{ docs-link }}", f"https://rerun.io/preview/{short_sha}/docs")
     link = link.replace("{{ examples-link }}", f"https://rerun.io/preview/{short_sha}/examples")
-    if EMPTY_LINK in pr.body:
+    if EMPTY_LINK in body:
         print("Empty link found, updating it")
-        new_body = pr.body.replace(EMPTY_LINK, link)
-        pr.edit(body=new_body)
+        body = body.replace(EMPTY_LINK, link)
     else:
-        start = pr.body.find(LINK_START)
-        end = pr.body.find(LINK_END)
+        start = body.find(LINK_START)
+        end = body.find(LINK_END)
         if start != -1 and end != -1:
             print("Existing link found, updating it")
-            new_body = pr.body[:start] + link + pr.body[end + len(LINK_END) :]
-            pr.edit(body=new_body)
+            body = body[:start] + link + body[end + len(LINK_END) :]
+
+    # update the pr number
+    if "{{ pr-number }}" in body:
+        body = body.replace("{{ pr-number }}", args.pr_number)
+
+    if body != pr.body:
+        pr.edit(body=body)
 
 
 if __name__ == "__main__":
