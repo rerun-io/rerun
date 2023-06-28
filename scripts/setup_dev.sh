@@ -10,9 +10,9 @@ set -x
 
 cargo install cargo-cranky # Uses lints defined in Cranky.toml. See https://github.com/ericseppanen/cargo-cranky
 cargo install --locked cargo-deny # https://github.com/EmbarkStudios/cargo-deny
-cargo install just # Just a command runner
-cargo install taplo-cli --locked # toml formatter/linter/lsp
-cargo install typos-cli
+cargo install just # https://github.com/casey/just - a command runner
+cargo install taplo-cli --locked # https://github.com/tamasfe/taplo - toml formatter/linter/lsp
+cargo install typos-cli # https://github.com/crate-ci/typos - typo detector
 
 
 packagesNeeded='pngcrush pipx'
@@ -33,6 +33,7 @@ fi
 pipx ensurepath
 
 # install nox for python testing automation
+# https://nox.thea.codes/en/stable/
 pipx install nox
 
 echo "setup_dev.sh completed!"
