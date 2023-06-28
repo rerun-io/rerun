@@ -123,7 +123,7 @@ pub enum ObjectKind {
 impl ObjectKind {
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
-        let pkg_name = pkg_name.as_ref();
+        let pkg_name = pkg_name.as_ref().replace(".testing", "");
         if pkg_name.starts_with("rerun.datatypes") {
             ObjectKind::Datatype
         } else if pkg_name.starts_with("rerun.components") {
