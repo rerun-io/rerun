@@ -792,7 +792,8 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                     def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
                         return {many}
 
-                pa.register_extension_type({arrow}())
+                # TODO(cmc): bring back registration to pyarrow once legacy types are gone
+                # pa.register_extension_type({arrow}())
 
                 class {many}(pa.ExtensionArray, {many}Ext):  # type: ignore[misc]
                     @staticmethod
