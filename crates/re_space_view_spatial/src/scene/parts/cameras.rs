@@ -1,53 +1,21 @@
-use re_components::{
-    coordinates::{Handedness, SignedAxis3},
-    Component, InstanceKey, Pinhole, ViewCoordinates,
-};
+use re_components::{Component, InstanceKey, Pinhole, ViewCoordinates};
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
-use re_viewer_context::{ArchetypeDefinition, ScenePart, TimeControl};
-use re_viewer_context::{SceneQuery, ViewerContext};
-use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
+use re_viewer_context::{
+    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewHighlights, SpaceViewOutlineMasks,
+    ViewerContext,
+};
 
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    scene::contexts::SpatialSceneContext, space_camera_3d::SpaceCamera3D, SpatialSpaceView,
+    scene::contexts::{determine_view_coordinates, SpatialSceneContext},
+    space_camera_3d::SpaceCamera3D,
+    SpatialSpaceView,
 };
 
 use super::{SpatialScenePartData, SpatialSpaceViewState};
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
-
-/// Determine the view coordinates (i.e.) the axis semantics.
-///
-/// The recommended way to log this is on the object holding the extrinsic camera properties
-/// (i.e. the last rigid transform from here)
-/// But for ease of use allow it everywhere along the path.
-///
-/// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
-fn determine_view_coordinates(
-    store: &re_arrow_store::DataStore,
-    time_ctrl: &TimeControl,
-    mut entity_path: EntityPath,
-) -> ViewCoordinates {
-    loop {
-        if let Some(view_coordinates) =
-            store.query_latest_component(&entity_path, &time_ctrl.current_query())
-        {
-            return view_coordinates;
-        }
-
-        if let Some(parent) = entity_path.parent() {
-            entity_path = parent;
-        } else {
-            // Keep in mind, there is no universal convention for any of this!
-            // https://twitter.com/freyaholmer/status/1325556229410861056
-            return ViewCoordinates::from_up_and_handedness(
-                SignedAxis3::POSITIVE_Y,
-                Handedness::Right,
-            );
-        }
-    }
-}
 
 #[derive(Default)]
 pub struct CamerasPart {
@@ -110,8 +78,11 @@ impl CamerasPart {
 
         // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
         let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);
+
+        // Setup a RUB frustum - for non-rub we apply a transformation matrix.
         let fy = (fov_y * 0.5).tan() * frustum_length;
         let fx = fy * pinhole.aspect_ratio().unwrap_or(1.0);
+        let fz = -frustum_length;
 
         let image_center_pixel = pinhole.resolution().unwrap_or(glam::Vec2::ZERO) * 0.5;
         let principal_point_offset_pixel = image_center_pixel - pinhole.principal_point();
@@ -122,17 +93,17 @@ impl CamerasPart {
         let offset = principal_point_offset * (fy * 2.0);
 
         let corners = [
-            (offset + glam::vec2(fx, -fy)).extend(frustum_length),
-            (offset + glam::vec2(fx, fy)).extend(frustum_length),
-            (offset + glam::vec2(-fx, fy)).extend(frustum_length),
-            (offset + glam::vec2(-fx, -fy)).extend(frustum_length),
+            (offset + glam::vec2(fx, -fy)).extend(fz),
+            (offset + glam::vec2(fx, fy)).extend(fz),
+            (offset + glam::vec2(-fx, fy)).extend(fz),
+            (offset + glam::vec2(-fx, -fy)).extend(fz),
         ];
         let triangle_frustum_offset = fy * 1.05;
         let up_triangle = [
             // Use only fx for with and height of the triangle, so that the aspect ratio of the triangle is always the same.
-            (offset + glam::vec2(-fx * 0.25, -triangle_frustum_offset)).extend(frustum_length),
-            (offset + glam::vec2(0.0, -fx * 0.25 - triangle_frustum_offset)).extend(frustum_length),
-            (offset + glam::vec2(fx * 0.25, -triangle_frustum_offset)).extend(frustum_length),
+            (offset + glam::vec2(-fx * 0.25, triangle_frustum_offset)).extend(fz),
+            (offset + glam::vec2(0.0, fx * 0.25 + triangle_frustum_offset)).extend(fz),
+            (offset + glam::vec2(fx * 0.25, triangle_frustum_offset)).extend(fz),
         ];
 
         let segments = [
@@ -160,7 +131,10 @@ impl CamerasPart {
         let mut line_builder = scene_context.shared_render_builders.lines();
         let mut batch = line_builder
             .batch("camera frustum")
-            .world_from_obj(world_from_parent)
+            // The frustum is setup as RUB frustum, but the view coordinates may not be in RUB.
+            .world_from_obj(
+                world_from_parent * glam::Affine3A::from_mat3(view_coordinates.from_rub()),
+            )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
         let lines = batch
@@ -202,7 +176,7 @@ impl ScenePart<SpatialSpaceView> for CamerasPart {
             if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
                 let view_coordinates = determine_view_coordinates(
                     &ctx.store_db.entity_db.data_store,
-                    &ctx.rec_cfg.time_ctrl,
+                    &ctx.rec_cfg.time_ctrl.current_query(),
                     ent_path.clone(),
                 );
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());

@@ -1,7 +1,7 @@
 use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_components::{DisconnectedSpace, Pinhole, Transform3D};
+use re_components::{DisconnectedSpace, Pinhole, Transform3D, ViewCoordinates};
 use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
 use re_log_types::Component;
 use re_space_view::UnreachableTransformReason;
@@ -253,21 +253,34 @@ fn transform_at(
         .map(|transform| transform.to_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
-        // A pinhole camera means that we're looking at some 2D image plane from a single point (the pinhole).
+        // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
+        // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
+
         // Center the image plane and move it along z, scaling the further the image plane is.
         let distance = pinhole_image_plane_distance(entity_path);
-
         let focal_length = pinhole.focal_length_in_pixels();
         let focal_length = glam::vec2(focal_length.x(), focal_length.y());
         let scale = distance / focal_length;
-        let translation = (-pinhole.principal_point() * scale).extend(distance);
+        // Move along negative z (RUB convention!)
+        let translation = (-pinhole.principal_point() * scale).extend(-distance);
 
-        glam::Affine3A::from_translation(translation)
-        // We want to preserve any depth that might be on the pinhole image.
-        // Use harmonic mean of x/y scale for those.
-        * glam::Affine3A::from_scale(
-            scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
-        )
+        let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
+            // We want to preserve any depth that might be on the pinhole image.
+            // Use harmonic mean of x/y scale for those.
+            * glam::Affine3A::from_scale(
+                scale.extend(-2.0 / (1.0 / scale.x + 1.0 / scale.y)),
+            );
+
+        // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
+        // determine how the image plane is oriented.
+        let view_coordinates = determine_view_coordinates(store, query, entity_path.clone());
+        let world_from_image_plane3d =
+            // Convert from RUB setup to what we'are actually using.
+            glam::Affine3A::from_mat3(view_coordinates.from_rub()) *
+            // Account for standard image axis being Y down (not configurable as of writing).
+            glam::Affine3A::from_scale(glam::vec3(1.0, -1.0, 1.0));
+
+        world_from_image_plane3d * image_plane3d_from_2d_content
 
         // Above calculation is nice for a certain kind of visualizing a projected image plane,
         // but the image plane distance is arbitrary and there might be other, better visualizations!
@@ -294,5 +307,32 @@ fn transform_at(
         Err(UnreachableTransformReason::DisconnectedSpace)
     } else {
         Ok(None)
+    }
+}
+
+/// Determine the view coordinates (i.e.) the axis semantics.
+///
+/// The recommended way to log this is on the object holding the extrinsic camera properties
+/// (i.e. the last rigid transform from here)
+/// But for ease of use allow it everywhere along the path.
+///
+/// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
+pub fn determine_view_coordinates(
+    store: &re_arrow_store::DataStore,
+    query: &LatestAtQuery,
+    mut entity_path: EntityPath,
+) -> ViewCoordinates {
+    loop {
+        if let Some(view_coordinates) = store.query_latest_component(&entity_path, query) {
+            return view_coordinates;
+        }
+
+        if let Some(parent) = entity_path.parent() {
+            entity_path = parent;
+        } else {
+            // Keep in mind, there is no universal convention for any of this!
+            // https://twitter.com/freyaholmer/status/1325556229410861056
+            return ViewCoordinates::rub();
+        }
     }
 }
