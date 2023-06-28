@@ -59,6 +59,7 @@ uploaded anywhere.
   - `RELEASE_VERSION` - If producing a release, the version number.
   - `UPLOAD_COMMIT_OVERRIDE` - If set, will replace the value of `<commit>`. This is necessary because we want pull
   request builds associated with their originating commit, even if the web-build happens on an ephemeral merge-commit.
+  - `PR_NUMBER` - If set, will upload `demo.rerun.io/pr/<PR_NUMBER>`
 - [reusable_pr_summary.yml](reusable_pr_summary.yml) - This job updates the PR summary with the results of the CI run.
   - This summary can be found at:
   `https://build.rerun.io/pr/<PR_NUMBER>/`
