@@ -201,6 +201,13 @@ impl ViewCoordinates {
         )
     }
 
+    /// Returns a RUB view coordinates.
+    ///
+    /// The Rerun viewer uses this as a default whenever no view coordinates are specified explicitly.
+    pub fn rub() -> Self {
+        Self([ViewDir::Right, ViewDir::Up, ViewDir::Back])
+    }
+
     /// Returns a matrix that translates RUB to this coordinate system.
     ///
     /// (RUB: X=Right, Y=Up, B=Back)
@@ -412,6 +419,14 @@ impl std::str::FromStr for SignedAxis3 {
             "-Z" => Ok(Self::new(Sign::Negative, Axis3::Z)),
             _ => Err("Expected one of: +X -X +Y -Y +Z -Z".to_owned()),
         }
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<SignedAxis3> for glam::Vec3 {
+    #[inline]
+    fn from(signed_axis: SignedAxis3) -> Self {
+        glam::Vec3::from(signed_axis.as_vec3())
     }
 }
 

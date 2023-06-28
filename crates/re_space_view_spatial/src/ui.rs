@@ -26,7 +26,7 @@ use crate::scene::preferred_navigation_mode;
 use crate::{
     scene::{PickableUiRect, SceneSpatial, UiLabel, UiLabelTarget},
     ui_2d::view_2d,
-    ui_3d::{view_3d, SpaceSpecs},
+    ui_3d::view_3d,
 };
 
 /// Default auto point radius in UI points.
@@ -329,7 +329,12 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view.");
                 ui.vertical(|ui|{
-                    ui.label(format!("Up is {}", axis_name(self.state_3d.space_specs.up))).on_hover_ui(|ui| {
+                    let up_description = if let Some(up) = self.state_3d.view_coordinates.and_then(|v| v.up()) {
+                        format!("Up is {up}")
+                    } else {
+                        "Up is undetermined".to_owned()
+                    };
+                    ui.label(up_description).on_hover_ui(|ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.label("Set with ");
@@ -396,8 +401,8 @@ impl SpatialSpaceViewState {
         let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates = store.query_latest_component(space_origin, &ctx.current_query());
-                self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
+                self.state_3d.view_coordinates =
+                    store.query_latest_component(space_origin, &ctx.current_query());
                 view_3d(ctx, ui, self, space_origin, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {
@@ -486,30 +491,6 @@ fn size_ui(
                 AutoSizeUnit::World => Size::new_scene(displayed_size),
             };
         }
-    }
-}
-
-fn axis_name(axis: Option<glam::Vec3>) -> String {
-    if let Some(axis) = axis {
-        if axis == glam::Vec3::X {
-            "+X".to_owned()
-        } else if axis == -glam::Vec3::X {
-            "-X".to_owned()
-        } else if axis == glam::Vec3::Y {
-            "+Y".to_owned()
-        } else if axis == -glam::Vec3::Y {
-            "-Y".to_owned()
-        } else if axis == glam::Vec3::Z {
-            "+Z".to_owned()
-        } else if axis == -glam::Vec3::Z {
-            "-Z".to_owned()
-        } else if axis != glam::Vec3::ZERO {
-            format!("Up is [{:.3} {:.3} {:.3}]", axis.x, axis.y, axis.z)
-        } else {
-            "—".to_owned()
-        }
-    } else {
-        "—".to_owned()
     }
 }
 

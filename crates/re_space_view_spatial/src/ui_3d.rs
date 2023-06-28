@@ -49,7 +49,7 @@ pub struct View3DState {
     last_eye_interact_time: f64,
 
     /// Filled in at the start of each frame
-    pub(crate) space_specs: SpaceSpecs,
+    pub(crate) view_coordinates: Option<ViewCoordinates>,
 }
 
 impl Default for View3DState {
@@ -63,7 +63,7 @@ impl Default for View3DState {
             show_axes: false,
             show_bbox: false,
             last_eye_interact_time: f64::NEG_INFINITY,
-            space_specs: Default::default(),
+            view_coordinates: None,
         }
     }
 }
@@ -74,7 +74,7 @@ fn ease_out(t: f32) -> f32 {
 
 impl View3DState {
     pub fn reset_camera(&mut self, scene_bbox_accum: &BoundingBox) {
-        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.view_coordinates));
         self.tracked_camera = None;
         self.camera_before_tracked_camera = None;
     }
@@ -105,7 +105,7 @@ impl View3DState {
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.space_specs));
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.view_coordinates));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -195,21 +195,6 @@ impl EyeInterpolation {
             .angle_between(stop.world_from_view.rotation());
 
         egui::remap_clamp(angle_difference, 0.0..=std::f32::consts::PI, 0.2..=0.7)
-    }
-}
-
-#[derive(Clone, Default, PartialEq)]
-pub struct SpaceSpecs {
-    pub up: Option<glam::Vec3>,
-    pub right: Option<glam::Vec3>,
-}
-
-impl SpaceSpecs {
-    pub fn from_view_coordinates(coordinates: Option<ViewCoordinates>) -> Self {
-        let up = (|| Some(coordinates?.up()?.as_vec3().into()))();
-        let right = (|| Some(coordinates?.right()?.as_vec3().into()))();
-
-        Self { up, right }
     }
 }
 
@@ -640,7 +625,10 @@ fn add_picking_ray(
         .radius(Size::new_points(0.5));
 }
 
-fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
+fn default_eye(
+    scene_bbox: &macaw::BoundingBox,
+    view_coordinates: &Option<ViewCoordinates>,
+) -> OrbitEye {
     let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -651,10 +639,15 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
         radius = 1.0;
     }
 
-    let look_up = space_specs.up.unwrap_or(Vec3::Z);
+    let view_coordinates = view_coordinates.unwrap_or(ViewCoordinates::rub());
+    let look_up: glam::Vec3 = view_coordinates
+        .up()
+        .unwrap_or(re_components::coordinates::SignedAxis3::POSITIVE_Z)
+        .into();
 
-    let look_dir = if let Some(right) = space_specs.right {
+    let look_dir = if let Some(right) = view_coordinates.right() {
         // Make sure right is to the right, and up is up:
+        let right = right.into();
         let fwd = look_up.cross(right);
         0.75 * fwd + 0.25 * right - 0.25 * look_up
     } else {
@@ -673,6 +666,6 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> Orb
         center,
         radius,
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
-        space_specs.up.unwrap_or(Vec3::ZERO),
+        view_coordinates.up().map_or(glam::Vec3::ZERO, Into::into),
     )
 }
