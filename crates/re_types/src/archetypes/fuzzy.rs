@@ -542,6 +542,439 @@ impl crate::Archetype for AffixFuzzer1 {
         .flatten()
         .collect())
     }
+
+    #[inline]
+    fn try_from_arrow(
+        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+    ) -> crate::DeserializationResult<Self> {
+        use crate::Component as _;
+        let arrays_by_name: ::std::collections::HashMap<_, _> = data
+            .into_iter()
+            .map(|(field, array)| (field.name, array))
+            .collect();
+        let fuzz1001 = {
+            let array = arrays_by_name.get("fuzz1001").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1002 = {
+            let array = arrays_by_name.get("fuzz1002").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1003 = {
+            let array = arrays_by_name.get("fuzz1003").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1004 = {
+            let array = arrays_by_name.get("fuzz1004").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1005 = {
+            let array = arrays_by_name.get("fuzz1005").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1006 = {
+            let array = arrays_by_name.get("fuzz1006").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1007 = {
+            let array = arrays_by_name.get("fuzz1007").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1101 = {
+            let array = arrays_by_name.get("fuzz1101").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1102 = {
+            let array = arrays_by_name.get("fuzz1102").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1103 = {
+            let array = arrays_by_name.get("fuzz1103").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1104 = {
+            let array = arrays_by_name.get("fuzz1104").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1105 = {
+            let array = arrays_by_name.get("fuzz1105").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1106 = {
+            let array = arrays_by_name.get("fuzz1106").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1107 = {
+            let array = arrays_by_name.get("fuzz1107").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz2001 = if let Some(array) = arrays_by_name.get("fuzz2001") {
+            Some(
+                <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2002 = if let Some(array) = arrays_by_name.get("fuzz2002") {
+            Some(
+                <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2003 = if let Some(array) = arrays_by_name.get("fuzz2003") {
+            Some(
+                <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2004 = if let Some(array) = arrays_by_name.get("fuzz2004") {
+            Some(
+                <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2005 = if let Some(array) = arrays_by_name.get("fuzz2005") {
+            Some(
+                <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2006 = if let Some(array) = arrays_by_name.get("fuzz2006") {
+            Some(
+                <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2007 = if let Some(array) = arrays_by_name.get("fuzz2007") {
+            Some(
+                <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2101 = if let Some(array) = arrays_by_name.get("fuzz2101") {
+            Some(
+                <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2102 = if let Some(array) = arrays_by_name.get("fuzz2102") {
+            Some(
+                <crate::components::AffixFuzzer2>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2103 = if let Some(array) = arrays_by_name.get("fuzz2103") {
+            Some(
+                <crate::components::AffixFuzzer3>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2104 = if let Some(array) = arrays_by_name.get("fuzz2104") {
+            Some(
+                <crate::components::AffixFuzzer4>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2105 = if let Some(array) = arrays_by_name.get("fuzz2105") {
+            Some(
+                <crate::components::AffixFuzzer5>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2106 = if let Some(array) = arrays_by_name.get("fuzz2106") {
+            Some(
+                <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2107 = if let Some(array) = arrays_by_name.get("fuzz2107") {
+            Some(
+                <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        Ok(Self {
+            fuzz1001,
+            fuzz1002,
+            fuzz1003,
+            fuzz1004,
+            fuzz1005,
+            fuzz1006,
+            fuzz1007,
+            fuzz1101,
+            fuzz1102,
+            fuzz1103,
+            fuzz1104,
+            fuzz1105,
+            fuzz1106,
+            fuzz1107,
+            fuzz2001,
+            fuzz2002,
+            fuzz2003,
+            fuzz2004,
+            fuzz2005,
+            fuzz2006,
+            fuzz2007,
+            fuzz2101,
+            fuzz2102,
+            fuzz2103,
+            fuzz2104,
+            fuzz2105,
+            fuzz2106,
+            fuzz2107,
+        })
+    }
 }
 
 impl AffixFuzzer1 {

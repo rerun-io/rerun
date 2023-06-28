@@ -114,4 +114,96 @@ impl crate::Datatype for Vec2D {
             }
         })
     }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                .unwrap();
+            let bitmap = data.validity().cloned();
+            let offsets = (0..).step_by(2usize).zip((2usize..).step_by(2usize));
+            let data = &**data.values();
+            let data = data
+                .as_any()
+                .downcast_ref::<Float32Array>()
+                .unwrap()
+                .into_iter()
+                .map(|v| v.copied())
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: DataType::Float32,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?;
+            offsets
+                .enumerate()
+                .map(move |(i, (start, end))| {
+                    bitmap
+                        .as_ref()
+                        .map_or(true, |bitmap| bitmap.get_bit(i))
+                        .then(|| {
+                            data.get(start as usize..end as usize)
+                                .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
+                                    bounds: (start as usize, end as usize),
+                                    len: data.len(),
+                                    datatype: DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        2usize,
+                                    ),
+                                })?
+                                .to_vec()
+                                .try_into()
+                                .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
+                                    expected: 2usize,
+                                    got: (end - start) as usize,
+                                    datatype: DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        2usize,
+                                    ),
+                                })
+                        })
+                        .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                .into_iter()
+        }
+        .map(|v| {
+            v.ok_or_else(|| crate::DeserializationError::MissingData {
+                datatype: DataType::Extension(
+                    "rerun.datatypes.Vec2D".to_owned(),
+                    Box::new(DataType::FixedSizeList(
+                        Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        }),
+                        2usize,
+                    )),
+                    None,
+                ),
+            })
+        })
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+    }
 }

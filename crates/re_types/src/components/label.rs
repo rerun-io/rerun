@@ -92,4 +92,32 @@ impl crate::Component for Label {
             }
         })
     }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok(data
+            .as_any()
+            .downcast_ref::<Utf8Array<i32>>()
+            .unwrap()
+            .into_iter()
+            .map(|v| v.map(ToOwned::to_owned))
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: DataType::Extension(
+                        "rerun.components.Label".to_owned(),
+                        Box::new(DataType::Utf8),
+                        None,
+                    ),
+                })
+            })
+            .map(|res| res.map(|v| Some(Self(v))))
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
+    }
 }
