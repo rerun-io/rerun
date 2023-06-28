@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
+
+
+## --- Point2D --- ##
 
 
 @dataclass

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-__all__ = ["Points2D"]
-
-
 from dataclasses import dataclass
 
+__all__ = ["Points2D"]
+
 from .. import components
+
+## --- Points2D --- ##
 
 
 @dataclass

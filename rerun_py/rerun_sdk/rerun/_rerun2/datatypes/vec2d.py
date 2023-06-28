@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
+
+
+## --- Vec2D --- ##
 
 
 @dataclass
