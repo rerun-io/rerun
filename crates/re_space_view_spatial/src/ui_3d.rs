@@ -17,7 +17,7 @@ use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerConte
 
 use crate::{
     axis_lines::add_axis_lines,
-    scene::{SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
+    scene::{image_view_coordinates, SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
     space_camera_3d::SpaceCamera3D,
     ui::{
         create_labels, outline_config, picking, screenshot_context_menu, SpatialNavigationMode,
@@ -566,7 +566,9 @@ fn show_projections_from_2d_space(
     match ctx.selection_state().hovered_space() {
         HoveredSpace::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
-                if let Some(pinhole) = cam.pinhole {
+                if let (Some(pinhole), Some(world_from_rub_view)) =
+                    (cam.pinhole, cam.world_from_rub_view())
+                {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
                     // If we don't have a z value, we only render the thick one.
                     let depth = if 0.0 < pos.z && pos.z.is_finite() {
@@ -574,9 +576,9 @@ fn show_projections_from_2d_space(
                     } else {
                         cam.picture_plane_distance
                     };
-
-                    let stop_in_cam = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
-                    let stop_in_world = cam.world_from_cam().transform_point3(stop_in_cam);
+                    let stop_in_image_plane = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
+                    let stop_in_rub_view = image_view_coordinates().to_rub() * stop_in_image_plane;
+                    let stop_in_world = world_from_rub_view.transform_point3(stop_in_rub_view);
 
                     let origin = cam.position();
                     let ray =

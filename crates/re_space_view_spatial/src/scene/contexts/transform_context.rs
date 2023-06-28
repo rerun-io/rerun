@@ -7,6 +7,8 @@ use re_log_types::Component;
 use re_space_view::UnreachableTransformReason;
 use re_viewer_context::{ArchetypeDefinition, SceneContextPart};
 
+use crate::scene::image_view_coordinates;
+
 #[derive(Clone)]
 struct TransformInfo {
     /// The transform from the entity to the reference space.
@@ -261,26 +263,26 @@ fn transform_at(
         let focal_length = pinhole.focal_length_in_pixels();
         let focal_length = glam::vec2(focal_length.x(), focal_length.y());
         let scale = distance / focal_length;
-        // Move along negative z (RUB convention!)
-        let translation = (-pinhole.principal_point() * scale).extend(-distance);
+        let translation = (-pinhole.principal_point() * scale).extend(distance);
 
         let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
             // We want to preserve any depth that might be on the pinhole image.
             // Use harmonic mean of x/y scale for those.
             * glam::Affine3A::from_scale(
-                scale.extend(-2.0 / (1.0 / scale.x + 1.0 / scale.y)),
+                scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
             );
 
         // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
         // determine how the image plane is oriented.
+        // (see also `CamerasPart` where the frustum lines are set up)
         let view_coordinates = determine_view_coordinates(store, query, entity_path.clone());
         let world_from_image_plane3d =
             // Convert from RUB setup to what we'are actually using.
-            glam::Affine3A::from_mat3(view_coordinates.from_rub()) *
-            // Account for standard image axis being Y down (not configurable as of writing).
-            glam::Affine3A::from_scale(glam::vec3(1.0, -1.0, 1.0));
+            view_coordinates.from_rub() *
+            // Account for the orientation of the image plane.
+            image_view_coordinates().to_rub();
 
-        world_from_image_plane3d * image_plane3d_from_2d_content
+        glam::Affine3A::from_mat3(world_from_image_plane3d) * image_plane3d_from_2d_content
 
         // Above calculation is nice for a certain kind of visualizing a projected image plane,
         // but the image plane distance is arbitrary and there might be other, better visualizations!

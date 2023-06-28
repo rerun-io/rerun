@@ -131,7 +131,8 @@ impl CamerasPart {
         let mut line_builder = scene_context.shared_render_builders.lines();
         let mut batch = line_builder
             .batch("camera frustum")
-            // The frustum is setup as RUB frustum, but the view coordinates may not be in RUB.
+            // The frustum is setup as a RUB frustum, but if the view coordinates are not RUB,
+            // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
                 world_from_parent * glam::Affine3A::from_mat3(view_coordinates.from_rub()),
             )
