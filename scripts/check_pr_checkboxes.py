@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from github import Github
+from github import Github  # NOLINT
 
 
 def main() -> None:
