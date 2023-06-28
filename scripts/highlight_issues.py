@@ -51,7 +51,11 @@ def fetch_issue(issue_json: dict) -> dict:
     gh_access_token = get_github_token()
     headers = {"Authorization": f"Token {gh_access_token}"}
     response = requests.get(url, headers=headers)
-    return response.json()
+    json = response.json()
+    if response.status_code != 200:
+        print(f"ERROR {url}: {response.status_code} - {json['message']}")
+        sys.exit(1)
+    return json
 
 
 def main() -> None:
@@ -64,11 +68,14 @@ def main() -> None:
     urls = [f"https://api.github.com/repos/{OWNER}/{REPO}/issues"]
 
     while urls:
-        page_url = urls.pop()
+        url = urls.pop()
 
-        print(f"Fetching {page_url}…")
-        response = requests.get(page_url, headers=headers)
+        print(f"Fetching {url}…")
+        response = requests.get(url, headers=headers)
         json = response.json()
+        if response.status_code != 200:
+            print(f"ERROR {url}: {response.status_code} - {json['message']}")
+            sys.exit(1)
 
         all_issues += list(json)
 
