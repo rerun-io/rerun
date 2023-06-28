@@ -504,7 +504,32 @@ fn quote_trait_impls_from_obj(
                 .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
                 .unwrap_or_else(|| fqname.clone());
 
+            let quoted_serializer =
+                quote_arrow_serializer(arrow_registry, obj, &format_ident!("data"));
+
+            let into_cow = quote! {
+                // NOTE: We need these so end-user code can effortlessly serialize both iterators
+                // of owned data and iterators of referenced data without ever having to stop and
+                // think about it.
+
+                impl<'a> From<#name> for ::std::borrow::Cow<'a, #name> {
+                    #[inline]
+                    fn from(value: #name) -> Self {
+                        std::borrow::Cow::Owned(value)
+                    }
+                }
+
+                impl<'a> From<&'a #name> for ::std::borrow::Cow<'a, #name> {
+                    #[inline]
+                    fn from(value: &'a #name) -> Self {
+                        std::borrow::Cow::Borrowed(value)
+                    }
+                }
+            };
+
             quote! {
+                #into_cow
+
                 impl crate::#kind for #name {
                     #[inline]
                     fn name() -> crate::#kind_name {
@@ -516,6 +541,19 @@ fn quote_trait_impls_from_obj(
                     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
                         use ::arrow2::datatypes::*;
                         #datatype
+                    }
+
+                    // NOTE: Don't inline this, this gets _huge_.
+                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    fn try_to_arrow_opt<'a>(
+                        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+                    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+                    where
+                        Self: Clone + 'a
+                    {
+                        use ::arrow2::{datatypes::*, array::*};
+                        use crate::{Component as _, Datatype as _};
+                        Ok(#quoted_serializer)
                     }
                 }
             }
@@ -535,6 +573,62 @@ fn quote_trait_impls_from_obj(
 
             let num_all = num_required + num_recommended + num_optional;
 
+            let all_serializers = {
+                obj.fields.iter().map(|obj_field| {
+                    let field_name_str = &obj_field.name;
+                    let field_name = format_ident!("{}", obj_field.name);
+
+                    let is_plural = obj_field.typ.is_plural();
+                    let is_nullable = obj_field.is_nullable;
+
+                    // NOTE: unwrapping is safe since the field must point to a component.
+                    let component = obj_field.typ.fqname().unwrap();
+                    let component = format_ident!("{}", component.rsplit_once('.').unwrap().1);
+                    let component = quote!(crate::components::#component);
+
+                    let extract_datatype_and_return = quote! {
+                        array.map(|array| {
+                            let datatype = array.data_type().clone();
+                            (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
+                        })
+                    };
+
+                    // NOTE: Archetypes are AoS (arrays of structs), thus the nullability we're
+                    // dealing with here is the nullability of an entire array of components, not
+                    // the nullability of individual elements (i.e. instances)!
+                    match (is_plural, is_nullable) {
+                        (true, true) => quote! {
+                             self.#field_name.as_ref().map(|many| {
+                                let array = <#component>::try_to_arrow(many.iter());
+                                #extract_datatype_and_return
+                            })
+                            .transpose()?
+                        },
+                        (true, false) => quote! {
+                            Some({
+                                let array = <#component>::try_to_arrow(self.#field_name.iter());
+                                #extract_datatype_and_return
+                            })
+                            .transpose()?
+                        },
+                        (false, true) => quote! {
+                             self.#field_name.as_ref().map(|single| {
+                                let array = <#component>::try_to_arrow([single]);
+                                #extract_datatype_and_return
+                            })
+                            .transpose()?
+                        },
+                        (false, false) => quote! {
+                            Some({
+                                let array = <#component>::try_to_arrow([&self.#field_name]);
+                                #extract_datatype_and_return
+                            })
+                            .transpose()?
+                        },
+                    }
+                })
+            };
+
             quote! {
                 impl #name {
                     pub const REQUIRED_COMPONENTS: [crate::ComponentName; #num_required] = [#required];
@@ -547,26 +641,32 @@ fn quote_trait_impls_from_obj(
                 }
 
                 impl crate::Archetype for #name {
+                    #[inline]
                     fn name() -> crate::ArchetypeName {
                         crate::ArchetypeName::Borrowed(#fqname)
                     }
 
+                    #[inline]
                     fn required_components() -> Vec<crate::ComponentName> {
                         Self::REQUIRED_COMPONENTS.to_vec()
                     }
 
+                    #[inline]
                     fn recommended_components() -> Vec<crate::ComponentName> {
                         Self::RECOMMENDED_COMPONENTS.to_vec()
                     }
 
+                    #[inline]
                     fn optional_components() -> Vec<crate::ComponentName> {
                         Self::OPTIONAL_COMPONENTS.to_vec()
                     }
 
-                    #[allow(clippy::todo)]
-                    fn to_arrow_datatypes() -> Vec<arrow2::datatypes::DataType> {
-                        // TODO(#2368): dump the arrow registry into the generated code
-                        todo!("query the registry for all fqnames");
+                    #[inline]
+                    fn try_to_arrow(
+                        &self,
+                    ) -> crate::SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>> {
+                        use crate::Component as _;
+                        Ok([ #({ #all_serializers },)* ].into_iter().flatten().collect())
                     }
                 }
             }
@@ -797,6 +897,289 @@ fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
         .replace("rerun", "crate");
     let expr: syn::TypePath = syn::parse_str(&fqname).unwrap();
     quote!(#expr)
+}
+
+// --- Serialization ---
+
+fn quote_arrow_serializer(
+    arrow_registry: &ArrowRegistry,
+    obj: &Object,
+    data_src: &proc_macro2::Ident,
+) -> TokenStream {
+    let datatype = &arrow_registry.get(&obj.fqname);
+
+    let is_arrow_transparent = obj.datatype.is_none();
+    let is_tuple_struct = is_tuple_struct_from_obj(obj);
+
+    let quoted_flatten = |obj_field_is_nullable| {
+        // NOTE: If the field itself is marked nullable, then we'll end up with two layers of
+        // nullability in the output. Get rid of the superfluous one.
+        if obj_field_is_nullable {
+            quote!(.flatten())
+        } else {
+            quote!()
+        }
+    };
+
+    let quoted_bitmap = |var| {
+        quote! {
+            let #var: Option<::arrow2::bitmap::Bitmap> = {
+                // NOTE: Don't compute a bitmap if there isn't at least one null element.
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            }
+        }
+    };
+
+    if is_arrow_transparent {
+        // NOTE: Arrow transparent objects must have a single field, no more no less.
+        // The semantic pass would have failed already if this wasn't the case.
+        let obj_field = &obj.fields[0];
+
+        let quoted_data_src = data_src.clone();
+        let quoted_data_dst = format_ident!(
+            "{}",
+            if is_tuple_struct {
+                "data0"
+            } else {
+                obj_field.name.as_str()
+            }
+        );
+        let bitmap_dst = format_ident!("{quoted_data_dst}_bitmap");
+
+        let quoted_binding = if is_tuple_struct {
+            quote!(Self(#quoted_data_dst))
+        } else {
+            quote!(Self { #quoted_data_dst })
+        };
+
+        let quoted_serializer = quote_arrow_field_serializer(
+            &arrow_registry.get(&obj_field.fqname),
+            obj_field.is_nullable,
+            &bitmap_dst,
+            &quoted_data_dst,
+        );
+
+        let quoted_bitmap = quoted_bitmap(bitmap_dst);
+
+        let quoted_flatten = quoted_flatten(obj_field.is_nullable);
+
+        quote! { {
+            let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+
+                    let datum = datum
+                        .map(|datum| {
+                            let #quoted_binding = datum.into_owned();
+                            #quoted_data_dst
+                        })
+                        #quoted_flatten;
+
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+
+
+            #quoted_bitmap;
+
+            #quoted_serializer
+        } }
+    } else {
+        let data_src = data_src.clone();
+
+        // NOTE: This can only be struct or union/enum at this point.
+        match datatype.to_logical_type() {
+            DataType::Struct(_) => {
+                let quoted_datatype = ArrowDataTypeTokenizer(datatype);
+
+                let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
+                    let data_dst = format_ident!("{}", obj_field.name);
+                    let bitmap_dst = format_ident!("{data_dst}_bitmap");
+
+                    let quoted_serializer = quote_arrow_field_serializer(
+                        &arrow_registry.get(&obj_field.fqname),
+                        obj_field.is_nullable,
+                        &bitmap_dst,
+                        &data_dst,
+                    );
+
+                    let quoted_flatten = quoted_flatten(obj_field.is_nullable);
+
+                    let quoted_bitmap = quoted_bitmap(bitmap_dst);
+
+                    quote! { {
+                        let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| {
+                                        let Self { #data_dst, .. } = &**datum;
+                                        #data_dst.clone()
+                                    })
+                                    #quoted_flatten;
+
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+
+
+                        #quoted_bitmap;
+
+                        #quoted_serializer
+                    } }
+                });
+
+                let quoted_bitmap = quoted_bitmap(format_ident!("bitmap"));
+
+                quote! { {
+                    let (somes, #data_src): (Vec<_>, Vec<_>) = #data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+
+                    #quoted_bitmap;
+
+                    StructArray::new(
+                        #quoted_datatype,
+                        vec![#(#quoted_field_serializers,)*],
+                        bitmap,
+                    ).boxed()
+                } }
+            }
+            _ => unimplemented!("{datatype:#?}"), // NOLINT
+        }
+    }
+}
+
+fn quote_arrow_field_serializer(
+    datatype: &DataType,
+    is_nullable: bool,
+    bitmap_src: &proc_macro2::Ident,
+    data_src: &proc_macro2::Ident,
+) -> TokenStream {
+    let quoted_datatype = ArrowDataTypeTokenizer(datatype);
+    match datatype.to_logical_type() {
+        DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Float16
+        | DataType::Float32
+        | DataType::Float64 => {
+            quote! {
+                PrimitiveArray::new(
+                    #quoted_datatype,
+                    // NOTE: We need values for all slots, regardless of what the bitmap says,
+                    // hence `unwrap_or_default`.
+                    #data_src.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                    #bitmap_src,
+                ).boxed()
+            }
+        }
+
+        DataType::Utf8 => {
+            quote! { {
+                // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
+                // about it while building the backing buffer since it's all offsets driven.
+                let inner_data: ::arrow2::buffer::Buffer<u8> = #data_src.iter().flatten().flat_map(|s| s.bytes()).collect();
+
+                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default())
+                ).unwrap().into();
+
+                // Safety: we're building this from actual native strings, so no need to do the
+                // whole utf8 validation _again_.
+                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_src) }.boxed()
+            } }
+        }
+
+        DataType::List(inner) | DataType::FixedSizeList(inner, _) => {
+            let inner_datatype = inner.data_type();
+
+            let quoted_inner_data = format_ident!("{data_src}_inner_data");
+            let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
+
+            let quoted_inner = quote_arrow_field_serializer(
+                inner_datatype,
+                inner.is_nullable,
+                &quoted_inner_bitmap,
+                &quoted_inner_data,
+            );
+
+            let quoted_create = if let DataType::List(_) = datatype {
+                quote! {
+                    let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                        #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default())
+                    ).unwrap().into();
+
+                    ListArray::new(
+                        #quoted_datatype,
+                        offsets,
+                        #quoted_inner,
+                        #bitmap_src,
+                    ).boxed()
+                }
+            } else {
+                quote! {
+                    FixedSizeListArray::new(
+                        #quoted_datatype,
+                        #quoted_inner,
+                        #bitmap_src,
+                    ).boxed()
+                }
+            };
+
+            // TODO(cmc): We should be checking this, but right now we don't because we don't
+            // support intra-list nullability.
+            _ = is_nullable;
+            quote! { {
+                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+
+                let #quoted_inner_data: Vec<_> = #data_src
+                    .iter()
+                    // NOTE: Flattening to remove the guaranteed layer of nullability, we don't care
+                    // about it while building the backing buffer.
+                    .flatten()
+                    // NOTE: Flattening yet again since we have to deconstruct the inner list.
+                    .flatten()
+                    .map(ToOwned::to_owned)
+                    // NOTE: Wrapping back into an option as the recursive call will expect the
+                    // guaranteed nullability layer to be present!
+                    .map(Some)
+                    .collect();
+
+                let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                    let any_nones = #quoted_inner_data.iter().any(|v| v.is_none());
+                    any_nones.then(|| #quoted_inner_data.iter().map(|v| v.is_some()).collect())
+                };
+
+                #quoted_create
+            } }
+        }
+
+        DataType::Struct(_) => {
+            // NOTE: We always wrap objects with full extension metadata.
+            let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+            let fqname_use = quote_fqname_as_type_path(fqname);
+            quote! {{
+                _ = #bitmap_src;
+                #fqname_use::try_to_arrow_opt(#data_src)?
+            }}
+        }
+
+        _ => unimplemented!("{datatype:#?}"), // NOLINT
+    }
 }
 
 // --- Helpers ---
