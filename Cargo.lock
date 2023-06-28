@@ -4838,6 +4838,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rerun_c"
+version = "0.8.0-alpha.0"
+
+[[package]]
 name = "rerun_py"
 version = "0.8.0-alpha.0"
 dependencies = [
