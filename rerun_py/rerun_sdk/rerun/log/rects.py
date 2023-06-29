@@ -85,8 +85,8 @@ def log_rect(
 
     instanced["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if label:

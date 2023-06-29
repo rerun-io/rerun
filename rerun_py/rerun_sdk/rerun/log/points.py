@@ -116,8 +116,8 @@ def log_point(
         else:
             raise TypeError("Position must have a total size of 2 or 3")
 
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if radius:
