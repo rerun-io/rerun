@@ -576,7 +576,7 @@ impl Viewport {
                     .re_ui
                     .selectable_label_with_icon(
                         ui,
-                        space_view.class(ctx).icon(),
+                        space_view.class(ctx.space_view_class_registry).icon(),
                         if space_view.space_origin.is_root() {
                             space_view.display_name.clone()
                         } else {
@@ -871,7 +871,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         let help_text = space_view
-            .class(self.ctx)
+            .class(self.ctx.space_view_class_registry)
             .help_text(self.ctx.re_ui, space_view_state);
         re_ui::help_hover_button(ui).on_hover_text(help_text);
     }
