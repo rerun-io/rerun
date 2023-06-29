@@ -186,7 +186,7 @@ impl SpatialSpaceViewState {
             if properties.pinhole_image_plane_distance.is_auto() {
                 let scene_size = self.scene_bbox_accum.size().length();
                 let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-                    scene_size * 0.05
+                    scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/main.py --no-frames`
                 } else {
                     1.0
                 };
