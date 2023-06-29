@@ -174,11 +174,11 @@ class OPFProject:
             u_center = calib_sensor.internals.principal_point_px[0]
             v_center = calib_sensor.internals.principal_point_px[1]
             intrinsics = np.array(
-                (
-                    (focal_length, 0, u_center),
-                    (0, focal_length, v_center),
-                    (0, 0, 1),
-                )
+                [
+                    [focal_length, 0, u_center],
+                    [0, focal_length, v_center],
+                    [0, 0, 1],
+                ]
             )
 
             # TODO(ab): this is probably affected by https://github.com/rerun-io/rerun/issues/2244. The code will be
