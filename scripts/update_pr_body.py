@@ -44,6 +44,7 @@ def main() -> None:
         undefined=DebugUndefined,
     )
     env.filters["encode_uri_component"] = encode_uri_component
+
     body = env.from_string(pr.body).render(
         pr={
             "number": args.pr_number,
