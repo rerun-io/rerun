@@ -32,6 +32,8 @@ impl serde::Serialize for ArrowMsg {
     where
         S: serde::Serializer,
     {
+        re_tracing::profile_scope!("ArrowMsg::serialize");
+
         use arrow2::io::ipc::write::StreamWriter;
         use serde::ser::SerializeTuple;
 
@@ -76,6 +78,8 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
             where
                 A: serde::de::SeqAccess<'de>,
             {
+                re_tracing::profile_scope!("ArrowMsg::deserialize");
+
                 let table_id: Option<TableId> = seq.next_element()?;
                 let timepoint_min: Option<TimePoint> = seq.next_element()?;
                 let buf: Option<serde_bytes::ByteBuf> = seq.next_element()?;

@@ -55,6 +55,7 @@ pub enum DecodeError {
 // ----------------------------------------------------------------------------
 
 pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
+    re_tracing::profile_function!();
     let decoder = Decoder::new(std::io::Cursor::new(bytes))?;
     let mut msgs = vec![];
     for msg in decoder {
