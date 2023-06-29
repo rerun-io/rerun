@@ -6,7 +6,7 @@
 
 use anyhow::Context as _;
 
-use std::process::Command;
+use std::{path::PathBuf, process::Command};
 
 mod hashing;
 mod rebuild_detector;
@@ -84,7 +84,13 @@ pub fn export_env_vars() {
         if let Ok(head) = std::fs::read_to_string(&head_path) {
             if let Some(git_file) = head.strip_prefix("ref: ") {
                 if let Ok(path) = git_path(git_file) {
-                    rerun_if_changed(path); // Track changes to commit hash
+                    if path.exists() {
+                        rerun_if_changed(path); // Track changes to commit hash
+                    } else {
+                        // Weird that it doesn't exist. Maybe we will miss a git hash change,
+                        // but that is better that tracking a non-existing files (which leads to constant rebuilds).
+                        // See https://github.com/rerun-io/rerun/issues/2380 for more
+                    }
                 }
             }
         }
@@ -127,8 +133,9 @@ fn git_branch() -> anyhow::Result<String> {
 ///
 /// Resolve `$GIT_DIR/<path>` and takes other path relocation variables such as `$GIT_OBJECT_DIRECTORY`, `$GIT_INDEX_FILE…​` into account.
 /// For example, if `$GIT_OBJECT_DIRECTORY` is set to /foo/bar then `git rev-parse --git-path objects/abc` returns `/foo/bar/abc`.
-fn git_path(path: &str) -> anyhow::Result<String> {
-    run_command("git", &["rev-parse", "--git-path", path])
+fn git_path(path: &str) -> anyhow::Result<PathBuf> {
+    let path = run_command("git", &["rev-parse", "--git-path", path])?;
+    Ok(path.into())
 }
 
 /// Returns `(rustc, LLVM)` versions.
