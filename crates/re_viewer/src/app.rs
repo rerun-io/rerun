@@ -406,7 +406,7 @@ impl App {
                 self.screenshotter.request_screenshot();
             }
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::DumpDatastore => {
+            UICommand::PrintDatastore => {
                 if let Some(ctx) = store_context {
                     if let Some(recording) = ctx.recording {
                         eprintln!("{}", recording.entity_db.data_store);
