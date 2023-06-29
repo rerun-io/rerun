@@ -21,3 +21,5 @@ Use [pyopf](https://github.com/Pix4D/pyopf) to load and display a photogrammetri
 pip install -r examples/python/open_photogrammetry_format/requirements.txt
 python examples/python/open_photogrammetry_format/main.py
 ```
+
+Requires Python 3.10 or higher because of [pyopf](https://pypi.org/project/pyopf/).

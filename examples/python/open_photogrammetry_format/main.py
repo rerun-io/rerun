@@ -5,6 +5,8 @@ Load an Open Photogrammetry Format (OFP) project and display the cameras and poi
 OPF specification: https://pix4d.github.io/opf-spec/index.html
 Dataset source: https://support.pix4d.com/hc/en-us/articles/360000235126-Example-projects-real-photogrammetry-data#OPF1
 pyopf: https://github.com/Pix4D/pyopf
+
+Requires Python 3.10 or higher because of [pyopf](https://pypi.org/project/pyopf/).
 """
 from __future__ import annotations
 
