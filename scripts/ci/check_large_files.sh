@@ -2,6 +2,8 @@
 # Check for files that are too large to be checked into the repository.
 # Whenever we want to make an exception, we add it to `check_large_files_allow_list.txt`
 set -eu
+script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+cd "$script_path/../.."
 
 # Maximum file size, unless found in `check_large_files_allow_list.txt`
 maximum_size=$((100 * 1024))
