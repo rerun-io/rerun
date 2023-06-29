@@ -38,7 +38,7 @@ img[0:3, 3:25] = [255, 0, 0]
 rr.log_view_coordinates("world", xyz="RFU")
 
 
-def log_camera(path_prefix: str, translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64]) -> None:
+def log_camera(path_prefix: str, translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64], forward) -> None:
     [height, width, _channels] = img.shape
     u_cen = width / 2
     v_cen = height / 2
@@ -49,6 +49,7 @@ def log_camera(path_prefix: str, translation: npt.ArrayLike, xyz: str, img: npt.
     rr.log_point(f"{base_path}/indicator", position=[0, 0, 0], color=[255, 255, 255], label=xyz)
     rr.log_view_coordinates(base_path, xyz=xyz)
     rr.log_transform3d(base_path, transform=rr.Translation3D(translation))
+    rr.log_arrow(base_path + "/box", origin=[0, 0, 0], vector=forward, color=[255, 255, 255], width_scale=0.025)
     rr.log_pinhole(
         image_path,
         child_from_parent=[[f_len, 0, u_cen], [0, f_len, v_cen], [0, 0, 1]],
@@ -62,25 +63,25 @@ def log_camera(path_prefix: str, translation: npt.ArrayLike, xyz: str, img: npt.
 # Not all possible, but a fair sampling.
 
 # All permutations of RDF:
-log_camera("rdf-perms", [1, -2, 0], "RDF", img)
-log_camera("rdf-perms", [1, -1, 0], "DRF", img)
-log_camera("rdf-perms", [1, 0, 0], "FRD", img)
-log_camera("rdf-perms", [1, 1, 0], "RFD", img)
-log_camera("rdf-perms", [1, 2, 0], "DFR", img)
+log_camera("rdf-perms", [2, -2, 0], "RDF", img, forward=[0, 0, 1])
+log_camera("rdf-perms", [2, -1, 0], "DRF", img, forward=[0, 0, 1])
+log_camera("rdf-perms", [2, 0, 0], "FRD", img, forward=[1, 0, 0])
+log_camera("rdf-perms", [2, 1, 0], "RFD", img, forward=[0, 1, 0])
+log_camera("rdf-perms", [2, 2, 0], "DFR", img, forward=[0, 1, 0])
 
-# All permutations of LUB:
-log_camera("lub-like", [0, -2, 0], "LUB", img)
-log_camera("lub-like", [0, -1, 0], "ULB", img)
-log_camera("lub-like", [0, 0, 0], "BLU", img)
-log_camera("lub-like", [0, 1, 0], "LBU", img)
-log_camera("lub-like", [0, 2, 0], "BUL", img)
+# # All permutations of LUB:
+log_camera("lub-like", [0, -2, 0], "LUB", img, forward=[0, 0, -1])
+log_camera("lub-like", [0, -1, 0], "ULB", img, forward=[0, 0, -1])
+log_camera("lub-like", [0, 0, 0], "BLU", img, forward=[-1, 0, 0])
+log_camera("lub-like", [0, 1, 0], "LBU", img, forward=[0, -1, 0])
+log_camera("lub-like", [0, 2, 0], "BUL", img, forward=[-1, 0, 0])
 
-# All permutations of LUF:
-log_camera("luf-like", [-1, -2, 0], "LUF", img)
-log_camera("luf-like", [-1, -1, 0], "ULF", img)
-log_camera("luf-like", [-1, 0, 0], "FLU", img)
-log_camera("luf-like", [-1, 1, 0], "LFU", img)
-log_camera("luf-like", [-1, 2, 0], "FUL", img)
+# # All permutations of LUF:
+log_camera("luf-like", [-2, -2, 0], "LUF", img, forward=[0, 0, 1])
+log_camera("luf-like", [-2, -1, 0], "ULF", img, forward=[0, 0, 1])
+log_camera("luf-like", [-2, 0, 0], "FLU", img, forward=[1, 0, 0])
+log_camera("luf-like", [-2, 1, 0], "LFU", img, forward=[0, 1, 0])
+log_camera("luf-like", [-2, 2, 0], "FUL", img, forward=[1, 0, 0])
 
 
 rr.script_teardown(args)
