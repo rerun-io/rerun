@@ -72,9 +72,6 @@ impl CamerasPart {
         // The transform *at* this entity path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
         // We're however first interested in the rigid transform that led here, so query the parent transform.
-        //
-        // Note that currently a transform on an object can't have both a pinhole AND a rigid transform,
-        // which makes this rather well defined here.
         let parent_path = ent_path
             .parent()
             .expect("root path can't be part of scene query");
