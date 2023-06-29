@@ -134,6 +134,8 @@ class OPFProject:
             sensor = sensor_map[calib_camera.sensor_id]
             calib_sensor = calib_sensor_map[calib_camera.sensor_id]
 
+            # Specification for the omega, phi, kappa angles:
+            # https://pix4d.github.io/opf-spec/specification/calibrated_cameras.html#calibrated-camera
             omega, phi, kappa = tuple(np.deg2rad(a) for a in calib_camera.orientation_deg)
             rot = (
                 np.array(
