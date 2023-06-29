@@ -123,7 +123,7 @@ fn log_baseline_objects(
                 return None;
             }
 
-            let box3: Box3D = glam::Vec3::from_slice(&object.scale).into();
+            let box3: Box3D = (glam::Vec3::from_slice(&object.scale) * 0.5).into();
             let transform = {
                 let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
@@ -153,7 +153,7 @@ fn log_video_frame(rec_stream: &RecordingStream, ar_frame: &ArFrame) -> anyhow::
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
     let tensor = rerun::components::Tensor::from_jpeg_file(&image_path)?;
 
-    MsgSender::new("world/camera/video")
+    MsgSender::new("world/camera")
         .with_timepoint(ar_frame.timepoint.clone())
         .with_component(&[tensor])?
         .send(rec_stream)?;
@@ -198,7 +198,7 @@ fn log_ar_camera(
             rot,
         ))])?
         .send(rec_stream)?;
-    MsgSender::new("world/camera/video")
+    MsgSender::new("world/camera")
         .with_timepoint(timepoint)
         .with_component(&[Pinhole {
             image_from_cam: intrinsics.into(),
@@ -262,12 +262,9 @@ fn log_frame_annotations(
             })
             .unzip();
 
-        let mut msg = MsgSender::new(format!(
-            "world/camera/video/estimates/box-{}",
-            ann.object_id
-        ))
-        .with_timepoint(timepoint.clone())
-        .with_splat(ColorRGBA::from_rgb(130, 160, 250))?;
+        let mut msg = MsgSender::new(format!("world/camera/estimates/box-{}", ann.object_id))
+            .with_timepoint(timepoint.clone())
+            .with_splat(ColorRGBA::from_rgb(130, 160, 250))?;
 
         if points.len() == 9 {
             // Build the preprojected bounding box out of 2D line segments.

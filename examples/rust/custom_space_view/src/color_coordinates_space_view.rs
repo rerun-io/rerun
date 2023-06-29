@@ -5,8 +5,8 @@ use re_viewer::external::{
     re_log_types::EntityPath,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-        SpaceViewState, TypedScene, UiVerbosity, ViewerContext,
+        HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
+        SpaceViewClassName, SpaceViewId, SpaceViewState, TypedScene, UiVerbosity, ViewerContext,
     },
 };
 
@@ -93,6 +93,10 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)
+    }
+
+    fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
+        Default::default()
     }
 
     /// Additional UI displayed when the space view is selected.

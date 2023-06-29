@@ -17,7 +17,7 @@ const IS_PRERELEASE_BIT: u8 = 1 << 6;
 /// We use `-alpha.X` when we publish pre-releases to crates.io and PyPI.
 ///
 /// We use a `+githash` suffix for continuous pre-releases that you can download from our GitHub.
-/// We do NOT store that in this struct. See also `scripts/version_util.py`.
+/// We do NOT store that in this struct. See also `scripts/ci/version_util.py`.
 ///
 /// The version numbers aren't allowed to be very large (current max: 31).
 /// This limited subset it chosen so that we can encode the version in 32 bits
