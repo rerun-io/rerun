@@ -62,6 +62,7 @@ impl crate::Component for Point2D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -81,24 +82,15 @@ impl crate::Component for Point2D {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                DataType::Extension(
-                    "rerun.components.Point2D".to_owned(),
-                    Box::new(DataType::Struct(vec![
-                        Field {
-                            name: "x".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "y".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ])),
-                    None,
-                ),
+                if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::Point2D>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::Point2D>::to_arrow_datatype()
+                },
                 vec![
                     {
                         let (somes, x): (Vec<_>, Vec<_>) = data
@@ -116,7 +108,10 @@ impl crate::Component for Point2D {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::Float32,
+                            {
+                                _ = extension_wrapper;
+                                DataType::Float32
+                            },
                             x.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             x_bitmap,
                         )
@@ -138,7 +133,10 @@ impl crate::Component for Point2D {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::Float32,
+                            {
+                                _ = extension_wrapper;
+                                DataType::Float32
+                            },
                             y.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             y_bitmap,
                         )
@@ -165,24 +163,7 @@ impl crate::Component for Point2D {
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
-                    expected: DataType::Extension(
-                        "rerun.components.Point2D".to_owned(),
-                        Box::new(DataType::Struct(vec![
-                            Field {
-                                name: "x".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "y".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        None,
-                    ),
+                    expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
             let (data_fields, data_arrays, data_bitmap) =
@@ -218,44 +199,10 @@ impl crate::Component for Point2D {
                         .then(|| {
                             Ok(Self {
                                 x: x.ok_or_else(|| crate::DeserializationError::MissingData {
-                                    datatype: DataType::Extension(
-                                        "rerun.components.Point2D".to_owned(),
-                                        Box::new(DataType::Struct(vec![
-                                            Field {
-                                                name: "x".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "y".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                        ])),
-                                        None,
-                                    ),
+                                    datatype: data.data_type().clone(),
                                 })?,
                                 y: y.ok_or_else(|| crate::DeserializationError::MissingData {
-                                    datatype: DataType::Extension(
-                                        "rerun.components.Point2D".to_owned(),
-                                        Box::new(DataType::Struct(vec![
-                                            Field {
-                                                name: "x".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "y".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                        ])),
-                                        None,
-                                    ),
+                                    datatype: data.data_type().clone(),
                                 })?,
                             })
                         })

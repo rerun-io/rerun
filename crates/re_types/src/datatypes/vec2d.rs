@@ -54,6 +54,7 @@ impl crate::Datatype for Vec2D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -90,17 +91,31 @@ impl crate::Datatype for Vec2D {
                     any_nones.then(|| data0_inner_data.iter().map(|v| v.is_some()).collect())
                 };
                 FixedSizeListArray::new(
-                    DataType::FixedSizeList(
-                        Box::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }),
-                        2usize,
-                    ),
+                    {
+                        _ = extension_wrapper;
+                        DataType::Extension(
+                            "rerun.datatypes.Vec2D".to_owned(),
+                            Box::new(DataType::FixedSizeList(
+                                Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                2usize,
+                            )),
+                            None,
+                        )
+                    },
                     PrimitiveArray::new(
-                        DataType::Float32,
+                        {
+                            _ = extension_wrapper;
+                            DataType::Extension(
+                                "rerun.datatypes.Vec2D".to_owned(),
+                                Box::new(DataType::Float32),
+                                None,
+                            )
+                        },
                         data0_inner_data
                             .into_iter()
                             .map(|v| v.unwrap_or_default())
@@ -125,6 +140,7 @@ impl crate::Datatype for Vec2D {
         use crate::{Component as _, Datatype as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
+            let datatype = data.data_type();
             let data = data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
@@ -155,30 +171,14 @@ impl crate::Datatype for Vec2D {
                                 .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
                                     bounds: (start as usize, end as usize),
                                     len: data.len(),
-                                    datatype: DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        2usize,
-                                    ),
+                                    datatype: datatype.clone(),
                                 })?
                                 .to_vec()
                                 .try_into()
                                 .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
                                     expected: 2usize,
                                     got: (end - start) as usize,
-                                    datatype: DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        2usize,
-                                    ),
+                                    datatype: datatype.clone(),
                                 })
                         })
                         .transpose()
@@ -188,19 +188,7 @@ impl crate::Datatype for Vec2D {
         }
         .map(|v| {
             v.ok_or_else(|| crate::DeserializationError::MissingData {
-                datatype: DataType::Extension(
-                    "rerun.datatypes.Vec2D".to_owned(),
-                    Box::new(DataType::FixedSizeList(
-                        Box::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }),
-                        2usize,
-                    )),
-                    None,
-                ),
+                datatype: data.data_type().clone(),
             })
         })
         .map(|res| res.map(|v| Some(Self(v))))

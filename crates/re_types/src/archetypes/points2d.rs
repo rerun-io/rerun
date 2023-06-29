@@ -108,7 +108,8 @@ impl crate::Archetype for Points2D {
         Ok([
             {
                 Some({
-                    let array = <crate::components::Point2D>::try_to_arrow(self.points.iter());
+                    let array =
+                        <crate::components::Point2D>::try_to_arrow(self.points.iter(), None);
                     array.map(|array| {
                         let datatype = array.data_type().clone();
                         (
@@ -123,7 +124,7 @@ impl crate::Archetype for Points2D {
                 self.radii
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Radius>::try_to_arrow(many.iter());
+                        let array = <crate::components::Radius>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = array.data_type().clone();
                             (
@@ -138,7 +139,7 @@ impl crate::Archetype for Points2D {
                 self.colors
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Color>::try_to_arrow(many.iter());
+                        let array = <crate::components::Color>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = array.data_type().clone();
                             (
@@ -153,7 +154,7 @@ impl crate::Archetype for Points2D {
                 self.labels
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::Label>::try_to_arrow(many.iter());
+                        let array = <crate::components::Label>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = array.data_type().clone();
                             (
@@ -168,7 +169,7 @@ impl crate::Archetype for Points2D {
                 self.draw_order
                     .as_ref()
                     .map(|single| {
-                        let array = <crate::components::DrawOrder>::try_to_arrow([single]);
+                        let array = <crate::components::DrawOrder>::try_to_arrow([single], None);
                         array.map(|array| {
                             let datatype = array.data_type().clone();
                             (
@@ -183,7 +184,7 @@ impl crate::Archetype for Points2D {
                 self.class_ids
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::ClassId>::try_to_arrow(many.iter());
+                        let array = <crate::components::ClassId>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = array.data_type().clone();
                             (
@@ -198,7 +199,8 @@ impl crate::Archetype for Points2D {
                 self.keypoint_ids
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::KeypointId>::try_to_arrow(many.iter());
+                        let array =
+                            <crate::components::KeypointId>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = array.data_type().clone();
                             (
@@ -213,7 +215,8 @@ impl crate::Archetype for Points2D {
                 self.instance_keys
                     .as_ref()
                     .map(|many| {
-                        let array = <crate::components::InstanceKey>::try_to_arrow(many.iter());
+                        let array =
+                            <crate::components::InstanceKey>::try_to_arrow(many.iter(), None);
                         array.map(|array| {
                             let datatype = array.data_type().clone();
                             (
