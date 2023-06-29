@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Load an Open Photogrammetry Format (OFP) project and display the cameras and point cloud.
 
