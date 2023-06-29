@@ -62,7 +62,7 @@ pub(crate) fn tree_from_space_views(
             ],
             &mut tiles,
         )
-    } else if space_make_infos.len() < 12 {
+    } else if space_make_infos.len() <= 12 {
         // Arrange it all in a grid that is responsive to changes in viewport size:
         let child_tile_ids = space_make_infos
             .into_iter()
