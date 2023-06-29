@@ -3,11 +3,11 @@ use re_viewer::external::{
     re_data_store::InstancePath,
     re_data_ui::{item_ui, DataUi},
     re_log_types::EntityPath,
-    re_ui,
+    re_renderer, re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SceneQuery, SelectionHighlight, SpaceViewClass,
-        SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewHighlights, SpaceViewId,
-        SpaceViewState, TypedScene, UiVerbosity, ViewerContext,
+        SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewFrame, SpaceViewHighlights,
+        SpaceViewId, SpaceViewState, UiVerbosity, ViewerContext,
     },
 };
 
@@ -127,8 +127,9 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
+        frame: &mut SpaceViewFrame<Self>,
         query: SceneQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
         space_view_id: SpaceViewId,
     ) {
         egui::Frame::default().show(ui, |ui| {
@@ -155,7 +156,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
                 ui,
                 ctx,
                 space_view_id,
-                scene,
+                frame,
                 query.highlights,
                 color_at,
                 position_at,
@@ -170,7 +171,7 @@ fn color_space_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     space_view_id: SpaceViewId,
-    scene: &mut TypedScene<ColorCoordinatesSpaceView>,
+    frame: &mut SpaceViewFrame<ColorCoordinatesSpaceView>,
     highlights: &SpaceViewHighlights,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
@@ -208,7 +209,7 @@ fn color_space_ui(
     ui.painter().add(egui::Shape::mesh(mesh));
 
     // Circles for the colors in the scene.
-    for (ent_path, colors) in &scene.parts.colors.colors {
+    for (ent_path, colors) in &frame.parts.colors.colors {
         let ent_highlight = highlights.entity_highlight(ent_path.hash());
         for ColorWithInstanceKey {
             instance_key,

@@ -38,8 +38,8 @@ pub use space_view::{
     ArchetypeDefinition, DynSpaceViewClass, SceneContext, SceneContextPart, ScenePart,
     ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewClassLayoutPriority,
     SpaceViewClassName, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
-    TypedScene,
+    SpaceViewEntityHighlight, SpaceViewFrame, SpaceViewHighlights, SpaceViewOutlineMasks,
+    SpaceViewState,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

@@ -11,8 +11,8 @@ use re_log_types::EntityPath;
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_viewer_context::{
-    gpu_bridge, SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
-    TensorStatsCache, TypedScene, ViewerContext,
+    gpu_bridge, SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewFrame, SpaceViewId,
+    SpaceViewState, TensorStatsCache, ViewerContext,
 };
 
 use crate::{scene_part::SceneTensor, tensor_dimension_mapper::dimension_mapping_ui};
@@ -161,13 +161,14 @@ impl SpaceViewClass for TensorSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
+        frame: &mut SpaceViewFrame<Self>,
         _query: SceneQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
         _space_view_id: SpaceViewId,
     ) {
         re_tracing::profile_function!();
 
-        let tensors = &mut scene.parts.tensors;
+        let tensors = &mut frame.parts.tensors;
 
         if tensors.is_empty() {
             ui.centered_and_justified(|ui| ui.label("(empty)"));

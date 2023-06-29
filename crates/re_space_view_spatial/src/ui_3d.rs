@@ -281,6 +281,7 @@ pub fn view_3d(
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
     query: &SceneQuery<'_>,
+    draw_data: Vec<re_renderer::QueueableDrawData>,
     space_view_id: SpaceViewId,
     scene: &mut SceneSpatial,
 ) {
@@ -516,7 +517,7 @@ pub fn view_3d(
         }
     }
 
-    for draw_data in scene.draw_data.drain(..) {
+    for draw_data in draw_data {
         view_builder.queue_draw(draw_data);
     }
     for draw_data in scene

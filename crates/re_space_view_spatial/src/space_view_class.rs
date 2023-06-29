@@ -66,10 +66,11 @@ impl SpaceViewClass for SpatialSpaceView {
         ctx: &mut re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut re_viewer_context::TypedScene<Self>,
+        scene: &mut re_viewer_context::SpaceViewFrame<Self>,
         query: SceneQuery<'_>,
+        draw_data: Vec<re_renderer::QueueableDrawData>,
         space_view_id: SpaceViewId,
     ) {
-        state.view_spatial(ctx, ui, scene, &query, space_view_id);
+        state.view_spatial(ctx, ui, scene, &query, draw_data, space_view_id);
     }
 }

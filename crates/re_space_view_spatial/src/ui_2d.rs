@@ -215,12 +215,14 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
+#[allow(clippy::too_many_arguments)]
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
     scene: &mut SceneSpatial,
     query: &SceneQuery<'_>,
+    draw_data: Vec<re_renderer::QueueableDrawData>,
     space_view_id: SpaceViewId,
     scene_rect_accum: Rect,
 ) -> egui::Response {
@@ -326,7 +328,7 @@ pub fn view_2d(
             );
         }
 
-        for draw_data in scene.draw_data.drain(..) {
+        for draw_data in draw_data {
             view_builder.queue_draw(draw_data);
         }
         for draw_data in scene

@@ -8,7 +8,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
+    SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewFrame, SpaceViewId, ViewerContext,
 };
 
 use crate::scene_part::{PlotSeriesKind, SceneTimeSeries};
@@ -76,8 +76,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
+        frame: &mut SpaceViewFrame<Self>,
         _query: SceneQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
         _space_view_id: SpaceViewId,
     ) {
         re_tracing::profile_function!();
@@ -90,7 +91,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let timeline_name = timeline.name().to_string();
 
         // Compute the minimum time/X value for the entire plot…
-        let min_time = scene
+        let min_time = frame
             .parts
             .lines
             .iter()
@@ -148,7 +149,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 ctx.rec_cfg.time_ctrl.pause();
             }
 
-            for line in &scene.parts.lines {
+            for line in &frame.parts.lines {
                 let points = line
                     .points
                     .iter()

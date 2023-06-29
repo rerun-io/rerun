@@ -39,8 +39,9 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         ctx: &mut crate::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut (),
-        _scene: &mut crate::TypedScene<Self>,
+        _scene: &mut crate::SpaceViewFrame<Self>,
         _query: SceneQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
         _space_view_id: crate::SpaceViewId,
     ) {
         ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.re_ui, state)));

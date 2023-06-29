@@ -11,7 +11,7 @@ use ahash::HashMap;
 use re_components::{ClassId, InstanceKey, KeypointId};
 use re_data_store::{EntityPath, InstancePathHash};
 use re_renderer::{Color32, Size};
-use re_viewer_context::{auto_color, TypedScene};
+use re_viewer_context::{auto_color, SpaceViewFrame};
 
 use crate::{ui::SpatialNavigationMode, SpatialSpaceView};
 
@@ -45,7 +45,7 @@ pub struct UiLabel {
 }
 
 /// Type alias for spatial scenes.
-pub type SceneSpatial = TypedScene<SpatialSpaceView>;
+pub type SceneSpatial = SpaceViewFrame<SpatialSpaceView>;
 
 /// Collection of keypoints for annotation context.
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;

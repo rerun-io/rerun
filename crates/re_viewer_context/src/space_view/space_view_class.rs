@@ -7,7 +7,7 @@ use crate::{
     SpaceViewId, SpaceViewState, ViewerContext,
 };
 
-use super::scene::TypedScene;
+use super::space_view_frame::SpaceViewFrame;
 
 /// Defines a class of space view.
 ///
@@ -77,13 +77,19 @@ pub trait SpaceViewClass: std::marker::Sized {
     ///
     /// The passed scene is already populated for this frame
     /// The passed state is kept frame-to-frame.
+    /// Draw data was previously extracted from populating the different frame parts.
+    ///
+    /// TODO(andreas): It would be nice if we could take full ownership of how drawable data are passed to the renderer
+    ///                instead of passing them here and leaving the processing up to concrete space view classes.
+    #[allow(clippy::too_many_arguments)]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
+        frame: &mut SpaceViewFrame<Self>,
         query: SceneQuery<'_>,
+        draw_data: Vec<re_renderer::QueueableDrawData>,
         space_view_id: SpaceViewId,
     );
 }
@@ -166,7 +172,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
             return;
         };
 
-        let mut scene = Box::<TypedScene<Self>>::default();
+        let mut scene = Box::<SpaceViewFrame<Self>>::default();
 
         // TODO(andreas): Both loops are great candidates for parallelization.
         for context in crate::SceneContext::vec_mut(&mut scene.context) {
@@ -177,7 +183,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         // TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
         //              In the future, we likely want to move view builder handling to `re_viewport` with
         //              minimal configuration options exposed via [`crate::SpaceViewClass`].
-        scene.draw_data = scene
+        let draw_data = scene
             .parts
             .vec_mut()
             .into_iter()
@@ -187,7 +193,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
             })
             .collect::<Vec<_>>();
 
-        self.ui(ctx, ui, state, &mut scene, query, space_view_id);
+        self.ui(ctx, ui, state, &mut scene, query, draw_data, space_view_id);
     }
 }
 

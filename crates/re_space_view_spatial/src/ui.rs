@@ -376,6 +376,7 @@ impl SpatialSpaceViewState {
         ui: &mut egui::Ui,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
+        draw_data: Vec<re_renderer::QueueableDrawData>,
         space_view_id: SpaceViewId,
     ) {
         self.scene_bbox = scene.parts.calculate_bounding_box();
@@ -400,14 +401,23 @@ impl SpatialSpaceViewState {
                 let coordinates =
                     store.query_latest_component(query.space_origin, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                view_3d(ctx, ui, self, query, space_view_id, scene);
+                view_3d(ctx, ui, self, query, draw_data, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
                     self.scene_bbox_accum.min.truncate().to_array().into(),
                     self.scene_bbox_accum.max.truncate().to_array().into(),
                 );
-                view_2d(ctx, ui, self, scene, query, space_view_id, scene_rect_accum);
+                view_2d(
+                    ctx,
+                    ui,
+                    self,
+                    scene,
+                    query,
+                    draw_data,
+                    space_view_id,
+                    scene_rect_accum,
+                );
             }
         }
     }

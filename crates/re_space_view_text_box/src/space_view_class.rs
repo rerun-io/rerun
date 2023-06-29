@@ -1,7 +1,7 @@
 use egui::Label;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SceneQuery, SpaceViewClass, SpaceViewClassName,
-    SpaceViewId, SpaceViewState, TypedScene, ViewerContext,
+    SpaceViewFrame, SpaceViewId, SpaceViewState, ViewerContext,
 };
 
 use super::scene_part::SceneTextBox;
@@ -79,11 +79,12 @@ impl SpaceViewClass for TextBoxSpaceView {
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
+        frame: &mut SpaceViewFrame<Self>,
         _query: SceneQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
         _space_view_id: SpaceViewId,
     ) {
-        let scene = &scene.parts;
+        let frame = &frame.parts;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),
@@ -95,8 +96,8 @@ impl SpaceViewClass for TextBoxSpaceView {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         // TODO(jleibs): better handling for multiple results
-                        if scene.text_entries.len() == 1 {
-                            let mut text = egui::RichText::new(&scene.text_entries[0].body);
+                        if frame.text_entries.len() == 1 {
+                            let mut text = egui::RichText::new(&frame.text_entries[0].body);
 
                             if state.monospace {
                                 text = text.monospace();
@@ -106,7 +107,7 @@ impl SpaceViewClass for TextBoxSpaceView {
                         } else {
                             ui.label(format!(
                                 "Unexpected number of text entries: {}. Limit your query to 1.",
-                                scene.text_entries.len()
+                                frame.text_entries.len()
                             ));
                         }
                     })

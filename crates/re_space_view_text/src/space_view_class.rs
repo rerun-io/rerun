@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_viewer_context::{
-    level_to_rich_text, SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-    SpaceViewState, TypedScene, ViewerContext,
+    level_to_rich_text, SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewFrame,
+    SpaceViewId, SpaceViewState, ViewerContext,
 };
 
 use super::scene_part::{SceneText, TextEntry};
@@ -108,11 +108,12 @@ impl SpaceViewClass for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        scene: &mut TypedScene<Self>,
+        frame: &mut SpaceViewFrame<Self>,
         _query: SceneQuery<'_>,
+        _draw_data: Vec<re_renderer::QueueableDrawData>,
         _space_view_id: SpaceViewId,
     ) {
-        let filtered_text_entries = scene
+        let filtered_text_entries = frame
             .parts
             .text_entries
             .drain(..)
