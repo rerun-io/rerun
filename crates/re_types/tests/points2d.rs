@@ -53,5 +53,6 @@ fn roundtrip() {
         eprintln!("{} = {array:#?}", field.name);
     }
 
-    // TODO(cmc): deserialize
+    let deserialized = Points2D::from_arrow(serialized);
+    similar_asserts::assert_eq!(expected, deserialized);
 }

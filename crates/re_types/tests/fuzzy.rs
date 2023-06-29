@@ -132,5 +132,6 @@ fn roundtrip() {
         eprintln!("{} = {array:#?}", field.name);
     }
 
-    // TODO(cmc): deserialize
+    let deserialized = AffixFuzzer1::from_arrow(serialized);
+    similar_asserts::assert_eq!(arch, deserialized);
 }
