@@ -8,7 +8,7 @@ This script accepts one argument:
     create a prerelease version for continuous releases.
 
     --bare_cargo_version Outputs the bare cargo version. This is helpful for setting an environment variable, such as:
-    EXPECTED_VERSION=$(python3 scripts/version_util.py --bare_cargo_version)
+    EXPECTED_VERSION=$(python3 scripts/ci/version_util.py --bare_cargo_version)
 """
 from __future__ import annotations
 

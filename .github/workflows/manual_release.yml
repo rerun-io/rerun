@@ -4,17 +4,26 @@ on:
   workflow_dispatch:
     inputs:
       RELEASE_VERSION:
-        description: 'Release Version Number (Must match Cargo.toml)'
+        description: "Release Version Number (Must match Cargo.toml)"
         type: string
         required: true
       OVERRIDE_COMMIT:
-        description: 'Commit to release'
+        description: "Commit to release"
         type: string
         required: false
 
 jobs:
+  deploy-docs:
+    name: Deploy Docs
+    uses: ./.github/workflows/reusable_deploy_docs.yml
+    with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      PY_DOCS_VERSION_NAME: ${{ github.event.inputs.RELEASE_VERSION }}
+      UPDATE_LATEST: true
+    secrets: inherit
+
   publish-wheels:
-    name: 'Publish Wheels'
+    name: "Publish Wheels"
 
     permissions:
       contents: write
@@ -48,10 +57,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v1'
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
         with:
-          version: '>= 363.0.0'
+          version: ">= 363.0.0"
 
       - name: Install packaging
         run: |
@@ -66,7 +75,7 @@ jobs:
 
       - name: Verify wheels match the expected release
         run: |
-          python3 scripts/verify_wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
+          python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.RELEASE_VERSION }}
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
@@ -91,7 +100,7 @@ jobs:
           generateReleaseNotes: true
           allowUpdates: true
           draft: true
-      
+
       - name: Release Web Demo
         run: |
           gsutil -m cp -r "gs://rerun-demo/commit/${{ env.SHORT_SHA }}/*" "gs://rerun-demo/version/latest/"

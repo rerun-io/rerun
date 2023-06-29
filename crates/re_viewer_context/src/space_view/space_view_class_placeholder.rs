@@ -22,6 +22,10 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         "The Space View Class was not recognized.\nThis happens if either the Blueprint specifies an invalid Space View Class or this version of the Viewer does not know about this type.".into()
     }
 
+    fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
+        crate::SpaceViewClassLayoutPriority::Low
+    }
+
     fn selection_ui(
         &self,
         _ctx: &mut crate::ViewerContext<'_>,

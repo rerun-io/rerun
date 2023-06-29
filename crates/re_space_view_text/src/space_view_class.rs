@@ -58,6 +58,10 @@ impl SpaceViewClass for TextSpaceView {
         Some(2.0) // Make text logs wide
     }
 
+    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
+        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    }
+
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -70,7 +74,6 @@ impl SpaceViewClass for TextSpaceView {
             col_timelines,
             col_entity_path,
             col_log_level,
-            row_entity_paths,
             row_log_levels,
         } = &mut state.filters;
 
@@ -82,14 +85,6 @@ impl SpaceViewClass for TextSpaceView {
                 }
                 ui.checkbox(col_entity_path, "Entity path");
                 ui.checkbox(col_log_level, "Log level");
-            });
-            ui.end_row();
-
-            ctx.re_ui.grid_left_hand_label(ui, "Entity Filter");
-            ui.vertical(|ui| {
-                for (entity_path, visible) in row_entity_paths {
-                    ui.checkbox(visible, &entity_path.to_string());
-                }
             });
             ui.end_row();
 
@@ -171,7 +166,6 @@ pub struct ViewTextFilters {
     pub col_log_level: bool,
 
     // Row filters: which rows should be visible?
-    pub row_entity_paths: BTreeMap<EntityPath, bool>,
     pub row_log_levels: BTreeMap<String, bool>,
 }
 
@@ -181,20 +175,12 @@ impl Default for ViewTextFilters {
             col_entity_path: true,
             col_log_level: true,
             col_timelines: Default::default(),
-            row_entity_paths: Default::default(),
             row_log_levels: Default::default(),
         }
     }
 }
 
 impl ViewTextFilters {
-    pub fn is_entity_path_visible(&self, entity_path: &EntityPath) -> bool {
-        self.row_entity_paths
-            .get(entity_path)
-            .copied()
-            .unwrap_or(true)
-    }
-
     pub fn is_log_level_visible(&self, level: &str) -> bool {
         self.row_log_levels.get(level).copied().unwrap_or(true)
     }
@@ -208,16 +194,11 @@ impl ViewTextFilters {
             col_timelines,
             col_entity_path: _,
             col_log_level: _,
-            row_entity_paths,
             row_log_levels,
         } = self;
 
         for timeline in ctx.store_db.timelines() {
             col_timelines.entry(*timeline).or_insert(true);
-        }
-
-        for entity_path in text_entries.iter().map(|te| &te.entity_path) {
-            row_entity_paths.entry(entity_path.clone()).or_insert(true);
         }
 
         for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {

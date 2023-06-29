@@ -45,7 +45,7 @@ pub mod item_ui {
             .re_ui
             .selectable_label_with_icon(
                 ui,
-                space_view.class(ctx).icon(),
+                space_view.class(ctx.space_view_class_registry).icon(),
                 space_view.display_name.clone(),
                 is_selected,
             )

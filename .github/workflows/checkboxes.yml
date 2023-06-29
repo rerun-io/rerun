@@ -1,0 +1,46 @@
+# Checks that all checkboxes in a PR are checked
+
+name: Pull Request Checkboxes
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+
+concurrency:
+  group: ${{ github.event.pull_request.number }}-pr-checkboxes
+  cancel-in-progress: true
+
+jobs:
+  pr-checkboxes:
+    name: Check PR checkboxes
+
+    permissions:
+      contents: "read"
+      id-token: "write"
+      pull-requests: "write"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install deps
+        run: pip install PyGithub # NOLINT
+
+      - name: Check PR checkboxes
+        run: |
+          ./scripts/ci/check_pr_checkboxes.py \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
+            --github-repository ${{ github.repository }} \
+            --pr-number ${{ github.event.pull_request.number }}
+

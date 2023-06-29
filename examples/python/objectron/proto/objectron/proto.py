@@ -99,7 +99,7 @@ class AVCameraCalibrationData(betterproto.Message):
 
     # 3x3 row-major matrix relating a camera's internal properties to an ideal
     # pinhole-camera model.
-    intrinsic_matrix: list[float] = betterproto.float_field(1)
+    intrinsic_matrix: List[float] = betterproto.float_field(1)
     # The image dimensions to which the intrinsic_matrix values are relative.
     intrinsic_matrix_reference_dimension_width: float = betterproto.float_field(2)
     intrinsic_matrix_reference_dimension_height: float = betterproto.float_field(3)
@@ -109,15 +109,15 @@ class AVCameraCalibrationData(betterproto.Message):
     # translation vector's units are millimeters. For example:            |r1,1
     # r2,1  r3,1 | t1|  [R | t] = |r1,2  r2,2  r3,2 | t2|            |r1,3  r2,3
     # r3,3 | t3|  is stored as [r11, r21, r31, t1, r12, r22, r32, t2, ...]
-    extrinsic_matrix: list[float] = betterproto.float_field(4)
+    extrinsic_matrix: List[float] = betterproto.float_field(4)
     # The size, in millimeters, of one image pixel.
     pixel_size: float = betterproto.float_field(5)
     # A list of floating-point values describing radial distortions imparted by
     # the camera lens, for use in rectifying camera images.
-    lens_distortion_lookup_values: list[float] = betterproto.float_field(6)
+    lens_distortion_lookup_values: List[float] = betterproto.float_field(6)
     # A list of floating-point values describing radial distortions for use in
     # reapplying camera geometry to a rectified image.
-    inverse_lens_distortion_lookup_values: list[float] = betterproto.float_field(7)
+    inverse_lens_distortion_lookup_values: List[float] = betterproto.float_field(7)
     # The offset of the distortion center of the camera lens from the top-left
     # corner of the image.
     lens_distortion_center_x: float = betterproto.float_field(8)
@@ -175,7 +175,7 @@ class ARLightEstimate(betterproto.Message):
     # Second-level spherical harmonics in separate red, green, and blue data
     # planes. Thus, this buffer contains 3 sets of 9 coefficients, or a total of
     # 27 values.
-    spherical_harmonics_coefficients: list[float] = betterproto.float_field(3)
+    spherical_harmonics_coefficients: List[float] = betterproto.float_field(3)
     # A vector indicating the orientation of the strongest directional light
     # source, normalized in the world-coordinate space.
     primary_light_direction: ARLightEstimateDirectionVector = betterproto.message_field(4)
@@ -202,21 +202,21 @@ class ARCamera(betterproto.Message):
     tracking_state_reason: ARCameraTrackingStateReason = betterproto.enum_field(2)
     # 4x4 row-major matrix expressing position and orientation of the camera in
     # world coordinate space.
-    transform: list[float] = betterproto.float_field(3)
+    transform: List[float] = betterproto.float_field(3)
     euler_angles: ARCameraEulerAngles = betterproto.message_field(4)
     # The width and height, in pixels, of the captured camera image.
     image_resolution_width: int = betterproto.int32_field(5)
     image_resolution_height: int = betterproto.int32_field(6)
     # 3x3 row-major matrix that converts between the 2D camera plane and 3D world
     # coordinate space.
-    intrinsics: list[float] = betterproto.float_field(7)
+    intrinsics: List[float] = betterproto.float_field(7)
     # 4x4 row-major transform matrix appropriate for rendering 3D content to
     # match the image captured by the camera.
-    projection_matrix: list[float] = betterproto.float_field(8)
+    projection_matrix: List[float] = betterproto.float_field(8)
     # 4x4 row-major transform matrix appropriate for converting from world-space
     # to camera space. Relativized for the captured_image orientation (i.e.
     # UILandscapeOrientationRight).
-    view_matrix: list[float] = betterproto.float_field(9)
+    view_matrix: List[float] = betterproto.float_field(9)
 
 
 @dataclass
@@ -234,10 +234,10 @@ class ARCameraEulerAngles(betterproto.Message):
 class ARFaceGeometry(betterproto.Message):
     """Container for a 3D mesh describing face topology."""
 
-    vertices: list[ARFaceGeometryVertex] = betterproto.message_field(1)
+    vertices: List[ARFaceGeometryVertex] = betterproto.message_field(1)
     # The number of elements in the vertices list.
     vertex_count: int = betterproto.int32_field(2)
-    texture_coordinates: list[ARFaceGeometryTextureCoordinate] = betterproto.message_field(3)
+    texture_coordinates: List[ARFaceGeometryTextureCoordinate] = betterproto.message_field(3)
     # The number of elements in the texture_coordinates list.
     texture_coordinate_count: int = betterproto.int32_field(4)
     # Each integer value in this ordered list represents an index into the
@@ -245,7 +245,7 @@ class ARFaceGeometry(betterproto.Message):
     # identifies the vertices comprising a single triangle in the mesh. Each set
     # of three indices forms a triangle, so the number of indices in the
     # triangle_indices buffer is three times the triangle_count value.
-    triangle_indices: list[int] = betterproto.int32_field(5)
+    triangle_indices: List[int] = betterproto.int32_field(5)
     # The number of triangles described by the triangle_indices buffer.
     triangle_count: int = betterproto.int32_field(6)
 
@@ -280,7 +280,7 @@ class ARBlendShapeMap(betterproto.Message):
     blend shape location to its associated coefficient.
     """
 
-    entries: list[ARBlendShapeMapMapEntry] = betterproto.message_field(1)
+    entries: List[ARBlendShapeMapMapEntry] = betterproto.message_field(1)
 
 
 @dataclass
@@ -305,7 +305,7 @@ class ARFaceAnchor(betterproto.Message):
     blend_shapes: ARBlendShapeMap = betterproto.message_field(2)
     # 4x4 row-major matrix encoding the position, orientation, and scale of the
     # anchor relative to the world coordinate space.
-    transform: list[float] = betterproto.float_field(3)
+    transform: List[float] = betterproto.float_field(3)
     # Indicates whether the anchor's transform is valid. Frames that have a face
     # anchor with this value set to NO should probably be ignored.
     is_tracked: bool = betterproto.bool_field(4)
@@ -316,11 +316,11 @@ class ARPlaneGeometry(betterproto.Message):
     """Container for a 3D mesh."""
 
     # A buffer of vertex positions for each point in the plane mesh.
-    vertices: list[ARPlaneGeometryVertex] = betterproto.message_field(1)
+    vertices: List[ARPlaneGeometryVertex] = betterproto.message_field(1)
     # The number of elements in the vertices buffer.
     vertex_count: int = betterproto.int32_field(2)
     # A buffer of texture coordinate values for each point in the plane mesh.
-    texture_coordinates: list[ARPlaneGeometryTextureCoordinate] = betterproto.message_field(3)
+    texture_coordinates: List[ARPlaneGeometryTextureCoordinate] = betterproto.message_field(3)
     # The number of elements in the texture_coordinates buffer.
     texture_coordinate_count: int = betterproto.int32_field(4)
     # Each integer value in this ordered list represents an index into the
@@ -328,14 +328,14 @@ class ARPlaneGeometry(betterproto.Message):
     # identifies the vertices comprising a single triangle in the mesh. Each set
     # of three indices forms a triangle, so the number of indices in the
     # triangle_indices buffer is three times the triangle_count value.
-    triangle_indices: list[int] = betterproto.int32_field(5)
+    triangle_indices: List[int] = betterproto.int32_field(5)
     # Each set of three indices forms a triangle, so the number of indices in the
     # triangle_indices buffer is three times the triangle_count value.
     triangle_count: int = betterproto.int32_field(6)
     # Each value in this buffer represents the position of a vertex along the
     # boundary polygon of the estimated plane. The owning plane anchor's
     # transform matrix defines the coordinate system for these points.
-    boundary_vertices: list[ARPlaneGeometryVertex] = betterproto.message_field(7)
+    boundary_vertices: List[ARPlaneGeometryVertex] = betterproto.message_field(7)
     # The number of elements in the boundary_vertices buffer.
     boundary_vertex_count: int = betterproto.int32_field(8)
 
@@ -369,7 +369,7 @@ class ARPlaneAnchor(betterproto.Message):
     identifier: str = betterproto.string_field(1)
     # 4x4 row-major matrix encoding the position, orientation, and scale of the
     # anchor relative to the world coordinate space.
-    transform: list[float] = betterproto.float_field(2)
+    transform: List[float] = betterproto.float_field(2)
     # The general orientation of the detected plane with respect to gravity.
     alignment: ARPlaneAnchorAlignment = betterproto.enum_field(3)
     # A coarse triangle mesh representing the general shape of the detected
@@ -417,11 +417,11 @@ class ARPointCloud(betterproto.Message):
     # The number of points in the cloud.
     count: int = betterproto.int32_field(1)
     # The list of detected points.
-    point: list[ARPointCloudPoint] = betterproto.message_field(2)
+    point: List[ARPointCloudPoint] = betterproto.message_field(2)
     # A list of unique identifiers corresponding to detected feature points. Each
     # identifier in this list corresponds to the point at the same index in the
     # points array.
-    identifier: list[int] = betterproto.int64_field(3)
+    identifier: List[int] = betterproto.int64_field(3)
 
 
 @dataclass
@@ -526,13 +526,13 @@ class CMMotionManagerSnapshot(betterproto.Message):
     """Contains most recent snapshots of device motion data"""
 
     # Most recent samples of device motion data.
-    device_motion: list[CMDeviceMotion] = betterproto.message_field(1)
+    device_motion: List[CMDeviceMotion] = betterproto.message_field(1)
     # Most recent samples of raw accelerometer data.
-    accelerometer_data: list[CMAccelerometerData] = betterproto.message_field(2)
+    accelerometer_data: List[CMAccelerometerData] = betterproto.message_field(2)
     # Most recent samples of raw gyroscope data.
-    gyro_data: list[CMGyroData] = betterproto.message_field(3)
+    gyro_data: List[CMGyroData] = betterproto.message_field(3)
     # Most recent samples of raw magnetometer data.
-    magnetometer_data: list[CMMagnetometerData] = betterproto.message_field(4)
+    magnetometer_data: List[CMMagnetometerData] = betterproto.message_field(4)
 
 
 @dataclass
@@ -555,7 +555,7 @@ class ARFrame(betterproto.Message):
     face_anchor: ARFaceAnchor = betterproto.message_field(6)
     # Plane anchors associated with the frame. Not all frames have a plane
     # anchor. Plane anchors and face anchors are mutually exclusive.
-    plane_anchor: list[ARPlaneAnchor] = betterproto.message_field(7)
+    plane_anchor: List[ARPlaneAnchor] = betterproto.message_field(7)
     # The current intermediate results of the scene analysis used to perform
     # world tracking.
     raw_feature_points: ARPointCloud = betterproto.message_field(8)
@@ -572,16 +572,16 @@ class ARMeshGeometry(betterproto.Message):
     """Mesh geometry data stored in an array-based format."""
 
     # The vertices of the mesh.
-    vertices: list[ARMeshGeometryVertex] = betterproto.message_field(1)
+    vertices: List[ARMeshGeometryVertex] = betterproto.message_field(1)
     # The faces of the mesh.
-    faces: list[ARMeshGeometryFace] = betterproto.message_field(2)
+    faces: List[ARMeshGeometryFace] = betterproto.message_field(2)
     # Rays that define which direction is outside for each face. Normals contain
     # 'rays that define which direction is outside for each face', in practice
     # the normals count is always identical to vertices count which looks like
     # vertices normals and not faces normals.
-    normals: list[ARMeshGeometryVertex] = betterproto.message_field(3)
+    normals: List[ARMeshGeometryVertex] = betterproto.message_field(3)
     # Classification for each face in the mesh.
-    classification: list[ARMeshGeometryMeshClassification] = betterproto.enum_field(4)
+    classification: List[ARMeshGeometryMeshClassification] = betterproto.enum_field(4)
 
 
 @dataclass
@@ -595,7 +595,7 @@ class ARMeshGeometryVertex(betterproto.Message):
 class ARMeshGeometryFace(betterproto.Message):
     # / Indices of vertices defining the face from correspondent array of parent/
     # message. A typical face is triangular.
-    vertex_indices: list[int] = betterproto.int32_field(1)
+    vertex_indices: List[int] = betterproto.int32_field(1)
 
 
 @dataclass
@@ -609,7 +609,7 @@ class ARMeshAnchor(betterproto.Message):
     identifier: str = betterproto.string_field(1)
     # 4x4 row-major matrix encoding the position, orientation, and scale of the
     # anchor relative to the world coordinate space.
-    transform: list[float] = betterproto.float_field(2)
+    transform: List[float] = betterproto.float_field(2)
     # 3D information about the mesh such as its shape and classifications.
     geometry: ARMeshGeometry = betterproto.message_field(3)
 
@@ -626,7 +626,7 @@ class ARMeshData(betterproto.Message):
     # The timestamp for the data.
     timestamp: float = betterproto.double_field(1)
     # Set of mesh anchors containing the mesh data.
-    mesh_anchor: list[ARMeshAnchor] = betterproto.message_field(2)
+    mesh_anchor: List[ARMeshAnchor] = betterproto.message_field(2)
 
 
 @dataclass
@@ -658,13 +658,13 @@ class Object(betterproto.Message):
     type: ObjectType = betterproto.enum_field(3)
     # 3x3 row-major rotation matrix describing the orientation of the rigid
     # object's frame of reference in the world-coordinate system.
-    rotation: list[float] = betterproto.float_field(4)
+    rotation: List[float] = betterproto.float_field(4)
     # 3x1 vector describing the translation of the rigid object's frame of
     # reference in the world-coordinate system in meters.
-    translation: list[float] = betterproto.float_field(5)
+    translation: List[float] = betterproto.float_field(5)
     # 3x1 vector describing the scale of the rigid object's frame of reference in
     # the world-coordinate system in meters.
-    scale: list[float] = betterproto.float_field(6)
+    scale: List[float] = betterproto.float_field(6)
     # List of all the key points associated with this object in the object
     # coordinate system. The first keypoint is always the object's frame of
     # reference, e.g. the centroid of the box. E.g. bounding box with its center
@@ -674,7 +674,7 @@ class Object(betterproto.Message):
     # world-coordinate system, we first scale the box then transform the scaled
     # box. For example, bounding box in the world coordinate system is rotation *
     # scale * keypoints + translation
-    keypoints: list[KeyPoint] = betterproto.message_field(7)
+    keypoints: List[KeyPoint] = betterproto.message_field(7)
     method: ObjectMethod = betterproto.enum_field(8)
 
 
@@ -703,9 +703,9 @@ class Skeleton(betterproto.Message):
     # Initialization value for all the keypoints in the skeleton in the object's
     # local coordinate system. Pursuit will transform these points using object's
     # transformation to get the keypoint in the world-coordinate.
-    keypoints: list[KeyPoint] = betterproto.message_field(3)
+    keypoints: List[KeyPoint] = betterproto.message_field(3)
     # List of edges connecting keypoints
-    edges: list[Edge] = betterproto.message_field(4)
+    edges: List[Edge] = betterproto.message_field(4)
 
 
 @dataclass
@@ -716,7 +716,7 @@ class Skeletons(betterproto.Message):
     box. We can have multiple skeletons in the same file.
     """
 
-    object: list[Skeleton] = betterproto.message_field(1)
+    object: List[Skeleton] = betterproto.message_field(1)
 
 
 @dataclass
@@ -757,7 +757,7 @@ class ObjectAnnotation(betterproto.Message):
     # boxes, we have 8 keypoints, hands = 21 keypoints, etc. These normalized
     # points are the projection of the Object's 3D keypoint on the current
     # frame's camera poses.
-    keypoints: list[AnnotatedKeyPoint] = betterproto.message_field(2)
+    keypoints: List[AnnotatedKeyPoint] = betterproto.message_field(2)
     # Visibiity of this annotation in a frame.
     visibility: float = betterproto.float_field(3)
 
@@ -769,15 +769,15 @@ class FrameAnnotation(betterproto.Message):
     # List of the annotated objects in this frame. Depending on how many object
     # are observable in this frame, we might have non or as much as
     # sequence.objects_size() annotations.
-    annotations: list[ObjectAnnotation] = betterproto.message_field(2)
+    annotations: List[ObjectAnnotation] = betterproto.message_field(2)
     # Information about the camera transformation (in the world coordinate) and
     # imaging characteristics for a captured video frame.
     camera: ARCamera = betterproto.message_field(3)
     # The timestamp for the frame.
     timestamp: float = betterproto.double_field(4)
     # Plane center and normal in camera frame.
-    plane_center: list[float] = betterproto.float_field(5)
-    plane_normal: list[float] = betterproto.float_field(6)
+    plane_center: List[float] = betterproto.float_field(5)
+    plane_normal: List[float] = betterproto.float_field(6)
 
 
 @dataclass
@@ -790,6 +790,6 @@ class Sequence(betterproto.Message):
     # Coordinate system. Given the camera poses of each frame (also in the world-
     # coordinate) these objects bounding boxes can be projected to each frame to
     # get the per-frame annotation (i.e. image_annotation below).
-    objects: list[Object] = betterproto.message_field(1)
+    objects: List[Object] = betterproto.message_field(1)
     # List of annotated data per each frame in sequence + frame information.
-    frame_annotations: list[FrameAnnotation] = betterproto.message_field(2)
+    frame_annotations: List[FrameAnnotation] = betterproto.message_field(2)

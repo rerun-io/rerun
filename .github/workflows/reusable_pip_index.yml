@@ -46,7 +46,7 @@ jobs:
 
       - name: Render pip index and upload to gcloud
         run: |
-          python scripts/generate_prerelease_pip_index.py \
+          python scripts/ci/generate_prerelease_pip_index.py \
           --commit ${{ github.sha }} \
           --upload
 

@@ -89,7 +89,7 @@ jobs:
         env:
           COMMIT_HASH: ${{ env.SHORT_SHA }}
         run: |
-          python3 scripts/build_demo_app.py --skip-build
+          python3 scripts/ci/build_demo_app.py --skip-build
 
       - name: Upload web demo assets
         uses: actions/upload-artifact@v3
