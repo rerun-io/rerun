@@ -129,33 +129,44 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
             },
         };
 
+        let uncompressed_len = header.uncompressed_len as usize;
+        self.uncompressed
+            .resize(self.uncompressed.len().max(uncompressed_len), 0);
+
         match self.compression {
             Compression::Off => {
-                self.uncompressed
-                    .resize(header.uncompressed_len as usize, 0);
-                if let Err(err) = self.read.read_exact(&mut self.uncompressed) {
+                re_tracing::profile_scope!("read uncompressed");
+                if let Err(err) = self
+                    .read
+                    .read_exact(&mut self.uncompressed[..uncompressed_len])
+                {
                     return Some(Err(DecodeError::Read(err)));
                 }
             }
             Compression::LZ4 => {
-                self.compressed.resize(header.compressed_len as usize, 0);
-                if let Err(err) = self.read.read_exact(&mut self.compressed) {
-                    return Some(Err(DecodeError::Read(err)));
+                let compressed_len = header.compressed_len as usize;
+                self.compressed
+                    .resize(self.compressed.len().max(compressed_len), 0);
+
+                {
+                    re_tracing::profile_scope!("read compressed");
+                    if let Err(err) = self.read.read_exact(&mut self.compressed[..compressed_len]) {
+                        return Some(Err(DecodeError::Read(err)));
+                    }
                 }
-                self.uncompressed
-                    .resize(header.uncompressed_len as usize, 0);
 
                 re_tracing::profile_scope!("lz4");
-                if let Err(err) =
-                    lz4_flex::block::decompress_into(&self.compressed, &mut self.uncompressed)
-                {
+                if let Err(err) = lz4_flex::block::decompress_into(
+                    &self.compressed[..compressed_len],
+                    &mut self.uncompressed[..uncompressed_len],
+                ) {
                     return Some(Err(DecodeError::Lz4(err)));
                 }
             }
         }
 
         re_tracing::profile_scope!("MsgPack deser");
-        match rmp_serde::from_slice(&self.uncompressed) {
+        match rmp_serde::from_slice(&self.uncompressed[..uncompressed_len]) {
             Ok(msg) => Some(Ok(msg)),
             Err(err) => Some(Err(err.into())),
         }
