@@ -53,7 +53,8 @@ class Vec2DType(pa.ExtensionType):  # type: ignore[misc]
         return Vec2DArray
 
 
-pa.register_extension_type(Vec2DType())
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(Vec2DType())
 
 
 class Vec2DArray(pa.ExtensionArray, Vec2DArrayExt):  # type: ignore[misc]

@@ -10,6 +10,7 @@
 -r face_tracking/requirements.txt
 -r human_pose_tracking/requirements.txt
 -r live_camera_edge_detection/requirements.txt
+-r live_depth_sensor/requirements.txt
 -r minimal/requirements.txt
 -r minimal_options/requirements.txt
 -r multiprocessing/requirements.txt

@@ -93,10 +93,12 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/text_logging",
         ]
     else:
-        slow_list = ["examples/python/ros_node/main.py"]
+        # ros requires complex system dependencies to be installed
+        # depth_sensor requires a specific piece of hardware to be attached
+        skip_list = ["examples/python/ros_node/main.py", "examples/python/live_depth_sensor/main.py"]
 
         return [
-            os.path.dirname(main_path) for main_path in glob("examples/python/**/main.py") if main_path not in slow_list
+            os.path.dirname(main_path) for main_path in glob("examples/python/**/main.py") if main_path not in skip_list
         ]
 
 

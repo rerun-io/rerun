@@ -34,7 +34,7 @@ from .instance_key_ext import InstanceKeyArrayExt  # noqa: E402
 
 class InstanceKeyType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
-        pa.ExtensionType.__init__(self, pa.uint64(), "rerun.components.InstanceKey")
+        pa.ExtensionType.__init__(self, pa.uint64(), "rerun.instance_key")
 
     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
         # since we don't have a parameterized type, we don't need extra metadata to be deserialized
@@ -51,7 +51,8 @@ class InstanceKeyType(pa.ExtensionType):  # type: ignore[misc]
         return InstanceKeyArray
 
 
-pa.register_extension_type(InstanceKeyType())
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(InstanceKeyType())
 
 
 class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]

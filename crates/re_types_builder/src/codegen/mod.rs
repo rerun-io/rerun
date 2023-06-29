@@ -3,7 +3,7 @@ pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].
     ///
     /// Returns the paths of all generated files.
-    fn quote(
+    fn generate(
         &mut self,
         objs: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,
@@ -18,7 +18,7 @@ pub const AUTOGEN_WARNING: &str =
 // ---
 
 mod common;
-use self::common::{quote_doc_from_docs, StringExt};
+use self::common::{get_documentation, StringExt};
 
 mod python;
 mod rust;

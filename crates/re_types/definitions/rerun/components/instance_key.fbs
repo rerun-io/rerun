@@ -14,6 +14,7 @@ struct InstanceKey (
   "attr.arrow.transparent",
   "attr.python.aliases": "int",
   "attr.python.array_aliases": "npt.NDArray[np.uint64]",
+  "attr.rerun.legacy_fqname": "rerun.instance_key",
   "attr.rust.tuple_struct",
   "attr.rust.derive": "Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord",
   order: 100

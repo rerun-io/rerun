@@ -1,4 +1,4 @@
-name: Reusable PR Link Docs
+name: Update links in PR Body
 
 on:
   workflow_call:
@@ -15,8 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pr-link-docs:
-    name: Link to docs preview in PR
+  update-pr-body:
+    name: Update PR body
 
     permissions:
       contents: "read"
@@ -37,13 +37,10 @@ jobs:
       - name: Install deps
         run: pip install PyGithub # NOLINT
 
-      - name: Link to docs
+      - name: Update PR description
         run: |
-          python scripts/pr_link_docs.py \
-          --github-token ${{ secrets.GITHUB_TOKEN }} \
-          --github-repository ${GITHUB_REPOSITORY} \
-          --pr-number ${{ inputs.PR_NUMBER }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ inputs.PR_NUMBER }}
+          ./scripts/update_pr_body.py \
+            --github-token '${{ secrets.GITHUB_TOKEN }}' \
+            --github-repository '${{ github.repository }}' \
+            --pr-number '${{ inputs.PR_NUMBER }}'
 

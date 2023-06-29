@@ -104,9 +104,10 @@ pub use self::objects::{
 pub const ATTR_ARROW_TRANSPARENT: &str = "attr.arrow.transparent";
 pub const ATTR_ARROW_SPARSE_UNION: &str = "attr.arrow.sparse_union";
 
-pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
-pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recommended";
 pub const ATTR_RERUN_COMPONENT_OPTIONAL: &str = "attr.rerun.component_optional";
+pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recommended";
+pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
+pub const ATTR_RERUN_LEGACY_FQNAME: &str = "attr.rerun.legacy_fqname";
 
 pub const ATTR_PYTHON_TRANSPARENT: &str = "attr.python.transparent";
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
@@ -224,7 +225,7 @@ pub fn generate_rust_code(
 
     // generate rust code
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let _filepaths = gen.quote(&objects, &arrow_registry);
+    let _filepaths = gen.generate(&objects, &arrow_registry);
 }
 
 /// Generates Python code from a set of flatbuffers definitions.
@@ -253,5 +254,5 @@ pub fn generate_python_code(
 
     // generate python code
     let mut gen = PythonCodeGenerator::new(output_pkg_path.as_ref());
-    let _filepaths = gen.quote(&objects, &arrow_registry);
+    let _filepaths = gen.generate(&objects, &arrow_registry);
 }

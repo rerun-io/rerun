@@ -2,7 +2,8 @@
 
 use crate::Docs;
 
-pub fn quote_doc_from_docs(docs: &Docs, tags: &[&str]) -> Vec<String> {
+/// Retrieves the global and tagged documentation from a [`Docs`] object.
+pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
     fn trim_mono_start_whitespace_if_needed(line: &str) -> &str {
         if line.chars().next().map_or(false, |c| c.is_whitespace()) {
             // NOTE: don't trim! only that very specific space should go away

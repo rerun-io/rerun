@@ -278,12 +278,10 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
         )
         .on_hover_text("Show an overlay on all interactive widgets.")
         .changed();
-
-    // This option currently causes the viewer to hang.
-    // any_clicked |= ui
-    //     .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
-    //     .on_hover_text("Show what widget blocks the interaction of another widget.")
-    //     .changed();
+    any_clicked |= ui
+        .checkbox(&mut debug.show_blocking_widget, "Show blocking widgets")
+        .on_hover_text("Show what widget blocks the interaction of another widget.")
+        .changed();
 
     if any_clicked {
         let mut style = (*ui.ctx().style()).clone();

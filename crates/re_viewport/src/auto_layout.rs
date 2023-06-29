@@ -47,13 +47,11 @@ enum SplitDirection {
 pub(crate) fn tree_from_space_views(
     ctx: &mut ViewerContext<'_>,
     viewport_size: egui::Vec2,
-    visible: &std::collections::BTreeSet<SpaceViewId>,
     space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     space_view_states: &HashMap<SpaceViewId, Box<dyn re_viewer_context::SpaceViewState>>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     let mut space_make_infos = space_views
         .iter()
-        .filter(|(space_view_id, _space_view)| visible.contains(space_view_id))
         // Sort for determinism:
         .sorted_by_key(|(space_view_id, space_view)| {
             (

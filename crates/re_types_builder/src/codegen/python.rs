@@ -11,6 +11,7 @@ use crate::{
     codegen::{StringExt as _, AUTOGEN_WARNING},
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, ATTR_PYTHON_TRANSPARENT,
+    ATTR_RERUN_LEGACY_FQNAME,
 };
 
 // ---
@@ -28,7 +29,7 @@ impl PythonCodeGenerator {
 }
 
 impl CodeGenerator for PythonCodeGenerator {
-    fn quote(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
+    fn generate(&mut self, objs: &Objects, arrow_registry: &ArrowRegistry) -> Vec<PathBuf> {
         let mut filepaths = Vec::new();
 
         let datatypes_path = self.pkg_path.join("datatypes");
@@ -442,7 +443,7 @@ fn quote_module_prelude() -> String {
 }
 
 fn quote_doc_from_docs(docs: &Docs) -> String {
-    let lines = crate::codegen::quote_doc_from_docs(docs, &["py", "python"]);
+    let lines = crate::codegen::get_documentation(docs, &["py", "python"]);
 
     if lines.is_empty() {
         return String::new();
@@ -760,6 +761,10 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                 ])
                 .to_case(Case::Snake);
 
+            let legacy_fqname = obj
+                .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
+                .unwrap_or_else(|| fqname.clone());
+
             unindent::unindent(&format!(
                 r#"
 
@@ -770,7 +775,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                 class {arrow}(pa.ExtensionType): # type: ignore[misc]
                     def __init__(self: type[pa.ExtensionType]) -> None:
                         pa.ExtensionType.__init__(
-                            self, {datatype}, "{fqname}"
+                            self, {datatype}, "{legacy_fqname}"
                         )
 
                     def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
@@ -787,7 +792,8 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                     def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
                         return {many}
 
-                pa.register_extension_type({arrow}())
+                # TODO(cmc): bring back registration to pyarrow once legacy types are gone
+                # pa.register_extension_type({arrow}())
 
                 class {many}(pa.ExtensionArray, {many}Ext):  # type: ignore[misc]
                     @staticmethod

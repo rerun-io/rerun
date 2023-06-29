@@ -74,8 +74,6 @@ def main() -> None:
 
     rr.script_setup(args, "live_camera_edge_detection")
 
-    print(args.connect)
-
     if not args.connect:
         print(
             """
