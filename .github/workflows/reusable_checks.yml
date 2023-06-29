@@ -288,11 +288,11 @@ jobs:
 
       - name: Check for too large files
         run: |
-          ./scripts/check_large_files.sh
+          ./scripts/ci/check_large_files.sh
 
       - name: Check Python example requirements
         run: |
-          ./scripts/check_requirements.py
+          ./scripts/ci/check_requirements.py
 
   # ---------------------------------------------------------------------------
 
@@ -324,5 +324,5 @@ jobs:
       - name: Cargo Deny
         shell: bash
         id: expected_version
-        run: ./scripts/cargo_deny.sh
+        run: ./scripts/ci/cargo_deny.sh
 
