@@ -94,6 +94,7 @@ For ease of development you can build and install in "editable" mode. This means
 ```sh
 # Build the SDK and install in develop mode into the virtualenv
 # Re-run this if the Rust code has changed!
+source venv/bin/activate
 just py-build
 ```
 
