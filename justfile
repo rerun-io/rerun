@@ -62,7 +62,9 @@ py-format:
     set -euxo pipefail
     black --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc {{py_folders}}
-    pyupgrade --py38-plus `find {{py_folders}} -name "*.py" -type f`
+    # Note: proto.py relies on old-style annotation to work, and pyupgrade is too opinionated to be disabled from comments
+    # See https://github.com/rerun-io/rerun/pull/2559 for details
+    pyupgrade --py38-plus `find {{py_folders}} -name "*.py" -type f ! -path "examples/python/objectron/proto/objectron/proto.py"`
     ruff --fix --config rerun_py/pyproject.toml  {{py_folders}}
 
 # Check that all the requirements.txt files for all the examples are correct
