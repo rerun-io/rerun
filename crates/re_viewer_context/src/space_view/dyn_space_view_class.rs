@@ -15,6 +15,21 @@ re_string_interner::declare_new_type!(
     pub struct SpaceViewClassName;
 );
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+pub enum SpaceViewClassLayoutPriority {
+    /// This space view can share space with others
+    ///
+    /// Used for boring things like text and plots.
+    Low,
+
+    #[default]
+    Medium,
+
+    /// Give this space view lots of space.
+    /// Used for spatial views (2D/3D).
+    High,
+}
+
 /// Defines a class of space view without any concrete types making it suitable for storage and interfacing.
 ///
 /// Implemented by [`crate::SpaceViewClass`].
@@ -55,6 +70,9 @@ pub trait DynSpaceViewClass {
 
     /// Preferred aspect ratio for the ui tiles of this space view.
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32>;
+
+    /// Controls how likely this space view will get a large tile in the ui.
+    fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
     /// Executed before the scene is populated, can be use for heuristic & state updates before populating the scene.
     ///

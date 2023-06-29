@@ -139,6 +139,10 @@ impl SpaceViewClass for TensorSpaceView {
         None
     }
 
+    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
+        re_viewer_context::SpaceViewClassLayoutPriority::Medium
+    }
+
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
