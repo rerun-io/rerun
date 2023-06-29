@@ -8,15 +8,16 @@ use itertools::Itertools as _;
 
 use re_viewer_context::SpaceViewId;
 
-use super::{space_view::SpaceViewBlueprint, view_category::ViewCategory};
+use super::space_view::SpaceViewBlueprint;
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
     id: SpaceViewId,
-    category: ViewCategory,
+    layout_priority: re_viewer_context::SpaceViewClassLayoutPriority,
 }
 
 pub(crate) fn tree_from_space_views(
+    space_view_class_registry: &re_viewer_context::SpaceViewClassRegistry,
     space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     if space_views.is_empty() {
@@ -33,9 +34,14 @@ pub(crate) fn tree_from_space_views(
                 *space_view_id,
             )
         })
-        .map(|(space_view_id, space_view)| SpaceMakeInfo {
-            id: *space_view_id,
-            category: space_view.category,
+        .map(|(space_view_id, space_view)| {
+            let layout_priority = space_view
+                .class(space_view_class_registry)
+                .layout_priority();
+            SpaceMakeInfo {
+                id: *space_view_id,
+                layout_priority,
+            }
         })
         .collect_vec();
 
@@ -92,21 +98,9 @@ fn arrange_three(
     // +----------+------------+
     //
     // But which space gets a full side, and which doesn't?
-    // Answer: we prioritize them by category:
+    // Answer: we prioritize them based on a class-specific layout priority:
 
-    /// lower is better
-    fn category_priority(category: ViewCategory) -> usize {
-        match category {
-            ViewCategory::Spatial => 0,
-            ViewCategory::Tensor => 1,
-            ViewCategory::TimeSeries => 2,
-            ViewCategory::BarChart => 3,
-            ViewCategory::TextBox => 4,
-            ViewCategory::Text => 5,
-        }
-    }
-
-    spaces.sort_by_key(|smi| category_priority(smi.category));
+    spaces.sort_by_key(|smi| -(smi.layout_priority as isize));
 
     let pane_ids = spaces
         .into_iter()
