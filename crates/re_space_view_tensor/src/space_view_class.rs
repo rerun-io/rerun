@@ -11,8 +11,8 @@ use re_log_types::EntityPath;
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_viewer_context::{
-    gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState, TensorStatsCache,
-    TypedScene, ViewerContext,
+    gpu_bridge, SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewId, SpaceViewState,
+    TensorStatsCache, TypedScene, ViewerContext,
 };
 
 use crate::{scene_part::SceneTensor, tensor_dimension_mapper::dimension_mapping_ui};
@@ -162,7 +162,7 @@ impl SpaceViewClass for TensorSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
+        _query: SceneQuery<'_>,
         _space_view_id: SpaceViewId,
     ) {
         re_tracing::profile_function!();

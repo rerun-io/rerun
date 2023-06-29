@@ -2,9 +2,7 @@ use re_components::{ColorRGBA, Component, InstanceKey, Mesh3D};
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::renderer::MeshInstance;
-use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
-};
+use re_viewer_context::{ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, ViewerContext};
 
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -76,7 +74,6 @@ impl ScenePart<SpatialScenePartCollection> for MeshPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         scene_context: &SpatialSceneContext,
-        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("MeshPart");
 
@@ -86,7 +83,6 @@ impl ScenePart<SpatialScenePartCollection> for MeshPart {
             ctx,
             query,
             scene_context,
-            highlights,
             scene_context.depth_offsets.points,
             self.archetype(),
             |ctx, ent_path, entity_view, ent_context| {

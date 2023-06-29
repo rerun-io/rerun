@@ -4,8 +4,7 @@ use re_components::{
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{EntityView, QueryError};
 use re_viewer_context::{
-    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePart, SceneQuery, SpaceViewHighlights,
-    ViewerContext,
+    ArchetypeDefinition, ResolvedAnnotationInfo, ScenePart, SceneQuery, ViewerContext,
 };
 
 use crate::scene::{
@@ -183,7 +182,6 @@ impl ScenePart<SpatialScenePartCollection> for Points2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         scene_context: &SpatialSceneContext,
-        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Points2DPart");
 
@@ -191,7 +189,6 @@ impl ScenePart<SpatialScenePartCollection> for Points2DPart {
             ctx,
             query,
             scene_context,
-            highlights,
             scene_context.depth_offsets.points,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {

@@ -13,7 +13,7 @@ use re_space_view::controls::{
     DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
     ROTATE3D_BUTTON, SLOW_DOWN_3D_MODIFIER, SPEED_UP_3D_MODIFIER, TRACKED_CAMERA_RESTORE_KEY,
 };
-use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SceneQuery, SpaceViewId, ViewerContext};
 
 use crate::{
     axis_lines::add_axis_lines,
@@ -280,13 +280,13 @@ pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    space: &EntityPath,
+    query: &SceneQuery<'_>,
     space_view_id: SpaceViewId,
     scene: &mut SceneSpatial,
 ) {
     re_tracing::profile_function!();
 
-    let highlights = &scene.highlights;
+    let highlights = &query.highlights;
     let space_cameras = &scene.parts.cameras.space_cameras;
 
     let (rect, mut response) =
@@ -343,7 +343,7 @@ pub fn view_3d(
     }
 
     let target_config = TargetConfiguration {
-        name: space.to_string().into(),
+        name: query.space_origin.to_string().into(),
 
         resolution_in_pixel,
 
@@ -358,7 +358,7 @@ pub fn view_3d(
         pixels_from_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),
 
-        outline_config: scene
+        outline_config: query
             .highlights
             .any_outlines()
             .then(|| outline_config(ui.ctx())),
@@ -389,7 +389,7 @@ pub fn view_3d(
             state,
             scene,
             &ui_rects,
-            space,
+            query.space_origin,
         );
     }
 

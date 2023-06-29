@@ -3,7 +3,7 @@ use re_data_store::EntityPropertyMap;
 use re_log_types::EntityPath;
 
 use crate::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, ScenePartCollection, SpaceViewClassName,
+    ArchetypeDefinition, DynSpaceViewClass, ScenePartCollection, SceneQuery, SpaceViewClassName,
     SpaceViewId, SpaceViewState, ViewerContext,
 };
 
@@ -83,7 +83,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         scene: &mut TypedScene<Self>,
-        space_origin: &EntityPath,
+        query: SceneQuery<'_>,
         space_view_id: SpaceViewId,
     );
 }
@@ -102,11 +102,6 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn help_text(&self, re_ui: &re_ui::ReUi, state: &dyn SpaceViewState) -> egui::WidgetText {
         typed_state_wrapper(state, |state| self.help_text(re_ui, state))
-    }
-
-    #[inline]
-    fn new_scene(&self) -> Box<dyn Scene> {
-        Box::<TypedScene<Self>>::default()
     }
 
     #[inline]
@@ -153,26 +148,46 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         });
     }
 
-    #[inline]
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        mut scene: Box<dyn Scene>,
-        space_origin: &EntityPath,
+        query: SceneQuery<'_>,
         space_view_id: SpaceViewId,
     ) {
-        let Some(typed_scene) = scene.as_any_mut().downcast_mut()
-            else {
-                re_log::error_once!("Unexpected space view state type. Expected {}",
-                                    std::any::type_name::<TypedScene<T>>());
-                return;
-            };
+        re_tracing::profile_function!();
 
-        typed_state_wrapper_mut(state, |state| {
-            self.ui(ctx, ui, state, typed_scene, space_origin, space_view_id);
-        });
+        let Some(state) = state.as_any_mut().downcast_mut() else {
+            re_log::error_once!(
+                "Unexpected space view state type. Expected {}",
+                std::any::type_name::<T>()
+            );
+            return;
+        };
+
+        let mut scene = Box::<TypedScene<Self>>::default();
+
+        // TODO(andreas): Both loops are great candidates for parallelization.
+        for context in crate::SceneContext::vec_mut(&mut scene.context) {
+            // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
+            context.populate(ctx, &query);
+        }
+
+        // TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
+        //              In the future, we likely want to move view builder handling to `re_viewport` with
+        //              minimal configuration options exposed via [`crate::SpaceViewClass`].
+        scene.draw_data = scene
+            .parts
+            .vec_mut()
+            .into_iter()
+            .flat_map(|element| {
+                // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
+                element.populate(ctx, &query, &scene.context)
+            })
+            .collect::<Vec<_>>();
+
+        self.ui(ctx, ui, state, &mut scene, query, space_view_id);
     }
 }
 

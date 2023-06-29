@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
-use re_viewer_context::{SpaceViewClass, SpaceViewId};
+use re_viewer_context::{SceneQuery, SpaceViewClass, SpaceViewId};
 
 use crate::{
     scene::SpatialScenePartCollection,
@@ -67,9 +67,9 @@ impl SpaceViewClass for SpatialSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         scene: &mut re_viewer_context::TypedScene<Self>,
-        space_origin: &EntityPath,
+        query: SceneQuery<'_>,
         space_view_id: SpaceViewId,
     ) {
-        state.view_spatial(ctx, ui, scene, space_origin, space_view_id);
+        state.view_spatial(ctx, ui, scene, &query, space_view_id);
     }
 }

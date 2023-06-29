@@ -3,8 +3,8 @@ use re_components::{DecodedTensor, Tensor};
 use re_data_store::{EntityPath, EntityProperties, InstancePath};
 use re_log_types::{Component as _, InstanceKey};
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewHighlights,
-    TensorDecodeCache, ViewerContext,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, TensorDecodeCache,
+    ViewerContext,
 };
 
 /// A bar chart scene, with everything needed to render it.
@@ -36,7 +36,6 @@ impl ScenePart<SceneTensor> for SceneTensor {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _scene_context: &(),
-        _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 

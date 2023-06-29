@@ -4,7 +4,7 @@
 
 use itertools::Itertools;
 use re_log_types::{DataCell, EntityPath, PathOp, TimePoint};
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{SpaceViewHighlights, UiVerbosity, ViewerContext};
 
 mod annotation_context;
 mod component;
@@ -158,13 +158,16 @@ pub fn annotations(
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
     let entity_paths: nohash_hasher::IntSet<_> = std::iter::once(entity_path.clone()).collect();
     let entity_props_map = re_data_store::EntityPropertyMap::default();
-    let scene_query = re_viewer_context::SceneQuery::new(
-        entity_path,
-        &entity_paths,
-        query.timeline,
-        query.at,
-        &entity_props_map,
-    );
+    let highlights = SpaceViewHighlights::default();
+    let scene_query = re_viewer_context::SceneQuery {
+        space_origin: entity_path,
+        entity_paths: &entity_paths,
+        timeline: query.timeline,
+        latest_at: query.at,
+        entity_props_map: &entity_props_map,
+        highlights: &highlights,
+    };
+
     annotation_map.load(ctx, &scene_query);
     annotation_map.find(entity_path)
 }

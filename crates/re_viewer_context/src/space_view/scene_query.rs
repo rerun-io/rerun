@@ -2,6 +2,8 @@ use nohash_hasher::IntSet;
 
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Timeline};
 
+use crate::SpaceViewHighlights;
+
 pub struct SceneQuery<'s> {
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
@@ -9,7 +11,7 @@ pub struct SceneQuery<'s> {
     /// All queried entities.
     ///
     /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
-    entity_paths: &'s IntSet<EntityPath>,
+    pub entity_paths: &'s IntSet<EntityPath>,
 
     /// The timeline we're on.
     pub timeline: Timeline,
@@ -20,25 +22,12 @@ pub struct SceneQuery<'s> {
     /// The entity properties for all queried entities.
     /// TODO(jleibs/wumpf): This will be replaced by blueprint queries.
     pub entity_props_map: &'s EntityPropertyMap,
+
+    /// Highlightes relevant for this query.
+    pub highlights: &'s SpaceViewHighlights,
 }
 
 impl<'s> SceneQuery<'s> {
-    pub fn new(
-        space_origin: &'s EntityPath,
-        entity_paths: &'s IntSet<EntityPath>,
-        timeline: Timeline,
-        latest_at: TimeInt,
-        entity_props_map: &'s EntityPropertyMap,
-    ) -> Self {
-        Self {
-            space_origin,
-            entity_paths,
-            timeline,
-            latest_at,
-            entity_props_map,
-        }
-    }
-
     /// Iter over all of the currently visible [`EntityPath`]s in the [`SceneQuery`].
     ///
     /// Also includes the corresponding [`EntityProperties`].

@@ -82,7 +82,6 @@ impl ScenePart<SceneTimeSeries> for SceneTimeSeries {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _scene_context: &(),
-        _highlights: &re_viewer_context::SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 

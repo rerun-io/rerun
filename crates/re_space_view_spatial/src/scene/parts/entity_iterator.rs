@@ -1,7 +1,7 @@
 use re_log_types::{Component, EntityPath};
 use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::DepthOffset;
-use re_viewer_context::{ArchetypeDefinition, SceneQuery, SpaceViewHighlights, ViewerContext};
+use re_viewer_context::{ArchetypeDefinition, SceneQuery, ViewerContext};
 
 use crate::scene::contexts::{SpatialSceneContext, SpatialSceneEntityContext};
 
@@ -13,7 +13,6 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &SceneQuery<'_>,
     context: &SpatialSceneContext,
-    highlights: &SpaceViewHighlights,
     default_depth_offset: DepthOffset,
     archetype: ArchetypeDefinition,
     mut fun: F,
@@ -38,7 +37,7 @@ pub fn process_entity_views<'a, Primary, const N: usize, F>(
     };
 
     for (ent_path, props) in query.iter_entities() {
-        let Some(entity_context) = context.lookup_entity_context(ent_path, highlights, default_depth_offset) else {
+        let Some(entity_context) = context.lookup_entity_context(ent_path, query.highlights, default_depth_offset) else {
             continue;
         };
 

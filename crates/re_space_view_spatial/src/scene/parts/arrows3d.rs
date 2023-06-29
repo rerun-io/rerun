@@ -2,9 +2,7 @@ use re_components::{Arrow3D, ColorRGBA, Component as _, InstanceKey, Label, Radi
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
-use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
-};
+use re_viewer_context::{ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, ViewerContext};
 
 use super::{picking_id_from_instance_key, SpatialScenePartCollection, SpatialScenePartData};
 use crate::scene::{
@@ -102,7 +100,6 @@ impl ScenePart<SpatialScenePartCollection> for Arrows3DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         scene_context: &SpatialSceneContext,
-        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Arrows3DPart");
 
@@ -110,7 +107,6 @@ impl ScenePart<SpatialScenePartCollection> for Arrows3DPart {
             ctx,
             query,
             scene_context,
-            highlights,
             scene_context.depth_offsets.points,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {

@@ -1,4 +1,4 @@
-use crate::{ArchetypeDefinition, SceneContext, SceneQuery, SpaceViewHighlights, ViewerContext};
+use crate::{ArchetypeDefinition, SceneContext, SceneQuery, ViewerContext};
 
 /// Scene part collection, consisting of several [`ScenePart`] which may be populated in parallel.
 pub trait ScenePartCollection {
@@ -38,7 +38,6 @@ pub trait ScenePart<ParentCollection: ScenePartCollection> {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         scene_context: &ParentCollection::Context,
-        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData>;
 
     /// Optionally retrieves a data store reference from the scene element.

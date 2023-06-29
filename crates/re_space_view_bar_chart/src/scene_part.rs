@@ -5,8 +5,7 @@ use re_components::Tensor;
 use re_data_store::EntityPath;
 use re_log_types::Component as _;
 use re_viewer_context::{
-    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewHighlights,
-    ViewerContext,
+    ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, ViewerContext,
 };
 
 /// A bar chart scene, with everything needed to render it.
@@ -38,7 +37,6 @@ impl ScenePart<SceneBarChart> for SceneBarChart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _scene_context: &(),
-        _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 

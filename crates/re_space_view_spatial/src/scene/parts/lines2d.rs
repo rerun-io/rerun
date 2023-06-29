@@ -2,9 +2,7 @@ use re_components::{ColorRGBA, Component as _, InstanceKey, LineStrip2D, Radius}
 use re_data_store::EntityPath;
 use re_query::{EntityView, QueryError};
 use re_renderer::Size;
-use re_viewer_context::{
-    ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, SpaceViewHighlights, ViewerContext,
-};
+use re_viewer_context::{ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, ViewerContext};
 
 use crate::scene::{
     contexts::{SpatialSceneContext, SpatialSceneEntityContext},
@@ -89,7 +87,6 @@ impl ScenePart<SpatialScenePartCollection> for Lines2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         scene_context: &SpatialSceneContext,
-        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("Lines2DPart");
 
@@ -97,7 +94,6 @@ impl ScenePart<SpatialScenePartCollection> for Lines2DPart {
             ctx,
             query,
             scene_context,
-            highlights,
             scene_context.depth_offsets.points,
             self.archetype(),
             |_ctx, ent_path, entity_view, ent_context| {

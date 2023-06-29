@@ -1,7 +1,7 @@
 use egui::Label;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-    SpaceViewState, TypedScene, ViewerContext,
+    external::re_log_types::EntityPath, SceneQuery, SpaceViewClass, SpaceViewClassName,
+    SpaceViewId, SpaceViewState, TypedScene, ViewerContext,
 };
 
 use super::scene_part::SceneTextBox;
@@ -80,7 +80,7 @@ impl SpaceViewClass for TextBoxSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
+        _query: SceneQuery<'_>,
         _space_view_id: SpaceViewId,
     ) {
         let scene = &scene.parts;

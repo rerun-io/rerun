@@ -11,8 +11,8 @@ use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_viewer_context::{
-    HoverHighlight, HoveredSpace, Item, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
-    SpaceViewState, TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
+    HoverHighlight, HoveredSpace, Item, SceneQuery, SelectionHighlight, SpaceViewHighlights,
+    SpaceViewId, SpaceViewState, TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewerContext,
 };
 
 use super::{
@@ -375,7 +375,7 @@ impl SpatialSpaceViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         scene: &mut SceneSpatial,
-        space_origin: &EntityPath,
+        query: &SceneQuery<'_>,
         space_view_id: SpaceViewId,
     ) {
         self.scene_bbox = scene.parts.calculate_bounding_box();
@@ -386,7 +386,8 @@ impl SpatialSpaceViewState {
         }
 
         if self.nav_mode.is_auto() {
-            self.nav_mode = EditableAutoValue::Auto(preferred_navigation_mode(scene, space_origin));
+            self.nav_mode =
+                EditableAutoValue::Auto(preferred_navigation_mode(scene, query.space_origin));
         }
         self.scene_num_primitives = scene
             .context
@@ -396,24 +397,17 @@ impl SpatialSpaceViewState {
         let store = &ctx.store_db.entity_db.data_store;
         match *self.nav_mode.get() {
             SpatialNavigationMode::ThreeD => {
-                let coordinates = store.query_latest_component(space_origin, &ctx.current_query());
+                let coordinates =
+                    store.query_latest_component(query.space_origin, &ctx.current_query());
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-                view_3d(ctx, ui, self, space_origin, space_view_id, scene);
+                view_3d(ctx, ui, self, query, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
                     self.scene_bbox_accum.min.truncate().to_array().into(),
                     self.scene_bbox_accum.max.truncate().to_array().into(),
                 );
-                view_2d(
-                    ctx,
-                    ui,
-                    self,
-                    scene,
-                    space_origin,
-                    space_view_id,
-                    scene_rect_accum,
-                );
+                view_2d(ctx, ui, self, scene, query, space_view_id, scene_rect_accum);
             }
         }
     }

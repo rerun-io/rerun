@@ -1,7 +1,4 @@
-use crate::{
-    SceneContext, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewHighlights,
-    ViewerContext,
-};
+use crate::{ScenePartCollection, SpaceViewClass};
 
 /// Every [`crate::SpaceViewClass`] creates and populates a scene to draw a frame and inform the ui about relevant data.
 ///
@@ -11,14 +8,6 @@ use crate::{
 /// In practice, the only thing implementing [`Scene`] is [`TypedScene`] which in turn is defined by
 /// by a concrete [`SpaceViewClass`].
 pub trait Scene {
-    /// Populates the scene for a given query.
-    fn populate(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        highlights: SpaceViewHighlights,
-    );
-
     /// Converts itself to a mutable reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
@@ -27,7 +16,6 @@ pub trait Scene {
 pub struct TypedScene<C: SpaceViewClass> {
     pub context: <<C as SpaceViewClass>::SceneParts as ScenePartCollection>::Context,
     pub parts: C::SceneParts,
-    pub highlights: SpaceViewHighlights,
 
     /// All draw data gathered during the last call to [`Self::populate`].
     ///
@@ -42,39 +30,12 @@ impl<C: SpaceViewClass> Default for TypedScene<C> {
         Self {
             context: Default::default(),
             parts: Default::default(),
-            highlights: Default::default(),
             draw_data: Default::default(),
         }
     }
 }
 
 impl<C: SpaceViewClass + 'static> Scene for TypedScene<C> {
-    fn populate(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        query: &SceneQuery<'_>,
-        highlights: SpaceViewHighlights,
-    ) {
-        re_tracing::profile_function!();
-
-        self.highlights = highlights;
-
-        // TODO(andreas): Both loops are great candidates for parallelization.
-        for context in self.context.vec_mut() {
-            // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
-            context.populate(ctx, query);
-        }
-        self.draw_data = self
-            .parts
-            .vec_mut()
-            .into_iter()
-            .flat_map(|element| {
-                // TODO(andreas): Ideally, we'd pass in the result for an archetype query here.
-                element.populate(ctx, query, &self.context, &self.highlights)
-            })
-            .collect();
-    }
-
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }

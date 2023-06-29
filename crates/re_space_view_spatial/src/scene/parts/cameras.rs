@@ -4,9 +4,9 @@ use re_components::{
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
-use re_viewer_context::{ArchetypeDefinition, ScenePart, TimeControl};
-use re_viewer_context::{SceneQuery, ViewerContext};
-use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
+use re_viewer_context::{
+    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewOutlineMasks, TimeControl, ViewerContext,
+};
 
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -197,28 +197,30 @@ impl ScenePart<SpatialScenePartCollection> for CamerasPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         scene_context: &SpatialSceneContext,
-        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("CamerasPart");
 
         let store = &ctx.store_db.entity_db.data_store;
         for (ent_path, props) in query.iter_entities() {
-            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
+            let latest_at_query =
+                re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
+            if let Some(pinhole) =
+                store.query_latest_component::<Pinhole>(ent_path, &latest_at_query)
+            {
                 let view_coordinates = determine_view_coordinates(
                     &ctx.store_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl,
                     ent_path.clone(),
                 );
-                let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
+                let entity_highlight = query.highlights.entity_outline_mask(ent_path.hash());
 
                 self.visit_instance(
                     scene_context,
                     ent_path,
                     &props,
                     pinhole,
-                    store.query_latest_component::<Transform3D>(ent_path, &query),
+                    store.query_latest_component::<Transform3D>(ent_path, &latest_at_query),
                     view_coordinates,
                     entity_highlight,
                 );

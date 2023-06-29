@@ -4,8 +4,7 @@ use re_viewer::external::{
     re_query::query_entity_with_primary,
     re_renderer,
     re_viewer_context::{
-        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, SpaceViewHighlights,
-        ViewerContext,
+        ArchetypeDefinition, ScenePart, ScenePartCollection, SceneQuery, ViewerContext,
     },
 };
 
@@ -62,7 +61,6 @@ impl ScenePart<ColorCoordinatesSceneParts> for InstanceColors {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         _scene_context: &(),
-        _highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         // For each entity in the space view...
         for (ent_path, props) in query.iter_entities() {

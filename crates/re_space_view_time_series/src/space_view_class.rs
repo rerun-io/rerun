@@ -8,7 +8,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
+    SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
 };
 
 use crate::scene_part::{PlotSeriesKind, SceneTimeSeries};
@@ -77,7 +77,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
+        _query: SceneQuery<'_>,
         _space_view_id: SpaceViewId,
     ) {
         re_tracing::profile_function!();

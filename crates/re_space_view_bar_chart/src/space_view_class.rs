@@ -3,7 +3,8 @@ use re_components::TensorData;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_viewer_context::{
-    auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene, ViewerContext,
+    auto_color, SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewId, TypedScene,
+    ViewerContext,
 };
 
 use super::scene_part::SceneBarChart;
@@ -68,7 +69,7 @@ impl SpaceViewClass for BarChartSpaceView {
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
+        _query: SceneQuery<'_>,
         _space_view_id: SpaceViewId,
     ) {
         use egui::plot::{Bar, BarChart, Legend, Plot};

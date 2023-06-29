@@ -1,4 +1,4 @@
-use crate::{ScenePart, ScenePartCollection, SpaceViewClass, SpaceViewClassName};
+use crate::{ScenePart, ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewClassName};
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]
@@ -40,7 +40,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         ui: &mut egui::Ui,
         state: &mut (),
         _scene: &mut crate::TypedScene<Self>,
-        _space_origin: &re_log_types::EntityPath,
+        _query: SceneQuery<'_>,
         _space_view_id: crate::SpaceViewId,
     ) {
         ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.re_ui, state)));

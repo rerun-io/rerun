@@ -157,7 +157,7 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
-        highlights: SpaceViewHighlights,
+        highlights: &SpaceViewHighlights,
     ) {
         re_tracing::profile_function!();
 
@@ -175,19 +175,17 @@ impl SpaceViewBlueprint {
             self.data_blueprint.data_blueprints_individual(),
         );
 
-        let query = re_viewer_context::SceneQuery::new(
-            &self.space_origin,
-            self.data_blueprint.entity_paths(),
-            *ctx.rec_cfg.time_ctrl.timeline(),
+        let query = re_viewer_context::SceneQuery {
+            space_origin: &self.space_origin,
+            entity_paths: self.data_blueprint.entity_paths(),
+            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            self.data_blueprint.data_blueprints_projected(),
-        );
-
-        let mut scene = class.new_scene();
-        scene.populate(ctx, &query, highlights);
+            entity_props_map: self.data_blueprint.data_blueprints_projected(),
+            highlights,
+        };
 
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, scene, &self.space_origin, self.id);
+            class.ui(ctx, ui, view_state, query, self.id);
         });
     }
 

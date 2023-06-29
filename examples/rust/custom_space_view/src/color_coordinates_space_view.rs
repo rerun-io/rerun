@@ -5,8 +5,9 @@ use re_viewer::external::{
     re_log_types::EntityPath,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassName, SpaceViewId, SpaceViewState, TypedScene, UiVerbosity, ViewerContext,
+        HoverHighlight, Item, SceneQuery, SelectionHighlight, SpaceViewClass,
+        SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewHighlights, SpaceViewId,
+        SpaceViewState, TypedScene, UiVerbosity, ViewerContext,
     },
 };
 
@@ -127,7 +128,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         scene: &mut TypedScene<Self>,
-        _space_origin: &EntityPath,
+        query: SceneQuery<'_>,
         space_view_id: SpaceViewId,
     ) {
         egui::Frame::default().show(ui, |ui| {
@@ -150,7 +151,15 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
                     (rgba.r(), rgba.g())
                 },
             };
-            color_space_ui(ui, ctx, space_view_id, scene, color_at, position_at);
+            color_space_ui(
+                ui,
+                ctx,
+                space_view_id,
+                scene,
+                query.highlights,
+                color_at,
+                position_at,
+            );
         });
     }
 }
@@ -162,6 +171,7 @@ fn color_space_ui(
     ctx: &mut ViewerContext<'_>,
     space_view_id: SpaceViewId,
     scene: &mut TypedScene<ColorCoordinatesSpaceView>,
+    highlights: &SpaceViewHighlights,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
 ) -> egui::Response {
@@ -199,7 +209,7 @@ fn color_space_ui(
 
     // Circles for the colors in the scene.
     for (ent_path, colors) in &scene.parts.colors.colors {
-        let ent_highlight = scene.highlights.entity_highlight(ent_path.hash());
+        let ent_highlight = highlights.entity_highlight(ent_path.hash());
         for ColorWithInstanceKey {
             instance_key,
             color,

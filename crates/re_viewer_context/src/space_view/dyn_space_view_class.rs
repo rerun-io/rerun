@@ -2,7 +2,7 @@ use nohash_hasher::IntSet;
 use re_data_store::EntityPropertyMap;
 use re_log_types::{ComponentName, EntityPath};
 
-use crate::{Scene, SpaceViewId, ViewerContext};
+use crate::{SceneQuery, SpaceViewId, ViewerContext};
 
 /// First element is the primary component, all others are optional.
 ///
@@ -57,12 +57,6 @@ pub trait DynSpaceViewClass {
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
     fn new_state(&self) -> Box<dyn SpaceViewState>;
 
-    /// Returns a new scene for this space view class.
-    ///
-    /// Called both to determine the supported archetypes and
-    /// to populate a scene every frame.
-    fn new_scene(&self) -> Box<dyn Scene>;
-
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
@@ -100,20 +94,18 @@ pub trait DynSpaceViewClass {
 
     /// Draws the ui for this space view type and handles ui events.
     ///
-    /// The scene passed in was previously created by [`Self::new_scene`] and got populated by the time it is passed.
     /// The state passed in was previously created by [`Self::new_state`] and is kept frame-to-frame.
     fn ui(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        scene: Box<dyn Scene>,
-        space_origin: &EntityPath,
+        query: SceneQuery<'_>,
         space_view_id: SpaceViewId,
     );
 }
 
-/// Unserialized frame to frame state of a space view.
+/// Un-serialized frame to frame state of a space view.
 ///
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.

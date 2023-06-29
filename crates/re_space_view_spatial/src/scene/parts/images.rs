@@ -16,7 +16,6 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     Colormap,
 };
-use re_viewer_context::SpaceViewHighlights;
 use re_viewer_context::{
     gpu_bridge, ArchetypeDefinition, DefaultColor, ScenePart, SceneQuery, TensorDecodeCache,
     TensorStatsCache, ViewerContext,
@@ -417,7 +416,6 @@ impl ScenePart<SpatialScenePartCollection> for ImagesPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         scene_context: &SpatialSceneContext,
-        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("ImagesPart");
 
@@ -427,7 +425,6 @@ impl ScenePart<SpatialScenePartCollection> for ImagesPart {
             ctx,
             query,
             scene_context,
-            highlights,
             scene_context.depth_offsets.points,
             self.archetype(),
             |ctx, ent_path, ent_view, ent_context| {
