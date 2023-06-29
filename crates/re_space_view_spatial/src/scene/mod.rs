@@ -135,8 +135,5 @@ pub fn image_view_coordinates() -> re_components::ViewCoordinates {
     // - x pointing right
     // - y pointing down
     // - z pointing into the image plane (this is convenient for reading out a depth image which has typically positive z values)
-    re_components::ViewCoordinates::from_up_and_handedness(
-        re_components::coordinates::SignedAxis3::NEGATIVE_Y,
-        re_components::coordinates::Handedness::Right,
-    )
+    re_components::ViewCoordinates::RDF
 }

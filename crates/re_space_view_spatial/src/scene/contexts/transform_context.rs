@@ -334,7 +334,7 @@ pub fn determine_view_coordinates(
         } else {
             // Keep in mind, there is no universal convention for any of this!
             // https://twitter.com/freyaholmer/status/1325556229410861056
-            return ViewCoordinates::rub();
+            return ViewCoordinates::RUB;
         }
     }
 }

@@ -103,6 +103,9 @@ impl re_log_types::Component for ViewCoordinates {
 }
 
 impl ViewCoordinates {
+    pub const RUB: Self = Self([ViewDir::Right, ViewDir::Up, ViewDir::Back]);
+    pub const RDF: Self = Self([ViewDir::Right, ViewDir::Down, ViewDir::Forward]);
+
     /// Choses a coordinate system based on just an up-axis.
     pub fn from_up_and_handedness(up: SignedAxis3, handedness: Handedness) -> Self {
         use ViewDir::{Back, Down, Forward, Right, Up};
@@ -199,13 +202,6 @@ impl ViewCoordinates {
             y.long(),
             z.long()
         )
-    }
-
-    /// Returns a RUB view coordinates.
-    ///
-    /// The Rerun viewer uses this as a default whenever no view coordinates are specified explicitly.
-    pub fn rub() -> Self {
-        Self([ViewDir::Right, ViewDir::Up, ViewDir::Back])
     }
 
     /// Returns a matrix that translates RUB to this coordinate system.

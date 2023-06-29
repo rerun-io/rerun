@@ -651,13 +651,12 @@ fn default_eye(
         radius = 1.0;
     }
 
-    let view_coordinates = view_coordinates.unwrap_or(ViewCoordinates::rub());
     let look_up: glam::Vec3 = view_coordinates
-        .up()
+        .and_then(|vc| vc.up())
         .unwrap_or(re_components::coordinates::SignedAxis3::POSITIVE_Z)
         .into();
 
-    let look_dir = if let Some(right) = view_coordinates.right() {
+    let look_dir = if let Some(right) = view_coordinates.and_then(|vc| vc.right()) {
         // Make sure right is to the right, and up is up:
         let right = right.into();
         let fwd = look_up.cross(right);
@@ -678,6 +677,8 @@ fn default_eye(
         center,
         radius,
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
-        view_coordinates.up().map_or(glam::Vec3::ZERO, Into::into),
+        view_coordinates
+            .and_then(|vc| vc.up())
+            .map_or(glam::Vec3::ZERO, Into::into),
     )
 }
