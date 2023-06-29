@@ -56,6 +56,8 @@ pub enum UICommand {
     // Dev-tools:
     #[cfg(not(target_arch = "wasm32"))]
     ScreenshotWholeApp,
+    #[cfg(not(target_arch = "wasm32"))]
+    DumpDatastore,
 }
 
 impl UICommand {
@@ -143,6 +145,11 @@ impl UICommand {
                 "Screenshot",
                 "Copy screenshot of the whole app to clipboard",
             ),
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::DumpDatastore => (
+                "Dump datastore",
+                "Dumps the current state of the datastore to the console",
+            ),
         }
     }
 
@@ -207,6 +214,8 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ScreenshotWholeApp => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::DumpDatastore => None,
         }
     }
 
