@@ -116,7 +116,7 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         rr.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        rr.log_image_file("world/camera/video", img_path=sample.image_path, img_format=rr.ImageFormat.JPEG)
+        rr.log_image_file("world/camera", img_path=sample.image_path, img_format=rr.ImageFormat.JPEG)
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -149,7 +149,7 @@ def log_camera(cam: ARCamera) -> None:
     )
     rr.log_view_coordinates("world/camera", xyz="RDF")  # X=Right, Y=Down, Z=Forward
     rr.log_pinhole(
-        "world/camera/video",
+        "world/camera",
         child_from_parent=intrinsics,
         width=w,
         height=h,
@@ -203,11 +203,11 @@ def log_frame_annotations(frame_times: list[float], frame_annotations: list[Fram
             keypoint_pos2s *= IMAGE_RESOLUTION
 
             if len(keypoint_pos2s) == 9:
-                log_projected_bbox(f"world/camera/video/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
+                log_projected_bbox(f"world/camera/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for id, pos2 in zip(keypoint_ids, keypoint_pos2s):
                     rr.log_point(
-                        f"world/camera/video/estimates/box-{obj_ann.object_id}/{id}",
+                        f"world/camera/estimates/box-{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
                     )
