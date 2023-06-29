@@ -535,7 +535,7 @@ impl Viewport {
             maximized_tree = egui_tiles::Tree::new(root, tiles);
             &mut maximized_tree
         } else {
-            if self.tree.root().is_none() {
+            if self.tree.is_empty() {
                 self.tree = super::auto_layout::tree_from_space_views(&self.space_views);
             }
             &mut self.tree
