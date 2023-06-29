@@ -38,6 +38,9 @@ pub trait SpaceViewClass: std::marker::Sized {
         None
     }
 
+    /// Controls how likely this space view will get a large tile in the ui.
+    fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority;
+
     /// Optional archetype of the Space View's blueprint properties.
     ///
     /// Blueprint components that only apply to the space view itself, not to the entities it displays.
@@ -113,6 +116,11 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
         typed_state_wrapper(state, |state| self.preferred_tile_aspect_ratio(state))
+    }
+
+    #[inline]
+    fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
+        self.layout_priority()
     }
 
     fn blueprint_archetype(&self) -> Option<ArchetypeDefinition> {

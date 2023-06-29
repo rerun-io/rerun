@@ -36,6 +36,10 @@ impl SpaceViewClass for SpatialSpaceView {
         }
     }
 
+    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
+        re_viewer_context::SpaceViewClassLayoutPriority::High
+    }
+
     fn prepare_populate(
         &self,
         ctx: &mut re_viewer_context::ViewerContext<'_>,

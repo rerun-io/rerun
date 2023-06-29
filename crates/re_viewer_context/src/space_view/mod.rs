@@ -15,7 +15,8 @@ mod space_view_class_placeholder;
 mod space_view_class_registry;
 
 pub use dyn_space_view_class::{
-    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassName, SpaceViewState,
+    ArchetypeDefinition, DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName,
+    SpaceViewState,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use scene::{Scene, TypedScene};

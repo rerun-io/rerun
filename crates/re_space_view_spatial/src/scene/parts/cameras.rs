@@ -1,6 +1,6 @@
 use re_components::{
     coordinates::{Handedness, SignedAxis3},
-    Component, InstanceKey, Pinhole, ViewCoordinates,
+    Component, InstanceKey, Pinhole, Transform3D, ViewCoordinates,
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
@@ -56,12 +56,14 @@ pub struct CamerasPart {
 }
 
 impl CamerasPart {
+    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
         scene_context: &SpatialSceneContext,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: Pinhole,
+        transform_at_entity: Option<Transform3D>,
         view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
@@ -70,13 +72,10 @@ impl CamerasPart {
         // The transform *at* this entity path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
         // We're however first interested in the rigid transform that led here, so query the parent transform.
-        //
-        // Note that currently a transform on an object can't have both a pinhole AND a rigid transform,
-        // which makes this rather well defined here.
         let parent_path = ent_path
             .parent()
             .expect("root path can't be part of scene query");
-        let Some(world_from_parent) = scene_context.transforms.reference_from_entity(&parent_path) else {
+        let Some(mut world_from_camera) = scene_context.transforms.reference_from_entity(&parent_path) else {
                 return;
             };
 
@@ -94,16 +93,24 @@ impl CamerasPart {
             return;
         }
 
+        // There's one wrinkle with using the parent transform though:
+        // The entity itself may have a 3D transform which (by convention!) we apply *before* the pinhole camera.
+        // Let's add that if it exists.
+        if let Some(transform_at_entity) = transform_at_entity {
+            world_from_camera =
+                world_from_camera * transform_at_entity.to_parent_from_child_transform();
+        }
+
         // If this transform is not representable an iso transform transform we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera) = macaw::IsoTransform::from_mat4(&world_from_parent.into()) else {
+        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into()) else {
             return;
         };
 
         self.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
             view_coordinates,
-            world_from_camera,
+            world_from_camera: world_from_camera_iso,
             pinhole: Some(pinhole),
             picture_plane_distance: frustum_length,
         });
@@ -160,7 +167,7 @@ impl CamerasPart {
         let mut line_builder = scene_context.shared_render_builders.lines();
         let mut batch = line_builder
             .batch("camera frustum")
-            .world_from_obj(world_from_parent)
+            .world_from_obj(world_from_camera)
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
         let lines = batch
@@ -211,6 +218,7 @@ impl ScenePart<SpatialScenePartCollection> for CamerasPart {
                     ent_path,
                     &props,
                     pinhole,
+                    store.query_latest_component::<Transform3D>(ent_path, &query),
                     view_coordinates,
                     entity_highlight,
                 );

@@ -48,6 +48,10 @@ impl SpaceViewClass for BarChartSpaceView {
         None
     }
 
+    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
+        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    }
+
     fn selection_ui(
         &self,
         _ctx: &mut ViewerContext<'_>,
