@@ -35,7 +35,7 @@ pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    ArchetypeDefinition, DynSpaceViewClass, Scene, SceneContext, SceneContextPart, ScenePart,
+    ArchetypeDefinition, DynSpaceViewClass, SceneContext, SceneContextPart, ScenePart,
     ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewClassLayoutPriority,
     SpaceViewClassName, SpaceViewClassRegistry, SpaceViewClassRegistryError,
     SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,

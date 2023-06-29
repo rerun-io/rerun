@@ -19,7 +19,7 @@ pub use dyn_space_view_class::{
     SpaceViewState,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
-pub use scene::{Scene, TypedScene};
+pub use scene::TypedScene;
 pub use scene_context::{SceneContext, SceneContextPart};
 pub use scene_part::{ScenePart, ScenePartCollection};
 pub use scene_query::SceneQuery;
