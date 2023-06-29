@@ -535,12 +535,10 @@ impl Viewport {
             maximized_tree = egui_tiles::Tree::new(root, tiles);
             &mut maximized_tree
         } else {
-            if self.tree.root().is_none() {
+            if self.tree.is_empty() {
                 self.tree = super::auto_layout::tree_from_space_views(
-                    ctx,
-                    ui.available_size(),
+                    ctx.space_view_class_registry,
                     &self.space_views,
-                    &state.space_view_states,
                 );
             }
             &mut self.tree
@@ -581,7 +579,7 @@ impl Viewport {
                     .re_ui
                     .selectable_label_with_icon(
                         ui,
-                        space_view.class(ctx).icon(),
+                        space_view.class(ctx.space_view_class_registry).icon(),
                         if space_view.space_origin.is_root() {
                             space_view.display_name.clone()
                         } else {
@@ -876,7 +874,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         let help_text = space_view
-            .class(self.ctx)
+            .class(self.ctx.space_view_class_registry)
             .help_text(self.ctx.re_ui, space_view_state);
         re_ui::help_hover_button(ui).on_hover_text(help_text);
     }

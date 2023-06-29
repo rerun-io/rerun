@@ -53,6 +53,10 @@ impl SpaceViewClass for TextBoxSpaceView {
         "Displays text from a text entry components.".into()
     }
 
+    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
+        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    }
+
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,

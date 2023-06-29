@@ -77,9 +77,11 @@ impl SpaceViewBlueprint {
         &self.class_name
     }
 
-    pub fn class<'a>(&self, ctx: &ViewerContext<'a>) -> &'a dyn DynSpaceViewClass {
-        ctx.space_view_class_registry
-            .get_or_log_error(&self.class_name)
+    pub fn class<'a>(
+        &self,
+        space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+    ) -> &'a dyn DynSpaceViewClass {
+        space_view_class_registry.get_or_log_error(&self.class_name)
     }
 
     pub fn on_frame_start(
@@ -164,7 +166,7 @@ impl SpaceViewBlueprint {
             return;
         }
 
-        let class = self.class(ctx);
+        let class = self.class(ctx.space_view_class_registry);
 
         class.prepare_populate(
             ctx,

@@ -250,13 +250,15 @@ fn blueprint_ui(
                     space_view.class_name(),
                 );
 
-                space_view.class(ctx).selection_ui(
-                    ctx,
-                    ui,
-                    space_view_state,
-                    &space_view.space_origin,
-                    space_view.id,
-                );
+                space_view
+                    .class(ctx.space_view_class_registry)
+                    .selection_ui(
+                        ctx,
+                        ui,
+                        space_view_state,
+                        &space_view.space_origin,
+                        space_view.id,
+                    );
             }
         }
 

@@ -36,9 +36,10 @@ pub use selection_state::{
 };
 pub use space_view::{
     ArchetypeDefinition, DynSpaceViewClass, Scene, SceneContext, SceneContextPart, ScenePart,
-    ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewState, TypedScene,
+    ScenePartCollection, SceneQuery, SpaceViewClass, SpaceViewClassLayoutPriority,
+    SpaceViewClassName, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
+    TypedScene,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

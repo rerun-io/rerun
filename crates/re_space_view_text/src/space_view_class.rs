@@ -58,6 +58,10 @@ impl SpaceViewClass for TextSpaceView {
         Some(2.0) // Make text logs wide
     }
 
+    fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
+        re_viewer_context::SpaceViewClassLayoutPriority::Low
+    }
+
     fn selection_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
