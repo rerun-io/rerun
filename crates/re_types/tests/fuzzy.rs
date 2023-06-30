@@ -1,5 +1,7 @@
 #![allow(clippy::redundant_clone)]
 
+use std::collections::HashMap;
+
 use re_types::{archetypes::AffixFuzzer1, Archetype as _};
 
 #[test]
@@ -123,6 +125,42 @@ fn roundtrip() {
     .with_fuzz2104([fuzzy4.clone(), fuzzy4.clone(), fuzzy4.clone()])
     .with_fuzz2106([fuzzy6.clone(), fuzzy6.clone(), fuzzy6.clone()]);
 
+    #[rustfmt::skip]
+    let expected_extensions: HashMap<_, _> = [
+        ("fuzz1001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1007", vec!["rerun.testing.components.AffixFuzzer7", "rerun.testing.datatypes.AffixFuzzer1"]),
+
+        ("fuzz1101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz1107", vec!["rerun.testing.components.AffixFuzzer7", "rerun.testing.datatypes.AffixFuzzer1"]),
+
+        ("fuzz2001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2007", vec!["rerun.testing.components.AffixFuzzer7", "rerun.testing.datatypes.AffixFuzzer1"]),
+
+        ("fuzz2101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ("fuzz2107", vec!["rerun.testing.components.AffixFuzzer7", "rerun.testing.datatypes.AffixFuzzer1"]),
+    ]
+    .into();
+
     eprintln!("arch = {arch:#?}");
     let serialized = arch.to_arrow();
     for (field, array) in &serialized {
@@ -130,8 +168,14 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name);
+        util::assert_extensions(
+            &**array,
+            expected_extensions[field.name.as_str()].as_slice(),
+        );
     }
 
     let deserialized = AffixFuzzer1::from_arrow(serialized);
     similar_asserts::assert_eq!(arch, deserialized);
 }
+
+mod util;

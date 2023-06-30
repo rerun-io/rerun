@@ -47,6 +47,7 @@ impl crate::Component for Label {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -82,7 +83,14 @@ impl crate::Component for Label {
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
                     Utf8Array::<i32>::new_unchecked(
-                        DataType::Utf8,
+                        {
+                            _ = extension_wrapper;
+                            DataType::Extension(
+                                "rerun.components.Label".to_owned(),
+                                Box::new(DataType::Utf8),
+                                None,
+                            )
+                        },
                         offsets,
                         inner_data,
                         data0_bitmap,
@@ -110,11 +118,7 @@ impl crate::Component for Label {
             .map(|v| v.map(ToOwned::to_owned))
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: DataType::Extension(
-                        "rerun.components.Label".to_owned(),
-                        Box::new(DataType::Utf8),
-                        None,
-                    ),
+                    datatype: data.data_type().clone(),
                 })
             })
             .map(|res| res.map(|v| Some(Self(v))))

@@ -549,6 +549,7 @@ fn quote_trait_impls_from_obj(
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     fn try_to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+                        extension_wrapper: Option<&str>,
                     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
                     where
                         Self: Clone + 'a
@@ -617,28 +618,28 @@ fn quote_trait_impls_from_obj(
                     match (is_plural, is_nullable) {
                         (true, true) => quote! {
                              self.#field_name.as_ref().map(|many| {
-                                let array = <#component>::try_to_arrow(many.iter());
+                                let array = <#component>::try_to_arrow(many.iter(), None);
                                 #extract_datatype_and_return
                             })
                             .transpose()?
                         },
                         (true, false) => quote! {
                             Some({
-                                let array = <#component>::try_to_arrow(self.#field_name.iter());
+                                let array = <#component>::try_to_arrow(self.#field_name.iter(), None);
                                 #extract_datatype_and_return
                             })
                             .transpose()?
                         },
                         (false, true) => quote! {
                              self.#field_name.as_ref().map(|single| {
-                                let array = <#component>::try_to_arrow([single]);
+                                let array = <#component>::try_to_arrow([single], None);
                                 #extract_datatype_and_return
                             })
                             .transpose()?
                         },
                         (false, false) => quote! {
                             Some({
-                                let array = <#component>::try_to_arrow([&self.#field_name]);
+                                let array = <#component>::try_to_arrow([&self.#field_name], None);
                                 #extract_datatype_and_return
                             })
                             .transpose()?
@@ -1002,6 +1003,16 @@ fn quote_arrow_serializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
+    let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
+    let fqname_use = quote_fqname_as_type_path(fqname);
+    let quoted_datatype = quote! {
+        if let Some(ext) = extension_wrapper {
+            DataType::Extension(ext.to_owned(), Box::new(<#fqname_use>::to_arrow_datatype()), None)
+        } else {
+            <#fqname_use>::to_arrow_datatype()
+        }
+    };
+
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
 
@@ -1048,6 +1059,7 @@ fn quote_arrow_serializer(
         };
 
         let quoted_serializer = quote_arrow_field_serializer(
+            Some(obj.fqname.as_str()),
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
             &bitmap_dst,
@@ -1086,13 +1098,12 @@ fn quote_arrow_serializer(
         // NOTE: This can only be struct or union/enum at this point.
         match datatype.to_logical_type() {
             DataType::Struct(_) => {
-                let quoted_datatype = ArrowDataTypeTokenizer(datatype);
-
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
                     let data_dst = format_ident!("{}", obj_field.name);
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
 
                     let quoted_serializer = quote_arrow_field_serializer(
+                        None,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
                         &bitmap_dst,
@@ -1152,12 +1163,24 @@ fn quote_arrow_serializer(
 }
 
 fn quote_arrow_field_serializer(
+    extension_wrapper: Option<&str>,
     datatype: &DataType,
     is_nullable: bool,
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
     let quoted_datatype = ArrowDataTypeTokenizer(datatype);
+    let quoted_datatype = if let Some(ext) = extension_wrapper {
+        quote!(DataType::Extension(#ext.to_owned(), Box::new(#quoted_datatype), None))
+    } else {
+        quote!(#quoted_datatype)
+    };
+    let quoted_datatype = quote! {{
+        // NOTE: This is a field, it's never going to need the runtime one.
+        _ = extension_wrapper;
+        #quoted_datatype
+    }};
+
     match datatype.to_logical_type() {
         DataType::Int8
         | DataType::Int16
@@ -1205,6 +1228,7 @@ fn quote_arrow_field_serializer(
             let quoted_inner_bitmap = format_ident!("{data_src}_inner_bitmap");
 
             let quoted_inner = quote_arrow_field_serializer(
+                extension_wrapper,
                 inner_datatype,
                 inner.is_nullable,
                 &quoted_inner_bitmap,
@@ -1266,9 +1290,12 @@ fn quote_arrow_field_serializer(
             // NOTE: We always wrap objects with full extension metadata.
             let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
             let fqname_use = quote_fqname_as_type_path(fqname);
+            let quoted_extension_wrapper =
+                extension_wrapper.map_or_else(|| quote!(None::<&str>), |ext| quote!(Some(#ext)));
             quote! {{
                 _ = #bitmap_src;
-                #fqname_use::try_to_arrow_opt(#data_src)?
+                _ = extension_wrapper;
+                #fqname_use::try_to_arrow_opt(#data_src, #quoted_extension_wrapper)?
             }}
         }
 
@@ -1283,7 +1310,6 @@ fn quote_arrow_deserializer(
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
-    let quoted_datatype = ArrowDataTypeTokenizer(datatype);
 
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
@@ -1314,7 +1340,7 @@ fn quote_arrow_deserializer(
         } else {
             quote! {
                 .map(|v| v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: #quoted_datatype,
+                    datatype: #data_src.data_type().clone(),
                 }))
             }
         };
@@ -1375,7 +1401,7 @@ fn quote_arrow_deserializer(
                         quote! {
                             #quoted_obj_field_name: #quoted_obj_field_name
                                 .ok_or_else(|| crate::DeserializationError::MissingData {
-                                    datatype: #quoted_datatype,
+                                    datatype: #data_src.data_type().clone(),
                                 })?
                         }
                     }
@@ -1386,7 +1412,7 @@ fn quote_arrow_deserializer(
                         .as_any()
                         .downcast_ref::<::arrow2::array::StructArray>()
                         .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
-                            expected: #quoted_datatype,
+                            expected: #data_src.data_type().clone(),
                             got: #data_src.data_type().clone(),
                         })?;
 
@@ -1423,7 +1449,6 @@ fn quote_arrow_field_deserializer(
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
     _ = is_nullable; // not yet used, will be needed very soon
-    let quoted_datatype = ArrowDataTypeTokenizer(datatype);
     match datatype.to_logical_type() {
         DataType::Int8
         | DataType::Int16
@@ -1467,6 +1492,7 @@ fn quote_arrow_field_deserializer(
                 quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
 
             quote! { {
+                let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
                     .downcast_ref::<::arrow2::array::ListArray<i32>>()
@@ -1491,14 +1517,14 @@ fn quote_arrow_field_deserializer(
                             .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
                                 bounds: (start as usize, end as usize),
                                 len: data.len(),
-                                datatype: #quoted_datatype,
+                                datatype: datatype.clone(),
                             })?
                             .to_vec()
                             .try_into()
                             .map_err(|_err| crate::DeserializationError::ArrayLengthMismatch {
                                 expected: #length,
                                 got: (end - start) as usize,
-                                datatype: #quoted_datatype,
+                                datatype: datatype.clone(),
                             })
                         }).transpose()
                     )
@@ -1516,6 +1542,7 @@ fn quote_arrow_field_deserializer(
                 quote_arrow_field_deserializer(inner_datatype, inner.is_nullable, data_src);
 
             quote! { {
+                let datatype = #data_src.data_type();
                 let #data_src = #data_src
                     .as_any()
                     .downcast_ref::<::arrow2::array::ListArray<i32>>()
@@ -1543,7 +1570,7 @@ fn quote_arrow_field_deserializer(
                                 .ok_or_else(|| crate::DeserializationError::OffsetsMismatch {
                                     bounds: (start as usize, end as usize),
                                     len: data.len(),
-                                    datatype: #quoted_datatype,
+                                    datatype: datatype.clone(),
                                 })?
                                 .to_vec()
                             )

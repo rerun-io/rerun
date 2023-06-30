@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use re_types::{archetypes::Points2D, components, Archetype as _};
 
 #[test]
@@ -44,6 +46,18 @@ fn roundtrip() {
         .with_instance_keys([u64::MAX - 1, u64::MAX]);
     similar_asserts::assert_eq!(expected, arch);
 
+    let expected_extensions: HashMap<_, _> = [
+        ("points", vec!["rerun.components.Point2D"]),
+        ("radii", vec!["rerun.components.Radius"]),
+        ("colors", vec!["rerun.components.Color"]),
+        ("labels", vec!["rerun.components.Label"]),
+        ("draw_order", vec!["rerun.components.DrawOrder"]),
+        ("class_ids", vec!["rerun.components.ClassId"]),
+        ("keypoint_ids", vec!["rerun.components.KeypointId"]),
+        ("instance_keys", vec!["rerun.components.InstanceKey"]),
+    ]
+    .into();
+
     eprintln!("arch = {arch:#?}");
     let serialized = arch.to_arrow();
     for (field, array) in &serialized {
@@ -51,8 +65,14 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name);
+        util::assert_extensions(
+            &**array,
+            expected_extensions[field.name.as_str()].as_slice(),
+        );
     }
 
     let deserialized = Points2D::from_arrow(serialized);
     similar_asserts::assert_eq!(expected, deserialized);
 }
+
+mod util;

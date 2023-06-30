@@ -100,11 +100,12 @@ pub trait Datatype {
     #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        extension_wrapper: Option<&str>,
     ) -> Box<dyn ::arrow2::array::Array>
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data.into_iter().map(Some)).unwrap()
+        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper).unwrap()
     }
 
     /// Given an iterator of owned or reference values to the current [`Datatype`], serializes
@@ -116,11 +117,12 @@ pub trait Datatype {
     #[inline]
     fn try_to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        extension_wrapper: Option<&str>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data.into_iter().map(Some))
+        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper)
     }
 
     /// Given an iterator of options of owned or reference values to the current
@@ -134,11 +136,12 @@ pub trait Datatype {
     #[inline]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> Box<dyn ::arrow2::array::Array>
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data).unwrap()
+        Self::try_to_arrow_opt(data, extension_wrapper).unwrap()
     }
 
     /// Given an iterator of options of owned or reference values to the current
@@ -149,6 +152,7 @@ pub trait Datatype {
     /// For the non-fallible version, see [`Datatype::to_arrow_opt`].
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a;
@@ -238,11 +242,12 @@ pub trait Component {
     #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        extension_wrapper: Option<&str>,
     ) -> Box<dyn ::arrow2::array::Array>
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data.into_iter().map(Some)).unwrap()
+        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper).unwrap()
     }
 
     /// Given an iterator of owned or reference values to the current [`Component`], serializes
@@ -254,11 +259,12 @@ pub trait Component {
     #[inline]
     fn try_to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<::std::borrow::Cow<'a, Self>>>,
+        extension_wrapper: Option<&str>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data.into_iter().map(Some))
+        Self::try_to_arrow_opt(data.into_iter().map(Some), extension_wrapper)
     }
 
     /// Given an iterator of options of owned or reference values to the current
@@ -272,11 +278,12 @@ pub trait Component {
     #[inline]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> Box<dyn ::arrow2::array::Array>
     where
         Self: Clone + 'a,
     {
-        Self::try_to_arrow_opt(data).unwrap()
+        Self::try_to_arrow_opt(data, extension_wrapper).unwrap()
     }
 
     /// Given an iterator of options of owned or reference values to the current
@@ -287,6 +294,7 @@ pub trait Component {
     /// For the non-fallible version, see [`Component::to_arrow_opt`].
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a;

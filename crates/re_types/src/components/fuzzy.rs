@@ -103,6 +103,7 @@ impl crate::Component for AffixFuzzer1 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -127,7 +128,11 @@ impl crate::Component for AffixFuzzer1 {
             };
             {
                 _ = single_required_bitmap;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(single_required)?
+                _ = extension_wrapper;
+                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                    single_required,
+                    Some("rerun.testing.components.AffixFuzzer1"),
+                )?
             }
         })
     }
@@ -145,67 +150,7 @@ impl crate::Component for AffixFuzzer1 {
             .into_iter()
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: DataType::Extension(
-                        "rerun.testing.components.AffixFuzzer1".to_owned(),
-                        Box::new(DataType::Extension(
-                            "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                            Box::new(DataType::Struct(vec![
-                                Field {
-                                    name: "single_float_optional".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_required".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_optional".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_floats_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_required".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ])),
-                            None,
-                        )),
-                        None,
-                    ),
+                    datatype: data.data_type().clone(),
                 })
             })
             .map(|res| res.map(|single_required| Some(Self { single_required })))
@@ -306,6 +251,7 @@ impl crate::Component for AffixFuzzer2 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -330,7 +276,11 @@ impl crate::Component for AffixFuzzer2 {
             };
             {
                 _ = data0_bitmap;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(data0)?
+                _ = extension_wrapper;
+                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                    data0,
+                    Some("rerun.testing.components.AffixFuzzer2"),
+                )?
             }
         })
     }
@@ -348,67 +298,7 @@ impl crate::Component for AffixFuzzer2 {
             .into_iter()
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: DataType::Extension(
-                        "rerun.testing.components.AffixFuzzer2".to_owned(),
-                        Box::new(DataType::Extension(
-                            "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                            Box::new(DataType::Struct(vec![
-                                Field {
-                                    name: "single_float_optional".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_required".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_optional".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_floats_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_required".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ])),
-                            None,
-                        )),
-                        None,
-                    ),
+                    datatype: data.data_type().clone(),
                 })
             })
             .map(|res| res.map(|v| Some(Self(v))))
@@ -516,6 +406,7 @@ impl crate::Component for AffixFuzzer3 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -535,72 +426,15 @@ impl crate::Component for AffixFuzzer3 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                DataType::Extension(
-                    "rerun.testing.components.AffixFuzzer3".to_owned(),
-                    Box::new(DataType::Struct(vec![Field {
-                        name: "single_required".to_owned(),
-                        data_type: DataType::Extension(
-                            "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                            Box::new(DataType::Struct(vec![
-                                Field {
-                                    name: "single_float_optional".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_required".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_optional".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_floats_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_required".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ])),
-                            None,
-                        ),
-                        is_nullable: false,
-                        metadata: [].into(),
-                    }])),
-                    None,
-                ),
+                if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer3>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer3>::to_arrow_datatype()
+                },
                 vec![{
                     let (somes, single_required): (Vec<_>, Vec<_>) = data
                         .iter()
@@ -620,7 +454,11 @@ impl crate::Component for AffixFuzzer3 {
                     };
                     {
                         _ = single_required_bitmap;
-                        crate::datatypes::AffixFuzzer1::try_to_arrow_opt(single_required)?
+                        _ = extension_wrapper;
+                        crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                            single_required,
+                            None::<&str>,
+                        )?
                     }
                 }],
                 bitmap,
@@ -643,72 +481,7 @@ impl crate::Component for AffixFuzzer3 {
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
-                    expected: DataType::Extension(
-                        "rerun.testing.components.AffixFuzzer3".to_owned(),
-                        Box::new(DataType::Struct(vec![Field {
-                            name: "single_required".to_owned(),
-                            data_type: DataType::Extension(
-                                "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                                Box::new(DataType::Struct(vec![
-                                    Field {
-                                        name: "single_float_optional".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "single_string_required".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "single_string_optional".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_floats_optional".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_strings_required".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_strings_optional".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                ])),
-                                None,
-                            ),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }])),
-                        None,
-                    ),
+                    expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
             let (data_fields, data_arrays, data_bitmap) =
@@ -732,84 +505,7 @@ impl crate::Component for AffixFuzzer3 {
                             Ok(Self {
                                 single_required: single_required.ok_or_else(|| {
                                     crate::DeserializationError::MissingData {
-                                        datatype: DataType::Extension(
-                                            "rerun.testing.components.AffixFuzzer3".to_owned(),
-                                            Box::new(DataType::Struct(vec![Field {
-                                                name: "single_required".to_owned(),
-                                                data_type: DataType::Extension(
-                                                    "rerun.testing.datatypes.AffixFuzzer1"
-                                                        .to_owned(),
-                                                    Box::new(DataType::Struct(vec![
-                                                        Field {
-                                                            name: "single_float_optional"
-                                                                .to_owned(),
-                                                            data_type: DataType::Float32,
-                                                            is_nullable: true,
-                                                            metadata: [].into(),
-                                                        },
-                                                        Field {
-                                                            name: "single_string_required"
-                                                                .to_owned(),
-                                                            data_type: DataType::Utf8,
-                                                            is_nullable: false,
-                                                            metadata: [].into(),
-                                                        },
-                                                        Field {
-                                                            name: "single_string_optional"
-                                                                .to_owned(),
-                                                            data_type: DataType::Utf8,
-                                                            is_nullable: true,
-                                                            metadata: [].into(),
-                                                        },
-                                                        Field {
-                                                            name: "many_floats_optional".to_owned(),
-                                                            data_type: DataType::List(Box::new(
-                                                                Field {
-                                                                    name: "item".to_owned(),
-                                                                    data_type: DataType::Float32,
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                            )),
-                                                            is_nullable: true,
-                                                            metadata: [].into(),
-                                                        },
-                                                        Field {
-                                                            name: "many_strings_required"
-                                                                .to_owned(),
-                                                            data_type: DataType::List(Box::new(
-                                                                Field {
-                                                                    name: "item".to_owned(),
-                                                                    data_type: DataType::Utf8,
-                                                                    is_nullable: false,
-                                                                    metadata: [].into(),
-                                                                },
-                                                            )),
-                                                            is_nullable: false,
-                                                            metadata: [].into(),
-                                                        },
-                                                        Field {
-                                                            name: "many_strings_optional"
-                                                                .to_owned(),
-                                                            data_type: DataType::List(Box::new(
-                                                                Field {
-                                                                    name: "item".to_owned(),
-                                                                    data_type: DataType::Utf8,
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                            )),
-                                                            is_nullable: true,
-                                                            metadata: [].into(),
-                                                        },
-                                                    ])),
-                                                    None,
-                                                ),
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            }])),
-                                            None,
-                                        ),
+                                        datatype: data.data_type().clone(),
                                     }
                                 })?,
                             })
@@ -916,6 +612,7 @@ impl crate::Component for AffixFuzzer4 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -942,7 +639,11 @@ impl crate::Component for AffixFuzzer4 {
             };
             {
                 _ = single_optional_bitmap;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(single_optional)?
+                _ = extension_wrapper;
+                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                    single_optional,
+                    Some("rerun.testing.components.AffixFuzzer4"),
+                )?
             }
         })
     }
@@ -1057,6 +758,7 @@ impl crate::Component for AffixFuzzer5 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -1083,7 +785,11 @@ impl crate::Component for AffixFuzzer5 {
             };
             {
                 _ = data0_bitmap;
-                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(data0)?
+                _ = extension_wrapper;
+                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                    data0,
+                    Some("rerun.testing.components.AffixFuzzer5"),
+                )?
             }
         })
     }
@@ -1205,6 +911,7 @@ impl crate::Component for AffixFuzzer6 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -1224,72 +931,15 @@ impl crate::Component for AffixFuzzer6 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                DataType::Extension(
-                    "rerun.testing.components.AffixFuzzer6".to_owned(),
-                    Box::new(DataType::Struct(vec![Field {
-                        name: "single_optional".to_owned(),
-                        data_type: DataType::Extension(
-                            "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                            Box::new(DataType::Struct(vec![
-                                Field {
-                                    name: "single_float_optional".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_required".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "single_string_optional".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_floats_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_required".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "many_strings_optional".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    })),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                            ])),
-                            None,
-                        ),
-                        is_nullable: true,
-                        metadata: [].into(),
-                    }])),
-                    None,
-                ),
+                if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer6>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer6>::to_arrow_datatype()
+                },
                 vec![{
                     let (somes, single_optional): (Vec<_>, Vec<_>) = data
                         .iter()
@@ -1312,7 +962,11 @@ impl crate::Component for AffixFuzzer6 {
                     };
                     {
                         _ = single_optional_bitmap;
-                        crate::datatypes::AffixFuzzer1::try_to_arrow_opt(single_optional)?
+                        _ = extension_wrapper;
+                        crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                            single_optional,
+                            None::<&str>,
+                        )?
                     }
                 }],
                 bitmap,
@@ -1335,72 +989,7 @@ impl crate::Component for AffixFuzzer6 {
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
-                    expected: DataType::Extension(
-                        "rerun.testing.components.AffixFuzzer6".to_owned(),
-                        Box::new(DataType::Struct(vec![Field {
-                            name: "single_optional".to_owned(),
-                            data_type: DataType::Extension(
-                                "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                                Box::new(DataType::Struct(vec![
-                                    Field {
-                                        name: "single_float_optional".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "single_string_required".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "single_string_optional".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_floats_optional".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_strings_required".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    },
-                                    Field {
-                                        name: "many_strings_optional".to_owned(),
-                                        data_type: DataType::List(Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        })),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    },
-                                ])),
-                                None,
-                            ),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        }])),
-                        None,
-                    ),
+                    expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
             let (data_fields, data_arrays, data_bitmap) =
@@ -1592,6 +1181,7 @@ impl crate::Component for AffixFuzzer7 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -1611,130 +1201,15 @@ impl crate::Component for AffixFuzzer7 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                DataType::Extension(
-                    "rerun.testing.components.AffixFuzzer7".to_owned(),
-                    Box::new(DataType::Struct(vec![
-                        Field {
-                            name: "many_optional".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Extension(
-                                    "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                                    Box::new(DataType::Struct(vec![
-                                        Field {
-                                            name: "single_float_optional".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "single_string_required".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "single_string_optional".to_owned(),
-                                            data_type: DataType::Utf8,
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "many_floats_optional".to_owned(),
-                                            data_type: DataType::List(Box::new(Field {
-                                                name: "item".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            })),
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "many_strings_required".to_owned(),
-                                            data_type: DataType::List(Box::new(Field {
-                                                name: "item".to_owned(),
-                                                data_type: DataType::Utf8,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            })),
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        },
-                                        Field {
-                                            name: "many_strings_optional".to_owned(),
-                                            data_type: DataType::List(Box::new(Field {
-                                                name: "item".to_owned(),
-                                                data_type: DataType::Utf8,
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            })),
-                                            is_nullable: true,
-                                            metadata: [].into(),
-                                        },
-                                    ])),
-                                    None,
-                                ),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "single_float_optional".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "single_string_required".to_owned(),
-                            data_type: DataType::Utf8,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "single_string_optional".to_owned(),
-                            data_type: DataType::Utf8,
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_floats_optional".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_strings_required".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_strings_optional".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                    ])),
-                    None,
-                ),
+                if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer7>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer7>::to_arrow_datatype()
+                },
                 vec![
                     {
                         let (somes, many_optional): (Vec<_>, Vec<_>) = data
@@ -1781,73 +1256,78 @@ impl crate::Component for AffixFuzzer7 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Extension(
-                                        "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                                        Box::new(DataType::Struct(vec![
-                                            Field {
-                                                name: "single_float_optional".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "single_string_required".to_owned(),
-                                                data_type: DataType::Utf8,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "single_string_optional".to_owned(),
-                                                data_type: DataType::Utf8,
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_floats_optional".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Extension(
+                                            "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
+                                            Box::new(DataType::Struct(vec![
+                                                Field {
+                                                    name: "single_float_optional".to_owned(),
                                                     data_type: DataType::Float32,
                                                     is_nullable: true,
                                                     metadata: [].into(),
-                                                })),
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_strings_required".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
+                                                },
+                                                Field {
+                                                    name: "single_string_required".to_owned(),
                                                     data_type: DataType::Utf8,
                                                     is_nullable: false,
                                                     metadata: [].into(),
-                                                })),
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_strings_optional".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
+                                                },
+                                                Field {
+                                                    name: "single_string_optional".to_owned(),
                                                     data_type: DataType::Utf8,
                                                     is_nullable: true,
                                                     metadata: [].into(),
-                                                })),
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                        ])),
-                                        None,
-                                    ),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                })),
+                                                },
+                                                Field {
+                                                    name: "many_floats_optional".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Float32,
+                                                        is_nullable: true,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_strings_required".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Utf8,
+                                                        is_nullable: false,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: false,
+                                                    metadata: [].into(),
+                                                },
+                                                Field {
+                                                    name: "many_strings_optional".to_owned(),
+                                                    data_type: DataType::List(Box::new(Field {
+                                                        name: "item".to_owned(),
+                                                        data_type: DataType::Utf8,
+                                                        is_nullable: true,
+                                                        metadata: [].into(),
+                                                    })),
+                                                    is_nullable: true,
+                                                    metadata: [].into(),
+                                                },
+                                            ])),
+                                            None,
+                                        ),
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    }))
+                                },
                                 offsets,
                                 {
                                     _ = many_optional_inner_bitmap;
+                                    _ = extension_wrapper;
                                     crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
                                         many_optional_inner_data,
+                                        None::<&str>,
                                     )?
                                 },
                                 many_optional_bitmap,
@@ -1877,7 +1357,10 @@ impl crate::Component for AffixFuzzer7 {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::Float32,
+                            {
+                                _ = extension_wrapper;
+                                DataType::Float32
+                            },
                             single_float_optional
                                 .into_iter()
                                 .map(|v| v.unwrap_or_default())
@@ -1920,7 +1403,10 @@ impl crate::Component for AffixFuzzer7 {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
+                                    {
+                                        _ = extension_wrapper;
+                                        DataType::Utf8
+                                    },
                                     offsets,
                                     inner_data,
                                     single_string_required_bitmap,
@@ -1966,7 +1452,10 @@ impl crate::Component for AffixFuzzer7 {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
+                                    {
+                                        _ = extension_wrapper;
+                                        DataType::Utf8
+                                    },
                                     offsets,
                                     inner_data,
                                     single_string_optional_bitmap,
@@ -2025,15 +1514,21 @@ impl crate::Component for AffixFuzzer7 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                })),
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    }))
+                                },
                                 offsets,
                                 PrimitiveArray::new(
-                                    DataType::Float32,
+                                    {
+                                        _ = extension_wrapper;
+                                        DataType::Float32
+                                    },
                                     many_floats_optional_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
@@ -2093,12 +1588,15 @@ impl crate::Component for AffixFuzzer7 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Utf8,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }))
+                                },
                                 offsets,
                                 {
                                     let inner_data: ::arrow2::buffer::Buffer<u8> =
@@ -2120,7 +1618,10 @@ impl crate::Component for AffixFuzzer7 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
                                         Utf8Array::<i32>::new_unchecked(
-                                            DataType::Utf8,
+                                            {
+                                                _ = extension_wrapper;
+                                                DataType::Utf8
+                                            },
                                             offsets,
                                             inner_data,
                                             many_strings_required_inner_bitmap,
@@ -2183,12 +1684,15 @@ impl crate::Component for AffixFuzzer7 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                })),
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Utf8,
+                                        is_nullable: true,
+                                        metadata: [].into(),
+                                    }))
+                                },
                                 offsets,
                                 {
                                     let inner_data: ::arrow2::buffer::Buffer<u8> =
@@ -2210,7 +1714,10 @@ impl crate::Component for AffixFuzzer7 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
                                         Utf8Array::<i32>::new_unchecked(
-                                            DataType::Utf8,
+                                            {
+                                                _ = extension_wrapper;
+                                                DataType::Utf8
+                                            },
                                             offsets,
                                             inner_data,
                                             many_strings_optional_inner_bitmap,
@@ -2244,130 +1751,7 @@ impl crate::Component for AffixFuzzer7 {
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
-                    expected: DataType::Extension(
-                        "rerun.testing.components.AffixFuzzer7".to_owned(),
-                        Box::new(DataType::Struct(vec![
-                            Field {
-                                name: "many_optional".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Extension(
-                                        "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-                                        Box::new(DataType::Struct(vec![
-                                            Field {
-                                                name: "single_float_optional".to_owned(),
-                                                data_type: DataType::Float32,
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "single_string_required".to_owned(),
-                                                data_type: DataType::Utf8,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "single_string_optional".to_owned(),
-                                                data_type: DataType::Utf8,
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_floats_optional".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                })),
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_strings_required".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                })),
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_strings_optional".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                })),
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                        ])),
-                                        None,
-                                    ),
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                })),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "single_float_optional".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "single_string_required".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "single_string_optional".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "many_floats_optional".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                })),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "many_strings_required".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "many_strings_optional".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Utf8,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                })),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        None,
-                    ),
+                    expected: data.data_type().clone(),
                     got: data.data_type().clone(),
                 })?;
             let (data_fields, data_arrays, data_bitmap) =
@@ -2382,6 +1766,7 @@ impl crate::Component for AffixFuzzer7 {
                 let data = &**arrays_by_name["many_optional"];
 
                 {
+                    let datatype = data.data_type();
                     let data = data
                         .as_any()
                         .downcast_ref::<::arrow2::array::ListArray<i32>>()
@@ -2469,82 +1854,7 @@ impl crate::Component for AffixFuzzer7 {
                                             crate::DeserializationError::OffsetsMismatch {
                                                 bounds: (start as usize, end as usize),
                                                 len: data.len(),
-                                                datatype: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Extension(
-                                                        "rerun.testing.datatypes.AffixFuzzer1"
-                                                            .to_owned(),
-                                                        Box::new(DataType::Struct(vec![
-                                                            Field {
-                                                                name: "single_float_optional"
-                                                                    .to_owned(),
-                                                                data_type: DataType::Float32,
-                                                                is_nullable: true,
-                                                                metadata: [].into(),
-                                                            },
-                                                            Field {
-                                                                name: "single_string_required"
-                                                                    .to_owned(),
-                                                                data_type: DataType::Utf8,
-                                                                is_nullable: false,
-                                                                metadata: [].into(),
-                                                            },
-                                                            Field {
-                                                                name: "single_string_optional"
-                                                                    .to_owned(),
-                                                                data_type: DataType::Utf8,
-                                                                is_nullable: true,
-                                                                metadata: [].into(),
-                                                            },
-                                                            Field {
-                                                                name: "many_floats_optional"
-                                                                    .to_owned(),
-                                                                data_type: DataType::List(
-                                                                    Box::new(Field {
-                                                                        name: "item".to_owned(),
-                                                                        data_type:
-                                                                            DataType::Float32,
-                                                                        is_nullable: true,
-                                                                        metadata: [].into(),
-                                                                    }),
-                                                                ),
-                                                                is_nullable: true,
-                                                                metadata: [].into(),
-                                                            },
-                                                            Field {
-                                                                name: "many_strings_required"
-                                                                    .to_owned(),
-                                                                data_type: DataType::List(
-                                                                    Box::new(Field {
-                                                                        name: "item".to_owned(),
-                                                                        data_type: DataType::Utf8,
-                                                                        is_nullable: false,
-                                                                        metadata: [].into(),
-                                                                    }),
-                                                                ),
-                                                                is_nullable: false,
-                                                                metadata: [].into(),
-                                                            },
-                                                            Field {
-                                                                name: "many_strings_optional"
-                                                                    .to_owned(),
-                                                                data_type: DataType::List(
-                                                                    Box::new(Field {
-                                                                        name: "item".to_owned(),
-                                                                        data_type: DataType::Utf8,
-                                                                        is_nullable: true,
-                                                                        metadata: [].into(),
-                                                                    }),
-                                                                ),
-                                                                is_nullable: true,
-                                                                metadata: [].into(),
-                                                            },
-                                                        ])),
-                                                        None,
-                                                    ),
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                })),
+                                                datatype: datatype.clone(),
                                             }
                                         })?
                                         .to_vec())
@@ -2586,6 +1896,7 @@ impl crate::Component for AffixFuzzer7 {
                 let data = &**arrays_by_name["many_floats_optional"];
 
                 {
+                    let datatype = data.data_type();
                     let data = data
                         .as_any()
                         .downcast_ref::<::arrow2::array::ListArray<i32>>()
@@ -2621,12 +1932,7 @@ impl crate::Component for AffixFuzzer7 {
                                             crate::DeserializationError::OffsetsMismatch {
                                                 bounds: (start as usize, end as usize),
                                                 len: data.len(),
-                                                datatype: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                })),
+                                                datatype: datatype.clone(),
                                             }
                                         })?
                                         .to_vec())
@@ -2641,6 +1947,7 @@ impl crate::Component for AffixFuzzer7 {
                 let data = &**arrays_by_name["many_strings_required"];
 
                 {
+                    let datatype = data.data_type();
                     let data = data
                         .as_any()
                         .downcast_ref::<::arrow2::array::ListArray<i32>>()
@@ -2676,12 +1983,7 @@ impl crate::Component for AffixFuzzer7 {
                                             crate::DeserializationError::OffsetsMismatch {
                                                 bounds: (start as usize, end as usize),
                                                 len: data.len(),
-                                                datatype: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                })),
+                                                datatype: datatype.clone(),
                                             }
                                         })?
                                         .to_vec())
@@ -2696,6 +1998,7 @@ impl crate::Component for AffixFuzzer7 {
                 let data = &**arrays_by_name["many_strings_optional"];
 
                 {
+                    let datatype = data.data_type();
                     let data = data
                         .as_any()
                         .downcast_ref::<::arrow2::array::ListArray<i32>>()
@@ -2731,12 +2034,7 @@ impl crate::Component for AffixFuzzer7 {
                                             crate::DeserializationError::OffsetsMismatch {
                                                 bounds: (start as usize, end as usize),
                                                 len: data.len(),
-                                                datatype: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                })),
+                                                datatype: datatype.clone(),
                                             }
                                         })?
                                         .to_vec())
@@ -2777,292 +2075,14 @@ impl crate::Component for AffixFuzzer7 {
                                 single_float_optional,
                                 single_string_required: single_string_required.ok_or_else(
                                     || crate::DeserializationError::MissingData {
-                                        datatype: DataType::Extension(
-                                            "rerun.testing.components.AffixFuzzer7".to_owned(),
-                                            Box::new(DataType::Struct(vec![
-                                                Field {
-                                                    name: "many_optional".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Extension(
-                                                            "rerun.testing.datatypes.AffixFuzzer1"
-                                                                .to_owned(),
-                                                            Box::new(DataType::Struct(vec![
-                                                                Field {
-                                                                    name: "single_float_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::Float32,
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "single_string_required"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::Utf8,
-                                                                    is_nullable: false,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "single_string_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::Utf8,
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "many_floats_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::List(
-                                                                        Box::new(Field {
-                                                                            name: "item".to_owned(),
-                                                                            data_type:
-                                                                                DataType::Float32,
-                                                                            is_nullable: true,
-                                                                            metadata: [].into(),
-                                                                        }),
-                                                                    ),
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "many_strings_required"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::List(
-                                                                        Box::new(Field {
-                                                                            name: "item".to_owned(),
-                                                                            data_type:
-                                                                                DataType::Utf8,
-                                                                            is_nullable: false,
-                                                                            metadata: [].into(),
-                                                                        }),
-                                                                    ),
-                                                                    is_nullable: false,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "many_strings_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::List(
-                                                                        Box::new(Field {
-                                                                            name: "item".to_owned(),
-                                                                            data_type:
-                                                                                DataType::Utf8,
-                                                                            is_nullable: true,
-                                                                            metadata: [].into(),
-                                                                        }),
-                                                                    ),
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                            ])),
-                                                            None,
-                                                        ),
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "single_float_optional".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "single_string_required".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "single_string_optional".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "many_floats_optional".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "many_strings_required".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "many_strings_optional".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                            ])),
-                                            None,
-                                        ),
+                                        datatype: data.data_type().clone(),
                                     },
                                 )?,
                                 single_string_optional,
                                 many_floats_optional,
                                 many_strings_required: many_strings_required.ok_or_else(|| {
                                     crate::DeserializationError::MissingData {
-                                        datatype: DataType::Extension(
-                                            "rerun.testing.components.AffixFuzzer7".to_owned(),
-                                            Box::new(DataType::Struct(vec![
-                                                Field {
-                                                    name: "many_optional".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Extension(
-                                                            "rerun.testing.datatypes.AffixFuzzer1"
-                                                                .to_owned(),
-                                                            Box::new(DataType::Struct(vec![
-                                                                Field {
-                                                                    name: "single_float_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::Float32,
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "single_string_required"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::Utf8,
-                                                                    is_nullable: false,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "single_string_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::Utf8,
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "many_floats_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::List(
-                                                                        Box::new(Field {
-                                                                            name: "item".to_owned(),
-                                                                            data_type:
-                                                                                DataType::Float32,
-                                                                            is_nullable: true,
-                                                                            metadata: [].into(),
-                                                                        }),
-                                                                    ),
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "many_strings_required"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::List(
-                                                                        Box::new(Field {
-                                                                            name: "item".to_owned(),
-                                                                            data_type:
-                                                                                DataType::Utf8,
-                                                                            is_nullable: false,
-                                                                            metadata: [].into(),
-                                                                        }),
-                                                                    ),
-                                                                    is_nullable: false,
-                                                                    metadata: [].into(),
-                                                                },
-                                                                Field {
-                                                                    name: "many_strings_optional"
-                                                                        .to_owned(),
-                                                                    data_type: DataType::List(
-                                                                        Box::new(Field {
-                                                                            name: "item".to_owned(),
-                                                                            data_type:
-                                                                                DataType::Utf8,
-                                                                            is_nullable: true,
-                                                                            metadata: [].into(),
-                                                                        }),
-                                                                    ),
-                                                                    is_nullable: true,
-                                                                    metadata: [].into(),
-                                                                },
-                                                            ])),
-                                                            None,
-                                                        ),
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "single_float_optional".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "single_string_required".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "single_string_optional".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "many_floats_optional".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Float32,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "many_strings_required".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                },
-                                                Field {
-                                                    name: "many_strings_optional".to_owned(),
-                                                    data_type: DataType::List(Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::Utf8,
-                                                        is_nullable: true,
-                                                        metadata: [].into(),
-                                                    })),
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                },
-                                            ])),
-                                            None,
-                                        ),
+                                        datatype: data.data_type().clone(),
                                     }
                                 })?,
                                 many_strings_optional,

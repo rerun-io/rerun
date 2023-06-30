@@ -50,6 +50,7 @@ impl crate::Component for KeypointId {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn try_to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
@@ -73,7 +74,14 @@ impl crate::Component for KeypointId {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                DataType::UInt16,
+                {
+                    _ = extension_wrapper;
+                    DataType::Extension(
+                        "rerun.components.KeypointId".to_owned(),
+                        Box::new(DataType::UInt16),
+                        None,
+                    )
+                },
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -98,11 +106,7 @@ impl crate::Component for KeypointId {
             .map(|v| v.copied())
             .map(|v| {
                 v.ok_or_else(|| crate::DeserializationError::MissingData {
-                    datatype: DataType::Extension(
-                        "rerun.components.KeypointId".to_owned(),
-                        Box::new(DataType::UInt16),
-                        None,
-                    ),
+                    datatype: data.data_type().clone(),
                 })
             })
             .map(|res| res.map(|v| Some(Self(v))))
