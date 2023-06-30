@@ -4840,6 +4840,10 @@ dependencies = [
 [[package]]
 name = "rerun_c"
 version = "0.8.0-alpha.0"
+dependencies = [
+ "once_cell",
+ "re_sdk",
+]
 
 [[package]]
 name = "rerun_py"

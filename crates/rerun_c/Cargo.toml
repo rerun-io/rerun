@@ -28,3 +28,9 @@ crate-type = ["staticlib"]
 name = "rerun_c"
 doctest = false
 test = false
+
+
+[dependencies]
+re_sdk.workspace = true
+
+once_cell.workspace = true

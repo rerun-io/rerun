@@ -16,6 +16,7 @@ mkdir -p build
 CXX=g++
 CPPFLAGS="--std=c++14 -Wall -Wno-sign-compare -O2 -g -DNDEBUG"
 LDLIBS="-lstdc++ -lpthread -ldl"
+LDLIBS="$LDLIBS -framework CoreFoundation -framework IOKit" # TODO: only mac
 CPPFLAGS="$CPPFLAGS -I ../src" # Make sure rerun.h is found
 OBJECTS="../../../target/debug/librerun_c.a" # TODO: support non-Mac
 
