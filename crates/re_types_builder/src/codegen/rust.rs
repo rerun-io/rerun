@@ -604,7 +604,7 @@ fn quote_trait_impls_from_obj(
                     let component = obj_field.typ.fqname().unwrap();
                     let component = format_ident!("{}", component.rsplit_once('.').unwrap().1);
                     let component = quote!(crate::components::#component);
-                    
+
                     let fqname = obj_field.typ.fqname().unwrap();
                     let legacy_fqname = objects
                         .get(fqname)
