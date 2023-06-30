@@ -446,7 +446,7 @@ impl SpatialSpaceViewState {
         space_view_id: SpaceViewId,
     ) {
         self.scene_bbox = scene.parts.calculate_bounding_box();
-        if self.scene_bbox_accum.is_nothing() {
+        if self.scene_bbox_accum.is_nothing() || !self.scene_bbox_accum.size().is_finite() {
             self.scene_bbox_accum = self.scene_bbox;
         } else {
             self.scene_bbox_accum = self.scene_bbox_accum.union(self.scene_bbox);
