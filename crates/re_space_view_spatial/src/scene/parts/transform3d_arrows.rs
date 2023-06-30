@@ -24,7 +24,7 @@ impl ScenePart<SpatialSpaceView> for Transform3DArrowsPart {
         query: &SceneQuery<'_>,
         space_view_state: &SpatialSpaceViewState,
         scene_context: &SpatialSceneContext,
-        _highlights: &SpaceViewHighlights,
+        highlights: &SpaceViewHighlights,
     ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_scope!("TransformGizmoPart");
 
@@ -40,20 +40,25 @@ impl ScenePart<SpatialSpaceView> for Transform3DArrowsPart {
                 macaw::Affine3A::IDENTITY,
                 None,
                 axis_length,
+                re_renderer::OutlineMaskPreference::NONE,
             );
         }
 
         let store = &ctx.store_db.entity_db.data_store;
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
         for (ent_path, props) in query.iter_entities() {
-            if !props.transform_3d_visible.get() {
-                continue;
-            }
-
             if store
                 .query_latest_component::<Transform3D>(ent_path, &latest_at_query)
                 .is_none()
             {
+                continue;
+            }
+
+            scene_context
+                .num_3d_primitives
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+            if !props.transform_3d_visible.get() {
                 continue;
             }
 
@@ -62,6 +67,11 @@ impl ScenePart<SpatialSpaceView> for Transform3DArrowsPart {
                 reference_from_entity_ignore_pinhole(ent_path, store, &latest_at_query) else {
                 continue;
             };
+
+            // Only add the center to the bounding box - the lines may be dependend on the bounding box, causing a feedback loop otherwise.
+            self.0
+                .bounding_box
+                .extend(world_from_obj.translation.into());
 
             // TODO: Highlighting.
 
@@ -72,6 +82,7 @@ impl ScenePart<SpatialSpaceView> for Transform3DArrowsPart {
                 world_from_obj,
                 Some(ent_path),
                 *props.transform_3d_size.get(),
+                highlights.entity_outline_mask(ent_path.hash()).overall,
             );
         }
 
@@ -92,6 +103,7 @@ pub fn add_axis_lines(
     world_from_obj: macaw::Affine3A,
     ent_path: Option<&EntityPath>,
     axis_length: f32,
+    outline_mask_ids: re_renderer::OutlineMaskPreference,
 ) {
     use re_renderer::renderer::LineStripFlags;
 
@@ -102,6 +114,7 @@ pub fn add_axis_lines(
     let mut line_batch = line_builder
         .batch("transform gizmo")
         .world_from_obj(world_from_obj)
+        .outline_mask_ids(outline_mask_ids)
         .picking_object_id(re_renderer::PickingLayerObjectId(
             ent_path.map_or(0, |p| p.hash64()),
         ));
