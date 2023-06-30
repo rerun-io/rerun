@@ -4,9 +4,9 @@
 
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
+use re_query::get_component_with_instances;
 use re_viewer_context::{
-    DataBlueprintGroupHandle, HoverHighlight, Item, SelectionState, SpaceViewId, UiVerbosity,
-    ViewerContext,
+    DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
 };
 
 use super::DataUi;
@@ -109,7 +109,7 @@ pub fn instance_path_button_to(
             instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
         });
 
-    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
+    cursor_interact_with_selectable(ctx, response, item)
 }
 
 /// Show a component path and make it selectable.
@@ -135,7 +135,7 @@ pub fn component_path_button_to(
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
     let response = ui.selectable_label(ctx.selection().contains(&item), text);
-    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
+    cursor_interact_with_selectable(ctx, response, item)
 }
 
 pub fn data_blueprint_group_button_to(
@@ -155,7 +155,7 @@ pub fn data_blueprint_group_button_to(
             ctx.selection().contains(&item),
         )
         .on_hover_text("Group");
-    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
+    cursor_interact_with_selectable(ctx, response, item)
 }
 
 pub fn data_blueprint_button_to(
@@ -176,7 +176,7 @@ pub fn data_blueprint_button_to(
             ui.label(format!("Path: {entity_path}"));
             entity_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
         });
-    cursor_interact_with_selectable(ctx.selection_state_mut(), response, item)
+    cursor_interact_with_selectable(ctx, response, item)
 }
 
 pub fn time_button(
@@ -225,14 +225,14 @@ pub fn timeline_button_to(
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
 pub fn cursor_interact_with_selectable(
-    selection_state: &mut SelectionState,
+    ctx: &mut ViewerContext<'_>,
     response: egui::Response,
     item: Item,
 ) -> egui::Response {
     let is_item_hovered =
-        selection_state.highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+        ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    select_hovered_on_click(&response, selection_state, &[item]);
+    select_hovered_on_click(ctx, &response, &[item]);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {
@@ -244,19 +244,68 @@ pub fn cursor_interact_with_selectable(
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
 pub fn select_hovered_on_click(
+    ctx: &mut ViewerContext<'_>,
     response: &egui::Response,
-    selection_state: &mut SelectionState,
     items: &[Item],
 ) {
     if response.hovered() {
-        selection_state.set_hovered(items.iter().cloned());
+        ctx.selection_state_mut().set_hovered(items.iter().cloned());
     }
 
     if response.clicked() {
+        // Resolve to entity path if there's only a single instance.
+        let mut selected_items = Vec::new();
+        for item in items {
+            match item {
+                Item::InstancePath(space_view, instance) => {
+                    selected_items.push(Item::InstancePath(
+                        *space_view,
+                        resolve_to_entity_if_single_instance(ctx, instance),
+                    ));
+                }
+                Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+                    selected_items.push(item.clone());
+                }
+            }
+        }
+
         if response.ctx.input(|i| i.modifiers.command) {
-            selection_state.toggle_selection(items.to_vec());
+            ctx.selection_state_mut().toggle_selection(selected_items);
         } else {
-            selection_state.set_selection(items.iter().cloned());
+            ctx.selection_state_mut()
+                .set_selection(selected_items.into_iter());
         }
     }
+}
+
+fn resolve_to_entity_if_single_instance(
+    ctx: &ViewerContext<'_>,
+    instance: &InstancePath,
+) -> InstancePath {
+    if instance.instance_key.0 == 0 {
+        let Some(components) = ctx
+                .store_db
+                .store()
+                .all_components(&ctx.current_query().timeline, &instance.entity_path) else {
+            // No components at all, return splatted entity.
+            return InstancePath::entity_splat(instance.entity_path.clone());
+        };
+        for component in components {
+            if let Some((_row_id, instances)) = get_component_with_instances(
+                ctx.store_db.store(),
+                &ctx.current_query(),
+                &instance.entity_path,
+                component,
+            ) {
+                if instances.len() > 1 {
+                    return instance.clone();
+                }
+            }
+        }
+
+        // All instances had only a single element or less, resolve to splatted entity.
+        return InstancePath::entity_splat(instance.entity_path.clone());
+    }
+
+    instance.clone()
 }
