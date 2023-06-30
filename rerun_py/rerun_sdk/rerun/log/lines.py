@@ -71,6 +71,7 @@ def log_line_strip(
         Path to the path in the space hierarchy
     positions:
         An Nx2 or Nx3 array of points along the path.
+        An empty non-numpy array is interpreted as zero sized 2D line strip.
     stroke_width:
         Optional width of the line.
     color:
@@ -93,6 +94,8 @@ def log_line_strip(
 
     if positions is not None:
         positions = np.require(positions, dtype="float32")
+        if not positions.any() and len(positions.shape) == 1:
+            positions = np.empty((0, 2), dtype="float32")
 
     instanced: dict[str, Any] = {}
     splats: dict[str, Any] = {}
@@ -159,6 +162,7 @@ def log_line_segments(
         Path to the line segments in the space hierarchy
     positions:
         An Nx2 or Nx3 array of points. Even-odd pairs will be connected as segments.
+        An empty non-numpy array is interpreted as zero sized 2D segment array.
     stroke_width:
         Optional width of the line.
     color:
@@ -179,9 +183,10 @@ def log_line_segments(
     """
     recording = RecordingStream.to_native(recording)
 
-    if positions is None:
-        positions = np.require([], dtype="float32")
-    positions = np.require(positions, dtype="float32")
+    if positions is not None:
+        positions = np.require(positions, dtype="float32")
+        if not positions.any() and len(positions.shape) == 1:
+            positions = np.empty((0, 2), dtype="float32")
 
     instanced: dict[str, Any] = {}
     splats: dict[str, Any] = {}
@@ -194,11 +199,17 @@ def log_line_segments(
             # Reshape even-odd pairs into a collection of line-strips of length2
             # [[a00, a01], [a10, a11], [b00, b01], [b10, b11]]
             # -> [[[a00, a01], [a10, a11]], [[b00, b01], [b10, b11]]]
-            positions = positions.reshape([len(positions) // 2, 2, 2])
+            if positions.any():
+                positions = positions.reshape([len(positions) // 2, 2, 2])
+            else:
+                positions = [positions]
             instanced["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(positions)
         elif positions.ndim > 1 and positions.shape[1] == 3:
             # Same as above but for 3d points
-            positions = positions.reshape([len(positions) // 2, 2, 3])
+            if positions.any():
+                positions = positions.reshape([len(positions) // 2, 2, 3])
+            else:
+                positions = [positions]
             instanced["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(positions)
         else:
             raise TypeError("Positions should be either Nx2 or Nx3")

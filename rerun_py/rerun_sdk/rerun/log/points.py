@@ -69,6 +69,7 @@ def log_point(
         Path to the point in the space hierarchy.
     position:
         Any 2-element or 3-element array-like.
+        An empty array with now dimensionality will log a 2D point without a position.
     radius:
         Optional radius (make it a sphere).
     color:
@@ -109,7 +110,9 @@ def log_point(
     splats: dict[str, Any] = {}
 
     if position is not None:
-        if position.size == 2:
+        if position.size == 0:
+            instanced["rerun.point2d"] = Point2DArray.from_numpy(np.empty((0, 2), dtype="float32"))
+        elif position.size == 2:
             instanced["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
         elif position.size == 3:
             instanced["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
@@ -183,7 +186,8 @@ def log_points(
     entity_path:
         Path to the points in the space hierarchy.
     positions:
-        Nx2 or Nx3 array
+        Nx2 or Nx3 array.
+        An empty array with now dimensionality will an empty 2D points array.
     identifiers:
         Unique numeric id that shows up when you hover or select the point.
     colors:
@@ -222,10 +226,10 @@ def log_points(
 
     if keypoint_ids is not None and class_ids is None:
         class_ids = 0
-    if positions is None:
-        positions = np.require([], dtype="float32")
-    else:
+    if positions is not None:
         positions = np.require(positions, dtype="float32")
+        if not positions.any() and len(positions.shape) == 1:
+            positions = np.empty((0, 2), dtype="float32")
 
     colors = _normalize_colors(colors)
     radii = _normalize_radii(radii)
@@ -243,7 +247,7 @@ def log_points(
     # 0 = instanced, 1 = splat
     comps = [{}, {}]  # type: ignore[var-annotated]
 
-    if positions.any():
+    if positions is not None:
         if positions.shape[1] == 2:
             comps[0]["rerun.point2d"] = Point2DArray.from_numpy(positions)
         elif positions.shape[1] == 3:
