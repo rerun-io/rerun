@@ -324,14 +324,15 @@ fn demo_2d_layering(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
 
     // And some points in front of the rectangle.
-    MsgSender::new("2d_layering/points_between_top_and_middle")
-        .with_component(
-            &(0..256)
-                .map(|i| Point2D::new(32.0 + (i / 16) as f32 * 16.0, 64.0 + (i % 16) as f32 * 16.0))
-                .collect::<Vec<_>>(),
-        )?
-        .with_component(&[DrawOrder(1.51)])?
-        .send(rec_stream)?;
+    use rerun::experimental::archetypes::Points2D;
+    MsgSender::from_archetype(
+        "2d_layering/points_between_top_and_middle",
+        &Points2D::new(
+            (0..256).map(|i| (32.0 + (i / 16) as f32 * 16.0, 64.0 + (i % 16) as f32 * 16.0)),
+        )
+        .with_draw_order(1.51),
+    )?
+    .send(rec_stream)?;
 
     Ok(())
 }
@@ -365,39 +366,37 @@ fn demo_segmentation(rec_stream: &RecordingStream) -> anyhow::Result<()> {
         .send(rec_stream)?;
 
     // Log a bunch of classified 2D points
-    MsgSender::new("seg_demo/single_point")
-        .with_component(&[Point2D::new(64.0, 64.0)])?
-        .with_component(&[ClassId(13)])?
-        .send(rec_stream)?;
-    MsgSender::new("seg_demo/single_point_labeled")
-        .with_component(&[Point2D::new(90.0, 50.0)])?
-        .with_component(&[ClassId(13)])?
-        .with_component(&[Label("labeled point".into())])?
-        .send(rec_stream)?;
-    MsgSender::new("seg_demo/several_points0")
-        .with_component(&[
-            Point2D::new(20.0, 50.0),
-            Point2D::new(100.0, 70.0),
-            Point2D::new(60.0, 30.0),
-        ])?
-        .with_splat(ClassId(42))?
-        .send(rec_stream)?;
-    MsgSender::new("seg_demo/several_points1")
-        .with_component(&[
-            Point2D::new(40.0, 50.0),
-            Point2D::new(120.0, 70.0),
-            Point2D::new(80.0, 30.0),
-        ])?
-        .with_component(&[ClassId(13), ClassId(42), ClassId(99)])?
-        .send(rec_stream)?;
-    MsgSender::new("seg_demo/many points")
-        .with_component(
-            &(0..25)
-                .map(|i| Point2D::new(100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0))
-                .collect::<Vec<_>>(),
-        )?
-        .with_splat(ClassId(42))?
-        .send(rec_stream)?;
+    use rerun::experimental::archetypes::Points2D;
+    MsgSender::from_archetype(
+        "seg_demo/single_point",
+        &Points2D::new([(64.0, 64.0)]).with_class_ids([13]),
+    )?
+    .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "seg_demo/single_point_labeled",
+        &Points2D::new([(90.0, 50.0)])
+            .with_class_ids([13])
+            .with_labels(["labeled point"]),
+    )?
+    .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "seg_demo/several_points0",
+        &Points2D::new([(20.0, 50.0), (100.0, 70.0), (60.0, 30.0)]).with_class_ids([42]),
+    )?
+    .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "seg_demo/several_points1",
+        &Points2D::new([(40.0, 50.0), (120.0, 70.0), (80.0, 30.0)]).with_class_ids([13, 42, 99]),
+    )?
+    .send(rec_stream)?;
+    MsgSender::from_archetype(
+        "seg_demo/many points",
+        &Points2D::new(
+            (0..25).map(|i| (100.0 + (i / 5) as f32 * 2.0, 100.0 + (i % 5) as f32 * 2.0)),
+        )
+        .with_class_ids([42]),
+    )?
+    .send(rec_stream)?;
     log_info(
         rec_stream,
         "no rects, default colored points, a single point has a label",
