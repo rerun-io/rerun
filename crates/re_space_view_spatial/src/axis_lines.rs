@@ -9,7 +9,7 @@ const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 pub fn add_axis_lines(
     line_builder: &mut LineStripSeriesBuilder,
-    transform: macaw::IsoTransform,
+    world_from_obj: macaw::Affine3A,
     ent_path: Option<&EntityPath>,
     axis_length: f32,
 ) {
@@ -17,21 +17,17 @@ pub fn add_axis_lines(
 
     // TODO(andreas): It would be nice if could display the semantics (left/right/up) as a tooltip on hover.
     let line_radius = re_renderer::Size::new_scene(axis_length * 0.05);
-    let origin = transform.translation();
 
-    let mut line_batch =
-        line_builder
-            .batch("origin axis")
-            .picking_object_id(re_renderer::PickingLayerObjectId(
-                ent_path.map_or(0, |p| p.hash64()),
-            ));
+    let mut line_batch = line_builder
+        .batch("transform gizmo")
+        .world_from_obj(world_from_obj)
+        .picking_object_id(re_renderer::PickingLayerObjectId(
+            ent_path.map_or(0, |p| p.hash64()),
+        ));
     let picking_instance_id = re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0);
 
     line_batch
-        .add_segment(
-            origin,
-            origin + transform.transform_vector3(glam::Vec3::X) * axis_length,
-        )
+        .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
         .color(AXIS_COLOR_X)
         .flags(
@@ -41,10 +37,7 @@ pub fn add_axis_lines(
         )
         .picking_instance_id(picking_instance_id);
     line_batch
-        .add_segment(
-            origin,
-            origin + transform.transform_vector3(glam::Vec3::Y) * axis_length,
-        )
+        .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
         .color(AXIS_COLOR_Y)
         .flags(
@@ -54,10 +47,7 @@ pub fn add_axis_lines(
         )
         .picking_instance_id(picking_instance_id);
     line_batch
-        .add_segment(
-            origin,
-            origin + transform.transform_vector3(glam::Vec3::Z) * axis_length,
-        )
+        .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
         .color(AXIS_COLOR_Z)
         .flags(

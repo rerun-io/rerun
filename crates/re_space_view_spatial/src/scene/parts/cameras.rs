@@ -1,12 +1,13 @@
 use re_components::{
     coordinates::{Handedness, SignedAxis3},
-    Component, InstanceKey, Pinhole, Transform3D, ViewCoordinates,
+    Component, InstanceKey, Pinhole, ViewCoordinates,
 };
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
-use re_viewer_context::{ArchetypeDefinition, ScenePart, TimeControl};
-use re_viewer_context::{SceneQuery, ViewerContext};
-use re_viewer_context::{SpaceViewHighlights, SpaceViewOutlineMasks};
+use re_viewer_context::{
+    ArchetypeDefinition, ScenePart, SceneQuery, SpaceViewHighlights, SpaceViewOutlineMasks,
+    ViewerContext,
+};
 
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -26,12 +27,11 @@ const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 1
 /// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
 fn determine_view_coordinates(
     store: &re_arrow_store::DataStore,
-    time_ctrl: &TimeControl,
+    latest_at_query: &re_arrow_store::LatestAtQuery,
     mut entity_path: EntityPath,
 ) -> ViewCoordinates {
     loop {
-        if let Some(view_coordinates) =
-            store.query_latest_component(&entity_path, &time_ctrl.current_query())
+        if let Some(view_coordinates) = store.query_latest_component(&entity_path, latest_at_query)
         {
             return view_coordinates;
         }
@@ -63,23 +63,20 @@ impl CamerasPart {
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: Pinhole,
-        transform_at_entity: Option<Transform3D>,
-        view_coordinates: ViewCoordinates,
+        store: &re_arrow_store::DataStore,
+        query: &re_arrow_store::LatestAtQuery,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
         let instance_key = InstanceKey(0);
 
-        // The transform *at* this entity path already has the pinhole transformation we got passed in!
-        // This makes sense, since if there's an image logged here one would expect that the transform applies.
-        // We're however first interested in the rigid transform that led here, so query the parent transform.
-        let parent_path = ent_path
-            .parent()
-            .expect("root path can't be part of scene query");
-        let Some(mut world_from_camera) = scene_context.transforms.reference_from_entity(&parent_path) else {
-                return;
-            };
+        // Need to ignore the pinhole transform for drawing the frustum.
+        let Some(world_from_camera) = scene_context.transforms.reference_from_entity_ignore_pinhole(ent_path, store, query) else {
+            return;
+        };
 
         let frustum_length = *props.pinhole_image_plane_distance.get();
+
+        let view_coordinates = determine_view_coordinates(store, query, ent_path.clone());
 
         // If the camera is our reference, there is nothing for us to display.
         if scene_context.transforms.reference_path() == ent_path {
@@ -93,27 +90,19 @@ impl CamerasPart {
             return;
         }
 
-        // There's one wrinkle with using the parent transform though:
-        // The entity itself may have a 3D transform which (by convention!) we apply *before* the pinhole camera.
-        // Let's add that if it exists.
-        if let Some(transform_at_entity) = transform_at_entity {
-            world_from_camera =
-                world_from_camera * transform_at_entity.to_parent_from_child_transform();
-        }
-
-        // If this transform is not representable an iso transform transform we can't display it yet.
+        // If this transform is not representable an iso transform transform we can't use it as a space camera yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into()) else {
-            return;
+        if let Some(world_from_camera_iso) =
+            macaw::IsoTransform::from_mat4(&world_from_camera.into())
+        {
+            self.space_cameras.push(SpaceCamera3D {
+                ent_path: ent_path.clone(),
+                view_coordinates,
+                world_from_camera: world_from_camera_iso,
+                pinhole: Some(pinhole),
+                picture_plane_distance: frustum_length,
+            });
         };
-
-        self.space_cameras.push(SpaceCamera3D {
-            ent_path: ent_path.clone(),
-            view_coordinates,
-            world_from_camera: world_from_camera_iso,
-            pinhole: Some(pinhole),
-            picture_plane_distance: frustum_length,
-        });
 
         // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
         let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);
@@ -203,15 +192,11 @@ impl ScenePart<SpatialSpaceView> for CamerasPart {
         re_tracing::profile_scope!("CamerasPart");
 
         let store = &ctx.store_db.entity_db.data_store;
+        let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
         for (ent_path, props) in query.iter_entities() {
-            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
-
-            if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
-                let view_coordinates = determine_view_coordinates(
-                    &ctx.store_db.entity_db.data_store,
-                    &ctx.rec_cfg.time_ctrl,
-                    ent_path.clone(),
-                );
+            if let Some(pinhole) =
+                store.query_latest_component::<Pinhole>(ent_path, &latest_at_query)
+            {
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
                 self.visit_instance(
@@ -219,8 +204,8 @@ impl ScenePart<SpatialSpaceView> for CamerasPart {
                     ent_path,
                     &props,
                     pinhole,
-                    store.query_latest_component::<Transform3D>(ent_path, &query),
-                    view_coordinates,
+                    store,
+                    &latest_at_query,
                     entity_highlight,
                 );
             }

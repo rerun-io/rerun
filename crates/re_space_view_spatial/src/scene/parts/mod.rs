@@ -12,6 +12,7 @@ mod meshes;
 mod points2d;
 mod points3d;
 mod spatial_scene_part_data;
+mod transform_gizmo;
 
 pub use images::Image;
 pub use spatial_scene_part_data::SpatialScenePartData;
@@ -41,6 +42,7 @@ pub struct SpatialScenePartCollection {
     pub lines3d: lines3d::Lines3DPart,
     pub meshes: meshes::MeshPart,
     pub images: images::ImagesPart,
+    pub transform_gizmo: transform_gizmo::TransformGizmoPart,
 }
 
 impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
@@ -56,10 +58,20 @@ impl ScenePartCollection<SpatialSpaceView> for SpatialScenePartCollection {
             lines3d,
             meshes,
             images,
+            transform_gizmo,
         } = self;
         vec![
-            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
+            points2d,
+            points3d,
+            arrows3d,
+            boxes2d,
+            boxes3d,
+            cameras,
+            lines2d,
+            lines3d,
+            meshes,
             images,
+            transform_gizmo,
         ]
     }
 
@@ -81,10 +93,20 @@ impl SpatialScenePartCollection {
             lines3d,
             meshes,
             images,
+            transform_gizmo,
         } = self;
         vec![
-            points2d, points3d, arrows3d, boxes2d, boxes3d, cameras, lines2d, lines3d, meshes,
+            points2d,
+            points3d,
+            arrows3d,
+            boxes2d,
+            boxes3d,
+            cameras,
+            lines2d,
+            lines3d,
+            meshes,
             images,
+            transform_gizmo,
         ]
     }
 

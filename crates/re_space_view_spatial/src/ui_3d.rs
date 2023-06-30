@@ -322,19 +322,6 @@ pub fn view_3d(
     let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
         .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-    // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
-    for camera in space_cameras {
-        let transform = camera.world_from_cam();
-        let axis_length =
-            eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
-        add_axis_lines(
-            &mut line_builder,
-            transform,
-            Some(&camera.ent_path),
-            axis_length,
-        );
-    }
-
     // Determine view port resolution and position.
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
@@ -456,11 +443,12 @@ pub fn view_3d(
         &state.scene_bbox_accum,
     );
 
+    // TODO(andreas): Move into transform_gizmo.rs?
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
         add_axis_lines(
             &mut line_builder,
-            macaw::IsoTransform::IDENTITY,
+            macaw::Affine3A::IDENTITY,
             None,
             axis_length,
         );
