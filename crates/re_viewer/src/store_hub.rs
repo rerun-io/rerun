@@ -104,7 +104,7 @@ impl StoreHub {
     pub fn set_app_id(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
-        // TODO(jleibs): implement web-storage for blueprints as well
+        // TODO(2579): implement web-storage for blueprints as well
         #[cfg(not(target_arch = "wasm32"))]
         if !self.blueprint_by_app_id.contains_key(&app_id) {
             self.try_to_load_persisted_blueprint(&app_id).ok();
@@ -156,8 +156,8 @@ impl StoreHub {
         self.store_dbs.contains_recording(id)
     }
 
-    ///
-    // TODO(jleibs): implement persistence for web
+    /// Persist any in-use blueprints to durable storage.
+    // TODO(2579): implement persistence for web
     #[cfg(not(target_arch = "wasm32"))]
     pub fn persist_app_blueprints(&self) -> anyhow::Result<()> {
         // Because we save blueprints based on their `ApplicationId`, we only
@@ -178,8 +178,8 @@ impl StoreHub {
         Ok(())
     }
 
-    /// Try to load the persisted blueprint for the current `ApplicationId`
-    // TODO(jleibs): implement persistence for web
+    /// Try to load the persisted blueprint for the given `ApplicationId`
+    // TODO(2579): implement persistence for web
     #[cfg(not(target_arch = "wasm32"))]
     pub fn try_to_load_persisted_blueprint(
         &mut self,

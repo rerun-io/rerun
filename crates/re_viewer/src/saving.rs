@@ -6,7 +6,7 @@ use re_log_types::ApplicationId;
 #[cfg(not(target_arch = "wasm32"))]
 /// Determine the default path for a blueprint based on its `ApplicationId`
 /// This path should be determnistic and unique.
-// TODO(jleibs): Implement equivalent for web
+// TODO(2579): Implement equivalent for web
 pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
     use std::hash::{BuildHasher, Hash as _, Hasher as _};
 

@@ -782,7 +782,7 @@ impl eframe::App for App {
             eframe::set_value(storage, eframe::APP_KEY, &self.state);
 
             // Save the blueprints
-            // TODO(jleibs): implement web-storage for blueprints as well
+            // TODO(2579): implement web-storage for blueprints as well
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(hub) = &self.store_hub {
                 match hub.persist_app_blueprints() {
