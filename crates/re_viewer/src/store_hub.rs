@@ -24,6 +24,9 @@ pub struct StoreHub {
     application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_dbs: StoreBundle,
+
+    // The number of rows in the blueprint the last time it was saved
+    blueprint_last_save: HashMap<StoreId, usize>,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -159,7 +162,7 @@ impl StoreHub {
     /// Persist any in-use blueprints to durable storage.
     // TODO(2579): implement persistence for web
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn persist_app_blueprints(&self) -> anyhow::Result<()> {
+    pub fn persist_app_blueprints(&mut self) -> anyhow::Result<()> {
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
@@ -168,11 +171,17 @@ impl StoreHub {
             re_log::debug!("Saving blueprint for {app_id} to {:?}", blueprint_path);
 
             if let Some(blueprint) = self.store_dbs.blueprint(blueprint_id) {
-                // TODO(jleibs): We should "flatten" blueprints when we save them
-                // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-                // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
-                file_saver()?;
+                // TODO(jleibs): This check isn't perfect. If we GC the blueprint and then insert
+                // more rows we could end up with a collision.
+                if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.num_rows()) {
+                    // TODO(jleibs): We should "flatten" blueprints when we save them
+                    // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+                    // be small & fast to save, but maybe not once we start adding big pieces of user data?
+                    let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
+                    file_saver()?;
+                    self.blueprint_last_save
+                        .insert(blueprint_id.clone(), blueprint.num_rows());
+                }
             }
         }
         Ok(())
@@ -204,6 +213,8 @@ impl StoreHub {
                         );
                         self.blueprint_by_app_id
                             .insert(app_id.clone(), store.store_id().clone());
+                        self.blueprint_last_save
+                            .insert(store.store_id().clone(), store.num_rows());
                         self.store_dbs.insert_blueprint(store);
                     } else {
                         re_log::warn!(
