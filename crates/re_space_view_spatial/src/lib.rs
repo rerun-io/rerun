@@ -2,7 +2,6 @@
 //!
 //! Space Views that show entities in a 2D or 3D spatial relationship.
 
-mod axis_lines;
 mod eye;
 mod instance_hash_conversions;
 mod mesh_cache;

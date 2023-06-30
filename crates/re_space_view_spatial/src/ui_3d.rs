@@ -16,7 +16,6 @@ use re_space_view::controls::{
 use re_viewer_context::{gpu_bridge, HoveredSpace, Item, SpaceViewId, ViewerContext};
 
 use crate::{
-    axis_lines::add_axis_lines,
     scene::{SceneSpatial, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES},
     space_camera_3d::SpaceCamera3D,
     ui::{
@@ -442,17 +441,6 @@ pub fn view_3d(
         &state.state_3d.tracked_camera,
         &state.scene_bbox_accum,
     );
-
-    // TODO(andreas): Move into transform_gizmo.rs?
-    if state.state_3d.show_axes {
-        let axis_length = 1.0; // The axes are also a measuring stick
-        add_axis_lines(
-            &mut line_builder,
-            macaw::Affine3A::IDENTITY,
-            None,
-            axis_length,
-        );
-    }
 
     if state.state_3d.show_bbox {
         let bbox = state.scene_bbox_accum;

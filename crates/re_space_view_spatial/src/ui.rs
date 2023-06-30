@@ -3,7 +3,7 @@ use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use nohash_hasher::IntSet;
-use re_components::{Pinhole, Tensor, TensorDataMeaning};
+use re_components::{Pinhole, Tensor, TensorDataMeaning, Transform3D};
 use re_data_store::{EditableAutoValue, EntityPath};
 use re_data_ui::{item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
@@ -146,6 +146,7 @@ impl SpatialSpaceViewState {
         for entity_path in entity_paths {
             self.update_pinhole_property_heuristics(ctx, entity_path, entity_properties);
             self.update_depth_cloud_property_heuristics(ctx, entity_path, entity_properties);
+            self.update_transform3d_lines_heuristics(ctx, entity_path, entity_properties);
         }
     }
 
@@ -234,6 +235,71 @@ impl SpatialSpaceViewState {
         }
 
         Some(())
+    }
+
+    fn update_transform3d_lines_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ent_path: &EntityPath,
+        entity_properties: &mut re_data_store::EntityPropertyMap,
+    ) {
+        if ctx
+            .store_db
+            .store()
+            .query_latest_component::<Transform3D>(ent_path, &ctx.current_query())
+            .is_none()
+        {
+            return;
+        }
+
+        let mut properties = entity_properties.get(ent_path);
+        if properties.transform_3d_visible.is_auto() {
+            fn path_or_child_has_pinhole(
+                store: &re_arrow_store::DataStore,
+                ent_path: &EntityPath,
+                ctx: &ViewerContext<'_>,
+            ) -> bool {
+                if store
+                    .query_latest_component::<Pinhole>(ent_path, &ctx.current_query())
+                    .is_some()
+                {
+                    return true;
+                } else {
+                    // Any direct child has a pinhole camera?
+                    if let Some(child_tree) = ctx.store_db.entity_db.tree.subtree(ent_path) {
+                        for child in child_tree.children.values() {
+                            if store
+                                .query_latest_component::<Pinhole>(
+                                    &child.path,
+                                    &ctx.current_query(),
+                                )
+                                .is_some()
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                false
+            }
+            // By default show the transform if it is a camera extrinsic or if it's the only component on this entity path.
+            let single_component = ctx
+                .store_db
+                .store()
+                .all_components(&ctx.current_query().timeline, ent_path)
+                .map_or(false, |c| c.len() == 1);
+            properties.transform_3d_visible = EditableAutoValue::Auto(
+                single_component || path_or_child_has_pinhole(ctx.store_db.store(), ent_path, ctx),
+            );
+        }
+
+        if properties.transform_3d_size.is_auto() {
+            properties.transform_3d_size =
+                EditableAutoValue::Auto(self.scene_bbox_accum.size().max_element() * 0.01);
+        }
+
+        entity_properties.set(ent_path.clone(), properties);
     }
 
     pub fn selection_ui(

@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 
-use re_components::{Pinhole, Tensor, TensorDataMeaning};
+use re_components::{Pinhole, Tensor, TensorDataMeaning, Transform3D};
 use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::TimeType;
@@ -381,6 +381,7 @@ fn entity_props_ui(
             if let Some(entity_path) = entity_path {
                 pinhole_props_ui(ctx, ui, entity_path, entity_props);
                 depth_props_ui(ctx, ui, entity_path, entity_props);
+                transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
             }
         });
 }
@@ -544,5 +545,65 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
     } else if response.changed() {
         *property = EditableAutoValue::UserEdited(value);
     }
+    ui.end_row();
+}
+
+fn transform3d_visualization_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_path: &EntityPath,
+    entity_props: &mut EntityProperties,
+) {
+    re_tracing::profile_function!();
+
+    let query = ctx.current_query();
+    if ctx
+        .store_db
+        .store()
+        .query_latest_component::<Transform3D>(entity_path, &query)
+        .is_none()
+    {
+        return;
+    }
+
+    let show_arrows = &mut entity_props.transform_3d_visible;
+    let arrow_length = &mut entity_props.transform_3d_size;
+
+    {
+        let mut checked = *show_arrows.get();
+        let response = ui.checkbox(&mut checked, "Show transform").on_hover_text(
+            "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
+        if response.changed() {
+            *show_arrows = EditableAutoValue::UserEdited(checked);
+        }
+        // Double click to reset doesn't really work with a checkbox.
+        // if response.double_clicked() {
+        //     *show_arrows = EditableAutoValue::Auto(checked);
+        // }
+    }
+
+    if *show_arrows.get() {
+        ui.end_row();
+        ui.label("Transform arrow length");
+        let mut value = *arrow_length.get();
+        let speed = (value * 0.05).at_least(0.001);
+        let response = ui
+            .add(
+                egui::DragValue::new(&mut value)
+                    .clamp_range(0.0..=1.0e8)
+                    .speed(speed),
+            )
+            .on_hover_text(
+                "How long the arrows should be in scene units. Double-click to reset to auto.",
+            );
+        if response.double_clicked() {
+            // reset to auto - the exact value will be restored somewhere else
+            *arrow_length = EditableAutoValue::Auto(value);
+            response.surrender_focus();
+        } else if response.changed() {
+            *arrow_length = EditableAutoValue::UserEdited(value);
+        }
+    }
+
     ui.end_row();
 }
