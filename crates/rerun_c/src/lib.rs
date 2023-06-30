@@ -65,7 +65,7 @@ impl RecStreams {
 static RECORDING_STREAMS: Lazy<Mutex<RecStreams>> = Lazy::new(Mutex::default);
 
 // ----------------------------------------------------------------------------
-// Functions:
+// Public functions:
 
 // SAFETY: the unsafety comes from #[no_mangle], because we can declare multiple
 // functions with the same symbol names, and the linker behavior in this case i undefined.
@@ -84,6 +84,8 @@ pub unsafe extern "C" fn rerun_rec_stream_new(
     cstore_info: *const CStoreInfo,
     tcp_addr: *const c_char,
 ) -> CRecStreamId {
+    initialize_logging();
+
     let cstore_info = unsafe { &*cstore_info };
 
     let CStoreInfo {
@@ -122,13 +124,27 @@ pub unsafe extern "C" fn rerun_rec_stream_new(
 
     let rec_stream = RecordingStream::new(store_info, batcher_config, sink).unwrap();
 
-    let id = RECORDING_STREAMS.lock().insert(rec_stream);
-
-    id
+    RECORDING_STREAMS.lock().insert(rec_stream)
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
 pub unsafe extern "C" fn rerun_rec_stream_free(id: CRecStreamId) {
-    RECORDING_STREAMS.lock().streams.remove(&id);
+    let mut lock = RECORDING_STREAMS.lock();
+    if let Some(sink) = lock.streams.remove(&id) {
+        sink.disconnect();
+    }
 }
+
+// ----------------------------------------------------------------------------
+// Helper functions:
+
+fn initialize_logging() {
+    use std::sync::Once;
+    static START: Once = Once::new();
+    START.call_once(|| {
+        re_log::setup_native_logging();
+    });
+}
+
+// ----------------------------------------------------------------------------
