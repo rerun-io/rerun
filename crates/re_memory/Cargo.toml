@@ -24,7 +24,7 @@ ahash.workspace = true
 emath.workspace = true
 itertools = { workspace = true }
 nohash-hasher = "0.2"
-once_cell = "1.16"
+once_cell.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
 web-time.workspace = true

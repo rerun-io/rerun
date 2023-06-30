@@ -43,7 +43,7 @@ re_types = { workspace = true, features = ["ecolor", "glam"] }
 ahash.workspace = true
 crossbeam.workspace = true
 document-features = "0.2"
-once_cell = "1.12"
+once_cell.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
 
