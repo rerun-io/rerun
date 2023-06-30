@@ -12,10 +12,11 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use re_sdk::{
-    external::re_log_types::{StoreInfo, StoreSource},
+    external::re_log_types::{self, StoreInfo, StoreSource},
+    log::{DataCell, DataRow},
     sink::TcpSink,
     time::Time,
-    ApplicationId, RecordingStream, StoreId, StoreKind,
+    ApplicationId, ComponentName, EntityPath, RecordingStream, StoreId, StoreKind,
 };
 
 // ----------------------------------------------------------------------------
@@ -43,6 +44,27 @@ pub struct CStoreInfo {
     pub store_kind: u32, // CStoreKind
 }
 
+#[repr(C)]
+pub struct CDataCell {
+    pub component_name: *const c_char,
+
+    /// Lenght of [`bytes`].
+    pub num_bytes: u64,
+
+    /// Data in the Arrow IPC encapsulated message format.
+    pub bytes: *const u8,
+}
+
+pub struct CDataRow {
+    pub entity_path: *const c_char,
+    pub num_instances: u32,
+    pub num_data_cells: u32,
+    pub data_cells: *const CDataCell,
+}
+
+// ----------------------------------------------------------------------------
+// Global data:
+
 #[derive(Default)]
 pub struct RecStreams {
     next_id: CRecStreamId,
@@ -57,9 +79,6 @@ impl RecStreams {
         id
     }
 }
-
-// ----------------------------------------------------------------------------
-// Global data:
 
 /// All recording streams created from C.
 static RECORDING_STREAMS: Lazy<Mutex<RecStreams>> = Lazy::new(Mutex::default);
@@ -114,6 +133,7 @@ pub unsafe extern "C" fn rerun_rec_stream_new(
 
     let batcher_config = Default::default();
 
+    assert!(!tcp_addr.is_null());
     let tcp_addr = unsafe { CStr::from_ptr(tcp_addr) };
     let tcp_addr = tcp_addr
         .to_str()
@@ -129,11 +149,65 @@ pub unsafe extern "C" fn rerun_rec_stream_new(
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rerun_rec_stream_free(id: CRecStreamId) {
+pub extern "C" fn rerun_rec_stream_free(id: CRecStreamId) {
     let mut lock = RECORDING_STREAMS.lock();
     if let Some(sink) = lock.streams.remove(&id) {
         sink.disconnect();
     }
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rerun_log(stream: CRecStreamId, data_row: *const CDataRow) {
+    let lock = RECORDING_STREAMS.lock();
+    let Some(stream) = lock.streams.get(&stream) else {
+        return;
+    };
+
+    assert!(!data_row.is_null());
+    let data_row = unsafe { &*data_row };
+
+    let CDataRow {
+        entity_path,
+        num_instances,
+        num_data_cells,
+        data_cells,
+    } = *data_row;
+
+    let entity_path = unsafe { CStr::from_ptr(entity_path) };
+    let entity_path =
+        EntityPath::from(re_log_types::parse_entity_path(entity_path.to_str().unwrap()).unwrap());
+
+    let cells = (0..num_data_cells)
+        .map(|i| {
+            let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
+            let CDataCell {
+                component_name,
+                num_bytes,
+                bytes,
+            } = *data_cell;
+
+            let component_name = unsafe { CStr::from_ptr(component_name) };
+            let component_name = ComponentName::from(component_name.to_str().unwrap());
+
+            let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
+
+            let array = parse_arrow_ipc_encapsulated_message(bytes).unwrap();
+
+            DataCell::try_from_arrow(component_name, array).unwrap()
+        })
+        .collect();
+
+    let data_row = DataRow {
+        row_id: re_sdk::log::RowId::random(),
+        timepoint: Default::default(), // we use the one in the recording stream for now
+        entity_path,
+        num_instances,
+        cells: re_log_types::DataCellRow(cells),
+    };
+
+    let inject_time = true;
+    stream.record_row(data_row, inject_time);
 }
 
 // ----------------------------------------------------------------------------
@@ -145,6 +219,47 @@ fn initialize_logging() {
     START.call_once(|| {
         re_log::setup_native_logging();
     });
+}
+
+fn parse_arrow_ipc_encapsulated_message(
+    bytes: &[u8],
+) -> Result<Box<dyn arrow2::array::Array>, String> {
+    use arrow2::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
+
+    let mut cursor = std::io::Cursor::new(bytes);
+    let metadata = match read_stream_metadata(&mut cursor) {
+        Ok(metadata) => metadata,
+        Err(err) => return Err(format!("Failed to read stream metadata: {err}")),
+    };
+    let stream = StreamReader::new(cursor, metadata, None);
+    let chunks: Result<Vec<_>, _> = stream
+        .map(|state| match state {
+            Ok(StreamState::Some(chunk)) => Ok(chunk),
+            Ok(StreamState::Waiting) => {
+                unreachable!("cannot be waiting on a fixed buffer")
+            }
+            Err(err) => Err(err),
+        })
+        .collect();
+
+    let chunks = chunks.map_err(|err| format!("Arrow error: {err}"))?;
+
+    if chunks.is_empty() {
+        return Err("No Chunk found in stream".to_owned());
+    }
+    if chunks.len() > 1 {
+        return Err(format!(
+            "Found {} chunks in stream - expected just one.",
+            chunks.len()
+        ));
+    }
+    let chunk = chunks.into_iter().next().unwrap();
+
+    let arrays = chunk.into_arrays();
+
+    assert_eq!(arrays.len(), 1); // TODO: error message
+
+    Ok(arrays.into_iter().next().unwrap())
 }
 
 // ----------------------------------------------------------------------------

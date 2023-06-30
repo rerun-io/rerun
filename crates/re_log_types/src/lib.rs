@@ -44,7 +44,7 @@ use std::sync::Arc;
 pub use self::arrow_msg::ArrowMsg;
 pub use self::component::{Component, DeserializableComponent, SerializableComponent};
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
-pub use self::data_row::{DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
+pub use self::data_row::{DataCellRow, DataCellVec, DataRow, DataRowError, DataRowResult, RowId};
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
     ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_ENTITY_PATH,

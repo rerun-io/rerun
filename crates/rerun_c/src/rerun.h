@@ -33,6 +33,32 @@ struct RerunStoreInfo {
     int32_t      store_kind;
 };
 
+/// Arrow-encoded data of a single component for a single entity.
+struct RerunDataCell {
+    const char*     component_name;
+
+    /// The number of bytes in the `bytes` field.
+    /// Must be a multiple of 8.
+    const uint64_t  num_bytes;
+
+    /// Data in the Arrow IPC encapsulated message format.
+    ///
+    /// There must be exactly one chunk of data.
+    ///
+    /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
+    /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
+    const uint8_t*  bytes;
+};
+
+/// Arrow-encoded log data for a single entity.
+/// May contain many components.
+struct RerunDataRow {
+    const char*                  entity_path;    // Where to log to, e.g. `world/camera`.
+    uint32_t                     num_instances;  // Number of instances of this entity (e.g. number of points in a point cloud).
+    uint32_t                     num_data_cells; // Number of components.
+    const struct RerunDataCell*  data_cells;     // One for each component.
+};
+
 // ----------------------------------------------------------------------------
 // Functions:
 
@@ -52,6 +78,12 @@ extern RerunRecStream rerun_rec_stream_new(const struct RerunStoreInfo* store_in
 
 /// Free the given recording stream. The handle will be invalid after this.
 extern void rerun_rec_stream_free(RerunRecStream stream);
+
+/// Log the given data to the given stream.
+///
+/// If `inject_time` is set to `true`, the row's timestamp data will be overridden using the
+/// recording streams internal clock.
+extern void rerun_log(RerunRecStream stream, const struct RerunDataRow* data_row);
 
 // ----------------------------------------------------------------------------
 

@@ -4842,6 +4842,7 @@ name = "rerun_c"
 version = "0.8.0-alpha.0"
 dependencies = [
  "ahash 0.8.3",
+ "arrow2",
  "once_cell",
  "parking_lot 0.12.1",
  "re_log",
