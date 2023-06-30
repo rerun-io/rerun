@@ -15,6 +15,20 @@ pub struct Point2D {
     pub y: f32,
 }
 
+impl<'a> From<Point2D> for ::std::borrow::Cow<'a, Point2D> {
+    #[inline]
+    fn from(value: Point2D) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Point2D> for ::std::borrow::Cow<'a, Point2D> {
+    #[inline]
+    fn from(value: &'a Point2D) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for Point2D {
     #[inline]
     fn name() -> crate::ComponentName {
@@ -43,5 +57,97 @@ impl crate::Component for Point2D {
             ])),
             None,
         )
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                DataType::Extension(
+                    "rerun.components.Point2D".to_owned(),
+                    Box::new(DataType::Struct(vec![
+                        Field {
+                            name: "x".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "y".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                    ])),
+                    None,
+                ),
+                vec![
+                    {
+                        let (somes, x): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { x, .. } = &**datum;
+                                    x.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let x_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        PrimitiveArray::new(
+                            DataType::Float32,
+                            x.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                            x_bitmap,
+                        )
+                        .boxed()
+                    },
+                    {
+                        let (somes, y): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { y, .. } = &**datum;
+                                    y.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let y_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        PrimitiveArray::new(
+                            DataType::Float32,
+                            y.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                            y_bitmap,
+                        )
+                        .boxed()
+                    },
+                ],
+                bitmap,
+            )
+            .boxed()
+        })
     }
 }

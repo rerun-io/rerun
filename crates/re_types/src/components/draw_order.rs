@@ -19,6 +19,20 @@
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 
+impl<'a> From<DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
+    #[inline]
+    fn from(value: DrawOrder) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
+    #[inline]
+    fn from(value: &'a DrawOrder) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for DrawOrder {
     #[inline]
     fn name() -> crate::ComponentName {
@@ -34,5 +48,39 @@ impl crate::Component for DrawOrder {
             Box::new(DataType::Float32),
             None,
         )
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data0): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| {
+                        let Self(data0) = datum.into_owned();
+                        data0
+                    });
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            PrimitiveArray::new(
+                DataType::Float32,
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
+            )
+            .boxed()
+        })
     }
 }

@@ -13,6 +13,20 @@
 #[repr(transparent)]
 pub struct Label(pub String);
 
+impl<'a> From<Label> for ::std::borrow::Cow<'a, Label> {
+    #[inline]
+    fn from(value: Label) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Label> for ::std::borrow::Cow<'a, Label> {
+    #[inline]
+    fn from(value: &'a Label) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
 impl crate::Component for Label {
     #[inline]
     fn name() -> crate::ComponentName {
@@ -28,5 +42,54 @@ impl crate::Component for Label {
             Box::new(DataType::Utf8),
             None,
         )
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data0): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| {
+                        let Self(data0) = datum.into_owned();
+                        data0
+                    });
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            {
+                let inner_data: ::arrow2::buffer::Buffer<u8> =
+                    data0.iter().flatten().flat_map(|s| s.bytes()).collect();
+                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
+                )
+                .unwrap()
+                .into();
+                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                unsafe {
+                    Utf8Array::<i32>::new_unchecked(
+                        DataType::Utf8,
+                        offsets,
+                        inner_data,
+                        data0_bitmap,
+                    )
+                }
+                .boxed()
+            }
+        })
     }
 }
