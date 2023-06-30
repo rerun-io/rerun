@@ -591,6 +591,7 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     // nasty lazy circular dependencies in weird edge cases...
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
     fqname.map(|fqname| {
+        let fqname = fqname.replace(".testing", "");
         let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
         if from.starts_with("rerun.datatypes") {
             "from .. import datatypes".to_owned()
@@ -707,6 +708,7 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
         ElementType::Float16 | ElementType::Float32 | ElementType::Float64 => "float".to_owned(),
         ElementType::String => "str".to_owned(),
         ElementType::Object(fqname) => {
+            let fqname = fqname.replace(".testing", "");
             let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
             if from.starts_with("rerun.datatypes") {
                 format!("datatypes.{class}")
@@ -727,7 +729,11 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 
 fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) -> String {
     let Object {
-        fqname, name, kind, ..
+        fqname,
+        name,
+        kind,
+        filepath,
+        ..
     } = obj;
 
     match kind {
@@ -740,16 +746,9 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
             let many_aliases = format!("{name}ArrayLike");
             let arrow = format!("{name}Type");
 
-            use convert_case::{Boundary, Case, Casing};
-            let pkg = name
-                .from_case(Case::Camel)
-                .without_boundaries(&[
-                    Boundary::DigitLower,
-                    Boundary::DigitUpper,
-                    Boundary::LowerDigit,
-                    Boundary::UpperDigit,
-                ])
-                .to_case(Case::Snake);
+            let mut filepath = PathBuf::from(filepath);
+            filepath.set_extension("py");
+            let filename = filepath.file_stem().unwrap().to_string_lossy();
 
             let legacy_fqname = obj
                 .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
@@ -760,7 +759,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
 
                 # --- Arrow support ---
 
-                from .{pkg}_ext import {many}Ext # noqa: E402
+                from .{filename}_ext import {many}Ext # noqa: E402
 
                 class {arrow}(pa.ExtensionType): # type: ignore[misc]
                     def __init__(self: type[pa.ExtensionType]) -> None:
