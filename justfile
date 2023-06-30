@@ -45,7 +45,7 @@ py-run-all-web:
 py-run-all-rrd *ARGS:
     just py-run-all --save {{ARGS}}
 
-# Run all example with all supported Python versions (through nox)
+# Run all examples with all supported Python versions (through nox)
 py-run-all-allpy *ARGS:
     nox -s run_all -- {{ARGS}}
 
