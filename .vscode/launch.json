@@ -86,6 +86,28 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "Debug 'minimal' example",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=minimal",
+                ],
+                "filter": {
+                    "name": "minimal",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "https://demo.rerun.io/commit/0f89b62/examples/colmap/data.rrd"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "trace"
+            }
+        },
+        {
             "name": "Debug re_renderer sample",
             "type": "lldb",
             "request": "launch",
