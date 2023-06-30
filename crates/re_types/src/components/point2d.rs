@@ -150,4 +150,118 @@ impl crate::Component for Point2D {
             .boxed()
         })
     }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: DataType::Extension(
+                        "rerun.components.Point2D".to_owned(),
+                        Box::new(DataType::Struct(vec![
+                            Field {
+                                name: "x".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "y".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ])),
+                        None,
+                    ),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
+            let x = {
+                let data = &**arrays_by_name["x"];
+
+                data.as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+            };
+            let y = {
+                let data = &**arrays_by_name["y"];
+
+                data.as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+            };
+            ::itertools::izip!(x, y)
+                .enumerate()
+                .map(|(i, (x, y))| {
+                    is_valid(i)
+                        .then(|| {
+                            Ok(Self {
+                                x: x.ok_or_else(|| crate::DeserializationError::MissingData {
+                                    datatype: DataType::Extension(
+                                        "rerun.components.Point2D".to_owned(),
+                                        Box::new(DataType::Struct(vec![
+                                            Field {
+                                                name: "x".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "y".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                        ])),
+                                        None,
+                                    ),
+                                })?,
+                                y: y.ok_or_else(|| crate::DeserializationError::MissingData {
+                                    datatype: DataType::Extension(
+                                        "rerun.components.Point2D".to_owned(),
+                                        Box::new(DataType::Struct(vec![
+                                            Field {
+                                                name: "x".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                            Field {
+                                                name: "y".to_owned(),
+                                                data_type: DataType::Float32,
+                                                is_nullable: false,
+                                                metadata: [].into(),
+                                            },
+                                        ])),
+                                        None,
+                                    ),
+                                })?,
+                            })
+                        })
+                        .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
 }
