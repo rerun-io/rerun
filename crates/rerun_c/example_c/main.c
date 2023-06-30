@@ -3,8 +3,7 @@
 #include <rerun.h>
 
 int main() {
-    printf("Hello from C!\n");
-    printf("Rerun version: %s\n", rerun_version_string());
+    printf("Rerun C SDK Version: %s\n", rerun_version_string());
 
     const struct RerunStoreInfo store_info = {
         .application_id = "c-example-app",

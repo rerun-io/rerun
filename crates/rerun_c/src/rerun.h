@@ -1,7 +1,7 @@
 // The Rerun C SDK.
 
-#ifndef RERUN_HEADER
-#define RERUN_HEADER
+#ifndef RERUN_H
+#define RERUN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,4 +59,4 @@ extern void rerun_rec_stream_free(RerunRecStream stream);
 }
 #endif
 
-#endif // RERUN_HEADER
+#endif // RERUN_H
