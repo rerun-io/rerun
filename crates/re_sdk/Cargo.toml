@@ -32,6 +32,7 @@ image = ["re_components/image"]
 
 
 [dependencies]
+re_build_info.workspace = true
 re_components.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true

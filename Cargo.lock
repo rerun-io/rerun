@@ -4272,6 +4272,7 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "rand",
+ "re_build_info",
  "re_build_tools",
  "re_components",
  "re_log",
