@@ -13,15 +13,15 @@ cargo build -p rerun_c
 
 mkdir -p build
 
-CXX=g++
-CPPFLAGS="--std=c++14 -Wall -Wno-sign-compare -O2 -g -DNDEBUG"
-LDLIBS="-lstdc++ -lpthread -ldl"
+CXX=gcc
+CPPFLAGS="--std=c99 -Wall -Wno-sign-compare -O2 -g -DNDEBUG"
+LDLIBS="-lpthread -ldl"
 LDLIBS="$LDLIBS -framework CoreFoundation -framework IOKit" # TODO: only mac
 CPPFLAGS="$CPPFLAGS -I ../src" # Make sure rerun.h is found
 OBJECTS="../../../target/debug/librerun_c.a" # TODO: support non-Mac
 
-for source_path in *.cpp; do
-    obj_path="build/${source_path%.cpp}.o"
+for source_path in *.c; do
+    obj_path="build/${source_path%.c}.o"
     OBJECTS="$OBJECTS $obj_path"
     if [ ! -f $obj_path ] || [ $obj_path -ot $source_path ]; then
         echo "Compiling $source_path to $obj_path..."
@@ -30,4 +30,4 @@ for source_path in *.cpp; do
 done
 
 echo "Linking..."
-$CXX $CPPFLAGS $OBJECTS $LDLIBS -o example.bin
+$CXX $CPPFLAGS $LDLIBS $OBJECTS -o example.bin

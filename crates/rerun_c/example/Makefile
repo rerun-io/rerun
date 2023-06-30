@@ -1,7 +1,7 @@
-CC     =  g++
-CFLAGS =  --std=c++14 -Wall -Wno-sign-compare -O2 -g -DNDEBUG
+CC     =  gcc
+CFLAGS =  --std=c99 -Wall -Wno-sign-compare -O2 -g -DNDEBUG
 CFLAGS += -I ../src # Make sure rerun.h is found
-LDLIBS =  -lstdc++ -lpthread -ldl
+LDLIBS =
 
 OBJECTS = main.o
 
@@ -19,15 +19,15 @@ else
     endif
 endif
 
-all: example.bin rerun_c
+all: rerun_c example.bin
 
 # Linking:
 example.bin: $(OBJECTS)
-	$(CC) $(CFLAGS) $(OBJECTS) $(LDLIBS) -o example.bin
+	$(CC) $(CFLAGS) $(LDLIBS) $(OBJECTS) -o example.bin
 
 # Compiling:
-main.o: main.cpp
-	$(CC) $(CFLAGS) -c main.cpp -o main.o
+main.o: main.c
+	$(CC) $(CFLAGS) -c main.c -o main.o
 
 # Always rebuild rerun_c; cargo will take care of not rebuilding unless needed
 rerun_c: FORCE

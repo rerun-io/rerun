@@ -33,4 +33,6 @@ test = false
 [dependencies]
 re_sdk.workspace = true
 
+ahash.workspace = true
 once_cell.workspace = true
+parking_lot.workspace = true
