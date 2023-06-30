@@ -604,10 +604,24 @@ fn quote_trait_impls_from_obj(
                     let component = obj_field.typ.fqname().unwrap();
                     let component = format_ident!("{}", component.rsplit_once('.').unwrap().1);
                     let component = quote!(crate::components::#component);
+                    
+                    let fqname = obj_field.typ.fqname().unwrap();
+                    let legacy_fqname = objects
+                        .get(fqname)
+                        .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
+                        .unwrap_or_else(|| obj_field.typ.fqname().unwrap().to_owned());
 
                     let extract_datatype_and_return = quote! {
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            // NOTE: Temporarily injecting the extension metadata as well as the
+                            // legacy fully-qualified name into the `Field` object so we can work
+                            // around `arrow2-convert` limitations and map to old names while we're
+                            // migrating.
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                #fqname.into(),
+                                Box::new(array.data_type().clone()),
+                                Some(#legacy_fqname.into()),
+                            );
                             (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
                         })
                     };
