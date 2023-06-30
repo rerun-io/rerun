@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-__all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+__all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
+
+
+## --- Color --- ##
 
 
 @dataclass

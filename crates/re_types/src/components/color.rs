@@ -24,6 +24,10 @@ impl crate::Component for Color {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt32
+        DataType::Extension(
+            "rerun.components.Color".to_owned(),
+            Box::new(DataType::UInt32),
+            None,
+        )
     }
 }

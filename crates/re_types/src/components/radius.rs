@@ -12,6 +12,10 @@ impl crate::Component for Radius {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Float32
+        DataType::Extension(
+            "rerun.components.Radius".to_owned(),
+            Box::new(DataType::Float32),
+            None,
+        )
     }
 }

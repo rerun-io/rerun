@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-__all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import pyarrow as pa
+
+__all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
+
+
+## --- Label --- ##
 
 
 @dataclass

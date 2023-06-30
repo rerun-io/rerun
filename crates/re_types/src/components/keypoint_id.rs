@@ -16,6 +16,10 @@ impl crate::Component for KeypointId {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt16
+        DataType::Extension(
+            "rerun.components.KeypointId".to_owned(),
+            Box::new(DataType::UInt16),
+            None,
+        )
     }
 }

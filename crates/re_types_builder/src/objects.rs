@@ -81,22 +81,18 @@ impl Objects {
             .unwrap()
     }
 
-    /// Returns all available datatypes, pre-sorted in ascending order based on their `order`
+    /// Returns all available objects, pre-sorted in ascending order based on their `order`
     /// attribute.
-    pub fn ordered_datatypes(&self) -> Vec<&Object> {
-        self.ordered_objects(ObjectKind::Datatype.into())
-    }
+    pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
+        let objs = self
+            .objects
+            .values_mut()
+            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind));
 
-    /// Returns all available components, pre-sorted in ascending order based on their `order`
-    /// attribute.
-    pub fn ordered_components(&self) -> Vec<&Object> {
-        self.ordered_objects(ObjectKind::Component.into())
-    }
+        let mut objs = objs.collect::<Vec<_>>();
+        objs.sort_by_key(|anyobj| anyobj.order());
 
-    /// Returns all available archetypes, pre-sorted in ascending order based on their `order`
-    /// attribute.
-    pub fn ordered_archetypes(&self) -> Vec<&Object> {
-        self.ordered_objects(ObjectKind::Archetype.into())
+        objs
     }
 
     /// Returns all available objects, pre-sorted in ascending order based on their `order`
@@ -248,6 +244,12 @@ pub struct Object {
 
     /// Properties that only apply to either structs or unions.
     pub specifics: ObjectSpecifics,
+
+    /// The Arrow datatype of this `Object`, or `None` if the object is Arrow-transparent.
+    ///
+    /// This is lazily computed when the parent object gets registered into the Arrow registry and
+    /// will be `None` until then.
+    pub datatype: Option<crate::LazyDatatype>,
 }
 
 impl Object {
@@ -297,6 +299,7 @@ impl Object {
             attrs,
             fields,
             specifics: ObjectSpecifics::Struct {},
+            datatype: None,
         }
     }
 
@@ -356,6 +359,7 @@ impl Object {
             attrs,
             fields,
             specifics: ObjectSpecifics::Union { utype },
+            datatype: None,
         }
     }
 
@@ -444,13 +448,19 @@ pub struct ObjectField {
     /// Whether the field is required.
     ///
     /// Always true for IDL definitions using flatbuffers' `struct` type (as opposed to `table`).
-    pub required: bool,
+    pub is_nullable: bool,
 
     /// Whether the field is deprecated.
     //
     // TODO(#2366): do something with this
     // TODO(#2367): implement custom attr to specify deprecation reason
-    pub deprecated: bool,
+    pub is_deprecated: bool,
+
+    /// The Arrow datatype of this `ObjectField`.
+    ///
+    /// This is lazily computed when the parent object gets registered into the Arrow registry and
+    /// will be `None` until then.
+    pub datatype: Option<crate::LazyDatatype>,
 }
 
 impl ObjectField {
@@ -478,8 +488,8 @@ impl ObjectField {
         let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
-        let required = field.required() || obj.is_struct();
-        let deprecated = field.deprecated();
+        let is_nullable = !obj.is_struct() && !field.required();
+        let is_deprecated = field.deprecated();
 
         Self {
             filepath,
@@ -489,8 +499,9 @@ impl ObjectField {
             docs,
             typ,
             attrs,
-            required,
-            deprecated,
+            is_nullable,
+            is_deprecated,
+            datatype: None,
         }
     }
 
@@ -525,8 +536,8 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(val.attributes());
 
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
-        let required = true;
-        let deprecated = false;
+        let is_nullable = false;
+        let is_deprecated = false;
 
         Self {
             filepath,
@@ -536,8 +547,9 @@ impl ObjectField {
             docs,
             typ,
             attrs,
-            required,
-            deprecated,
+            is_nullable,
+            is_deprecated,
+            datatype: None,
         }
     }
 
@@ -666,6 +678,44 @@ impl Type {
             _ => unreachable!("{typ:#?}"),
         }
     }
+
+    /// True if this is some kind of array/vector.
+    pub fn is_plural(&self) -> bool {
+        match self {
+            Type::Array {
+                elem_type: _,
+                length: _,
+            }
+            | Type::Vector { elem_type: _ } => true,
+            Type::UInt8
+            | Type::UInt16
+            | Type::UInt32
+            | Type::UInt64
+            | Type::Int8
+            | Type::Int16
+            | Type::Int32
+            | Type::Int64
+            | Type::Bool
+            | Type::Float16
+            | Type::Float32
+            | Type::Float64
+            | Type::String
+            | Type::Object(_) => false,
+        }
+    }
+
+    /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
+    pub fn fqname(&self) -> Option<&str> {
+        match self {
+            Type::Object(fqname) => Some(fqname.as_str()),
+            Type::Array {
+                elem_type,
+                length: _,
+            }
+            | Type::Vector { elem_type } => elem_type.fqname(),
+            _ => None,
+        }
+    }
 }
 
 /// The underlying element type for arrays/vectors/maps.
@@ -723,6 +773,14 @@ impl ElementType {
             | FbsBaseType::Vector64 => unreachable!("{inner_type:#?}"),
             // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants...
             _ => unreachable!("{inner_type:#?}"),
+        }
+    }
+
+    /// `Some(fqname)` if this is an `Object`.
+    pub fn fqname(&self) -> Option<&str> {
+        match self {
+            ElementType::Object(fqname) => Some(fqname.as_str()),
+            _ => None,
         }
     }
 }

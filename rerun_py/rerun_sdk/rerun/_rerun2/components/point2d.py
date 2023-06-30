@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
+
+
+## --- Point2D --- ##
 
 
 @dataclass
@@ -34,7 +37,7 @@ class Point2DType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct([pa.field("x", pa.float32(), True, {}), pa.field("y", pa.float32(), True, {})]),
+            pa.struct([pa.field("x", pa.float32(), False, {}), pa.field("y", pa.float32(), False, {})]),
             "rerun.point2d",
         )
 

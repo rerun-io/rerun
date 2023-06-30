@@ -12,6 +12,10 @@ impl crate::Component for InstanceKey {
     #[allow(clippy::wildcard_imports)]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::UInt64
+        DataType::Extension(
+            "rerun.components.InstanceKey".to_owned(),
+            Box::new(DataType::UInt64),
+            None,
+        )
     }
 }

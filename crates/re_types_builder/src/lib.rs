@@ -93,7 +93,7 @@ mod codegen;
 #[allow(clippy::unimplemented)]
 mod objects;
 
-pub use self::arrow_registry::ArrowRegistry;
+pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{CodeGenerator, PythonCodeGenerator, RustCodeGenerator};
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, Objects, Type,
@@ -184,7 +184,7 @@ fn generate_lang_agnostic(
     binary_entrypoint_path.set_extension("bfbs");
 
     // semantic pass: high level objects from low-level reflection data
-    let objects = Objects::from_buf(
+    let mut objects = Objects::from_buf(
         sh.read_binary_file(tmp.path().join(binary_entrypoint_path))
             .unwrap()
             .as_slice(),
@@ -192,7 +192,7 @@ fn generate_lang_agnostic(
 
     // create and fill out arrow registry
     let mut arrow_registry = ArrowRegistry::default();
-    for obj in objects.ordered_objects(None) {
+    for obj in objects.ordered_objects_mut(None) {
         arrow_registry.register(obj);
     }
 
