@@ -328,9 +328,6 @@ impl MsgSender {
         let timeless = self.timeless;
         let [row_standard, row_splats] = self.into_rows();
 
-        // dbg!(&row_standard);
-        // dbg!(&row_splats);
-
         if let Some(row_splats) = row_splats {
             rec_stream.record_row(row_splats, !timeless);
         }

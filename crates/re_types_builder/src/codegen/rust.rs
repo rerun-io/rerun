@@ -609,7 +609,7 @@ fn quote_trait_impls_from_obj(
                     let legacy_fqname = objects
                         .get(fqname)
                         .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
-                        .unwrap_or_else(|| obj_field.typ.fqname().unwrap().to_owned());
+                        .unwrap_or_else(|| fqname.to_owned());
 
                     let extract_datatype_and_return = quote! {
                         array.map(|array| {
