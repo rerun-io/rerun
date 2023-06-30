@@ -73,8 +73,6 @@ impl ScenePart<SpatialSpaceView> for Transform3DArrowsPart {
                 .bounding_box
                 .extend(world_from_obj.translation.into());
 
-            // TODO: Highlighting.
-
             // Given how simple transform gizmos are it would be nice to put them all into a single line batch.
             // However, we can set object picking ids only per batch.
             add_axis_lines(
@@ -118,7 +116,8 @@ pub fn add_axis_lines(
         .picking_object_id(re_renderer::PickingLayerObjectId(
             ent_path.map_or(0, |p| p.hash64()),
         ));
-    let picking_instance_id = re_renderer::PickingLayerInstanceId(0);
+    let picking_instance_id =
+        re_renderer::PickingLayerInstanceId(re_log_types::InstanceKey::SPLAT.0);
 
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)

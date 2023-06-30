@@ -296,7 +296,8 @@ impl SpatialSpaceViewState {
 
         if properties.transform_3d_size.is_auto() {
             properties.transform_3d_size =
-                EditableAutoValue::Auto(self.scene_bbox_accum.size().max_element() * 0.01);
+                // Reuse `auto_size_world_heuristic` with a scale factor so we don't reinvent the wheel on scene based size heuristic.
+                EditableAutoValue::Auto(self.auto_size_world_heuristic() * 5.0);
         }
 
         entity_properties.set(ent_path.clone(), properties);
