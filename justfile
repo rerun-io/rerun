@@ -45,6 +45,10 @@ py-run-all-web:
 py-run-all-rrd *ARGS:
     just py-run-all --save {{ARGS}}
 
+# Run all examples with all supported Python versions (through nox)
+py-run-all-allpy *ARGS:
+    nox -s run_all -- {{ARGS}}
+
 # Build and install the package into the venv
 py-build *ARGS:
     #!/usr/bin/env bash
@@ -84,6 +88,10 @@ py-lint:
 # Run fast unittests
 py-test:
     python -m pytest -vv rerun_py/tests/unit/
+
+# Run tests on all supported Python versions (through nox)
+py-test-allpy:
+    nox -s tests
 
 # Serve the python docs locally
 py-docs-serve:

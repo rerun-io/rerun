@@ -130,8 +130,8 @@ def log_scalar(
     if label:
         instanced["rerun.label"] = LabelArray.new([label])
 
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if radius:

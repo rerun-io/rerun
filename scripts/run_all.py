@@ -9,6 +9,7 @@ import socket
 import subprocess
 import time
 from glob import glob
+from pathlib import Path
 from types import TracebackType
 from typing import Any
 
@@ -185,6 +186,25 @@ def run_viewer_build(web: bool) -> None:
     assert returncode == 0, f"process exited with error code {returncode}"
 
 
+def run_install_requirements(examples: list[str]) -> None:
+    """Install dependencies for the provided list of examples if they have a requirements.txt file."""
+    args = []
+    for example in examples:
+        req = Path(example) / "requirements.txt"
+        if req.exists():
+            args.extend(["-r", req])
+
+    print("Installing examples requirements…")
+    returncode = subprocess.Popen(
+        [
+            "pip",
+            "install",
+            *args,
+        ]
+    ).wait()
+    assert returncode == 0, f"process exited with error code {returncode}"
+
+
 def run_web(examples: list[str], separate: bool) -> None:
     if separate:
         entries: list[tuple[str, Any, Any]] = []
@@ -283,6 +303,9 @@ def run_native(examples: list[str], separate: bool, close: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Runs all examples.")
     parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK.")
+    parser.add_argument(
+        "--install-requirements", action="store_true", help="Install Python requirements for each example."
+    )
     parser.add_argument("--web", action="store_true", help="Run examples in a web viewer.")
     parser.add_argument(
         "--save",
@@ -305,6 +328,9 @@ def main() -> None:
             run_sdk_build()
         if not args.save:
             run_viewer_build(args.web)
+
+    if args.install_requirements:
+        run_install_requirements(examples)
 
     if args.web:
         run_web(examples, separate=args.separate)
