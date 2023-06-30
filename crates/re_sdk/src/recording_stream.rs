@@ -467,6 +467,7 @@ fn forwarding_thread(
                 sink.send(msg);
             }
             Command::SwapSink(new_sink) => {
+                re_log::trace!("Swapping sink…");
                 let backlog = {
                     // Capture the backlog if it exists.
                     let backlog = sink.drain_backlog();
@@ -498,6 +499,7 @@ fn forwarding_thread(
                 *sink = new_sink;
             }
             Command::Flush(oneshot) => {
+                re_log::trace!("Flushing…");
                 // Flush the underlying sink if possible.
                 sink.drop_if_disconnected();
                 sink.flush_blocking();
@@ -534,6 +536,7 @@ fn forwarding_thread(
                 let Ok(table) = res else {
                     // The batcher is gone, which can only happen if the `RecordingStream` itself
                     // has been dropped.
+                    re_log::trace!("Shutting down forwarding_thread: batcher is gone");
                     break;
                 };
                 let table = match table.to_arrow_msg() {
@@ -550,6 +553,7 @@ fn forwarding_thread(
                 let Ok(cmd) = res else {
                     // All command senders are gone, which can only happen if the
                     // `RecordingStream` itself has been dropped.
+                    re_log::trace!("Shutting down forwarding_thread: all command senders are gone");
                     break;
                 };
                 if !handle_cmd(&info, cmd, &mut sink) {
@@ -684,9 +688,11 @@ impl RecordingStream {
 
         // 4. Before we give control back to the caller, we need to make sure that the swap has
         //    taken place: we don't want the user to send data to the old sink!
+        re_log::trace!("Waiting for sink swap to complete…");
         let (cmd, oneshot) = Command::flush();
         this.cmds_tx.send(cmd).ok();
         oneshot.recv().ok();
+        re_log::trace!("Sink swap completed.");
     }
 
     /// Initiates a flush of the pipeline and returns immediately.

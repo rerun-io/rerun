@@ -139,6 +139,7 @@ impl TcpClient {
 
     /// Wait until all logged data have been sent.
     pub fn flush(&mut self) {
+        re_log::trace!("Flushing TCP stream…");
         if let TcpStreamState::Connected(stream) = &mut self.stream_state {
             if let Err(err) = stream.flush() {
                 re_log::warn!("Failed to flush: {err}");

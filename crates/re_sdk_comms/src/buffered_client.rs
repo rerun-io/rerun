@@ -79,7 +79,6 @@ impl Client {
                     &encode_quit_rx,
                     &packet_tx,
                 );
-                re_log::debug!("Shutting down msg encoder thread");
             })
             .expect("Failed to spawn thread");
 
@@ -87,7 +86,6 @@ impl Client {
             .name("tcp_sender".into())
             .spawn(move || {
                 tcp_sender(addr, &packet_rx, &send_quit_rx, &flushed_tx);
-                re_log::debug!("Shutting down TCP sender thread");
             })
             .expect("Failed to spawn thread");
 
@@ -95,7 +93,6 @@ impl Client {
             .name("msg_dropper".into())
             .spawn(move || {
                 msg_drop(&msg_drop_rx, &drop_quit_rx);
-                re_log::debug!("Shutting down msg dropper thread");
             })
             .expect("Failed to spawn thread");
 
@@ -118,7 +115,10 @@ impl Client {
     /// Stall until all messages so far has been sent.
     pub fn flush(&self) {
         re_log::debug!("Flushing message queue…");
-        self.send_msg_msg(MsgMsg::Flush);
+        if self.msg_tx.send(MsgMsg::Flush).is_err() {
+            re_log::debug!("Flush failed: already shut down.");
+            return;
+        }
 
         match self.flushed_rx.recv() {
             Ok(FlushedMsg) => {
@@ -173,10 +173,12 @@ fn msg_drop(msg_drop_rx: &Receiver<MsgMsg>, quit_rx: &Receiver<QuitMsg>) {
         select! {
             recv(msg_drop_rx) -> msg_msg => {
                 if msg_msg.is_err() {
-                    return; // channel has closed
+                    re_log::trace!("Shutting down msg dropper thread: channel has closed");
+                    return;
                 }
             }
             recv(quit_rx) -> _quit_msg => {
+                re_log::trace!("Shutting down msg dropper thread: quit message received");
                 return;
             }
         }
@@ -194,6 +196,7 @@ fn msg_encode(
         select! {
             recv(msg_rx) -> msg_msg => {
                 let Ok(msg_msg) = msg_msg else {
+                    re_log::debug!("Shutting down msg_encode thread: channel has closed");
                     return; // channel has closed
                 };
 
@@ -225,6 +228,7 @@ fn msg_encode(
                 }
             }
             recv(quit_rx) -> _quit_msg => {
+                re_log::debug!("Shutting down msg_encode thread: quit received");
                 return;
             }
         }
@@ -264,6 +268,7 @@ fn tcp_sender(
                         }
                     }
                 } else {
+                    re_log::debug!("Shutting down tcp_sender thread: packet_rx channel has closed");
                     return; // channel has closed
                 }
             },
@@ -273,7 +278,14 @@ fn tcp_sender(
                 Ok(InterruptMsg::DropIfDisconnected) => {
                     drop_if_disconnected = true;
                 }
-                _ => return,
+                Ok(InterruptMsg::Quit) => {
+                    re_log::debug!("Shutting down tcp_sender thread: received Quit message");
+                    return;
+                }
+                Err(_) => {
+                    re_log::debug!("Shutting down tcp_sender thread: quit_rx channel has closed");
+                    return;
+                }
             }}
         }
     }
