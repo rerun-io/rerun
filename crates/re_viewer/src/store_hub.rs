@@ -5,6 +5,11 @@ use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
 
+use crate::{
+    loading::load_file_path,
+    saving::{default_blueprint_path, save_database_to_file},
+};
+
 /// Interface for accessing all blueprints and recordings
 ///
 /// The [`StoreHub`] provides access to the [`StoreDb`] instances that are used
@@ -82,7 +87,7 @@ impl StoreHub {
     /// Change the selected/visible recording id.
     /// This will also change the application-id to match the newly selected recording.
     pub fn set_recording_id(&mut self, recording_id: StoreId) {
-        // If this recording corresponds to an app that we know about, then apdate the app-id.
+        // If this recording corresponds to an app that we know about, then update the app-id.
         if let Some(app_id) = self
             .store_dbs
             .recording(&recording_id)
@@ -97,11 +102,21 @@ impl StoreHub {
 
     /// Change the selected [`ApplicationId`]
     pub fn set_app_id(&mut self, app_id: ApplicationId) {
+        // If we don't know of a blueprint for this `ApplicationId` yet,
+        // try to load one from the persisted store
+        // TODO(jleibs): implement web-storage for blueprints as well
+        #[cfg(not(target_arch = "wasm32"))]
+        if !self.blueprint_by_app_id.contains_key(&app_id) {
+            self.try_to_load_persisted_blueprint(&app_id).ok();
+        }
+
         self.application_id = Some(app_id);
     }
 
     /// Change which blueprint is active for a given [`ApplicationId`]
+    #[inline]
     pub fn set_blueprint_for_app_id(&mut self, blueprint_id: StoreId, app_id: ApplicationId) {
+        re_log::debug!("Switching blueprint for {:?} to {:?}", app_id, blueprint_id);
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
     }
 
@@ -139,6 +154,67 @@ impl StoreHub {
     /// Check whether the [`StoreHub`] contains the referenced recording
     pub fn contains_recording(&self, id: &StoreId) -> bool {
         self.store_dbs.contains_recording(id)
+    }
+
+    ///
+    // TODO(jleibs): implement persistence for web
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn persist_app_blueprints(&self) -> anyhow::Result<()> {
+        // Because we save blueprints based on their `ApplicationId`, we only
+        // save the blueprints referenced by `blueprint_by_app_id`, even though
+        // there may be other Blueprints in the Hub.
+        for (app_id, blueprint_id) in &self.blueprint_by_app_id {
+            let blueprint_path = default_blueprint_path(app_id)?;
+            re_log::debug!("Saving blueprint for {app_id} to {:?}", blueprint_path);
+
+            if let Some(blueprint) = self.store_dbs.blueprint(blueprint_id) {
+                // TODO(jleibs): We should "flatten" blueprints when we save them
+                // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+                // be small & fast to save, but maybe not once we start adding big pieces of user data?
+                let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
+                file_saver()?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Try to load the persisted blueprint for the current `ApplicationId`
+    // TODO(jleibs): implement persistence for web
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn try_to_load_persisted_blueprint(
+        &mut self,
+        app_id: &ApplicationId,
+    ) -> anyhow::Result<()> {
+        let blueprint_path = default_blueprint_path(app_id)?;
+        if blueprint_path.exists() {
+            re_log::debug!(
+                "Trying to load blueprint for {app_id} from {:?}",
+                blueprint_path
+            );
+            if let Some(mut bundle) = load_file_path(&blueprint_path) {
+                for store in bundle.drain_store_dbs() {
+                    if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
+                    {
+                        // We found the blueprint we were looking for; make it active.
+                        // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
+                        re_log::debug!(
+                            "Switching blueprint for {:?} to {:?}",
+                            app_id,
+                            store.store_id(),
+                        );
+                        self.blueprint_by_app_id
+                            .insert(app_id.clone(), store.store_id().clone());
+                        self.store_dbs.insert_blueprint(store);
+                    } else {
+                        re_log::warn!(
+                            "Found unexpected store while loading blueprint: {:?}",
+                            store.store_id()
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Populate a [`StoreHubStats`] based on the selected app.
@@ -264,6 +340,11 @@ impl StoreBundle {
         self.store_dbs.insert(store_db.store_id().clone(), store_db);
     }
 
+    pub fn insert_blueprint(&mut self, store_db: StoreDb) {
+        debug_assert_eq!(store_db.store_kind(), StoreKind::Blueprint);
+        self.store_dbs.insert(store_db.store_id().clone(), store_db);
+    }
+
     pub fn recordings(&self) -> impl Iterator<Item = &StoreDb> {
         self.store_dbs
             .values()
@@ -332,5 +413,9 @@ impl StoreBundle {
         for store_db in self.store_dbs.values_mut() {
             store_db.purge_fraction_of_ram(fraction_to_purge);
         }
+    }
+
+    pub fn drain_store_dbs(&mut self) -> impl Iterator<Item = StoreDb> + '_ {
+        self.store_dbs.drain().map(|(_, store)| store)
     }
 }
