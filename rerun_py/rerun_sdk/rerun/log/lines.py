@@ -105,8 +105,8 @@ def log_line_strip(
         else:
             raise TypeError("Positions should be either Nx2 or Nx3")
 
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     # We store the stroke_width in radius
@@ -190,13 +190,13 @@ def log_line_segments(
         # If not a multiple of 2, drop the last row
         if len(positions) % 2:
             positions = positions[:-1]
-        if positions.shape[1] == 2:
+        if positions.ndim > 1 and positions.shape[1] == 2:
             # Reshape even-odd pairs into a collection of line-strips of length2
             # [[a00, a01], [a10, a11], [b00, b01], [b10, b11]]
             # -> [[[a00, a01], [a10, a11]], [[b00, b01], [b10, b11]]]
             positions = positions.reshape([len(positions) // 2, 2, 2])
             instanced["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(positions)
-        elif positions.shape[1] == 3:
+        elif positions.ndim > 1 and positions.shape[1] == 3:
             # Same as above but for 3d points
             positions = positions.reshape([len(positions) // 2, 2, 3])
             instanced["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(positions)
@@ -205,8 +205,8 @@ def log_line_segments(
 
     # The current API splats both color and stroke-width, though the data-model doesn't
     # require that we do so.
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     # We store the stroke_width in radius

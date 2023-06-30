@@ -78,8 +78,8 @@ def log_arrow(
         vector = np.require(vector, dtype="float32")
         instanced["rerun.arrow3d"] = Arrow3DArray.from_numpy(origin.reshape(1, 3), vector.reshape(1, 3))
 
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if label:

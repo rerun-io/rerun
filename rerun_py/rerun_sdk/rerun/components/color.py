@@ -16,6 +16,8 @@ __all__ = [
 class ColorRGBAArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.uint8]) -> ColorRGBAArray:
         """Build a `ColorRGBAArray` from an numpy array."""
+        if array.ndim == 1:
+            array = np.reshape(array, (1, -1))
         storage = pa.array(u8_array_to_rgba(array), type=ColorRGBAType.storage_type)
         # TODO(john) enable extension type wrapper
         # return cast(ColorRGBAArray, pa.ExtensionArray.from_storage(ColorRGBAType(), storage))
