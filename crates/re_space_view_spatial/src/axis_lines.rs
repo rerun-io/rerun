@@ -16,7 +16,8 @@ pub fn add_axis_lines(
     use re_renderer::renderer::LineStripFlags;
 
     // TODO(andreas): It would be nice if could display the semantics (left/right/up) as a tooltip on hover.
-    let line_radius = re_renderer::Size::new_scene(axis_length * 0.05);
+
+    let line_radius = re_renderer::Size::new_points(2.0);
 
     let mut line_batch = line_builder
         .batch("transform gizmo")
@@ -30,30 +31,18 @@ pub fn add_axis_lines(
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
         .color(AXIS_COLOR_X)
-        .flags(
-            LineStripFlags::FLAG_COLOR_GRADIENT
-                | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                | LineStripFlags::FLAG_CAP_START_ROUND,
-        )
+        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
         .color(AXIS_COLOR_Y)
-        .flags(
-            LineStripFlags::FLAG_COLOR_GRADIENT
-                | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                | LineStripFlags::FLAG_CAP_START_ROUND,
-        )
+        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
         .color(AXIS_COLOR_Z)
-        .flags(
-            LineStripFlags::FLAG_COLOR_GRADIENT
-                | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                | LineStripFlags::FLAG_CAP_START_ROUND,
-        )
+        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
 }
