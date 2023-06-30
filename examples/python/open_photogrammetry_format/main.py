@@ -172,6 +172,9 @@ class OPFProject:
 
             assert calib_sensor.internals.type == "perspective"
 
+            # TODO(ab): the correction matrix term as well as the intrinsics definition are a work-around for
+            #  https://github.com/rerun-io/rerun/issues/2244. Should be cleaned up once this is addressed.
+
             focal_length = calib_sensor.internals.focal_length_px
             u_center = calib_sensor.internals.principal_point_px[0]
             v_center = calib_sensor.internals.principal_point_px[1]
@@ -183,8 +186,6 @@ class OPFProject:
                 ]
             )
 
-            # TODO(ab): this is probably affected by https://github.com/rerun-io/rerun/issues/2244. The code will be
-            # cleaner (and less buggy) once that is fixed.
             rr.log_pinhole(
                 entity + "/image",
                 child_from_parent=intrinsics,
