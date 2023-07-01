@@ -54,7 +54,7 @@ from .. import datatypes
 
 
 @dataclass
-class AffixFuzzer1(Component):
+class AffixFuzzer1:
     single_required: datatypes.AffixFuzzer1
 
 
@@ -128,7 +128,7 @@ class AffixFuzzer1Array(Component, AffixFuzzer1ArrayExt):  # type: ignore[misc]
 
 
 @dataclass
-class AffixFuzzer2(Component):
+class AffixFuzzer2:
     single_required: datatypes.AffixFuzzer1
 
 
@@ -202,7 +202,7 @@ class AffixFuzzer2Array(Component, AffixFuzzer2ArrayExt):  # type: ignore[misc]
 
 
 @dataclass
-class AffixFuzzer3(Component):
+class AffixFuzzer3:
     single_required: datatypes.AffixFuzzer1
 
 
@@ -291,7 +291,7 @@ class AffixFuzzer3Array(Component, AffixFuzzer3ArrayExt):  # type: ignore[misc]
 
 
 @dataclass
-class AffixFuzzer4(Component):
+class AffixFuzzer4:
     single_optional: datatypes.AffixFuzzer1 | None = None
 
 
@@ -365,7 +365,7 @@ class AffixFuzzer4Array(Component, AffixFuzzer4ArrayExt):  # type: ignore[misc]
 
 
 @dataclass
-class AffixFuzzer5(Component):
+class AffixFuzzer5:
     single_optional: datatypes.AffixFuzzer1 | None = None
 
 
@@ -439,7 +439,7 @@ class AffixFuzzer5Array(Component, AffixFuzzer5ArrayExt):  # type: ignore[misc]
 
 
 @dataclass
-class AffixFuzzer6(Component):
+class AffixFuzzer6:
     single_optional: datatypes.AffixFuzzer1 | None = None
 
 
@@ -528,7 +528,7 @@ class AffixFuzzer6Array(Component, AffixFuzzer6ArrayExt):  # type: ignore[misc]
 
 
 @dataclass
-class AffixFuzzer7(Component):
+class AffixFuzzer7:
     single_string_required: str
     many_strings_required: npt.ArrayLike
     many_optional: list[datatypes.AffixFuzzer1] | None = None

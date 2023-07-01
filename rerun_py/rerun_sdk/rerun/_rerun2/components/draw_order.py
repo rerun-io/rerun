@@ -18,7 +18,7 @@ __all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike",
 
 
 @dataclass
-class DrawOrder(Component):
+class DrawOrder:
     """
     Draw order used for the display order of 2D elements.
 

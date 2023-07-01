@@ -18,7 +18,7 @@ __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType
 
 
 @dataclass
-class Radius(Component):
+class Radius:
     """A Radius component."""
 
     value: float

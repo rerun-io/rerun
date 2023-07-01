@@ -16,7 +16,7 @@ __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 
 
 @dataclass
-class Label(Component):
+class Label:
     """A String label component."""
 
     value: str

@@ -18,7 +18,7 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 
 
 @dataclass
-class InstanceKey(Component):
+class InstanceKey:
     """A unique numeric identifier for each individual instance within a batch."""
 
     value: int

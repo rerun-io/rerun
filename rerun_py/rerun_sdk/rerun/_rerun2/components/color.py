@@ -18,7 +18,7 @@ __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
 
 @dataclass
-class Color(Component):
+class Color:
     """
     An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 

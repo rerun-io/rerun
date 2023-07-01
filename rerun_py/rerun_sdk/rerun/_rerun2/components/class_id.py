@@ -18,7 +18,7 @@ __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassI
 
 
 @dataclass
-class ClassId(Component):
+class ClassId:
     """A 16-bit ID representing a type of semantic class."""
 
     id: int

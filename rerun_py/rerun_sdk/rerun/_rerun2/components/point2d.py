@@ -18,7 +18,7 @@ __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2
 
 
 @dataclass
-class Point2D(Component):
+class Point2D:
     """A point in 2D space."""
 
     x: float
