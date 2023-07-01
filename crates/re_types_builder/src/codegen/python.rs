@@ -295,8 +295,7 @@ impl QuotedObject {
 
         let superclass = match *kind {
             ObjectKind::Archetype => "(Archetype)",
-            ObjectKind::Component => "(Component)",
-            ObjectKind::Datatype => "",
+            ObjectKind::Component | ObjectKind::Datatype => "",
         };
         code.push_unindented_text(
             format!(
