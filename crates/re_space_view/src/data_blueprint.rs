@@ -7,7 +7,7 @@ use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
 /// A grouping of several data-blueprints.
-#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct DataBlueprintGroup {
     pub display_name: String,
 
@@ -31,9 +31,29 @@ pub struct DataBlueprintGroup {
     pub entities: BTreeSet<EntityPath>,
 }
 
+// Manually implement `PartialEq` since properties_projected is serde skip
+impl PartialEq for DataBlueprintGroup {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            display_name,
+            properties_individual,
+            properties_projected: _,
+            parent,
+            children,
+            entities,
+        } = self;
+
+        display_name == &other.display_name
+            && properties_individual.unedited(&other.properties_individual)
+            && parent == &other.parent
+            && children == &other.children
+            && entities == &other.entities
+    }
+}
+
 /// Data blueprints for all entity paths in a space view.
-#[derive(Clone, Default, PartialEq, serde::Deserialize, serde::Serialize)]
-struct DataBlueprints {
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+pub struct DataBlueprints {
     /// Individual settings. Mutate this.
     individual: EntityPropertyMap,
 
@@ -42,6 +62,18 @@ struct DataBlueprints {
     /// Recalculated at the start of each frame from [`Self::individual`].
     #[cfg_attr(feature = "serde", serde(skip))]
     projected: EntityPropertyMap,
+}
+
+// Manually implement `PartialEq` since projected is serde skip
+impl PartialEq for DataBlueprints {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            individual,
+            projected: _,
+        } = self;
+
+        individual.unedited(&other.individual)
+    }
 }
 
 /// Tree of all data blueprint groups for a single space view.

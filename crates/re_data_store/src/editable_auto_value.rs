@@ -49,4 +49,14 @@ where
             self
         }
     }
+
+    /// Determine whether this `EditableAutoValue` has user-edits relative to another `EditableAutoValue`
+    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
+    pub fn unedited(&self, other: &Self) -> bool {
+        match (self, other) {
+            (EditableAutoValue::UserEdited(s), EditableAutoValue::UserEdited(o)) => s == o,
+            (EditableAutoValue::Auto(_), EditableAutoValue::Auto(_)) => true,
+            _ => false,
+        }
+    }
 }
