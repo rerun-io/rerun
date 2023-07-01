@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
+from dataclasses import dataclass
+from typing import Any, Sequence, Union
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
+import pyarrow as pa
 
 from ._base import Component
 
@@ -19,9 +17,7 @@ __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 
 @dataclass
 class Label(Component):
-    """
-    A String label component.
-    """
+    """A String label component."""
 
     value: str
 

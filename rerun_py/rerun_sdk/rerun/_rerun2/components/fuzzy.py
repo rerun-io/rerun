@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import numpy as np
+from dataclasses import dataclass
+from typing import Any, Sequence, Union
+
 import numpy.typing as npt
 import pyarrow as pa
-
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
 
 from ._base import Component
 
