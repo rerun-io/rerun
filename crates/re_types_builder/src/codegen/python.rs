@@ -41,6 +41,7 @@ impl CodeGenerator for PythonCodeGenerator {
                 datatypes_path,
                 arrow_registry,
                 objs,
+                ObjectKind::Datatype,
                 &objs.ordered_objects(ObjectKind::Datatype.into()),
             )
             .0,
@@ -55,6 +56,7 @@ impl CodeGenerator for PythonCodeGenerator {
                 components_path,
                 arrow_registry,
                 objs,
+                ObjectKind::Component,
                 &objs.ordered_objects(ObjectKind::Component.into()),
             )
             .0,
@@ -68,6 +70,7 @@ impl CodeGenerator for PythonCodeGenerator {
             archetypes_path,
             arrow_registry,
             objs,
+            ObjectKind::Archetype,
             &objs.ordered_objects(ObjectKind::Archetype.into()),
         );
         filepaths.extend(paths);
@@ -117,6 +120,7 @@ fn quote_objects(
     out_path: impl AsRef<Path>,
     arrow_registry: &ArrowRegistry,
     all_objects: &Objects,
+    kind: ObjectKind,
     objs: &[&Object],
 ) -> (Vec<PathBuf>, Vec<String>) {
     let out_path = out_path.as_ref();
@@ -176,6 +180,11 @@ fn quote_objects(
         code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
 
         let manifest = quote_manifest(names);
+        let base_include = match kind {
+            ObjectKind::Archetype => "from ._base import Archetype",
+            ObjectKind::Component => "from ._base import Component",
+            _ => "",
+        };
         code.push_unindented_text(
             format!(
                 "
@@ -185,8 +194,10 @@ fn quote_objects(
                 import numpy.typing as npt
                 import pyarrow as pa
 
-                from dataclasses import dataclass
+                from dataclasses import dataclass, field
                 from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
+
+                {base_include}
 
                 __all__ = [{manifest}]
 
@@ -220,14 +231,21 @@ fn quote_objects(
 
         let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
 
+        let (base_manifest, base_include) = match kind {
+            ObjectKind::Archetype => ("\"Archetype\", ", "from ._base import Archetype\n"),
+            ObjectKind::Component => ("\"Component\", ", "from ._base import Component\n"),
+            _ => ("", ""),
+        };
+
         code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
         code.push_unindented_text(
             format!(
                 "
                 from __future__ import annotations
 
-                __all__ = [{manifest}]
+                __all__ = [{base_manifest}{manifest}]
 
+                {base_include}
                 ",
             ),
             0,
@@ -275,6 +293,11 @@ impl QuotedObject {
 
         let mut code = String::new();
 
+        let superclass = match *kind {
+            ObjectKind::Archetype => "(Archetype)",
+            ObjectKind::Component => "(Component)",
+            _ => "",
+        };
         code.push_unindented_text(
             format!(
                 r#"
@@ -282,7 +305,7 @@ impl QuotedObject {
                 ## --- {name} --- ##
 
                 @dataclass
-                class {name}:
+                class {name}{superclass}:
                 "#
             ),
             0,
@@ -317,10 +340,20 @@ impl QuotedObject {
             } else {
                 typ
             };
-            let typ = if *is_nullable {
-                format!("{typ} | None = None")
+            let typ = if *kind == ObjectKind::Archetype {
+                if !*is_nullable {
+                    format!("{typ} = field(metadata={{'component': 'primary'}})")
+                } else {
+                    format!(
+                        "{typ} | None = field(default=None, metadata={{'component': 'secondary'}})"
+                    )
+                }
             } else {
-                typ
+                if !*is_nullable {
+                    typ
+                } else {
+                    format!("{typ} | None = None")
+                }
             };
 
             code.push_text(format!("{name}: {typ}"), 1, 4);
@@ -457,13 +490,13 @@ fn quote_str_repr_from_obj(obj: &Object) -> String {
             s = f"rr.{type(self).__name__}(\n"
 
             from dataclasses import fields
-            for field in fields(self):
-                data = getattr(self, field.name)
-                datatype = getattr(data, "type", None)
-                if datatype:
-                    name = datatype.extension_name
-                    typ = datatype.storage_type
-                    s += f"  {name}<{typ}>(\n    {data.to_pylist()}\n  )\n"
+            for fld in fields(self):
+                if "component" in fld.metadata:
+                    comp: components.Component = getattr(self, fld.name)
+                    if datatype := getattr(comp, "type"):
+                        name = comp.extension_name
+                        typ = datatype.storage_type
+                        s += f"  {name}<{typ}>(\n    {comp.to_pylist()}\n  )\n"
 
             s += ")"
 
@@ -754,6 +787,12 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                 .try_get_attr::<String>(ATTR_RERUN_LEGACY_FQNAME)
                 .unwrap_or_else(|| fqname.clone());
 
+            let superclass = if kind == &ObjectKind::Component {
+                "Component, "
+            } else {
+                ""
+            };
+
             unindent::unindent(&format!(
                 r#"
 
@@ -784,7 +823,9 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
                 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
                 # pa.register_extension_type({arrow}())
 
-                class {many}(pa.ExtensionArray, {many}Ext):  # type: ignore[misc]
+                class {many}({superclass}{many}Ext):  # type: ignore[misc]
+                    _extension_name = "{legacy_fqname}"
+
                     @staticmethod
                     def from_similar(data: {many_aliases} | None) -> pa.Array:
                         if data is None:

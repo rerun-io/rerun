@@ -60,6 +60,7 @@ from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequenc
 _ENABLE_NEXT_GEN_API = True
 if _ENABLE_NEXT_GEN_API:
     from ._rerun2.archetypes import *
+    from ._rerun2.log_any import log_any
 
 
 def _init_recording_stream() -> None:
