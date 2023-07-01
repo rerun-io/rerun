@@ -183,7 +183,7 @@ fn quote_objects(
         let base_include = match kind {
             ObjectKind::Archetype => "from ._base import Archetype",
             ObjectKind::Component => "from ._base import Component",
-            _ => "",
+            ObjectKind::Datatype => "",
         };
         code.push_unindented_text(
             format!(
@@ -234,7 +234,7 @@ fn quote_objects(
         let (base_manifest, base_include) = match kind {
             ObjectKind::Archetype => ("\"Archetype\", ", "from ._base import Archetype\n"),
             ObjectKind::Component => ("\"Component\", ", "from ._base import Component\n"),
-            _ => ("", ""),
+            ObjectKind::Datatype => ("", ""),
         };
 
         code.push_text(&format!("# {AUTOGEN_WARNING}"), 2, 0);
@@ -296,7 +296,7 @@ impl QuotedObject {
         let superclass = match *kind {
             ObjectKind::Archetype => "(Archetype)",
             ObjectKind::Component => "(Component)",
-            _ => "",
+            ObjectKind::Datatype => "",
         };
         code.push_unindented_text(
             format!(
@@ -348,12 +348,10 @@ impl QuotedObject {
                         "{typ} | None = field(default=None, metadata={{'component': 'secondary'}})"
                     )
                 }
+            } else if !*is_nullable {
+                typ
             } else {
-                if !*is_nullable {
-                    typ
-                } else {
-                    format!("{typ} | None = None")
-                }
+                format!("{typ} | None = None")
             };
 
             code.push_text(format!("{name}: {typ}"), 1, 4);
