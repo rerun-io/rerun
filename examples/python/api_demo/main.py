@@ -33,18 +33,20 @@ def run_segmentation() -> None:
     rr.log_segmentation_image("seg_demo/img", segmentation_img)
 
     # Log a bunch of classified 2D points
-    rr.log_point("seg_demo/single_point", np.array([64, 64]), class_id=13)
-    rr.log_point("seg_demo/single_point_labeled", np.array([90, 50]), class_id=13, label="labeled point")
-    rr.log_points("seg_demo/several_points0", np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42)
-    rr.log_points(
+    # Note: this uses the new, WIP object-oriented API
+    rr.log_any("seg_demo/single_point", rr.Points2D(np.array([64, 64]), class_ids=13))
+    rr.log_any("seg_demo/single_point_labeled", rr.Points2D(np.array([90, 50]), class_ids=13, labels="labeled point"))
+    rr.log_any("seg_demo/several_points0", rr.Points2D(np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42))
+    rr.log_any(
         "seg_demo/several_points1",
-        np.array([[40, 50], [120, 70], [80, 30]]),
-        class_ids=np.array([13, 42, 99], dtype=np.uint8),
+        rr.Points2D(np.array([[40, 50], [120, 70], [80, 30]]), class_ids=np.array([13, 42, 99], dtype=np.uint8)),
     )
-    rr.log_points(
+    rr.log_any(
         "seg_demo/many points",
-        np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
-        class_ids=np.array([42], dtype=np.uint8),
+        rr.Points2D(
+            np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
+            class_ids=np.array([42], dtype=np.uint8),
+        ),
     )
 
     rr.log_text_entry("logs/seg_demo_log", "default colored rects, default colored points, a single point has a label")
