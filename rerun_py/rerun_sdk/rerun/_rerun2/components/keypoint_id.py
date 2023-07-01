@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from ._base import Component
+
 __all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
 
 
@@ -16,7 +18,7 @@ __all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLi
 
 
 @dataclass
-class KeypointId:
+class KeypointId(Component):
     """
     A 16-bit ID representing a type of semantic keypoint within a class.
 
@@ -67,7 +69,9 @@ class KeypointIdType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(KeypointIdType())
 
 
-class KeypointIdArray(pa.ExtensionArray, KeypointIdArrayExt):  # type: ignore[misc]
+class KeypointIdArray(Component, KeypointIdArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.keypoint_id"
+
     @staticmethod
     def from_similar(data: KeypointIdArrayLike | None) -> pa.Array:
         if data is None:

@@ -20,6 +20,7 @@ __all__ = [
     "Vec2DType",
 ]
 
+
 from .fuzzy import (
     AffixFuzzer1,
     AffixFuzzer1Array,

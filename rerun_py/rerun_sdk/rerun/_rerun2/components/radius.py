@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from ._base import Component
+
 __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType"]
 
 
@@ -16,7 +18,7 @@ __all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType
 
 
 @dataclass
-class Radius:
+class Radius(Component):
     """A Radius component."""
 
     value: float
@@ -58,7 +60,9 @@ class RadiusType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(RadiusType())
 
 
-class RadiusArray(pa.ExtensionArray, RadiusArrayExt):  # type: ignore[misc]
+class RadiusArray(Component, RadiusArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.radius"
+
     @staticmethod
     def from_similar(data: RadiusArrayLike | None) -> pa.Array:
         if data is None:

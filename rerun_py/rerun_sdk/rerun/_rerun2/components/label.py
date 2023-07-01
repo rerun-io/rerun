@@ -7,6 +7,8 @@ from typing import Any, Sequence, Union
 
 import pyarrow as pa
 
+from ._base import Component
+
 __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 
 
@@ -14,7 +16,7 @@ __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 
 
 @dataclass
-class Label:
+class Label(Component):
     """A String label component."""
 
     value: str
@@ -59,7 +61,9 @@ class LabelType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(LabelType())
 
 
-class LabelArray(pa.ExtensionArray, LabelArrayExt):  # type: ignore[misc]
+class LabelArray(Component, LabelArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.label"
+
     @staticmethod
     def from_similar(data: LabelArrayLike | None) -> pa.Array:
         if data is None:

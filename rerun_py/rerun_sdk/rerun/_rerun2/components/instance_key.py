@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from ._base import Component
+
 __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
 
 
@@ -16,7 +18,7 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 
 
 @dataclass
-class InstanceKey:
+class InstanceKey(Component):
     """A unique numeric identifier for each individual instance within a batch."""
 
     value: int
@@ -58,7 +60,9 @@ class InstanceKeyType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(InstanceKeyType())
 
 
-class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]
+class InstanceKeyArray(Component, InstanceKeyArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.instance_key"
+
     @staticmethod
     def from_similar(data: InstanceKeyArrayLike | None) -> pa.Array:
         if data is None:

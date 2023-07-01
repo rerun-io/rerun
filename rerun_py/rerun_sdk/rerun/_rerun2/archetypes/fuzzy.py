@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from ._base import Archetype
 
 __all__ = ["AffixFuzzer1"]
 
@@ -12,48 +14,48 @@ from .. import components
 
 
 @dataclass
-class AffixFuzzer1:
-    fuzz1001: components.AffixFuzzer1Array
-    fuzz1002: components.AffixFuzzer2Array
-    fuzz1003: components.AffixFuzzer3Array
-    fuzz1004: components.AffixFuzzer4Array
-    fuzz1005: components.AffixFuzzer5Array
-    fuzz1006: components.AffixFuzzer6Array
-    fuzz1007: components.AffixFuzzer7Array
-    fuzz1101: components.AffixFuzzer1Array
-    fuzz1102: components.AffixFuzzer2Array
-    fuzz1103: components.AffixFuzzer3Array
-    fuzz1104: components.AffixFuzzer4Array
-    fuzz1105: components.AffixFuzzer5Array
-    fuzz1106: components.AffixFuzzer6Array
-    fuzz1107: components.AffixFuzzer7Array
-    fuzz2001: components.AffixFuzzer1Array | None = None
-    fuzz2002: components.AffixFuzzer2Array | None = None
-    fuzz2003: components.AffixFuzzer3Array | None = None
-    fuzz2004: components.AffixFuzzer4Array | None = None
-    fuzz2005: components.AffixFuzzer5Array | None = None
-    fuzz2006: components.AffixFuzzer6Array | None = None
-    fuzz2007: components.AffixFuzzer7Array | None = None
-    fuzz2101: components.AffixFuzzer1Array | None = None
-    fuzz2102: components.AffixFuzzer2Array | None = None
-    fuzz2103: components.AffixFuzzer3Array | None = None
-    fuzz2104: components.AffixFuzzer4Array | None = None
-    fuzz2105: components.AffixFuzzer5Array | None = None
-    fuzz2106: components.AffixFuzzer6Array | None = None
-    fuzz2107: components.AffixFuzzer7Array | None = None
+class AffixFuzzer1(Archetype):
+    fuzz1001: components.AffixFuzzer1Array = field(metadata={"component": "primary"})
+    fuzz1002: components.AffixFuzzer2Array = field(metadata={"component": "primary"})
+    fuzz1003: components.AffixFuzzer3Array = field(metadata={"component": "primary"})
+    fuzz1004: components.AffixFuzzer4Array = field(metadata={"component": "primary"})
+    fuzz1005: components.AffixFuzzer5Array = field(metadata={"component": "primary"})
+    fuzz1006: components.AffixFuzzer6Array = field(metadata={"component": "primary"})
+    fuzz1007: components.AffixFuzzer7Array = field(metadata={"component": "primary"})
+    fuzz1101: components.AffixFuzzer1Array = field(metadata={"component": "primary"})
+    fuzz1102: components.AffixFuzzer2Array = field(metadata={"component": "primary"})
+    fuzz1103: components.AffixFuzzer3Array = field(metadata={"component": "primary"})
+    fuzz1104: components.AffixFuzzer4Array = field(metadata={"component": "primary"})
+    fuzz1105: components.AffixFuzzer5Array = field(metadata={"component": "primary"})
+    fuzz1106: components.AffixFuzzer6Array = field(metadata={"component": "primary"})
+    fuzz1107: components.AffixFuzzer7Array = field(metadata={"component": "primary"})
+    fuzz2001: components.AffixFuzzer1Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2002: components.AffixFuzzer2Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2003: components.AffixFuzzer3Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2004: components.AffixFuzzer4Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2005: components.AffixFuzzer5Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2006: components.AffixFuzzer6Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2007: components.AffixFuzzer7Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2101: components.AffixFuzzer1Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2102: components.AffixFuzzer2Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2103: components.AffixFuzzer3Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2104: components.AffixFuzzer4Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2105: components.AffixFuzzer5Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2106: components.AffixFuzzer6Array | None = field(default=None, metadata={"component": "secondary"})
+    fuzz2107: components.AffixFuzzer7Array | None = field(default=None, metadata={"component": "secondary"})
 
     def __str__(self) -> str:
         s = f"rr.{type(self).__name__}(\n"
 
         from dataclasses import fields
 
-        for field in fields(self):
-            data = getattr(self, field.name)
-            datatype = getattr(data, "type", None)
-            if datatype:
-                name = datatype.extension_name
-                typ = datatype.storage_type
-                s += f"  {name}<{typ}>(\n    {data.to_pylist()}\n  )\n"
+        for fld in fields(self):
+            if "component" in fld.metadata:
+                comp: components.Component = getattr(self, fld.name)
+                if datatype := getattr(comp, "type"):
+                    name = comp.extension_name
+                    typ = datatype.storage_type
+                    s += f"  {name}<{typ}>(\n    {comp.to_pylist()}\n  )\n"
 
         s += ")"
 

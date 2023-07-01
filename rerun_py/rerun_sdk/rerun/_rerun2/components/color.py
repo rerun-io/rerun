@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from ._base import Component
+
 __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
 
@@ -16,7 +18,7 @@ __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
 
 @dataclass
-class Color:
+class Color(Component):
     """
     An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 
@@ -74,7 +76,9 @@ class ColorType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(ColorType())
 
 
-class ColorArray(pa.ExtensionArray, ColorArrayExt):  # type: ignore[misc]
+class ColorArray(Component, ColorArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.colorrgba"
+
     @staticmethod
     def from_similar(data: ColorArrayLike | None) -> pa.Array:
         if data is None:

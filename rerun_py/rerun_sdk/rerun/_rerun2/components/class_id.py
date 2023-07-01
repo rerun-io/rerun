@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from ._base import Component
+
 __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
 
 
@@ -16,7 +18,7 @@ __all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassI
 
 
 @dataclass
-class ClassId:
+class ClassId(Component):
     """A 16-bit ID representing a type of semantic class."""
 
     id: int
@@ -65,7 +67,9 @@ class ClassIdType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(ClassIdType())
 
 
-class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
+class ClassIdArray(Component, ClassIdArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.class_id"
+
     @staticmethod
     def from_similar(data: ClassIdArrayLike | None) -> pa.Array:
         if data is None:

@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from ._base import Component
+
 __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
 
 
@@ -16,7 +18,7 @@ __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2
 
 
 @dataclass
-class Point2D:
+class Point2D(Component):
     """A point in 2D space."""
 
     x: float
@@ -60,7 +62,9 @@ class Point2DType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(Point2DType())
 
 
-class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]
+class Point2DArray(Component, Point2DArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.point2d"
+
     @staticmethod
     def from_similar(data: Point2DArrayLike | None) -> pa.Array:
         if data is None:
