@@ -27,45 +27,45 @@ extern "C" {
 typedef int32_t RerunRecStream;
 
 struct RerunStoreInfo {
-  /// The user-chosen name of the application doing the logging.
-  const char *application_id;
+    /// The user-chosen name of the application doing the logging.
+    const char* application_id;
 
-  /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
-  int32_t store_kind;
+    /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
+    int32_t store_kind;
 };
 
 /// Arrow-encoded data of a single component for a single entity.
 struct RerunDataCell {
-  const char *component_name;
+    const char* component_name;
 
-  /// The number of bytes in the `bytes` field.
-  /// Must be a multiple of 8.
-  const uint64_t num_bytes;
+    /// The number of bytes in the `bytes` field.
+    /// Must be a multiple of 8.
+    const uint64_t num_bytes;
 
-  /// Data in the Arrow IPC encapsulated message format.
-  ///
-  /// There must be exactly one chunk of data.
-  ///
-  /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
-  /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
-  const uint8_t *bytes;
+    /// Data in the Arrow IPC encapsulated message format.
+    ///
+    /// There must be exactly one chunk of data.
+    ///
+    /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
+    /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
+    const uint8_t* bytes;
 };
 
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
 struct RerunDataRow {
-  const char *entity_path; // Where to log to, e.g. `world/camera`.
-  uint32_t num_instances;  // Number of instances of this entity (e.g. number of
-                           // points in a point cloud).
-  uint32_t num_data_cells; // Number of components.
-  const struct RerunDataCell *data_cells; // One for each component.
+    const char* entity_path;  // Where to log to, e.g. `world/camera`.
+    uint32_t num_instances;   // Number of instances of this entity (e.g. number
+                              // of points in a point cloud).
+    uint32_t num_data_cells;  // Number of components.
+    const struct RerunDataCell* data_cells;  // One for each component.
 };
 
 // ----------------------------------------------------------------------------
 // Functions:
 
 /// Returns a human-readable version string of the Rerun C SDK.
-extern const char *rerun_version_string(void);
+extern const char* rerun_version_string(void);
 
 extern void rerun_print_hello_world(void);
 
@@ -77,9 +77,8 @@ extern void rerun_print_hello_world(void);
 /// Usually you only have one recording stream, so you can call
 /// `rerun_rec_stream_new` once, ignore its return value, and use
 /// `RERUN_REC_STREAM_DEFAULT` everywhere in your code.
-extern RerunRecStream
-rerun_rec_stream_new(const struct RerunStoreInfo *store_info,
-                     const char *tcp_addr);
+extern RerunRecStream rerun_rec_stream_new(
+    const struct RerunStoreInfo* store_info, const char* tcp_addr);
 
 /// Free the given recording stream. The handle will be invalid after this.
 extern void rerun_rec_stream_free(RerunRecStream stream);
@@ -89,7 +88,7 @@ extern void rerun_rec_stream_free(RerunRecStream stream);
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
 extern void rerun_log(RerunRecStream stream,
-                      const struct RerunDataRow *data_row);
+                      const struct RerunDataRow* data_row);
 
 // ----------------------------------------------------------------------------
 
@@ -97,4 +96,4 @@ extern void rerun_log(RerunRecStream stream,
 }
 #endif
 
-#endif // RERUN_H
+#endif  // RERUN_H

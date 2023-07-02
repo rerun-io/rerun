@@ -5,9 +5,10 @@
 #include <rerun.hpp>
 
 int main() {
-  std::cerr << "Rerun C++ SDK version:" << rerun::version_string() << std::endl;
+    std::cerr << "Rerun C++ SDK version:" << rerun::version_string()
+              << std::endl;
 
-  auto buffer = rerun::create_buffer().ValueOrDie();
+    auto buffer = rerun::create_buffer().ValueOrDie();
 
-  std::cerr << "Buffer size: " << buffer->size() << " bytes." << std::endl;
+    std::cerr << "Buffer size: " << buffer->size() << " bytes." << std::endl;
 }
