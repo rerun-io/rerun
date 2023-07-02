@@ -22,6 +22,12 @@ message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
 add_executable(rerun_example main.cpp)
 
+if(MSVC)
+  target_compile_options(rerun_example PRIVATE /W4 /WX)
+else()
+  target_compile_options(rerun_example PRIVATE -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces)
+endif()
+
 if(APPLE)
   target_link_libraries(rerun_example PRIVATE ${CMAKE_SOURCE_DIR}/../../../target/debug/librerun_c.a)
   target_link_libraries(rerun_example PRIVATE "-framework CoreFoundation" "-framework IOKit")

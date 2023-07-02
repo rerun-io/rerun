@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Setup required to build rerun
 
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
@@ -9,6 +8,7 @@ set -x
 mkdir -p build
 cd build
 
+cargo build -p rerun_c # TODO: add this to CMakelists.txt instead?
 cmake ..
 make
 ./rerun_example
