@@ -1,5 +1,6 @@
+# NOTE: Apache Arrow C++ SDK requires C++17
 CC     =  g++
-CFLAGS =  --std=c++14 -Wall -Wno-sign-compare -O2 -g -DNDEBUG
+CFLAGS =  --std=c++17 -Wall -Wno-sign-compare -O2 -g -DNDEBUG
 CFLAGS += -I ../src # Make sure rerun.h is found
 LDLIBS =
 
