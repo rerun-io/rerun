@@ -54,7 +54,6 @@ py-build *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     unset CONDA_PREFIX && \
-        source venv/bin/activate && \
         maturin develop \
             --manifest-path rerun_py/Cargo.toml \
             --extras="tests" \
