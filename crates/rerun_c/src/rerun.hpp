@@ -8,10 +8,7 @@ namespace rerun_c {
 }
 
 namespace rerun {
-    inline const char* version_string() {
-        return rerun_c::rerun_version_string();
-    }
-}
-
+inline const char *version_string() { return rerun_c::rerun_version_string(); }
+} // namespace rerun
 
 #endif // RERUN_HPP
