@@ -1,5 +1,6 @@
 CC     =  gcc
-CFLAGS =  --std=c99 -Wall -Wno-sign-compare -O2 -g -DNDEBUG
+CFLAGS =  --std=c99 -O2 -g -DNDEBUG
+CFLAGS += -Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wformat=2 -Wmissing-include-dirs -Wnull-dereference -Woverloaded-virtual -Wpointer-arith -Wshadow -Wswitch-enum -Wvla -Wno-sign-compare -Wconversion -Wunused -Wold-style-cast -Wno-missing-braces
 CFLAGS += -I ../src # Make sure rerun.h is found
 LDLIBS =
 
