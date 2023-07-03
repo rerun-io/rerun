@@ -48,7 +48,7 @@ pub struct CStoreInfo {
 pub struct CDataCell {
     pub component_name: *const c_char,
 
-    /// Length of [`bytes`].
+    /// Length of [`Self::bytes`].
     pub num_bytes: u64,
 
     /// Data in the Arrow IPC encapsulated message format.
