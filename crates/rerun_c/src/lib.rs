@@ -34,7 +34,7 @@ pub enum CStoreKind {
     Blueprint = 2,
 }
 
-/// Simple C version of [`StroeInfo`]
+/// Simple C version of [`StoreInfo`]
 #[repr(C)]
 #[derive(Debug)]
 pub struct CStoreInfo {
@@ -48,7 +48,7 @@ pub struct CStoreInfo {
 pub struct CDataCell {
     pub component_name: *const c_char,
 
-    /// Lenght of [`bytes`].
+    /// Length of [`bytes`].
     pub num_bytes: u64,
 
     /// Data in the Arrow IPC encapsulated message format.
