@@ -443,14 +443,21 @@ impl Viewport {
 
         self.space_views.insert(space_view_id, space_view);
 
-        if let Some(root_id) = self.tree.root {
+        if self.has_been_user_edited {
             // Try to insert it in the tree, in the top level:
-            let tile_id = self.tree.tiles.insert_pane(space_view_id);
-            if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get_mut(root_id) {
-                container.add_child(tile_id);
-            } else {
-                self.tree = Default::default(); // we'll just re-initialize later instead
+            if let Some(root_id) = self.tree.root {
+                let tile_id = self.tree.tiles.insert_pane(space_view_id);
+                if let Some(egui_tiles::Tile::Container(container)) =
+                    self.tree.tiles.get_mut(root_id)
+                {
+                    container.add_child(tile_id);
+                } else {
+                    self.tree = Default::default(); // we'll just re-initialize later instead
+                }
             }
+        } else {
+            // Re-run the auto-layout next frame:
+            self.tree = Default::default();
         }
 
         space_view_id
