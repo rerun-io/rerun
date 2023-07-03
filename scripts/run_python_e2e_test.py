@@ -41,7 +41,7 @@ def main() -> None:
 
     if not parser.parse_args().no_pip_reqs:
         requirements = [
-            "examples/python/api_demo/requirements.txt",
+            "tests/python/test_api/requirements.txt",
             "examples/python/car/requirements.txt",
             "examples/python/minimal_options/requirements.txt",
             "examples/python/multithreading/requirements.txt",
@@ -60,7 +60,7 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        ("examples/python/api_demo/main.py", ["--demo", "all"]),
+        ("tests/python/test_api/main.py", ["--demo", "all"]),
         ("examples/python/car/main.py", []),
         ("examples/python/minimal_options/main.py", []),
         ("examples/python/multithreading/main.py", []),
