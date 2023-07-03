@@ -26,7 +26,7 @@ pub struct StoreHub {
     store_dbs: StoreBundle,
 
     // The number of rows in the blueprint the last time it was saved
-    blueprint_last_save: HashMap<StoreId, usize>,
+    blueprint_last_save: HashMap<StoreId, u64>,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -173,14 +173,14 @@ impl StoreHub {
             if let Some(blueprint) = self.store_dbs.blueprint(blueprint_id) {
                 // TODO(jleibs): This check isn't perfect. If we GC the blueprint and then insert
                 // more rows we could end up with a collision.
-                if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.num_rows()) {
+                if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.last_insert_id()) {
                     // TODO(jleibs): We should "flatten" blueprints when we save them
                     // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                     // be small & fast to save, but maybe not once we start adding big pieces of user data?
                     let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
                     file_saver()?;
                     self.blueprint_last_save
-                        .insert(blueprint_id.clone(), blueprint.num_rows());
+                        .insert(blueprint_id.clone(), blueprint.last_insert_id());
                 }
             }
         }
@@ -214,7 +214,7 @@ impl StoreHub {
                         self.blueprint_by_app_id
                             .insert(app_id.clone(), store.store_id().clone());
                         self.blueprint_last_save
-                            .insert(store.store_id().clone(), store.num_rows());
+                            .insert(store.store_id().clone(), store.last_insert_id());
                         self.store_dbs.insert_blueprint(store);
                     } else {
                         re_log::warn!(

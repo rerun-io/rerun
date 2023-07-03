@@ -264,6 +264,10 @@ impl DataStore {
         "rerun.insert_id".into()
     }
 
+    pub fn last_insert_id(&self) -> u64 {
+        self.insert_id
+    }
+
     /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn cluster_key(&self) -> ComponentName {
         self.cluster_key

@@ -292,6 +292,10 @@ impl StoreDb {
             + self.entity_db.data_store.num_temporal_rows() as usize
     }
 
+    pub fn last_insert_id(&self) -> u64 {
+        self.entity_db.data_store.last_insert_id()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.recording_msg.is_none() && self.num_rows() == 0
     }
