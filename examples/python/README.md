@@ -27,7 +27,7 @@ pip install -r examples/python/requirements.txt
 ## Running the examples
 By default, the examples spawn a Rerun Viewer and stream log data to it.
 
-You can instead save the log data to an `.rrd` file using `examples/python/car/main.py --save data.rrd`. You can then open that `.rrd` file with `rerun data.rrd`.
+You can instead save the log data to an `.rrd` file using `examples/python/car/main.py --save data.rrd`. You can then view that `.rrd` file with `rerun data.rrd`.
 
 (`rerun` is an alias for `python -m rerun`).
 
