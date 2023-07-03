@@ -305,7 +305,7 @@ impl framework::Example for RenderDepthClouds {
                     glam::Vec3::ONE * 0.5,
                 ));
             }
-            builder.to_draw_data(re_ctx).unwrap()
+            builder.into_draw_data(re_ctx).unwrap()
         };
 
         let image_draw_data = RectangleDrawData::new(

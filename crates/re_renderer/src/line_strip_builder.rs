@@ -95,7 +95,7 @@ impl LineStripSeriesBuilder {
     }
 
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
-    pub fn to_draw_data(
+    pub fn into_draw_data(
         self,
         ctx: &mut crate::context::RenderContext,
     ) -> Result<LineDrawData, LineDrawDataError> {

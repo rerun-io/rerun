@@ -29,7 +29,7 @@ impl SharedRenderBuilders {
     ) -> Vec<re_renderer::QueueableDrawData> {
         let mut result = Vec::new();
         result.extend(self.lines.take().and_then(
-            |l| match l.into_inner().to_draw_data(render_ctx) {
+            |l| match l.into_inner().into_draw_data(render_ctx) {
                 Ok(d) => Some(d.into()),
                 Err(err) => {
                     re_log::error_once!("Failed to build line strip draw data: {err}");

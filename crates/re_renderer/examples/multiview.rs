@@ -132,7 +132,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         .radius(Size::new_scene(0.1))
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
-    builder.to_draw_data(re_ctx).unwrap()
+    builder.into_draw_data(re_ctx).unwrap()
 }
 
 enum CameraControl {
