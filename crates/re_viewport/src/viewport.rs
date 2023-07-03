@@ -1,18 +1,19 @@
+//! The viewport panel.
+//!
+//! Contains all space views.
+
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
 
-use re_data_store::StoreDb;
-
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewHighlights,
-    SpaceViewId, SpaceViewState, SystemCommand, SystemCommandSender, ViewerContext,
+    SpaceViewId, SpaceViewState, ViewerContext,
 };
 
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_highlights::highlights_for_space_view,
-    viewport_blueprint::{load_viewport_blueprint, sync_viewport_blueprint},
+    space_view_highlights::highlights_for_space_view, viewport_blueprint::load_viewport_blueprint,
     SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -47,10 +48,8 @@ impl ViewportState {
 
 /// Defines the layout of the Viewport
 pub struct Viewport<'a, 'b> {
-    pub blueprint_db: &'a StoreDb,
-
-    pub blueprint: ViewportBlueprint,
-    snapshot: ViewportBlueprint,
+    pub blueprint: ViewportBlueprint<'a>,
+    snapshot: ViewportBlueprint<'a>,
 
     pub state: &'b mut ViewportState,
 }
@@ -62,22 +61,15 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let blueprint = load_viewport_blueprint(blueprint_db);
 
         Self {
-            blueprint_db,
-            blueprint: blueprint.clone(),
-            snapshot: blueprint,
+            snapshot: blueprint.clone(),
+            blueprint,
             state,
         }
     }
 
     pub fn sync_blueprint_changes(&self, command_sender: &CommandSender) {
-        let mut deltas = vec![];
-
-        sync_viewport_blueprint(&mut deltas, &self.blueprint, &self.snapshot);
-
-        command_sender.send_system(SystemCommand::UpdateBlueprint(
-            self.blueprint_db.store_id().clone(),
-            deltas,
-        ));
+        self.blueprint
+            .sync_viewport_blueprint(&self.snapshot, command_sender);
     }
 
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
@@ -86,7 +78,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
     pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a mut ViewerContext<'_>) {
         let Viewport {
-            blueprint_db: _,
             blueprint,
             snapshot: _,
             state,
@@ -144,6 +135,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
             re_tracing::profile_scope!("tree.ui");
             tree.ui(&mut tab_viewer, ui);
         });
+    }
+
+    /// If `false`, the item is referring to data that is not present in this blueprint.
+    #[inline]
+    pub fn is_item_valid(&self, item: &Item) -> bool {
+        self.blueprint.is_item_valid(item)
     }
 }
 

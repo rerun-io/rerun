@@ -1,15 +1,13 @@
-//! The viewport panel.
-//!
-//! Contains all space views.
-
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use arrow2_convert::field::ArrowField;
 
-use re_data_store::EntityPath;
+use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{Component, DataCell, DataRow, RowId, SerializableComponent, TimePoint};
-use re_viewer_context::{Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    CommandSender, Item, SpaceViewId, SystemCommand, SystemCommandSender, ViewerContext,
+};
 
 use crate::{
     blueprint_components::{
@@ -23,9 +21,11 @@ use crate::{
 // ----------------------------------------------------------------------------
 
 /// Describes the layout and contents of the Viewport Panel.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct ViewportBlueprint {
+#[derive(Clone)]
+pub struct ViewportBlueprint<'a> {
+    /// The StoreDb used to instantiate this blueprint
+    blueprint_db: &'a StoreDb,
+
     /// Where the space views are stored.
     ///
     /// Not a hashmap in order to preserve the order of the space views.
@@ -44,16 +44,29 @@ pub struct ViewportBlueprint {
     pub auto_space_views: bool,
 }
 
-impl ViewportBlueprint {
-    /// Create a default suggested blueprint using some heuristics.
-    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) -> Self {
+impl<'a> ViewportBlueprint<'a> {
+    /// Reset the blueprint to a default state using some heuristics.
+    pub fn reset(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
         re_tracing::profile_function!();
 
-        let mut viewport = Self::default();
+        let ViewportBlueprint {
+            blueprint_db: _,
+            space_views,
+            tree,
+            maximized,
+            has_been_user_edited,
+            auto_space_views,
+        } = self;
+
+        *space_views = Default::default();
+        *tree = Default::default();
+        *maximized = Default::default();
+        *has_been_user_edited = Default::default();
+        *auto_space_views = Default::default();
+
         for space_view in default_created_space_views(ctx, spaces_info) {
-            viewport.add_space_view(space_view);
+            self.add_space_view(space_view);
         }
-        viewport
     }
 
     pub fn space_view_ids(&self) -> impl Iterator<Item = &SpaceViewId> + '_ {
@@ -73,6 +86,7 @@ impl ViewportBlueprint {
 
     pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceViewBlueprint> {
         let Self {
+            blueprint_db: _,
             space_views,
             tree,
             maximized,
@@ -215,6 +229,59 @@ impl ViewportBlueprint {
             })
             .collect()
     }
+
+    pub fn sync_viewport_blueprint(
+        &self,
+        snapshot: &ViewportBlueprint<'_>,
+        command_sender: &CommandSender,
+    ) {
+        let mut deltas = vec![];
+
+        let entity_path = EntityPath::from(VIEWPORT_PATH);
+
+        // TODO(jleibs): Seq instead of timeless?
+        let timepoint = TimePoint::timeless();
+
+        if self.auto_space_views != snapshot.auto_space_views {
+            let component = AutoSpaceViews(self.auto_space_views);
+            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
+        }
+
+        if self.maximized != snapshot.maximized {
+            let component = SpaceViewMaximized(self.maximized);
+            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
+        }
+
+        if self.tree != snapshot.tree || self.has_been_user_edited != snapshot.has_been_user_edited
+        {
+            let component = ViewportLayout {
+                space_view_keys: self.space_views.keys().cloned().collect(),
+                tree: self.tree.clone(),
+                has_been_user_edited: self.has_been_user_edited,
+            };
+
+            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
+        }
+
+        // Add any new or modified space views
+        for id in self.space_view_ids() {
+            if let Some(space_view) = self.space_view(id) {
+                sync_space_view(&mut deltas, space_view, snapshot.space_view(id));
+            }
+        }
+
+        // Remove any deleted space views
+        for space_view_id in snapshot.space_view_ids() {
+            if self.space_view(space_view_id).is_none() {
+                clear_space_view(&mut deltas, space_view_id);
+            }
+        }
+
+        command_sender.send_system(SystemCommand::UpdateBlueprint(
+            self.blueprint_db.store_id().clone(),
+            deltas,
+        ));
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -250,7 +317,7 @@ pub fn load_space_view_blueprint(
         .map(|c| c.space_view)
 }
 
-pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint {
+pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
     let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
         blueprint_db
             .entity_db
@@ -304,6 +371,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         .collect();
 
     let mut viewport = ViewportBlueprint {
+        blueprint_db,
         space_views: known_space_views,
         tree: viewport_layout.tree,
         maximized: space_view_maximized.0,
@@ -362,51 +430,4 @@ pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) 
     let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell);
 
     deltas.push(row);
-}
-
-pub fn sync_viewport_blueprint(
-    deltas: &mut Vec<DataRow>,
-    viewport: &ViewportBlueprint,
-    snapshot: &ViewportBlueprint,
-) {
-    let entity_path = EntityPath::from(VIEWPORT_PATH);
-
-    // TODO(jleibs): Seq instead of timeless?
-    let timepoint = TimePoint::timeless();
-
-    if viewport.auto_space_views != snapshot.auto_space_views {
-        let component = AutoSpaceViews(viewport.auto_space_views);
-        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
-    }
-
-    if viewport.maximized != snapshot.maximized {
-        let component = SpaceViewMaximized(viewport.maximized);
-        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
-    }
-
-    if viewport.tree != snapshot.tree
-        || viewport.has_been_user_edited != snapshot.has_been_user_edited
-    {
-        let component = ViewportLayout {
-            space_view_keys: viewport.space_views.keys().cloned().collect(),
-            tree: viewport.tree.clone(),
-            has_been_user_edited: viewport.has_been_user_edited,
-        };
-
-        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
-    }
-
-    // Add any new or modified space views
-    for id in viewport.space_view_ids() {
-        if let Some(space_view) = viewport.space_view(id) {
-            sync_space_view(deltas, space_view, snapshot.space_view(id));
-        }
-    }
-
-    // Remove any deleted space views
-    for space_view_id in snapshot.space_view_ids() {
-        if viewport.space_view(space_view_id).is_none() {
-            clear_space_view(deltas, space_view_id);
-        }
-    }
 }

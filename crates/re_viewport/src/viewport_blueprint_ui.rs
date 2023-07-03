@@ -15,7 +15,7 @@ enum TreeAction {
     Remove,
 }
 
-impl ViewportBlueprint {
+impl ViewportBlueprint<'_> {
     /// Show the blueprint panel tree view.
     pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         re_tracing::profile_function!();

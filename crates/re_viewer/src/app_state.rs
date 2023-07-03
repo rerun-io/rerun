@@ -101,7 +101,7 @@ impl AppState {
             store_db,
         )
         .selection_state
-        .on_frame_start(|item| viewport.blueprint.is_item_valid(item));
+        .on_frame_start(|item| viewport.is_item_valid(item));
 
         let rec_cfg = recording_config_entry(
             recording_configs,

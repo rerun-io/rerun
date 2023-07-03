@@ -3,7 +3,7 @@ use re_viewport::{SpaceInfoCollection, ViewportBlueprint};
 
 /// Show the left-handle panel based on the current [`ViewportBlueprint`]
 pub fn blueprint_panel_ui(
-    blueprint: &mut ViewportBlueprint,
+    blueprint: &mut ViewportBlueprint<'_>,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
@@ -34,7 +34,7 @@ pub fn blueprint_panel_ui(
 }
 
 fn title_bar_ui(
-    blueprint: &mut ViewportBlueprint,
+    blueprint: &mut ViewportBlueprint<'_>,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
@@ -63,7 +63,7 @@ fn title_bar_ui(
 }
 
 fn reset_button_ui(
-    blueprint: &mut ViewportBlueprint,
+    blueprint: &mut ViewportBlueprint<'_>,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
@@ -74,6 +74,6 @@ fn reset_button_ui(
         .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
         .clicked()
     {
-        *blueprint = ViewportBlueprint::new(ctx, spaces_info);
+        blueprint.reset(ctx, spaces_info);
     }
 }

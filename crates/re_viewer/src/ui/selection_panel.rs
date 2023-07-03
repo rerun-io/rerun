@@ -124,7 +124,7 @@ fn has_data_section(item: &Item) -> bool {
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
-    viewport: &mut ViewportBlueprint,
+    viewport: &mut ViewportBlueprint<'_>,
     item: &Item,
 ) {
     match item {
@@ -315,7 +315,7 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     entity_path: &EntityPath,
-    blueprint: &ViewportBlueprint,
+    blueprint: &ViewportBlueprint<'_>,
 ) {
     let space_views_with_path = blueprint.space_views_containing_entity_path(entity_path);
 
