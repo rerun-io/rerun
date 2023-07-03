@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
+
 from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
 
 from .._baseclasses import Archetype
 
@@ -15,7 +20,9 @@ from .. import components
 
 @dataclass
 class Points2D(Archetype):
-    """A 2D point cloud with positions and optional colors, radii, labels, etc."""
+    """
+    A 2D point cloud with positions and optional colors, radii, labels, etc.
+    """
 
     points: components.Point2DArray = field(metadata={"component": "primary"})
     """

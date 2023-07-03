@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Sequence, Tuple, Union
-
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
 
 from .._baseclasses import Component
 
@@ -19,7 +19,9 @@ __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2
 
 @dataclass
 class Point2D:
-    """A point in 2D space."""
+    """
+    A point in 2D space.
+    """
 
     x: float
     y: float
