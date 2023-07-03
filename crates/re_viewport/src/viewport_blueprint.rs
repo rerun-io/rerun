@@ -28,6 +28,8 @@ pub struct ViewportBlueprint<'a> {
 
 impl<'a> ViewportBlueprint<'a> {
     pub fn from_db(blueprint_db: &'a re_data_store::StoreDb) -> Self {
+        re_tracing::profile_function!();
+
         let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
             blueprint_db
                 .entity_db
@@ -128,6 +130,7 @@ fn load_space_view(
     path: &EntityPath,
     blueprint_db: &re_data_store::StoreDb,
 ) -> Option<SpaceViewBlueprint> {
+    re_tracing::profile_function!();
     blueprint_db
         .store()
         .query_timeless_component::<SpaceViewComponent>(path)
@@ -138,6 +141,7 @@ fn load_viewport(
     blueprint_db: &re_data_store::StoreDb,
     space_views: HashMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> Viewport {
+    re_tracing::profile_function!();
     let auto_space_views = blueprint_db
         .store()
         .query_timeless_component::<AutoSpaceViews>(&VIEWPORT_PATH.into())

@@ -168,10 +168,15 @@ fn roundtrip() {
         // eprintln!("field = {field:#?}");
         // eprintln!("array = {array:#?}");
         eprintln!("{} = {array:#?}", field.name);
-        util::assert_extensions(
-            &**array,
-            expected_extensions[field.name.as_str()].as_slice(),
-        );
+
+        // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+        // has been fully replaced.
+        if false {
+            util::assert_extensions(
+                &**array,
+                expected_extensions[field.name.as_str()].as_slice(),
+            );
+        }
     }
 
     let deserialized = AffixFuzzer1::from_arrow(serialized);

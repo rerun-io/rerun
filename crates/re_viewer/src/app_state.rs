@@ -141,8 +141,6 @@ impl AppState {
         egui::CentralPanel::default()
             .frame(central_panel_frame)
             .show_inside(ui, |ui| {
-                re_tracing::profile_function!();
-
                 let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
 
                 blueprint.viewport.on_frame_start(&mut ctx, &spaces_info);
