@@ -6,6 +6,21 @@ option(ARROW_LINK_SHARED "Link to the Arrow shared library" ON)
 
 find_package(Arrow REQUIRED)
 
+set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces
+
+# ------------------------------------------------------------------------------
+# Loguru, see https://github.com/emilk/loguru/blob/master/loguru_cmake_example/CMakeLists.txt
+include(FetchContent)
+FetchContent_Declare(LoguruGitRepo
+  GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
+  GIT_TAG "master"
+)
+
+# set any loguru compile-time flags before calling MakeAvailable()
+set(LOGURU_STACKTRACES 1)
+FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
+
+# ------------------------------------------------------------------------------
 if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -40,3 +55,5 @@ else()
 endif()
 
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../src) # for rerun.hpp
+
+target_link_libraries(rerun_example PRIVATE loguru::loguru)
