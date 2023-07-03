@@ -233,10 +233,10 @@ impl Docs {
                 })
                 .flat_map(|(tag, line)| {
                     if let Some((_, path)) = line.split_once("include:") {
-                        dbg!(include_file(&mut included_files, path)
+                        include_file(&mut included_files, path)
                             .lines()
                             .map(|line| (tag.clone(), line.to_owned()))
-                            .collect_vec())
+                            .collect_vec()
                     } else {
                         vec![(tag, line)]
                     }
