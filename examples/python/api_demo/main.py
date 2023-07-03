@@ -35,19 +35,17 @@ def run_segmentation() -> None:
     # Log a bunch of classified 2D points
     if rr.ENABLE_NEXT_GEN_API:
         # Note: this uses the new, WIP object-oriented API
-        rr.log_any("seg_demo/single_point", rr.Points2D(np.array([64, 64]), class_ids=13))
-        rr.log_any(
-            "seg_demo/single_point_labeled", rr.Points2D(np.array([90, 50]), class_ids=13, labels="labeled point")
-        )
-        rr.log_any("seg_demo/several_points0", rr.Points2D(np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42))
+        rr.log_any("seg_demo/single_point", rr.Points2D([64, 64], class_ids=13))
+        rr.log_any("seg_demo/single_point_labeled", rr.Points2D([90, 50], class_ids=13, labels="labeled point"))
+        rr.log_any("seg_demo/several_points0", rr.Points2D([[20, 50], [100, 70], [60, 30]], class_ids=42))
         rr.log_any(
             "seg_demo/several_points1",
-            rr.Points2D(np.array([[40, 50], [120, 70], [80, 30]]), class_ids=np.array([13, 42, 99], dtype=np.uint8)),
+            rr.Points2D([[40, 50], [120, 70], [80, 30]], class_ids=np.array([13, 42, 99], dtype=np.uint8)),
         )
         rr.log_any(
             "seg_demo/many points",
             rr.Points2D(
-                np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
+                [[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)],
                 class_ids=np.array([42], dtype=np.uint8),
             ),
         )

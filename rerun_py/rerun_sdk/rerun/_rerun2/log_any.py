@@ -85,13 +85,13 @@ def log_any(
     Parameters
     ----------
     entity_path:
-        Path to the points in the space hierarchy.
+        Path to the entity in the space hierarchy.
     entity: Archetype
         The archetype object representing the entity.
     ext:
         Optional dictionary of extension components. See [rerun.log_extension_components][]
     timeless:
-        If true, the points will be timeless (default: False).
+        If true, the entity will be timeless (default: False).
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -108,7 +108,7 @@ def log_any(
     instanced: dict[str, Component] = {}
     splats: dict[str, Component] = {}
 
-    # find canonical length of this entity by extracting the maximum length of the
+    # find canonical length of this entity by based on the longest length of any primary component
     archetype_length = max(len(comp) for comp, primary in _extract_components(entity) if primary)
 
     for comp, primary in _extract_components(entity):
