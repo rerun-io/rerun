@@ -113,4 +113,4 @@ For camera spaces this could for instance be `rr.log_view_coordinates("world/cam
 
 For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log_view_coordinates("world", up="+Z", timeless=True)`.
 
-For 2D spaces and other entities the view coordinates currently do nothing.
+For 2D spaces and other entities the view coordinates currently do nothing (https://github.com/rerun-io/rerun/issues/1387).
