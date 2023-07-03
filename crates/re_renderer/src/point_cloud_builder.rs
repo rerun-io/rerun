@@ -1,10 +1,7 @@
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     draw_phases::PickingLayerObjectId,
-    renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PointCloudVertex,
-    },
+    renderer::{PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudVertex},
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
 };
