@@ -5,8 +5,8 @@ A collection of many small examples, in one file.
 It uses a lot of different aspects of the Rerun API in order to test it.
 
 Example usage:
-* Run all demos: `examples/python/api_demo/main.py`
-* Run specific demo: `examples/python/api_demo/main.py --demo rects`
+* Run all demos: `examples/python/test_api/main.py`
+* Run specific demo: `examples/python/test_api/main.py --demo rects`
 """
 from __future__ import annotations
 
@@ -458,7 +458,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.split_recordings:
-        rec = rr.script_setup(args, "api_demo")
+        rec = rr.script_setup(args, "test_api")
 
     if args.demo in ["most", "all"]:
         print(f"Running {args.demo} demos…")
@@ -470,7 +470,7 @@ def main() -> None:
                 continue
 
             if args.split_recordings:
-                rec = rr.script_setup(args, f"api_demo/{name}")
+                rec = rr.script_setup(args, f"test_api/{name}")
 
             if args.multithread:
                 t = threading.Thread(
@@ -491,7 +491,7 @@ def main() -> None:
             t.join()
     else:
         if args.split_recordings:
-            with rr.script_setup(args, f"api_demo/{args.demo}"):
+            with rr.script_setup(args, f"test_api/{args.demo}"):
                 demos[args.demo]()
         else:
             demos[args.demo]()
