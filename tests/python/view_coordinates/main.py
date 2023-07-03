@@ -39,7 +39,9 @@ img[0:3, 3:25] = [255, 0, 0]
 rr.log_view_coordinates("world", xyz="RFU")
 
 
-def log_camera(path_prefix: str, translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64], forward) -> None:
+def log_camera(
+    path_prefix: str, translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64], forward: npt.ArrayLike
+) -> None:
     [height, width, _channels] = img.shape
     u_cen = width / 2
     v_cen = height / 2
@@ -63,26 +65,20 @@ def log_camera(path_prefix: str, translation: npt.ArrayLike, xyz: str, img: npt.
 # Log a series of pinhole cameras only differing by their view coordinates and some offset.
 # Not all possible, but a fair sampling.
 
-# All permutations of RDF:
+# All right-handed permutations of RDF:
 log_camera("rdf-perms", [2, -2, 0], "RDF", img, forward=[0, 0, 1])
-log_camera("rdf-perms", [2, -1, 0], "DRF", img, forward=[0, 0, 1])
 log_camera("rdf-perms", [2, 0, 0], "FRD", img, forward=[1, 0, 0])
-log_camera("rdf-perms", [2, 1, 0], "RFD", img, forward=[0, 1, 0])
 log_camera("rdf-perms", [2, 2, 0], "DFR", img, forward=[0, 1, 0])
 
-# # All permutations of LUB:
-log_camera("lub-like", [0, -2, 0], "LUB", img, forward=[0, 0, -1])
-log_camera("lub-like", [0, -1, 0], "ULB", img, forward=[0, 0, -1])
-log_camera("lub-like", [0, 0, 0], "BLU", img, forward=[-1, 0, 0])
-log_camera("lub-like", [0, 1, 0], "LBU", img, forward=[0, -1, 0])
+# All right-handed permutations of LUB:
+log_camera("lub-like", [0, -2, 0], "ULB", img, forward=[0, 0, -1])
+log_camera("lub-like", [0, 0, 0], "LBU", img, forward=[0, -1, 0])
 log_camera("lub-like", [0, 2, 0], "BUL", img, forward=[-1, 0, 0])
 
-# # All permutations of LUF:
+# All permutations of LUF:
 log_camera("luf-like", [-2, -2, 0], "LUF", img, forward=[0, 0, 1])
-log_camera("luf-like", [-2, -1, 0], "ULF", img, forward=[0, 0, 1])
 log_camera("luf-like", [-2, 0, 0], "FLU", img, forward=[1, 0, 0])
-log_camera("luf-like", [-2, 1, 0], "LFU", img, forward=[0, 1, 0])
-log_camera("luf-like", [-2, 2, 0], "FUL", img, forward=[1, 0, 0])
+log_camera("luf-like", [-2, 2, 0], "UFL", img, forward=[0, 1, 0])
 
 
 rr.script_teardown(args)
