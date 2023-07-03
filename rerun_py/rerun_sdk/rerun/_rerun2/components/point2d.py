@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+from .._baseclasses import Component
+
+__all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
+
+
+## --- Point2D --- ##
 
 
 @dataclass
@@ -34,7 +39,7 @@ class Point2DType(pa.ExtensionType):  # type: ignore[misc]
     def __init__(self: type[pa.ExtensionType]) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct([pa.field("x", pa.float32(), True, {}), pa.field("y", pa.float32(), True, {})]),
+            pa.struct([pa.field("x", pa.float32(), False, {}), pa.field("y", pa.float32(), False, {})]),
             "rerun.point2d",
         )
 
@@ -57,7 +62,9 @@ class Point2DType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(Point2DType())
 
 
-class Point2DArray(pa.ExtensionArray, Point2DArrayExt):  # type: ignore[misc]
+class Point2DArray(Component, Point2DArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.point2d"
+
     @staticmethod
     def from_similar(data: Point2DArrayLike | None) -> pa.Array:
         if data is None:

@@ -1,3 +1,5 @@
 include "./archetypes/points2d.fbs";
 
+include "./testing/archetypes/fuzzy.fbs";
+
 namespace rerun.archetypes;

@@ -56,10 +56,10 @@ from .sinks import connect, disconnect, memory_recording, save, serve, spawn
 from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequence
 
 # Next-gen API imports
-# TODO(ab): remove this guard, here to make it easy to "hide" the next gen API if needed in the short term.
-_ENABLE_NEXT_GEN_API = True
-if _ENABLE_NEXT_GEN_API:
+ENABLE_NEXT_GEN_API = True
+if ENABLE_NEXT_GEN_API:
     from ._rerun2.archetypes import *
+    from ._rerun2.log_any import log_any
 
 
 def _init_recording_stream() -> None:

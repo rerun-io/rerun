@@ -6,7 +6,7 @@
 **/target_wasm
 
 # Python virtual environment:
-**/venv
+**/venv*
 
 # Python build artifacts:
 __pycache__
@@ -23,3 +23,5 @@ screenshot*.png
 
 # Web demo app build
 web_demo
+
+.nox/

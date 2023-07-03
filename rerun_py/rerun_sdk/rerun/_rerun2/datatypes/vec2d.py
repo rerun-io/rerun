@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+__all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
+
+
+## --- Vec2D --- ##
 
 
 @dataclass
@@ -57,7 +60,9 @@ class Vec2DType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(Vec2DType())
 
 
-class Vec2DArray(pa.ExtensionArray, Vec2DArrayExt):  # type: ignore[misc]
+class Vec2DArray(Vec2DArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.datatypes.Vec2D"
+
     @staticmethod
     def from_similar(data: Vec2DArrayLike | None) -> pa.Array:
         if data is None:

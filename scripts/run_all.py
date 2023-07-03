@@ -7,8 +7,10 @@ import argparse
 import os
 import socket
 import subprocess
+import sys
 import time
 from glob import glob
+from pathlib import Path
 from types import TracebackType
 from typing import Any
 
@@ -24,6 +26,18 @@ HAS_NO_SAVE_ARG = {
     "examples/python/minimal",
     "examples/python/multiprocessing",
 }
+
+MIN_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
+    # pyopf requires Python 3.10
+    "examples/python/open_photogrammetry_format": (3, 10),
+}
+
+SKIP_LIST = [
+    # depth_sensor requires a specific piece of hardware to be attached
+    "examples/python/live_depth_sensor",
+    # ros requires complex system dependencies to be installed
+    "examples/python/ros_node",
+]
 
 
 def start_process(args: list[str], *, wait: bool) -> Any:
@@ -75,7 +89,7 @@ def get_free_port() -> int:
 
 def collect_examples(fast: bool) -> list[str]:
     if fast:
-        # cherry picked
+        # cherry-picked
         return [
             "examples/python/api_demo",
             "examples/python/car",
@@ -89,16 +103,22 @@ def collect_examples(fast: bool) -> list[str]:
             "examples/python/text_logging",
         ]
     else:
-        skip_list = [
-            # depth_sensor requires a specific piece of hardware to be attached
-            "examples/python/live_depth_sensor/main.py",
-            # ros requires complex system dependencies to be installed
-            "examples/python/ros_node/main.py",
-        ]
+        examples = []
+        for main_path in glob("examples/python/**/main.py"):
+            example = os.path.dirname(main_path)
 
-        return [
-            os.path.dirname(main_path) for main_path in glob("examples/python/**/main.py") if main_path not in skip_list
-        ]
+            if example in SKIP_LIST:
+                continue
+
+            if example in MIN_PYTHON_REQUIREMENTS:
+                req_major, req_minor = MIN_PYTHON_REQUIREMENTS[example]
+                major, minor, *_ = sys.version_info
+                if major < req_major or (major == req_major and minor < req_minor):
+                    continue
+
+            examples.append(example)
+
+        return examples
 
 
 def print_example_output(path: str, example: Any) -> None:
@@ -180,6 +200,25 @@ def run_viewer_build(web: bool) -> None:
             "--no-default-features",
             "--features=web_viewer" if web else "--features=native_viewer",
             "--quiet",
+        ]
+    ).wait()
+    assert returncode == 0, f"process exited with error code {returncode}"
+
+
+def run_install_requirements(examples: list[str]) -> None:
+    """Install dependencies for the provided list of examples if they have a requirements.txt file."""
+    args = []
+    for example in examples:
+        req = Path(example) / "requirements.txt"
+        if req.exists():
+            args.extend(["-r", req])
+
+    print("Installing examples requirements…")
+    returncode = subprocess.Popen(
+        [
+            "pip",
+            "install",
+            *args,
         ]
     ).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
@@ -283,6 +322,9 @@ def run_native(examples: list[str], separate: bool, close: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Runs all examples.")
     parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK.")
+    parser.add_argument(
+        "--install-requirements", action="store_true", help="Install Python requirements for each example."
+    )
     parser.add_argument("--web", action="store_true", help="Run examples in a web viewer.")
     parser.add_argument(
         "--save",
@@ -305,6 +347,9 @@ def main() -> None:
             run_sdk_build()
         if not args.save:
             run_viewer_build(args.web)
+
+    if args.install_requirements:
+        run_install_requirements(examples)
 
     if args.web:
         run_web(examples, separate=args.separate)

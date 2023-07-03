@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-__all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+from .._baseclasses import Component
+
+__all__ = ["ClassId", "ClassIdArray", "ClassIdArrayLike", "ClassIdLike", "ClassIdType"]
+
+
+## --- ClassId --- ##
 
 
 @dataclass
@@ -62,7 +67,9 @@ class ClassIdType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(ClassIdType())
 
 
-class ClassIdArray(pa.ExtensionArray, ClassIdArrayExt):  # type: ignore[misc]
+class ClassIdArray(Component, ClassIdArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.class_id"
+
     @staticmethod
     def from_similar(data: ClassIdArrayLike | None) -> pa.Array:
         if data is None:

@@ -35,8 +35,11 @@ arrow2 = { workspace = true, features = [
   "io_print",
   "compute_concatenate",
 ] }
+anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["derive", "extern_crate_alloc"] }
 document-features = "0.2"
+itertools.workspace = true
+thiserror.workspace = true
 
 # External (optional)
 ecolor = { workspace = true, optional = true }

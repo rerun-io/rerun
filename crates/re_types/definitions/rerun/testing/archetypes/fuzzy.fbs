@@ -1,0 +1,50 @@
+include "fbs/attributes.fbs";
+
+include "rerun/testing/components/fuzzy.fbs";
+
+namespace rerun.testing.archetypes;
+
+// ---
+
+// TODO(cmc): we actually have an opportunity to resolve the nullability situation here if we make
+// component_required vs. required do different things:
+// - component_required affects the nullability of the component itself at the archetype level (as it does today)
+// - required affects the nullability of the element values for the underlying array (both native and arrow)
+
+table AffixFuzzer1 (
+  "attr.rust.derive": "Debug, Clone, PartialEq",
+  order: 100
+) {
+  fuzz1001: rerun.testing.components.AffixFuzzer1 ("attr.rerun.component_required", required, order: 1001);
+  fuzz1002: rerun.testing.components.AffixFuzzer2 ("attr.rerun.component_required", required, order: 1002);
+  fuzz1003: rerun.testing.components.AffixFuzzer3 ("attr.rerun.component_required", required, order: 1003);
+  fuzz1004: rerun.testing.components.AffixFuzzer4 ("attr.rerun.component_required", required, order: 1004);
+  fuzz1005: rerun.testing.components.AffixFuzzer5 ("attr.rerun.component_required", required, order: 1005);
+  fuzz1006: rerun.testing.components.AffixFuzzer6 ("attr.rerun.component_required", required, order: 1006);
+  fuzz1007: rerun.testing.components.AffixFuzzer7 ("attr.rerun.component_required", required, order: 1007);
+
+  fuzz1101: [rerun.testing.components.AffixFuzzer1] ("attr.rerun.component_required", required, order: 1101);
+  fuzz1102: [rerun.testing.components.AffixFuzzer2] ("attr.rerun.component_required", required, order: 1102);
+  fuzz1103: [rerun.testing.components.AffixFuzzer3] ("attr.rerun.component_required", required, order: 1103);
+  fuzz1104: [rerun.testing.components.AffixFuzzer4] ("attr.rerun.component_required", required, order: 1104);
+  fuzz1105: [rerun.testing.components.AffixFuzzer5] ("attr.rerun.component_required", required, order: 1105);
+  fuzz1106: [rerun.testing.components.AffixFuzzer6] ("attr.rerun.component_required", required, order: 1106);
+  fuzz1107: [rerun.testing.components.AffixFuzzer7] ("attr.rerun.component_required", required, order: 1107);
+
+  fuzz2001: rerun.testing.components.AffixFuzzer1 ("attr.rerun.component_optional", order: 2001);
+  fuzz2002: rerun.testing.components.AffixFuzzer2 ("attr.rerun.component_optional", order: 2002);
+  fuzz2003: rerun.testing.components.AffixFuzzer3 ("attr.rerun.component_optional", order: 2003);
+  fuzz2004: rerun.testing.components.AffixFuzzer4 ("attr.rerun.component_optional", order: 2004);
+  fuzz2005: rerun.testing.components.AffixFuzzer5 ("attr.rerun.component_optional", order: 2005);
+  fuzz2006: rerun.testing.components.AffixFuzzer6 ("attr.rerun.component_optional", order: 2006);
+  fuzz2007: rerun.testing.components.AffixFuzzer7 ("attr.rerun.component_optional", order: 2007);
+
+  fuzz2101: [rerun.testing.components.AffixFuzzer1] ("attr.rerun.component_optional", order: 2101);
+  fuzz2102: [rerun.testing.components.AffixFuzzer2] ("attr.rerun.component_optional", order: 2102);
+  fuzz2103: [rerun.testing.components.AffixFuzzer3] ("attr.rerun.component_optional", order: 2103);
+  fuzz2104: [rerun.testing.components.AffixFuzzer4] ("attr.rerun.component_optional", order: 2104);
+  fuzz2105: [rerun.testing.components.AffixFuzzer5] ("attr.rerun.component_optional", order: 2105);
+  fuzz2106: [rerun.testing.components.AffixFuzzer6] ("attr.rerun.component_optional", order: 2106);
+  fuzz2107: [rerun.testing.components.AffixFuzzer7] ("attr.rerun.component_optional", order: 2107);
+}
+

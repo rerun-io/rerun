@@ -92,8 +92,8 @@ def log_text_entry_internal(
     else:
         logging.warning(f"Null  text entry in log_text_entry('{entity_path}') will be dropped.")
 
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     if splats:

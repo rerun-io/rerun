@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-__all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import pyarrow as pa
+
+from .._baseclasses import Component
+
+__all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
+
+
+## --- Label --- ##
 
 
 @dataclass
@@ -56,7 +61,9 @@ class LabelType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(LabelType())
 
 
-class LabelArray(pa.ExtensionArray, LabelArrayExt):  # type: ignore[misc]
+class LabelArray(Component, LabelArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.label"
+
     @staticmethod
     def from_similar(data: LabelArrayLike | None) -> pa.Array:
         if data is None:

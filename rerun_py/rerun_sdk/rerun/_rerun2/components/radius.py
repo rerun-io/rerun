@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-__all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+from .._baseclasses import Component
+
+__all__ = ["Radius", "RadiusArray", "RadiusArrayLike", "RadiusLike", "RadiusType"]
+
+
+## --- Radius --- ##
 
 
 @dataclass
@@ -55,7 +60,9 @@ class RadiusType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(RadiusType())
 
 
-class RadiusArray(pa.ExtensionArray, RadiusArrayExt):  # type: ignore[misc]
+class RadiusArray(Component, RadiusArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.radius"
+
     @staticmethod
     def from_similar(data: RadiusArrayLike | None) -> pa.Array:
         if data is None:

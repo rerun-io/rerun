@@ -4,7 +4,9 @@ use anyhow::Context as _;
 use arrow2::datatypes::{DataType, Field, UnionMode};
 use std::collections::{BTreeMap, HashMap};
 
-use crate::{ElementType, Object, Type, ATTR_ARROW_SPARSE_UNION, ATTR_ARROW_TRANSPARENT};
+use crate::{
+    ElementType, Object, ObjectField, Type, ATTR_ARROW_SPARSE_UNION, ATTR_ARROW_TRANSPARENT,
+};
 
 // --- Registry ---
 
@@ -18,7 +20,7 @@ pub struct ArrowRegistry {
 impl ArrowRegistry {
     /// Computes the Arrow datatype for the specified object and stores it in the registry, to be
     /// resolved later on.
-    pub fn register(&mut self, obj: &Object) {
+    pub fn register(&mut self, obj: &mut Object) {
         let (fqname, datatype) = (obj.fqname.clone(), self.arrow_datatype_from_object(obj));
         self.registry.insert(fqname, datatype);
     }
@@ -48,7 +50,7 @@ impl ArrowRegistry {
 
     // ---
 
-    fn arrow_datatype_from_object(&self, obj: &Object) -> LazyDatatype {
+    fn arrow_datatype_from_object(&mut self, obj: &mut Object) -> LazyDatatype {
         let is_struct = obj.is_struct();
         let is_transparent = obj.try_get_attr::<String>(ATTR_ARROW_TRANSPARENT).is_some();
         let num_fields = obj.fields.len();
@@ -59,18 +61,25 @@ impl ArrowRegistry {
             obj.fqname,
         );
 
-        if is_transparent {
-            self.arrow_datatype_from_type(&obj.fields[0].typ)
+        let datatype = if is_transparent {
+            LazyDatatype::Extension(
+                obj.fqname.clone(),
+                Box::new(
+                    self.arrow_datatype_from_type(obj.fields[0].typ.clone(), &mut obj.fields[0]),
+                ),
+                None,
+            )
         } else if is_struct {
             LazyDatatype::Extension(
                 obj.fqname.clone(),
                 Box::new(LazyDatatype::Struct(
                     obj.fields
-                        .iter()
-                        .map(|field| LazyField {
-                            name: field.name.clone(),
-                            datatype: self.arrow_datatype_from_type(&field.typ),
-                            is_nullable: field.required,
+                        .iter_mut()
+                        .map(|obj_field| LazyField {
+                            name: obj_field.name.clone(),
+                            datatype: self
+                                .arrow_datatype_from_type(obj_field.typ.clone(), obj_field),
+                            is_nullable: obj_field.is_nullable,
                             metadata: Default::default(),
                         })
                         .collect(),
@@ -85,10 +94,10 @@ impl ArrowRegistry {
                 obj.fqname.clone(),
                 Box::new(LazyDatatype::Union(
                     obj.fields
-                        .iter()
+                        .iter_mut()
                         .map(|field| LazyField {
                             name: field.name.clone(),
-                            datatype: self.arrow_datatype_from_type(&field.typ),
+                            datatype: self.arrow_datatype_from_type(field.typ.clone(), field),
                             is_nullable: false,
                             metadata: Default::default(),
                         })
@@ -102,11 +111,18 @@ impl ArrowRegistry {
                 )),
                 None,
             )
+        };
+
+        // NOTE: Arrow-transparent objects by definition don't have a datatype of their own.
+        if !is_transparent {
+            obj.datatype = datatype.clone().into();
         }
+
+        datatype
     }
 
-    fn arrow_datatype_from_type(&self, typ: &Type) -> LazyDatatype {
-        match typ {
+    fn arrow_datatype_from_type(&mut self, typ: Type, field: &mut ObjectField) -> LazyDatatype {
+        let datatype = match typ {
             Type::UInt8 => LazyDatatype::UInt8,
             Type::UInt16 => LazyDatatype::UInt16,
             Type::UInt32 => LazyDatatype::UInt32,
@@ -124,22 +140,27 @@ impl ArrowRegistry {
                 Box::new(LazyField {
                     name: "item".into(),
                     datatype: self.arrow_datatype_from_element_type(elem_type),
-                    is_nullable: false,
+                    is_nullable: field.is_nullable,
                     metadata: Default::default(),
                 }),
-                *length,
+                length,
             ),
             Type::Vector { elem_type } => LazyDatatype::List(Box::new(LazyField {
                 name: "item".into(),
                 datatype: self.arrow_datatype_from_element_type(elem_type),
-                is_nullable: false,
+                is_nullable: field.is_nullable,
                 metadata: Default::default(),
             })),
-            Type::Object(fqname) => LazyDatatype::Unresolved(fqname.clone()),
-        }
+            Type::Object(fqname) => LazyDatatype::Unresolved(fqname),
+        };
+
+        field.datatype = datatype.clone().into();
+        self.registry.insert(field.fqname.clone(), datatype.clone());
+
+        datatype
     }
 
-    fn arrow_datatype_from_element_type(&self, typ: &ElementType) -> LazyDatatype {
+    fn arrow_datatype_from_element_type(&self, typ: ElementType) -> LazyDatatype {
         _ = self;
         match typ {
             ElementType::UInt8 => LazyDatatype::UInt8,
@@ -155,7 +176,7 @@ impl ArrowRegistry {
             ElementType::Float32 => LazyDatatype::Float32,
             ElementType::Float64 => LazyDatatype::Float64,
             ElementType::String => LazyDatatype::Utf8,
-            ElementType::Object(fqname) => LazyDatatype::Unresolved(fqname.clone()),
+            ElementType::Object(fqname) => LazyDatatype::Unresolved(fqname),
         }
     }
 }

@@ -105,8 +105,8 @@ def log_obb(
         else:
             raise TypeError("rotation should be 1x4")
 
-    if color:
-        colors = _normalize_colors([color])
+    if color is not None:
+        colors = _normalize_colors(color)
         instanced["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
     # We store the stroke_width in radius

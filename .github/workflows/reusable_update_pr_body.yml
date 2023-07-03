@@ -35,7 +35,7 @@ jobs:
           python-version: 3.x
 
       - name: Install deps
-        run: pip install PyGithub # NOLINT
+        run: pip install Jinja2 PyGithub # NOLINT
 
       - name: Update PR description
         run: |

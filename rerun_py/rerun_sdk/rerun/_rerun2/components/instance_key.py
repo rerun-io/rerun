@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-__all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
-
 from dataclasses import dataclass
 from typing import Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+
+from .._baseclasses import Component
+
+__all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceKeyLike", "InstanceKeyType"]
+
+
+## --- InstanceKey --- ##
 
 
 @dataclass
@@ -55,7 +60,9 @@ class InstanceKeyType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(InstanceKeyType())
 
 
-class InstanceKeyArray(pa.ExtensionArray, InstanceKeyArrayExt):  # type: ignore[misc]
+class InstanceKeyArray(Component, InstanceKeyArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.instance_key"
+
     @staticmethod
     def from_similar(data: InstanceKeyArrayLike | None) -> pa.Array:
         if data is None:
