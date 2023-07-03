@@ -35,8 +35,7 @@ img[3:25, 0:3] = [0, 255, 0]
 img[0:3, 3:25] = [255, 0, 0]
 
 
-# Make world's Z the up axis.
-rr.log_view_coordinates("world", xyz="RFU")
+rr.log_view_coordinates("world", up="+Z")
 
 
 def log_camera(
