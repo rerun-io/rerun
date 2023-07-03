@@ -11,6 +11,7 @@ mod space_view_highlights;
 mod view_category;
 mod viewport;
 mod viewport_blueprint;
+mod viewport_blueprint_ui;
 
 pub mod blueprint_components;
 

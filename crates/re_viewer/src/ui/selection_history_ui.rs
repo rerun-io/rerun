@@ -14,7 +14,7 @@ impl SelectionHistoryUi {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
-        blueprint: &ViewportBlueprint<'_>,
+        blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         ui.horizontal_centered(|ui| {
@@ -36,7 +36,7 @@ impl SelectionHistoryUi {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
-        blueprint: &ViewportBlueprint<'_>,
+        blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // undo selection
@@ -80,7 +80,7 @@ impl SelectionHistoryUi {
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
-        blueprint: &ViewportBlueprint<'_>,
+        blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // redo selection
@@ -123,7 +123,7 @@ impl SelectionHistoryUi {
     #[allow(clippy::unused_self)]
     fn history_item_ui(
         &mut self,
-        blueprint: &ViewportBlueprint<'_>,
+        blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
         index: usize,
         history: &mut SelectionHistory,
@@ -154,7 +154,7 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn item_collection_to_string(blueprint: &ViewportBlueprint<'_>, items: &ItemCollection) -> String {
+fn item_collection_to_string(blueprint: &ViewportBlueprint, items: &ItemCollection) -> String {
     assert!(!items.is_empty()); // history never contains empty selections.
     if items.len() == 1 {
         item_to_string(blueprint, items.iter().next().unwrap())
@@ -165,10 +165,10 @@ fn item_collection_to_string(blueprint: &ViewportBlueprint<'_>, items: &ItemColl
     }
 }
 
-fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
+fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
         Item::SpaceView(sid) => {
-            if let Some(space_view) = blueprint.viewport.space_view(sid) {
+            if let Some(space_view) = blueprint.space_view(sid) {
                 space_view.display_name.clone()
             } else {
                 "<removed space view>".to_owned()
@@ -176,7 +176,7 @@ fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
         }
         Item::InstancePath(_, entity_path) => entity_path.to_string(),
         Item::DataBlueprintGroup(sid, handle) => {
-            if let Some(space_view) = blueprint.viewport.space_view(sid) {
+            if let Some(space_view) = blueprint.space_view(sid) {
                 if let Some(group) = space_view.data_blueprint.group(*handle) {
                     group.display_name.clone()
                 } else {

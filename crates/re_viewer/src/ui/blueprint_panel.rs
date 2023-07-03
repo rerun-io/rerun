@@ -1,9 +1,9 @@
 use re_viewer_context::ViewerContext;
-use re_viewport::{SpaceInfoCollection, Viewport, ViewportBlueprint};
+use re_viewport::{SpaceInfoCollection, ViewportBlueprint};
 
 /// Show the left-handle panel based on the current [`ViewportBlueprint`]
 pub fn blueprint_panel_ui(
-    blueprint: &mut ViewportBlueprint<'_>,
+    blueprint: &mut ViewportBlueprint,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
@@ -28,13 +28,13 @@ pub fn blueprint_panel_ui(
             ..Default::default()
         }
         .show(ui, |ui| {
-            blueprint.viewport.tree_ui(ctx, ui);
+            blueprint.tree_ui(ctx, ui);
         });
     });
 }
 
 fn title_bar_ui(
-    blueprint: &mut ViewportBlueprint<'_>,
+    blueprint: &mut ViewportBlueprint,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
@@ -54,9 +54,7 @@ fn title_bar_ui(
                     ui.available_size_before_wrap(),
                     egui::Layout::right_to_left(egui::Align::Center),
                     |ui| {
-                        blueprint
-                            .viewport
-                            .add_new_spaceview_button_ui(ctx, ui, spaces_info);
+                        blueprint.add_new_spaceview_button_ui(ctx, ui, spaces_info);
                         reset_button_ui(blueprint, ctx, ui, spaces_info);
                     },
                 );
@@ -65,7 +63,7 @@ fn title_bar_ui(
 }
 
 fn reset_button_ui(
-    blueprint: &mut ViewportBlueprint<'_>,
+    blueprint: &mut ViewportBlueprint,
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
@@ -76,6 +74,6 @@ fn reset_button_ui(
         .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
         .clicked()
     {
-        blueprint.viewport = Viewport::new(ctx, spaces_info);
+        *blueprint = ViewportBlueprint::new(ctx, spaces_info);
     }
 }
