@@ -7,7 +7,7 @@ from typing import Any, Sequence, Union
 
 import pyarrow as pa
 
-from ._base import Component
+from .._baseclasses import Component
 
 __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 

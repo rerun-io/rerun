@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from ._base import Component
+from .._baseclasses import Component
 
 __all__ = ["Point2D", "Point2DArray", "Point2DArrayLike", "Point2DLike", "Point2DType"]
 

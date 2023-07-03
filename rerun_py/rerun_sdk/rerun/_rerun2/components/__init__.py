@@ -81,7 +81,7 @@ __all__ = [
     "RadiusType",
 ]
 
-from ._base import Component
+from .._baseclasses import Component
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType

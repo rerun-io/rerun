@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ._base import Archetype
+from .._baseclasses import Archetype
 
 __all__ = ["Points2D"]
 

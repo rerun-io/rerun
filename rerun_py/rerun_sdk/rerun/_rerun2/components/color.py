@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from ._base import Component
+from .._baseclasses import Component
 
 __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
