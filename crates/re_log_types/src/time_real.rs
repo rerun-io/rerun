@@ -73,13 +73,10 @@ impl From<f32> for TimeReal {
         assert!(!value.is_nan());
         if let Some(num) = FixedI128::checked_from_num(value) {
             Self(num)
+        } else if value < 0.0 {
+            Self::MIN
         } else {
-            // underflow or overflow
-            if value < 0.0 {
-                Self::MIN
-            } else {
-                Self::MAX
-            }
+            Self::MAX
         }
     }
 }
@@ -91,13 +88,10 @@ impl From<f64> for TimeReal {
         assert!(!value.is_nan());
         if let Some(num) = FixedI128::checked_from_num(value) {
             Self(num)
+        } else if value < 0.0 {
+            Self::MIN
         } else {
-            // unde
-            if value < 0.0 {
-                Self::MIN
-            } else {
-                Self::MAX
-            }
+            Self::MAX
         }
     }
 }
