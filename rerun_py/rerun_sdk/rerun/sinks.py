@@ -14,7 +14,7 @@ def connect(addr: str | None = None, recording: RecordingStream | None = None) -
     """
     Connect to a remote Rerun Viewer on the given ip:port.
 
-    Requires that you first start a Rerun Viewer, e.g. with 'python -m rerun'
+    Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
 
     This function returns immediately.
 
@@ -111,7 +111,7 @@ def serve(
     """
     Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
 
-    You can connect to this server using `python -m rerun`.
+    You can also connect to this server with the native viewer using `rerun localhost:9090`.
 
     WARNING: This is an experimental feature.
 
