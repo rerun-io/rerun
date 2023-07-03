@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
-
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
 
 from .._baseclasses import Archetype
 

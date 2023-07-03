@@ -23,14 +23,14 @@ __all__ = [
 
 from .fuzzy import (
     AffixFuzzer1,
-    AffixFuzzer1Like,
     AffixFuzzer1Array,
     AffixFuzzer1ArrayLike,
+    AffixFuzzer1Like,
     AffixFuzzer1Type,
     AffixFuzzer2,
-    AffixFuzzer2Like,
     AffixFuzzer2Array,
     AffixFuzzer2ArrayLike,
+    AffixFuzzer2Like,
     AffixFuzzer2Type,
 )
-from .vec2d import Vec2D, Vec2DLike, Vec2DArray, Vec2DArrayLike, Vec2DType
+from .vec2d import Vec2D, Vec2DArray, Vec2DArrayLike, Vec2DLike, Vec2DType

@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any, Sequence, Union
+
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
-
 
 __all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
 
@@ -18,9 +17,7 @@ __all__ = ["Vec2D", "Vec2DArray", "Vec2DArrayLike", "Vec2DLike", "Vec2DType"]
 
 @dataclass
 class Vec2D:
-    """
-    A vector in 2D space.
-    """
+    """A vector in 2D space."""
 
     xy: npt.ArrayLike
 

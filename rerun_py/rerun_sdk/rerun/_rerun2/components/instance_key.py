@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any, Sequence, Union
+
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union
 
 from .._baseclasses import Component
 
@@ -19,9 +19,7 @@ __all__ = ["InstanceKey", "InstanceKeyArray", "InstanceKeyArrayLike", "InstanceK
 
 @dataclass
 class InstanceKey:
-    """
-    A unique numeric identifier for each individual instance within a batch.
-    """
+    """A unique numeric identifier for each individual instance within a batch."""
 
     value: int
 

@@ -5,6 +5,5 @@ from __future__ import annotations
 __all__ = ["Archetype", "AffixFuzzer1", "Points2D"]
 
 from .._baseclasses import Archetype
-
 from .fuzzy import AffixFuzzer1
 from .points2d import Points2D
