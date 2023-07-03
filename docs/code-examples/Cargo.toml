@@ -68,6 +68,10 @@ name = "point2d_simple"
 path = "point2d_simple.rs"
 
 [[bin]]
+name = "point2d_simple_v2"
+path = "point2d_simple_v2.rs"
+
+[[bin]]
 name = "point2d_random"
 path = "point2d_random.rs"
 
