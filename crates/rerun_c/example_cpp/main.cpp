@@ -5,14 +5,34 @@
 #include <rerun.hpp>
 
 int main(int argc, char** argv) {
+    loguru::g_preamble_uptime = false;
+    loguru::g_preamble_thread = false;
     loguru::init(argc, argv); // installs signal handlers
 
-    std::cerr << "Rerun C++ SDK version:" << rerun::version_string()
-              << std::endl;
+    LOG_F(INFO, "Rerun C++ SDK version: %s", rerun::version_string());
+
+    const RerunStoreInfo store_info = {
+        .application_id = "c-example-app",
+        .store_kind = RERUN_STORE_KIND_RECORDING,
+    };
+    RerunRecStream rec_stream =
+        rerun_rec_stream_new(&store_info, "0.0.0.0:9876");
 
     float xyz[9] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 5.0, 5.0, 5.0};
     auto points = rerun::points3(3, xyz).ValueOrDie();
     auto buffer = rerun::ipc_from_table(*points).ValueOrDie();
 
-    std::cerr << "Buffer size: " << buffer->size() << " bytes." << std::endl;
+    const RerunDataCell data_cells[1] = {RerunDataCell{
+        .component_name = "rerun.point3d",
+        .num_bytes = static_cast<uint64_t>(buffer->size()),
+        .bytes = buffer->data(),
+    }};
+
+    const RerunDataRow data_row = {.entity_path = "points",
+                                   .num_instances = 3,
+                                   .num_data_cells = 1,
+                                   .data_cells = data_cells};
+    rerun_log(rec_stream, &data_row);
+
+    rerun_rec_stream_free(rec_stream);
 }

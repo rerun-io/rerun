@@ -3,13 +3,11 @@
 #ifndef RERUN_HPP
 #define RERUN_HPP
 
-namespace rerun_c {
 #include <rerun.h>
-}
 
 namespace rerun {
     inline const char* version_string() {
-        return rerun_c::rerun_version_string();
+        return rerun_version_string();
     }
 } // namespace rerun
 
@@ -48,10 +46,9 @@ namespace rerun {
         auto y_builder = std::make_shared<arrow::FloatBuilder>(pool);
         auto z_builder = std::make_shared<arrow::FloatBuilder>(pool);
 
-        auto fields = {field("x", arrow::float32()),
-                       field("y", arrow::float32()),
-                       field("z", arrow::float32())};
-        auto data_type = arrow::struct_(fields);
+        auto data_type = arrow::struct_({field("x", arrow::float32()),
+                                         field("y", arrow::float32()),
+                                         field("z", arrow::float32())});
         auto struct_builder = arrow::StructBuilder(
             data_type, pool, {x_builder, y_builder, z_builder});
 
@@ -65,7 +62,9 @@ namespace rerun {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(struct_builder.Finish(&array));
 
-        auto schema = std::make_shared<arrow::Schema>(fields);
+        auto nullable = false;
+        auto schema =
+            arrow::schema({arrow::field("Point3DType", data_type, nullable)});
 
         return arrow::Table::Make(schema, {array});
     }

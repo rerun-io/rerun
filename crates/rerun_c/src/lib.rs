@@ -55,6 +55,7 @@ pub struct CDataCell {
     pub bytes: *const u8,
 }
 
+#[repr(C)]
 pub struct CDataRow {
     pub entity_path: *const c_char,
     pub num_instances: u32,
@@ -178,6 +179,10 @@ pub unsafe extern "C" fn rerun_log(stream: CRecStreamId, data_row: *const CDataR
     let entity_path =
         EntityPath::from(re_log_types::parse_entity_path(entity_path.to_str().unwrap()).unwrap());
 
+    re_log::debug!(
+        "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
+    );
+
     let cells = (0..num_data_cells)
         .map(|i| {
             let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
@@ -224,6 +229,11 @@ fn initialize_logging() {
 fn parse_arrow_ipc_encapsulated_message(
     bytes: &[u8],
 ) -> Result<Box<dyn arrow2::array::Array>, String> {
+    re_log::debug!(
+        "parse_arrow_ipc_encapsulated_message: {} bytes",
+        bytes.len()
+    );
+
     use arrow2::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
 
     let mut cursor = std::io::Cursor::new(bytes);
