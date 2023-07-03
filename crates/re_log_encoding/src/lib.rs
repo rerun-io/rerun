@@ -81,7 +81,7 @@ impl EncodingOptions {
         }
     }
 
-    pub fn to_bytes(&self) -> [u8; 4] {
+    pub fn to_bytes(self) -> [u8; 4] {
         [
             self.compression as u8,
             self.serializer as u8,

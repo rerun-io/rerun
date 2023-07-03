@@ -45,7 +45,7 @@ impl Time {
     }
 
     /// Returns the absolute datetime if applicable.
-    pub fn to_datetime(&self) -> Option<OffsetDateTime> {
+    pub fn to_datetime(self) -> Option<OffsetDateTime> {
         let ns_since_epoch = self.nanos_since_epoch();
         if self.is_absolute_date() {
             OffsetDateTime::from_unix_timestamp_nanos(ns_since_epoch as i128).ok()
