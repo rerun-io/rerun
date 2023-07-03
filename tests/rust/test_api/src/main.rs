@@ -4,12 +4,12 @@
 //!
 //! Run all demos:
 //! ```
-//! cargo run -p api_demo
+//! cargo run -p test_api
 //! ```
 //!
 //! Run specific demo:
 //! ```
-//! cargo run -p api_demo -- --demo rects
+//! cargo run -p test_api -- --demo rects
 //! ```
 
 use std::{collections::HashSet, f32::consts::TAU};
@@ -696,7 +696,7 @@ fn main() -> anyhow::Result<()> {
     let default_enabled = true;
     args.rerun
         .clone()
-        .run("api_demo_rs", default_enabled, move |rec_stream| {
+        .run("test_api_rs", default_enabled, move |rec_stream| {
             run(&rec_stream, &args).unwrap();
         })
 }
