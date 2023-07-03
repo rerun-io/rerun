@@ -63,6 +63,9 @@ impl EntityDb {
     fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         re_tracing::profile_function!();
 
+        #[cfg(debug_assertions)]
+        check_known_component_schemas(msg);
+
         // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
         let mut table = DataTable::from_arrow_msg(msg)?;
         table.compute_all_size_bytes();
@@ -167,6 +170,46 @@ impl EntityDb {
         {
             re_tracing::profile_scope!("tree");
             tree.purge(cutoff_times, drop_row_ids);
+        }
+    }
+}
+
+/// Check that known (`rerun.`) components have the expected schemas.
+#[cfg(debug_assertions)]
+fn check_known_component_schemas(msg: &ArrowMsg) {
+    // Check that we have the expected schemas
+    let known_fields: ahash::HashMap<&str, &arrow2::datatypes::Field> =
+        re_components::iter_registered_field_types()
+            .map(|field| (field.name.as_str(), field))
+            .collect();
+
+    for actual in &msg.schema.fields {
+        if let Some(expected) = known_fields.get(actual.name.as_str()) {
+            if let arrow2::datatypes::DataType::List(actual_field) = &actual.data_type {
+                if actual_field.data_type != expected.data_type {
+                    re_log::warn_once!(
+                        "The incoming component {:?} had the type:\n{:#?}\nExpected type:\n{:#?}",
+                        actual.name,
+                        actual_field.data_type,
+                        expected.data_type,
+                    );
+                }
+                if actual.is_nullable != expected.is_nullable {
+                    re_log::warn_once!(
+                        "The incoming component {:?} has is_nullable={}, expected is_nullable={}",
+                        actual.name,
+                        actual.is_nullable,
+                        expected.is_nullable,
+                    );
+                }
+            } else {
+                re_log::warn_once!(
+                    "The incoming component {:?} was:\n{:#?}\nExpected:\n{:#?}",
+                    actual.name,
+                    actual.data_type,
+                    expected.data_type,
+                );
+            }
         }
     }
 }
