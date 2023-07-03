@@ -14,6 +14,19 @@ namespace rerun.archetypes;
 // TODO(#2521): always derive debug & clone for rust backend
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.
+///
+/// \py Example
+/// \py -------
+/// \py
+/// \py ```python
+/// \py include:../../../../../docs/code-examples/point2d_simple_v2.py
+/// \py ```
+///
+/// \rs ## Example
+/// \rs
+/// \rs ```ignore
+/// \rs include:../../../../../docs/code-examples/point2d_simple_v2.rs
+/// \rs ```
 table Points2D (
   "attr.rust.derive": "Debug, Clone, PartialEq",
   order: 100

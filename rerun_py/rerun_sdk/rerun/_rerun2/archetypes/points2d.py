@@ -15,7 +15,22 @@ from .. import components
 
 @dataclass
 class Points2D(Archetype):
-    """A 2D point cloud with positions and optional colors, radii, labels, etc."""
+    """
+    A 2D point cloud with positions and optional colors, radii, labels, etc.
+
+    Example
+    -------
+    ```python
+    import rerun as rr
+
+    rr.init("points", spawn=True)
+
+    rr.log_any("simple", rr.Points2D([[0, 0], [1, 1]]))
+
+    # Log an extra rect to set the view bounds
+    rr.log_rect("bounds", [0, 0, 4, 3], rect_format=rr.RectFormat.XCYCWH)
+    ```
+    """
 
     points: components.Point2DArray = field(metadata={"component": "primary"})
     """
