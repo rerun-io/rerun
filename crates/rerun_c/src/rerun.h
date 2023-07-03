@@ -54,11 +54,18 @@ struct RerunDataCell {
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
 struct RerunDataRow {
-    const char* entity_path;  // Where to log to, e.g. `world/camera`.
-    uint32_t num_instances;   // Number of instances of this entity (e.g. number
-                              // of points in a point cloud).
-    uint32_t num_data_cells;  // Number of components.
-    const struct RerunDataCell* data_cells;  // One for each component.
+    /// Where to log to, e.g. `world/camera`.
+    const char* entity_path;
+
+    /// Number of instances of this entity (e.g. number of points in a point
+    /// cloud).
+    uint32_t num_instances;
+
+    /// Number of components.
+    uint32_t num_data_cells;
+
+    /// One for each component.
+    const struct RerunDataCell* data_cells;
 };
 
 // ----------------------------------------------------------------------------
@@ -96,4 +103,4 @@ extern void rerun_log(RerunRecStream stream,
 }
 #endif
 
-#endif  // RERUN_H
+#endif // RERUN_H
