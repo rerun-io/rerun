@@ -39,24 +39,20 @@ impl crate::Component for Point2D {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.components.Point2D".to_owned(),
-            Box::new(DataType::Struct(vec![
-                Field {
-                    name: "x".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "y".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-            ])),
-            None,
-        )
+        DataType::Struct(vec![
+            Field {
+                name: "x".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "y".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+        ])
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -82,7 +78,7 @@ impl crate::Component for Point2D {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                if let Some(ext) = extension_wrapper {
+                (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
                         Box::new(<crate::components::Point2D>::to_arrow_datatype()),
@@ -90,7 +86,9 @@ impl crate::Component for Point2D {
                     )
                 } else {
                     <crate::components::Point2D>::to_arrow_datatype()
-                },
+                })
+                .to_logical_type()
+                .clone(),
                 vec![
                     {
                         let (somes, x): (Vec<_>, Vec<_>) = data
@@ -110,7 +108,7 @@ impl crate::Component for Point2D {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::Float32
+                                DataType::Float32.to_logical_type().clone()
                             },
                             x.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             x_bitmap,
@@ -135,7 +133,7 @@ impl crate::Component for Point2D {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::Float32
+                                DataType::Float32.to_logical_type().clone()
                             },
                             y.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             y_bitmap,
