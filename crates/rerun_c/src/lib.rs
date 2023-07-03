@@ -267,7 +267,9 @@ fn parse_arrow_ipc_encapsulated_message(
 
     let arrays = chunk.into_arrays();
 
-    assert_eq!(arrays.len(), 1); // TODO: error message
+    if arrays.len() != 1 {
+        return Err(format!("Expected one array, got {}", arrays.len()));
+    }
 
     Ok(arrays.into_iter().next().unwrap())
 }
