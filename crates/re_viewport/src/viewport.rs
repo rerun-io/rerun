@@ -13,8 +13,9 @@ use re_viewer_context::{
 
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
+    space_view_heuristics::default_created_space_views,
     space_view_highlights::highlights_for_space_view, viewport_blueprint::load_viewport_blueprint,
-    SpaceViewBlueprint, ViewportBlueprint,
+    SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
 // ----------------------------------------------------------------------------
@@ -135,6 +136,49 @@ impl<'a, 'b> Viewport<'a, 'b> {
             re_tracing::profile_scope!("tree.ui");
             tree.ui(&mut tab_viewer, ui);
         });
+    }
+
+    pub fn on_frame_start(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        spaces_info: &SpaceInfoCollection,
+    ) {
+        re_tracing::profile_function!();
+
+        for space_view in self.blueprint.space_views.values_mut() {
+            space_view.on_frame_start(ctx, spaces_info);
+        }
+
+        if self.blueprint.auto_space_views {
+            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
+                if self.should_auto_add_space_view(&space_view_candidate) {
+                    self.blueprint.add_space_view(space_view_candidate);
+                }
+            }
+        }
+    }
+
+    fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
+        for existing_view in self.blueprint.space_views.values() {
+            if existing_view.space_origin == space_view_candidate.space_origin {
+                if existing_view.entities_determined_by_user {
+                    // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
+                    // So let's skip that.
+                    return false;
+                }
+
+                if space_view_candidate
+                    .data_blueprint
+                    .entity_paths()
+                    .is_subset(existing_view.data_blueprint.entity_paths())
+                {
+                    // This space view wouldn't add anything we haven't already
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.

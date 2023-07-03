@@ -142,7 +142,7 @@ impl AppState {
             .show_inside(ui, |ui| {
                 let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
 
-                viewport.blueprint.on_frame_start(&mut ctx, &spaces_info);
+                viewport.on_frame_start(&mut ctx, &spaces_info);
 
                 blueprint_panel_ui(
                     &mut viewport.blueprint,

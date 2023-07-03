@@ -174,49 +174,6 @@ impl<'a> ViewportBlueprint<'a> {
         space_view_id
     }
 
-    pub fn on_frame_start(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-    ) {
-        re_tracing::profile_function!();
-
-        for space_view in self.space_views.values_mut() {
-            space_view.on_frame_start(ctx, spaces_info);
-        }
-
-        if self.auto_space_views {
-            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
-                if self.should_auto_add_space_view(&space_view_candidate) {
-                    self.add_space_view(space_view_candidate);
-                }
-            }
-        }
-    }
-
-    fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
-        for existing_view in self.space_views.values() {
-            if existing_view.space_origin == space_view_candidate.space_origin {
-                if existing_view.entities_determined_by_user {
-                    // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
-                    // So let's skip that.
-                    return false;
-                }
-
-                if space_view_candidate
-                    .data_blueprint
-                    .entity_paths()
-                    .is_subset(existing_view.data_blueprint.entity_paths())
-                {
-                    // This space view wouldn't add anything we haven't already
-                    return false;
-                }
-            }
-        }
-
-        true
-    }
-
     pub fn space_views_containing_entity_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
         self.space_views
             .iter()
