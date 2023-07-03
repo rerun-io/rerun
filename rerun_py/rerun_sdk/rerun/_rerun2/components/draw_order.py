@@ -9,6 +9,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
+from .._baseclasses import Component
+
 __all__ = ["DrawOrder", "DrawOrderArray", "DrawOrderArrayLike", "DrawOrderLike", "DrawOrderType"]
 
 
@@ -66,7 +68,9 @@ class DrawOrderType(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(DrawOrderType())
 
 
-class DrawOrderArray(pa.ExtensionArray, DrawOrderArrayExt):  # type: ignore[misc]
+class DrawOrderArray(Component, DrawOrderArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.draw_order"
+
     @staticmethod
     def from_similar(data: DrawOrderArrayLike | None) -> pa.Array:
         if data is None:

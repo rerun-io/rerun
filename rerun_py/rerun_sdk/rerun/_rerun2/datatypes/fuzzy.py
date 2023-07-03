@@ -84,7 +84,9 @@ class AffixFuzzer1Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer1Type())
 
 
-class AffixFuzzer1Array(pa.ExtensionArray, AffixFuzzer1ArrayExt):  # type: ignore[misc]
+class AffixFuzzer1Array(AffixFuzzer1ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.datatypes.AffixFuzzer1"
+
     @staticmethod
     def from_similar(data: AffixFuzzer1ArrayLike | None) -> pa.Array:
         if data is None:
@@ -146,7 +148,9 @@ class AffixFuzzer2Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer2Type())
 
 
-class AffixFuzzer2Array(pa.ExtensionArray, AffixFuzzer2ArrayExt):  # type: ignore[misc]
+class AffixFuzzer2Array(AffixFuzzer2ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.datatypes.AffixFuzzer2"
+
     @staticmethod
     def from_similar(data: AffixFuzzer2ArrayLike | None) -> pa.Array:
         if data is None:

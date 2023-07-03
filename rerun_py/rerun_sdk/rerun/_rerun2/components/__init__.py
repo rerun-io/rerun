@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 __all__ = [
+    "Component",
     "AffixFuzzer1",
     "AffixFuzzer1Array",
     "AffixFuzzer1ArrayLike",
@@ -80,6 +81,7 @@ __all__ = [
     "RadiusType",
 ]
 
+from .._baseclasses import Component
 from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
 from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
 from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType

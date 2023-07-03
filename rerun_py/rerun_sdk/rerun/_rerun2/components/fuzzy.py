@@ -8,6 +8,8 @@ from typing import Any, Sequence, Union
 import numpy.typing as npt
 import pyarrow as pa
 
+from .._baseclasses import Component
+
 __all__ = [
     "AffixFuzzer1",
     "AffixFuzzer1Array",
@@ -104,7 +106,9 @@ class AffixFuzzer1Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer1Type())
 
 
-class AffixFuzzer1Array(pa.ExtensionArray, AffixFuzzer1ArrayExt):  # type: ignore[misc]
+class AffixFuzzer1Array(Component, AffixFuzzer1ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.components.AffixFuzzer1"
+
     @staticmethod
     def from_similar(data: AffixFuzzer1ArrayLike | None) -> pa.Array:
         if data is None:
@@ -176,7 +180,9 @@ class AffixFuzzer2Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer2Type())
 
 
-class AffixFuzzer2Array(pa.ExtensionArray, AffixFuzzer2ArrayExt):  # type: ignore[misc]
+class AffixFuzzer2Array(Component, AffixFuzzer2ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.components.AffixFuzzer2"
+
     @staticmethod
     def from_similar(data: AffixFuzzer2ArrayLike | None) -> pa.Array:
         if data is None:
@@ -263,7 +269,9 @@ class AffixFuzzer3Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer3Type())
 
 
-class AffixFuzzer3Array(pa.ExtensionArray, AffixFuzzer3ArrayExt):  # type: ignore[misc]
+class AffixFuzzer3Array(Component, AffixFuzzer3ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.components.AffixFuzzer3"
+
     @staticmethod
     def from_similar(data: AffixFuzzer3ArrayLike | None) -> pa.Array:
         if data is None:
@@ -335,7 +343,9 @@ class AffixFuzzer4Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer4Type())
 
 
-class AffixFuzzer4Array(pa.ExtensionArray, AffixFuzzer4ArrayExt):  # type: ignore[misc]
+class AffixFuzzer4Array(Component, AffixFuzzer4ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.components.AffixFuzzer4"
+
     @staticmethod
     def from_similar(data: AffixFuzzer4ArrayLike | None) -> pa.Array:
         if data is None:
@@ -407,7 +417,9 @@ class AffixFuzzer5Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer5Type())
 
 
-class AffixFuzzer5Array(pa.ExtensionArray, AffixFuzzer5ArrayExt):  # type: ignore[misc]
+class AffixFuzzer5Array(Component, AffixFuzzer5ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.components.AffixFuzzer5"
+
     @staticmethod
     def from_similar(data: AffixFuzzer5ArrayLike | None) -> pa.Array:
         if data is None:
@@ -494,7 +506,9 @@ class AffixFuzzer6Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer6Type())
 
 
-class AffixFuzzer6Array(pa.ExtensionArray, AffixFuzzer6ArrayExt):  # type: ignore[misc]
+class AffixFuzzer6Array(Component, AffixFuzzer6ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.components.AffixFuzzer6"
+
     @staticmethod
     def from_similar(data: AffixFuzzer6ArrayLike | None) -> pa.Array:
         if data is None:
@@ -609,7 +623,9 @@ class AffixFuzzer7Type(pa.ExtensionType):  # type: ignore[misc]
 # pa.register_extension_type(AffixFuzzer7Type())
 
 
-class AffixFuzzer7Array(pa.ExtensionArray, AffixFuzzer7ArrayExt):  # type: ignore[misc]
+class AffixFuzzer7Array(Component, AffixFuzzer7ArrayExt):  # type: ignore[misc]
+    _extension_name = "rerun.testing.components.AffixFuzzer7"
+
     @staticmethod
     def from_similar(data: AffixFuzzer7ArrayLike | None) -> pa.Array:
         if data is None:

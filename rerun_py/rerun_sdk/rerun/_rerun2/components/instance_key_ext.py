@@ -2,10 +2,15 @@ from __future__ import annotations
 
 __all__ = ["InstanceKeyArrayExt"]
 
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import pyarrow as pa
+
+if TYPE_CHECKING:
+    from .instance_key import InstanceKeyArray
+
+_MAX_U64 = 2**64 - 1
 
 
 class InstanceKeyArrayExt:
@@ -19,3 +24,10 @@ class InstanceKeyArrayExt:
             array = np.asarray(data, dtype=np.uint64).flatten()
 
         return arrow().wrap_array(pa.array(array, type=arrow().storage_type))
+
+    @staticmethod
+    def splat() -> InstanceKeyArray:
+        from .instance_key import InstanceKeyType
+
+        storage = pa.array([_MAX_U64], type=InstanceKeyType().storage_type)
+        return storage  # type: ignore[no-any-return]
