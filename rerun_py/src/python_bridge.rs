@@ -177,8 +177,9 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
 // --- Init ---
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::fn_params_excessive_bools)]
 #[allow(clippy::struct_excessive_bools)]
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -243,7 +244,7 @@ fn new_recording(
     Ok(PyRecordingStream(recording))
 }
 
-#[allow(clippy::struct_excessive_bools)]
+#[allow(clippy::fn_params_excessive_bools)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,

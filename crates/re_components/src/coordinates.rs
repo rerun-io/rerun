@@ -1,3 +1,5 @@
+#![allow(clippy::wrong_self_convention)] // TODO(emilk): re-enable
+
 use arrow2::datatypes::DataType;
 use arrow2_convert::{
     deserialize::ArrowDeserialize,
