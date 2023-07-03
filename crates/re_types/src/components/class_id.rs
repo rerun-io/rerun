@@ -38,11 +38,7 @@ impl crate::Component for ClassId {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.components.ClassId".to_owned(),
-            Box::new(DataType::UInt16),
-            None,
-        )
+        DataType::UInt16
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -79,6 +75,8 @@ impl crate::Component for ClassId {
                         Box::new(DataType::UInt16),
                         None,
                     )
+                    .to_logical_type()
+                    .clone()
                 },
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,

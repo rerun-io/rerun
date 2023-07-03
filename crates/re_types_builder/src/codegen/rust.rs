@@ -605,9 +605,23 @@ fn quote_trait_impls_from_obj(
                     let component = format_ident!("{}", component.rsplit_once('.').unwrap().1);
                     let component = quote!(crate::components::#component);
 
+                    let fqname = obj_field.typ.fqname().unwrap();
+                    let legacy_fqname = objects
+                        .get(fqname)
+                        .try_get_attr::<String>(crate::ATTR_RERUN_LEGACY_FQNAME)
+                        .unwrap_or_else(|| fqname.to_owned());
+
                     let extract_datatype_and_return = quote! {
                         array.map(|array| {
-                            let datatype = array.data_type().clone();
+                            // NOTE: Temporarily injecting the extension metadata as well as the
+                            // legacy fully-qualified name into the `Field` object so we can work
+                            // around `arrow2-convert` limitations and map to old names while we're
+                            // migrating.
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                #fqname.into(),
+                                Box::new(array.data_type().clone()),
+                                Some(#legacy_fqname.into()),
+                            );
                             (::arrow2::datatypes::Field::new(#field_name_str, datatype, false), array)
                         })
                     };
@@ -879,7 +893,8 @@ struct ArrowDataTypeTokenizer<'a>(&'a ::arrow2::datatypes::DataType);
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use arrow2::datatypes::UnionMode;
-        match self.0 {
+        // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+        match self.0.to_logical_type() {
             DataType::Null => quote!(DataType::Null),
             DataType::Boolean => quote!(DataType::Boolean),
             DataType::Int8 => quote!(DataType::Int8),
@@ -1006,11 +1021,13 @@ fn quote_arrow_serializer(
     let DataType::Extension(fqname, _, _) = datatype else { unreachable!() };
     let fqname_use = quote_fqname_as_type_path(fqname);
     let quoted_datatype = quote! {
-        if let Some(ext) = extension_wrapper {
+        (if let Some(ext) = extension_wrapper {
             DataType::Extension(ext.to_owned(), Box::new(<#fqname_use>::to_arrow_datatype()), None)
         } else {
             <#fqname_use>::to_arrow_datatype()
-        }
+        })
+        // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+        .to_logical_type().clone()
     };
 
     let is_arrow_transparent = obj.datatype.is_none();
@@ -1179,6 +1196,8 @@ fn quote_arrow_field_serializer(
         // NOTE: This is a field, it's never going to need the runtime one.
         _ = extension_wrapper;
         #quoted_datatype
+            // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+            .to_logical_type().clone()
     }};
 
     match datatype.to_logical_type() {

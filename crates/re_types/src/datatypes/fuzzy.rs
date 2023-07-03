@@ -42,63 +42,59 @@ impl crate::Datatype for AffixFuzzer1 {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.testing.datatypes.AffixFuzzer1".to_owned(),
-            Box::new(DataType::Struct(vec![
-                Field {
-                    name: "single_float_optional".to_owned(),
+        DataType::Struct(vec![
+            Field {
+                name: "single_float_optional".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "single_string_required".to_owned(),
+                data_type: DataType::Utf8,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "single_string_optional".to_owned(),
+                data_type: DataType::Utf8,
+                is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "many_floats_optional".to_owned(),
+                data_type: DataType::List(Box::new(Field {
+                    name: "item".to_owned(),
                     data_type: DataType::Float32,
                     is_nullable: true,
                     metadata: [].into(),
-                },
-                Field {
-                    name: "single_string_required".to_owned(),
+                })),
+                is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "many_strings_required".to_owned(),
+                data_type: DataType::List(Box::new(Field {
+                    name: "item".to_owned(),
                     data_type: DataType::Utf8,
                     is_nullable: false,
                     metadata: [].into(),
-                },
-                Field {
-                    name: "single_string_optional".to_owned(),
+                })),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "many_strings_optional".to_owned(),
+                data_type: DataType::List(Box::new(Field {
+                    name: "item".to_owned(),
                     data_type: DataType::Utf8,
                     is_nullable: true,
                     metadata: [].into(),
-                },
-                Field {
-                    name: "many_floats_optional".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: true,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "many_strings_required".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Utf8,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "many_strings_optional".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
-                        name: "item".to_owned(),
-                        data_type: DataType::Utf8,
-                        is_nullable: true,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-            ])),
-            None,
-        )
+                })),
+                is_nullable: true,
+                metadata: [].into(),
+            },
+        ])
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -124,7 +120,7 @@ impl crate::Datatype for AffixFuzzer1 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                if let Some(ext) = extension_wrapper {
+                (if let Some(ext) = extension_wrapper {
                     DataType::Extension(
                         ext.to_owned(),
                         Box::new(<crate::datatypes::AffixFuzzer1>::to_arrow_datatype()),
@@ -132,7 +128,9 @@ impl crate::Datatype for AffixFuzzer1 {
                     )
                 } else {
                     <crate::datatypes::AffixFuzzer1>::to_arrow_datatype()
-                },
+                })
+                .to_logical_type()
+                .clone(),
                 vec![
                     {
                         let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
@@ -158,7 +156,7 @@ impl crate::Datatype for AffixFuzzer1 {
                         PrimitiveArray::new(
                             {
                                 _ = extension_wrapper;
-                                DataType::Float32
+                                DataType::Float32.to_logical_type().clone()
                             },
                             single_float_optional
                                 .into_iter()
@@ -204,7 +202,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                 Utf8Array::<i32>::new_unchecked(
                                     {
                                         _ = extension_wrapper;
-                                        DataType::Utf8
+                                        DataType::Utf8.to_logical_type().clone()
                                     },
                                     offsets,
                                     inner_data,
@@ -253,7 +251,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                 Utf8Array::<i32>::new_unchecked(
                                     {
                                         _ = extension_wrapper;
-                                        DataType::Utf8
+                                        DataType::Utf8.to_logical_type().clone()
                                     },
                                     offsets,
                                     inner_data,
@@ -321,12 +319,14 @@ impl crate::Datatype for AffixFuzzer1 {
                                         is_nullable: true,
                                         metadata: [].into(),
                                     }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 PrimitiveArray::new(
                                     {
                                         _ = extension_wrapper;
-                                        DataType::Float32
+                                        DataType::Float32.to_logical_type().clone()
                                     },
                                     many_floats_optional_inner_data
                                         .into_iter()
@@ -395,6 +395,8 @@ impl crate::Datatype for AffixFuzzer1 {
                                         is_nullable: false,
                                         metadata: [].into(),
                                     }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 {
@@ -419,7 +421,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                         Utf8Array::<i32>::new_unchecked(
                                             {
                                                 _ = extension_wrapper;
-                                                DataType::Utf8
+                                                DataType::Utf8.to_logical_type().clone()
                                             },
                                             offsets,
                                             inner_data,
@@ -491,6 +493,8 @@ impl crate::Datatype for AffixFuzzer1 {
                                         is_nullable: true,
                                         metadata: [].into(),
                                     }))
+                                    .to_logical_type()
+                                    .clone()
                                 },
                                 offsets,
                                 {
@@ -515,7 +519,7 @@ impl crate::Datatype for AffixFuzzer1 {
                                         Utf8Array::<i32>::new_unchecked(
                                             {
                                                 _ = extension_wrapper;
-                                                DataType::Utf8
+                                                DataType::Utf8.to_logical_type().clone()
                                             },
                                             offsets,
                                             inner_data,
@@ -816,11 +820,7 @@ impl crate::Datatype for AffixFuzzer2 {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.testing.datatypes.AffixFuzzer2".to_owned(),
-            Box::new(DataType::Float32),
-            None,
-        )
+        DataType::Float32
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -859,6 +859,8 @@ impl crate::Datatype for AffixFuzzer2 {
                         Box::new(DataType::Float32),
                         None,
                     )
+                    .to_logical_type()
+                    .clone()
                 },
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,

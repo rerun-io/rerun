@@ -37,11 +37,7 @@ impl crate::Component for Label {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Extension(
-            "rerun.components.Label".to_owned(),
-            Box::new(DataType::Utf8),
-            None,
-        )
+        DataType::Utf8
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -90,6 +86,8 @@ impl crate::Component for Label {
                                 Box::new(DataType::Utf8),
                                 None,
                             )
+                            .to_logical_type()
+                            .clone()
                         },
                         offsets,
                         inner_data,
