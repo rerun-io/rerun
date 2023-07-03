@@ -38,10 +38,12 @@ impl EntityPropertyMap {
     /// Determine whether this `EntityPropertyMap` has user-edits relative to another `EntityPropertyMap`
     /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
     pub fn unedited(&self, other: &Self) -> bool {
-        self.props
-            .iter()
-            .zip(other.props.iter())
-            .all(|(x, y)| x.0 == y.0 && x.1.unedited(y.1))
+        self.props.len() == other.props.len()
+            && self
+                .props
+                .iter()
+                .zip(other.props.iter())
+                .all(|(x, y)| x.0 == y.0 && x.1.unedited(y.1))
     }
 }
 
