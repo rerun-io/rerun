@@ -40,7 +40,7 @@ impl SharedRenderBuilders {
         result.extend(
             self.points
                 .take()
-                .map(|l| l.into_inner().to_draw_data(render_ctx).into()),
+                .map(|l| l.into_inner().into_draw_data(render_ctx).into()),
         );
         result
     }
