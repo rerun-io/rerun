@@ -4,7 +4,11 @@
 //! are much easier to inspect and manipulate / friendler to work with.
 
 use anyhow::Context as _;
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+};
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
@@ -25,22 +29,24 @@ impl Objects {
     /// Runs the semantic pass on a serialized flatbuffers schema.
     ///
     /// The buffer must be a serialized [`FbsSchema`] (i.e. `.bfbs` data).
-    pub fn from_buf(buf: &[u8]) -> Self {
+    pub fn from_buf(include_dir_path: impl AsRef<Path>, buf: &[u8]) -> Self {
         let schema = root_as_schema(buf).unwrap();
-        Self::from_raw_schema(&schema)
+        Self::from_raw_schema(include_dir_path, &schema)
     }
 
     /// Runs the semantic pass on a deserialized flatbuffers [`FbsSchema`].
-    pub fn from_raw_schema(schema: &FbsSchema<'_>) -> Self {
+    pub fn from_raw_schema(include_dir_path: impl AsRef<Path>, schema: &FbsSchema<'_>) -> Self {
         let mut resolved_objs = HashMap::new();
         let mut resolved_enums = HashMap::new();
 
         let enums = schema.enums().iter().collect::<Vec<_>>();
         let objs = schema.objects().iter().collect::<Vec<_>>();
 
+        let include_dir_path = include_dir_path.as_ref();
+
         // resolve enums
         for enm in schema.enums() {
-            let resolved_enum = Object::from_raw_enum(&enums, &objs, &enm);
+            let resolved_enum = Object::from_raw_enum(include_dir_path, &enums, &objs, &enm);
             resolved_enums.insert(resolved_enum.fqname.clone(), resolved_enum);
         }
 
@@ -51,7 +57,7 @@ impl Objects {
             // NOTE: Wrapped scalar types used by unions, not actual objects: ignore.
             .filter(|obj| !obj.name().starts_with("fbs.scalars."))
         {
-            let resolved_obj = Object::from_raw_object(&enums, &objs, &obj);
+            let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
 
@@ -161,19 +167,54 @@ pub struct Docs {
     ///
     /// See also [`Docs::doc`].
     pub tagged_docs: HashMap<String, Vec<String>>,
+
+    /// Contents of all the files included using `include:<path>`.
+    pub included_files: HashMap<PathBuf, String>,
 }
 
 impl Docs {
     fn from_raw_docs(
+        filepath: &Path,
         docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
     ) -> Self {
+        let mut included_files = HashMap::default();
+
+        let include_file = |included_files: &mut HashMap<_, _>, raw_path: &str| {
+            let path: PathBuf = raw_path
+                .parse()
+                .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
+                .unwrap();
+
+            let path = filepath.join(path);
+
+            included_files
+                .entry(path.clone())
+                .or_insert_with(|| {
+                    std::fs::read_to_string(&path)
+                        .with_context(|| {
+                            format!("couldn't parse read file at included path: {path:?}")
+                        })
+                        .unwrap()
+                })
+                .clone()
+        };
+
         // language-agnostic docs
         let doc = docs
             .into_iter()
             .flat_map(|doc| doc.into_iter())
             // NOTE: discard tagged lines!
             .filter(|line| !line.trim().starts_with('\\'))
-            .map(ToOwned::to_owned)
+            .flat_map(|line| {
+                if let Some((_, path)) = line.split_once("include:") {
+                    include_file(&mut included_files, path)
+                        .lines()
+                        .map(|line| line.to_owned())
+                        .collect_vec()
+                } else {
+                    vec![line.to_owned()]
+                }
+            })
             .collect::<Vec<_>>();
 
         // tagged docs, e.g. `\py this only applies to python!`
@@ -189,6 +230,16 @@ impl Docs {
                         let line = &trimmed[tag.len()..];
                         (tag[1..].to_owned(), line.to_owned())
                     })
+                })
+                .flat_map(|(tag, line)| {
+                    if let Some((_, path)) = line.split_once("include:") {
+                        dbg!(include_file(&mut included_files, path)
+                            .lines()
+                            .map(|line| (tag.clone(), line.to_owned()))
+                            .collect_vec())
+                    } else {
+                        vec![(tag, line)]
+                    }
                 })
                 .collect::<Vec<_>>();
 
@@ -208,7 +259,11 @@ impl Docs {
             tagged_docs
         };
 
-        Self { doc, tagged_docs }
+        Self {
+            doc,
+            tagged_docs,
+            included_files,
+        }
     }
 }
 
@@ -216,8 +271,11 @@ impl Docs {
 /// an enum.
 #[derive(Debug, Clone)]
 pub struct Object {
-    /// File path of the associated fbs definition, e.g. `//rerun/components/point2d.fbs`.
-    pub filepath: String,
+    /// Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    pub virtpath: String,
+
+    /// Absolute filepath of the associated fbs definition.
+    pub filepath: PathBuf,
 
     /// Fully-qualified name of the object, e.g. `rerun.components.Point2D`.
     pub fqname: String,
@@ -256,10 +314,13 @@ impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
     pub fn from_raw_object(
+        include_dir_path: impl AsRef<Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         obj: &FbsObject<'_>,
     ) -> Self {
+        let include_dir_path = include_dir_path.as_ref();
+
         let fqname = obj.name().to_owned();
         let (pkg_name, name) = fqname
             .rsplit_once('.')
@@ -267,13 +328,14 @@ impl Object {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = obj
+        let virtpath = obj
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(obj.documentation());
+        let docs = Docs::from_raw_docs(&filepath, obj.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
 
@@ -283,13 +345,16 @@ impl Object {
                 .iter()
                 // NOTE: These are intermediate fields used by flatbuffers internals, we don't care.
                 .filter(|field| field.type_().base_type() != FbsBaseType::UType)
-                .map(|field| ObjectField::from_raw_object_field(enums, objs, obj, &field))
+                .map(|field| {
+                    ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
+                })
                 .collect();
             fields.sort_by_key(|field| field.order());
             fields
         };
 
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -305,7 +370,14 @@ impl Object {
 
     /// Resolves a raw [`FbsEnum`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
-    pub fn from_raw_enum(enums: &[FbsEnum<'_>], objs: &[FbsObject<'_>], enm: &FbsEnum<'_>) -> Self {
+    pub fn from_raw_enum(
+        include_dir_path: impl AsRef<Path>,
+        enums: &[FbsEnum<'_>],
+        objs: &[FbsObject<'_>],
+        enm: &FbsEnum<'_>,
+    ) -> Self {
+        let include_dir_path = include_dir_path.as_ref();
+
         let fqname = enm.name().to_owned();
         let (pkg_name, name) = fqname
             .rsplit_once('.')
@@ -313,13 +385,14 @@ impl Object {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = enm
+        let virtpath = enm
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(enm.documentation());
+        let docs = Docs::from_raw_docs(&filepath, enm.documentation());
         let kind = ObjectKind::from_pkg_name(&pkg_name);
 
         let utype = {
@@ -346,10 +419,11 @@ impl Object {
                     .filter(|utype| utype.base_type() != FbsBaseType::None)
                     .is_some()
             })
-            .map(|val| ObjectField::from_raw_enum_value(enums, objs, enm, &val))
+            .map(|val| ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val))
             .collect();
 
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -424,8 +498,11 @@ pub enum ObjectSpecifics {
 /// union value.
 #[derive(Debug, Clone)]
 pub struct ObjectField {
-    /// File path of the associated fbs definition, e.g. `//rerun/components/point2d.fbs`.
-    pub filepath: String,
+    /// Path of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    pub virtpath: String,
+
+    /// Absolute filepath of the associated fbs definition.
+    pub filepath: PathBuf,
 
     /// Fully-qualified name of the field, e.g. `rerun.components.Point2D#position`.
     pub fqname: String,
@@ -465,6 +542,7 @@ pub struct ObjectField {
 
 impl ObjectField {
     pub fn from_raw_object_field(
+        include_dir_path: impl AsRef<Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         obj: &FbsObject<'_>,
@@ -477,13 +555,14 @@ impl ObjectField {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = obj
+        let virtpath = obj
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(field.documentation());
+        let docs = Docs::from_raw_docs(&filepath, field.documentation());
 
         let typ = Type::from_raw_type(enums, objs, field.type_());
         let attrs = Attributes::from_raw_attrs(field.attributes());
@@ -492,6 +571,7 @@ impl ObjectField {
         let is_deprecated = field.deprecated();
 
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -506,6 +586,7 @@ impl ObjectField {
     }
 
     pub fn from_raw_enum_value(
+        include_dir_path: impl AsRef<Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
@@ -518,13 +599,14 @@ impl ObjectField {
                 (pkg_name.to_owned(), name.to_owned())
             });
 
-        let filepath = enm
+        let virtpath = enm
             .declaration_file()
             .map(ToOwned::to_owned)
             .with_context(|| format!("no declaration_file found for {fqname}"))
             .unwrap();
+        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(val.documentation());
+        let docs = Docs::from_raw_docs(&filepath, val.documentation());
 
         let typ = Type::from_raw_type(
             enums,
@@ -540,6 +622,7 @@ impl ObjectField {
         let is_deprecated = false;
 
         Self {
+            virtpath,
             filepath,
             fqname,
             pkg_name,
@@ -877,4 +960,17 @@ fn flatten_scalar_wrappers(obj: &FbsObject<'_>) -> ElementType {
     } else {
         ElementType::Object(name.to_owned())
     }
+}
+
+fn filepath_from_declaration_file(
+    include_dir_path: impl AsRef<Path>,
+    declaration_file: impl AsRef<str>,
+) -> PathBuf {
+    include_dir_path.as_ref().join("rerun").join(
+        PathBuf::from(declaration_file.as_ref())
+            .parent()
+            .unwrap() // NOTE: safe, this _must_ be a file
+            .to_string_lossy()
+            .replace("//", ""),
+    )
 }
