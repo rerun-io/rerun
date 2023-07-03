@@ -60,7 +60,7 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        ("tests/python/test_api/main.py", ["--demo", "all"]),
+        ("tests/python/test_api/main.py", ["--test", "all"]),
         ("examples/python/car/main.py", []),
         ("examples/python/minimal_options/main.py", []),
         ("examples/python/multithreading/main.py", []),
