@@ -46,9 +46,12 @@ namespace rerun {
         auto y_builder = std::make_shared<arrow::FloatBuilder>(pool);
         auto z_builder = std::make_shared<arrow::FloatBuilder>(pool);
 
-        auto data_type = arrow::struct_({field("x", arrow::float32()),
-                                         field("y", arrow::float32()),
-                                         field("z", arrow::float32())});
+        auto nullable = false;
+
+        auto data_type =
+            arrow::struct_({field("x", arrow::float32(), nullable),
+                            field("y", arrow::float32(), nullable),
+                            field("z", arrow::float32(), nullable)});
         auto struct_builder = arrow::StructBuilder(
             data_type, pool, {x_builder, y_builder, z_builder});
 
@@ -62,9 +65,8 @@ namespace rerun {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(struct_builder.Finish(&array));
 
-        auto nullable = false;
-        auto schema =
-            arrow::schema({arrow::field("Point3DType", data_type, nullable)});
+        auto name = "Point3DType"; // TODO: I think the name here is unused?
+        auto schema = arrow::schema({arrow::field(name, data_type, nullable)});
 
         return arrow::Table::Make(schema, {array});
     }
