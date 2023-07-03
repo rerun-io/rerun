@@ -181,8 +181,8 @@ fn quote_objects(
 
         let manifest = quote_manifest(names);
         let base_include = match kind {
-            ObjectKind::Archetype => "from ._base import Archetype",
-            ObjectKind::Component => "from ._base import Component",
+            ObjectKind::Archetype => "from .._baseclasses import Archetype",
+            ObjectKind::Component => "from .._baseclasses import Component",
             ObjectKind::Datatype => "",
         };
         code.push_unindented_text(
@@ -232,8 +232,8 @@ fn quote_objects(
         let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
 
         let (base_manifest, base_include) = match kind {
-            ObjectKind::Archetype => ("\"Archetype\", ", "from ._base import Archetype\n"),
-            ObjectKind::Component => ("\"Component\", ", "from ._base import Component\n"),
+            ObjectKind::Archetype => ("\"Archetype\", ", "from .._baseclasses import Archetype\n"),
+            ObjectKind::Component => ("\"Component\", ", "from .._baseclasses import Component\n"),
             ObjectKind::Datatype => ("", ""),
         };
 

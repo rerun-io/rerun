@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import fields
-from typing import Any
+from typing import Any, Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -65,6 +65,13 @@ def _add_extension_components(
             instanced[name] = pa_value  # noqa
 
 
+def _extract_components(entity: Archetype) -> Iterable[tuple[Component, bool]]:
+    """Extract the components from an entity, yielding (component, is_primary) tuples."""
+    for fld in fields(entity):
+        if "component" in fld.metadata:
+            yield getattr(entity, fld.name), fld.metadata["component"] == "primary"
+
+
 def log_any(
     entity_path: str,
     entity: Archetype,
@@ -72,25 +79,45 @@ def log_any(
     timeless: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
+    """
+    Log an entity.
+
+    Parameters
+    ----------
+    entity_path:
+        Path to the points in the space hierarchy.
+    entity: Archetype
+        The archetype object representing the entity.
+    ext:
+        Optional dictionary of extension components. See [rerun.log_extension_components][]
+    timeless:
+        If true, the points will be timeless (default: False).
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
     from .. import strict_mode
 
     if strict_mode():
         if not isinstance(entity, Archetype):
             raise TypeError(f"Expected Archetype, got {type(entity)}")
 
-    # 0 = instanced, 1 = splat
     instanced: dict[str, Component] = {}
     splats: dict[str, Component] = {}
 
-    for fld in fields(entity):
-        if "component" in fld.metadata:
-            comp: Component = getattr(entity, fld.name)
-            if fld.metadata["component"] == "primary":
-                instanced[comp.extension_name] = comp.storage
-            elif len(comp) == 1:
-                splats[comp.extension_name] = comp.storage
-            elif len(comp) > 1:
-                instanced[comp.extension_name] = comp.storage
+    # find canonical length of this entity by extracting the maximum length of the
+    archetype_length = max(len(comp) for comp, primary in _extract_components(entity) if primary)
+
+    for comp, primary in _extract_components(entity):
+        if primary:
+            instanced[comp.extension_name] = comp.storage
+        elif len(comp) == 1 and archetype_length > 1:
+            splats[comp.extension_name] = comp.storage
+        elif len(comp) > 1:
+            instanced[comp.extension_name] = comp.storage
 
     if ext:
         _add_extension_components(instanced, splats, ext, None)
