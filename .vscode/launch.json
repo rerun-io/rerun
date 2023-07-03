@@ -99,9 +99,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [
-                "https://demo.rerun.io/commit/0f89b62/examples/colmap/data.rrd"
-            ],
+            "args": [],
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_LOG": "trace"
