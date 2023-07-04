@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Run `cargo package` on a topologically sorted list of crates."""
+"""Versioning and packaging."""
 from __future__ import annotations
 
 import argparse
