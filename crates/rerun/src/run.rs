@@ -274,9 +274,6 @@ where
                 let path_to_rrd2 = PathBuf::from(path_to_rrd2);
                 run_compare(&path_to_rrd1, &path_to_rrd2)
             }
-
-            #[cfg(not(all(feature = "analytics")))]
-            _ => Ok(()),
         }
     } else {
         run_impl(build_info, call_source, args).await
