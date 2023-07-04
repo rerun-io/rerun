@@ -41,9 +41,8 @@ pub struct SpaceViewBlueprint {
 }
 
 /// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
-/// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
 impl SpaceViewBlueprint {
-    pub fn unedited(&self, other: &Self) -> bool {
+    pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             id,
             display_name,
@@ -54,13 +53,13 @@ impl SpaceViewBlueprint {
             entities_determined_by_user,
         } = self;
 
-        id == &other.id
-            && display_name == &other.display_name
-            && class_name == &other.class_name
-            && space_origin == &other.space_origin
-            && data_blueprint.unedited(&other.data_blueprint)
-            && category == &other.category
-            && entities_determined_by_user == &other.entities_determined_by_user
+        id != &other.id
+            || display_name != &other.display_name
+            || class_name != &other.class_name
+            || space_origin != &other.space_origin
+            || data_blueprint.has_edits(&other.data_blueprint)
+            || category != &other.category
+            || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
 

@@ -36,14 +36,13 @@ impl EntityPropertyMap {
     }
 
     /// Determine whether this `EntityPropertyMap` has user-edits relative to another `EntityPropertyMap`
-    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
-    pub fn unedited(&self, other: &Self) -> bool {
-        self.props.len() == other.props.len()
-            && self
+    pub fn has_edits(&self, other: &Self) -> bool {
+        self.props.len() != other.props.len()
+            || self
                 .props
                 .iter()
                 .zip(other.props.iter())
-                .all(|(x, y)| x.0 == y.0 && x.1.unedited(y.1))
+                .any(|(x, y)| x.0 != y.0 || x.1.has_edits(y.1))
     }
 }
 
@@ -129,8 +128,7 @@ impl EntityProperties {
     }
 
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
-    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
-    pub fn unedited(&self, other: &Self) -> bool {
+    pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             visible,
             visible_history,
@@ -142,14 +140,14 @@ impl EntityProperties {
             backproject_radius_scale,
         } = self;
 
-        visible == &other.visible
-            && visible_history == &other.visible_history
-            && interactive == &other.interactive
-            && color_mapper.unedited(&other.color_mapper)
-            && pinhole_image_plane_distance.unedited(&other.pinhole_image_plane_distance)
-            && backproject_depth.unedited(&other.backproject_depth)
-            && depth_from_world_scale.unedited(&other.depth_from_world_scale)
-            && backproject_radius_scale.unedited(&other.backproject_radius_scale)
+        visible != &other.visible
+            || visible_history != &other.visible_history
+            || interactive != &other.interactive
+            || color_mapper.has_edits(&other.color_mapper)
+            || pinhole_image_plane_distance.has_edits(&other.pinhole_image_plane_distance)
+            || backproject_depth.has_edits(&other.backproject_depth)
+            || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
+            || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
     }
 }
 

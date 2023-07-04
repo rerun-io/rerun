@@ -61,5 +61,5 @@ fn test_spaceview() {
     assert!(data
         .iter()
         .zip(ret)
-        .all(|(l, r)| l.space_view.unedited(&r.space_view)));
+        .all(|(l, r)| !l.space_view.has_edits(&r.space_view)));
 }

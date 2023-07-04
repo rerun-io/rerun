@@ -51,12 +51,12 @@ where
     }
 
     /// Determine whether this `EditableAutoValue` has user-edits relative to another `EditableAutoValue`
-    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
-    pub fn unedited(&self, other: &Self) -> bool {
+    /// If both values are `Auto`, then it is not considered edited.
+    pub fn has_edits(&self, other: &Self) -> bool {
         match (self, other) {
-            (EditableAutoValue::UserEdited(s), EditableAutoValue::UserEdited(o)) => s == o,
-            (EditableAutoValue::Auto(_), EditableAutoValue::Auto(_)) => true,
-            _ => false,
+            (EditableAutoValue::UserEdited(s), EditableAutoValue::UserEdited(o)) => s != o,
+            (EditableAutoValue::Auto(_), EditableAutoValue::Auto(_)) => false,
+            _ => true,
         }
     }
 }

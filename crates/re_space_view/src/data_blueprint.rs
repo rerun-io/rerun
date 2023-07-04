@@ -33,8 +33,7 @@ pub struct DataBlueprintGroup {
 
 impl DataBlueprintGroup {
     /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
-    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
-    fn unedited(&self, other: &Self) -> bool {
+    fn has_edits(&self, other: &Self) -> bool {
         let Self {
             display_name,
             properties_individual,
@@ -44,11 +43,11 @@ impl DataBlueprintGroup {
             entities,
         } = self;
 
-        display_name == &other.display_name
-            && properties_individual.unedited(&other.properties_individual)
-            && parent == &other.parent
-            && children == &other.children
-            && entities == &other.entities
+        display_name != &other.display_name
+            || properties_individual.has_edits(&other.properties_individual)
+            || parent != &other.parent
+            || children != &other.children
+            || entities != &other.entities
     }
 }
 
@@ -68,14 +67,13 @@ pub struct DataBlueprints {
 // Manually implement `PartialEq` since projected is serde skip
 impl DataBlueprints {
     /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
-    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
-    fn unedited(&self, other: &Self) -> bool {
+    fn has_edits(&self, other: &Self) -> bool {
         let Self {
             individual,
             projected: _,
         } = self;
 
-        individual.unedited(&other.individual)
+        individual.has_edits(&other.individual)
     }
 }
 
@@ -107,9 +105,8 @@ pub struct DataBlueprintTree {
 }
 
 /// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
-/// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
 impl DataBlueprintTree {
-    pub fn unedited(&self, other: &Self) -> bool {
+    pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             groups,
             path_to_group,
@@ -119,14 +116,15 @@ impl DataBlueprintTree {
         } = self;
 
         // Note: this could fail unexpectedly if slotmap iteration order is unstable.
-        groups
-            .iter()
-            .zip(other.groups.iter())
-            .all(|(x, y)| x.0 == y.0 && x.1.unedited(y.1))
-            && *path_to_group == other.path_to_group
-            && *entity_paths == other.entity_paths
-            && *root_group_handle == other.root_group_handle
-            && data_blueprints.unedited(&other.data_blueprints)
+        groups.len() != other.groups.len()
+            || groups
+                .iter()
+                .zip(other.groups.iter())
+                .any(|(x, y)| x.0 != y.0 || x.1.has_edits(y.1))
+            || *path_to_group != other.path_to_group
+            || *entity_paths != other.entity_paths
+            || *root_group_handle != other.root_group_handle
+            || data_blueprints.has_edits(&other.data_blueprints)
     }
 }
 
