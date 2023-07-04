@@ -339,7 +339,7 @@ impl StoreDb {
         let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(
             re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
         );
-        re_log::debug!(
+        re_log::trace!(
             num_row_ids_dropped = drop_row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
             "purged datastore"
