@@ -168,7 +168,7 @@ fn item_collection_to_string(blueprint: &ViewportBlueprint<'_>, items: &ItemColl
 fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
     match item {
         Item::SpaceView(sid) => {
-            if let Some(space_view) = blueprint.viewport.space_view(sid) {
+            if let Some(space_view) = blueprint.space_view(sid) {
                 space_view.display_name.clone()
             } else {
                 "<removed space view>".to_owned()
@@ -176,7 +176,7 @@ fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
         }
         Item::InstancePath(_, entity_path) => entity_path.to_string(),
         Item::DataBlueprintGroup(sid, handle) => {
-            if let Some(space_view) = blueprint.viewport.space_view(sid) {
+            if let Some(space_view) = blueprint.space_view(sid) {
                 if let Some(group) = space_view.data_blueprint.group(*handle) {
                     group.display_name.clone()
                 } else {
