@@ -4944,6 +4944,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_points2d"
+version = "0.8.0-alpha.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "run_wasm"
 version = "0.8.0-alpha.0"
 dependencies = [
