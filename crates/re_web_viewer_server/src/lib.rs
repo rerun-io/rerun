@@ -21,6 +21,8 @@ pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
 #[cfg(not(feature = "__ci"))]
 mod data {
+    #![allow(clippy::large_include_file)]
+
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
     pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index_bundled.html");
     pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");

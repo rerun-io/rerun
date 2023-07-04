@@ -210,8 +210,8 @@ impl framework::Example for Render2D {
                 );
         }
 
-        let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx).unwrap();
-        let point_draw_data = point_cloud_builder.to_draw_data(re_ctx).unwrap();
+        let line_strip_draw_data = line_strip_builder.into_draw_data(re_ctx).unwrap();
+        let point_draw_data = point_cloud_builder.into_draw_data(re_ctx);
 
         let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(

@@ -14,6 +14,11 @@ const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const FBS_REFLECTION_DEFINITION_PATH: &str = "./definitions/reflection.fbs";
 
 fn main() {
+    if cfg!(target_os = "windows") {
+        // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
+        return;
+    }
+
     if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
         // Only run if we are in the rerun workspace, not on users machines.
         return;

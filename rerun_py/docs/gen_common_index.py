@@ -50,7 +50,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Initialization",
         module_summary=None,
-        func_list=["init", "connect", "disconnect", "spawn", "serve", "memory_recording"],
+        func_list=["init", "connect", "disconnect", "spawn", "serve", "save", "memory_recording"],
         class_list=[],
     ),
     Section(

@@ -20,6 +20,9 @@ use crate::TimeInt;
 pub struct TimeReal(FixedI128<typenum::U64>);
 
 impl TimeReal {
+    pub const MIN: Self = Self(FixedI128::MIN);
+    pub const MAX: Self = Self(FixedI128::MAX);
+
     #[inline]
     pub fn floor(&self) -> TimeInt {
         let int: i64 = self.0.saturating_floor().lossy_into();
@@ -64,16 +67,38 @@ impl From<i64> for TimeReal {
 }
 
 impl From<f32> for TimeReal {
+    /// Saturating cast
     #[inline]
     fn from(value: f32) -> Self {
-        Self(FixedI128::from_num(value))
+        debug_assert!(!value.is_nan());
+        if value.is_nan() {
+            re_log::warn_once!("NaN time detected");
+            Self(0.into())
+        } else if let Some(num) = FixedI128::checked_from_num(value) {
+            Self(num)
+        } else if value < 0.0 {
+            Self::MIN
+        } else {
+            Self::MAX
+        }
     }
 }
 
 impl From<f64> for TimeReal {
+    /// Saturating cast
     #[inline]
     fn from(value: f64) -> Self {
-        Self(FixedI128::from_num(value))
+        debug_assert!(!value.is_nan());
+        if value.is_nan() {
+            re_log::warn_once!("NaN time detected");
+            Self(0.into())
+        } else if let Some(num) = FixedI128::checked_from_num(value) {
+            Self(num)
+        } else if value < 0.0 {
+            Self::MIN
+        } else {
+            Self::MAX
+        }
     }
 }
 
@@ -146,7 +171,7 @@ impl std::ops::Mul<f64> for TimeReal {
 
     #[inline]
     fn mul(self, rhs: f64) -> Self::Output {
-        Self(self.0.saturating_mul(FixedI128::from_num(rhs)))
+        Self(self.0.saturating_mul(Self::from(rhs).0))
     }
 }
 
@@ -259,4 +284,9 @@ fn test_time_value_f() {
             assert_eq!(T::from(f) - T::from(g), T::from(f - g));
         }
     }
+
+    assert_eq!(TimeReal::from(f32::NEG_INFINITY), TimeReal::MIN);
+    assert_eq!(TimeReal::from(f32::MIN), TimeReal::MIN);
+    assert_eq!(TimeReal::from(f32::INFINITY), TimeReal::MAX);
+    assert_eq!(TimeReal::from(f32::MAX), TimeReal::MAX);
 }

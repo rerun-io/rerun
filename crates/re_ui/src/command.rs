@@ -153,6 +153,7 @@ impl UICommand {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)] // Only on some platforms
     pub fn kb_shortcut(self) -> Option<KeyboardShortcut> {
         fn key(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::NONE, key)

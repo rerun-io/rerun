@@ -171,20 +171,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
 
 [[package]]
-name = "api_demo"
-version = "0.8.0-alpha.0"
-dependencies = [
- "anyhow",
- "clap",
- "glam",
- "itertools 0.11.0",
- "ndarray",
- "ndarray-rand",
- "rand",
- "rerun",
-]
-
-[[package]]
 name = "arboard"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5487,6 +5473,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be55cf8942feac5c765c2c993422806843c9a9a45d4d5c407ad6dd2ea95eb9b6"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "test_api"
+version = "0.8.0-alpha.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "itertools 0.11.0",
+ "ndarray",
+ "ndarray-rand",
+ "rand",
+ "rerun",
 ]
 
 [[package]]
