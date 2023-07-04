@@ -156,7 +156,7 @@ impl std::ops::DerefMut for ClusterCellCache {
 // ---
 
 /// Incremented on each edit
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct StoreGeneration(u64);
 
 /// A complete data store: covers all timelines, all entities, everything.
