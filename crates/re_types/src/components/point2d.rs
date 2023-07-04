@@ -11,8 +11,7 @@
 #[doc = "A point in 2D space."]
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Point2D {
-    pub x: f32,
-    pub y: f32,
+    pub xy: crate::datatypes::Point2D,
 }
 
 impl<'a> From<Point2D> for ::std::borrow::Cow<'a, Point2D> {
@@ -39,20 +38,25 @@ impl crate::Component for Point2D {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Struct(vec![
-            Field {
-                name: "x".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "y".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-        ])
+        DataType::Struct(vec![Field {
+            name: "xy".to_owned(),
+            data_type: DataType::Struct(vec![
+                Field {
+                    name: "x".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "y".to_owned(),
+                    data_type: DataType::Float32,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+            ]),
+            is_nullable: false,
+            metadata: [].into(),
+        }])
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -89,58 +93,27 @@ impl crate::Component for Point2D {
                 })
                 .to_logical_type()
                 .clone(),
-                vec![
+                vec![{
+                    let (somes, xy): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum.as_ref().map(|datum| {
+                                let Self { xy, .. } = &**datum;
+                                xy.clone()
+                            });
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let xy_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
                     {
-                        let (somes, x): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { x, .. } = &**datum;
-                                    x.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let x_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
-                            x.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            x_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, y): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { y, .. } = &**datum;
-                                    y.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let y_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
-                            },
-                            y.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            y_bitmap,
-                        )
-                        .boxed()
-                    },
-                ],
+                        _ = xy_bitmap;
+                        _ = extension_wrapper;
+                        crate::datatypes::Point2D::try_to_arrow_opt(xy, None::<&str>)?
+                    }
+                }],
                 bitmap,
             )
             .boxed()
@@ -172,34 +145,18 @@ impl crate::Component for Point2D {
                 .map(|field| field.name.as_str())
                 .zip(data_arrays)
                 .collect();
-            let x = {
-                let data = &**arrays_by_name["x"];
+            let xy = {
+                let data = &**arrays_by_name["xy"];
 
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
+                crate::datatypes::Point2D::try_from_arrow_opt(data)?.into_iter()
             };
-            let y = {
-                let data = &**arrays_by_name["y"];
-
-                data.as_any()
-                    .downcast_ref::<Float32Array>()
-                    .unwrap()
-                    .into_iter()
-                    .map(|v| v.copied())
-            };
-            ::itertools::izip!(x, y)
+            ::itertools::izip!(xy)
                 .enumerate()
-                .map(|(i, (x, y))| {
+                .map(|(i, (xy))| {
                     is_valid(i)
                         .then(|| {
                             Ok(Self {
-                                x: x.ok_or_else(|| crate::DeserializationError::MissingData {
-                                    datatype: data.data_type().clone(),
-                                })?,
-                                y: y.ok_or_else(|| crate::DeserializationError::MissingData {
+                                xy: xy.ok_or_else(|| crate::DeserializationError::MissingData {
                                     datatype: data.data_type().clone(),
                                 })?,
                             })

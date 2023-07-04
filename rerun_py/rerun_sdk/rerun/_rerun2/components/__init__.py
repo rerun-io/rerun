@@ -2,43 +2,42 @@
 
 from __future__ import annotations
 
+from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
+from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
+from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
+from .fuzzy import (
+    AffixFuzzer1Array,
+    AffixFuzzer1Type,
+    AffixFuzzer2Array,
+    AffixFuzzer2Type,
+    AffixFuzzer3Array,
+    AffixFuzzer3Type,
+    AffixFuzzer4Array,
+    AffixFuzzer4Type,
+    AffixFuzzer5Array,
+    AffixFuzzer5Type,
+    AffixFuzzer6Array,
+    AffixFuzzer6Type,
+)
+from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
+from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
+from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
+from .point2d import Point2DArray, Point2DType
+from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType
+
 __all__ = [
-    "Component",
-    "AffixFuzzer1",
     "AffixFuzzer1Array",
-    "AffixFuzzer1ArrayLike",
-    "AffixFuzzer1Like",
     "AffixFuzzer1Type",
-    "AffixFuzzer2",
     "AffixFuzzer2Array",
-    "AffixFuzzer2ArrayLike",
-    "AffixFuzzer2Like",
     "AffixFuzzer2Type",
-    "AffixFuzzer3",
     "AffixFuzzer3Array",
-    "AffixFuzzer3ArrayLike",
-    "AffixFuzzer3Like",
     "AffixFuzzer3Type",
-    "AffixFuzzer4",
     "AffixFuzzer4Array",
-    "AffixFuzzer4ArrayLike",
-    "AffixFuzzer4Like",
     "AffixFuzzer4Type",
-    "AffixFuzzer5",
     "AffixFuzzer5Array",
-    "AffixFuzzer5ArrayLike",
-    "AffixFuzzer5Like",
     "AffixFuzzer5Type",
-    "AffixFuzzer6",
     "AffixFuzzer6Array",
-    "AffixFuzzer6ArrayLike",
-    "AffixFuzzer6Like",
     "AffixFuzzer6Type",
-    "AffixFuzzer7",
-    "AffixFuzzer7Array",
-    "AffixFuzzer7ArrayLike",
-    "AffixFuzzer7Like",
-    "AffixFuzzer7Type",
     "ClassId",
     "ClassIdArray",
     "ClassIdArrayLike",
@@ -69,10 +68,7 @@ __all__ = [
     "LabelArrayLike",
     "LabelLike",
     "LabelType",
-    "Point2D",
     "Point2DArray",
-    "Point2DArrayLike",
-    "Point2DLike",
     "Point2DType",
     "Radius",
     "RadiusArray",
@@ -80,50 +76,3 @@ __all__ = [
     "RadiusLike",
     "RadiusType",
 ]
-
-from .._baseclasses import Component
-from .class_id import ClassId, ClassIdArray, ClassIdArrayLike, ClassIdLike, ClassIdType
-from .color import Color, ColorArray, ColorArrayLike, ColorLike, ColorType
-from .draw_order import DrawOrder, DrawOrderArray, DrawOrderArrayLike, DrawOrderLike, DrawOrderType
-from .fuzzy import (
-    AffixFuzzer1,
-    AffixFuzzer1Array,
-    AffixFuzzer1ArrayLike,
-    AffixFuzzer1Like,
-    AffixFuzzer1Type,
-    AffixFuzzer2,
-    AffixFuzzer2Array,
-    AffixFuzzer2ArrayLike,
-    AffixFuzzer2Like,
-    AffixFuzzer2Type,
-    AffixFuzzer3,
-    AffixFuzzer3Array,
-    AffixFuzzer3ArrayLike,
-    AffixFuzzer3Like,
-    AffixFuzzer3Type,
-    AffixFuzzer4,
-    AffixFuzzer4Array,
-    AffixFuzzer4ArrayLike,
-    AffixFuzzer4Like,
-    AffixFuzzer4Type,
-    AffixFuzzer5,
-    AffixFuzzer5Array,
-    AffixFuzzer5ArrayLike,
-    AffixFuzzer5Like,
-    AffixFuzzer5Type,
-    AffixFuzzer6,
-    AffixFuzzer6Array,
-    AffixFuzzer6ArrayLike,
-    AffixFuzzer6Like,
-    AffixFuzzer6Type,
-    AffixFuzzer7,
-    AffixFuzzer7Array,
-    AffixFuzzer7ArrayLike,
-    AffixFuzzer7Like,
-    AffixFuzzer7Type,
-)
-from .instance_key import InstanceKey, InstanceKeyArray, InstanceKeyArrayLike, InstanceKeyLike, InstanceKeyType
-from .keypoint_id import KeypointId, KeypointIdArray, KeypointIdArrayLike, KeypointIdLike, KeypointIdType
-from .label import Label, LabelArray, LabelArrayLike, LabelLike, LabelType
-from .point2d import Point2D, Point2DArray, Point2DArrayLike, Point2DLike, Point2DType
-from .radius import Radius, RadiusArray, RadiusArrayLike, RadiusLike, RadiusType

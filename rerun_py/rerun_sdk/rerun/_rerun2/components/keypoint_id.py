@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
-from .._baseclasses import Component
+from .._baseclasses import (
+    BaseExtensionArray,
+    BaseExtensionType,
+)
+from ._overrides import keypointid_native_to_pa_array  # noqa: F401
 
 __all__ = ["KeypointId", "KeypointIdArray", "KeypointIdArrayLike", "KeypointIdLike", "KeypointIdType"]
 
 
-## --- KeypointId --- ##
-
-
-@dataclass
+@define
 class KeypointId:
     """
     A 16-bit ID representing a type of semantic keypoint within a class.
@@ -28,60 +29,40 @@ class KeypointId:
     [`rerun.components.AnnotationContext`].
     """
 
-    id: int
+    id: int = field()
 
-    def __array__(self) -> npt.ArrayLike:
-        return np.asarray(self.id)
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+        return np.asarray(self.id, dtype=dtype)
+
+    def __int__(self) -> int:
+        return int(self.id)
 
 
 KeypointIdLike = Union[KeypointId, float]
 
 KeypointIdArrayLike = Union[
-    KeypointIdLike, Sequence[KeypointIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
+    KeypointId, Sequence[KeypointIdLike], npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]
 ]
 
 
 # --- Arrow support ---
 
-from .keypoint_id_ext import KeypointIdArrayExt  # noqa: E402
 
-
-class KeypointIdType(pa.ExtensionType):  # type: ignore[misc]
-    def __init__(self: type[pa.ExtensionType]) -> None:
+class KeypointIdType(BaseExtensionType):
+    def __init__(self) -> None:
         pa.ExtensionType.__init__(self, pa.uint16(), "rerun.keypoint_id")
 
-    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-        return b""
 
-    @classmethod
-    def __arrow_ext_deserialize__(
-        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-    ) -> type[pa.ExtensionType]:
-        # return an instance of this subclass given the serialized metadata.
-        return KeypointIdType()
+class KeypointIdArray(BaseExtensionArray[KeypointIdArrayLike]):
+    _EXTENSION_NAME = "rerun.keypoint_id"
+    _EXTENSION_TYPE = KeypointIdType
 
-    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-        return KeypointIdArray
+    @staticmethod
+    def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
+        return keypointid_native_to_pa_array(data, data_type)
 
+
+KeypointIdType._ARRAY_TYPE = KeypointIdArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(KeypointIdType())
-
-
-class KeypointIdArray(Component, KeypointIdArrayExt):  # type: ignore[misc]
-    _extension_name = "rerun.keypoint_id"
-
-    @staticmethod
-    def from_similar(data: KeypointIdArrayLike | None) -> pa.Array:
-        if data is None:
-            return KeypointIdType().wrap_array(pa.array([], type=KeypointIdType().storage_type))
-        else:
-            return KeypointIdArrayExt._from_similar(
-                data,
-                mono=KeypointId,
-                mono_aliases=KeypointIdLike,
-                many=KeypointIdArray,
-                many_aliases=KeypointIdArrayLike,
-                arrow=KeypointIdType,
-            )
