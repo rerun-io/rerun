@@ -65,6 +65,26 @@
             "cwd": "${workspaceFolder}"
         },
         {
+            "name": "Debug 'minimal' example",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=minimal",
+                ],
+                "filter": {
+                    "name": "minimal",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "trace"
+            }
+        },
+        {
             "name": "Debug re_renderer --example=multiview",
             "type": "lldb",
             "request": "launch",

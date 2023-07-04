@@ -4007,6 +4007,7 @@ name = "re_data_store"
 version = "0.8.0-alpha.0"
 dependencies = [
  "ahash 0.8.3",
+ "arrow2",
  "criterion",
  "document-features",
  "itertools 0.11.0",
@@ -4258,6 +4259,7 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "rand",
+ "re_build_info",
  "re_build_tools",
  "re_components",
  "re_log",
@@ -4799,6 +4801,7 @@ dependencies = [
  "re_sdk",
  "re_sdk_comms",
  "re_smart_channel",
+ "re_tracing",
  "re_viewer",
  "re_web_viewer_server",
  "re_ws_comms",
@@ -4819,6 +4822,18 @@ dependencies = [
  "re_memory",
  "rerun",
  "tokio",
+]
+
+[[package]]
+name = "rerun_c"
+version = "0.8.0-alpha.0"
+dependencies = [
+ "ahash 0.8.3",
+ "arrow2",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "re_log",
+ "re_sdk",
 ]
 
 [[package]]

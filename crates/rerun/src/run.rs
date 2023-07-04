@@ -814,6 +814,7 @@ fn load_rrd_file_to_channel(
     let decoder = re_log_encoding::decoder::Decoder::new(file)?;
 
     rayon::spawn(move || {
+        re_tracing::profile_scope!("load_rrd_file_to_channel");
         for msg in decoder {
             match msg {
                 Ok(msg) => {

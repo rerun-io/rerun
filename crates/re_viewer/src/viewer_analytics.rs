@@ -78,6 +78,7 @@ impl ViewerAnalytics {
     ) {
         use crate::AppEnvironment;
         let app_env_str = match app_env {
+            AppEnvironment::CSdk => "c_sdk",
             AppEnvironment::PythonSdk(_) => "python_sdk",
             AppEnvironment::RustSdk { .. } => "rust_sdk",
             AppEnvironment::RerunCli { .. } => "rerun_cli",
@@ -156,6 +157,7 @@ impl ViewerAnalytics {
 
             let store_source = match &store_info.store_source {
                 StoreSource::Unknown => "unknown".to_owned(),
+                StoreSource::CSdk => "c_sdk".to_owned(),
                 StoreSource::PythonSdk(_version) => "python_sdk".to_owned(),
                 StoreSource::RustSdk { .. } => "rust_sdk".to_owned(),
                 StoreSource::Other(other) => other.clone(),
