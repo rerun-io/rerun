@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use itertools::Itertools;
 use re_log_types::{LogMsg, PythonVersion};
 use re_smart_channel::{Receiver, SmartMessagePayload};
@@ -149,6 +151,15 @@ enum Commands {
     #[cfg(all(feature = "analytics"))]
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
+
+    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
+    /// match.
+    ///
+    /// This ignores the `log_time` timeline.
+    Compare {
+        path_to_rrd1: String,
+        path_to_rrd2: String,
+    },
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -254,6 +265,16 @@ where
         match commands {
             #[cfg(all(feature = "analytics"))]
             Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
+
+            Commands::Compare {
+                path_to_rrd1,
+                path_to_rrd2,
+            } => {
+                let path_to_rrd1 = PathBuf::from(path_to_rrd1);
+                let path_to_rrd2 = PathBuf::from(path_to_rrd2);
+                run_compare(&path_to_rrd1, &path_to_rrd2)
+            }
+
             #[cfg(not(all(feature = "analytics")))]
             _ => Ok(()),
         }
@@ -278,6 +299,52 @@ where
         // Unclean failure -- re-raise exception
         Err(err) => Err(err),
     }
+}
+
+/// Checks whether two .rrd files are _similar_, i.e. not equal on a byte-level but
+/// functionally equivalent.
+///
+/// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
+fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path) -> anyhow::Result<()> {
+    /// Given a path to an rrd file, builds up a `DataStore` and returns its contents as one big
+    /// `DataTable`.
+    fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
+        let rrd = {
+            let bytes = std::fs::read(path_to_rrd)
+                .with_context(|| format!("couldn't read rrd file contents at {path_to_rrd:?}"))?;
+            re_log_encoding::decoder::decode_bytes(&bytes)?
+        };
+
+        let store_id = {
+            let store_info = rrd
+                .iter()
+                .find(|msg| matches!(msg, LogMsg::SetStoreInfo(_)))
+                .ok_or_else(|| {
+                    anyhow::anyhow!("couldn't find store ID for rrd file at {path_to_rrd:?}")
+                })?;
+            store_info.store_id().clone()
+        };
+
+        let mut store = re_data_store::StoreDb::new(store_id);
+        for msg in &rrd {
+            store.add(msg)?;
+        }
+
+        let table = re_log_types::DataTable::from_rows(
+            re_log_types::TableId::random(),
+            store
+                .store()
+                .to_data_tables(None)
+                .flat_map(|t| t.to_rows().collect_vec()),
+        );
+
+        Ok::<_, anyhow::Error>(table)
+    }
+
+    let table1 = compute_uber_table(path_to_rrd1)?;
+    let table2 = compute_uber_table(path_to_rrd2)?;
+
+    re_log_types::DataTable::similar(&table1, &table2)
 }
 
 #[cfg(all(feature = "analytics"))]
