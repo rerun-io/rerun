@@ -44,7 +44,7 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Debug 'rerun' data.rrd",
+            "name": "Debug 'rerun ../data.rrd'",
             "type": "lldb",
             "request": "launch",
             "cargo": {
@@ -65,28 +65,7 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Debug 'rerun' objectron.rrd",
-            "type": "lldb",
-            "request": "launch",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--package=rerun-cli",
-                    "--no-default-features",
-                    "--features=native_viewer"
-                ],
-                "filter": {
-                    "name": "rerun",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "../objectron.rrd"
-            ],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "Debug re_renderer sample",
+            "name": "Debug re_renderer --example=multiview",
             "type": "lldb",
             "request": "launch",
             "cargo": {
