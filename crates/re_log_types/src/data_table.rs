@@ -1059,7 +1059,7 @@ impl std::fmt::Display for DataTable {
 }
 
 impl DataTable {
-    /// Checks whether two [`DataTables`] are _similar_, i.e. not equal on a byte-level but
+    /// Checks whether two [`DataTable`]s are _similar_, i.e. not equal on a byte-level but
     /// functionally equivalent.
     ///
     /// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
