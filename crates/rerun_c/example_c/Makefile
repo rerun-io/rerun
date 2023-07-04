@@ -11,7 +11,8 @@ ifeq ($(OS),Windows_NT)
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Linux)
-        $ TODO(emilk): Linux
+		LDLIBS  += -lm
+		OBJECTS += ../../../target/debug/librerun_c.a
     endif
     ifeq ($(UNAME_S),Darwin)
 		# MacOS:
