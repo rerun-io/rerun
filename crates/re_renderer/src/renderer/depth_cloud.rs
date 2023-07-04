@@ -11,6 +11,7 @@
 //! The vertex shader backprojects the depth texture using the user-specified intrinsics, and then
 //! behaves pretty much exactly like our point cloud renderer (see [`point_cloud.rs`]).
 
+use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
@@ -36,7 +37,15 @@ use super::{
 mod gpu_data {
     use crate::{wgpu_buffer_types, PickingLayerObjectId};
 
-    /// Keep in sync with mirror in `depth_cloud.wgsl.`
+    use super::DepthCloudDrawDataError;
+
+    // Keep in sync with mirror in `depth_cloud.wgsl.`
+
+    // Which texture to read from?
+    const SAMPLE_TYPE_FLOAT: u32 = 1;
+    const SAMPLE_TYPE_SINT: u32 = 2;
+    const SAMPLE_TYPE_UINT: u32 = 3;
+
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
@@ -48,6 +57,7 @@ mod gpu_data {
         pub outline_mask_id: wgpu_buffer_types::UVec2,
         pub picking_layer_object_id: PickingLayerObjectId,
 
+        // ---
         /// Multiplier to get world-space depth from whatever is in the texture.
         pub world_depth_from_texture_depth: f32,
 
@@ -60,17 +70,24 @@ mod gpu_data {
         /// Which colormap should be used.
         pub colormap: u32,
 
-        /// Changes over different draw-phases.
-        pub radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
+        // ---
+        /// One of `SAMPLE_TYPE_*`.
+        pub sample_type: u32,
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1 - 1],
+        /// Changes over different draw-phases.
+        pub radius_boost_in_ui_points: f32,
+
+        pub _row_padding: [f32; 2],
+
+        // ---
+        pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1 - 1],
     }
 
     impl DepthCloudInfoUBO {
         pub fn from_depth_cloud(
             radius_boost_in_ui_points: f32,
             depth_cloud: &super::DepthCloud,
-        ) -> Self {
+        ) -> Result<Self, DepthCloudDrawDataError> {
             let super::DepthCloud {
                 world_from_obj,
                 depth_camera_intrinsics,
@@ -78,13 +95,25 @@ mod gpu_data {
                 point_radius_from_world_depth,
                 max_depth_in_world,
                 depth_dimensions: _,
-                depth_texture: _,
+                depth_texture,
                 colormap,
                 outline_mask_id,
                 picking_object_id,
             } = depth_cloud;
 
-            Self {
+            let texture_format = depth_texture.texture.format();
+            let sample_type = match texture_format.sample_type(None) {
+                Some(wgpu::TextureSampleType::Float { .. }) => SAMPLE_TYPE_FLOAT,
+                Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
+                Some(wgpu::TextureSampleType::Uint) => SAMPLE_TYPE_UINT,
+                _ => {
+                    return Err(DepthCloudDrawDataError::TextureFormatNotSupported(
+                        texture_format,
+                    ));
+                }
+            };
+
+            Ok(Self {
                 world_from_obj: (*world_from_obj).into(),
                 depth_camera_intrinsics: (*depth_camera_intrinsics).into(),
                 outline_mask_id: outline_mask_id.0.unwrap_or_default().into(),
@@ -92,10 +121,12 @@ mod gpu_data {
                 point_radius_from_world_depth: *point_radius_from_world_depth,
                 max_depth_in_world: *max_depth_in_world,
                 colormap: *colormap as u32,
-                radius_boost_in_ui_points: radius_boost_in_ui_points.into(),
+                sample_type,
+                radius_boost_in_ui_points,
                 picking_layer_object_id: *picking_object_id,
-                end_padding: Default::default(),
-            }
+                _row_padding: Default::default(),
+                _end_padding: Default::default(),
+            })
         }
     }
 }
@@ -191,8 +222,8 @@ impl DrawData for DepthCloudDrawData {
 
 #[derive(thiserror::Error, Debug)]
 pub enum DepthCloudDrawDataError {
-    #[error("Depth texture format was {0:?}, only formats with sample type float are supported")]
-    InvalidDepthTextureFormat(wgpu::TextureFormat),
+    #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
+    TextureFormatNotSupported(wgpu::TextureFormat),
 
     #[error(transparent)]
     ResourceManagerError(#[from] ResourceManagerError),
@@ -227,23 +258,22 @@ impl DepthCloudDrawData {
             });
         }
 
-        let depth_cloud_ubo_binding_outlines = create_and_fill_uniform_buffer_batch(
-            ctx,
-            "depth_cloud_ubos".into(),
-            depth_clouds.iter().map(|dc| {
-                gpu_data::DepthCloudInfoUBO::from_depth_cloud(
-                    *radius_boost_in_ui_points_for_outlines,
-                    dc,
-                )
-            }),
-        );
-        let depth_cloud_ubo_binding_opaque = create_and_fill_uniform_buffer_batch(
-            ctx,
-            "depth_cloud_ubos".into(),
-            depth_clouds
+        let depth_cloud_ubo_binding_outlines = {
+            let radius_boost = *radius_boost_in_ui_points_for_outlines;
+            let ubos: Vec<gpu_data::DepthCloudInfoUBO> = depth_clouds
                 .iter()
-                .map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(0.0, dc)),
-        );
+                .map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(radius_boost, dc))
+                .try_collect()?;
+            create_and_fill_uniform_buffer_batch(ctx, "depth_cloud_ubos".into(), ubos.into_iter())
+        };
+
+        let depth_cloud_ubo_binding_opaque = {
+            let ubos: Vec<gpu_data::DepthCloudInfoUBO> = depth_clouds
+                .iter()
+                .map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(0.0, dc))
+                .try_collect()?;
+            create_and_fill_uniform_buffer_batch(ctx, "depth_cloud_ubos".into(), ubos.into_iter())
+        };
 
         let mut instances = Vec::with_capacity(depth_clouds.len());
         for (depth_cloud, ubo_outlines, ubo_opaque) in itertools::izip!(
@@ -251,13 +281,27 @@ impl DepthCloudDrawData {
             depth_cloud_ubo_binding_outlines,
             depth_cloud_ubo_binding_opaque
         ) {
-            if !matches!(
-                depth_cloud.depth_texture.format().sample_type(None),
-                Some(wgpu::TextureSampleType::Float { filterable: _ })
-            ) {
-                return Err(DepthCloudDrawDataError::InvalidDepthTextureFormat(
-                    depth_cloud.depth_texture.format(),
-                ));
+            // We set up several texture sources, then instruct the shader to read from at most one of them.
+            let mut texture_float = ctx.texture_manager_2d.zeroed_texture_float().handle;
+            let mut texture_sint = ctx.texture_manager_2d.zeroed_texture_sint().handle;
+            let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
+
+            let texture_format = depth_cloud.depth_texture.format();
+            match texture_format.sample_type(None) {
+                Some(wgpu::TextureSampleType::Float { .. }) => {
+                    texture_float = depth_cloud.depth_texture.handle;
+                }
+                Some(wgpu::TextureSampleType::Sint) => {
+                    texture_sint = depth_cloud.depth_texture.handle;
+                }
+                Some(wgpu::TextureSampleType::Uint) => {
+                    texture_uint = depth_cloud.depth_texture.handle;
+                }
+                _ => {
+                    return Err(DepthCloudDrawDataError::TextureFormatNotSupported(
+                        texture_format,
+                    ));
+                }
             }
 
             let mk_bind_group = |label, ubo: BindGroupEntry| {
@@ -268,7 +312,9 @@ impl DepthCloudDrawData {
                         label,
                         entries: smallvec![
                             ubo,
-                            BindGroupEntry::DefaultTextureView(depth_cloud.depth_texture.handle),
+                            BindGroupEntry::DefaultTextureView(texture_float),
+                            BindGroupEntry::DefaultTextureView(texture_sint),
+                            BindGroupEntry::DefaultTextureView(texture_uint),
                         ],
                         layout: bg_layout,
                     },
@@ -334,11 +380,34 @@ impl Renderer for DepthCloudRenderer {
                         },
                         count: None,
                     },
+                    // float texture:
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // sint texture:
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Sint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // uint texture:
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
                             view_dimension: wgpu::TextureViewDimension::D2,
                             multisampled: false,
                         },
