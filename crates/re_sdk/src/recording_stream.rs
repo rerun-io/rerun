@@ -136,6 +136,7 @@ impl RecordingStreamBuilder {
         self
     }
 
+    #[allow(clippy::wrong_self_convention)]
     #[doc(hidden)]
     pub fn is_official_example(mut self, is_official_example: bool) -> Self {
         self.is_official_example = is_official_example;

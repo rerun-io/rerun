@@ -81,7 +81,7 @@ impl EncodingOptions {
         }
     }
 
-    pub fn to_bytes(&self) -> [u8; 4] {
+    pub fn to_bytes(self) -> [u8; 4] {
         [
             self.compression as u8,
             self.serializer as u8,
@@ -93,6 +93,7 @@ impl EncodingOptions {
 
 /// On failure to decode [`EncodingOptions`]
 #[derive(thiserror::Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum OptionsError {
     #[error("Reserved bytes not zero")]
     UnknownReservedBytes,

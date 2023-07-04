@@ -143,7 +143,7 @@ fn serialize_control_columns(
     // NOTE: Optional column, so make sure it's actually there:
     if !col_insert_id.is_empty() {
         let (insert_id_field, insert_id_column) =
-            DataTable::serialize_primitive_column(COLUMN_INSERT_ID, col_insert_id, None)?;
+            DataTable::serialize_primitive_column(COLUMN_INSERT_ID, col_insert_id, None);
         schema.fields.push(insert_id_field);
         columns.push(insert_id_column);
     }
@@ -158,13 +158,13 @@ fn serialize_control_columns(
             timeline.name(),
             col_time,
             timeline.datatype().into(),
-        )?;
+        );
         schema.fields.push(time_field);
         columns.push(time_column);
     }
 
     let (num_instances_field, num_instances_column) =
-        DataTable::serialize_primitive_column(COLUMN_NUM_INSTANCES, col_num_instances, None)?;
+        DataTable::serialize_primitive_column(COLUMN_NUM_INSTANCES, col_num_instances, None);
     schema.fields.push(num_instances_field);
     columns.push(num_instances_column);
 

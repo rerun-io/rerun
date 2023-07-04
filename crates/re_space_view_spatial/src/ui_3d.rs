@@ -528,7 +528,7 @@ pub fn view_3d(
     }
 
     // Commit ui induced lines.
-    match line_builder.to_draw_data(ctx.render_ctx) {
+    match line_builder.into_draw_data(ctx.render_ctx) {
         Ok(line_draw_data) => {
             view_builder.queue_draw(line_draw_data);
         }

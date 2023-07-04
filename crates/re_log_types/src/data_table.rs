@@ -678,7 +678,7 @@ impl DataTable {
             COLUMN_NUM_INSTANCES,
             col_num_instances.as_slice(),
             None,
-        )?;
+        );
         schema.fields.push(num_instances_field);
         columns.push(num_instances_column);
 
@@ -730,7 +730,7 @@ impl DataTable {
         name: &str,
         values: &[T],
         datatype: Option<DataType>,
-    ) -> DataTableResult<(Field, Box<dyn Array>)> {
+    ) -> (Field, Box<dyn Array>) {
         re_tracing::profile_function!();
 
         let data = PrimitiveArray::from_slice(values);
@@ -747,7 +747,7 @@ impl DataTable {
                 .extend([("ARROW:extension:name".to_owned(), name)]);
         }
 
-        Ok((field, data))
+        (field, data)
     }
 
     /// Serializes all data columns into an arrow payload and schema.

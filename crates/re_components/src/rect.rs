@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use super::Vec4D;
