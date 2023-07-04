@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-This runs our end-to-end cross-language roundtrip tests for all SDKs.
+Run our end-to-end cross-language roundtrip tests for all SDKs.
 
 The list of archetypes is read directly from `crates/re_types/definitions/rerun/archetypes`.
 If you create a new archetype definition without end-to-end tests, this will fail.
@@ -21,7 +21,7 @@ ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Runs end-to-end tests of select python example.")
+    parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
 
     if parser.parse_args().no_build:
