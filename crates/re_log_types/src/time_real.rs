@@ -70,8 +70,11 @@ impl From<f32> for TimeReal {
     /// Saturating cast
     #[inline]
     fn from(value: f32) -> Self {
-        assert!(!value.is_nan());
-        if let Some(num) = FixedI128::checked_from_num(value) {
+        debug_assert!(!value.is_nan());
+        if value.is_nan() {
+            re_log::warn_once!("NaN time detected");
+            Self(0.into())
+        } else if let Some(num) = FixedI128::checked_from_num(value) {
             Self(num)
         } else if value < 0.0 {
             Self::MIN
@@ -85,8 +88,11 @@ impl From<f64> for TimeReal {
     /// Saturating cast
     #[inline]
     fn from(value: f64) -> Self {
-        assert!(!value.is_nan());
-        if let Some(num) = FixedI128::checked_from_num(value) {
+        debug_assert!(!value.is_nan());
+        if value.is_nan() {
+            re_log::warn_once!("NaN time detected");
+            Self(0.into())
+        } else if let Some(num) = FixedI128::checked_from_num(value) {
             Self(num)
         } else if value < 0.0 {
             Self::MIN
