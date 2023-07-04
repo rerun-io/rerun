@@ -159,6 +159,10 @@ enum Commands {
     Compare {
         path_to_rrd1: String,
         path_to_rrd2: String,
+
+        /// If specified, dumps both .rrd files as tables.
+        #[clap(long, default_value_t = false)]
+        full_dump: bool,
     },
 }
 
@@ -269,10 +273,11 @@ where
             Commands::Compare {
                 path_to_rrd1,
                 path_to_rrd2,
+                full_dump,
             } => {
                 let path_to_rrd1 = PathBuf::from(path_to_rrd1);
                 let path_to_rrd2 = PathBuf::from(path_to_rrd2);
-                run_compare(&path_to_rrd1, &path_to_rrd2)
+                run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
             }
         }
     } else {
@@ -302,7 +307,7 @@ where
 /// functionally equivalent.
 ///
 /// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
-fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path) -> anyhow::Result<()> {
+fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> anyhow::Result<()> {
     /// Given a path to an rrd file, builds up a `DataStore` and returns its contents as one big
     /// `DataTable`.
     fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
@@ -327,19 +332,27 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path) -> anyhow::Result<()> {
             store.add(msg)?;
         }
 
-        let table = re_log_types::DataTable::from_rows(
-            re_log_types::TableId::random(),
-            store
+        let table = re_log_types::DataTable::from_rows(re_log_types::TableId::random(), {
+            let mut rows = store
                 .store()
                 .to_data_tables(None)
-                .flat_map(|t| t.to_rows().collect_vec()),
-        );
+                .flat_map(|t| t.to_rows().collect_vec())
+                .collect_vec();
+            // NOTE: So the full dump makes sense, if enabled.
+            rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+            rows
+        });
 
         Ok::<_, anyhow::Error>(table)
     }
 
     let table1 = compute_uber_table(path_to_rrd1)?;
     let table2 = compute_uber_table(path_to_rrd2)?;
+
+    if full_dump {
+        println!("{table1}");
+        println!("{table2}");
+    }
 
     re_log_types::DataTable::similar(&table1, &table2)
 }
