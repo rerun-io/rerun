@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import itertools
 
 import numpy as np
 import rerun as rr
-from rerun._rerun2 import components as rrc
 
 
 def main() -> None:
