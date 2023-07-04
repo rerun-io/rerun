@@ -88,7 +88,6 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
 poll-promise = "0.2"
 rfd.workspace = true
-sanitize-filename = "0.4.0"
 serde = { version = "1", features = ["derive"] }
 time = { workspace = true, features = ["formatting"] }
 web-time.workspace = true

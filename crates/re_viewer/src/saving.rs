@@ -4,6 +4,16 @@ use re_data_store::StoreDb;
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::ApplicationId;
 
+/// Convert to lowercase and replace any character that is not a fairly common
+/// filename character with '-'
+fn sanitize_app_id(app_id: &ApplicationId) -> String {
+    let output = app_id.0.to_lowercase();
+    output.replace(
+        |c: char| !matches!(c, '0'..='9' | 'a'..='z' | '.' | '_' | '+' | '(' | ')' | '[' | ']'),
+        "-",
+    )
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 /// Determine the default path for a blueprint based on its `ApplicationId`
 /// This path should be determnistic and unique.
@@ -21,18 +31,22 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
         // We want a unique filename (not a directory) for each app-id.
 
         // First we sanitize to remove disallowed characters
-        // TODO(jleibs): Maybe we should just restrict app-ids to valid filename characters.
-        let options = sanitize_filename::Options {
-            truncate: true,
-            windows: true,
-            replacement: "-",
-        };
+        let mut sanitized_app_id = sanitize_app_id(app_id);
 
-        let mut sanitized_app_id = sanitize_filename::sanitize_with_options(&app_id.0, options);
-
-        // Make sure we are leaving space for the hash and file extension
-        const MAX_LENGTH: usize = 255 - 16 - 1 - ".blueprint".len();
-        sanitized_app_id.truncate(MAX_LENGTH);
+        // Make sure the filename isn't too long
+        // This is overly conservative in most cases but some versions of Windows 10
+        // still have this restriction.
+        // TODO(jleibs): Determine this value from the environment.
+        const MAX_PATH: usize = 255;
+        let directory_part_length = data_dir.as_os_str().len();
+        let hash_part_length = 16 + 1;
+        let extension_part_length = ".blueprint".len();
+        let total_reserved_length =
+            directory_part_length + hash_part_length + extension_part_length;
+        if total_reserved_length > MAX_PATH {
+            anyhow::bail!("Could not form blueprint path: total minimum length exceeds {MAX_PATH} characters.")
+        }
+        sanitized_app_id.truncate(MAX_PATH - total_reserved_length);
 
         // If the sanitization actually did something, we no longer have a uniqueness guarantee,
         // so insert the hash.
