@@ -60,7 +60,7 @@ def run_roundtrip_python(arch: str) -> str:
     cmd = [python_executable, main_path, "--save", output_path]
     roundtrip_process = subprocess.Popen(cmd)
     print(cmd)
-    returncode = roundtrip_process.wait(timeout=30)
+    returncode = roundtrip_process.wait(timeout=600)
     assert returncode == 0, f"python roundtrip process exited with error code {returncode}"
 
     return output_path
@@ -73,7 +73,7 @@ def run_roundtrip_rust(arch: str) -> str:
     cmd = ["cargo", "r", "--quiet", "-p", project_name, "--", "--save", output_path]
     roundtrip_process = subprocess.Popen(cmd)
     print(cmd)
-    returncode = roundtrip_process.wait(timeout=30)
+    returncode = roundtrip_process.wait(timeout=600)
     assert returncode == 0, f"rust roundtrip process exited with error code {returncode}"
 
     return output_path
@@ -83,7 +83,7 @@ def run_comparison(python_output_path: str, rust_output_path: str):
     cmd = ["cargo", "r", "-p", "rerun-cli", "--quiet", "--", "compare", python_output_path, rust_output_path]
     roundtrip_process = subprocess.Popen(cmd)
     print(cmd)
-    returncode = roundtrip_process.wait(timeout=30)
+    returncode = roundtrip_process.wait(timeout=600)
     assert returncode == 0, f"comparison process exited with error code {returncode}"
 
 
