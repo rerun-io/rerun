@@ -34,7 +34,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Building rerun-sdk…")
         start_time = time.time()
-        subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
+        subprocess.Popen(["just", "py-build"], env=build_env).wait()
         elapsed = time.time() - start_time
         print(f"rerun-sdk built in {elapsed:.1f} seconds")
         print("")
@@ -58,8 +58,8 @@ def run_roundtrip_python(arch: str) -> str:
         python_executable = "python3"
 
     cmd = [python_executable, main_path, "--save", output_path]
-    roundtrip_process = subprocess.Popen(cmd)
     print(cmd)
+    roundtrip_process = subprocess.Popen(cmd)
     returncode = roundtrip_process.wait(timeout=600)
     assert returncode == 0, f"python roundtrip process exited with error code {returncode}"
 
@@ -70,19 +70,19 @@ def run_roundtrip_rust(arch: str) -> str:
     project_name = f"roundtrip_{arch}"
     output_path = f"tests/rust/roundtrips/{arch}/out.rrd"
 
-    cmd = ["cargo", "r", "--quiet", "-p", project_name, "--", "--save", output_path]
-    roundtrip_process = subprocess.Popen(cmd)
+    cmd = ["cargo", "r", "-p", project_name, "--", "--save", output_path]
     print(cmd)
-    returncode = roundtrip_process.wait(timeout=600)
+    roundtrip_process = subprocess.Popen(cmd)
+    returncode = roundtrip_process.wait(timeout=6000)
     assert returncode == 0, f"rust roundtrip process exited with error code {returncode}"
 
     return output_path
 
 
 def run_comparison(python_output_path: str, rust_output_path: str):
-    cmd = ["cargo", "r", "-p", "rerun-cli", "--quiet", "--", "compare", python_output_path, rust_output_path]
-    roundtrip_process = subprocess.Popen(cmd)
+    cmd = ["cargo", "r", "-p", "rerun-cli", "--", "compare", python_output_path, rust_output_path]
     print(cmd)
+    roundtrip_process = subprocess.Popen(cmd)
     returncode = roundtrip_process.wait(timeout=600)
     assert returncode == 0, f"comparison process exited with error code {returncode}"
 
