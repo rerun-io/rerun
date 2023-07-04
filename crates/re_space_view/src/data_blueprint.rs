@@ -115,12 +115,13 @@ impl DataBlueprintTree {
             data_blueprints,
         } = self;
 
-        // Note: this could fail unexpectedly if slotmap iteration order is unstable.
         groups.len() != other.groups.len()
-            || groups
-                .iter()
-                .zip(other.groups.iter())
-                .any(|(x, y)| x.0 != y.0 || x.1.has_edits(y.1))
+            || groups.iter().any(|(key, val)| {
+                other
+                    .groups
+                    .get(key)
+                    .map_or(true, |other_val| val.has_edits(other_val))
+            })
             || *path_to_group != other.path_to_group
             || *entity_paths != other.entity_paths
             || *root_group_handle != other.root_group_handle

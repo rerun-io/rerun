@@ -38,11 +38,12 @@ impl EntityPropertyMap {
     /// Determine whether this `EntityPropertyMap` has user-edits relative to another `EntityPropertyMap`
     pub fn has_edits(&self, other: &Self) -> bool {
         self.props.len() != other.props.len()
-            || self
-                .props
-                .iter()
-                .zip(other.props.iter())
-                .any(|(x, y)| x.0 != y.0 || x.1.has_edits(y.1))
+            || self.props.iter().any(|(key, val)| {
+                other
+                    .props
+                    .get(key)
+                    .map_or(true, |other_val| val.has_edits(other_val))
+            })
     }
 }
 

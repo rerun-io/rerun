@@ -44,11 +44,9 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
             // so insert the hash.
             if sanitized_app_id != app_id.0 {
                 // Hash the original app-id.
-                let salt: u64 = 0xc927_d8cd_910d_16a3;
 
                 let hash = {
                     let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
-                    salt.hash(&mut hasher);
                     app_id.0.hash(&mut hasher);
                     hasher.finish()
                 };

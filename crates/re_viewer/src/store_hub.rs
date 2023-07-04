@@ -1,6 +1,6 @@
 use ahash::HashMap;
 use itertools::Itertools;
-use re_arrow_store::{DataStoreConfig, DataStoreStats};
+use re_arrow_store::{DataStoreConfig, DataStoreStats, StoreGeneration};
 use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
@@ -26,9 +26,9 @@ pub struct StoreHub {
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_dbs: StoreBundle,
 
-    // The number of rows in the blueprint the last time it was saved
+    // The [`StoreGeneration`] from when the [`StoreDb`] was last saved
     #[cfg(not(target_arch = "wasm32"))]
-    blueprint_last_save: HashMap<StoreId, u64>,
+    blueprint_last_save: HashMap<StoreId, StoreGeneration>,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -121,7 +121,7 @@ impl StoreHub {
     /// Change which blueprint is active for a given [`ApplicationId`]
     #[inline]
     pub fn set_blueprint_for_app_id(&mut self, blueprint_id: StoreId, app_id: ApplicationId) {
-        re_log::debug!("Switching blueprint for {:?} to {:?}", app_id, blueprint_id);
+        re_log::debug!("Switching blueprint for {app_id:?} to {blueprint_id:?}");
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
     }
 
@@ -162,7 +162,7 @@ impl StoreHub {
     }
 
     /// Persist any in-use blueprints to durable storage.
-    // TODO(2579): implement persistence for web
+    // TODO(#2579): implement persistence for web
     #[cfg(not(target_arch = "wasm32"))]
     pub fn persist_app_blueprints(&mut self) -> anyhow::Result<()> {
         // Because we save blueprints based on their `ApplicationId`, we only
@@ -170,19 +170,17 @@ impl StoreHub {
         // there may be other Blueprints in the Hub.
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
             let blueprint_path = default_blueprint_path(app_id)?;
-            re_log::debug!("Saving blueprint for {app_id} to {:?}", blueprint_path);
+            re_log::debug!("Saving blueprint for {app_id} to {blueprint_path:?}");
 
             if let Some(blueprint) = self.store_dbs.blueprint(blueprint_id) {
-                // TODO(jleibs): This check isn't perfect. If we GC the blueprint and then insert
-                // more rows we could end up with a collision.
-                if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.last_insert_id()) {
-                    // TODO(jleibs): We should "flatten" blueprints when we save them
+                if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
+                    // TODO(#1803): We should "flatten" blueprints when we save them
                     // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                     // be small & fast to save, but maybe not once we start adding big pieces of user data?
                     let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
                     file_saver()?;
                     self.blueprint_last_save
-                        .insert(blueprint_id.clone(), blueprint.last_insert_id());
+                        .insert(blueprint_id.clone(), blueprint.generation());
                 }
             }
         }
@@ -190,18 +188,16 @@ impl StoreHub {
     }
 
     /// Try to load the persisted blueprint for the given `ApplicationId`
-    // TODO(2579): implement persistence for web
+    // TODO(#2579): implement persistence for web
     #[cfg(not(target_arch = "wasm32"))]
     pub fn try_to_load_persisted_blueprint(
         &mut self,
         app_id: &ApplicationId,
     ) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         let blueprint_path = default_blueprint_path(app_id)?;
         if blueprint_path.exists() {
-            re_log::debug!(
-                "Trying to load blueprint for {app_id} from {:?}",
-                blueprint_path
-            );
+            re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}",);
             if let Some(mut bundle) = load_file_path(&blueprint_path) {
                 for store in bundle.drain_store_dbs() {
                     if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
@@ -209,14 +205,13 @@ impl StoreHub {
                         // We found the blueprint we were looking for; make it active.
                         // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
                         re_log::debug!(
-                            "Switching blueprint for {:?} to {:?}",
-                            app_id,
+                            "Switching blueprint for {app_id:?} to {:?}",
                             store.store_id(),
                         );
                         self.blueprint_by_app_id
                             .insert(app_id.clone(), store.store_id().clone());
                         self.blueprint_last_save
-                            .insert(store.store_id().clone(), store.last_insert_id());
+                            .insert(store.store_id().clone(), store.generation());
                         self.store_dbs.insert_blueprint(store);
                     } else {
                         re_log::warn!(
