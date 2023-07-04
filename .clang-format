@@ -9,7 +9,7 @@ AllowShortIfStatementsOnASingleLine: Never
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 BinPackArguments: false
-ColumnLimit: 80
+ColumnLimit: 100
 ContinuationIndentWidth: 4
 IndentWidth: 4
 IndentWrappedFunctionNames: true
