@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -36,7 +36,7 @@ Point2DArrayLike = Union[
     Sequence[Point2DLike],
     npt.NDArray[np.float32],
     Sequence[npt.NDArray[np.float32]],
-    Sequence[tuple[float, float]],
+    Sequence[Tuple[float, float]],
     Sequence[float],
 ]
 

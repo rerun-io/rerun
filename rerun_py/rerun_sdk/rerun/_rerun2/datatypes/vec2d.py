@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -31,10 +31,10 @@ class Vec2D:
         return np.asarray(self.xy, dtype=dtype)
 
 
-Vec2DLike = Union[Vec2D, tuple[float, float]]
+Vec2DLike = Union[Vec2D, Tuple[float, float]]
 
 Vec2DArrayLike = Union[
-    Vec2D, Sequence[Vec2DLike], npt.NDArray[np.float32], Sequence[tuple[float, float]], Sequence[float]
+    Vec2D, Sequence[Vec2DLike], npt.NDArray[np.float32], Sequence[Tuple[float, float]], Sequence[float]
 ]
 
 

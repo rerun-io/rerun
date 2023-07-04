@@ -14,7 +14,7 @@ Possible inputs for `ColorArray.from_similar()`:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, cast
+from typing import TYPE_CHECKING, Sequence, Union, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -67,7 +67,7 @@ def color_native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa
                 else:
                     # a single color
                     data = data.reshape((1, -1))
-            array = _numpy_array_to_u32(cast(npt.NDArray[np.uint8 | np.float32 | np.float64], data))
+            array = _numpy_array_to_u32(cast(npt.NDArray[Union[np.uint8, np.float32, np.float64]], data))
     else:
         # Sequence of Color (which are int-like) or sequence of sequence
         array = np.array([Color(datum) for datum in data], np.uint32)

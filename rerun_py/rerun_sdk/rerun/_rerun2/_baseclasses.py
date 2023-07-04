@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Self, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 import pyarrow as pa
 from attrs import define, fields
@@ -67,13 +67,15 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
     """The extension type class associated with this class."""
 
     @classmethod
-    def from_similar(cls, data: T | None) -> Self:
+    def from_similar(cls, data: T | None) -> BaseExtensionArray[T]:
         data_type = cls._EXTENSION_TYPE()
 
         if data is None:
-            return cast(Self, data_type.wrap_array(pa.array([], type=data_type.storage_type)))
+            return cast(BaseExtensionArray[T], data_type.wrap_array(pa.array([], type=data_type.storage_type)))
         else:
-            return cast(Self, data_type.wrap_array(cls._native_to_pa_array(data, data_type.storage_type)))
+            return cast(
+                BaseExtensionArray[T], data_type.wrap_array(cls._native_to_pa_array(data, data_type.storage_type))
+            )
 
     @staticmethod
     def _native_to_pa_array(data: T, data_type: pa.DataType) -> pa.Array:
@@ -117,8 +119,8 @@ class BaseDelegatingExtensionArray(BaseExtensionArray[T]):  # type: ignore[misc]
     """The extension array class associated with this component's datatype."""
 
     @classmethod
-    def from_similar(cls, data: T | None) -> Self:
+    def from_similar(cls, data: T | None) -> BaseDelegatingExtensionArray[T]:
         arr = cls._DELEGATED_ARRAY_TYPE.from_similar(data)
 
         # TODO(ab, cmc): we unwrap the type here because we can't have two layers of extension types for now
-        return cast(Self, cls._EXTENSION_TYPE().wrap_array(arr.storage))
+        return cast(BaseDelegatingExtensionArray[T], cls._EXTENSION_TYPE().wrap_array(arr.storage))
