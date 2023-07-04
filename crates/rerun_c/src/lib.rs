@@ -91,7 +91,7 @@ static RECORDING_STREAMS: Lazy<Mutex<RecStreams>> = Lazy::new(Mutex::default);
 // functions with the same symbol names, and the linker behavior in this case i undefined.
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rerun_version_string() -> *const c_char {
+pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: Lazy<CString> =
         Lazy::new(|| CString::new(re_sdk::build_info().to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
 
@@ -100,7 +100,7 @@ pub extern "C" fn rerun_version_string() -> *const c_char {
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rerun_rec_stream_new(
+pub unsafe extern "C" fn rr_recording_stream_new(
     cstore_info: *const CStoreInfo,
     tcp_addr: *const c_char,
 ) -> CRecStreamId {
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn rerun_rec_stream_new(
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rerun_rec_stream_free(id: CRecStreamId) {
+pub extern "C" fn rr_recording_stream_free(id: CRecStreamId) {
     let mut lock = RECORDING_STREAMS.lock();
     if let Some(sink) = lock.streams.remove(&id) {
         sink.disconnect();
@@ -159,7 +159,7 @@ pub extern "C" fn rerun_rec_stream_free(id: CRecStreamId) {
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rerun_log(stream: CRecStreamId, data_row: *const CDataRow) {
+pub unsafe extern "C" fn rr_log(stream: CRecStreamId, data_row: *const CDataRow) {
     let lock = RECORDING_STREAMS.lock();
     let Some(stream) = lock.streams.get(&stream) else {
         return;

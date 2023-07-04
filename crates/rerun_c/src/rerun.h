@@ -15,18 +15,18 @@ extern "C" {
 #define RERUN_STORE_KIND_RECORDING 1
 #define RERUN_STORE_KIND_BLUEPRINT 2
 
-/// What is returned by the first call to `rerun_rec_stream_new`.
+/// What is returned by the first call to `rr_recording_stream_new`.
 /// Usually you only have one recording stream, so you can call
-/// `rerun_rec_stream_new` once, ignore its return value, and use
+/// `rr_recording_stream_new` once, ignore its return value, and use
 /// `RERUN_REC_STREAM_DEFAULT` everywhere in your code.
 #define RERUN_REC_STREAM_DEFAULT 0
 
 /// A unique handle for a recording stream.
 ///
 /// The default is RERUN_REC_STREAM_DEFAULT
-typedef int32_t RerunRecStream;
+typedef int32_t rr_recording_stream;
 
-struct RerunStoreInfo {
+struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     const char* application_id;
 
@@ -35,7 +35,7 @@ struct RerunStoreInfo {
 };
 
 /// Arrow-encoded data of a single component for a single entity.
-struct RerunDataCell {
+struct rr_data_cell {
     const char* component_name;
 
     /// The number of bytes in the `bytes` field.
@@ -53,7 +53,7 @@ struct RerunDataCell {
 
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
-struct RerunDataRow {
+struct rr_data_row {
     /// Where to log to, e.g. `world/camera`.
     const char* entity_path;
 
@@ -65,16 +65,14 @@ struct RerunDataRow {
     uint32_t num_data_cells;
 
     /// One for each component.
-    const struct RerunDataCell* data_cells;
+    const struct rr_data_cell* data_cells;
 };
 
 // ----------------------------------------------------------------------------
 // Functions:
 
 /// Returns a human-readable version string of the Rerun C SDK.
-extern const char* rerun_version_string(void);
-
-extern void rerun_print_hello_world(void);
+extern const char* rr_version_string(void);
 
 /// Create a new recording stream to log to.
 ///
@@ -82,20 +80,20 @@ extern void rerun_print_hello_world(void);
 ///
 /// The first call always returns `RERUN_REC_STREAM_DEFAULT`.
 /// Usually you only have one recording stream, so you can call
-/// `rerun_rec_stream_new` once, ignore its return value, and use
+/// `rr_recording_stream_new` once, ignore its return value, and use
 /// `RERUN_REC_STREAM_DEFAULT` everywhere in your code.
-extern RerunRecStream rerun_rec_stream_new(
-    const struct RerunStoreInfo* store_info, const char* tcp_addr);
+extern rr_recording_stream rr_recording_stream_new(
+    const struct rr_store_info* store_info, const char* tcp_addr);
 
 /// Free the given recording stream. The handle will be invalid after this.
-extern void rerun_rec_stream_free(RerunRecStream stream);
+extern void rr_recording_stream_free(rr_recording_stream stream);
 
 /// Log the given data to the given stream.
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
-extern void rerun_log(RerunRecStream stream,
-                      const struct RerunDataRow* data_row);
+extern void rr_log(rr_recording_stream stream,
+                   const struct rr_data_row* data_row);
 
 // ----------------------------------------------------------------------------
 
