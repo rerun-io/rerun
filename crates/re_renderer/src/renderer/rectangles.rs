@@ -168,10 +168,8 @@ pub enum RectangleError {
     #[error("Texture required special features: {0:?}")]
     SpecialFeatures(wgpu::Features),
 
-    // There's really no need for users to be able to sample depth textures.
-    // We don't get filtering of depth textures any way.
-    #[error("Depth textures not supported - use float or integer textures instead.")]
-    DepthTexturesNotSupported,
+    #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
+    TextureFormatNotSupported(wgpu::TextureFormat),
 
     #[error("Color mapping is being applied to a four-component RGBA texture")]
     ColormappingRgbaTexture,
@@ -278,7 +276,7 @@ mod gpu_data {
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
                 Some(wgpu::TextureSampleType::Uint) => SAMPLE_TYPE_UINT,
                 _ => {
-                    return Err(RectangleError::DepthTexturesNotSupported);
+                    return Err(RectangleError::TextureFormatNotSupported(texture_format));
                 }
             };
 
@@ -440,7 +438,7 @@ impl RectangleDrawData {
                     texture_uint = texture.handle;
                 }
                 _ => {
-                    return Err(RectangleError::DepthTexturesNotSupported);
+                    return Err(RectangleError::TextureFormatNotSupported(texture_format));
                 }
             }
 
