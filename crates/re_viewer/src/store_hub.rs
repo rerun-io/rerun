@@ -5,6 +5,7 @@ use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
 
+#[cfg(not(target_arch = "wasm32"))]
 use crate::{
     loading::load_file_path,
     saving::{default_blueprint_path, save_database_to_file},

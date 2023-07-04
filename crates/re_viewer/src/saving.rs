@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 use re_data_store::StoreDb;
 
 #[cfg(not(target_arch = "wasm32"))]
