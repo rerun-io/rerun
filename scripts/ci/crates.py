@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 
-"""Versioning and packaging."""
+"""
+Versioning and packaging.
+
+Install dependencies:
+    python3 -m pip install -r scripts/ci/requirements.txt
+
+Use the script:
+    python3 scripts/ci/upload_image.py --help
+"""
 from __future__ import annotations
 
 import argparse
