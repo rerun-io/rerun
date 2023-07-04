@@ -7,7 +7,7 @@ use re_log_types::ApplicationId;
 #[cfg(not(target_arch = "wasm32"))]
 /// Determine the default path for a blueprint based on its `ApplicationId`
 /// This path should be determnistic and unique.
-// TODO(2579): Implement equivalent for web
+// TODO(#2579): Implement equivalent for web
 pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
     use std::hash::{BuildHasher, Hash as _, Hasher as _};
 
@@ -16,46 +16,39 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
     // TODO(jleibs) is there a better way to get this folder from egui?
     if let Some(proj_dirs) = directories_next::ProjectDirs::from("", "", "rerun") {
         let data_dir = proj_dirs.data_dir().join("blueprints");
-        if let Err(err) = std::fs::create_dir_all(&data_dir) {
-            re_log::warn!(
-                "Saving blueprints disabled: Failed to create blueprint directory at {:?}: {}",
-                data_dir,
-                err
-            );
-            Err(err).context("Could not create blueprint save directory.")
-        } else {
-            // We want a unique filename (not a directory) for each app-id.
+        std::fs::create_dir_all(&data_dir).context("Could not create blueprint save directory.")?;
 
-            // First we sanitize to remove disallowed characters
-            // TODO(jleibs): Maybe we should just restrict app-ids to valid filename characters.
-            let options = sanitize_filename::Options {
-                truncate: true,
-                windows: true,
-                replacement: "-",
+        // We want a unique filename (not a directory) for each app-id.
+
+        // First we sanitize to remove disallowed characters
+        // TODO(jleibs): Maybe we should just restrict app-ids to valid filename characters.
+        let options = sanitize_filename::Options {
+            truncate: true,
+            windows: true,
+            replacement: "-",
+        };
+
+        let mut sanitized_app_id = sanitize_filename::sanitize_with_options(&app_id.0, options);
+
+        // Make sure we are leaving space for the hash and file extension
+        const MAX_LENGTH: usize = 255 - 16 - 1 - ".blueprint".len();
+        sanitized_app_id.truncate(MAX_LENGTH);
+
+        // If the sanitization actually did something, we no longer have a uniqueness guarantee,
+        // so insert the hash.
+        if sanitized_app_id != app_id.0 {
+            // Hash the original app-id.
+
+            let hash = {
+                let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
+                app_id.0.hash(&mut hasher);
+                hasher.finish()
             };
 
-            let mut sanitized_app_id = sanitize_filename::sanitize_with_options(&app_id.0, options);
-
-            // Make sure we are leaving space for the hash and file extension
-            const MAX_LENGTH: usize = 255 - 16 - 1 - ".blueprint".len();
-            sanitized_app_id.truncate(MAX_LENGTH);
-
-            // If the sanitization actually did something, we no longer have a uniqueness guarantee,
-            // so insert the hash.
-            if sanitized_app_id != app_id.0 {
-                // Hash the original app-id.
-
-                let hash = {
-                    let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
-                    app_id.0.hash(&mut hasher);
-                    hasher.finish()
-                };
-
-                sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
-            }
-
-            Ok(data_dir.join(format!("{sanitized_app_id}.blueprint")))
+            sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
         }
+
+        Ok(data_dir.join(format!("{sanitized_app_id}.blueprint")))
     } else {
         anyhow::bail!("Error finding project directory for blueprints.")
     }
@@ -75,7 +68,7 @@ pub fn save_database_to_file(
     use itertools::Itertools as _;
     use re_arrow_store::TimeRange;
 
-    re_tracing::profile_scope!("dump_messages");
+    re_tracing::profile_function!();
 
     let begin_rec_msg = store_db
         .recording_msg()

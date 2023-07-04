@@ -112,7 +112,9 @@ impl StoreHub {
         // TODO(2579): implement web-storage for blueprints as well
         #[cfg(not(target_arch = "wasm32"))]
         if !self.blueprint_by_app_id.contains_key(&app_id) {
-            self.try_to_load_persisted_blueprint(&app_id).ok();
+            if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
+                re_log::warn!("Failed to load persisted blueprint: {err:?}");
+            }
         }
 
         self.application_id = Some(app_id);
@@ -187,7 +189,9 @@ impl StoreHub {
         Ok(())
     }
 
-    /// Try to load the persisted blueprint for the given `ApplicationId`
+    /// Try to load the persisted blueprint for the given `ApplicationId`.
+    /// Note: If no blueprint exists at the expected path, the result is still considered `Ok`.
+    /// It is only an `Error` if a blueprint exists but fails to load.
     // TODO(#2579): implement persistence for web
     #[cfg(not(target_arch = "wasm32"))]
     pub fn try_to_load_persisted_blueprint(
@@ -214,7 +218,7 @@ impl StoreHub {
                             .insert(store.store_id().clone(), store.generation());
                         self.store_dbs.insert_blueprint(store);
                     } else {
-                        re_log::warn!(
+                        anyhow::bail!(
                             "Found unexpected store while loading blueprint: {:?}",
                             store.store_id()
                         );
