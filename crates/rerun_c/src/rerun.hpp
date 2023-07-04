@@ -48,7 +48,7 @@ namespace rerun {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(struct_builder.Finish(&array));
 
-        auto name = "Point3DType"; // TODO: I think the name here is unused?
+        auto name = "points"; // Unused, but should be the name of the field in the archetype
         auto schema = arrow::schema({arrow::field(name, data_type, nullable)});
 
         return arrow::Table::Make(schema, {array});
