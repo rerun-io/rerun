@@ -1111,8 +1111,8 @@ impl DataTable {
 
             // NOTE: We need both sets of rows to follow a common natural order for the comparison
             // to make sense.
-            rows1.sort_by_key(|row| row.row_id);
-            rows2.sort_by_key(|row| row.row_id);
+            rows1.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+            rows2.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
 
             anyhow::ensure!(
                 rows1.len() == rows2.len(),
