@@ -1,9 +1,12 @@
 use ahash::HashMap;
 use itertools::Itertools;
-use re_arrow_store::{DataStoreConfig, DataStoreStats, StoreGeneration};
+use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::StoreDb;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
+
+#[cfg(not(target_arch = "wasm32"))]
+use re_arrow_store::StoreGeneration;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{

@@ -4,6 +4,7 @@ use re_data_store::StoreDb;
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::ApplicationId;
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
 fn sanitize_app_id(app_id: &ApplicationId) -> String {
