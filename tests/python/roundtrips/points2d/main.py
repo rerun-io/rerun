@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import itertools
+
+import numpy as np
+import rerun as rr
+from rerun._rerun2 import components as rrc
+
+
+def main() -> None:
+    points = np.array([1, 2, 3, 4], dtype=np.float32)
+    radii = np.array([0.42, 0.43], dtype=np.float32)
+    colors = np.array(
+        [
+            0xAA0000CC,
+            0x00BB00DD,
+        ],
+        dtype=np.uint32,
+    )
+    labels = ["hello", "friend"]
+    draw_order = 300
+    class_ids = np.array([126, 127], dtype=np.uint64)
+    keypoint_ids = np.array([2, 3], dtype=np.uint64)
+    instance_keys = np.array([66, 666], dtype=np.uint64)
+
+    points2d = rr.Points2D(
+        points,  # type: ignore[arg-type]
+        radii=radii,  # type: ignore[arg-type]
+        colors=colors,  # type: ignore[arg-type]
+        labels=labels,  # type: ignore[arg-type]
+        draw_order=draw_order,  # type: ignore[arg-type]
+        class_ids=class_ids,  # type: ignore[arg-type]
+        keypoint_ids=keypoint_ids,  # type: ignore[arg-type]
+        instance_keys=instance_keys,  # type: ignore[arg-type]
+    )
+
+    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    rr.script_add_args(parser)
+    args = parser.parse_args()
+
+    rr.script_setup(args, "roundtrip_points2d")
+
+    rr.log_any("points2d", points2d)
+    # Hack to establish 2d view bounds
+    rr.log_rect("rect", [0, 0, 4, 6])
+
+    rr.script_teardown(args)
+
+
+if __name__ == "__main__":
+    main()
