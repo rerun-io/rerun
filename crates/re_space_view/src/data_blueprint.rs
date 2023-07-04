@@ -31,9 +31,10 @@ pub struct DataBlueprintGroup {
     pub entities: BTreeSet<EntityPath>,
 }
 
-// Manually implement `PartialEq` since properties_projected is serde skip
-impl PartialEq for DataBlueprintGroup {
-    fn eq(&self, other: &Self) -> bool {
+impl DataBlueprintGroup {
+    /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
+    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
+    fn unedited(&self, other: &Self) -> bool {
         let Self {
             display_name,
             properties_individual,
@@ -65,8 +66,10 @@ pub struct DataBlueprints {
 }
 
 // Manually implement `PartialEq` since projected is serde skip
-impl PartialEq for DataBlueprints {
-    fn eq(&self, other: &Self) -> bool {
+impl DataBlueprints {
+    /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
+    /// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
+    fn unedited(&self, other: &Self) -> bool {
         let Self {
             individual,
             projected: _,
@@ -103,9 +106,10 @@ pub struct DataBlueprintTree {
     data_blueprints: DataBlueprints,
 }
 
-// Manually implement PartialEq since slotmap doesn't
-impl PartialEq for DataBlueprintTree {
-    fn eq(&self, other: &Self) -> bool {
+/// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
+/// This is similar in concept to `PartialEq`, but more forgiving of Auto taking on different values.
+impl DataBlueprintTree {
+    pub fn unedited(&self, other: &Self) -> bool {
         let Self {
             groups,
             path_to_group,
@@ -115,11 +119,14 @@ impl PartialEq for DataBlueprintTree {
         } = self;
 
         // Note: this could fail unexpectedly if slotmap iteration order is unstable.
-        groups.iter().zip(other.groups.iter()).all(|(x, y)| x == y)
+        groups
+            .iter()
+            .zip(other.groups.iter())
+            .all(|(x, y)| x.0 == y.0 && x.1.unedited(y.1))
             && *path_to_group == other.path_to_group
             && *entity_paths == other.entity_paths
             && *root_group_handle == other.root_group_handle
-            && *data_blueprints == other.data_blueprints
+            && data_blueprints.unedited(&other.data_blueprints)
     }
 }
 
