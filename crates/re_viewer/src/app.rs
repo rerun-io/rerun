@@ -275,7 +275,8 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::LoadRrd(path) => {
-                if let Some(rrd) = crate::loading::load_file_path(&path) {
+                let with_notification = true;
+                if let Some(rrd) = crate::loading::load_file_path(&path, with_notification) {
                     store_hub.add_bundle(rrd);
                 }
             }
@@ -763,7 +764,8 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
-                if let Some(rrd) = crate::loading::load_file_path(path) {
+                let with_notification = true;
+                if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
                     self.on_rrd_loaded(store_hub, rrd);
                 }
             }

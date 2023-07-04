@@ -202,7 +202,8 @@ impl StoreHub {
         let blueprint_path = default_blueprint_path(app_id)?;
         if blueprint_path.exists() {
             re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}",);
-            if let Some(mut bundle) = load_file_path(&blueprint_path) {
+            let with_notification = false;
+            if let Some(mut bundle) = load_file_path(&blueprint_path, with_notification) {
                 for store in bundle.drain_store_dbs() {
                     if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
                     {
