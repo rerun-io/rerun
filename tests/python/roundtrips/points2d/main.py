@@ -1,3 +1,5 @@
+"""Logs a `Points2D` archetype for roundtrip checks."""
+
 #!/usr/bin/env python3
 
 from __future__ import annotations
