@@ -421,6 +421,7 @@ def spawn_test(test: Callable[[], None], rec: rr.RecordingStream) -> None:
 
 def main() -> None:
     tests = {
+        "2d_layering": run_2d_layering,
         "2d_lines": run_2d_lines,
         "3d_points": run_3d_points,
         "bbox": run_bounding_box,
@@ -432,9 +433,8 @@ def main() -> None:
         "segmentation": run_segmentation,
         "small_image": small_image,
         "text": run_text_logs,
-        "transforms_rigid_3d": transforms_rigid_3d,
         "transform_test": transform_test,
-        "2d_layering": run_2d_layering,
+        "transforms_rigid_3d": transforms_rigid_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
@@ -458,7 +458,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.split_recordings:
-        rec = rr.script_setup(args, "test_api")
+        rec = rr.script_setup(args, f"test_api_{args.test}")
 
     if args.test in ["most", "all"]:
         print(f"Running {args.test} tests…")
