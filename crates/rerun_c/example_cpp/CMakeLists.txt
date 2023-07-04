@@ -48,6 +48,11 @@ if(APPLE)
   target_link_libraries(rerun_example PRIVATE "-framework CoreFoundation" "-framework IOKit")
 endif()
 
+if(LINUX)
+  target_link_libraries(rerun_example PRIVATE ${CMAKE_SOURCE_DIR}/../../../target/debug/librerun_c.a)
+  target_link_libraries(rerun_example PRIVATE "-lm")
+endif()
+
 if(ARROW_LINK_SHARED)
   target_link_libraries(rerun_example PRIVATE Arrow::arrow_shared)
 else()
