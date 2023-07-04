@@ -1,9 +1,9 @@
-black==23.1.0
-blackdoc==0.3.6
-mypy==1.0.1
-numpy==1.23 # For mypy plugin
-pip-check-reqs==2.4.3 # Checks for missing deps in requirements.txt files
-pyupgrade==2.37.3
-ruff==0.0.251
-types-Deprecated==1.2.9
+black==23.3.0
+blackdoc==0.3.8
+mypy==1.4.1
+numpy==1.25 # For mypy plugin
+pip-check-reqs==2.4.4 # Checks for missing deps in requirements.txt files
+pyupgrade==3.8.0
+ruff==0.0.276
+types-Deprecated==1.2.9.2
 types-requests>=2.31,<3
