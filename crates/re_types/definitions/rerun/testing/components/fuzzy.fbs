@@ -56,17 +56,17 @@ table AffixFuzzer6 (
   single_optional: rerun.testing.datatypes.AffixFuzzer1;
 }
 
-table AffixFuzzer7 (
-  "attr.rust.derive": "Debug, Clone, PartialEq",
-  order: 700
-) {
-  many_optional: [rerun.testing.datatypes.AffixFuzzer1] (order: 100);
-  single_float_optional: float (order: 101);
-  single_string_required: string (order: 102, required);
-  single_string_optional: string (order: 103);
-  many_floats_optional: [float] (order: 104);
-  many_strings_required: [string] (order: 105, required);
-  many_strings_optional: [string] (order: 106);
-  // TODO(cmc): the ugly bug we need to take care of at some point
-  // many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (order: 107);
-}
+// table AffixFuzzer7 (
+//   "attr.rust.derive": "Debug, Clone, PartialEq",
+//   order: 700
+// ) {
+//   many_optional: [rerun.testing.datatypes.AffixFuzzer1] (order: 100);
+//   single_float_optional: float (order: 101);
+//   single_string_required: string (order: 102, required);
+//   single_string_optional: string (order: 103);
+//   many_floats_optional: [float] (order: 104);
+//   many_strings_required: [string] (order: 105, required);
+//   many_strings_optional: [string] (order: 106);
+//   // TODO(cmc): the ugly bug we need to take care of at some point
+//   // many_transparent_optionals: rerun.testing.datatypes.AffixFuzzer2 (order: 107);
+// }

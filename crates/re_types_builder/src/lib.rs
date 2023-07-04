@@ -258,7 +258,6 @@ pub fn generate_rust_code(
     // passes 1 through 3: bfbs, semantic, arrow registry
     let (objects, arrow_registry) = generate_lang_agnostic(include_dir_path, entrypoint_path);
 
-    // generate rust code
     let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
     let _filepaths = gen.generate(&objects, &arrow_registry);
 }

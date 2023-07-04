@@ -58,6 +58,11 @@ from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequenc
 # Next-gen API imports
 ENABLE_NEXT_GEN_API = True
 if ENABLE_NEXT_GEN_API:
+    # As temporary next-gen API namespacing, we bring to the top level `rr` namespace the `log_any` function as well as
+    # all archetypes. As components and datatypes have many attributes, several of which collide with the legacy API,
+    # we bring them in the `rr.cmp` and `rr.dt` sub-namespaces, respectively.
+    from ._rerun2 import components as cmp
+    from ._rerun2 import datatypes as dt
     from ._rerun2.archetypes import *
     from ._rerun2.log_any import log_any
 
