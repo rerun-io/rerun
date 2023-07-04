@@ -1,5 +1,8 @@
 # There is also a scripts/clippy_wasm/clippy.toml which forbids some methods that are not available in wasm.
 
+# -----------------------------------------------------------------------------
+# Section identical to the main scripts/clippy_wasm/clippy.toml:
+
 msrv = "1.69"
 
 allow-unwrap-in-tests = true
@@ -14,6 +17,8 @@ max-fn-params-bools = 2 # TODO(emilk): decrease this to 1
 max-include-file-size = 1000000
 
 too-many-lines-threshold = 600 # TODO(emilk): decrease this
+
+# -----------------------------------------------------------------------------
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_macros
 disallowed-macros = [

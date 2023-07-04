@@ -311,6 +311,7 @@ mod file_server_impl {
             f(&mut Self)
         }
 
+        #[allow(clippy::unused_self)]
         pub fn collect<Fs: FileSystem>(
             &mut self,
             _resolver: &mut FileResolver<Fs>,
