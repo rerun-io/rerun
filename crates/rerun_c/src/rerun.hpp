@@ -23,8 +23,7 @@ namespace rerun {
 #include <loguru.hpp>
 
 namespace rerun {
-    arrow::Result<std::shared_ptr<arrow::Table>> points3(size_t num_points,
-                                                         const float* xyz) {
+    arrow::Result<std::shared_ptr<arrow::Table>> points3(size_t num_points, const float* xyz) {
         arrow::MemoryPool* pool = arrow::default_memory_pool();
 
         auto x_builder = std::make_shared<arrow::FloatBuilder>(pool);
@@ -33,12 +32,11 @@ namespace rerun {
 
         auto nullable = false;
 
-        auto data_type =
-            arrow::struct_({field("x", arrow::float32(), nullable),
-                            field("y", arrow::float32(), nullable),
-                            field("z", arrow::float32(), nullable)});
-        auto struct_builder = arrow::StructBuilder(
-            data_type, pool, {x_builder, y_builder, z_builder});
+        auto data_type = arrow::struct_({field("x", arrow::float32(), nullable),
+                                         field("y", arrow::float32(), nullable),
+                                         field("z", arrow::float32(), nullable)});
+        auto struct_builder =
+            arrow::StructBuilder(data_type, pool, {x_builder, y_builder, z_builder});
 
         for (size_t i = 0; i < num_points; ++i) {
             ARROW_RETURN_NOT_OK(struct_builder.Append());
@@ -56,13 +54,10 @@ namespace rerun {
         return arrow::Table::Make(schema, {array});
     }
 
-    arrow::Result<std::shared_ptr<arrow::Buffer>> ipc_from_table(
-        const arrow::Table& table) {
+    arrow::Result<std::shared_ptr<arrow::Buffer>> ipc_from_table(const arrow::Table& table) {
         ERROR_CONTEXT("ipc_from_table", "");
-        ARROW_ASSIGN_OR_RAISE(auto output,
-                              arrow::io::BufferOutputStream::Create());
-        ARROW_ASSIGN_OR_RAISE(
-            auto writer, arrow::ipc::MakeStreamWriter(output, table.schema()));
+        ARROW_ASSIGN_OR_RAISE(auto output, arrow::io::BufferOutputStream::Create());
+        ARROW_ASSIGN_OR_RAISE(auto writer, arrow::ipc::MakeStreamWriter(output, table.schema()));
         ARROW_RETURN_NOT_OK(writer->WriteTable(table));
         ARROW_RETURN_NOT_OK(writer->Close());
         return output->Finish();
