@@ -116,7 +116,7 @@ impl StoreHub {
         #[cfg(not(target_arch = "wasm32"))]
         if !self.blueprint_by_app_id.contains_key(&app_id) {
             if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
-                re_log::warn!("Failed to load persisted blueprint: {err:?}");
+                re_log::warn!("Failed to load persisted blueprint: {err}");
             }
         }
 
