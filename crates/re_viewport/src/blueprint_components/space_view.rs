@@ -18,7 +18,7 @@ use crate::space_view::SpaceViewBlueprint;
 ///     ])
 /// );
 /// ```
-#[derive(Clone, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct SpaceViewComponent {
     #[arrow_field(type = "SerdeField<SpaceViewBlueprint>")]
     pub space_view: SpaceViewBlueprint,
@@ -57,5 +57,9 @@ fn test_spaceview() {
     let data = [SpaceViewComponent { space_view }];
     let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();
     let ret: Vec<SpaceViewComponent> = array.try_into_collection().unwrap();
-    assert_eq!(&data, ret.as_slice());
+    assert_eq!(data.len(), ret.len());
+    assert!(data
+        .iter()
+        .zip(ret)
+        .all(|(l, r)| !l.space_view.has_edits(&r.space_view)));
 }

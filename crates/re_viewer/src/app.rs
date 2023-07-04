@@ -275,7 +275,8 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::LoadRrd(path) => {
-                if let Some(rrd) = crate::loading::load_file_path(&path) {
+                let with_notification = true;
+                if let Some(rrd) = crate::loading::load_file_path(&path, with_notification) {
                     store_hub.add_bundle(rrd);
                 }
             }
@@ -763,7 +764,8 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &file.path {
-                if let Some(rrd) = crate::loading::load_file_path(path) {
+                let with_notification = true;
+                if let Some(rrd) = crate::loading::load_file_path(path, with_notification) {
                     self.on_rrd_loaded(store_hub, rrd);
                 }
             }
@@ -778,7 +780,20 @@ impl eframe::App for App {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         if self.startup_options.persist_state {
+            // Save the app state
             eframe::set_value(storage, eframe::APP_KEY, &self.state);
+
+            // Save the blueprints
+            // TODO(2579): implement web-storage for blueprints as well
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(hub) = &mut self.store_hub {
+                match hub.persist_app_blueprints() {
+                    Ok(f) => f,
+                    Err(err) => {
+                        re_log::error!("Saving blueprints failed: {err}");
+                    }
+                };
+            }
         }
     }
 
@@ -1032,6 +1047,8 @@ fn save(
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) {
+    use crate::saving::save_database_to_file;
+
     let Some(store_db) = store_context.as_ref().and_then(|view| view.recording) else {
             // NOTE: Can only happen if saving through the command palette.
             re_log::error!("No data to save!");
@@ -1061,68 +1078,4 @@ fn save(
             re_log::error!("File saving failed: {err}");
         }
     }
-}
-
-/// Returns a closure that, when run, will save the contents of the current database
-/// to disk, at the specified `path`.
-///
-/// If `time_selection` is specified, then only data for that specific timeline over that
-/// specific time range will be accounted for.
-#[cfg(not(target_arch = "wasm32"))]
-fn save_database_to_file(
-    store_db: &StoreDb,
-    path: std::path::PathBuf,
-    time_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
-) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
-    use itertools::Itertools as _;
-    use re_arrow_store::TimeRange;
-
-    re_tracing::profile_scope!("dump_messages");
-
-    let begin_rec_msg = store_db
-        .recording_msg()
-        .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
-
-    let ent_op_msgs = store_db
-        .iter_entity_op_msgs()
-        .map(|msg| LogMsg::EntityPathOpMsg(store_db.store_id().clone(), msg.clone()))
-        .collect_vec();
-
-    let time_filter = time_selection.map(|(timeline, range)| {
-        (
-            timeline,
-            TimeRange::new(range.min.floor(), range.max.ceil()),
-        )
-    });
-    let data_msgs: Result<Vec<_>, _> = store_db
-        .entity_db
-        .data_store
-        .to_data_tables(time_filter)
-        .map(|table| {
-            table
-                .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(store_db.store_id().clone(), msg))
-        })
-        .collect();
-
-    use anyhow::Context as _;
-    let data_msgs = data_msgs.with_context(|| "Failed to export to data tables")?;
-
-    let msgs = std::iter::once(begin_rec_msg)
-        .flatten() // option
-        .chain(ent_op_msgs)
-        .chain(data_msgs);
-
-    Ok(move || {
-        re_tracing::profile_scope!("save_to_file");
-
-        use anyhow::Context as _;
-        let file = std::fs::File::create(path.as_path())
-            .with_context(|| format!("Failed to create file at {path:?}"))?;
-
-        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-        re_log_encoding::encoder::encode_owned(encoding_options, msgs, file)
-            .map(|_| path)
-            .context("Message encode")
-    })
 }

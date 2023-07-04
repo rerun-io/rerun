@@ -4572,6 +4572,7 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "cocoa",
+ "directories-next",
  "eframe",
  "egui",
  "egui-wgpu",

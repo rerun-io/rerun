@@ -292,6 +292,12 @@ impl StoreDb {
             + self.entity_db.data_store.num_temporal_rows() as usize
     }
 
+    /// Return the current `StoreGeneration`. This can be used to determine whether the
+    /// database has been modified since the last time it was queried.
+    pub fn generation(&self) -> re_arrow_store::StoreGeneration {
+        self.entity_db.data_store.generation()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.recording_msg.is_none() && self.num_rows() == 0
     }

@@ -155,6 +155,10 @@ impl std::ops::DerefMut for ClusterCellCache {
 
 // ---
 
+/// Incremented on each edit
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct StoreGeneration(u64);
+
 /// A complete data store: covers all timelines, all entities, everything.
 ///
 /// ## Debugging
@@ -262,6 +266,12 @@ impl DataStore {
     /// See [`DataStoreConfig::store_insert_ids`].
     pub fn insert_id_key() -> ComponentName {
         "rerun.insert_id".into()
+    }
+
+    /// Return the current `StoreGeneration`. This can be used to determine whether the
+    /// database has been modified since the last time it was queried.
+    pub fn generation(&self) -> StoreGeneration {
+        StoreGeneration(self.insert_id)
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
