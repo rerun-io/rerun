@@ -27,6 +27,7 @@ pub struct StoreHub {
     store_dbs: StoreBundle,
 
     // The number of rows in the blueprint the last time it was saved
+    #[cfg(not(target_arch = "wasm32"))]
     blueprint_last_save: HashMap<StoreId, u64>,
 }
 
