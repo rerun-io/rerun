@@ -69,9 +69,11 @@ impl PythonCodeGenerator {
 ///
 /// This is the hacky way. We extract all identifiers from `__init__.py` which contains, but don't
 /// start with, a underscore (`_`).
-fn load_overrides(path_buf: &Path) -> HashSet<String> {
-    let contents = std::fs::read_to_string(path_buf.join("_overrides").join("__init__.py"))
-        .expect("_overrides/__init__.py must exist");
+fn load_overrides(path: &Path) -> HashSet<String> {
+    let path = path.join("_overrides").join("__init__.py");
+    let contents = std::fs::read_to_string(&path)
+        .with_context(|| format!("couldn't load overrides module at {path:?}"))
+        .unwrap();
 
     // extract words from contents
     contents
