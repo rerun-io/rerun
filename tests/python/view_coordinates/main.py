@@ -57,7 +57,7 @@ def log_camera(origin: npt.ArrayLike, xyz: str, forward: npt.ArrayLike) -> None:
         width=width,
         height=height,
         focal_length_px=f_len,
-        principal_point_px=[width * 3 / 4, height * 3 / 4], # test offset principal point
+        principal_point_px=[width * 3 / 4, height * 3 / 4],  # test offset principal point
         camera_xyz=xyz,
     )
     rr.log_image(f"{pinhole_path}/rgb", rgb)
@@ -67,7 +67,7 @@ def log_camera(origin: npt.ArrayLike, xyz: str, forward: npt.ArrayLike) -> None:
 # Log a series of pinhole cameras only differing by their view coordinates and some offset.
 # Not all possible, but a fair sampling.
 
-s = 3 # spacing
+s = 3  # spacing
 
 log_camera([0, 0, s], "RUB", forward=[0, 0, -1])
 
