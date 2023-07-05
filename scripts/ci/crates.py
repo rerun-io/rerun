@@ -264,6 +264,7 @@ def version(dry_run: bool, bump: Bump) -> None:
         for name, crate in crates.items():
             with Path(f"{crate.path}/Cargo.toml").open("w") as f:
                 tomlkit.dump(crate.manifest, f)
+        cargo("update -w")
 
 
 def publish(dry_run: bool, token: str) -> None:
