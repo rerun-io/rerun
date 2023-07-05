@@ -206,13 +206,39 @@ impl ViewCoordinates {
         )
     }
 
-    /// Returns a matrix that translates RUB to this coordinate system.
+    /// Returns a matrix that transforms from RUB to this coordinate system.
     ///
     /// (RUB: X=Right, Y=Up, B=Back)
     #[cfg(feature = "glam")]
     #[inline]
     pub fn from_rub(&self) -> glam::Mat3 {
         self.to_rub().transpose()
+    }
+
+    /// Returns a quaternion that rotates from RUB to this coordinate system.
+    ///
+    /// Errors if the coordinate system is left-handed or degenerate.
+    ///
+    /// (RUB: X=Right, Y=Up, B=Back)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn from_rub_quat(&self) -> Result<glam::Quat, String> {
+        let mat3 = self.from_rub();
+
+        let det = mat3.determinant();
+        if det == 1.0 {
+            Ok(glam::Quat::from_mat3(&mat3))
+        } else if det == -1.0 {
+            Err(format!(
+                "Rerun does not yet support left-handed coordinate systems (found {})",
+                self.describe()
+            ))
+        } else {
+            Err(format!(
+                "Found a degenerate coordinate system: {}",
+                self.describe()
+            ))
+        }
     }
 
     /// Returns a matrix that translates this coordinate system to RUB.

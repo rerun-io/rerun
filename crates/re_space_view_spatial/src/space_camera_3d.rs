@@ -1,4 +1,4 @@
-use glam::{Quat, Vec3};
+use glam::Vec3;
 use macaw::IsoTransform;
 
 use re_components::{Pinhole, ViewCoordinates};
@@ -45,7 +45,7 @@ impl SpaceCamera3D {
 
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_rub_view(&self) -> Option<IsoTransform> {
-        match from_rub_quat(self.view_coordinates) {
+        match self.view_coordinates.from_rub_quat() {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
                 re_log::warn_once!("Camera {:?}: {err}", self.ent_path);
@@ -67,21 +67,5 @@ impl SpaceCamera3D {
 
         let point_in_image = pinhole.project(point_in_image_unprojected);
         Some(point_in_image)
-    }
-}
-
-fn from_rub_quat(system: ViewCoordinates) -> Result<Quat, String> {
-    let mat3 = system.from_rub();
-
-    let det = mat3.determinant();
-    if det == 1.0 {
-        Ok(Quat::from_mat3(&mat3))
-    } else if det == -1.0 {
-        Err("has a left-handed coordinate system - Rerun does not yet support this!".to_owned())
-    } else {
-        Err(format!(
-            "has a degenerate coordinate system: {}",
-            system.describe()
-        ))
     }
 }
