@@ -26,23 +26,15 @@ from glob import glob
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple
 
+import requests
 import tomlkit
 from colorama import Fore
 from colorama import init as colorama_init
 from semver import VersionInfo
 
 
-def cargo(args: str, cwd: str | Path | None = None, capture: bool = False) -> Any:
-    if capture:
-        return subprocess.run(
-            ["cargo"] + args.split(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            cwd=cwd,
-            text=True,
-        )
-    else:
-        subprocess.check_output(["cargo"] + args.split(), cwd=cwd)
+def cargo(args: str, cwd: str | Path | None = None) -> Any:
+    subprocess.check_output(["cargo"] + args.split(), cwd=cwd)
 
 
 class Crate:
@@ -277,6 +269,18 @@ def version(dry_run: bool, bump: Bump) -> None:
         cargo("update --workspace")
 
 
+def is_already_uploaded(version: str, crate: Crate) -> bool:
+    res = requests.get(
+        f"https://crates.io/api/v1/crates/{crate}",
+        headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+    )
+    versions: List[str] = [version["num"] for version in res.json()["versions"]]
+    for uploaded_version in versions:
+        if uploaded_version == version:
+            return True
+    return False
+
+
 def publish(dry_run: bool, token: str) -> None:
     ctx = Context()
 
@@ -290,20 +294,27 @@ def publish(dry_run: bool, token: str) -> None:
 
     if not dry_run:
         for crate in crates.values():
-            print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
+            package = crate.manifest["package"]
+            name = package["name"]
+            crate_version = crate.manifest["package"].get("version") or version
+            if "workspace" in crate_version:
+                crate_version = version
+
+            print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
             cargo("publish --quiet --dry-run", cwd=crate.path)
-            print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
-            process = cargo(f"publish --token {token}", cwd=crate.path, capture=True)
-            if "already uploaded" in process.stdout:
-                print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
-            elif process.returncode != 0:
-                print(
-                    f"{Fore.RED}error{Fore.RESET}:",
-                    f"Failed to publish {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}",
-                )
-                print(process.stdout)
+
+            if is_already_uploaded(crate_version, crate.manifest["package"]["name"]):
+                print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
             else:
-                print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
+                print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+                try:
+                    cargo(f"publish --token {token}", cwd=crate.path)
+                except:
+                    print(
+                        f"{Fore.RED}error{Fore.RESET}:",
+                        f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}",
+                    )
+                    raise
 
 
 def main() -> None:
