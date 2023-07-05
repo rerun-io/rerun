@@ -168,7 +168,7 @@ pub struct Docs {
     /// See also [`Docs::doc`].
     pub tagged_docs: HashMap<String, Vec<String>>,
 
-    /// Contents of all the files included using `include:<path>`.
+    /// Contents of all the files included using `\include:<path>`.
     pub included_files: HashMap<PathBuf, String>,
 }
 
@@ -206,7 +206,7 @@ impl Docs {
             // NOTE: discard tagged lines!
             .filter(|line| !line.trim().starts_with('\\'))
             .flat_map(|line| {
-                if let Some((_, path)) = line.split_once("include:") {
+                if let Some((_, path)) = line.split_once("\\include:") {
                     include_file(&mut included_files, path)
                         .lines()
                         .map(|line| line.to_owned())
@@ -232,7 +232,7 @@ impl Docs {
                     })
                 })
                 .flat_map(|(tag, line)| {
-                    if let Some((_, path)) = line.split_once("include:") {
+                    if let Some((_, path)) = line.split_once("\\include:") {
                         include_file(&mut included_files, path)
                             .lines()
                             .map(|line| (tag.clone(), line.to_owned()))
