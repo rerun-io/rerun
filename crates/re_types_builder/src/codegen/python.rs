@@ -33,15 +33,7 @@ trait PythonObjectExt {
 
 impl PythonObjectExt for Object {
     fn is_delegating_component(&self) -> bool {
-        if self.kind != ObjectKind::Component {
-            return false;
-        }
-
-        if let Type::Object(_) = self.fields[0].typ {
-            return true;
-        }
-
-        false
+        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object(_))
     }
 
     fn is_non_delegating_component(&self) -> bool {
@@ -49,16 +41,15 @@ impl PythonObjectExt for Object {
     }
 
     fn delegate_datatype<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
-        if !self.is_delegating_component() {
-            return None;
-        }
-
-        let field = &self.fields[0];
-        if let Type::Object(name) = &field.typ {
-            return Some(objects.get(name));
-        }
-
-        unreachable!()
+        self.is_delegating_component()
+            .then(|| {
+                if let Type::Object(name) = &self.fields[0].typ {
+                    Some(objects.get(name))
+                } else {
+                    None
+                }
+            })
+            .flatten()
     }
 }
 
