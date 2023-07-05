@@ -137,7 +137,7 @@ bump_fn = {
     Bump.MAJOR: VersionInfo.bump_major,
     Bump.MINOR: VersionInfo.bump_minor,
     Bump.PATCH: VersionInfo.bump_patch,
-    Bump.PRERELEASE: VersionInfo.bump_prerelease,
+    Bump.PRERELEASE: lambda v: VersionInfo.bump_prerelease(v, token="alpha"),
     Bump.FINALIZE: VersionInfo.finalize_version,
 }
 
@@ -150,7 +150,7 @@ class Context:
     ops: List[str] = []
     errors: List[str] = []
 
-    def bump(self, path: str, prev: str, new: str) -> None:
+    def bump(self, path: str, prev: str, new: VersionInfo) -> None:
         # fmt: off
         op = " ".join([
             f"bump {Fore.BLUE}{path}{Fore.RESET}",
@@ -191,20 +191,20 @@ class Context:
 def bump_package_version(
     ctx: Context,
     crate: str,
-    new_version: str,
+    new_version: VersionInfo,
     manifest: Dict[str, Any],
 ) -> None:
     if "package" in manifest and "version" in manifest["package"]:
         version = manifest["package"]["version"]
         if "workspace" not in version or not version["workspace"]:
             ctx.bump(crate, version, new_version)
-            manifest["package"]["version"] = new_version
+            manifest["package"]["version"] = str(new_version)
 
 
 def bump_dependency_versions(
     ctx: Context,
     crate: str,
-    new_version: str,
+    new_version: VersionInfo,
     manifest: Dict[str, Any],
     crates: Dict[str, Crate],
 ) -> None:
@@ -219,14 +219,14 @@ def bump_dependency_versions(
                 f'  {dependency} = {{ version = "' + info + '" }',
             )
         elif "version" in info:
-            dependency_version = info["version"]
-            pin_prefix = "=" if is_pinned(dependency_version) else ""
+            pin_prefix = "=" if new_version.prerelease is not None else ""
+            update_to = pin_prefix + str(new_version)
             ctx.bump(
                 f"{crate}.{dependency}",
-                dependency_version,
-                pin_prefix + new_version,
+                info["version"],
+                update_to,
             )
-            info["version"] = pin_prefix + new_version
+            info["version"] = update_to
 
 
 def version(dry_run: bool, bump: Bump) -> None:
@@ -235,7 +235,7 @@ def version(dry_run: bool, bump: Bump) -> None:
     root: Dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     crates = get_workspace_crates(root)
     current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
-    new_version = str(bump_fn[bump](current_version))
+    new_version = bump_fn[bump](current_version)
 
     # There are a few places where versions are set:
     # 1. In the root `Cargo.toml` under `workspace.package.version`.
