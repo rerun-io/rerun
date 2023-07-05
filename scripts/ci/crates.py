@@ -32,13 +32,17 @@ from colorama import init as colorama_init
 from semver import VersionInfo
 
 
-def cargo(args: str, cwd: str | Path | None = None) -> None:
-    try:
+def cargo(args: str, cwd: str | Path | None = None, capture: bool = False) -> Any:
+    if capture:
+        return subprocess.run(
+            ["cargo"] + args.split(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=cwd,
+            text=True,
+        )
+    else:
         subprocess.check_output(["cargo"] + args.split(), cwd=cwd)
-    except subprocess.CalledProcessError as e:
-        if "is already uploaded" in str(e.output):
-            return
-        raise
 
 
 class Crate:
@@ -286,8 +290,19 @@ def publish(dry_run: bool, token: str) -> None:
 
     if not dry_run:
         for crate in crates.values():
+            print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
             cargo("publish --dry-run", cwd=crate.path)
-            cargo(f"publish --token {token}", cwd=crate.path)
+            process = cargo(f"publish --token {token}", cwd=crate.path, capture=True)
+            if "already uploaded" in process.stdout:
+                print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
+            elif process.returncode != 0:
+                print(
+                    f"{Fore.RED}error{Fore.RESET}:",
+                    f"Failed to publish {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}",
+                )
+                print(process.stdout)
+            else:
+                print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
 
 
 def main() -> None:
