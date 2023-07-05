@@ -298,10 +298,12 @@ impl EntityTree {
             components: fields,
         } = self;
 
-        for (timeline, histogram) in &mut prefix_times.0 {
+        {
             re_tracing::profile_scope!("prefix_times");
-            if let Some(cutoff_time) = cutoff_times.get(timeline) {
-                histogram.remove(..cutoff_time.as_i64());
+            for (timeline, histogram) in &mut prefix_times.0 {
+                if let Some(cutoff_time) = cutoff_times.get(timeline) {
+                    histogram.remove(..cutoff_time.as_i64());
+                }
             }
         }
         {

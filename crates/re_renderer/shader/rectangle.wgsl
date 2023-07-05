@@ -62,21 +62,18 @@ struct UniformBuffer {
 var<uniform> rect_info: UniformBuffer;
 
 @group(1) @binding(1)
-var texture_sampler: sampler;
-
-@group(1) @binding(2)
 var texture_float: texture_2d<f32>;
 
-@group(1) @binding(3)
+@group(1) @binding(2)
 var texture_sint: texture_2d<i32>;
 
-@group(1) @binding(4)
+@group(1) @binding(3)
 var texture_uint: texture_2d<u32>;
 
-@group(1) @binding(5)
+@group(1) @binding(4)
 var colormap_texture: texture_2d<f32>;
 
-@group(1) @binding(6)
+@group(1) @binding(5)
 var texture_float_filterable: texture_2d<f32>;
 
 struct VertexOut {

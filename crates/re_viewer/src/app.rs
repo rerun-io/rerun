@@ -665,17 +665,17 @@ impl App {
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::debug!("RAM limit: {}", format_limit(limit.limit));
+            re_log::trace!("RAM limit: {}", format_limit(limit.limit));
             if let Some(resident) = mem_use_before.resident {
-                re_log::debug!("Resident: {}", format_bytes(resident as _),);
+                re_log::trace!("Resident: {}", format_bytes(resident as _),);
             }
             if let Some(counted) = mem_use_before.counted {
-                re_log::debug!("Counted: {}", format_bytes(counted as _));
+                re_log::trace!("Counted: {}", format_bytes(counted as _));
             }
 
             re_tracing::profile_scope!("pruning");
             if let Some(counted) = mem_use_before.counted {
-                re_log::debug!(
+                re_log::trace!(
                     "Attempting to purge {:.1}% of used RAM ({})…",
                     100.0 * fraction_to_purge,
                     format_bytes(counted as f64 * fraction_to_purge as f64)
