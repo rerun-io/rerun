@@ -273,12 +273,41 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
     res = requests.get(
         f"https://crates.io/api/v1/crates/{crate}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
-    )
-    versions: List[str] = [version["num"] for version in res.json()["versions"]]
+    ).json()
+
+    # crate has not been uploaded yet
+    if "versions" not in res or len(res["versions"]) == 0:
+        return False
+
+    # crate has been uploaded, check every version against what we're uploading
+    versions: List[str] = [version["num"] for version in res["versions"]]
     for uploaded_version in versions:
         if uploaded_version == version:
             return True
     return False
+
+
+def publish_crate(crate: Crate, token: str, version: str) -> None:
+    package = crate.manifest["package"]
+    name = package["name"]
+    crate_version = crate.manifest["package"].get("version") or version
+    if "workspace" in crate_version:
+        crate_version = version
+
+    if is_already_uploaded(crate_version, crate.manifest["package"]["name"]):
+        print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+    else:
+        print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+        cargo("publish --quiet --dry-run", cwd=crate.path)
+        print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
+        try:
+            cargo(f"publish --token {token}", cwd=crate.path)
+        except:
+            print(
+                f"{Fore.RED}error{Fore.RESET}:",
+                f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}",
+            )
+            raise
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -294,27 +323,7 @@ def publish(dry_run: bool, token: str) -> None:
 
     if not dry_run:
         for crate in crates.values():
-            package = crate.manifest["package"]
-            name = package["name"]
-            crate_version = crate.manifest["package"].get("version") or version
-            if "workspace" in crate_version:
-                crate_version = version
-
-            print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-            cargo("publish --quiet --dry-run", cwd=crate.path)
-
-            if is_already_uploaded(crate_version, crate.manifest["package"]["name"]):
-                print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-            else:
-                print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-                try:
-                    cargo(f"publish --token {token}", cwd=crate.path)
-                except:
-                    print(
-                        f"{Fore.RED}error{Fore.RESET}:",
-                        f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}",
-                    )
-                    raise
+            publish_crate(crate, token, version)
 
 
 def main() -> None:
