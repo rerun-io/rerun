@@ -13,6 +13,7 @@ mod loading;
 #[cfg(not(target_arch = "wasm32"))]
 mod profiler;
 mod remote_viewer_app;
+mod saving;
 mod screenshotter;
 mod store_hub;
 mod ui;

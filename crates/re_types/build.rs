@@ -16,6 +16,7 @@ use re_build_tools::{
 
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "./definitions";
+const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
@@ -36,7 +37,7 @@ fn main() {
     }
 
     rerun_if_changed_or_doesnt_exist(SOURCE_HASH_PATH);
-    for path in iter_dir(DEFINITIONS_DIR_PATH, Some(&[".fbs"])) {
+    for path in iter_dir(DEFINITIONS_DIR_PATH, Some(&["fbs"])) {
         rerun_if_changed(&path);
     }
 
@@ -44,14 +45,20 @@ fn main() {
     // code generator itself!
     let cur_hash = read_versioning_hash(SOURCE_HASH_PATH);
     let re_types_builder_hash = compute_crate_hash("re_types_builder");
-    let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&[".fbs"]));
-    let new_hash = compute_strings_hash(&[&re_types_builder_hash, &definitions_hash]);
+    let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&["fbs"]));
+    let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py"]));
+    let new_hash = compute_strings_hash(&[
+        &re_types_builder_hash,
+        &definitions_hash,
+        &doc_examples_hash,
+    ]);
 
     // Leave these be please, very useful when debugging.
     eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
-    eprintln!("cur_hash: {cur_hash:?}");
     eprintln!("definitions_hash: {definitions_hash:?}");
+    eprintln!("doc_examples_hash: {doc_examples_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
+    eprintln!("cur_hash: {cur_hash:?}");
 
     if let Some(cur_hash) = cur_hash {
         if cur_hash == new_hash {

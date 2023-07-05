@@ -25,14 +25,14 @@ def main() -> None:
         rr.init(
             "Blueprint demo",
             init_logging=False,
-            exp_init_blueprint=True,
+            exp_init_blueprint=not args.skip_blueprint,
             exp_add_to_app_default_blueprint=args.no_append_default,
             spawn=True,
         )
     else:
         rr.init(
             "Blueprint demo",
-            exp_init_blueprint=True,
+            exp_init_blueprint=not args.skip_blueprint,
             exp_add_to_app_default_blueprint=args.no_append_default,
             spawn=True,
         )

@@ -353,7 +353,7 @@ pub fn sync_space_view(
     space_view: &SpaceViewBlueprint,
     snapshot: Option<&SpaceViewBlueprint>,
 ) {
-    if Some(space_view) != snapshot {
+    if snapshot.map_or(true, |snapshot| space_view.has_edits(snapshot)) {
         let entity_path = EntityPath::from(format!(
             "{}/{}",
             SpaceViewComponent::SPACEVIEW_PREFIX,

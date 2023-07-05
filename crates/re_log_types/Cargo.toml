@@ -40,6 +40,7 @@ re_tuid = { workspace = true, features = ["arrow2_convert"] }
 
 # External
 ahash.workspace = true
+anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",
@@ -53,6 +54,7 @@ web-time.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
+similar-asserts = "1.4.2"
 smallvec.workspace = true
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting", "macros"] }

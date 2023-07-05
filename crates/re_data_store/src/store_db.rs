@@ -292,6 +292,12 @@ impl StoreDb {
             + self.entity_db.data_store.num_temporal_rows() as usize
     }
 
+    /// Return the current `StoreGeneration`. This can be used to determine whether the
+    /// database has been modified since the last time it was queried.
+    pub fn generation(&self) -> re_arrow_store::StoreGeneration {
+        self.entity_db.data_store.generation()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.recording_msg.is_none() && self.num_rows() == 0
     }
@@ -339,7 +345,7 @@ impl StoreDb {
         let (drop_row_ids, stats_diff) = self.entity_db.data_store.gc(
             re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
         );
-        re_log::debug!(
+        re_log::trace!(
             num_row_ids_dropped = drop_row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
             "purged datastore"

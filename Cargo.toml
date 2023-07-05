@@ -6,7 +6,7 @@ members = [
   "docs/code-examples",
   "rerun_py",
   "run_wasm",
-  "tests/rust/*",
+  "tests/rust/test_*",
 ]
 
 [workspace.package]

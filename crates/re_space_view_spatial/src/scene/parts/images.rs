@@ -5,7 +5,7 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_components::{
-    ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor, TensorData,
+    ColorRGBA, Component as _, DecodedTensor, DrawOrder, InstanceKey, Pinhole, Tensor,
     TensorDataMeaning,
 };
 use re_data_store::{EntityPath, EntityProperties};
@@ -13,7 +13,6 @@ use re_log_types::EntityPathHash;
 use re_query::{EntityView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
-    resource_managers::Texture2DCreationDesc,
     Colormap,
 };
 use re_viewer_context::SpaceViewHighlights;
@@ -294,7 +293,7 @@ impl ImagesPart {
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
-    ) -> Result<DepthCloud, String> {
+    ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
         let store = &ctx.store_db.entity_db.data_store;
@@ -303,7 +302,7 @@ impl ImagesPart {
             parent_pinhole_path,
             &ctx.current_query(),
         ) else {
-            return Err(format!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}"));
+            anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 
         // TODO(cmc): getting to those extrinsics is no easy task :|
@@ -311,48 +310,22 @@ impl ImagesPart {
             .parent()
             .and_then(|ent_path| scene_context.transforms.reference_from_entity(&ent_path));
         let Some(world_from_obj) = world_from_obj else {
-            return Err(format!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}"));
+            anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };
 
         let Some([height, width, _]) = tensor.image_height_width_channels() else {
-            return Err(format!("Tensor at {ent_path:?} is not an image"));
+            anyhow::bail!("Tensor at {ent_path:?} is not an image");
         };
         let dimensions = glam::UVec2::new(width as _, height as _);
 
-        let depth_texture = {
-            // Ideally, we'd use the same key as for displaying the texture, but we might make other compromises regarding formats etc.!
-            // So to not couple this, we use a different key here
-            let texture_key = egui::util::hash((tensor.id(), "depth_cloud"));
-            let mut data_f32 = Vec::new();
-            ctx.render_ctx
-                .texture_manager_2d
-                .get_or_try_create_with(texture_key, &ctx.render_ctx.gpu_resources.textures, || {
-                    // TODO(andreas/cmc): Ideally we'd upload the u16 data as-is.
-                    // However, R16Unorm is behind a feature flag and Depth16Unorm doesn't work on WebGL (and is awkward as this is a depth buffer format!).
-                    let data = match &tensor.data {
-                        TensorData::U16(data) => {
-                            data_f32.extend(data.as_slice().iter().map(|d| *d as f32));
-                            bytemuck::cast_slice(&data_f32).into()
-                        }
-                        TensorData::F32(data) => bytemuck::cast_slice(data).into(),
-                        _ => {
-                            return Err(format!(
-                                "Tensor datatype {} is not supported for back-projection",
-                                tensor.dtype()
-                            ));
-                        }
-                    };
-
-                    Ok(Texture2DCreationDesc {
-                        label: format!("Depth cloud for {ent_path:?}").into(),
-                        data,
-                        format: wgpu::TextureFormat::R32Float,
-                        width: width as _,
-                        height: height as _,
-                    })
-                })
-                .map_err(|err| format!("Failed to create depth cloud texture: {err}"))?
-        };
+        let debug_name = ent_path.to_string();
+        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
+        let depth_texture = re_viewer_context::gpu_bridge::depth_tensor_to_gpu(
+            ctx.render_ctx,
+            &debug_name,
+            tensor,
+            &tensor_stats,
+        )?;
 
         let depth_from_world_scale = *properties.depth_from_world_scale.get();
 
@@ -377,27 +350,14 @@ impl ImagesPart {
         let radius_scale = *properties.backproject_radius_scale.get();
         let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
 
-        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor));
-        let max_data_value = if let Some((_min, max)) = tensor_stats.range {
-            max as f32
-        } else {
-            // This could only happen for Jpegs, and we should never get here.
-            // TODO(emilk): refactor the code so that we can always calculate a range for the tensor
-            re_log::warn_once!("Couldn't calculate range for a depth tensor!?");
-            match tensor.data {
-                TensorData::U16(_) => u16::MAX as f32,
-                _ => 10.0,
-            }
-        };
-
         Ok(DepthCloud {
             world_from_obj,
             depth_camera_intrinsics: intrinsics.image_from_cam.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
-            max_depth_in_world: max_data_value / depth_from_world_scale,
+            max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
             depth_dimensions: dimensions,
-            depth_texture,
+            depth_texture: depth_texture.texture,
             colormap,
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
