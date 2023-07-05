@@ -7,7 +7,16 @@ Install dependencies:
     python3 -m pip install -r scripts/ci/requirements.txt
 
 Use the script:
-    python3 scripts/ci/upload_image.py --help
+    python3 scripts/ci/crates.py --help
+
+Examples
+--------
+    # Update crate versions to the next prerelease version,
+    # e.g. `0.8.0` -> `0.8.0-alpha.0`, `0.8.0-alpha.0` -> `0.8.0-alpha.1`
+    python3 scripts/ci/crates.py version prerelase --dry-run
+
+    # Publish all crates in topological order
+    python3 scripts/ci/publish.py --token <CRATES_IO_TOKEN>
 """
 from __future__ import annotations
 
