@@ -33,7 +33,12 @@ from semver import VersionInfo
 
 
 def cargo(args: str, cwd: str | Path | None = None) -> None:
-    subprocess.check_output(["cargo"] + args.split(), cwd=cwd)
+    try:
+        subprocess.check_output(["cargo"] + args.split(), cwd=cwd)
+    except subprocess.CalledProcessError as e:
+        if "is already uploaded" in str(e.output):
+            return
+        raise
 
 
 class Crate:
