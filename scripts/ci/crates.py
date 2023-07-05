@@ -302,11 +302,9 @@ def publish_crate(crate: Crate, token: str, version: str) -> None:
         print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
         try:
             cargo(f"publish --token {token}", cwd=crate.path)
+            print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
         except:
-            print(
-                f"{Fore.RED}error{Fore.RESET}:",
-                f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}",
-            )
+            print(f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}")
             raise
 
 
