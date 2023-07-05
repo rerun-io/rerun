@@ -310,27 +310,30 @@ where
 fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> anyhow::Result<()> {
     /// Given a path to an rrd file, builds up a `DataStore` and returns its contents as one big
     /// `DataTable`.
+    ///
+    /// Fails if there are more than one data recordings present in the rrd file.
     fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
-        let rrd = {
-            let bytes = std::fs::read(path_to_rrd)
-                .with_context(|| format!("couldn't read rrd file contents at {path_to_rrd:?}"))?;
-            re_log_encoding::decoder::decode_bytes(&bytes)?
-        };
+        let rrd_file = std::fs::File::open(path_to_rrd)
+            .with_context(|| format!("couldn't open rrd file contents at {path_to_rrd:?}"))?;
 
-        let store_id = {
-            let store_info = rrd
-                .iter()
-                .find(|msg| matches!(msg, LogMsg::SetStoreInfo(_)))
-                .ok_or_else(|| {
-                    anyhow::anyhow!("couldn't find store ID for rrd file at {path_to_rrd:?}")
-                })?;
-            store_info.store_id().clone()
-        };
+        let stores = re_viewer::StoreBundle::from_rrd(rrd_file)
+            .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
 
-        let mut store = re_data_store::StoreDb::new(store_id);
-        for msg in &rrd {
-            store.add(msg)?;
-        }
+        let mut stores = stores
+            .store_dbs()
+            .filter(|store| store.store_kind() == re_log_types::StoreKind::Recording)
+            .collect_vec();
+
+        anyhow::ensure!(
+            !stores.is_empty(),
+            "no data recording found in rrd file at {path_to_rrd:?}"
+        );
+        anyhow::ensure!(
+            stores.len() == 1,
+            "more than one data recording found in rrd file at {path_to_rrd:?}"
+        );
+
+        let store = stores.pop().unwrap(); // safe, ensured above
 
         let table = re_log_types::DataTable::from_rows(re_log_types::TableId::random(), {
             let mut rows = store
