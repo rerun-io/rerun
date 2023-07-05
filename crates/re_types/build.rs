@@ -20,6 +20,11 @@ const DOC_EXAMPLES_DIR_PATH: &str = "../../docs/code-examples";
 const RUST_OUTPUT_DIR_PATH: &str = ".";
 const PYTHON_OUTPUT_DIR_PATH: &str = "../../rerun_py/rerun_sdk/rerun/_rerun2";
 
+// located in PYTHON_OUTPUT_DIR_PATH
+const ARCHETYPE_OVERRIDES_SUB_DIR_PATH: &str = "archetypes/_overrides";
+const COMPONENT_OVERRIDES_SUB_DIR_PATH: &str = "components/_overrides";
+const DATATYPE_OVERRIDES_SUB_DIR_PATH: &str = "datatypes/_overrides";
+
 fn main() {
     if cfg!(target_os = "windows") {
         // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
@@ -47,16 +52,35 @@ fn main() {
     let re_types_builder_hash = compute_crate_hash("re_types_builder");
     let definitions_hash = compute_dir_hash(DEFINITIONS_DIR_PATH, Some(&["fbs"]));
     let doc_examples_hash = compute_dir_hash(DOC_EXAMPLES_DIR_PATH, Some(&["rs", "py"]));
+    let archetype_overrides_hash = compute_dir_hash(
+        PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(ARCHETYPE_OVERRIDES_SUB_DIR_PATH),
+        Some(&["py"]),
+    );
+    let component_overrides_hash = compute_dir_hash(
+        PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(COMPONENT_OVERRIDES_SUB_DIR_PATH),
+        Some(&["py"]),
+    );
+    let datatype_overrides_hash = compute_dir_hash(
+        PathBuf::from(PYTHON_OUTPUT_DIR_PATH).join(DATATYPE_OVERRIDES_SUB_DIR_PATH),
+        Some(&["py"]),
+    );
+
     let new_hash = compute_strings_hash(&[
         &re_types_builder_hash,
         &definitions_hash,
         &doc_examples_hash,
+        &archetype_overrides_hash,
+        &component_overrides_hash,
+        &datatype_overrides_hash,
     ]);
 
     // Leave these be please, very useful when debugging.
     eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
     eprintln!("definitions_hash: {definitions_hash:?}");
     eprintln!("doc_examples_hash: {doc_examples_hash:?}");
+    eprintln!("archetype_overrides_hash: {archetype_overrides_hash:?}");
+    eprintln!("component_overrides_hash: {component_overrides_hash:?}");
+    eprintln!("datatype_overrides_hash: {datatype_overrides_hash:?}");
     eprintln!("new_hash: {new_hash:?}");
     eprintln!("cur_hash: {cur_hash:?}");
 

@@ -22,8 +22,9 @@ pub use self::class_id::ClassId;
 pub use self::color::Color;
 pub use self::draw_order::DrawOrder;
 pub use self::fuzzy::{
-    AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4, AffixFuzzer5, AffixFuzzer6,
-    AffixFuzzer7,
+    AffixFuzzer1, AffixFuzzer10, AffixFuzzer11, AffixFuzzer12, AffixFuzzer13, AffixFuzzer2,
+    AffixFuzzer3, AffixFuzzer4, AffixFuzzer5, AffixFuzzer6, AffixFuzzer7, AffixFuzzer8,
+    AffixFuzzer9,
 };
 pub use self::instance_key::InstanceKey;
 pub use self::keypoint_id::KeypointId;

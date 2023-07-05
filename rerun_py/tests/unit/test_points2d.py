@@ -4,11 +4,8 @@ import itertools
 
 import numpy as np
 import rerun as rr
-from rerun._rerun2 import components as rrc
-
-# NOTE: uncomment these to get a better auto-completion experience...
-# from rerun_sdk import rerun2 as rr
-# from rerun_sdk.rerun2 import components as rrc
+from rerun import cmp as rrc
+from rerun import dt as rrd
 
 # TODO(cmc): roundtrips (serialize in python, deserialize in rust)
 
@@ -17,13 +14,13 @@ U64_MAX = 2**64 - 1
 
 
 def test_points2d() -> None:
-    points_arrays: list[rrc.Point2DArrayLike] = [
+    points_arrays: list[rrd.Point2DArrayLike] = [
         [],
         np.array([]),
         # Point2DArrayLike: Sequence[Point2DLike]: Point2D
         [
-            rrc.Point2D(1, 2),
-            rrc.Point2D(3, 4),
+            rrd.Point2D(1, 2),
+            rrd.Point2D(3, 4),
         ],
         # Point2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float32]
         [
@@ -245,14 +242,14 @@ def test_points2d() -> None:
             f")"
         )
         arch = rr.Points2D(
-            points,  # type: ignore[arg-type]
-            radii=radii,  # type: ignore[arg-type]
-            colors=colors,  # type: ignore[arg-type]
-            labels=labels,  # type: ignore[arg-type]
-            draw_order=draw_order,  # type: ignore[arg-type]
-            class_ids=class_ids,  # type: ignore[arg-type]
-            keypoint_ids=keypoint_ids,  # type: ignore[arg-type]
-            instance_keys=instance_keys,  # type: ignore[arg-type]
+            points,
+            radii=radii,
+            colors=colors,
+            labels=labels,
+            draw_order=draw_order,
+            class_ids=class_ids,
+            keypoint_ids=keypoint_ids,
+            instance_keys=instance_keys,
         )
         print(f"{arch}\n")
 

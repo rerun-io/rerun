@@ -2,78 +2,53 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import pyarrow as pa
+from attrs import define, field
 
-from .._baseclasses import Component
+from .._baseclasses import (
+    BaseExtensionArray,
+    BaseExtensionType,
+)
+from ._overrides import label_native_to_pa_array  # noqa: F401
 
 __all__ = ["Label", "LabelArray", "LabelArrayLike", "LabelLike", "LabelType"]
 
 
-## --- Label --- ##
-
-
-@dataclass
+@define
 class Label:
     """A String label component."""
 
-    value: str
+    value: str = field()
 
     def __str__(self) -> str:
-        return self.value
+        return str(self.value)
 
 
 LabelLike = Union[Label, str]
 
-LabelArrayLike = Union[
-    LabelLike,
-    Sequence[LabelLike],
-]
+LabelArrayLike = Union[Label, Sequence[LabelLike], Sequence[str]]
 
 
 # --- Arrow support ---
 
-from .label_ext import LabelArrayExt  # noqa: E402
 
-
-class LabelType(pa.ExtensionType):  # type: ignore[misc]
-    def __init__(self: type[pa.ExtensionType]) -> None:
+class LabelType(BaseExtensionType):
+    def __init__(self) -> None:
         pa.ExtensionType.__init__(self, pa.utf8(), "rerun.label")
 
-    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-        return b""
 
-    @classmethod
-    def __arrow_ext_deserialize__(
-        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-    ) -> type[pa.ExtensionType]:
-        # return an instance of this subclass given the serialized metadata.
-        return LabelType()
+class LabelArray(BaseExtensionArray[LabelArrayLike]):
+    _EXTENSION_NAME = "rerun.label"
+    _EXTENSION_TYPE = LabelType
 
-    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-        return LabelArray
+    @staticmethod
+    def _native_to_pa_array(data: LabelArrayLike, data_type: pa.DataType) -> pa.Array:
+        return label_native_to_pa_array(data, data_type)
 
+
+LabelType._ARRAY_TYPE = LabelArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(LabelType())
-
-
-class LabelArray(Component, LabelArrayExt):  # type: ignore[misc]
-    _extension_name = "rerun.label"
-
-    @staticmethod
-    def from_similar(data: LabelArrayLike | None) -> pa.Array:
-        if data is None:
-            return LabelType().wrap_array(pa.array([], type=LabelType().storage_type))
-        else:
-            return LabelArrayExt._from_similar(
-                data,
-                mono=Label,
-                mono_aliases=LabelLike,
-                many=LabelArray,
-                many_aliases=LabelArrayLike,
-                arrow=LabelType,
-            )

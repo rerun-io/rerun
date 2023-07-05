@@ -10,32 +10,14 @@ namespace rerun.components;
 // ---
 
 /// A point in 2D space.
+// TODO(cmc): bring back attr.rust.tuple_struct
 struct Point2D (
+  "attr.arrow.transparent",
   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
   "attr.rerun.legacy_fqname": "rerun.point2d",
   "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
   order: 100
 ) {
-  x: float (order: 100);
-  y: float (order: 200);
+  xy: rerun.datatypes.Point2D (order: 100);
 }
-
-// ---
-
-// TODO(cmc): use the following definition instead once we've finalized the switch to HOPE.
-
-// /// A point in 2D space.
-// struct Point2D (
-//   "attr.arrow.transparent",
-//   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
-//   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
-//   "attr.rust.tuple_struct",
-//   "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
-//   order: 100
-// ) {
-//   position: rerun.datatypes.Vec2D (
-//     "attr.python.transparent",
-//     order: 100
-//   );
-// }

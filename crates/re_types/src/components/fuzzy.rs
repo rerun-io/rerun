@@ -6,6 +6,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Debug, Clone, PartialEq)]
@@ -976,12 +977,6 @@ impl crate::Component for AffixFuzzer6 {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AffixFuzzer7 {
     pub many_optional: Option<Vec<crate::datatypes::AffixFuzzer1>>,
-    pub single_float_optional: Option<f32>,
-    pub single_string_required: String,
-    pub single_string_optional: Option<String>,
-    pub many_floats_optional: Option<Vec<f32>>,
-    pub many_strings_required: Vec<String>,
-    pub many_strings_optional: Option<Vec<String>>,
 }
 
 impl<'a> From<AffixFuzzer7> for ::std::borrow::Cow<'a, AffixFuzzer7> {
@@ -1008,122 +1003,69 @@ impl crate::Component for AffixFuzzer7 {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Struct(vec![
-            Field {
-                name: "many_optional".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Struct(vec![
-                        Field {
-                            name: "single_float_optional".to_owned(),
+        DataType::Struct(vec![Field {
+            name: "many_optional".to_owned(),
+            data_type: DataType::List(Box::new(Field {
+                name: "item".to_owned(),
+                data_type: DataType::Struct(vec![
+                    Field {
+                        name: "single_float_optional".to_owned(),
+                        data_type: DataType::Float32,
+                        is_nullable: true,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "single_string_required".to_owned(),
+                        data_type: DataType::Utf8,
+                        is_nullable: false,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "single_string_optional".to_owned(),
+                        data_type: DataType::Utf8,
+                        is_nullable: true,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "many_floats_optional".to_owned(),
+                        data_type: DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
                             data_type: DataType::Float32,
                             is_nullable: true,
                             metadata: [].into(),
-                        },
-                        Field {
-                            name: "single_string_required".to_owned(),
+                        })),
+                        is_nullable: true,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "many_strings_required".to_owned(),
+                        data_type: DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
                             data_type: DataType::Utf8,
                             is_nullable: false,
                             metadata: [].into(),
-                        },
-                        Field {
-                            name: "single_string_optional".to_owned(),
+                        })),
+                        is_nullable: false,
+                        metadata: [].into(),
+                    },
+                    Field {
+                        name: "many_strings_optional".to_owned(),
+                        data_type: DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
                             data_type: DataType::Utf8,
                             is_nullable: true,
                             metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_floats_optional".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_strings_required".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_strings_optional".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                    ]),
-                    is_nullable: true,
-                    metadata: [].into(),
-                })),
+                        })),
+                        is_nullable: true,
+                        metadata: [].into(),
+                    },
+                ]),
                 is_nullable: true,
                 metadata: [].into(),
-            },
-            Field {
-                name: "single_float_optional".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "single_string_required".to_owned(),
-                data_type: DataType::Utf8,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "single_string_optional".to_owned(),
-                data_type: DataType::Utf8,
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_floats_optional".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: true,
-                    metadata: [].into(),
-                })),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_strings_required".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Utf8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_strings_optional".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Utf8,
-                    is_nullable: true,
-                    metadata: [].into(),
-                })),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-        ])
+            })),
+            is_nullable: true,
+            metadata: [].into(),
+        }])
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -1160,531 +1102,127 @@ impl crate::Component for AffixFuzzer7 {
                 })
                 .to_logical_type()
                 .clone(),
-                vec![
-                    {
-                        let (somes, many_optional): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { many_optional, .. } = &**datum;
-                                        many_optional.clone()
-                                    })
-                                    .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_optional_inner_data: Vec<_> = many_optional
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .map(ToOwned::to_owned)
-                                .map(Some)
-                                .collect();
-                            let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                                let any_nones =
-                                    many_optional_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_optional_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
+                vec![{
+                    let (somes, many_optional): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum
+                                .as_ref()
+                                .map(|datum| {
+                                    let Self { many_optional, .. } = &**datum;
+                                    many_optional.clone()
                                 })
-                            };
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Struct(vec![
-                                            Field {
-                                                name: "single_float_optional".to_owned(),
+                                .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let many_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let many_optional_inner_data: Vec<_> = many_optional
+                            .iter()
+                            .flatten()
+                            .flatten()
+                            .map(ToOwned::to_owned)
+                            .map(Some)
+                            .collect();
+                        let many_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = many_optional_inner_data.iter().any(|v| v.is_none());
+                            any_nones.then(|| {
+                                many_optional_inner_data
+                                    .iter()
+                                    .map(|v| v.is_some())
+                                    .collect()
+                            })
+                        };
+                        let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            many_optional.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        ListArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Struct(vec![
+                                        Field {
+                                            name: "single_float_optional".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: true,
+                                            metadata: [].into(),
+                                        },
+                                        Field {
+                                            name: "single_string_required".to_owned(),
+                                            data_type: DataType::Utf8,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        },
+                                        Field {
+                                            name: "single_string_optional".to_owned(),
+                                            data_type: DataType::Utf8,
+                                            is_nullable: true,
+                                            metadata: [].into(),
+                                        },
+                                        Field {
+                                            name: "many_floats_optional".to_owned(),
+                                            data_type: DataType::List(Box::new(Field {
+                                                name: "item".to_owned(),
                                                 data_type: DataType::Float32,
                                                 is_nullable: true,
                                                 metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "single_string_required".to_owned(),
+                                            })),
+                                            is_nullable: true,
+                                            metadata: [].into(),
+                                        },
+                                        Field {
+                                            name: "many_strings_required".to_owned(),
+                                            data_type: DataType::List(Box::new(Field {
+                                                name: "item".to_owned(),
                                                 data_type: DataType::Utf8,
                                                 is_nullable: false,
                                                 metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "single_string_optional".to_owned(),
+                                            })),
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        },
+                                        Field {
+                                            name: "many_strings_optional".to_owned(),
+                                            data_type: DataType::List(Box::new(Field {
+                                                name: "item".to_owned(),
                                                 data_type: DataType::Utf8,
                                                 is_nullable: true,
                                                 metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_floats_optional".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Float32,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                })),
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_strings_required".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: false,
-                                                    metadata: [].into(),
-                                                })),
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            },
-                                            Field {
-                                                name: "many_strings_optional".to_owned(),
-                                                data_type: DataType::List(Box::new(Field {
-                                                    name: "item".to_owned(),
-                                                    data_type: DataType::Utf8,
-                                                    is_nullable: true,
-                                                    metadata: [].into(),
-                                                })),
-                                                is_nullable: true,
-                                                metadata: [].into(),
-                                            },
-                                        ]),
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    _ = many_optional_inner_bitmap;
-                                    _ = extension_wrapper;
-                                    crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
-                                        many_optional_inner_data,
-                                        None::<&str>,
-                                    )?
-                                },
-                                many_optional_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            single_float_optional,
-                                            ..
-                                        } = &**datum;
-                                        single_float_optional.clone()
-                                    })
-                                    .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let single_float_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            {
-                                _ = extension_wrapper;
-                                DataType::Float32.to_logical_type().clone()
+                                            })),
+                                            is_nullable: true,
+                                            metadata: [].into(),
+                                        },
+                                    ]),
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                }))
+                                .to_logical_type()
+                                .clone()
                             },
-                            single_float_optional
-                                .into_iter()
-                                .map(|v| v.unwrap_or_default())
-                                .collect(),
-                            single_float_optional_bitmap,
+                            offsets,
+                            {
+                                _ = many_optional_inner_bitmap;
+                                _ = extension_wrapper;
+                                crate::datatypes::AffixFuzzer1::try_to_arrow_opt(
+                                    many_optional_inner_data,
+                                    None::<&str>,
+                                )?
+                            },
+                            many_optional_bitmap,
                         )
                         .boxed()
-                    },
-                    {
-                        let (somes, single_string_required): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        single_string_required,
-                                        ..
-                                    } = &**datum;
-                                    single_string_required.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let single_string_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_required
-                                .iter()
-                                .flatten()
-                                .flat_map(|s| s.bytes())
-                                .collect();
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                single_string_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            unsafe {
-                                Utf8Array::<i32>::new_unchecked(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Utf8.to_logical_type().clone()
-                                    },
-                                    offsets,
-                                    inner_data,
-                                    single_string_required_bitmap,
-                                )
-                            }
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, single_string_optional): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            single_string_optional,
-                                            ..
-                                        } = &**datum;
-                                        single_string_optional.clone()
-                                    })
-                                    .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let single_string_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_optional
-                                .iter()
-                                .flatten()
-                                .flat_map(|s| s.bytes())
-                                .collect();
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                single_string_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            unsafe {
-                                Utf8Array::<i32>::new_unchecked(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Utf8.to_logical_type().clone()
-                                    },
-                                    offsets,
-                                    inner_data,
-                                    single_string_optional_bitmap,
-                                )
-                            }
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, many_floats_optional): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            many_floats_optional,
-                                            ..
-                                        } = &**datum;
-                                        many_floats_optional.clone()
-                                    })
-                                    .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_floats_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_floats_optional_inner_data: Vec<_> = many_floats_optional
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .map(ToOwned::to_owned)
-                                .map(Some)
-                                .collect();
-                            let many_floats_optional_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = {
-                                let any_nones =
-                                    many_floats_optional_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_floats_optional_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_floats_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                PrimitiveArray::new(
-                                    {
-                                        _ = extension_wrapper;
-                                        DataType::Float32.to_logical_type().clone()
-                                    },
-                                    many_floats_optional_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
-                                    many_floats_optional_inner_bitmap,
-                                )
-                                .boxed(),
-                                many_floats_optional_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, many_strings_required): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        many_strings_required,
-                                        ..
-                                    } = &**datum;
-                                    many_strings_required.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_strings_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_strings_required_inner_data: Vec<_> = many_strings_required
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .map(ToOwned::to_owned)
-                                .map(Some)
-                                .collect();
-                            let many_strings_required_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = {
-                                let any_nones =
-                                    many_strings_required_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_strings_required_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_strings_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    let inner_data: ::arrow2::buffer::Buffer<u8> =
-                                        many_strings_required_inner_data
-                                            .iter()
-                                            .flatten()
-                                            .flat_map(|s| s.bytes())
-                                            .collect();
-                                    let offsets =
-                                        ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                            many_strings_required_inner_data.iter().map(|opt| {
-                                                opt.as_ref()
-                                                    .map(|datum| datum.len())
-                                                    .unwrap_or_default()
-                                            }),
-                                        )
-                                        .unwrap()
-                                        .into();
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe {
-                                        Utf8Array::<i32>::new_unchecked(
-                                            {
-                                                _ = extension_wrapper;
-                                                DataType::Utf8.to_logical_type().clone()
-                                            },
-                                            offsets,
-                                            inner_data,
-                                            many_strings_required_inner_bitmap,
-                                        )
-                                    }
-                                    .boxed()
-                                },
-                                many_strings_required_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, many_strings_optional): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            many_strings_optional,
-                                            ..
-                                        } = &**datum;
-                                        many_strings_optional.clone()
-                                    })
-                                    .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_strings_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_strings_optional_inner_data: Vec<_> = many_strings_optional
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .map(ToOwned::to_owned)
-                                .map(Some)
-                                .collect();
-                            let many_strings_optional_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = {
-                                let any_nones =
-                                    many_strings_optional_inner_data.iter().any(|v| v.is_none());
-                                any_nones.then(|| {
-                                    many_strings_optional_inner_data
-                                        .iter()
-                                        .map(|v| v.is_some())
-                                        .collect()
-                                })
-                            };
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_strings_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                {
-                                    _ = extension_wrapper;
-                                    DataType::List(Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Utf8,
-                                        is_nullable: true,
-                                        metadata: [].into(),
-                                    }))
-                                    .to_logical_type()
-                                    .clone()
-                                },
-                                offsets,
-                                {
-                                    let inner_data: ::arrow2::buffer::Buffer<u8> =
-                                        many_strings_optional_inner_data
-                                            .iter()
-                                            .flatten()
-                                            .flat_map(|s| s.bytes())
-                                            .collect();
-                                    let offsets =
-                                        ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                            many_strings_optional_inner_data.iter().map(|opt| {
-                                                opt.as_ref()
-                                                    .map(|datum| datum.len())
-                                                    .unwrap_or_default()
-                                            }),
-                                        )
-                                        .unwrap()
-                                        .into();
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe {
-                                        Utf8Array::<i32>::new_unchecked(
-                                            {
-                                                _ = extension_wrapper;
-                                                DataType::Utf8.to_logical_type().clone()
-                                            },
-                                            offsets,
-                                            inner_data,
-                                            many_strings_optional_inner_bitmap,
-                                        )
-                                    }
-                                    .boxed()
-                                },
-                                many_strings_optional_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                ],
+                    }
+                }],
                 bitmap,
             )
             .boxed()
@@ -1815,6 +1353,152 @@ impl crate::Component for AffixFuzzer7 {
                         .into_iter()
                 }
             };
+            ::itertools::izip!(many_optional)
+                .enumerate()
+                .map(|(i, (many_optional))| {
+                    is_valid(i).then(|| Ok(Self { many_optional })).transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AffixFuzzer8 {
+    pub single_float_optional: Option<f32>,
+}
+
+impl<'a> From<AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
+    #[inline]
+    fn from(value: AffixFuzzer8) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer8) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Component for AffixFuzzer8 {
+    #[inline]
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "single_float_optional".to_owned(),
+            data_type: DataType::Float32,
+            is_nullable: true,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer8>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer8>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![{
+                    let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum
+                                .as_ref()
+                                .map(|datum| {
+                                    let Self {
+                                        single_float_optional,
+                                        ..
+                                    } = &**datum;
+                                    single_float_optional.clone()
+                                })
+                                .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let single_float_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    PrimitiveArray::new(
+                        {
+                            _ = extension_wrapper;
+                            DataType::Float32.to_logical_type().clone()
+                        },
+                        single_float_optional
+                            .into_iter()
+                            .map(|v| v.unwrap_or_default())
+                            .collect(),
+                        single_float_optional_bitmap,
+                    )
+                    .boxed()
+                }],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
             let single_float_optional = {
                 let data = &**arrays_by_name["single_float_optional"];
 
@@ -1824,6 +1508,170 @@ impl crate::Component for AffixFuzzer7 {
                     .into_iter()
                     .map(|v| v.copied())
             };
+            ::itertools::izip!(single_float_optional)
+                .enumerate()
+                .map(|(i, (single_float_optional))| {
+                    is_valid(i)
+                        .then(|| {
+                            Ok(Self {
+                                single_float_optional,
+                            })
+                        })
+                        .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AffixFuzzer9 {
+    pub single_string_required: String,
+}
+
+impl<'a> From<AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
+    #[inline]
+    fn from(value: AffixFuzzer9) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer9> for ::std::borrow::Cow<'a, AffixFuzzer9> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer9) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Component for AffixFuzzer9 {
+    #[inline]
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "single_string_required".to_owned(),
+            data_type: DataType::Utf8,
+            is_nullable: false,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer9>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer9>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![{
+                    let (somes, single_string_required): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum.as_ref().map(|datum| {
+                                let Self {
+                                    single_string_required,
+                                    ..
+                                } = &**datum;
+                                single_string_required.clone()
+                            });
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let single_string_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_required
+                            .iter()
+                            .flatten()
+                            .flat_map(|s| s.bytes())
+                            .collect();
+                        let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            single_string_required.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        unsafe {
+                            Utf8Array::<i32>::new_unchecked(
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::Utf8.to_logical_type().clone()
+                                },
+                                offsets,
+                                inner_data,
+                                single_string_required_bitmap,
+                            )
+                        }
+                        .boxed()
+                    }
+                }],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
             let single_string_required = {
                 let data = &**arrays_by_name["single_string_required"];
 
@@ -1833,6 +1681,177 @@ impl crate::Component for AffixFuzzer7 {
                     .into_iter()
                     .map(|v| v.map(ToOwned::to_owned))
             };
+            ::itertools::izip!(single_string_required)
+                .enumerate()
+                .map(|(i, (single_string_required))| {
+                    is_valid(i)
+                        .then(|| {
+                            Ok(Self {
+                                single_string_required: single_string_required.ok_or_else(
+                                    || crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    },
+                                )?,
+                            })
+                        })
+                        .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AffixFuzzer10 {
+    pub single_string_optional: Option<String>,
+}
+
+impl<'a> From<AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
+    #[inline]
+    fn from(value: AffixFuzzer10) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer10) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Component for AffixFuzzer10 {
+    #[inline]
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "single_string_optional".to_owned(),
+            data_type: DataType::Utf8,
+            is_nullable: true,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer10>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer10>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![{
+                    let (somes, single_string_optional): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum
+                                .as_ref()
+                                .map(|datum| {
+                                    let Self {
+                                        single_string_optional,
+                                        ..
+                                    } = &**datum;
+                                    single_string_optional.clone()
+                                })
+                                .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let single_string_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        let inner_data: ::arrow2::buffer::Buffer<u8> = single_string_optional
+                            .iter()
+                            .flatten()
+                            .flat_map(|s| s.bytes())
+                            .collect();
+                        let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            single_string_optional.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        unsafe {
+                            Utf8Array::<i32>::new_unchecked(
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::Utf8.to_logical_type().clone()
+                                },
+                                offsets,
+                                inner_data,
+                                single_string_optional_bitmap,
+                            )
+                        }
+                        .boxed()
+                    }
+                }],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
             let single_string_optional = {
                 let data = &**arrays_by_name["single_string_optional"];
 
@@ -1842,6 +1861,206 @@ impl crate::Component for AffixFuzzer7 {
                     .into_iter()
                     .map(|v| v.map(ToOwned::to_owned))
             };
+            ::itertools::izip!(single_string_optional)
+                .enumerate()
+                .map(|(i, (single_string_optional))| {
+                    is_valid(i)
+                        .then(|| {
+                            Ok(Self {
+                                single_string_optional,
+                            })
+                        })
+                        .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AffixFuzzer11 {
+    pub many_floats_optional: Option<Vec<f32>>,
+}
+
+impl<'a> From<AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
+    #[inline]
+    fn from(value: AffixFuzzer11) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer11) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Component for AffixFuzzer11 {
+    #[inline]
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "many_floats_optional".to_owned(),
+            data_type: DataType::List(Box::new(Field {
+                name: "item".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: true,
+                metadata: [].into(),
+            })),
+            is_nullable: true,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer11>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer11>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![{
+                    let (somes, many_floats_optional): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum
+                                .as_ref()
+                                .map(|datum| {
+                                    let Self {
+                                        many_floats_optional,
+                                        ..
+                                    } = &**datum;
+                                    many_floats_optional.clone()
+                                })
+                                .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let many_floats_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let many_floats_optional_inner_data: Vec<_> = many_floats_optional
+                            .iter()
+                            .flatten()
+                            .flatten()
+                            .map(ToOwned::to_owned)
+                            .map(Some)
+                            .collect();
+                        let many_floats_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones =
+                                many_floats_optional_inner_data.iter().any(|v| v.is_none());
+                            any_nones.then(|| {
+                                many_floats_optional_inner_data
+                                    .iter()
+                                    .map(|v| v.is_some())
+                                    .collect()
+                            })
+                        };
+                        let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            many_floats_optional.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        ListArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                }))
+                                .to_logical_type()
+                                .clone()
+                            },
+                            offsets,
+                            PrimitiveArray::new(
+                                {
+                                    _ = extension_wrapper;
+                                    DataType::Float32.to_logical_type().clone()
+                                },
+                                many_floats_optional_inner_data
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect(),
+                                many_floats_optional_inner_bitmap,
+                            )
+                            .boxed(),
+                            many_floats_optional_bitmap,
+                        )
+                        .boxed()
+                    }
+                }],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
             let many_floats_optional = {
                 let data = &**arrays_by_name["many_floats_optional"];
 
@@ -1893,6 +2112,219 @@ impl crate::Component for AffixFuzzer7 {
                         .into_iter()
                 }
             };
+            ::itertools::izip!(many_floats_optional)
+                .enumerate()
+                .map(|(i, (many_floats_optional))| {
+                    is_valid(i)
+                        .then(|| {
+                            Ok(Self {
+                                many_floats_optional,
+                            })
+                        })
+                        .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AffixFuzzer12 {
+    pub many_strings_required: Vec<String>,
+}
+
+impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
+    #[inline]
+    fn from(value: AffixFuzzer12) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer12) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Component for AffixFuzzer12 {
+    #[inline]
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "many_strings_required".to_owned(),
+            data_type: DataType::List(Box::new(Field {
+                name: "item".to_owned(),
+                data_type: DataType::Utf8,
+                is_nullable: false,
+                metadata: [].into(),
+            })),
+            is_nullable: false,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer12>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer12>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![{
+                    let (somes, many_strings_required): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum.as_ref().map(|datum| {
+                                let Self {
+                                    many_strings_required,
+                                    ..
+                                } = &**datum;
+                                many_strings_required.clone()
+                            });
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let many_strings_required_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let many_strings_required_inner_data: Vec<_> = many_strings_required
+                            .iter()
+                            .flatten()
+                            .flatten()
+                            .map(ToOwned::to_owned)
+                            .map(Some)
+                            .collect();
+                        let many_strings_required_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones =
+                                many_strings_required_inner_data.iter().any(|v| v.is_none());
+                            any_nones.then(|| {
+                                many_strings_required_inner_data
+                                    .iter()
+                                    .map(|v| v.is_some())
+                                    .collect()
+                            })
+                        };
+                        let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            many_strings_required.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        ListArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }))
+                                .to_logical_type()
+                                .clone()
+                            },
+                            offsets,
+                            {
+                                let inner_data: ::arrow2::buffer::Buffer<u8> =
+                                    many_strings_required_inner_data
+                                        .iter()
+                                        .flatten()
+                                        .flat_map(|s| s.bytes())
+                                        .collect();
+                                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                    many_strings_required_inner_data.iter().map(|opt| {
+                                        opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                    }),
+                                )
+                                .unwrap()
+                                .into();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                unsafe {
+                                    Utf8Array::<i32>::new_unchecked(
+                                        {
+                                            _ = extension_wrapper;
+                                            DataType::Utf8.to_logical_type().clone()
+                                        },
+                                        offsets,
+                                        inner_data,
+                                        many_strings_required_inner_bitmap,
+                                    )
+                                }
+                                .boxed()
+                            },
+                            many_strings_required_bitmap,
+                        )
+                        .boxed()
+                    }
+                }],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
             let many_strings_required = {
                 let data = &**arrays_by_name["many_strings_required"];
 
@@ -1944,6 +2376,226 @@ impl crate::Component for AffixFuzzer7 {
                         .into_iter()
                 }
             };
+            ::itertools::izip!(many_strings_required)
+                .enumerate()
+                .map(|(i, (many_strings_required))| {
+                    is_valid(i)
+                        .then(|| {
+                            Ok(Self {
+                                many_strings_required: many_strings_required.ok_or_else(|| {
+                                    crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    }
+                                })?,
+                            })
+                        })
+                        .transpose()
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AffixFuzzer13 {
+    pub many_strings_optional: Option<Vec<String>>,
+}
+
+impl<'a> From<AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
+    #[inline]
+    fn from(value: AffixFuzzer13) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a AffixFuzzer13> for ::std::borrow::Cow<'a, AffixFuzzer13> {
+    #[inline]
+    fn from(value: &'a AffixFuzzer13) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl crate::Component for AffixFuzzer13 {
+    #[inline]
+    fn name() -> crate::ComponentName {
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13")
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[inline]
+    fn to_arrow_datatype() -> arrow2::datatypes::DataType {
+        use ::arrow2::datatypes::*;
+        DataType::Struct(vec![Field {
+            name: "many_strings_optional".to_owned(),
+            data_type: DataType::List(Box::new(Field {
+                name: "item".to_owned(),
+                data_type: DataType::Utf8,
+                is_nullable: true,
+                metadata: [].into(),
+            })),
+            is_nullable: true,
+            metadata: [].into(),
+        }])
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+        extension_wrapper: Option<&str>,
+    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: Clone + 'a,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            StructArray::new(
+                (if let Some(ext) = extension_wrapper {
+                    DataType::Extension(
+                        ext.to_owned(),
+                        Box::new(<crate::components::AffixFuzzer13>::to_arrow_datatype()),
+                        None,
+                    )
+                } else {
+                    <crate::components::AffixFuzzer13>::to_arrow_datatype()
+                })
+                .to_logical_type()
+                .clone(),
+                vec![{
+                    let (somes, many_strings_optional): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .map(|datum| {
+                            let datum = datum
+                                .as_ref()
+                                .map(|datum| {
+                                    let Self {
+                                        many_strings_optional,
+                                        ..
+                                    } = &**datum;
+                                    many_strings_optional.clone()
+                                })
+                                .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let many_strings_optional_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let many_strings_optional_inner_data: Vec<_> = many_strings_optional
+                            .iter()
+                            .flatten()
+                            .flatten()
+                            .map(ToOwned::to_owned)
+                            .map(Some)
+                            .collect();
+                        let many_strings_optional_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones =
+                                many_strings_optional_inner_data.iter().any(|v| v.is_none());
+                            any_nones.then(|| {
+                                many_strings_optional_inner_data
+                                    .iter()
+                                    .map(|v| v.is_some())
+                                    .collect()
+                            })
+                        };
+                        let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            many_strings_optional.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        ListArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: true,
+                                    metadata: [].into(),
+                                }))
+                                .to_logical_type()
+                                .clone()
+                            },
+                            offsets,
+                            {
+                                let inner_data: ::arrow2::buffer::Buffer<u8> =
+                                    many_strings_optional_inner_data
+                                        .iter()
+                                        .flatten()
+                                        .flat_map(|s| s.bytes())
+                                        .collect();
+                                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                    many_strings_optional_inner_data.iter().map(|opt| {
+                                        opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                    }),
+                                )
+                                .unwrap()
+                                .into();
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                unsafe {
+                                    Utf8Array::<i32>::new_unchecked(
+                                        {
+                                            _ = extension_wrapper;
+                                            DataType::Utf8.to_logical_type().clone()
+                                        },
+                                        offsets,
+                                        inner_data,
+                                        many_strings_optional_inner_bitmap,
+                                    )
+                                }
+                                .boxed()
+                            },
+                            many_strings_optional_bitmap,
+                        )
+                        .boxed()
+                    }
+                }],
+                bitmap,
+            )
+            .boxed()
+        })
+    }
+
+    #[allow(unused_imports, clippy::wildcard_imports)]
+    fn try_from_arrow_opt(
+        data: &dyn ::arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    where
+        Self: Sized,
+    {
+        use crate::{Component as _, Datatype as _};
+        use ::arrow2::{array::*, datatypes::*};
+        Ok({
+            let data = data
+                .as_any()
+                .downcast_ref::<::arrow2::array::StructArray>()
+                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
+                    expected: data.data_type().clone(),
+                    got: data.data_type().clone(),
+                })?;
+            let (data_fields, data_arrays, data_bitmap) =
+                (data.fields(), data.values(), data.validity());
+            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
+            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
+                .iter()
+                .map(|field| field.name.as_str())
+                .zip(data_arrays)
+                .collect();
             let many_strings_optional = {
                 let data = &**arrays_by_name["many_strings_optional"];
 
@@ -1995,53 +2647,18 @@ impl crate::Component for AffixFuzzer7 {
                         .into_iter()
                 }
             };
-            ::itertools::izip!(
-                many_optional,
-                single_float_optional,
-                single_string_required,
-                single_string_optional,
-                many_floats_optional,
-                many_strings_required,
-                many_strings_optional
-            )
-            .enumerate()
-            .map(
-                |(
-                    i,
-                    (
-                        many_optional,
-                        single_float_optional,
-                        single_string_required,
-                        single_string_optional,
-                        many_floats_optional,
-                        many_strings_required,
-                        many_strings_optional,
-                    ),
-                )| {
+            ::itertools::izip!(many_strings_optional)
+                .enumerate()
+                .map(|(i, (many_strings_optional))| {
                     is_valid(i)
                         .then(|| {
                             Ok(Self {
-                                many_optional,
-                                single_float_optional,
-                                single_string_required: single_string_required.ok_or_else(
-                                    || crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    },
-                                )?,
-                                single_string_optional,
-                                many_floats_optional,
-                                many_strings_required: many_strings_required.ok_or_else(|| {
-                                    crate::DeserializationError::MissingData {
-                                        datatype: data.data_type().clone(),
-                                    }
-                                })?,
                                 many_strings_optional,
                             })
                         })
                         .transpose()
-                },
-            )
-            .collect::<crate::DeserializationResult<Vec<_>>>()?
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
         })
     }
 }

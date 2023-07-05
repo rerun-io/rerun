@@ -125,6 +125,7 @@ fn create_files(
         code.push_text("#![allow(clippy::map_flatten)]", 2, 0);
         code.push_text("#![allow(clippy::needless_question_mark)]", 2, 0);
         code.push_text("#![allow(clippy::too_many_arguments)]", 2, 0);
+        code.push_text("#![allow(clippy::too_many_lines)]", 2, 0);
         code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
 
         for obj in objs {

@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
+from attrs import define, field
 
-from .._baseclasses import Component
+from .._baseclasses import (
+    BaseExtensionArray,
+    BaseExtensionType,
+)
+from ._overrides import color_native_to_pa_array, color_rgba_converter  # noqa: F401
 
 __all__ = ["Color", "ColorArray", "ColorArrayLike", "ColorLike", "ColorType"]
 
 
-## --- Color --- ##
-
-
-@dataclass
+@define
 class Color:
     """
     An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
@@ -27,68 +28,40 @@ class Color:
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
-    rgba: int
+    rgba: int = field(converter=color_rgba_converter)
 
-    def __array__(self) -> npt.ArrayLike:
-        return np.asarray(self.rgba)
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+        return np.asarray(self.rgba, dtype=dtype)
+
+    def __int__(self) -> int:
+        return int(self.rgba)
 
 
-ColorLike = Union[
-    Color, int, npt.NDArray[np.uint8], npt.NDArray[np.uint32], npt.NDArray[np.float32], npt.NDArray[np.float64]
-]
+ColorLike = Union[Color, int, Sequence[int], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]
 
 ColorArrayLike = Union[
-    ColorLike,
-    Sequence[ColorLike],
-    Sequence[int],
-    npt.NDArray[np.uint8],
-    npt.NDArray[np.uint32],
-    npt.NDArray[np.float32],
-    npt.NDArray[np.float64],
+    Color, Sequence[ColorLike], Sequence[Sequence[int]], npt.NDArray[Union[np.uint8, np.uint32, np.float32, np.float64]]
 ]
 
 
 # --- Arrow support ---
 
-from .color_ext import ColorArrayExt  # noqa: E402
 
-
-class ColorType(pa.ExtensionType):  # type: ignore[misc]
-    def __init__(self: type[pa.ExtensionType]) -> None:
+class ColorType(BaseExtensionType):
+    def __init__(self) -> None:
         pa.ExtensionType.__init__(self, pa.uint32(), "rerun.colorrgba")
 
-    def __arrow_ext_serialize__(self: type[pa.ExtensionType]) -> bytes:
-        # since we don't have a parameterized type, we don't need extra metadata to be deserialized
-        return b""
 
-    @classmethod
-    def __arrow_ext_deserialize__(
-        cls: type[pa.ExtensionType], storage_type: Any, serialized: Any
-    ) -> type[pa.ExtensionType]:
-        # return an instance of this subclass given the serialized metadata.
-        return ColorType()
+class ColorArray(BaseExtensionArray[ColorArrayLike]):
+    _EXTENSION_NAME = "rerun.colorrgba"
+    _EXTENSION_TYPE = ColorType
 
-    def __arrow_ext_class__(self: type[pa.ExtensionType]) -> type[pa.ExtensionArray]:
-        return ColorArray
+    @staticmethod
+    def _native_to_pa_array(data: ColorArrayLike, data_type: pa.DataType) -> pa.Array:
+        return color_native_to_pa_array(data, data_type)
 
+
+ColorType._ARRAY_TYPE = ColorArray
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(ColorType())
-
-
-class ColorArray(Component, ColorArrayExt):  # type: ignore[misc]
-    _extension_name = "rerun.colorrgba"
-
-    @staticmethod
-    def from_similar(data: ColorArrayLike | None) -> pa.Array:
-        if data is None:
-            return ColorType().wrap_array(pa.array([], type=ColorType().storage_type))
-        else:
-            return ColorArrayExt._from_similar(
-                data,
-                mono=Color,
-                mono_aliases=ColorLike,
-                many=ColorArray,
-                many_aliases=ColorArrayLike,
-                arrow=ColorType,
-            )

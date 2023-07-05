@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A point in 2D space.
+struct Point2D (
+  "attr.python.aliases": "Sequence[float]",
+  "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[npt.NDArray[np.float32]], Sequence[Tuple[float, float]], Sequence[float]",
+  "attr.rust.derive": "Debug, Default, Clone, Copy, PartialEq, PartialOrd",
+  order: 100
+) {
+  x: float (order: 100);
+  y: float (order: 200);
+}
