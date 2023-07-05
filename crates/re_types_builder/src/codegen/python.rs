@@ -1,6 +1,7 @@
 //! Implements the Python codegen pass.
 
 use anyhow::Context as _;
+use itertools::Itertools;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     io::Write,
@@ -395,7 +396,8 @@ impl QuotedObject {
         assert!(obj.is_struct());
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
@@ -442,6 +444,7 @@ impl QuotedObject {
                 .chain(fields.iter().filter(|field| field.is_nullable));
             for field in fields_in_order {
                 let ObjectField {
+                    virtpath: _,
                     filepath: _,
                     fqname: _,
                     pkg_name: _,
@@ -546,7 +549,7 @@ impl QuotedObject {
             }
         }
 
-        let mut filepath = PathBuf::from(filepath);
+        let mut filepath = PathBuf::from(virtpath);
         filepath.set_extension("py");
 
         Self {
@@ -567,7 +570,8 @@ impl QuotedObject {
         assert_eq!(obj.kind, ObjectKind::Datatype);
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
@@ -596,6 +600,7 @@ impl QuotedObject {
 
         for field in fields {
             let ObjectField {
+                virtpath: _,
                 filepath: _,
                 fqname: _,
                 pkg_name: _,
@@ -634,7 +639,7 @@ impl QuotedObject {
             }
         }
 
-        let mut filepath = PathBuf::from(filepath);
+        let mut filepath = PathBuf::from(virtpath);
         filepath.set_extension("py");
 
         Self {
@@ -664,7 +669,13 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
         return String::new();
     }
 
-    let doc = lines.join("\n");
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
+    let doc = lines
+        .into_iter()
+        .filter(|line| !line.starts_with(r#"""""#))
+        .collect_vec()
+        .join("\n");
+
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
 

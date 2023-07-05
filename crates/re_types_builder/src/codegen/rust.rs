@@ -128,11 +128,38 @@ fn create_files(
         code.push_text("#![allow(clippy::unnecessary_cast)]", 2, 0);
 
         for obj in objs {
-            let tokens_str = obj.tokens.to_string();
+            let mut acc = TokenStream::new();
 
             // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
-            // inject some of our own when writing to file.
-            let tokens_str = tokens_str
+            // inject some of our own when writing to file... while making sure that don't inject
+            // random spacing into doc comments that look like code!
+
+            let mut tokens = obj.tokens.into_iter();
+            while let Some(token) = tokens.next() {
+                match &token {
+                    // If this is a doc-comment block, be smart about it.
+                    proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
+                        let tokens_str = acc
+                            .to_string()
+                            .replace('}', "}\n\n")
+                            .replace("] ;", "];\n\n")
+                            .replace("# [doc", "\n\n#[doc")
+                            .replace("impl ", "\n\nimpl ");
+                        code.push_text(tokens_str, 1, 0);
+                        acc = TokenStream::new();
+
+                        acc.extend([token, tokens.next().unwrap()]);
+                        code.push_text(acc.to_string(), 1, 0);
+                        acc = TokenStream::new();
+                    }
+                    _ => {
+                        acc.extend([token]);
+                    }
+                }
+            }
+
+            let tokens_str = acc
+                .to_string()
                 .replace('}', "}\n\n")
                 .replace("] ;", "];\n\n")
                 .replace("# [doc", "\n\n#[doc")
@@ -195,7 +222,8 @@ impl QuotedObject {
         assert!(obj.is_struct());
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
@@ -241,7 +269,7 @@ impl QuotedObject {
 
         Self {
             filepath: {
-                let mut filepath = PathBuf::from(filepath);
+                let mut filepath = PathBuf::from(virtpath);
                 filepath.set_extension("rs");
                 filepath
             },
@@ -254,7 +282,8 @@ impl QuotedObject {
         assert!(!obj.is_struct());
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
@@ -274,6 +303,7 @@ impl QuotedObject {
 
         let quoted_fields = fields.iter().map(|obj_field| {
             let ObjectField {
+                virtpath: _,
                 filepath: _,
                 fqname: _,
                 pkg_name: _,
@@ -312,7 +342,7 @@ impl QuotedObject {
 
         Self {
             filepath: {
-                let mut filepath = PathBuf::from(filepath);
+                let mut filepath = PathBuf::from(virtpath);
                 filepath.set_extension("rs");
                 filepath
             },
@@ -331,6 +361,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
         let Self(obj, obj_field) = self;
 
         let ObjectField {
+            virtpath: _,
             filepath: _,
             pkg_name: _,
             fqname: _,
@@ -474,6 +505,7 @@ fn quote_trait_impls_from_obj(
     obj: &Object,
 ) -> TokenStream {
     let Object {
+        virtpath: _,
         filepath: _,
         fqname,
         pkg_name: _,
@@ -790,6 +822,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
     }
 
     let Object {
+        virtpath: _,
         filepath: _,
         fqname: _,
         pkg_name: _,
