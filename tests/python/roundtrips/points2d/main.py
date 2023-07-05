@@ -16,7 +16,7 @@ def main() -> None:
     colors = np.array(
         [
             0xAA0000CC,
-            0x00BB00DE,
+            0x00BB00DD,
         ],
         dtype=np.uint32,
     )
