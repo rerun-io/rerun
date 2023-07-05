@@ -209,6 +209,7 @@ class AffixFuzzer7Type(BaseExtensionType):
                             pa.field(
                                 "many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}
                             ),
+                            pa.field("flattened_scalar", pa.float32(), False, {}),
                         ]
                     ),
                     True,

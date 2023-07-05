@@ -17,6 +17,7 @@ pub struct AffixFuzzer1 {
     pub many_floats_optional: Option<Vec<f32>>,
     pub many_strings_required: Vec<String>,
     pub many_strings_optional: Option<Vec<String>>,
+    pub flattened_scalar: f32,
 }
 
 impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
@@ -93,6 +94,12 @@ impl crate::Datatype for AffixFuzzer1 {
                     metadata: [].into(),
                 })),
                 is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "flattened_scalar".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
                 metadata: [].into(),
             },
         ])
@@ -534,6 +541,36 @@ impl crate::Datatype for AffixFuzzer1 {
                             .boxed()
                         }
                     },
+                    {
+                        let (somes, flattened_scalar): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self {
+                                        flattened_scalar, ..
+                                    } = &**datum;
+                                    flattened_scalar.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let flattened_scalar_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        PrimitiveArray::new(
+                            {
+                                _ = extension_wrapper;
+                                DataType::Float32.to_logical_type().clone()
+                            },
+                            flattened_scalar
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
+                            flattened_scalar_bitmap,
+                        )
+                        .boxed()
+                    },
                 ],
                 bitmap,
             )
@@ -746,13 +783,23 @@ impl crate::Datatype for AffixFuzzer1 {
                         .into_iter()
                 }
             };
+            let flattened_scalar = {
+                let data = &**arrays_by_name["flattened_scalar"];
+
+                data.as_any()
+                    .downcast_ref::<Float32Array>()
+                    .unwrap()
+                    .into_iter()
+                    .map(|v| v.copied())
+            };
             ::itertools::izip!(
                 single_float_optional,
                 single_string_required,
                 single_string_optional,
                 many_floats_optional,
                 many_strings_required,
-                many_strings_optional
+                many_strings_optional,
+                flattened_scalar
             )
             .enumerate()
             .map(
@@ -765,6 +812,7 @@ impl crate::Datatype for AffixFuzzer1 {
                         many_floats_optional,
                         many_strings_required,
                         many_strings_optional,
+                        flattened_scalar,
                     ),
                 )| {
                     is_valid(i)
@@ -784,6 +832,11 @@ impl crate::Datatype for AffixFuzzer1 {
                                     }
                                 })?,
                                 many_strings_optional,
+                                flattened_scalar: flattened_scalar.ok_or_else(|| {
+                                    crate::DeserializationError::MissingData {
+                                        datatype: data.data_type().clone(),
+                                    }
+                                })?,
                             })
                         })
                         .transpose()

@@ -35,6 +35,7 @@ __all__ = [
 class AffixFuzzer1:
     single_string_required: str = field()
     many_strings_required: list[str] = field()
+    flattened_scalar: float = field()
     single_float_optional: float | None = field(default=None)
     single_string_optional: str | None = field(default=None)
     many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
@@ -63,6 +64,7 @@ class AffixFuzzer1Type(BaseExtensionType):
                     pa.field("many_floats_optional", pa.list_(pa.field("item", pa.float32(), True, {})), True, {}),
                     pa.field("many_strings_required", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {}),
                     pa.field("many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {}),
+                    pa.field("flattened_scalar", pa.float32(), False, {}),
                 ]
             ),
             "rerun.testing.datatypes.AffixFuzzer1",
