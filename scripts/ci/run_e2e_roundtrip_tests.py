@@ -77,7 +77,7 @@ def run_roundtrip_rust(arch: str, release: bool, target_dir: str | None) -> str:
     cmd = ["cargo", "r", "-p", project_name]
 
     if target_dir is not None:
-        cmd += ["--target-dir", target_dir] 
+        cmd += ["--target-dir", target_dir]
 
     if release:
         cmd += ["--release"]
