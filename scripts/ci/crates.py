@@ -33,8 +33,8 @@ from colorama import init as colorama_init
 from semver import VersionInfo
 
 
-def cargo(args: str, cwd: str | Path | None = None) -> Any:
-    subprocess.check_output(["cargo"] + args.split(), cwd=cwd)
+def cargo(args: str, cwd: str | Path | None = None, env: Dict[str, Any] = {}) -> Any:
+    subprocess.check_output(["cargo"] + args.split(), cwd=cwd, env=env)
 
 
 class Crate:
@@ -287,7 +287,7 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
     return False
 
 
-def publish_crate(crate: Crate, token: str, version: str) -> None:
+def publish_crate(crate: Crate, token: str, version: str, env: Dict[str, Any]) -> None:
     package = crate.manifest["package"]
     name = package["name"]
     crate_version = crate.manifest["package"].get("version") or version
@@ -298,10 +298,10 @@ def publish_crate(crate: Crate, token: str, version: str) -> None:
         print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
     else:
         print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-        cargo("publish --quiet --dry-run", cwd=crate.path)
+        cargo("publish --quiet --dry-run", cwd=crate.path, env=env)
         print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
         try:
-            cargo(f"publish --token {token}", cwd=crate.path)
+            cargo(f"publish --token {token}", cwd=crate.path, env=env)
             print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
         except:
             print(f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}")
@@ -320,8 +320,9 @@ def publish(dry_run: bool, token: str) -> None:
     ctx.finish(dry_run)
 
     if not dry_run:
+        env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes", "IS_IN_RERUN_WORKSPACE": "yes"}
         for crate in crates.values():
-            publish_crate(crate, token, version)
+            publish_crate(crate, token, version, env)
 
 
 def main() -> None:
