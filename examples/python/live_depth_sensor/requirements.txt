@@ -1,3 +1,4 @@
 numpy
-pyrealsense2
+pyrealsense2-mac; sys_platform == 'darwin'
+pyrealsense2; sys_platform != 'darwin'
 rerun-sdk
