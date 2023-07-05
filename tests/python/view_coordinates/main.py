@@ -41,12 +41,8 @@ depth = np.ones((50, 100)) * 0.5
 rr.log_view_coordinates("world", up="+Z")
 
 
-def log_camera(
-    translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64], forward: npt.ArrayLike
-) -> None:
+def log_camera(translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64], forward: npt.ArrayLike) -> None:
     [height, width, _channels] = img.shape
-    u_cen = width / 2
-    v_cen = height / 2
     f_len = (height * width) ** 0.5
     # TODO(andreas): It should be possible to collapse the image path with the base path.
     cam_path = f"world/{xyz}"
@@ -56,9 +52,9 @@ def log_camera(
     rr.log_arrow(cam_path + "/arrow", origin=[0, 0, 0], vector=forward, color=[255, 255, 255], width_scale=0.025)
     rr.log_pinhole(
         pinhole_path,
-        child_from_parent=[[f_len, 0, u_cen], [0, f_len, v_cen], [0, 0, 1]],
         width=width,
         height=height,
+        focal_length_px=f_len,
         camera_xyz=xyz,
     )
     rr.log_image(f"{pinhole_path}/rgb", img)

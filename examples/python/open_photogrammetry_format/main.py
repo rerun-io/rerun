@@ -165,22 +165,11 @@ class OPFProject:
 
             assert calib_sensor.internals.type == "perspective"
 
-            # TODO(ab): clean this up when https://github.com/rerun-io/rerun/issues/2589 is fixed
-            focal_length = calib_sensor.internals.focal_length_px
-            u_center = calib_sensor.internals.principal_point_px[0]
-            v_center = calib_sensor.internals.principal_point_px[1]
-            intrinsics = np.array(
-                [
-                    [focal_length, 0, u_center],
-                    [0, focal_length, v_center],
-                    [0, 0, 1],
-                ]
-            )
-
             # RUB coordinate system specified in https://pix4d.github.io/opf-spec/specification/projected_input_cameras.html#coordinate-system-specification
             rr.log_pinhole(
                 entity + "/image",
-                child_from_parent=intrinsics,
+                focal_length_px=calib_sensor.internals.focal_length_px,
+                principal_point_px=calib_sensor.internals.principal_point_px,
                 width=sensor.image_size_px[0],
                 height=sensor.image_size_px[1],
                 camera_xyz="RUB",
