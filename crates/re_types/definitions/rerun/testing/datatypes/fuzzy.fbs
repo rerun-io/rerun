@@ -1,5 +1,6 @@
 include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
+include "fbs/scalars.fbs";
 include "rust/attributes.fbs";
 
 namespace rerun.testing.datatypes;
@@ -16,6 +17,7 @@ table AffixFuzzer1 (
   many_floats_optional: [float] (order: 104);
   many_strings_required: [string] (order: 105, required);
   many_strings_optional: [string] (order: 106);
+  flattened_scalar: fbs.scalars.Float32 (order: 107, required);
 }
 
 table AffixFuzzer2 (
