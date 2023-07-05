@@ -24,6 +24,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
     parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
+    parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
 
     args = parser.parse_args()
@@ -48,7 +49,7 @@ def main() -> None:
 
     for arch in archetypes:
         python_output_path = run_roundtrip_python(arch)
-        rust_output_path = run_roundtrip_rust(arch, args.release, args.target_dir)
+        rust_output_path = run_roundtrip_rust(arch, args.release, args.target, args.target_dir)
         run_comparison(python_output_path, rust_output_path)
 
 
@@ -70,11 +71,14 @@ def run_roundtrip_python(arch: str) -> str:
     return output_path
 
 
-def run_roundtrip_rust(arch: str, release: bool, target_dir: str | None) -> str:
+def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir: str | None) -> str:
     project_name = f"roundtrip_{arch}"
     output_path = f"tests/rust/roundtrips/{arch}/out.rrd"
 
     cmd = ["cargo", "r", "-p", project_name]
+
+    if target is not None:
+        cmd += ["--target", target]
 
     if target_dir is not None:
         cmd += ["--target-dir", target_dir]
