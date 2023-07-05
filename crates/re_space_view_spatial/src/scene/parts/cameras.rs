@@ -1,3 +1,4 @@
+use glam::vec3;
 use re_components::{Component, InstanceKey, Pinhole, Transform3D, ViewCoordinates};
 use re_data_store::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
@@ -83,48 +84,40 @@ impl CamerasPart {
             picture_plane_distance: frustum_length,
         });
 
-        // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
-        let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);
+        let Some(resolution) = pinhole.resolution else {
+            return;
+        };
 
-        // Setup a RUB frustum - for non-rub we apply a transformation matrix.
-        let fy = (fov_y * 0.5).tan() * frustum_length;
-        let fx = fy * pinhole.aspect_ratio().unwrap_or(1.0);
-        let fz = -frustum_length; // z = back, so we use negative z here.
-
-        let image_center_pixel = pinhole.resolution().unwrap_or(glam::Vec2::ZERO) * 0.5;
-        let principal_point_offset_pixel = image_center_pixel - pinhole.principal_point();
-        let principal_point_offset =
-            principal_point_offset_pixel / pinhole.resolution().unwrap_or(glam::Vec2::ONE);
-        // Don't multiply with (fx,fy) because that would multiply the aspect ratio twice!
-        // Times two since fy is the half screen size (extending from -fy to fy!).
-        let offset = principal_point_offset * (fy * 2.0);
+        // Setup a RDF frustum (for non-RDF we apply a transformation matrix later).
+        let w = resolution.x();
+        let h = resolution.y();
+        let z = frustum_length;
 
         let corners = [
-            (offset + glam::vec2(fx, -fy)).extend(fz),
-            (offset + glam::vec2(fx, fy)).extend(fz),
-            (offset + glam::vec2(-fx, fy)).extend(fz),
-            (offset + glam::vec2(-fx, -fy)).extend(fz),
+            pinhole.unproject(vec3(0.0, 0.0, z)),
+            pinhole.unproject(vec3(0.0, h, z)),
+            pinhole.unproject(vec3(w, 0.0, z)),
+            pinhole.unproject(vec3(w, h, z)),
         ];
-        let triangle_frustum_offset = fy * 1.05;
+
         let up_triangle = [
-            // Use only fx for with and height of the triangle, so that the aspect ratio of the triangle is always the same.
-            (offset + glam::vec2(-fx * 0.25, triangle_frustum_offset)).extend(fz),
-            (offset + glam::vec2(0.0, fx * 0.25 + triangle_frustum_offset)).extend(fz),
-            (offset + glam::vec2(fx * 0.25, triangle_frustum_offset)).extend(fz),
+            pinhole.unproject(vec3(0.4 * w, 0.0, z)),
+            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
+            pinhole.unproject(vec3(0.5 * w, -0.1 * w, z)),
         ];
 
         let segments = [
-            // Frustum corners
+            // Frustum corners:
             (glam::Vec3::ZERO, corners[0]),
             (glam::Vec3::ZERO, corners[1]),
             (glam::Vec3::ZERO, corners[2]),
             (glam::Vec3::ZERO, corners[3]),
-            // rectangle around "far plane"
+            // Rectangle around "far plane":
             (corners[0], corners[1]),
             (corners[1], corners[2]),
             (corners[2], corners[3]),
             (corners[3], corners[0]),
-            // triangle indicating up direction
+            // Triangle indicating up direction:
             (up_triangle[0], up_triangle[1]),
             (up_triangle[1], up_triangle[2]),
             (up_triangle[2], up_triangle[0]),
@@ -138,10 +131,10 @@ impl CamerasPart {
         let mut line_builder = scene_context.shared_render_builders.lines();
         let mut batch = line_builder
             .batch("camera frustum")
-            // The frustum is setup as a RUB frustum, but if the view coordinates are not RUB,
+            // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
-                world_from_camera * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rub()),
+                world_from_camera * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rdf()),
             )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);

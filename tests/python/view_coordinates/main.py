@@ -17,7 +17,7 @@ rr.script_setup(args, "view_coordinates")
 # Log sphere of colored points to make it easier to orient ourselves.
 # See https://math.stackexchange.com/a/1586185
 num_points = 5000
-radius = 5
+radius = 8
 lamd = np.arccos(2 * np.random.rand(num_points) - 1) - np.pi / 2
 phi = np.random.rand(num_points) * 2 * np.pi
 x = np.cos(lamd) * np.cos(phi)
@@ -57,6 +57,7 @@ def log_camera(origin: npt.ArrayLike, xyz: str, forward: npt.ArrayLike) -> None:
         width=width,
         height=height,
         focal_length_px=f_len,
+        principal_point_px=[width * 3 / 4, height * 3 / 4], # test offset principal point
         camera_xyz=xyz,
     )
     rr.log_image(f"{pinhole_path}/rgb", rgb)
@@ -66,20 +67,24 @@ def log_camera(origin: npt.ArrayLike, xyz: str, forward: npt.ArrayLike) -> None:
 # Log a series of pinhole cameras only differing by their view coordinates and some offset.
 # Not all possible, but a fair sampling.
 
+s = 3 # spacing
+
+log_camera([0, 0, s], "RUB", forward=[0, 0, -1])
+
 # All right-handed permutations of RDF:
-log_camera([2, -2, 0], "RDF", forward=[0, 0, 1])
-log_camera([2, 0, 0], "FRD", forward=[1, 0, 0])
-log_camera([2, 2, 0], "DFR", forward=[0, 1, 0])
+log_camera([s, -s, 0], "RDF", forward=[0, 0, 1])
+log_camera([s, 0, 0], "FRD", forward=[1, 0, 0])
+log_camera([s, s, 0], "DFR", forward=[0, 1, 0])
 
 # All right-handed permutations of LUB:
-log_camera([0, -2, 0], "ULB", forward=[0, 0, -1])
+log_camera([0, -s, 0], "ULB", forward=[0, 0, -1])
 log_camera([0, 0, 0], "LBU", forward=[0, -1, 0])
-log_camera([0, 2, 0], "BUL", forward=[-1, 0, 0])
+log_camera([0, s, 0], "BUL", forward=[-1, 0, 0])
 
 # All permutations of LUF:
-log_camera([-2, -2, 0], "LUF", forward=[0, 0, 1])
-log_camera([-2, 0, 0], "FLU", forward=[1, 0, 0])
-log_camera([-2, 2, 0], "UFL", forward=[0, 1, 0])
+log_camera([-s, -s, 0], "LUF", forward=[0, 0, 1])
+log_camera([-s, 0, 0], "FLU", forward=[1, 0, 0])
+log_camera([-s, s, 0], "UFL", forward=[0, 1, 0])
 
 
 rr.script_teardown(args)
