@@ -163,7 +163,6 @@ class OPFProject:
 
             rr.log_transform3d(entity, rr.TranslationAndMat3(translation=calib_camera.position, matrix=rot))
 
-
             assert calib_sensor.internals.type == "perspective"
 
             # TODO(ab): clean this up when https://github.com/rerun-io/rerun/issues/2589 is fixed
@@ -184,7 +183,7 @@ class OPFProject:
                 child_from_parent=intrinsics,
                 width=sensor.image_size_px[0],
                 height=sensor.image_size_px[1],
-                camera_xyz="RUB"
+                camera_xyz="RUB",
             )
             rr.log_image_file(entity + "/image/rgb", img_path=self.path.parent / camera.uri)
 
