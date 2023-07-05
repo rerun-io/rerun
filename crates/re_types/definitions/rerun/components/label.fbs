@@ -14,7 +14,7 @@ table Label (
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "Sequence[str]",
   "attr.rerun.legacy_fqname": "rerun.label",
-  "attr.rust.derive": "Debug, Clone, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",
   order: 100

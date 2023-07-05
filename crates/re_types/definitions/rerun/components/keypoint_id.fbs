@@ -22,7 +22,7 @@ struct KeypointId (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "npt.NDArray[np.uint8], npt.NDArray[np.uint16], npt.NDArray[np.uint32]",
   "attr.rerun.legacy_fqname": "rerun.keypoint_id",
-  "attr.rust.derive": "Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.tuple_struct",
   order: 200
 ) {
