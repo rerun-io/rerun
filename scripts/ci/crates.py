@@ -106,11 +106,13 @@ def get_sorted_publishable_crates(ctx: Context, crates: Dict[str, Crate]) -> Dic
         # Insert only after all dependencies have been traversed
         if name not in visited:
             visited[name] = True
-            if "publish" not in crate.manifest["package"]:
+            publish = crate.manifest["package"].get("publish")
+            if publish is None:
                 ctx.error(
                     f"Crate {Fore.BLUE}{name}{Fore.RESET} does not have {Fore.BLUE}package.publish{Fore.RESET} set."
                 )
-            elif crate.manifest["package"]["publish"]:
+
+            if publish:
                 output[name] = crate
 
     visited: Dict[str, bool] = {}
