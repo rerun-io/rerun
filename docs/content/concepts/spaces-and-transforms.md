@@ -49,7 +49,7 @@ There are 4 parent/child entity relationships represented in this hierarchy.
 - `world/robot` -> `world/robot/observed_features`
 
 The call: `rr.log_transform3d("world/robot", ...)` only applies to the relationship: `world` -> `world/robot` because the
-logged transform (`world/robot`) describes the relationship between the entity and its _parent_ (`world`). All other 
+logged transform (`world/robot`) describes the relationship between the entity and its _parent_ (`world`). All other
 relationships are considered to be an identity transform.
 
 This leaves us with two spaces. In one space, we have the entities `world`, and `world/mapped_keypoints`. In the other
@@ -110,12 +110,10 @@ Note that none of the names in the paths are special.
 
 
 ## View coordinates
-You can use [rerun.log_view_coordinates](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_view_coordinates) to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
+You can use [`rr.log_view_coordinates`](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_view_coordinates) to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
 
-This is in particular useful when taking the point of view of a given entity in the viewer. The view coordinates will then answer e.g. which axis is forward.
+For 3D world spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log_view_coordinates("world", up="+Z", timeless=True)`.
 
-For camera spaces this could for instance be `rr.log_view_coordinates("world/camera", xyz="RDF")` to indicate that `X=Right, Y=Down, Z=Forward`. For convenience, `log_rigid3` also takes this as an argument. Logging view coordinates helps Rerun figure out how to interpret your logged camera.
-
-For 3D world spaces it can be useful to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log_view_coordinates("world", up="+Z", timeless=True)`.
+For pinhole entities the view coordinates specify the orientation of the camera frustum. The default is `RUB` (X=Right, Y=Up, Z=Back). You can also use `[`rr.log_pinhole(…, camera_xyz=)`](https://ref.rerun.io/docs/python/latest/common/transforms/#rerun.log_pinhole) as a shortcut for this.
 
 For 2D spaces and other entities the view coordinates currently do nothing (https://github.com/rerun-io/rerun/issues/1387).

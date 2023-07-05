@@ -51,7 +51,11 @@ def log_view_coordinates(
 
     Each entity defines its own coordinate system, called a space.
     By logging view coordinates you can give semantic meaning to the XYZ axes of the space.
-    This is for example useful for camera entities ("what axis is forward?").
+
+    This is particularly useful for 3D spaces, to set the up-axis.
+
+    For pinhole entities this will control the direction of the camera frustum.
+    You can also use [`rerun.log_pinhole(…, camera_xyz=…)`][rerun.log_pinhole] for this.
 
     For full control, set the `xyz` parameter to a three-letter acronym (`xyz="RDF"`). Each letter represents:
 
@@ -69,10 +73,12 @@ def log_view_coordinates(
     * "RDB": X=Right Y=Down Z=Back     (left-handed)
     * "RUF": X=Right Y=Up   Z=Forward  (left-handed)
 
+    Currently Rerun only supports right-handed coordinate systems.
+
     Example
     -------
     ```
-    rerun.log_view_coordinates("world/camera", xyz="RUB")
+    rerun.log_view_coordinates("world/camera/image", xyz="RUB")
     ```
 
     For world-coordinates it's often convenient to just specify an up-axis.
