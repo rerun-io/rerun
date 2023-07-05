@@ -12,8 +12,8 @@
 #[doc = "An RGBA color tuple with unmultiplied/separate alpha, in sRGB gamma space with linear alpha."]
 #[derive(
     Debug,
-    Default,
     Clone,
+    Default,
     Copy,
     PartialEq,
     Eq,
