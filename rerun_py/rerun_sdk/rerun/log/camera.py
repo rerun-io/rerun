@@ -21,6 +21,7 @@ def log_pinhole(
     height: int,
     timeless: bool = False,
     recording: RecordingStream | None = None,
+    camera_xyz: str | None = None,
 ) -> None:
     """
     Log a perspective camera model.
@@ -66,8 +67,20 @@ def log_pinhole(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    camera_xyz:
+        Sets the view coordinates for the camera. The default is "RDF", i.e. X=Right, Y=Down, Z=Forward.
+        Other common formats are "RUB" (X=Right, Y=Up, Z=Back) and "FLU" (X=Forward, Y=Left, Z=Up).
+        Equivalent to calling [`rerun.log_view_coordinates(entity, xyz=…)`][`rerun.log_view_coordinates`].
 
     """
 
     instanced = {"rerun.pinhole": PinholeArray.from_pinhole(Pinhole(child_from_parent, [width, height]))}
     bindings.log_arrow_msg(entity_path, components=instanced, timeless=timeless)
+
+    if camera_xyz:
+        bindings.log_view_coordinates_xyz(
+            entity_path,
+            xyz=camera_xyz,
+            timeless=timeless,
+            recording=recording,
+        )

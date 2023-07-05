@@ -49,7 +49,6 @@ def log_camera(
     base_path = f"world/{path_prefix}/{xyz}"
     image_path = f"{base_path}/image-{xyz}"
     rr.log_point(f"{base_path}/indicator", position=[0, 0, 0], color=[255, 255, 255], label=xyz)
-    rr.log_view_coordinates(base_path, xyz=xyz)
     rr.log_transform3d(base_path, transform=rr.Translation3D(translation))
     rr.log_arrow(base_path + "/box", origin=[0, 0, 0], vector=forward, color=[255, 255, 255], width_scale=0.025)
     rr.log_pinhole(
@@ -57,6 +56,7 @@ def log_camera(
         child_from_parent=[[f_len, 0, u_cen], [0, f_len, v_cen], [0, 0, 1]],
         width=width,
         height=height,
+        camera_xyz=xyz,
     )
     rr.log_image(image_path, img)
 

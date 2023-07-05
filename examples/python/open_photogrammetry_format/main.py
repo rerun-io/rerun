@@ -163,8 +163,6 @@ class OPFProject:
 
             rr.log_transform3d(entity, rr.TranslationAndMat3(translation=calib_camera.position, matrix=rot))
 
-            # Coordinate system from https://pix4d.github.io/opf-spec/specification/projected_input_cameras.html#coordinate-system-specification
-            rr.log_view_coordinates(entity, xyz="RUB")
 
             assert calib_sensor.internals.type == "perspective"
 
@@ -180,11 +178,13 @@ class OPFProject:
                 ]
             )
 
+            # RUB coordinate system specified in https://pix4d.github.io/opf-spec/specification/projected_input_cameras.html#coordinate-system-specification
             rr.log_pinhole(
                 entity + "/image",
                 child_from_parent=intrinsics,
                 width=sensor.image_size_px[0],
                 height=sensor.image_size_px[1],
+                camera_xyz="RUB"
             )
             rr.log_image_file(entity + "/image/rgb", img_path=self.path.parent / camera.uri)
 
