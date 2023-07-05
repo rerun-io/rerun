@@ -274,7 +274,7 @@ def version(dry_run: bool, bump: Bump) -> None:
         for name, crate in crates.items():
             with Path(f"{crate.path}/Cargo.toml").open("w") as f:
                 tomlkit.dump(crate.manifest, f)
-        cargo("update -w")
+        cargo("update --workspace")
 
 
 def publish(dry_run: bool, token: str) -> None:
@@ -290,8 +290,9 @@ def publish(dry_run: bool, token: str) -> None:
 
     if not dry_run:
         for crate in crates.values():
+            print(f"{Fore.GREEN}Verifying{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
+            cargo("publish --quiet --dry-run", cwd=crate.path)
             print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
-            cargo("publish --dry-run", cwd=crate.path)
             process = cargo(f"publish --token {token}", cwd=crate.path, capture=True)
             if "already uploaded" in process.stdout:
                 print(f"{Fore.GREEN}Skipped{Fore.RESET} {Fore.BLUE}{crate.path.relative_to('.')}{Fore.RESET}")
