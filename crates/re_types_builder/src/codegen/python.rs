@@ -1,6 +1,7 @@
 //! Implements the Python codegen pass.
 
 use anyhow::Context as _;
+use itertools::Itertools;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     io::Write,
@@ -279,7 +280,8 @@ impl QuotedObject {
         assert!(obj.is_struct());
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
@@ -320,6 +322,7 @@ impl QuotedObject {
             .chain(fields.iter().filter(|field| field.is_nullable));
         for field in fields_in_order {
             let ObjectField {
+                virtpath: _,
                 filepath: _,
                 fqname: _,
                 pkg_name: _,
@@ -370,7 +373,7 @@ impl QuotedObject {
 
         code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 0);
 
-        let mut filepath = PathBuf::from(filepath);
+        let mut filepath = PathBuf::from(virtpath);
         filepath.set_extension("py");
 
         Self {
@@ -384,7 +387,8 @@ impl QuotedObject {
         assert!(!obj.is_struct());
 
         let Object {
-            filepath,
+            virtpath,
+            filepath: _,
             fqname: _,
             pkg_name: _,
             name,
@@ -413,6 +417,7 @@ impl QuotedObject {
 
         for field in fields {
             let ObjectField {
+                virtpath: _,
                 filepath: _,
                 fqname: _,
                 pkg_name: _,
@@ -439,7 +444,7 @@ impl QuotedObject {
         code.push_text(quote_aliases_from_object(obj), 1, 0);
         code.push_text(quote_arrow_support_from_obj(arrow_registry, obj), 1, 0);
 
-        let mut filepath = PathBuf::from(filepath);
+        let mut filepath = PathBuf::from(virtpath);
         filepath.set_extension("py");
 
         Self {
@@ -469,7 +474,13 @@ fn quote_doc_from_docs(docs: &Docs) -> String {
         return String::new();
     }
 
-    let doc = lines.join("\n");
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise...
+    let doc = lines
+        .into_iter()
+        .filter(|line| !line.starts_with(r#"""""#))
+        .collect_vec()
+        .join("\n");
+
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
 
@@ -762,7 +773,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
         fqname,
         name,
         kind,
-        filepath,
+        virtpath,
         ..
     } = obj;
 
@@ -776,7 +787,7 @@ fn quote_arrow_support_from_obj(arrow_registry: &ArrowRegistry, obj: &Object) ->
             let many_aliases = format!("{name}ArrayLike");
             let arrow = format!("{name}Type");
 
-            let mut filepath = PathBuf::from(filepath);
+            let mut filepath = PathBuf::from(virtpath);
             filepath.set_extension("py");
             let filename = filepath.file_stem().unwrap().to_string_lossy();
 

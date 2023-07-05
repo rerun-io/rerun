@@ -113,6 +113,8 @@
 )]
 mod reflection;
 
+use anyhow::Context;
+
 pub use self::reflection::reflection::{
     root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
     Field as FbsField, KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema,
@@ -212,14 +214,21 @@ fn generate_lang_agnostic(
     let entrypoint_path = entrypoint_path.as_ref();
     let entrypoint_filename = entrypoint_path.file_name().unwrap();
 
+    let include_dir_path = include_dir_path.as_ref();
+    let include_dir_path = include_dir_path
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize include path: {include_dir_path:?}"))
+        .unwrap();
+
     // generate bfbs definitions
-    compile_binary_schemas(include_dir_path, tmp.path(), entrypoint_path);
+    compile_binary_schemas(&include_dir_path, tmp.path(), entrypoint_path);
 
     let mut binary_entrypoint_path = PathBuf::from(entrypoint_filename);
     binary_entrypoint_path.set_extension("bfbs");
 
     // semantic pass: high level objects from low-level reflection data
     let mut objects = Objects::from_buf(
+        include_dir_path,
         sh.read_binary_file(tmp.path().join(binary_entrypoint_path))
             .unwrap()
             .as_slice(),
