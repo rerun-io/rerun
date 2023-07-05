@@ -61,9 +61,45 @@ impl Objects {
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
 
-        Self {
+        let mut this = Self {
             objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
+        };
+
+        // Resolve field-level semantic transparency recursively.
+        let mut done = false;
+        while !done {
+            done = true;
+            let mut objects_copy = this.objects.clone(); // borrowck, the lazy way
+            for obj in this.objects.values_mut() {
+                for field in &mut obj.fields {
+                    if field.is_transparent() {
+                        if let Some(target_fqname) = field.typ.fqname() {
+                            let mut target_obj = objects_copy.remove(target_fqname).unwrap();
+                            assert!(
+                                target_obj.fields.len() == 1,
+                                "field '{}' is marked transparent but points to object '{}' which \
+                                    doesn't have exactly one field (found {} fields instead)",
+                                field.fqname,
+                                target_obj.fqname,
+                                target_obj.fields.len(),
+                            );
+
+                            field.typ = target_obj.fields.pop().unwrap().typ;
+                            done = false;
+                        }
+                    }
+                }
+            }
         }
+
+        // Remove whole objects marked as transparent.
+        this.objects = this
+            .objects
+            .drain()
+            .filter(|(_, obj)| !obj.is_transparent())
+            .collect();
+
+        this
     }
 }
 
@@ -473,7 +509,7 @@ impl Object {
     ///
     /// Panics if no order has been set.
     pub fn order(&self) -> u32 {
-        self.attrs.get::<u32>(&self.fqname, "order")
+        self.attrs.get::<u32>(&self.fqname, crate::ATTR_ORDER)
     }
 
     pub fn is_struct(&self) -> bool {
@@ -502,6 +538,12 @@ impl Object {
             || self
                 .try_get_attr::<String>(crate::ATTR_ARROW_TRANSPARENT)
                 .is_some()
+    }
+
+    fn is_transparent(&self) -> bool {
+        self.attrs
+            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
+            .is_some()
     }
 }
 
@@ -665,6 +707,12 @@ impl ObjectField {
     #[inline]
     pub fn order(&self) -> u32 {
         self.attrs.get::<u32>(&self.fqname, "order")
+    }
+
+    fn is_transparent(&self) -> bool {
+        self.attrs
+            .try_get::<String>(&self.fqname, crate::ATTR_TRANSPARENT)
+            .is_some()
     }
 
     pub fn get_attr<T>(&self, name: impl AsRef<str>) -> T

@@ -7,6 +7,30 @@ namespace rerun.testing.datatypes;
 
 // ---
 
+table FlattenedScalar (
+  "attr.rust.derive": "Debug, Clone",
+  transparent,
+  order: 001
+) {
+  value: float (order: 100);
+}
+
+table DeeplyFlattenedScalar (
+  "attr.rust.derive": "Debug, Clone",
+  transparent,
+  order: 001
+) {
+  value: FlattenedScalar (order: 100);
+}
+
+table VeryDeeplyFlattenedScalar (
+  "attr.rust.derive": "Debug, Clone",
+  transparent,
+  order: 001
+) {
+  value: DeeplyFlattenedScalar (order: 100);
+}
+
 table AffixFuzzer1 (
   "attr.rust.derive": "PartialEq",
   order: 100
@@ -17,7 +41,7 @@ table AffixFuzzer1 (
   many_floats_optional: [float] (order: 104);
   many_strings_required: [string] (order: 105, required);
   many_strings_optional: [string] (order: 106);
-  flattened_scalar: fbs.scalars.Float32 (order: 107, required);
+  flattened_scalar: VeryDeeplyFlattenedScalar (order: 107, required, transparent);
 }
 
 table AffixFuzzer2 (
