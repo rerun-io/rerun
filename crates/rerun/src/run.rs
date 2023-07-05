@@ -313,14 +313,26 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     ///
     /// Fails if there are more than one data recordings present in the rrd file.
     fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
+        use re_data_store::StoreDb;
+        use re_log_types::StoreId;
+
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open rrd file contents at {path_to_rrd:?}"))?;
 
-        let stores = re_viewer::StoreBundle::from_rrd(rrd_file)
-            .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
+        let mut stores: std::collections::HashMap<StoreId, StoreDb> = Default::default();
+        let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
+        for msg in decoder {
+            let msg = msg
+                .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
+            stores
+                .entry(msg.store_id().clone())
+                .or_insert(re_data_store::StoreDb::new(msg.store_id().clone()))
+                .add(&msg)
+                .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
+        }
 
         let mut stores = stores
-            .store_dbs()
+            .values()
             .filter(|store| store.store_kind() == re_log_types::StoreKind::Recording)
             .collect_vec();
 
