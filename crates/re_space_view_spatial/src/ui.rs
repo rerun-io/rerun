@@ -337,7 +337,7 @@ impl SpatialSpaceViewState {
                     let up_description = if let Some(up) = view_coordinates.and_then(|v| v.up()) {
                         format!("Up is {up}")
                     } else {
-                        "Up is undetermined".to_owned()
+                        "Up is unspecified".to_owned()
                     };
                     ui.label(up_description).on_hover_ui(|ui| {
                         ui.horizontal(|ui| {
