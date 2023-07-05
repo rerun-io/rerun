@@ -28,27 +28,29 @@ rr.log_points(
     "world/points", positions=unit_sphere_positions * radius, colors=np.abs(unit_sphere_positions), radii=0.01
 )
 
-# Simple image that indicates orientation
-img = np.zeros((50, 100, 3))
-img[0:3, 0:3] = [255, 255, 255]
-img[3:25, 0:3] = [0, 255, 0]
-img[0:3, 3:25] = [255, 0, 0]
+# RGB image that indicates orientation:
+rgb = np.zeros((50, 100, 3))
+rgb[0:3, 0:3] = [255, 255, 255]
+rgb[3:25, 0:3] = [0, 255, 0]
+rgb[0:3, 3:25] = [255, 0, 0]
 
-# Depth image for testing depth cloud
-depth = np.ones((50, 100)) * 0.5
+# Depth image for testing depth cloud:
+# depth = np.ones((50, 100)) * 0.5
+x, y = np.meshgrid(np.arange(0, 100), np.arange(0, 50))
+depth = 0.5 + 0.005 * x + 0.25 * np.sin(3.14 * y / 50 / 2)
 
 
 rr.log_view_coordinates("world", up="+Z")
 
 
-def log_camera(translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64], forward: npt.ArrayLike) -> None:
-    [height, width, _channels] = img.shape
+def log_camera(origin: npt.ArrayLike, xyz: str, forward: npt.ArrayLike) -> None:
+    [height, width, _channels] = rgb.shape
     f_len = (height * width) ** 0.5
     # TODO(andreas): It should be possible to collapse the image path with the base path.
     cam_path = f"world/{xyz}"
-    pinhole_path = f"{cam_path}/pinhole"
+    pinhole_path = f"{cam_path}/{xyz}"
     rr.log_point(f"{cam_path}/indicator", position=[0, 0, 0], color=[255, 255, 255], label=xyz)
-    rr.log_transform3d(cam_path, transform=rr.Translation3D(translation))
+    rr.log_transform3d(cam_path, transform=rr.Translation3D(origin))
     rr.log_arrow(cam_path + "/arrow", origin=[0, 0, 0], vector=forward, color=[255, 255, 255], width_scale=0.025)
     rr.log_pinhole(
         pinhole_path,
@@ -57,7 +59,7 @@ def log_camera(translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64
         focal_length_px=f_len,
         camera_xyz=xyz,
     )
-    rr.log_image(f"{pinhole_path}/rgb", img)
+    rr.log_image(f"{pinhole_path}/rgb", rgb)
     rr.log_depth_image(f"{pinhole_path}/depth", depth)
 
 
@@ -65,19 +67,19 @@ def log_camera(translation: npt.ArrayLike, xyz: str, img: npt.NDArray[np.float64
 # Not all possible, but a fair sampling.
 
 # All right-handed permutations of RDF:
-log_camera([2, -2, 0], "RDF", img, forward=[0, 0, 1])
-log_camera([2, 0, 0], "FRD", img, forward=[1, 0, 0])
-log_camera([2, 2, 0], "DFR", img, forward=[0, 1, 0])
+log_camera([2, -2, 0], "RDF", forward=[0, 0, 1])
+log_camera([2, 0, 0], "FRD", forward=[1, 0, 0])
+log_camera([2, 2, 0], "DFR", forward=[0, 1, 0])
 
 # All right-handed permutations of LUB:
-log_camera([0, -2, 0], "ULB", img, forward=[0, 0, -1])
-log_camera([0, 0, 0], "LBU", img, forward=[0, -1, 0])
-log_camera([0, 2, 0], "BUL", img, forward=[-1, 0, 0])
+log_camera([0, -2, 0], "ULB", forward=[0, 0, -1])
+log_camera([0, 0, 0], "LBU", forward=[0, -1, 0])
+log_camera([0, 2, 0], "BUL", forward=[-1, 0, 0])
 
 # All permutations of LUF:
-log_camera([-2, -2, 0], "LUF", img, forward=[0, 0, 1])
-log_camera([-2, 0, 0], "FLU", img, forward=[1, 0, 0])
-log_camera([-2, 2, 0], "UFL", img, forward=[0, 1, 0])
+log_camera([-2, -2, 0], "LUF", forward=[0, 0, 1])
+log_camera([-2, 0, 0], "FLU", forward=[1, 0, 0])
+log_camera([-2, 2, 0], "UFL", forward=[0, 1, 0])
 
 
 rr.script_teardown(args)
