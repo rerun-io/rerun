@@ -79,7 +79,7 @@ def crate_deps(member: Dict[str, Dict[str, Any]]) -> Generator[Tuple[str, Depend
 
 def get_sorted_publishable_crates(crates: Dict[str, Crate]) -> Dict[str, Crate]:
     """
-    Returns topo-sorted crates sorted.
+    Returns crates topologically sorted in publishing order.
 
     This also filters any crates which have `publish` set to `false`.
     """
