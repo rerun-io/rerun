@@ -14,8 +14,8 @@ pub struct SpaceCamera3D {
     /// We expect the camera transform to apply to this instance and every path below it.
     pub ent_path: EntityPath,
 
-    /// The coordinate system of the camera ("view-space").
-    pub view_coordinates: ViewCoordinates,
+    /// The coordinate system of the pinhole entity ("view-space").
+    pub pinhole_view_coordinates: ViewCoordinates,
 
     /// Camera "Extrinsics", i.e. the pose of the camera.
     pub world_from_camera: IsoTransform,
@@ -45,7 +45,7 @@ impl SpaceCamera3D {
 
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_rub_view(&self) -> Option<IsoTransform> {
-        match self.view_coordinates.from_rub_quat() {
+        match self.pinhole_view_coordinates.from_rub_quat() {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
                 re_log::warn_once!("Camera {:?}: {err}", self.ent_path);
@@ -62,8 +62,9 @@ impl SpaceCamera3D {
         // View-coordinates are relevant here because without them we have no notion of what the image plane is.
         // (it's not a given that e.g. XY is the camera image plane!)
         // First transform to the "standard RUB" 3D camera and then from there to the image plane coordinate system.
-        let point_in_image_unprojected =
-            image_view_coordinates().from_rub() * self.view_coordinates.to_rub() * point_in_cam;
+        let point_in_image_unprojected = image_view_coordinates().from_rub()
+            * self.pinhole_view_coordinates.to_rub()
+            * point_in_cam;
 
         let point_in_image = pinhole.project(point_in_image_unprojected);
         Some(point_in_image)

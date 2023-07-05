@@ -578,7 +578,7 @@ fn show_projections_from_2d_space(
                     let stop_in_rub_view = image_view_coordinates().to_rub() * stop_in_image_plane;
 
                     let world_from_rub_view = glam::Affine3A::from(cam.world_from_camera)
-                        * glam::Affine3A::from_mat3(cam.view_coordinates.from_rub());
+                        * glam::Affine3A::from_mat3(cam.pinhole_view_coordinates.from_rub());
                     let stop_in_world = world_from_rub_view.transform_point3(stop_in_rub_view);
 
                     let origin = cam.position();

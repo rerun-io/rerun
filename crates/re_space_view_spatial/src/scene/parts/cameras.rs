@@ -8,7 +8,7 @@ use re_viewer_context::{
 
 use crate::{
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    scene::contexts::{determine_view_coordinates, SpatialSceneContext},
+    scene::contexts::{pinhole_camera_view_coordinates, SpatialSceneContext},
     space_camera_3d::SpaceCamera3D,
     SpatialSpaceView,
 };
@@ -32,7 +32,7 @@ impl CamerasPart {
         props: &EntityProperties,
         pinhole: Pinhole,
         transform_at_entity: Option<Transform3D>,
-        view_coordinates: ViewCoordinates,
+        pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
         let instance_key = InstanceKey(0);
@@ -53,7 +53,7 @@ impl CamerasPart {
         if scene_context.transforms.reference_path() == ent_path {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
-                view_coordinates,
+                pinhole_view_coordinates,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
                 pinhole: Some(pinhole),
                 picture_plane_distance: frustum_length,
@@ -77,7 +77,7 @@ impl CamerasPart {
 
         self.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
-            view_coordinates,
+            pinhole_view_coordinates,
             world_from_camera: world_from_camera_iso,
             pinhole: Some(pinhole),
             picture_plane_distance: frustum_length,
@@ -141,7 +141,7 @@ impl CamerasPart {
             // The frustum is setup as a RUB frustum, but if the view coordinates are not RUB,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
-                world_from_camera * glam::Affine3A::from_mat3(view_coordinates.from_rub()),
+                world_from_camera * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rub()),
             )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
@@ -182,10 +182,10 @@ impl ScenePart<SpatialSpaceView> for CamerasPart {
             let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = store.query_latest_component::<Pinhole>(ent_path, &query) {
-                let view_coordinates = determine_view_coordinates(
+                let pinhole_view_coordinates = pinhole_camera_view_coordinates(
                     &ctx.store_db.entity_db.data_store,
                     &ctx.rec_cfg.time_ctrl.current_query(),
-                    ent_path.clone(),
+                    ent_path,
                 );
                 let entity_highlight = highlights.entity_outline_mask(ent_path.hash());
 
@@ -195,7 +195,7 @@ impl ScenePart<SpatialSpaceView> for CamerasPart {
                     &props,
                     pinhole,
                     store.query_latest_component::<Transform3D>(ent_path, &query),
-                    view_coordinates,
+                    pinhole_view_coordinates,
                     entity_highlight,
                 );
             }

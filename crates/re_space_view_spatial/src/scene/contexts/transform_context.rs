@@ -275,7 +275,7 @@ fn transform_at(
         // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
         // determine how the image plane is oriented.
         // (see also `CamerasPart` where the frustum lines are set up)
-        let view_coordinates = determine_view_coordinates(store, query, entity_path.clone());
+        let view_coordinates = pinhole_camera_view_coordinates(store, query, entity_path);
         let world_from_image_plane3d =
             // Convert from RUB setup to what we'are actually using.
             view_coordinates.from_rub() *
@@ -312,29 +312,17 @@ fn transform_at(
     }
 }
 
-/// Determine the view coordinates (i.e.) the axis semantics.
+/// Determine the view coordinates, i.e. the axis semantics, of a pinhole entity.
 ///
-/// The recommended way to log this is on the object holding the extrinsic camera properties
-/// (i.e. the last rigid transform from here)
-/// But for ease of use allow it everywhere along the path.
+/// This is used to orient the camera frustum.
 ///
-/// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
-pub fn determine_view_coordinates(
+/// The recommended way to log this is using `rr.log_pinhole(…, camera_xyz=…)`
+pub fn pinhole_camera_view_coordinates(
     store: &re_arrow_store::DataStore,
     query: &LatestAtQuery,
-    mut entity_path: EntityPath,
+    entity_path: &EntityPath,
 ) -> ViewCoordinates {
-    loop {
-        if let Some(view_coordinates) = store.query_latest_component(&entity_path, query) {
-            return view_coordinates;
-        }
-
-        if let Some(parent) = entity_path.parent() {
-            entity_path = parent;
-        } else {
-            // Keep in mind, there is no universal convention for any of this!
-            // https://twitter.com/freyaholmer/status/1325556229410861056
-            return ViewCoordinates::RUB;
-        }
-    }
+    store
+        .query_latest_component(entity_path, query)
+        .unwrap_or(ViewCoordinates::RUB)
 }
