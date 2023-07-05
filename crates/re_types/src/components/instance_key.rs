@@ -6,6 +6,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[doc = "A unique numeric identifier for each individual instance within a batch."]

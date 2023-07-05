@@ -6,6 +6,7 @@
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,84 +17,168 @@ pub struct AffixFuzzer1 {
     pub fuzz1004: crate::components::AffixFuzzer4,
     pub fuzz1005: crate::components::AffixFuzzer5,
     pub fuzz1006: crate::components::AffixFuzzer6,
+    pub fuzz1007: crate::components::AffixFuzzer7,
+    pub fuzz1008: crate::components::AffixFuzzer8,
+    pub fuzz1009: crate::components::AffixFuzzer9,
+    pub fuzz1010: crate::components::AffixFuzzer10,
+    pub fuzz1011: crate::components::AffixFuzzer11,
+    pub fuzz1012: crate::components::AffixFuzzer12,
+    pub fuzz1013: crate::components::AffixFuzzer13,
     pub fuzz1101: Vec<crate::components::AffixFuzzer1>,
     pub fuzz1102: Vec<crate::components::AffixFuzzer2>,
     pub fuzz1103: Vec<crate::components::AffixFuzzer3>,
     pub fuzz1104: Vec<crate::components::AffixFuzzer4>,
     pub fuzz1105: Vec<crate::components::AffixFuzzer5>,
     pub fuzz1106: Vec<crate::components::AffixFuzzer6>,
+    pub fuzz1107: Vec<crate::components::AffixFuzzer7>,
+    pub fuzz1108: Vec<crate::components::AffixFuzzer8>,
+    pub fuzz1109: Vec<crate::components::AffixFuzzer9>,
+    pub fuzz1110: Vec<crate::components::AffixFuzzer10>,
+    pub fuzz1111: Vec<crate::components::AffixFuzzer11>,
+    pub fuzz1112: Vec<crate::components::AffixFuzzer12>,
+    pub fuzz1113: Vec<crate::components::AffixFuzzer13>,
     pub fuzz2001: Option<crate::components::AffixFuzzer1>,
     pub fuzz2002: Option<crate::components::AffixFuzzer2>,
     pub fuzz2003: Option<crate::components::AffixFuzzer3>,
     pub fuzz2004: Option<crate::components::AffixFuzzer4>,
     pub fuzz2005: Option<crate::components::AffixFuzzer5>,
     pub fuzz2006: Option<crate::components::AffixFuzzer6>,
+    pub fuzz2007: Option<crate::components::AffixFuzzer7>,
+    pub fuzz2008: Option<crate::components::AffixFuzzer8>,
+    pub fuzz2009: Option<crate::components::AffixFuzzer9>,
+    pub fuzz2010: Option<crate::components::AffixFuzzer10>,
+    pub fuzz2011: Option<crate::components::AffixFuzzer11>,
+    pub fuzz2012: Option<crate::components::AffixFuzzer12>,
+    pub fuzz2013: Option<crate::components::AffixFuzzer13>,
     pub fuzz2101: Option<Vec<crate::components::AffixFuzzer1>>,
     pub fuzz2102: Option<Vec<crate::components::AffixFuzzer2>>,
     pub fuzz2103: Option<Vec<crate::components::AffixFuzzer3>>,
     pub fuzz2104: Option<Vec<crate::components::AffixFuzzer4>>,
     pub fuzz2105: Option<Vec<crate::components::AffixFuzzer5>>,
     pub fuzz2106: Option<Vec<crate::components::AffixFuzzer6>>,
+    pub fuzz2107: Option<Vec<crate::components::AffixFuzzer7>>,
+    pub fuzz2108: Option<Vec<crate::components::AffixFuzzer8>>,
+    pub fuzz2109: Option<Vec<crate::components::AffixFuzzer9>>,
+    pub fuzz2110: Option<Vec<crate::components::AffixFuzzer10>>,
+    pub fuzz2111: Option<Vec<crate::components::AffixFuzzer11>>,
+    pub fuzz2112: Option<Vec<crate::components::AffixFuzzer12>>,
+    pub fuzz2113: Option<Vec<crate::components::AffixFuzzer13>>,
 }
 
 impl AffixFuzzer1 {
-    pub const REQUIRED_COMPONENTS: [crate::ComponentName; 12usize] = [
+    pub const REQUIRED_COMPONENTS: [crate::ComponentName; 26usize] = [
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
     ];
 
     pub const RECOMMENDED_COMPONENTS: [crate::ComponentName; 0usize] = [];
 
-    pub const OPTIONAL_COMPONENTS: [crate::ComponentName; 12usize] = [
+    pub const OPTIONAL_COMPONENTS: [crate::ComponentName; 26usize] = [
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
     ];
 
-    pub const ALL_COMPONENTS: [crate::ComponentName; 24usize] = [
+    pub const ALL_COMPONENTS: [crate::ComponentName; 52usize] = [
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer1"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer2"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer3"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer4"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer5"),
         crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer6"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer7"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer8"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer9"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer10"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer11"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer12"),
+        crate::ComponentName::Borrowed("rerun.testing.components.AffixFuzzer13"),
     ];
 }
 
@@ -237,6 +322,132 @@ impl crate::Archetype for AffixFuzzer1 {
             {
                 Some({
                     let array =
+                        <crate::components::AffixFuzzer7>::try_to_arrow([&self.fuzz1007], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer7".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer7".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1007", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer8>::try_to_arrow([&self.fuzz1008], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer8".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer8".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1008", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer9>::try_to_arrow([&self.fuzz1009], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer9".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer9".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1009", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer10>::try_to_arrow([&self.fuzz1010], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer10".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer10".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1010", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer11>::try_to_arrow([&self.fuzz1011], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer11".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer11".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1011", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer12>::try_to_arrow([&self.fuzz1012], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer12".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer12".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1012", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer13>::try_to_arrow([&self.fuzz1013], None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer13".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer13".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1013", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
                         <crate::components::AffixFuzzer1>::try_to_arrow(self.fuzz1101.iter(), None);
                     array.map(|array| {
                         let datatype = ::arrow2::datatypes::DataType::Extension(
@@ -336,6 +547,140 @@ impl crate::Archetype for AffixFuzzer1 {
                         );
                         (
                             ::arrow2::datatypes::Field::new("fuzz1106", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer7>::try_to_arrow(self.fuzz1107.iter(), None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer7".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer7".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1107", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer8>::try_to_arrow(self.fuzz1108.iter(), None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer8".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer8".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1108", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array =
+                        <crate::components::AffixFuzzer9>::try_to_arrow(self.fuzz1109.iter(), None);
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer9".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer9".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1109", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer10>::try_to_arrow(
+                        self.fuzz1110.iter(),
+                        None,
+                    );
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer10".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer10".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1110", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer11>::try_to_arrow(
+                        self.fuzz1111.iter(),
+                        None,
+                    );
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer11".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer11".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1111", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer12>::try_to_arrow(
+                        self.fuzz1112.iter(),
+                        None,
+                    );
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer12".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer12".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1112", datatype, false),
+                            array,
+                        )
+                    })
+                })
+                .transpose()?
+            },
+            {
+                Some({
+                    let array = <crate::components::AffixFuzzer13>::try_to_arrow(
+                        self.fuzz1113.iter(),
+                        None,
+                    );
+                    array.map(|array| {
+                        let datatype = ::arrow2::datatypes::DataType::Extension(
+                            "rerun.testing.components.AffixFuzzer13".into(),
+                            Box::new(array.data_type().clone()),
+                            Some("rerun.testing.components.AffixFuzzer13".into()),
+                        );
+                        (
+                            ::arrow2::datatypes::Field::new("fuzz1113", datatype, false),
                             array,
                         )
                     })
@@ -450,6 +795,143 @@ impl crate::Archetype for AffixFuzzer1 {
                             );
                             (
                                 ::arrow2::datatypes::Field::new("fuzz2006", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2007
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer7>::try_to_arrow([single], None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer7".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer7".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2007", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2008
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer8>::try_to_arrow([single], None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer8".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer8".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2008", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2009
+                    .as_ref()
+                    .map(|single| {
+                        let array = <crate::components::AffixFuzzer9>::try_to_arrow([single], None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer9".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer9".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2009", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2010
+                    .as_ref()
+                    .map(|single| {
+                        let array =
+                            <crate::components::AffixFuzzer10>::try_to_arrow([single], None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer10".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer10".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2010", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2011
+                    .as_ref()
+                    .map(|single| {
+                        let array =
+                            <crate::components::AffixFuzzer11>::try_to_arrow([single], None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer11".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer11".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2011", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2012
+                    .as_ref()
+                    .map(|single| {
+                        let array =
+                            <crate::components::AffixFuzzer12>::try_to_arrow([single], None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer12".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer12".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2012", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2013
+                    .as_ref()
+                    .map(|single| {
+                        let array =
+                            <crate::components::AffixFuzzer13>::try_to_arrow([single], None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer13".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer13".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2013", datatype, false),
                                 array,
                             )
                         })
@@ -576,6 +1058,146 @@ impl crate::Archetype for AffixFuzzer1 {
                     })
                     .transpose()?
             },
+            {
+                self.fuzz2107
+                    .as_ref()
+                    .map(|many| {
+                        let array =
+                            <crate::components::AffixFuzzer7>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer7".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer7".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2107", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2108
+                    .as_ref()
+                    .map(|many| {
+                        let array =
+                            <crate::components::AffixFuzzer8>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer8".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer8".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2108", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2109
+                    .as_ref()
+                    .map(|many| {
+                        let array =
+                            <crate::components::AffixFuzzer9>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer9".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer9".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2109", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2110
+                    .as_ref()
+                    .map(|many| {
+                        let array =
+                            <crate::components::AffixFuzzer10>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer10".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer10".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2110", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2111
+                    .as_ref()
+                    .map(|many| {
+                        let array =
+                            <crate::components::AffixFuzzer11>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer11".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer11".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2111", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2112
+                    .as_ref()
+                    .map(|many| {
+                        let array =
+                            <crate::components::AffixFuzzer12>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer12".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer12".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2112", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
+            {
+                self.fuzz2113
+                    .as_ref()
+                    .map(|many| {
+                        let array =
+                            <crate::components::AffixFuzzer13>::try_to_arrow(many.iter(), None);
+                        array.map(|array| {
+                            let datatype = ::arrow2::datatypes::DataType::Extension(
+                                "rerun.testing.components.AffixFuzzer13".into(),
+                                Box::new(array.data_type().clone()),
+                                Some("rerun.testing.components.AffixFuzzer13".into()),
+                            );
+                            (
+                                ::arrow2::datatypes::Field::new("fuzz2113", datatype, false),
+                                array,
+                            )
+                        })
+                    })
+                    .transpose()?
+            },
         ]
         .into_iter()
         .flatten()
@@ -675,6 +1297,104 @@ impl crate::Archetype for AffixFuzzer1 {
                     datatype: ::arrow2::datatypes::DataType::Null,
                 })?
         };
+        let fuzz1007 = {
+            let array = arrays_by_name.get("fuzz1007").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1008 = {
+            let array = arrays_by_name.get("fuzz1008").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1009 = {
+            let array = arrays_by_name.get("fuzz1009").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1010 = {
+            let array = arrays_by_name.get("fuzz1010").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1011 = {
+            let array = arrays_by_name.get("fuzz1011").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1012 = {
+            let array = arrays_by_name.get("fuzz1012").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
+        let fuzz1013 = {
+            let array = arrays_by_name.get("fuzz1013").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                })?
+        };
         let fuzz1101 = {
             let array = arrays_by_name.get("fuzz1101").ok_or_else(|| {
                 crate::DeserializationError::MissingData {
@@ -765,6 +1485,111 @@ impl crate::Archetype for AffixFuzzer1 {
                 })
                 .collect::<crate::DeserializationResult<Vec<_>>>()?
         };
+        let fuzz1107 = {
+            let array = arrays_by_name.get("fuzz1107").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1108 = {
+            let array = arrays_by_name.get("fuzz1108").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1109 = {
+            let array = arrays_by_name.get("fuzz1109").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1110 = {
+            let array = arrays_by_name.get("fuzz1110").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1111 = {
+            let array = arrays_by_name.get("fuzz1111").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1112 = {
+            let array = arrays_by_name.get("fuzz1112").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
+        let fuzz1113 = {
+            let array = arrays_by_name.get("fuzz1113").ok_or_else(|| {
+                crate::DeserializationError::MissingData {
+                    datatype: ::arrow2::datatypes::DataType::Null,
+                }
+            })?;
+            <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)?
+                .into_iter()
+                .map(|v| {
+                    v.ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })
+                })
+                .collect::<crate::DeserializationResult<Vec<_>>>()?
+        };
         let fuzz2001 = if let Some(array) = arrays_by_name.get("fuzz2001") {
             Some(
                 <crate::components::AffixFuzzer1>::try_from_arrow_opt(&**array)?
@@ -833,6 +1658,97 @@ impl crate::Archetype for AffixFuzzer1 {
         let fuzz2006 = if let Some(array) = arrays_by_name.get("fuzz2006") {
             Some(
                 <crate::components::AffixFuzzer6>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2007 = if let Some(array) = arrays_by_name.get("fuzz2007") {
+            Some(
+                <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2008 = if let Some(array) = arrays_by_name.get("fuzz2008") {
+            Some(
+                <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2009 = if let Some(array) = arrays_by_name.get("fuzz2009") {
+            Some(
+                <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2010 = if let Some(array) = arrays_by_name.get("fuzz2010") {
+            Some(
+                <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2011 = if let Some(array) = arrays_by_name.get("fuzz2011") {
+            Some(
+                <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2012 = if let Some(array) = arrays_by_name.get("fuzz2012") {
+            Some(
+                <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(|| crate::DeserializationError::MissingData {
+                        datatype: ::arrow2::datatypes::DataType::Null,
+                    })?,
+            )
+        } else {
+            None
+        };
+        let fuzz2013 = if let Some(array) = arrays_by_name.get("fuzz2013") {
+            Some(
+                <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)?
                     .into_iter()
                     .next()
                     .flatten()
@@ -927,6 +1843,104 @@ impl crate::Archetype for AffixFuzzer1 {
         } else {
             None
         };
+        let fuzz2107 = if let Some(array) = arrays_by_name.get("fuzz2107") {
+            Some(
+                <crate::components::AffixFuzzer7>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2108 = if let Some(array) = arrays_by_name.get("fuzz2108") {
+            Some(
+                <crate::components::AffixFuzzer8>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2109 = if let Some(array) = arrays_by_name.get("fuzz2109") {
+            Some(
+                <crate::components::AffixFuzzer9>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2110 = if let Some(array) = arrays_by_name.get("fuzz2110") {
+            Some(
+                <crate::components::AffixFuzzer10>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2111 = if let Some(array) = arrays_by_name.get("fuzz2111") {
+            Some(
+                <crate::components::AffixFuzzer11>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2112 = if let Some(array) = arrays_by_name.get("fuzz2112") {
+            Some(
+                <crate::components::AffixFuzzer12>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
+        let fuzz2113 = if let Some(array) = arrays_by_name.get("fuzz2113") {
+            Some(
+                <crate::components::AffixFuzzer13>::try_from_arrow_opt(&**array)?
+                    .into_iter()
+                    .map(|v| {
+                        v.ok_or_else(|| crate::DeserializationError::MissingData {
+                            datatype: ::arrow2::datatypes::DataType::Null,
+                        })
+                    })
+                    .collect::<crate::DeserializationResult<Vec<_>>>()?,
+            )
+        } else {
+            None
+        };
         Ok(Self {
             fuzz1001,
             fuzz1002,
@@ -934,24 +1948,52 @@ impl crate::Archetype for AffixFuzzer1 {
             fuzz1004,
             fuzz1005,
             fuzz1006,
+            fuzz1007,
+            fuzz1008,
+            fuzz1009,
+            fuzz1010,
+            fuzz1011,
+            fuzz1012,
+            fuzz1013,
             fuzz1101,
             fuzz1102,
             fuzz1103,
             fuzz1104,
             fuzz1105,
             fuzz1106,
+            fuzz1107,
+            fuzz1108,
+            fuzz1109,
+            fuzz1110,
+            fuzz1111,
+            fuzz1112,
+            fuzz1113,
             fuzz2001,
             fuzz2002,
             fuzz2003,
             fuzz2004,
             fuzz2005,
             fuzz2006,
+            fuzz2007,
+            fuzz2008,
+            fuzz2009,
+            fuzz2010,
+            fuzz2011,
+            fuzz2012,
+            fuzz2013,
             fuzz2101,
             fuzz2102,
             fuzz2103,
             fuzz2104,
             fuzz2105,
             fuzz2106,
+            fuzz2107,
+            fuzz2108,
+            fuzz2109,
+            fuzz2110,
+            fuzz2111,
+            fuzz2112,
+            fuzz2113,
         })
     }
 }
@@ -964,12 +2006,26 @@ impl AffixFuzzer1 {
         fuzz1004: impl Into<crate::components::AffixFuzzer4>,
         fuzz1005: impl Into<crate::components::AffixFuzzer5>,
         fuzz1006: impl Into<crate::components::AffixFuzzer6>,
+        fuzz1007: impl Into<crate::components::AffixFuzzer7>,
+        fuzz1008: impl Into<crate::components::AffixFuzzer8>,
+        fuzz1009: impl Into<crate::components::AffixFuzzer9>,
+        fuzz1010: impl Into<crate::components::AffixFuzzer10>,
+        fuzz1011: impl Into<crate::components::AffixFuzzer11>,
+        fuzz1012: impl Into<crate::components::AffixFuzzer12>,
+        fuzz1013: impl Into<crate::components::AffixFuzzer13>,
         fuzz1101: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer1>>,
         fuzz1102: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer2>>,
         fuzz1103: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer3>>,
         fuzz1104: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer4>>,
         fuzz1105: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer5>>,
         fuzz1106: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer6>>,
+        fuzz1107: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer7>>,
+        fuzz1108: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer8>>,
+        fuzz1109: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer9>>,
+        fuzz1110: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer10>>,
+        fuzz1111: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer11>>,
+        fuzz1112: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer12>>,
+        fuzz1113: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer13>>,
     ) -> Self {
         Self {
             fuzz1001: fuzz1001.into(),
@@ -978,24 +2034,52 @@ impl AffixFuzzer1 {
             fuzz1004: fuzz1004.into(),
             fuzz1005: fuzz1005.into(),
             fuzz1006: fuzz1006.into(),
+            fuzz1007: fuzz1007.into(),
+            fuzz1008: fuzz1008.into(),
+            fuzz1009: fuzz1009.into(),
+            fuzz1010: fuzz1010.into(),
+            fuzz1011: fuzz1011.into(),
+            fuzz1012: fuzz1012.into(),
+            fuzz1013: fuzz1013.into(),
             fuzz1101: fuzz1101.into_iter().map(Into::into).collect(),
             fuzz1102: fuzz1102.into_iter().map(Into::into).collect(),
             fuzz1103: fuzz1103.into_iter().map(Into::into).collect(),
             fuzz1104: fuzz1104.into_iter().map(Into::into).collect(),
             fuzz1105: fuzz1105.into_iter().map(Into::into).collect(),
             fuzz1106: fuzz1106.into_iter().map(Into::into).collect(),
+            fuzz1107: fuzz1107.into_iter().map(Into::into).collect(),
+            fuzz1108: fuzz1108.into_iter().map(Into::into).collect(),
+            fuzz1109: fuzz1109.into_iter().map(Into::into).collect(),
+            fuzz1110: fuzz1110.into_iter().map(Into::into).collect(),
+            fuzz1111: fuzz1111.into_iter().map(Into::into).collect(),
+            fuzz1112: fuzz1112.into_iter().map(Into::into).collect(),
+            fuzz1113: fuzz1113.into_iter().map(Into::into).collect(),
             fuzz2001: None,
             fuzz2002: None,
             fuzz2003: None,
             fuzz2004: None,
             fuzz2005: None,
             fuzz2006: None,
+            fuzz2007: None,
+            fuzz2008: None,
+            fuzz2009: None,
+            fuzz2010: None,
+            fuzz2011: None,
+            fuzz2012: None,
+            fuzz2013: None,
             fuzz2101: None,
             fuzz2102: None,
             fuzz2103: None,
             fuzz2104: None,
             fuzz2105: None,
             fuzz2106: None,
+            fuzz2107: None,
+            fuzz2108: None,
+            fuzz2109: None,
+            fuzz2110: None,
+            fuzz2111: None,
+            fuzz2112: None,
+            fuzz2113: None,
         }
     }
 
@@ -1026,6 +2110,41 @@ impl AffixFuzzer1 {
 
     pub fn with_fuzz2006(mut self, fuzz2006: impl Into<crate::components::AffixFuzzer6>) -> Self {
         self.fuzz2006 = Some(fuzz2006.into());
+        self
+    }
+
+    pub fn with_fuzz2007(mut self, fuzz2007: impl Into<crate::components::AffixFuzzer7>) -> Self {
+        self.fuzz2007 = Some(fuzz2007.into());
+        self
+    }
+
+    pub fn with_fuzz2008(mut self, fuzz2008: impl Into<crate::components::AffixFuzzer8>) -> Self {
+        self.fuzz2008 = Some(fuzz2008.into());
+        self
+    }
+
+    pub fn with_fuzz2009(mut self, fuzz2009: impl Into<crate::components::AffixFuzzer9>) -> Self {
+        self.fuzz2009 = Some(fuzz2009.into());
+        self
+    }
+
+    pub fn with_fuzz2010(mut self, fuzz2010: impl Into<crate::components::AffixFuzzer10>) -> Self {
+        self.fuzz2010 = Some(fuzz2010.into());
+        self
+    }
+
+    pub fn with_fuzz2011(mut self, fuzz2011: impl Into<crate::components::AffixFuzzer11>) -> Self {
+        self.fuzz2011 = Some(fuzz2011.into());
+        self
+    }
+
+    pub fn with_fuzz2012(mut self, fuzz2012: impl Into<crate::components::AffixFuzzer12>) -> Self {
+        self.fuzz2012 = Some(fuzz2012.into());
+        self
+    }
+
+    pub fn with_fuzz2013(mut self, fuzz2013: impl Into<crate::components::AffixFuzzer13>) -> Self {
+        self.fuzz2013 = Some(fuzz2013.into());
         self
     }
 
@@ -1074,6 +2193,62 @@ impl AffixFuzzer1 {
         fuzz2106: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer6>>,
     ) -> Self {
         self.fuzz2106 = Some(fuzz2106.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_fuzz2107(
+        mut self,
+        fuzz2107: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer7>>,
+    ) -> Self {
+        self.fuzz2107 = Some(fuzz2107.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_fuzz2108(
+        mut self,
+        fuzz2108: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer8>>,
+    ) -> Self {
+        self.fuzz2108 = Some(fuzz2108.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_fuzz2109(
+        mut self,
+        fuzz2109: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer9>>,
+    ) -> Self {
+        self.fuzz2109 = Some(fuzz2109.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_fuzz2110(
+        mut self,
+        fuzz2110: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer10>>,
+    ) -> Self {
+        self.fuzz2110 = Some(fuzz2110.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_fuzz2111(
+        mut self,
+        fuzz2111: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer11>>,
+    ) -> Self {
+        self.fuzz2111 = Some(fuzz2111.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_fuzz2112(
+        mut self,
+        fuzz2112: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer12>>,
+    ) -> Self {
+        self.fuzz2112 = Some(fuzz2112.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn with_fuzz2113(
+        mut self,
+        fuzz2113: impl IntoIterator<Item = impl Into<crate::components::AffixFuzzer13>>,
+    ) -> Self {
+        self.fuzz2113 = Some(fuzz2113.into_iter().map(Into::into).collect());
         self
     }
 }

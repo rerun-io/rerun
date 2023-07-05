@@ -2,13 +2,45 @@
 
 from __future__ import annotations
 
+from typing import Sequence, Union
+
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
+from attrs import define, field
+
 from .. import datatypes
 from .._baseclasses import (
     BaseDelegatingExtensionArray,
     BaseDelegatingExtensionType,
+    BaseExtensionArray,
+    BaseExtensionType,
+)
+from .._converters import (
+    to_np_float32,
 )
 
 __all__ = [
+    "AffixFuzzer10",
+    "AffixFuzzer10Array",
+    "AffixFuzzer10ArrayLike",
+    "AffixFuzzer10Like",
+    "AffixFuzzer10Type",
+    "AffixFuzzer11",
+    "AffixFuzzer11Array",
+    "AffixFuzzer11ArrayLike",
+    "AffixFuzzer11Like",
+    "AffixFuzzer11Type",
+    "AffixFuzzer12",
+    "AffixFuzzer12Array",
+    "AffixFuzzer12ArrayLike",
+    "AffixFuzzer12Like",
+    "AffixFuzzer12Type",
+    "AffixFuzzer13",
+    "AffixFuzzer13Array",
+    "AffixFuzzer13ArrayLike",
+    "AffixFuzzer13Like",
+    "AffixFuzzer13Type",
     "AffixFuzzer1Array",
     "AffixFuzzer1Type",
     "AffixFuzzer2Array",
@@ -21,6 +53,21 @@ __all__ = [
     "AffixFuzzer5Type",
     "AffixFuzzer6Array",
     "AffixFuzzer6Type",
+    "AffixFuzzer7",
+    "AffixFuzzer7Array",
+    "AffixFuzzer7ArrayLike",
+    "AffixFuzzer7Like",
+    "AffixFuzzer7Type",
+    "AffixFuzzer8",
+    "AffixFuzzer8Array",
+    "AffixFuzzer8ArrayLike",
+    "AffixFuzzer8Like",
+    "AffixFuzzer8Type",
+    "AffixFuzzer9",
+    "AffixFuzzer9Array",
+    "AffixFuzzer9ArrayLike",
+    "AffixFuzzer9Like",
+    "AffixFuzzer9Type",
 ]
 
 
@@ -124,3 +171,325 @@ AffixFuzzer6Type._ARRAY_TYPE = AffixFuzzer6Array
 
 # TODO(cmc): bring back registration to pyarrow once legacy types are gone
 # pa.register_extension_type(AffixFuzzer6Type())
+
+
+@define
+class AffixFuzzer7:
+    many_optional: list[datatypes.AffixFuzzer1] | None = field(default=None)
+
+
+AffixFuzzer7Like = AffixFuzzer7
+AffixFuzzer7ArrayLike = Union[
+    AffixFuzzer7,
+    Sequence[AffixFuzzer7Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer7Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct(
+                [
+                    pa.field(
+                        "many_optional",
+                        pa.list_(
+                            pa.field(
+                                "item",
+                                pa.struct(
+                                    [
+                                        pa.field("single_float_optional", pa.float32(), True, {}),
+                                        pa.field("single_string_required", pa.utf8(), False, {}),
+                                        pa.field("single_string_optional", pa.utf8(), True, {}),
+                                        pa.field(
+                                            "many_floats_optional",
+                                            pa.list_(pa.field("item", pa.float32(), True, {})),
+                                            True,
+                                            {},
+                                        ),
+                                        pa.field(
+                                            "many_strings_required",
+                                            pa.list_(pa.field("item", pa.utf8(), False, {})),
+                                            False,
+                                            {},
+                                        ),
+                                        pa.field(
+                                            "many_strings_optional",
+                                            pa.list_(pa.field("item", pa.utf8(), True, {})),
+                                            True,
+                                            {},
+                                        ),
+                                    ]
+                                ),
+                                True,
+                                {},
+                            )
+                        ),
+                        True,
+                        {},
+                    )
+                ]
+            ),
+            "rerun.testing.components.AffixFuzzer7",
+        )
+
+
+class AffixFuzzer7Array(BaseExtensionArray[AffixFuzzer7ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer7"
+    _EXTENSION_TYPE = AffixFuzzer7Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer7ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer7Type._ARRAY_TYPE = AffixFuzzer7Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer7Type())
+
+
+@define
+class AffixFuzzer8:
+    single_float_optional: float | None = field(default=None)
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+        return np.asarray(self.single_float_optional, dtype=dtype)
+
+
+AffixFuzzer8Like = AffixFuzzer8
+AffixFuzzer8ArrayLike = Union[
+    AffixFuzzer8,
+    Sequence[AffixFuzzer8Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer8Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct([pa.field("single_float_optional", pa.float32(), True, {})]),
+            "rerun.testing.components.AffixFuzzer8",
+        )
+
+
+class AffixFuzzer8Array(BaseExtensionArray[AffixFuzzer8ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer8"
+    _EXTENSION_TYPE = AffixFuzzer8Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer8ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer8Type._ARRAY_TYPE = AffixFuzzer8Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer8Type())
+
+
+@define
+class AffixFuzzer9:
+    single_string_required: str = field()
+
+    def __str__(self) -> str:
+        return str(self.single_string_required)
+
+
+AffixFuzzer9Like = AffixFuzzer9
+AffixFuzzer9ArrayLike = Union[
+    AffixFuzzer9,
+    Sequence[AffixFuzzer9Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer9Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct([pa.field("single_string_required", pa.utf8(), False, {})]),
+            "rerun.testing.components.AffixFuzzer9",
+        )
+
+
+class AffixFuzzer9Array(BaseExtensionArray[AffixFuzzer9ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer9"
+    _EXTENSION_TYPE = AffixFuzzer9Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer9ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer9Type._ARRAY_TYPE = AffixFuzzer9Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer9Type())
+
+
+@define
+class AffixFuzzer10:
+    single_string_optional: str | None = field(default=None)
+
+
+AffixFuzzer10Like = AffixFuzzer10
+AffixFuzzer10ArrayLike = Union[
+    AffixFuzzer10,
+    Sequence[AffixFuzzer10Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer10Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct([pa.field("single_string_optional", pa.utf8(), True, {})]),
+            "rerun.testing.components.AffixFuzzer10",
+        )
+
+
+class AffixFuzzer10Array(BaseExtensionArray[AffixFuzzer10ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer10"
+    _EXTENSION_TYPE = AffixFuzzer10Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer10ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer10Type._ARRAY_TYPE = AffixFuzzer10Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer10Type())
+
+
+@define
+class AffixFuzzer11:
+    many_floats_optional: npt.NDArray[np.float32] | None = field(default=None, converter=to_np_float32)
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.ArrayLike:
+        return np.asarray(self.many_floats_optional, dtype=dtype)
+
+
+AffixFuzzer11Like = AffixFuzzer11
+AffixFuzzer11ArrayLike = Union[
+    AffixFuzzer11,
+    Sequence[AffixFuzzer11Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer11Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct([pa.field("many_floats_optional", pa.list_(pa.field("item", pa.float32(), True, {})), True, {})]),
+            "rerun.testing.components.AffixFuzzer11",
+        )
+
+
+class AffixFuzzer11Array(BaseExtensionArray[AffixFuzzer11ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer11"
+    _EXTENSION_TYPE = AffixFuzzer11Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer11ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer11Type._ARRAY_TYPE = AffixFuzzer11Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer11Type())
+
+
+@define
+class AffixFuzzer12:
+    many_strings_required: list[str] = field()
+
+
+AffixFuzzer12Like = AffixFuzzer12
+AffixFuzzer12ArrayLike = Union[
+    AffixFuzzer12,
+    Sequence[AffixFuzzer12Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer12Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct([pa.field("many_strings_required", pa.list_(pa.field("item", pa.utf8(), False, {})), False, {})]),
+            "rerun.testing.components.AffixFuzzer12",
+        )
+
+
+class AffixFuzzer12Array(BaseExtensionArray[AffixFuzzer12ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer12"
+    _EXTENSION_TYPE = AffixFuzzer12Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer12ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer12Type._ARRAY_TYPE = AffixFuzzer12Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer12Type())
+
+
+@define
+class AffixFuzzer13:
+    many_strings_optional: list[str] | None = field(default=None)
+
+
+AffixFuzzer13Like = AffixFuzzer13
+AffixFuzzer13ArrayLike = Union[
+    AffixFuzzer13,
+    Sequence[AffixFuzzer13Like],
+]
+
+
+# --- Arrow support ---
+
+
+class AffixFuzzer13Type(BaseExtensionType):
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self,
+            pa.struct([pa.field("many_strings_optional", pa.list_(pa.field("item", pa.utf8(), True, {})), True, {})]),
+            "rerun.testing.components.AffixFuzzer13",
+        )
+
+
+class AffixFuzzer13Array(BaseExtensionArray[AffixFuzzer13ArrayLike]):
+    _EXTENSION_NAME = "rerun.testing.components.AffixFuzzer13"
+    _EXTENSION_TYPE = AffixFuzzer13Type
+
+    @staticmethod
+    def _native_to_pa_array(data: AffixFuzzer13ArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError
+
+
+AffixFuzzer13Type._ARRAY_TYPE = AffixFuzzer13Array
+
+# TODO(cmc): bring back registration to pyarrow once legacy types are gone
+# pa.register_extension_type(AffixFuzzer13Type())
