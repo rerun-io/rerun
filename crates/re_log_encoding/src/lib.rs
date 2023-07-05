@@ -107,6 +107,7 @@ pub enum OptionsError {
     UnknownSerializer(u8),
 }
 
+#[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Clone, Copy)]
 pub(crate) struct FileHeader {
     pub magic: [u8; 4],
@@ -114,6 +115,7 @@ pub(crate) struct FileHeader {
     pub options: EncodingOptions,
 }
 
+#[cfg(any(feature = "encoder", feature = "decoder"))]
 impl FileHeader {
     #[cfg(feature = "decoder")]
     pub const SIZE: usize = 12;
@@ -149,6 +151,7 @@ impl FileHeader {
     }
 }
 
+#[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Clone, Copy)]
 pub(crate) struct MessageHeader {
     /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams
@@ -156,6 +159,7 @@ pub(crate) struct MessageHeader {
     pub uncompressed_len: u32,
 }
 
+#[cfg(any(feature = "encoder", feature = "decoder"))]
 impl MessageHeader {
     #[cfg(feature = "decoder")]
     pub const SIZE: usize = 8;
