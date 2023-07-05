@@ -46,7 +46,6 @@ rr.log_view_coordinates("world", up="+Z")
 def log_camera(origin: npt.ArrayLike, xyz: str, forward: npt.ArrayLike) -> None:
     [height, width, _channels] = rgb.shape
     f_len = (height * width) ** 0.5
-    # TODO(andreas): It should be possible to collapse the image path with the base path.
     cam_path = f"world/{xyz}"
     pinhole_path = f"{cam_path}/{xyz}"
     rr.log_point(f"{cam_path}/indicator", position=[0, 0, 0], color=[255, 255, 255], label=xyz)
