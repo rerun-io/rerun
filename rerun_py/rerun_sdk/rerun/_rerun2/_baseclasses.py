@@ -68,6 +68,24 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
 
     @classmethod
     def from_similar(cls, data: T | None) -> BaseExtensionArray[T]:
+        """
+        Primary method for creating Arrow arrays for components.
+
+        This method must flexibly accept native data (which comply with type `T`). Subclasses must provide a type
+        parameter specifying the type of the native data (this is automatically handled by the code generator).
+
+        The actual creation of the Arrow array is delegated to the `_native_to_pa_array()` method, which is not
+        implemented by default.
+
+        Parameters
+        ----------
+        data : T | None
+            The data to convert into an Arrow array.
+
+        Returns
+        -------
+        The Arrow array encapsulating the data.
+        """
         data_type = cls._EXTENSION_TYPE()
 
         if data is None:
@@ -79,6 +97,34 @@ class BaseExtensionArray(NamedExtensionArray, Generic[T]):  # type: ignore[misc]
 
     @staticmethod
     def _native_to_pa_array(data: T, data_type: pa.DataType) -> pa.Array:
+        """
+        Converts native data into an Arrow array.
+
+        Subclasses must provide an implementation of this method (via an override) if they are to be used as either
+        an archetype's field (which should be the case for all components), or a (delegating) component's field (for
+        datatypes). Datatypes which are used only within other datatypes may omit implementing this method, provided
+        that the top-level datatype implements it.
+
+        A hand-coded override must be provided for the code generator to implement this method. The override must be
+        named `xxx_native_to_pa_array()`, where `xxx` is the lowercase name of the datatype. The override must be
+        located in the `_overrides` subpackage and *explicitly* imported by `_overrides/__init__.py` (to be noticed
+        by the code generator).
+
+        `color_native_to_pa_array()` in `_overrides/color.py` is a good example of how to implement this method, in
+        conjunction with the native type's converter (see `color_converter()`, used to construct the native `Color`
+        object).
+
+        Parameters
+        ----------
+        data : T
+            The data to convert into an Arrow array.
+        data_type : pa.DataType
+            The Arrow data type of the data.
+
+        Returns
+        -------
+        The Arrow array encapsulating the data.
+        """
         raise NotImplementedError
 
 
