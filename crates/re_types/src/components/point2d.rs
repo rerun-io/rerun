@@ -38,25 +38,20 @@ impl crate::Component for Point2D {
     #[inline]
     fn to_arrow_datatype() -> arrow2::datatypes::DataType {
         use ::arrow2::datatypes::*;
-        DataType::Struct(vec![Field {
-            name: "xy".to_owned(),
-            data_type: DataType::Struct(vec![
-                Field {
-                    name: "x".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "y".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-            ]),
-            is_nullable: false,
-            metadata: [].into(),
-        }])
+        DataType::Struct(vec![
+            Field {
+                name: "x".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+            Field {
+                name: "y".to_owned(),
+                data_type: DataType::Float32,
+                is_nullable: false,
+                metadata: [].into(),
+            },
+        ])
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
@@ -70,53 +65,26 @@ impl crate::Component for Point2D {
         use crate::{Component as _, Datatype as _};
         use ::arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let (somes, xy): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| {
+                        let Self { xy } = datum.into_owned();
+                        xy
+                    });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let xy_bitmap: Option<::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                (if let Some(ext) = extension_wrapper {
-                    DataType::Extension(
-                        ext.to_owned(),
-                        Box::new(<crate::components::Point2D>::to_arrow_datatype()),
-                        None,
-                    )
-                } else {
-                    <crate::components::Point2D>::to_arrow_datatype()
-                })
-                .to_logical_type()
-                .clone(),
-                vec![{
-                    let (somes, xy): (Vec<_>, Vec<_>) = data
-                        .iter()
-                        .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| {
-                                let Self { xy, .. } = &**datum;
-                                xy.clone()
-                            });
-                            (datum.is_some(), datum)
-                        })
-                        .unzip();
-                    let xy_bitmap: Option<::arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
-                    {
-                        _ = xy_bitmap;
-                        _ = extension_wrapper;
-                        crate::datatypes::Point2D::try_to_arrow_opt(xy, None::<&str>)?
-                    }
-                }],
-                bitmap,
-            )
-            .boxed()
+            {
+                _ = xy_bitmap;
+                _ = extension_wrapper;
+                crate::datatypes::Point2D::try_to_arrow_opt(xy, Some("rerun.components.Point2D"))?
+            }
         })
     }
 
@@ -129,41 +97,14 @@ impl crate::Component for Point2D {
     {
         use crate::{Component as _, Datatype as _};
         use ::arrow2::{array::*, datatypes::*};
-        Ok({
-            let data = data
-                .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
-                .ok_or_else(|| crate::DeserializationError::SchemaMismatch {
-                    expected: data.data_type().clone(),
-                    got: data.data_type().clone(),
-                })?;
-            let (data_fields, data_arrays, data_bitmap) =
-                (data.fields(), data.values(), data.validity());
-            let is_valid = |i| data_bitmap.map_or(true, |bitmap| bitmap.get_bit(i));
-            let arrays_by_name: ::std::collections::HashMap<_, _> = data_fields
-                .iter()
-                .map(|field| field.name.as_str())
-                .zip(data_arrays)
-                .collect();
-            let xy = {
-                let data = &**arrays_by_name["xy"];
-
-                crate::datatypes::Point2D::try_from_arrow_opt(data)?.into_iter()
-            };
-            ::itertools::izip!(xy)
-                .enumerate()
-                .map(|(i, (xy))| {
-                    is_valid(i)
-                        .then(|| {
-                            Ok(Self {
-                                xy: xy.ok_or_else(|| crate::DeserializationError::MissingData {
-                                    datatype: data.data_type().clone(),
-                                })?,
-                            })
-                        })
-                        .transpose()
+        Ok(crate::datatypes::Point2D::try_from_arrow_opt(data)?
+            .into_iter()
+            .map(|v| {
+                v.ok_or_else(|| crate::DeserializationError::MissingData {
+                    datatype: data.data_type().clone(),
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()?
-        })
+            })
+            .map(|res| res.map(|xy| Some(Self { xy })))
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?)
     }
 }
