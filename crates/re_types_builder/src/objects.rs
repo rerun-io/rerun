@@ -51,12 +51,7 @@ impl Objects {
         }
 
         // resolve objects
-        for obj in schema
-            .objects()
-            .iter()
-            // NOTE: Wrapped scalar types used by unions, not actual objects: ignore.
-            .filter(|obj| !obj.name().starts_with("fbs.scalars."))
-        {
+        for obj in schema.objects().iter() {
             let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
@@ -802,7 +797,7 @@ impl Type {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[field_type.index() as usize];
-                flatten_scalar_wrappers(obj).into()
+                Self::Object(obj.name().to_owned())
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];
@@ -917,7 +912,7 @@ impl ElementType {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[outer_type.index() as usize];
-                flatten_scalar_wrappers(obj)
+                Self::Object(obj.name().to_owned())
             }
             FbsBaseType::Union => unimplemented!("{inner_type:#?}"), // NOLINT
             FbsBaseType::None
@@ -1017,19 +1012,6 @@ impl Attributes {
                 })
                 .unwrap(),
         )
-    }
-}
-
-/// Helper to turn wrapped scalars into actual scalars.
-fn flatten_scalar_wrappers(obj: &FbsObject<'_>) -> ElementType {
-    let name = obj.name();
-    if name.starts_with("fbs.scalars.") {
-        match name {
-            "fbs.scalars.Float32" => ElementType::Float32,
-            _ => unimplemented!("{name:#?}"), // NOLINT
-        }
-    } else {
-        ElementType::Object(name.to_owned())
     }
 }
 

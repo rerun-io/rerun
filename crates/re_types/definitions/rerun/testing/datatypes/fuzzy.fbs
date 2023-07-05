@@ -1,6 +1,5 @@
 include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
-include "fbs/scalars.fbs";
 include "rust/attributes.fbs";
 
 namespace rerun.testing.datatypes;
