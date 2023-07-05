@@ -24,7 +24,7 @@ import subprocess
 from enum import Enum
 from glob import glob
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Tuple
+from typing import Any, Generator
 
 import tomlkit
 from colorama import Fore
@@ -37,12 +37,12 @@ def cargo(args: str, cwd: str | Path | None = None) -> None:
 
 
 class Crate:
-    def __init__(self, manifest: Dict[str, Any], path: Path):
+    def __init__(self, manifest: dict[str, Any], path: Path):
         self.manifest = manifest
         self.path = path
 
 
-def get_workspace_crates(root: Dict[str, Any]) -> Dict[str, Crate]:
+def get_workspace_crates(root: dict[str, Any]) -> dict[str, Crate]:
     """
     Returns a dictionary of workspace crates.
 
@@ -50,12 +50,12 @@ def get_workspace_crates(root: Dict[str, Any]) -> Dict[str, Crate]:
     under `workspace.members`.
     """
 
-    crates: Dict[str, Crate] = {}
+    crates: dict[str, Crate] = {}
     for pattern in root["workspace"]["members"]:
         for crate in [member for member in glob(pattern) if os.path.isdir(member)]:
             crate_path = Path(crate)
             manifest_text = (crate_path / "Cargo.toml").read_text()
-            manifest: Dict[str, Any] = tomlkit.parse(manifest_text)
+            manifest: dict[str, Any] = tomlkit.parse(manifest_text)
             crates[manifest["package"]["name"]] = Crate(manifest, crate_path)
     return crates
 
@@ -72,7 +72,7 @@ class DependencyKind(Enum):
             return f"{self.value}-dependencies"
 
 
-def crate_deps(member: Dict[str, Dict[str, Any]]) -> Generator[Tuple[str, DependencyKind], None, None]:
+def crate_deps(member: dict[str, dict[str, Any]]) -> Generator[tuple[str, DependencyKind], None, None]:
     if "dependencies" in member:
         for v in member["dependencies"].keys():
             yield (v, DependencyKind.DIRECT)
@@ -84,7 +84,7 @@ def crate_deps(member: Dict[str, Dict[str, Any]]) -> Generator[Tuple[str, Depend
             yield (v, DependencyKind.BUILD)
 
 
-def get_sorted_publishable_crates(ctx: Context, crates: Dict[str, Crate]) -> Dict[str, Crate]:
+def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dict[str, Crate]:
     """
     Returns crates topologically sorted in publishing order.
 
@@ -93,10 +93,10 @@ def get_sorted_publishable_crates(ctx: Context, crates: Dict[str, Crate]) -> Dic
 
     def helper(
         ctx: Context,
-        crates: Dict[str, Crate],
+        crates: dict[str, Crate],
         name: str,
-        output: Dict[str, Crate],
-        visited: Dict[str, bool],
+        output: dict[str, Crate],
+        visited: dict[str, bool],
     ) -> None:
         crate = crates[name]
         for dependency, _ in crate_deps(crate.manifest):
@@ -116,8 +116,8 @@ def get_sorted_publishable_crates(ctx: Context, crates: Dict[str, Crate]) -> Dic
             if publish:
                 output[name] = crate
 
-    visited: Dict[str, bool] = {}
-    output: Dict[str, Crate] = {}
+    visited: dict[str, bool] = {}
+    output: dict[str, Crate] = {}
     for name in crates.keys():
         helper(ctx, crates, name, output, visited)
     return output
@@ -148,8 +148,8 @@ def is_pinned(version: str) -> bool:
 
 
 class Context:
-    ops: List[str] = []
-    errors: List[str] = []
+    ops: list[str] = []
+    errors: list[str] = []
 
     def bump(self, path: str, prev: str, new: VersionInfo) -> None:
         # fmt: off
@@ -193,7 +193,7 @@ def bump_package_version(
     ctx: Context,
     crate: str,
     new_version: VersionInfo,
-    manifest: Dict[str, Any],
+    manifest: dict[str, Any],
 ) -> None:
     if "package" in manifest and "version" in manifest["package"]:
         version = manifest["package"]["version"]
@@ -206,8 +206,8 @@ def bump_dependency_versions(
     ctx: Context,
     crate: str,
     new_version: VersionInfo,
-    manifest: Dict[str, Any],
-    crates: Dict[str, Crate],
+    manifest: dict[str, Any],
+    crates: dict[str, Crate],
 ) -> None:
     for dependency, kind in crate_deps(manifest):
         if dependency not in crates:
@@ -233,7 +233,7 @@ def bump_dependency_versions(
 def version(dry_run: bool, bump: Bump) -> None:
     ctx = Context()
 
-    root: Dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     crates = get_workspace_crates(root)
     current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
     new_version = bump_fn[bump](current_version)
@@ -271,7 +271,7 @@ def version(dry_run: bool, bump: Bump) -> None:
 def publish(dry_run: bool, token: str) -> None:
     ctx = Context()
 
-    root: Dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     version = root["workspace"]["package"]["version"]
     crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
 
