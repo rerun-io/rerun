@@ -5,9 +5,6 @@ import itertools
 import numpy as np
 import rerun as rr
 
-# NOTE: uncomment these to get a better auto-completion experience...
-# from rerun_sdk import rerun2 as rr
-# from rerun_sdk.rerun2 import components as rr.ext
 
 # TODO(cmc): roundtrips (serialize in python, deserialize in rust)
 

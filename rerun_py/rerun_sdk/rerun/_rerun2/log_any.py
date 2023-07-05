@@ -74,11 +74,10 @@ def _extract_components(entity: Archetype) -> Iterable[tuple[NamedExtensionArray
                 yield getattr(entity, fld.name), fld.metadata["component"] == "primary"
 
 
-_MAX_U64 = 2**64 - 1
-
-
 def _splat() -> InstanceKeyArray:
     """Helper to generate a splat InstanceKeyArray."""
+
+    _MAX_U64 = 2**64 - 1
     return pa.array([_MAX_U64], type=InstanceKeyType().storage_type)  # type: ignore[no-any-return]
 
 

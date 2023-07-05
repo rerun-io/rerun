@@ -36,6 +36,7 @@ ClassIdLike = Union[ClassId, int]
 ClassIdArrayLike = Union[
     ClassId,
     Sequence[ClassIdLike],
+    int,
     npt.NDArray[np.uint8],
     npt.NDArray[np.uint16],
     npt.NDArray[np.uint32],
