@@ -77,7 +77,7 @@ def crate_deps(member: Dict[str, Dict[str, Any]]) -> Generator[Tuple[str, Depend
             yield (v, DependencyKind.BUILD)
 
 
-def get_sorted_publishable_crates(crates: Dict[str, Crate]) -> Dict[str, Crate]:
+def get_sorted_publishable_crates(ctx: Context, crates: Dict[str, Crate]) -> Dict[str, Crate]:
     """
     Returns crates topologically sorted in publishing order.
 
@@ -85,22 +85,31 @@ def get_sorted_publishable_crates(crates: Dict[str, Crate]) -> Dict[str, Crate]:
     """
 
     def helper(
+        ctx: Context,
         crates: Dict[str, Crate],
         name: str,
         output: Dict[str, Crate],
+        visited: Dict[str, bool],
     ) -> None:
         crate = crates[name]
         for dependency, _ in crate_deps(crate.manifest):
             if dependency not in crates:
                 continue
-            helper(crates, dependency, output)
+            helper(ctx, crates, dependency, output, visited)
         # Insert only after all dependencies have been traversed
-        if "publish" not in crate.manifest["package"] or crate.manifest["package"]["publish"]:
-            output[name] = crate
+        if name not in visited:
+            visited[name] = True
+            if "publish" not in crate.manifest["package"]:
+                ctx.error(
+                    f"Crate {Fore.BLUE}{name}{Fore.RESET} does not have {Fore.BLUE}package.publish{Fore.RESET} set."
+                )
+            elif crate.manifest["package"]["publish"]:
+                output[name] = crate
 
+    visited: Dict[str, bool] = {}
     output: Dict[str, Crate] = {}
     for name in crates.keys():
-        helper(crates, name, output)
+        helper(ctx, crates, name, output, visited)
     return output
 
 
@@ -154,7 +163,7 @@ class Context:
     def plan(self, operation: str) -> None:
         self.ops.append(operation)
 
-    def error(self, e: List[str]) -> None:
+    def error(self, *e: str) -> None:
         self.errors.append("\n".join(e))
 
     def finish(self, dry_run: bool) -> None:
@@ -162,6 +171,7 @@ class Context:
             print("Encountered some errors:")
             for error in self.errors:
                 print(error)
+            exit(1)
         else:
             if dry_run:
                 print("The following operations will be performed:")
@@ -195,12 +205,10 @@ def bump_dependency_versions(
 
         info = manifest[kind.manifest_key()][dependency]
         if isinstance(info, str):
-            # fmt: off
-            ctx.error([
+            ctx.error(
                 f"{crate}.{dependency} should be specified as:",
-                        f"  {dependency} = {{ version = \"" + info + "\" }",
-            ])
-            # fmt: on
+                f'  {dependency} = {{ version = "' + info + '" }',
+            )
         elif "version" in info:
             dependency_version = info["version"]
             pin_prefix = "=" if is_pinned(dependency_version) else ""
@@ -213,12 +221,12 @@ def bump_dependency_versions(
 
 
 def version(dry_run: bool, bump: Bump) -> None:
+    ctx = Context()
+
     root: Dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     crates = get_workspace_crates(root)
     current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
     new_version = str(bump_fn[bump](current_version))
-
-    ctx = Context()
 
     # There are a few places where versions are set:
     # 1. In the root `Cargo.toml` under `workspace.package.version`.
@@ -250,11 +258,12 @@ def version(dry_run: bool, bump: Bump) -> None:
 
 
 def publish(dry_run: bool, token: str) -> None:
+    ctx = Context()
+
     root: Dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
     version = root["workspace"]["package"]["version"]
-    crates = get_sorted_publishable_crates(get_workspace_crates(root))
+    crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
 
-    ctx = Context()
     for name in crates.keys():
         ctx.publish(name, version)
     ctx.finish(dry_run)
